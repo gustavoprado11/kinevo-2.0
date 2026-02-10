@@ -80,7 +80,7 @@ export const Hero = () => {
                     {/* MacBook — Main, centered */}
                     <div className="relative z-0">
                         <MacbookMockup
-                            src="/dashboard-main.png"
+                            src="/treino.png"
                             alt="Dashboard Kinevo — Visão geral do treinador"
                         />
                     </div>
