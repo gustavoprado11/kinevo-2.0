@@ -62,6 +62,7 @@ interface Trainer {
     id: string
     name: string
     email: string
+    avatar_url?: string | null
 }
 
 interface StudentContext {
@@ -579,7 +580,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
     }
 
     return (
-        <AppLayout trainerName={trainer.name} trainerEmail={trainer.email}>
+        <AppLayout trainerName={trainer.name} trainerEmail={trainer.email} trainerAvatarUrl={trainer.avatar_url}>
             <div className="max-w-5xl mx-auto">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-6">
@@ -920,4 +921,3 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
         </AppLayout>
     )
 }
-

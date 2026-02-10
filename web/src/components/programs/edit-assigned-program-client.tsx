@@ -61,6 +61,7 @@ interface Trainer {
     id: string
     name: string
     email: string
+    avatar_url?: string | null
 }
 
 interface EditAssignedProgramClientProps {
@@ -741,7 +742,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
     }
 
     return (
-        <AppLayout trainerName={trainer.name} trainerEmail={trainer.email}>
+        <AppLayout trainerName={trainer.name} trainerEmail={trainer.email} trainerAvatarUrl={trainer.avatar_url}>
             <div className="max-w-5xl mx-auto space-y-6">
                 {/* Header */}
                 <div className="flex items-center justify-between">
@@ -971,4 +972,3 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
         </AppLayout>
     )
 }
-

@@ -9,6 +9,7 @@ interface Trainer {
     id: string
     name: string
     email: string
+    avatar_url?: string | null
 }
 
 interface Student {
@@ -70,7 +71,7 @@ export function DashboardClient({ trainer, initialStudents, dailyActivity }: Das
     ]
 
     return (
-        <AppLayout trainerName={trainer.name} trainerEmail={trainer.email}>
+        <AppLayout trainerName={trainer.name} trainerEmail={trainer.email} trainerAvatarUrl={trainer.avatar_url}>
             {/* Page Header */}
             <div className="mb-8 flex items-center justify-between">
                 <div>

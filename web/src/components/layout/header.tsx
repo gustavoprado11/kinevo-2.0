@@ -1,14 +1,16 @@
 'use client'
 
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
 interface HeaderProps {
     trainerName: string
     trainerEmail?: string
+    trainerAvatarUrl?: string | null
 }
 
-export function Header({ trainerName, trainerEmail }: HeaderProps) {
+export function Header({ trainerName, trainerEmail, trainerAvatarUrl }: HeaderProps) {
     const router = useRouter()
 
     const handleLogout = async () => {
@@ -36,7 +38,18 @@ export function Header({ trainerName, trainerEmail }: HeaderProps) {
                 <div className="flex items-center gap-3">
                     {/* Avatar */}
                     <div className="w-9 h-9 rounded-full bg-gradient-to-br from-violet-500 to-blue-600 flex items-center justify-center ring-2 ring-gray-800">
-                        <span className="text-white text-sm font-medium">{initials}</span>
+                        {trainerAvatarUrl ? (
+                            <Image
+                                src={trainerAvatarUrl}
+                                alt="Avatar do treinador"
+                                width={36}
+                                height={36}
+                                className="w-9 h-9 rounded-full object-cover"
+                                unoptimized
+                            />
+                        ) : (
+                            <span className="text-white text-sm font-medium">{initials}</span>
+                        )}
                     </div>
 
                     {/* Name & Email */}

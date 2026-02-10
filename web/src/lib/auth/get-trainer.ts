@@ -9,7 +9,7 @@ export async function getTrainerWithSubscription() {
 
     const { data: trainer } = await supabase
         .from('trainers')
-        .select('id, name, email')
+        .select('id, name, email, avatar_url')
         .eq('auth_user_id', user.id)
         .single()
 

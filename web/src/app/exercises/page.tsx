@@ -57,6 +57,7 @@ export default async function ExercisesPage() {
             currentTrainerId={trainer.id}
             trainerName={trainer.name}
             trainerEmail={trainer.email}
+            trainerAvatarUrl={trainer.avatar_url}
         />
     )
 }

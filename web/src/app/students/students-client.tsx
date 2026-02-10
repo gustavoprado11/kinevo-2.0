@@ -9,6 +9,7 @@ interface Trainer {
     id: string
     name: string
     email: string
+    avatar_url?: string | null
 }
 
 interface Student {
@@ -63,7 +64,7 @@ export function StudentsClient({ trainer, initialStudents }: StudentsClientProps
     }
 
     return (
-        <AppLayout trainerName={trainer.name} trainerEmail={trainer.email}>
+        <AppLayout trainerName={trainer.name} trainerEmail={trainer.email} trainerAvatarUrl={trainer.avatar_url}>
             {/* Page Header */}
             <div className="flex items-center justify-between mb-8">
                 <div>

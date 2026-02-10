@@ -59,6 +59,7 @@ interface Trainer {
     id: string
     name: string
     email: string
+    avatar_url?: string | null
 }
 
 interface StudentDetailClientProps {
@@ -187,7 +188,7 @@ export function StudentDetailClient({
     }
 
     return (
-        <AppLayout trainerName={trainer.name} trainerEmail={trainer.email}>
+        <AppLayout trainerName={trainer.name} trainerEmail={trainer.email} trainerAvatarUrl={trainer.avatar_url}>
             <div className="space-y-6">
                 {/* Student Header */}
                 <StudentHeader

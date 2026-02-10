@@ -14,9 +14,10 @@ interface ExercisesClientProps {
     currentTrainerId: string
     trainerName: string
     trainerEmail?: string
+    trainerAvatarUrl?: string | null
 }
 
-export function ExercisesClient({ initialExercises, currentTrainerId, trainerName, trainerEmail }: ExercisesClientProps) {
+export function ExercisesClient({ initialExercises, currentTrainerId, trainerName, trainerEmail, trainerAvatarUrl }: ExercisesClientProps) {
     const router = useRouter()
     const [exercises, setExercises] = useState(initialExercises)
     const [searchQuery, setSearchQuery] = useState('')
@@ -121,7 +122,7 @@ export function ExercisesClient({ initialExercises, currentTrainerId, trainerNam
     }
 
     return (
-        <AppLayout trainerName={trainerName} trainerEmail={trainerEmail}>
+        <AppLayout trainerName={trainerName} trainerEmail={trainerEmail} trainerAvatarUrl={trainerAvatarUrl}>
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                 <div>

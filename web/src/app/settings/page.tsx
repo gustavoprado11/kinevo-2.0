@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { stripe } from '@/lib/stripe'
 import { AppLayout } from '@/components/layout'
 import { BillingSection } from '@/components/settings/billing-section'
+import { ProfileForm } from '@/components/settings/profile-form'
 
 export default async function SettingsPage() {
     const supabase = await createClient()
@@ -13,7 +14,7 @@ export default async function SettingsPage() {
 
     const { data: trainer } = await supabase
         .from('trainers')
-        .select('id, name, email')
+        .select('id, name, email, avatar_url')
         .eq('auth_user_id', user.id)
         .single()
 
@@ -74,13 +75,16 @@ export default async function SettingsPage() {
     }
 
     return (
-        <AppLayout trainerName={trainer.name} trainerEmail={trainer.email}>
+        <AppLayout trainerName={trainer.name} trainerEmail={trainer.email} trainerAvatarUrl={trainer.avatar_url}>
             <div className="mb-8">
                 <h1 className="text-2xl font-bold text-white">Configurações</h1>
                 <p className="text-slate-400 mt-1">Gerencie suas preferências e assinatura</p>
             </div>
 
-            <BillingSection subscription={subscription!} />
+            <div className="space-y-6">
+                <ProfileForm trainer={trainer} />
+                <BillingSection subscription={subscription!} />
+            </div>
         </AppLayout>
     )
 }
