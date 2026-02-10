@@ -1,0 +1,44 @@
+{
+  "expo": {
+    "name": "Kinevo",
+    "slug": "kinevo",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "scheme": "kinevo",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#18181b"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.kinevo.mobile"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#18181b"
+      },
+      "package": "com.kinevo.mobile",
+      "edgeToEdgeEnabled": true
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-web-browser",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "O Kinevo precisa de acesso à sua galeria para você alterar sua foto de perfil."
+        }
+      ]
+    ]
+  }
+}
