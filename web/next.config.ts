@@ -1,8 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
   reactCompiler: false,
+  turbopack: {},
   webpack: (config, { dev, isServer }) => {
     if (dev && !isServer) {
       config.cache = false;
