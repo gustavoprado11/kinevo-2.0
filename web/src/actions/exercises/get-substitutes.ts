@@ -98,7 +98,14 @@ export async function getExerciseSubstitutes(
                 ])
             )
 
-            return ids.map((id) => byId.get(id)).filter((item): item is ExerciseSubstitute => Boolean(item))
+            const orderedExercises: ExerciseSubstitute[] = []
+
+            for (const id of ids) {
+                const exercise = byId.get(id)
+                if (exercise) orderedExercises.push(exercise)
+            }
+
+            return orderedExercises
         }
 
         const manualExercises = (await fetchExercises(manualIds, 'manual')).slice(0, maxResults)
