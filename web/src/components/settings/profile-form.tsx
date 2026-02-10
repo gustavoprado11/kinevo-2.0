@@ -3,7 +3,7 @@
 import Image from 'next/image'
 import { useRef, useState, type ChangeEvent } from 'react'
 import { useRouter } from 'next/navigation'
-import { Camera } from 'lucide-react'
+import { Camera, User } from 'lucide-react'
 import { useFormStatus } from 'react-dom'
 import { updateTrainerProfile } from '@/actions/trainer/update-profile'
 
@@ -25,7 +25,7 @@ function SaveButton() {
         <button
             type="submit"
             disabled={pending}
-            className="inline-flex items-center justify-center rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full inline-flex items-center justify-center rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-60"
         >
             {pending ? 'Salvando...' : 'Salvar alterações'}
         </button>
@@ -71,10 +71,15 @@ export function ProfileForm({ trainer }: ProfileFormProps) {
     const initials = getInitials(name || trainer.name)
 
     return (
-        <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
-            <div className="mb-6">
-                <h2 className="text-lg font-semibold text-white">Perfil do Treinador</h2>
-                <p className="text-slate-400 text-sm mt-1">Atualize seu nome e foto de perfil.</p>
+        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-[0_12px_30px_rgba(2,6,23,0.35)]">
+            <div className="mb-6 flex items-start justify-between">
+                <div>
+                    <h2 className="text-xl font-semibold text-white">Perfil</h2>
+                    <p className="text-slate-400 text-sm mt-1">Dados públicos da sua conta.</p>
+                </div>
+                <div className="w-9 h-9 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400">
+                    <User size={18} />
+                </div>
             </div>
 
             <form
@@ -96,47 +101,45 @@ export function ProfileForm({ trainer }: ProfileFormProps) {
                 }}
                 className="space-y-5"
             >
-                <div className="flex items-center gap-4">
+                <div className="flex flex-col items-center text-center">
                     <div className="relative">
-                        <div className="w-20 h-20 rounded-full overflow-hidden ring-2 ring-slate-700 bg-slate-800 flex items-center justify-center">
+                        <div className="w-24 h-24 rounded-full overflow-hidden ring-2 ring-violet-500/50 bg-slate-800 flex items-center justify-center border border-slate-700">
                             {avatarPreview ? (
                                 <Image
                                     src={avatarPreview}
                                     alt="Avatar do treinador"
-                                    width={80}
-                                    height={80}
+                                    width={96}
+                                    height={96}
                                     className="w-full h-full object-cover"
                                     unoptimized
                                 />
                             ) : (
-                                <span className="text-slate-200 font-semibold">{initials}</span>
+                                <span className="text-slate-100 font-semibold text-lg">{initials}</span>
                             )}
                         </div>
                     </div>
 
-                    <div>
-                        <input
-                            ref={fileInputRef}
-                            id="avatar"
-                            name="avatar"
-                            type="file"
-                            accept="image/*"
-                            onChange={handleFileChange}
-                            className="hidden"
-                        />
-                        <button
-                            type="button"
-                            onClick={handleChooseAvatar}
-                            className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-800 px-4 py-2 text-sm text-slate-200 hover:bg-slate-700"
-                        >
-                            <Camera size={16} />
-                            Alterar foto
-                        </button>
-                        <p className="text-xs text-slate-500 mt-2">PNG, JPG ou WEBP.</p>
-                    </div>
+                    <input
+                        ref={fileInputRef}
+                        id="avatar"
+                        name="avatar"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileChange}
+                        className="hidden"
+                    />
+                    <button
+                        type="button"
+                        onClick={handleChooseAvatar}
+                        className="mt-3 inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-slate-900"
+                    >
+                        <Camera size={14} />
+                        Alterar foto
+                    </button>
+                    <p className="text-xs text-slate-500 mt-2">PNG, JPG ou WEBP.</p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-4 pt-1">
                     <div>
                         <label htmlFor="name" className="block text-sm text-slate-300 mb-1.5">
                             Nome
@@ -149,7 +152,7 @@ export function ProfileForm({ trainer }: ProfileFormProps) {
                             onChange={(e) => setName(e.target.value)}
                             required
                             minLength={2}
-                            className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                            className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500/40"
                             placeholder="Seu nome"
                         />
                     </div>
@@ -163,7 +166,7 @@ export function ProfileForm({ trainer }: ProfileFormProps) {
                             type="email"
                             value={trainer.email}
                             disabled
-                            className="w-full rounded-xl border border-slate-800 bg-slate-900/60 px-3 py-2.5 text-sm text-slate-500 cursor-not-allowed"
+                            className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2.5 text-sm text-slate-500 cursor-not-allowed"
                         />
                     </div>
                 </div>
@@ -180,7 +183,7 @@ export function ProfileForm({ trainer }: ProfileFormProps) {
                     </div>
                 )}
 
-                <div className="pt-1">
+                <div className="pt-2 border-t border-slate-800">
                     <SaveButton />
                 </div>
             </form>

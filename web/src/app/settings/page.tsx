@@ -5,6 +5,7 @@ import { stripe } from '@/lib/stripe'
 import { AppLayout } from '@/components/layout'
 import { BillingSection } from '@/components/settings/billing-section'
 import { ProfileForm } from '@/components/settings/profile-form'
+import { ChevronRight } from 'lucide-react'
 
 export default async function SettingsPage() {
     const supabase = await createClient()
@@ -77,13 +78,22 @@ export default async function SettingsPage() {
     return (
         <AppLayout trainerName={trainer.name} trainerEmail={trainer.email} trainerAvatarUrl={trainer.avatar_url}>
             <div className="mb-8">
-                <h1 className="text-2xl font-bold text-white">Configurações</h1>
-                <p className="text-slate-400 mt-1">Gerencie suas preferências e assinatura</p>
+                <div className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider mb-2">
+                    <span>Painel</span>
+                    <ChevronRight size={12} />
+                    <span>Minha Conta</span>
+                </div>
+                <h1 className="text-3xl font-bold text-white tracking-tight">Minha Conta</h1>
+                <p className="text-slate-400 mt-1">Gerencie seu perfil e assinatura.</p>
             </div>
 
-            <div className="space-y-6">
-                <ProfileForm trainer={trainer} />
-                <BillingSection subscription={subscription!} />
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+                <div className="lg:col-span-1">
+                    <ProfileForm trainer={trainer} />
+                </div>
+                <div className="lg:col-span-2">
+                    <BillingSection subscription={subscription!} />
+                </div>
             </div>
         </AppLayout>
     )
