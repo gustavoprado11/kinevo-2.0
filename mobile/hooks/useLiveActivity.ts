@@ -24,6 +24,7 @@ interface UseLiveActivityReturn {
     isSupported: boolean;
     isActive: boolean;
     startRestTimer: (exerciseIndex: number, seconds: number) => void;
+    stopActivity: () => void;
 }
 
 export function useLiveActivity({

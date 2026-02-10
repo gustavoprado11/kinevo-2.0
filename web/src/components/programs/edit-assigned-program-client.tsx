@@ -17,6 +17,7 @@ export interface WorkoutItem {
     order_index: number
     parent_item_id: string | null
     exercise_id: string | null
+    substitute_exercise_ids: string[]
     exercise?: Exercise
     sets: number | null
     reps: string | null
@@ -49,6 +50,7 @@ interface AssignedProgramData {
             order_index: number
             parent_item_id: string | null
             exercise_id: string | null
+            substitute_exercise_ids?: string[] | null
             sets: number | null
             reps: string | null
             rest_seconds: number | null
@@ -107,6 +109,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                         order_index: item.order_index,
                         parent_item_id: null,
                         exercise_id: item.exercise_id,
+                        substitute_exercise_ids: item.substitute_exercise_ids || [],
                         exercise: localExercises.find(e => e.id === item.exercise_id), // Use localExercises
                         sets: item.sets,
                         reps: item.reps,
@@ -121,6 +124,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                                 order_index: child.order_index,
                                 parent_item_id: item.id,
                                 exercise_id: child.exercise_id,
+                                substitute_exercise_ids: child.substitute_exercise_ids || [],
                                 exercise: localExercises.find(e => e.id === child.exercise_id), // Use localExercises
                                 sets: child.sets,
                                 reps: child.reps,
@@ -243,6 +247,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                     order_index: w.items.length,
                     parent_item_id: null,
                     exercise_id: exercise.id,
+                    substitute_exercise_ids: [],
                     exercise,
                     sets: 3,
                     reps: '10-12',
@@ -274,6 +279,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                 order_index: itemIndex,
                 parent_item_id: null,
                 exercise_id: null,
+                substitute_exercise_ids: [],
                 sets: null,
                 reps: null,
                 rest_seconds: currentItem.rest_seconds || 60,
@@ -428,6 +434,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                     order_index: w.items.length,
                     parent_item_id: null,
                     exercise_id: null,
+                    substitute_exercise_ids: [],
                     sets: null,
                     reps: null,
                     rest_seconds: 60,
@@ -449,6 +456,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                     order_index: w.items.length,
                     parent_item_id: null,
                     exercise_id: null,
+                    substitute_exercise_ids: [],
                     sets: null,
                     reps: null,
                     rest_seconds: null,
@@ -661,6 +669,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                         item_type: item.item_type,
                         order_index: item.order_index,
                         exercise_id: item.exercise_id,
+                        substitute_exercise_ids: item.substitute_exercise_ids || [],
                         sets: item.sets,
                         reps: item.reps,
                         rest_seconds: item.rest_seconds,
@@ -700,6 +709,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                                 item_type: child.item_type,
                                 order_index: child.order_index,
                                 exercise_id: child.exercise_id,
+                                substitute_exercise_ids: child.substitute_exercise_ids || [],
                                 sets: child.sets,
                                 reps: child.reps,
                                 rest_seconds: child.rest_seconds,
@@ -933,7 +943,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                             {activeWorkout ? (
                                 <WorkoutPanel
                                     workout={activeWorkout}
-                                    exercises={exercises}
+                                    exercises={localExercises}
                                     onUpdateName={(name) => updateWorkoutName(activeWorkout.id, name)}
                                     onAddExercise={() => {/* Handled by library panel */ }}
                                     onAddNote={() => addNote(activeWorkout.id)}

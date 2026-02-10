@@ -27,6 +27,7 @@ export default async function EditProgramPage({ params }: { params: Promise<{ id
                     order_index,
                     parent_item_id,
                     exercise_id,
+                    substitute_exercise_ids,
                     sets,
                     reps,
                     rest_seconds,

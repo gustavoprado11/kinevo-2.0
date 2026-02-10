@@ -35,6 +35,7 @@ export default async function EditProgramPage({ params }: PageProps) {
                     order_index,
                     parent_item_id,
                     exercise_id,
+                    substitute_exercise_ids,
                     sets,
                     reps,
                     rest_seconds,

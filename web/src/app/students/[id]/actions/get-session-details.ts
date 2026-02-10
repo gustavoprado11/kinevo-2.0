@@ -40,8 +40,10 @@ export async function getSessionDetails(sessionId: string): Promise<GetSessionDe
                 reps_completed,
                 rpe,
                 completed_at,
+                executed_exercise_id,
                 exercise_id,
-                exercises ( name )
+                executed_exercise:exercises!set_logs_executed_exercise_id_fkey ( name ),
+                legacy_exercise:exercises!set_logs_exercise_id_fkey ( name )
             `)
             .eq('workout_session_id', sessionId)
             .order('completed_at', { ascending: true })
@@ -52,14 +54,15 @@ export async function getSessionDetails(sessionId: string): Promise<GetSessionDe
         const exercisesMap = new Map()
 
         logs.forEach(log => {
-            const exerciseId = log.exercise_id
+            const exerciseId = log.executed_exercise_id || log.exercise_id
             // Force cast because Supabase types with joins can be tricky to infer automatically here
-            const exerciseData = log.exercises as any
+            const executedExerciseData = log.executed_exercise as any
+            const legacyExerciseData = log.legacy_exercise as any
 
             if (!exercisesMap.has(exerciseId)) {
                 exercisesMap.set(exerciseId, {
                     exercise_id: exerciseId,
-                    name: exerciseData?.name || 'Exercício desconhecido',
+                    name: executedExerciseData?.name || legacyExerciseData?.name || 'Exercício desconhecido',
                     muscle_group: null,
                     sets: []
                 })

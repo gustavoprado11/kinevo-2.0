@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import type { Workout, WorkoutItem } from './program-builder-client'
 import type { Exercise } from '@/types/exercise'
-import { WorkoutItemCard } from './workout-item-card'
 import { SortableWorkoutItem } from './sortable-workout-item'
 import {
     DndContext,
@@ -80,9 +79,9 @@ function SupersetConnector({
             <button
                 onClick={onConnect}
                 className="relative z-10 flex items-center gap-1.5 px-2 py-1 rounded-full 
-                           bg-muted border border-border 
+                           bg-muted dark:bg-slate-900 border border-border dark:border-slate-800
                            hover:bg-violet-600 hover:border-violet-500 
-                           text-muted-foreground hover:text-foreground
+                           text-muted-foreground dark:text-slate-400 hover:text-foreground
                            transition-all duration-200 
                            opacity-0 group-hover:opacity-100
                            text-xs font-medium"
@@ -99,6 +98,7 @@ function SupersetConnector({
 
 export function WorkoutPanel({
     workout,
+    exercises,
     onUpdateName,
     onAddExercise,
     onAddNote,
@@ -176,15 +176,15 @@ export function WorkoutPanel({
                             onBlur={handleNameSave}
                             onKeyDown={(e) => e.key === 'Enter' && handleNameSave()}
                             autoFocus
-                            className="px-3 py-1.5 bg-background border border-border rounded-lg text-foreground text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                            className="px-3 py-1.5 bg-background dark:bg-slate-950 border border-border dark:border-slate-800 rounded-lg text-foreground dark:text-slate-100 text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-violet-500/50"
                         />
                     ) : (
                         <button
                             onClick={() => { setTempName(workout.name); setIsEditingName(true) }}
-                            className="text-lg font-semibold text-foreground hover:text-violet-300 transition-colors flex items-center gap-2"
+                            className="text-lg font-semibold text-foreground dark:text-slate-100 hover:text-violet-300 dark:hover:text-violet-400 transition-colors flex items-center gap-2"
                         >
                             {workout.name}
-                            <svg className="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-4 h-4 text-muted-foreground dark:text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                             </svg>
                         </button>
@@ -211,13 +211,13 @@ export function WorkoutPanel({
 
                             if (isSelected) {
                                 // Active (selected for this workout) - Strong Purple
-                                buttonClass += "bg-violet-600 text-white shadow-sm border-violet-500"
+                                buttonClass += "bg-violet-600 dark:bg-violet-500 text-white shadow-sm border-violet-500"
                             } else if (isOccupied) {
                                 // Occupied (by another workout) - Light Purple / Indication
-                                buttonClass += "bg-violet-900/40 text-violet-300 border-violet-500/30 hover:bg-violet-900/60"
+                                buttonClass += "bg-violet-900/40 dark:bg-violet-900/60 text-violet-300 dark:text-violet-200 border-violet-500/30 dark:border-violet-500/40 hover:bg-violet-900/60"
                             } else {
                                 // Free - Gray
-                                buttonClass += "text-muted-foreground border-transparent hover:text-foreground/80 hover:bg-muted"
+                                buttonClass += "text-muted-foreground dark:text-slate-500 border-transparent hover:text-foreground/80 dark:hover:text-slate-300 hover:bg-muted dark:hover:bg-slate-800"
                             }
 
                             return (
@@ -248,7 +248,7 @@ export function WorkoutPanel({
             {/* Items with connectors */}
             <div className="p-5">
                 {workout.items.length === 0 ? (
-                    <div className="text-center py-8 border-2 border-dashed border-border rounded-xl">
+                    <div className="text-center py-8 border-2 border-dashed border-border dark:border-slate-800 rounded-xl bg-muted/20 dark:bg-slate-900/20">
                         <p className="text-muted-foreground mb-4">Adicione exercícios ao treino</p>
                         <div className="flex items-center justify-center gap-2">
                             <button
@@ -275,6 +275,7 @@ export function WorkoutPanel({
                                         {/* Sortable Workout Item */}
                                         <SortableWorkoutItem
                                             item={item}
+                                            exercises={exercises}
                                             index={index}
                                             totalItems={workout.items.length}
                                             allItems={workout.items}

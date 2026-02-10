@@ -11,6 +11,8 @@ import { WorkoutFeedbackModal } from '../../components/workout/WorkoutFeedbackMo
 import { WorkoutSuccessModal } from '../../components/workout/WorkoutSuccessModal';
 import { ExerciseVideoModal } from '../../components/workout/ExerciseVideoModal';
 import { RestTimerOverlay } from '../../components/workout/RestTimerOverlay';
+import { ExerciseSwapModal } from '../../components/workout/ExerciseSwapModal';
+import type { ExerciseSubstituteOption } from '../../hooks/useWorkoutSession';
 
 export default function WorkoutPlayerScreen() {
     const { id } = useLocalSearchParams();
@@ -45,6 +47,9 @@ export default function WorkoutPlayerScreen() {
         duration,
         handleSetChange,
         handleToggleSetComplete,
+        loadSubstituteOptions,
+        searchSubstituteOptions,
+        swapExercise,
         finishWorkout,
         isSubmitting
     } = useWorkoutSession(id as string, { onSetComplete });
@@ -72,11 +77,103 @@ export default function WorkoutPlayerScreen() {
     const [isFeedbackVisible, setIsFeedbackVisible] = React.useState(false);
     const [showSuccessModal, setShowSuccessModal] = React.useState(false);
     const [videoModalUrl, setVideoModalUrl] = React.useState<string | null>(null);
+    const [swapModalVisible, setSwapModalVisible] = React.useState(false);
+    const [swapModalLoading, setSwapModalLoading] = React.useState(false);
+    const [swapOptions, setSwapOptions] = React.useState<ExerciseSubstituteOption[]>([]);
+    const [swapSearchQuery, setSwapSearchQuery] = React.useState('');
+    const [swapSearchResults, setSwapSearchResults] = React.useState<ExerciseSubstituteOption[]>([]);
+    const [swapSearchLoading, setSwapSearchLoading] = React.useState(false);
+    const [activeSwapIndex, setActiveSwapIndex] = React.useState<number | null>(null);
     const [restTimer, setRestTimer] = React.useState<{
         endTime: number;
         totalSeconds: number;
         exerciseName: string;
     } | null>(null);
+
+    const openSwapModal = async (exerciseIndex: number) => {
+        setActiveSwapIndex(exerciseIndex);
+        setSwapModalVisible(true);
+        setSwapModalLoading(true);
+        setSwapOptions([]);
+        setSwapSearchQuery('');
+        setSwapSearchResults([]);
+        setSwapSearchLoading(false);
+
+        try {
+            const options = await loadSubstituteOptions(exerciseIndex);
+            setSwapOptions(options);
+        } catch (error) {
+            console.error('Error loading substitute options:', error);
+            Alert.alert('Erro', 'Nao foi possivel carregar as opcoes de troca.');
+        } finally {
+            setSwapModalLoading(false);
+        }
+    };
+
+    const applySwap = async (option: ExerciseSubstituteOption, forceReset = false) => {
+        if (activeSwapIndex === null) return;
+
+        const result = await swapExercise(activeSwapIndex, option, forceReset);
+        if (result.success) {
+            setSwapModalVisible(false);
+            setSwapOptions([]);
+            setSwapSearchQuery('');
+            setSwapSearchResults([]);
+            return;
+        }
+
+        if (result.requiresConfirmation) {
+            Alert.alert(
+                'Resetar series deste exercicio?',
+                'Algumas series ja foram concluidas. A troca vai limpar peso/repeticoes para esse exercicio.',
+                [
+                    { text: 'Cancelar', style: 'cancel' },
+                    { text: 'Trocar e resetar', style: 'destructive', onPress: () => applySwap(option, true) },
+                ]
+            );
+            return;
+        }
+
+        Alert.alert('Erro', result.message || 'Nao foi possivel trocar o exercicio.');
+    };
+
+    useEffect(() => {
+        if (!swapModalVisible || activeSwapIndex === null) return;
+
+        const query = swapSearchQuery.trim();
+        if (query.length < 2) {
+            setSwapSearchResults([]);
+            setSwapSearchLoading(false);
+            return;
+        }
+
+        let cancelled = false;
+        setSwapSearchLoading(true);
+
+        const timeout = setTimeout(async () => {
+            try {
+                const results = await searchSubstituteOptions(activeSwapIndex, query);
+                if (cancelled) return;
+
+                const suggestionIds = new Set(swapOptions.map((option) => option.id));
+                setSwapSearchResults(results.filter((option) => !suggestionIds.has(option.id)));
+            } catch (error) {
+                if (!cancelled) {
+                    console.error('Error searching substitute options:', error);
+                    setSwapSearchResults([]);
+                }
+            } finally {
+                if (!cancelled) {
+                    setSwapSearchLoading(false);
+                }
+            }
+        }, 300);
+
+        return () => {
+            cancelled = true;
+            clearTimeout(timeout);
+        };
+    }, [swapSearchQuery, swapModalVisible, activeSwapIndex, swapOptions]);
 
     // Protect against accidental exit
     useEffect(() => {
@@ -200,6 +297,8 @@ export default function WorkoutPlayerScreen() {
                             onSetChange={(setIndex, field, value) => handleSetChange(index, setIndex, field, value)}
                             onToggleSetComplete={(setIndex) => handleToggleSetComplete(index, setIndex)}
                             onVideoPress={(url) => setVideoModalUrl(url)}
+                            onSwapPress={() => openSwapModal(index)}
+                            isSwapped={exercise.swap_source !== 'none'}
                         />
                     ))}
 
@@ -237,6 +336,18 @@ export default function WorkoutPlayerScreen() {
                 visible={videoModalUrl !== null}
                 onClose={() => setVideoModalUrl(null)}
                 videoUrl={videoModalUrl}
+            />
+            <ExerciseSwapModal
+                visible={swapModalVisible}
+                onClose={() => setSwapModalVisible(false)}
+                onSelect={(option) => applySwap(option)}
+                exerciseName={activeSwapIndex !== null ? exercises[activeSwapIndex]?.name || null : null}
+                options={swapOptions}
+                isLoading={swapModalLoading}
+                searchQuery={swapSearchQuery}
+                onSearchQueryChange={setSwapSearchQuery}
+                searchResults={swapSearchResults}
+                isSearching={swapSearchLoading}
             />
             {/* Rest Timer Overlay */}
             {restTimer && (

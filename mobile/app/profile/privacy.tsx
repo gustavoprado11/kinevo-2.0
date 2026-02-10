@@ -31,7 +31,7 @@ export default function PrivacyScreen() {
                 {
                     text: "Confirmar",
                     style: "destructive",
-                    onPress: async (value) => {
+                    onPress: async (value?: string) => {
                         if (value?.trim().toUpperCase() !== "EXCLUIR") {
                             Alert.alert("Texto incorreto", 'Você precisa digitar "EXCLUIR" para confirmar.');
                             return;

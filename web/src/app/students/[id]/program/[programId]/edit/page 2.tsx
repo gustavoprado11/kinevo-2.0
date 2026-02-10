@@ -51,6 +51,7 @@ export default async function EditAssignedProgramPage({
                     order_index,
                     parent_item_id,
                     exercise_id,
+                    substitute_exercise_ids,
                     sets,
                     reps,
                     rest_seconds,

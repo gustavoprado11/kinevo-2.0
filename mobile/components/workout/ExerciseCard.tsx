@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Alert } from 'react-native';
-import { PlayCircle } from 'lucide-react-native';
+import { ArrowRightLeft, PlayCircle } from 'lucide-react-native';
 import { SetRow } from './SetRow';
 
 export interface SetData {
@@ -20,6 +20,8 @@ interface ExerciseCardProps {
     videoUrl?: string; // Optional
     previousLoad?: string; // Optional history
     onVideoPress?: (url: string) => void;
+    onSwapPress?: () => void;
+    isSwapped?: boolean;
 }
 
 export function ExerciseCard({
@@ -32,7 +34,9 @@ export function ExerciseCard({
     onToggleSetComplete,
     videoUrl,
     previousLoad,
-    onVideoPress
+    onVideoPress,
+    onSwapPress,
+    isSwapped
 }: ExerciseCardProps) {
 
     const handleOpenVideo = () => {
@@ -57,10 +61,20 @@ export function ExerciseCard({
                             Carga anterior: {previousLoad}
                         </Text>
                     )}
+                    {isSwapped && (
+                        <Text className="text-violet-300 text-xs mt-1">
+                            Exercicio substituido nesta sessao
+                        </Text>
+                    )}
                 </View>
-                <TouchableOpacity onPress={handleOpenVideo}>
-                    <PlayCircle size={24} color="#8b5cf6" />
-                </TouchableOpacity>
+                <View className="flex-row items-center gap-3">
+                    <TouchableOpacity onPress={onSwapPress}>
+                        <ArrowRightLeft size={20} color="#a78bfa" />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={handleOpenVideo}>
+                        <PlayCircle size={24} color="#8b5cf6" />
+                    </TouchableOpacity>
+                </View>
             </View>
 
             {/* Sets List */}

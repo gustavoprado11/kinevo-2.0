@@ -54,6 +54,24 @@ export function useWorkoutHistory() {
         try {
             setIsLoading(true);
 
+            const { data: student, error: studentError } = await supabase
+                .from('students')
+                .select('id')
+                .eq('auth_user_id', user.id)
+                .maybeSingle();
+
+            if (studentError) throw studentError;
+            if (!student?.id) {
+                setHistory([]);
+                setStats({
+                    totalWorkouts: 0,
+                    totalVolume: 0,
+                    totalHours: 0,
+                    personalRecords: []
+                });
+                return;
+            }
+
             // Fetch sessions with logs
             const { data, error } = await supabase
                 .from('workout_sessions')
@@ -66,14 +84,16 @@ export function useWorkoutHistory() {
                     assigned_workout:assigned_workouts(name),
                     logs:set_logs(
                         id,
+                        executed_exercise_id,
                         exercise_id,
                         weight,
                         reps_completed,
                         is_completed,
-                        exercise:exercises(name)
+                        executed_exercise:exercises!set_logs_executed_exercise_id_fkey(name),
+                        legacy_exercise:exercises!set_logs_exercise_id_fkey(name)
                     )
                 `)
-                .eq('student_id', (await supabase.rpc('current_student_id')).data)
+                .eq('student_id', student.id)
                 .order('completed_at', { ascending: false });
 
             if (error) throw error;
@@ -99,8 +119,11 @@ export function useWorkoutHistory() {
                     const reps = Number(log.reps_completed) || 0;
                     sessionVol += weight * reps;
 
-                    const exerciseName = log.exercise?.name || 'Exercício';
-                    const exerciseId = log.exercise_id || 'unknown';
+                    const exerciseName =
+                        log.executed_exercise?.name ||
+                        log.legacy_exercise?.name ||
+                        'Exercício';
+                    const exerciseId = log.executed_exercise_id || log.exercise_id || 'unknown';
 
                     if (!exerciseMap.has(exerciseId)) {
                         exerciseMap.set(exerciseId, {

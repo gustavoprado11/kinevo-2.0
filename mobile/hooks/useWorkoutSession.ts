@@ -12,14 +12,26 @@ export interface WorkoutSetData {
 
 export interface ExerciseData {
     id: string; // assigned_workout_item_id
+    planned_exercise_id: string;
     exercise_id: string;
     name: string;
     sets: number;
     reps: string;
     rest_seconds: number;
     video_url?: string;
+    substitute_exercise_ids: string[];
+    swap_source: 'none' | 'manual' | 'auto';
     setsData: WorkoutSetData[];
     previousLoad?: string;
+}
+
+export interface ExerciseSubstituteOption {
+    id: string;
+    name: string;
+    equipment?: string | null;
+    video_url?: string | null;
+    muscle_groups: string[];
+    source: 'manual' | 'auto' | 'search';
 }
 
 interface UseWorkoutSessionOptions {
@@ -30,10 +42,136 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
     const { user } = useAuth();
     const [isLoading, setIsLoading] = useState(true);
     const [exercises, setExercises] = useState<ExerciseData[]>([]);
+    const [studentId, setStudentId] = useState<string | null>(null);
     const [startTime] = useState(() => Date.now());
     const [elapsed, setElapsed] = useState(0);
     const [workoutName, setWorkoutName] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const mapExerciseToSubstituteOption = (
+        exercise: any,
+        source: 'manual' | 'auto' | 'search'
+    ): ExerciseSubstituteOption => ({
+        id: exercise.id,
+        name: exercise.name,
+        equipment: exercise.equipment,
+        video_url: exercise.video_url,
+        muscle_groups: (exercise.exercise_muscle_groups || [])
+            .map((entry: any) => entry.muscle_groups?.name)
+            .filter(Boolean),
+        source,
+    });
+
+    const createInitialSets = (setsCount: number) => (
+        Array(Math.max(setsCount || 0, 0)).fill(null).map(() => ({
+            weight: '',
+            reps: '',
+            completed: false
+        }))
+    );
+
+    const formatLoadLabel = (maxWeight?: number | null) => {
+        if (maxWeight === null || maxWeight === undefined) return undefined;
+        const value = Number(maxWeight);
+        if (!Number.isFinite(value) || value <= 0) return undefined;
+        const normalized = Number.isInteger(value) ? `${value}` : value.toFixed(1);
+        return `${normalized}kg`;
+    };
+
+    const fetchLastExerciseLoad = async (targetStudentId: string, exerciseId: string): Promise<string | undefined> => {
+        if (!targetStudentId || !exerciseId) return undefined;
+
+        const { data: metrics, error: rpcError }: { data: any; error: any } = await supabase
+            .rpc('get_last_exercise_metrics' as any, {
+                p_student_id: targetStudentId,
+                p_exercise_id: exerciseId,
+            });
+
+        if (!rpcError && Array.isArray(metrics) && metrics.length > 0) {
+            return formatLoadLabel(metrics[0]?.max_weight);
+        }
+
+        // Fallback for environments where RPC has not been applied yet.
+        const { data: legacyHistory }: { data: any; error: any } = await supabase
+            .from('set_logs' as any)
+            .select('weight, weight_unit')
+            .eq('exercise_id', exerciseId)
+            .order('completed_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        if (legacyHistory?.weight !== undefined && legacyHistory?.weight !== null) {
+            return `${legacyHistory.weight}${legacyHistory.weight_unit || 'kg'}`;
+        }
+
+        return undefined;
+    };
+
+    const fetchExerciseIdsBySharedMuscleGroups = async (exerciseId: string): Promise<string[]> => {
+        if (!exerciseId) return [];
+
+        const { data: groups }: { data: any; error: any } = await supabase
+            .from('exercise_muscle_groups' as any)
+            .select('muscle_group_id')
+            .eq('exercise_id', exerciseId);
+
+        const groupIds: string[] = Array.from(
+            new Set(
+                (groups || [])
+                    .map((g: any) => g.muscle_group_id)
+                    .filter((id: unknown): id is string => typeof id === 'string' && id.length > 0)
+            )
+        );
+
+        if (groupIds.length === 0) return [];
+
+        const { data: groupMatches }: { data: any; error: any } = await supabase
+            .from('exercise_muscle_groups' as any)
+            .select('exercise_id')
+            .in('muscle_group_id', groupIds)
+            .limit(400);
+
+        return Array.from(
+            new Set(
+                (groupMatches || [])
+                    .map((match: any) => match.exercise_id)
+                    .filter((id: unknown): id is string => typeof id === 'string' && id.length > 0)
+            )
+        );
+    };
+
+    const fetchExercisesByIds = async (
+        ids: string[],
+        source: 'manual' | 'auto' | 'search'
+    ): Promise<ExerciseSubstituteOption[]> => {
+        if (ids.length === 0) return [];
+
+        const { data: exercisesData, error: exerciseError }: { data: any; error: any } = await supabase
+            .from('exercises' as any)
+            .select(`
+                id,
+                name,
+                equipment,
+                video_url,
+                exercise_muscle_groups (
+                    muscle_groups ( name )
+                )
+            `)
+            .in('id', ids);
+
+        if (exerciseError || !exercisesData) return [];
+
+        const byId = new Map<string, ExerciseSubstituteOption>(
+            exercisesData.map((exercise: any) => [
+                exercise.id,
+                mapExerciseToSubstituteOption(exercise, source),
+            ])
+        );
+
+        return ids
+            .map((id) => byId.get(id))
+            .filter((option): option is ExerciseSubstituteOption => Boolean(option));
+    };
 
     // Timer — timestamp-based so it survives background/lock screen
     useEffect(() => {
@@ -51,6 +189,17 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
             if (!workoutId || !user) return;
 
             try {
+                // Student context for logs/history RPC
+                const { data: student, error: studentError }: { data: any; error: any } = await supabase
+                    .from('students' as any)
+                    .select('id')
+                    .eq('auth_user_id', user.id)
+                    .maybeSingle();
+
+                if (studentError) throw studentError;
+                const currentStudentId = student?.id || null;
+                if (mounted) setStudentId(currentStudentId);
+
                 // 1. Get Workout Details
                 const { data: workout, error: workoutError }: { data: any; error: any } = await supabase
                     .from('assigned_workouts' as any)
@@ -71,9 +220,10 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                         sets, 
                         reps, 
                         rest_seconds, 
+                        substitute_exercise_ids,
                         item_type, 
                         order_index,
-                        exercises ( video_url )
+                        exercises ( id, video_url )
                     `)
                     .eq('assigned_workout_id', workoutId)
                     .eq('item_type', 'exercise') // Only exercises
@@ -83,38 +233,23 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
 
                 // 3. Initialize State and Fetch History
                 const exercisesData: ExerciseData[] = await Promise.all(items.map(async (item: any) => {
-                    // Fetch last log for this exercise
                     let previousLoad = undefined;
-                    if (item.exercise_id) {
-                        const { data: history }: { data: any; error: any } = await supabase
-                            .from('set_logs' as any)
-                            .select('weight, weight_unit')
-                            .eq('exercise_id', item.exercise_id)
-                            .order('completed_at', { ascending: false })
-                            .limit(1)
-                            .maybeSingle();
-
-                        if (history) {
-                            previousLoad = `${history.weight}${history.weight_unit}`;
-                        }
+                    if (item.exercise_id && currentStudentId) {
+                        previousLoad = await fetchLastExerciseLoad(currentStudentId, item.exercise_id);
                     }
-
-                    // Init sets
-                    const initialSets = Array(item.sets || 3).fill(null).map(() => ({
-                        weight: '',
-                        reps: '',
-                        completed: false
-                    }));
 
                     return {
                         id: item.id,
+                        planned_exercise_id: item.exercise_id,
                         exercise_id: item.exercise_id,
                         name: item.exercise_name,
                         sets: item.sets || 3,
                         reps: item.reps || '10',
                         rest_seconds: item.rest_seconds || 60,
                         video_url: item.exercises?.video_url,
-                        setsData: initialSets,
+                        substitute_exercise_ids: item.substitute_exercise_ids || [],
+                        swap_source: 'none',
+                        setsData: createInitialSets(item.sets || 3),
                         previousLoad
                     };
                 }));
@@ -182,6 +317,136 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
         });
     };
 
+    const loadSubstituteOptions = async (exerciseIndex: number): Promise<ExerciseSubstituteOption[]> => {
+        const current = exercises[exerciseIndex];
+        if (!current?.id) return [];
+
+        const plannedExerciseId = current.planned_exercise_id || current.exercise_id;
+        if (!plannedExerciseId) return [];
+
+        // 1) Manual suggestions from assigned item
+        const { data: assignedItem }: { data: any; error: any } = await supabase
+            .from('assigned_workout_items' as any)
+            .select('substitute_exercise_ids')
+            .eq('id', current.id)
+            .maybeSingle();
+
+        const manualIdsRaw: string[] = (
+            Array.isArray(assignedItem?.substitute_exercise_ids)
+                ? assignedItem.substitute_exercise_ids
+                : (current.substitute_exercise_ids || [])
+        ).filter((id: unknown): id is string => typeof id === 'string' && id.length > 0);
+
+        const manualIds: string[] = Array.from(new Set(manualIdsRaw))
+            .filter((id) => id !== current.exercise_id);
+
+        const manualOptions = await fetchExercisesByIds(manualIds, 'manual');
+        const manualSet = new Set(manualOptions.map((option) => option.id));
+
+        // Automatic suggestions: max 2, using smart RPC when available.
+        let autoOptions: ExerciseSubstituteOption[] = [];
+        const { data: smartRows, error: smartError }: { data: any; error: any } = await supabase
+            .rpc('get_smart_substitutes' as any, {
+                target_exercise_id: plannedExerciseId,
+                match_limit: 2,
+            });
+
+        if (!smartError && Array.isArray(smartRows)) {
+            const smartIds: string[] = smartRows
+                .map((row: any) => row.id)
+                .filter((id: unknown): id is string => typeof id === 'string' && id.length > 0)
+                .filter((id) => id !== plannedExerciseId && id !== current.exercise_id && !manualSet.has(id))
+                .slice(0, 2);
+
+            autoOptions = await fetchExercisesByIds(smartIds, 'auto');
+        } else {
+            // Fallback if RPC is not yet available: old same-muscle strategy limited to 2.
+            const sharedIds = await fetchExerciseIdsBySharedMuscleGroups(plannedExerciseId);
+            const fallbackAutoIds = sharedIds
+                .filter((id) => id !== plannedExerciseId && id !== current.exercise_id && !manualSet.has(id))
+                .slice(0, 2);
+
+            autoOptions = await fetchExercisesByIds(fallbackAutoIds, 'auto');
+        }
+
+        return [...manualOptions, ...autoOptions];
+    };
+
+    const searchSubstituteOptions = async (
+        exerciseIndex: number,
+        query: string
+    ): Promise<ExerciseSubstituteOption[]> => {
+        const current = exercises[exerciseIndex];
+        if (!current?.id) return [];
+
+        const searchTerm = query.trim();
+        if (searchTerm.length < 2) return [];
+
+        const plannedExerciseId = current.planned_exercise_id || current.exercise_id;
+        if (!plannedExerciseId) return [];
+
+        const sharedIds = await fetchExerciseIdsBySharedMuscleGroups(plannedExerciseId);
+        const candidateIds = sharedIds.filter((id) => id !== plannedExerciseId && id !== current.exercise_id);
+        if (candidateIds.length === 0) return [];
+
+        const { data: exercisesData, error: searchError }: { data: any; error: any } = await supabase
+            .from('exercises' as any)
+            .select(`
+                id,
+                name,
+                equipment,
+                video_url,
+                exercise_muscle_groups (
+                    muscle_groups ( name )
+                )
+            `)
+            .in('id', candidateIds)
+            .ilike('name', `%${searchTerm}%`)
+            .order('name')
+            .limit(20);
+
+        if (searchError || !exercisesData) return [];
+
+        return exercisesData.map((exercise: any) => mapExerciseToSubstituteOption(exercise, 'search'));
+    };
+
+    const swapExercise = async (
+        exerciseIndex: number,
+        substitute: ExerciseSubstituteOption,
+        forceReset = false
+    ): Promise<{ success: boolean; requiresConfirmation?: boolean; message?: string }> => {
+        const current = exercises[exerciseIndex];
+        if (!current) {
+            return { success: false, message: 'Exercicio nao encontrado.' };
+        }
+
+        const hasCompletedSets = current.setsData.some((set) => set.completed);
+        if (hasCompletedSets && !forceReset) {
+            return { success: false, requiresConfirmation: true, message: 'Este exercicio ja possui series concluidas.' };
+        }
+
+        let nextPreviousLoad: string | undefined = undefined;
+        if (studentId) {
+            nextPreviousLoad = await fetchLastExerciseLoad(studentId, substitute.id);
+        }
+
+        setExercises((prev) => prev.map((exercise, index) => {
+            if (index !== exerciseIndex) return exercise;
+
+            return {
+                ...exercise,
+                exercise_id: substitute.id,
+                name: substitute.name,
+                video_url: substitute.video_url ?? exercise.video_url ?? undefined,
+                previousLoad: nextPreviousLoad,
+                swap_source: substitute.source === 'search' ? 'manual' : substitute.source,
+                setsData: createInitialSets(exercise.sets),
+            };
+        }));
+
+        return { success: true };
+    };
+
     const finishWorkout = async (rpe?: number, feedback?: string) => {
         if (isSubmitting || !user) return;
 
@@ -244,6 +509,9 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                         setLogs.push({
                             workout_session_id: session.id,
                             assigned_workout_item_id: exercise.id,
+                            planned_exercise_id: exercise.planned_exercise_id || exercise.exercise_id,
+                            executed_exercise_id: exercise.exercise_id,
+                            swap_source: exercise.swap_source || 'none',
                             exercise_id: exercise.exercise_id,
                             set_number: i + 1,
                             weight: parseFloat(set.weight) || 0,
@@ -288,6 +556,9 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
         duration: formatTime(elapsed),
         handleSetChange,
         handleToggleSetComplete,
+        loadSubstituteOptions,
+        searchSubstituteOptions,
+        swapExercise,
         finishWorkout,
         isSubmitting
     };

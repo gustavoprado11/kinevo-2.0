@@ -11,10 +11,13 @@ interface ActionCardProps {
         notes?: string;
     } | null;
     isCompleted?: boolean;
+    title?: string;
     onPress?: () => void;
 }
 
-export function ActionCard({ workout, isCompleted, onPress }: ActionCardProps) {
+export function ActionCard({ workout, isCompleted, title, onPress }: ActionCardProps) {
+    const sectionTitle = title || "Hoje";
+
     if (!workout) {
         // Rest Day Card
         return (
@@ -28,7 +31,7 @@ export function ActionCard({ workout, isCompleted, onPress }: ActionCardProps) {
                         letterSpacing: 0.5,
                     }}
                 >
-                    Hoje
+                    {sectionTitle}
                 </Text>
                 <View
                     style={{
@@ -78,7 +81,7 @@ export function ActionCard({ workout, isCompleted, onPress }: ActionCardProps) {
                         letterSpacing: 0.5,
                     }}
                 >
-                    Hoje
+                    {sectionTitle}
                 </Text>
                 <View
                     style={{
@@ -150,7 +153,7 @@ export function ActionCard({ workout, isCompleted, onPress }: ActionCardProps) {
                     letterSpacing: 0.5,
                 }}
             >
-                Treino de Hoje
+                {title || "Treino de Hoje"}
             </Text>
             <TouchableOpacity
                 activeOpacity={0.85}

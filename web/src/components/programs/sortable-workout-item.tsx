@@ -4,9 +4,11 @@ import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { WorkoutItemCard } from './workout-item-card'
 import type { WorkoutItem } from './program-builder-client'
+import type { Exercise } from '@/types/exercise'
 
 interface SortableWorkoutItemProps {
     item: WorkoutItem
+    exercises: Exercise[]
     index: number
     totalItems: number
     allItems: WorkoutItem[]

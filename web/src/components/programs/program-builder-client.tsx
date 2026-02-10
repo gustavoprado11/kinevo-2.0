@@ -8,6 +8,8 @@ import { WorkoutPanel } from './workout-panel'
 import { arrayMove } from '@dnd-kit/sortable'
 import { ExerciseLibraryPanel } from './exercise-library-panel'
 import { WeeklyVolumeCard } from './weekly-volume-card'
+import { Button } from '@/components/ui/button'
+import { ChevronLeft, Check, Loader2 } from 'lucide-react'
 
 import type { Exercise } from '@/types/exercise'
 import { assignProgram } from '@/app/students/[id]/actions/assign-program'
@@ -18,6 +20,7 @@ export interface WorkoutItem {
     order_index: number
     parent_item_id: string | null
     exercise_id: string | null
+    substitute_exercise_ids: string[]
     exercise?: Exercise
     sets: number | null
     reps: string | null
@@ -50,6 +53,7 @@ interface ProgramData {
             order_index: number
             parent_item_id: string | null
             exercise_id: string | null
+            substitute_exercise_ids?: string[] | null
             sets: number | null
             reps: string | null
             rest_seconds: number | null
@@ -147,6 +151,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                 order_index: c.order_index,
                                 parent_item_id: c.parent_item_id,
                                 exercise_id: c.exercise_id,
+                                substitute_exercise_ids: c.substitute_exercise_ids || [],
                                 exercise: c.exercise_id ? exercises.find(e => e.id === c.exercise_id) : undefined,
                                 sets: c.sets,
                                 reps: c.reps,
@@ -160,6 +165,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                             order_index: p.order_index,
                             parent_item_id: p.parent_item_id,
                             exercise_id: p.exercise_id,
+                            substitute_exercise_ids: p.substitute_exercise_ids || [],
                             exercise: p.exercise_id ? exercises.find(e => e.id === p.exercise_id) : undefined,
                             sets: p.sets,
                             reps: p.reps,
@@ -262,6 +268,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                 order_index: w.items.length,
                 parent_item_id: null,
                 exercise_id: exercise.id,
+                substitute_exercise_ids: [],
                 exercise: exercise,
                 sets: 3,
                 reps: '10',
@@ -287,6 +294,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                 order_index: w.items.length,
                 parent_item_id: null,
                 exercise_id: null,
+                substitute_exercise_ids: [],
                 sets: null,
                 reps: null,
                 rest_seconds: null,
@@ -383,6 +391,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                 order_index: index,
                 parent_item_id: null,
                 exercise_id: null,
+                substitute_exercise_ids: [],
                 sets: null,
                 reps: null,
                 rest_seconds: null,
@@ -504,6 +513,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                             order_index: item.order_index,
                             parent_item_id: null,
                             exercise_id: item.exercise_id,
+                            substitute_exercise_ids: item.substitute_exercise_ids || [],
                             sets: item.sets,
                             reps: item.reps,
                             rest_seconds: item.rest_seconds,
@@ -525,6 +535,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                     order_index: child.order_index,
                                     parent_item_id: savedItem.id,
                                     exercise_id: child.exercise_id,
+                                    substitute_exercise_ids: child.substitute_exercise_ids || [],
                                     sets: child.sets,
                                     reps: child.reps,
                                     rest_seconds: child.rest_seconds,
@@ -589,31 +600,31 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
         >
             <div className="max-w-5xl mx-auto">
                 {/* Header */}
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center justify-between mb-8">
                     <div className="flex items-center gap-4">
-                        <button
+                        <Button
+                            variant="outline"
+                            size="icon"
                             onClick={() => isStudentContext && studentContext
                                 ? router.push(`/students/${studentContext.id}`)
                                 : router.push('/programs')
                             }
-                            className="w-10 h-10 rounded-lg bg-muted border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-border/80 transition-colors"
+                            className="w-10 h-10"
                         >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 19l-7-7 7-7" />
-                            </svg>
-                        </button>
+                            <ChevronLeft className="w-5 h-5" />
+                        </Button>
                         <div>
                             <div className="flex items-center gap-3">
-                                <h1 className="text-2xl font-bold text-foreground">
+                                <h1 className="text-2xl font-bold tracking-tight text-slate-900">
                                     {isEditing ? 'Editar Programa' : 'Novo Programa'}
                                 </h1>
                                 {isStudentContext && studentContext && (
-                                    <span className="px-2.5 py-1 text-xs font-medium rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/20">
+                                    <span className="px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider rounded-full bg-primary/5 text-primary border border-primary/10">
                                         Para {studentContext.name}
                                     </span>
                                 )}
                             </div>
-                            <p className="text-muted-foreground mt-0.5 text-sm">
+                            <p className="text-slate-500 mt-1 text-sm">
                                 {isStudentContext
                                     ? 'Este programa será atribuído automaticamente ao aluno'
                                     : isEditing ? 'Modifique os treinos do programa' : 'Crie um novo programa de treino'
@@ -623,38 +634,33 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                     </div>
                     <div className="flex items-center gap-4">
                         {isStudentContext && !isEditing && (
-                            <label className="flex items-center gap-2 cursor-pointer">
+                            <label className="flex items-center gap-2 cursor-pointer select-none">
                                 <input
                                     type="checkbox"
                                     checked={saveAsTemplate}
                                     onChange={(e) => setSaveAsTemplate(e.target.checked)}
-                                    className="w-4 h-4 rounded border-border/80 bg-background text-violet-500 focus:ring-violet-500/50"
+                                    className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary/20"
                                 />
-                                <span className="text-sm text-muted-foreground">Salvar como modelo reutilizável</span>
+                                <span className="text-sm text-slate-500 font-medium">Salvar como modelo reutilizável</span>
                             </label>
                         )}
-                        <button
+                        <Button
                             onClick={saveProgram}
                             disabled={saving}
-                            className="px-5 py-2.5 bg-gradient-to-r from-violet-600 to-blue-600 hover:from-violet-500 hover:to-blue-500 disabled:from-gray-600 disabled:to-gray-600 text-white text-sm font-medium rounded-lg transition-all shadow-lg shadow-violet-500/20 flex items-center gap-2"
+                            className="gap-2 min-w-[140px]"
                         >
                             {saving ? (
                                 <>
-                                    <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                                    </svg>
+                                    <Loader2 className="animate-spin w-4 h-4" />
                                     Salvando...
                                 </>
                             ) : (
                                 <>
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                    </svg>
+                                    <Check className="w-4 h-4" />
                                     {isStudentContext ? 'Salvar e Atribuir' : 'Salvar Programa'}
                                 </>
                             )}
-                        </button>
+                        </Button>
                     </div>
                 </div>
 
@@ -679,7 +685,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
                                 placeholder="Ex: Hipertrofia 12 Semanas"
-                                className="w-full px-4 py-2.5 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 transition-all"
+                                className="w-full px-4 py-2.5 bg-background dark:bg-slate-950 border border-input dark:border-slate-800 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 transition-all"
                             />
                         </div>
                         <div>
@@ -692,7 +698,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                 onChange={(e) => setDurationWeeks(e.target.value)}
                                 placeholder="12"
                                 min="1"
-                                className="w-full px-4 py-2.5 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 transition-all"
+                                className="w-full px-4 py-2.5 bg-background dark:bg-slate-950 border border-input dark:border-slate-800 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 transition-all"
                             />
                         </div>
 
@@ -709,21 +715,21 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                             type="date"
                                             value={startDate}
                                             onChange={(e) => setStartDate(e.target.value)}
-                                            className="w-full px-4 py-2.5 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 transition-all [color-scheme:dark]"
+                                            className="w-full px-4 py-2.5 bg-background dark:bg-slate-950 border border-input dark:border-slate-800 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 transition-all [color-scheme:dark]"
                                         />
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-foreground/80 mb-2">
                                             Previsão de Término
                                         </label>
-                                        <div className="w-full px-4 py-2.5 bg-card border border-border rounded-lg text-muted-foreground flex items-center gap-2">
-                                            <svg className="w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <div className="w-full px-4 py-2.5 bg-card dark:bg-slate-950/50 border border-border dark:border-slate-800 rounded-lg text-muted-foreground flex items-center gap-2">
+                                            <svg className="w-5 h-5 text-muted-foreground dark:text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                             </svg>
                                             {endDate ? (
-                                                <span>Termina em <span className="text-foreground font-medium">{endDate}</span></span>
+                                                <span>Termina em <span className="text-foreground dark:text-slate-100 font-medium">{endDate}</span></span>
                                             ) : (
-                                                <span className="text-muted-foreground/80">Defina o início e duração</span>
+                                                <span className="text-muted-foreground/80 dark:text-slate-500">Defina o início e duração</span>
                                             )}
                                         </div>
                                     </div>
@@ -735,7 +741,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                         Tipo de Atribuição
                                     </label>
                                     <div className="flex flex-col sm:flex-row gap-4">
-                                        <label className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all flex-1 ${assignmentType === 'immediate' ? 'bg-violet-500/10 border-violet-500/50' : 'bg-transparent border-border hover:bg-muted'}`}>
+                                        <label className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all flex-1 ${assignmentType === 'immediate' ? 'bg-violet-500/10 dark:bg-violet-500/10 border-violet-500/50' : 'bg-transparent border-border dark:border-slate-800 hover:bg-muted dark:hover:bg-slate-900/50'}`}>
                                             <input
                                                 type="radio"
                                                 name="assignmentType"
@@ -748,13 +754,13 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                                 <span className={`block font-medium ${assignmentType === 'immediate' ? 'text-violet-300' : 'text-foreground/80'}`}>
                                                     Imediata (Substituir Atual)
                                                 </span>
-                                                <span className="text-xs text-muted-foreground mt-1 block">
+                                                <span className="text-xs text-muted-foreground dark:text-slate-500 mt-1 block">
                                                     O programa atual será concluído e este entrará como ATIVO imediatamente.
                                                 </span>
                                             </div>
                                         </label>
 
-                                        <label className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all flex-1 ${assignmentType === 'scheduled' ? 'bg-purple-500/10 border-purple-500/50' : 'bg-transparent border-border hover:bg-muted'}`}>
+                                        <label className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all flex-1 ${assignmentType === 'scheduled' ? 'bg-purple-500/10 dark:bg-purple-500/10 border-purple-500/50' : 'bg-transparent border-border dark:border-slate-800 hover:bg-muted dark:hover:bg-slate-900/50'}`}>
                                             <input
                                                 type="radio"
                                                 name="assignmentType"
@@ -767,7 +773,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                                 <span className={`block font-medium ${assignmentType === 'scheduled' ? 'text-purple-300' : 'text-foreground/80'}`}>
                                                     Agendar (Fila)
                                                 </span>
-                                                <span className="text-xs text-muted-foreground mt-1 block">
+                                                <span className="text-xs text-muted-foreground dark:text-slate-500 mt-1 block">
                                                     Este programa ficará na fila como AGENDADO e iniciará na data acima ({new Date(startDate).toLocaleDateString()}).
                                                 </span>
                                             </div>
@@ -786,7 +792,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                 onChange={(e) => setDescription(e.target.value)}
                                 placeholder="Descreva o objetivo do programa..."
                                 rows={2}
-                                className="w-full px-4 py-2.5 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 transition-all resize-none"
+                                className="w-full px-4 py-2.5 bg-background dark:bg-slate-950 border border-input dark:border-slate-800 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 transition-all resize-none"
                             />
                         </div>
                     </div>
@@ -882,7 +888,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                             {activeWorkout ? (
                                 <WorkoutPanel
                                     workout={activeWorkout}
-                                    exercises={exercises}
+                                    exercises={localExercises}
                                     onUpdateName={(name) => updateWorkoutName(activeWorkout.id, name)}
                                     onAddExercise={() => {/* Handled by library panel */ }}
                                     onAddNote={() => addNote(activeWorkout.id)}
