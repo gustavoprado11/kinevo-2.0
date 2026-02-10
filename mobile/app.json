@@ -15,7 +15,13 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.kinevo.mobile"
+      "bundleIdentifier": "com.kinevo.mobile",
+      "entitlements": {
+        "com.apple.developer.live-activity": true
+      },
+      "infoPlist": {
+        "NSSupportsLiveActivities": true
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -38,7 +44,8 @@
         {
           "photosPermission": "O Kinevo precisa de acesso à sua galeria para você alterar sua foto de perfil."
         }
-      ]
+      ],
+      "@bacons/apple-targets"
     ]
   }
 }

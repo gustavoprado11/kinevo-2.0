@@ -1,0 +1,42 @@
+{\rtf1\ansi\deff0
+{\fonttbl{\f0 Helvetica;}{\f1 Courier;}}
+\paperw12240\paperh15840\margl900\margr900\margt780\margb780
+\fs22
+\b Kinevo App - One-Page Repo Summary\b0\par
+\fs18 Generated from repository evidence only\par
+\par
+\b What it is\b0\par
+Kinevo is a trainer-student fitness platform split into a web app for workout prescription and student management, plus a mobile app for workout execution and logging. It uses Supabase for auth/data and includes Stripe subscription gating in the web product.\par
+\par
+\b Who it is for\b0\par
+Primary persona: strength coaches/personal trainers who prescribe structured programs, with students as execution users in the mobile app.\par
+\par
+\b What it does\b0\par
+\bullet\tab Trainer web dashboard with auth-protected access and student list management.\par
+\bullet\tab Exercise library with system plus trainer-owned exercises and muscle group metadata.\par
+\bullet\tab Program template builder (programs, workouts, ordered workout items including exercise/superset/note types).\par
+\bullet\tab Program assignment flow from templates to student-specific assigned programs/workouts/items.\par
+\bullet\tab Mobile workout player with per-set logging (load, reps, completion), finish flow, and session feedback modal.\par
+\bullet\tab Mobile home/history/profile tabs, including workout history/performance views and support via WhatsApp deep link.\par
+\bullet\tab Stripe subscription checkout + webhook sync; inactive subscriptions are redirected to a blocked page.\par
+\par
+\b How it works (architecture)\b0\par
+\bullet\tab Monorepo workspaces: \f1 web\f0  (Next.js App Router), \f1 mobile\f0  (Expo Router/React Native), \f1 shared\f0  (shared TypeScript types), \f1 supabase/migrations\f0  (database schema).\par
+\bullet\tab Web data path: Next.js server routes/components call Supabase SSR clients; auth/session protected by middleware; Stripe API routes create checkout/portal sessions and webhook handlers upsert subscription state.\par
+\bullet\tab Mobile data path: Expo app uses Supabase JS with SecureStore-backed auth session persistence; screens/hooks fetch active programs/sessions and submit workout session logs.\par
+\bullet\tab Database model includes trainers, students, exercises, program templates, assigned program snapshots, workout sessions, set logs, and subscriptions with RLS policies.\par
+\bullet\tab Offline resilience signals in schema: sync status, local_id/device_id fields for sessions and set logs.\par
+\par
+\b How to run (minimal getting started)\b0\par
+1. Install deps at repo root: \f1 npm install\f0\par
+2. Configure web env in \f1 /Users/gustavoprado/kinevo/web/.env.local\f0 : \f1 NEXT_PUBLIC_SUPABASE_URL\f0 , \f1 NEXT_PUBLIC_SUPABASE_ANON_KEY\f0 , \f1 STRIPE_SECRET_KEY\f0 , \f1 STRIPE_PRICE_ID\f0 , \f1 STRIPE_WEBHOOK_SECRET\f0\par
+3. Configure mobile env in \f1 /Users/gustavoprado/kinevo/mobile/.env\f0 : \f1 EXPO_PUBLIC_SUPABASE_URL\f0 , \f1 EXPO_PUBLIC_SUPABASE_ANON_KEY\f0\par
+4. Apply Supabase SQL migrations in order from \f1 /Users/gustavoprado/kinevo/supabase/migrations\f0  to your Supabase project.\par
+5. Run web: \f1 npm run web\f0\par
+6. Run mobile: \f1 npm run mobile\f0\par
+\par
+\b Not found in repo\b0\par
+\bullet\tab A root-level setup guide that covers both web and mobile end to end.\par
+\bullet\tab Mobile \f1 .env.example\f0  template file.\par
+\bullet\tab An automated local script for applying Supabase migrations.\par
+}

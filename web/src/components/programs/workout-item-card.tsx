@@ -46,11 +46,11 @@ export function WorkoutItemCard({
 }: WorkoutItemCardProps) {
     if (item.item_type === 'note') {
         return (
-            <div className="bg-gray-900/50 rounded-xl border border-gray-700/30 p-4 group flex items-start gap-3">
+            <div className="bg-card rounded-xl border border-border/70 p-4 group flex items-start gap-3">
                 {/* Drag Handle */}
                 <div
                     {...dragHandleProps}
-                    className="mt-1 text-gray-600 hover:text-gray-400 cursor-grab active:cursor-grabbing touch-none"
+                    className="mt-1 text-muted-foreground/80 hover:text-muted-foreground cursor-grab active:cursor-grabbing touch-none"
                     title="Arrastar para reordenar"
                 >
                     <GripVertical className="w-5 h-5" />
@@ -67,21 +67,21 @@ export function WorkoutItemCard({
                         onChange={(e) => onUpdate({ notes: e.target.value })}
                         placeholder="Escreva uma nota..."
                         rows={2}
-                        className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50 text-sm resize-none"
+                        className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-violet-500/50 text-sm resize-none"
                     />
                 </div>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={onMoveUp} disabled={index === 0} className="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-white disabled:opacity-30">
+                    <button onClick={onMoveUp} disabled={index === 0} className="w-6 h-6 flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30">
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
                         </svg>
                     </button>
-                    <button onClick={onMoveDown} disabled={index === totalItems - 1} className="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-white disabled:opacity-30">
+                    <button onClick={onMoveDown} disabled={index === totalItems - 1} className="w-6 h-6 flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30">
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                         </svg>
                     </button>
-                    <button onClick={onDelete} className="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-red-400">
+                    <button onClick={onDelete} className="w-6 h-6 flex items-center justify-center text-muted-foreground hover:text-red-400">
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                         </svg>
@@ -110,27 +110,27 @@ export function WorkoutItemCard({
                             </svg>
                         </div>
                         <span className="text-sm font-medium text-violet-300">Superset</span>
-                        <span className="text-xs text-gray-500">({item.children?.length || 0} exercícios)</span>
+                        <span className="text-xs text-muted-foreground">({item.children?.length || 0} exercícios)</span>
                     </div>
                     <div className="flex items-center gap-2">
                         <div className="flex items-center gap-1">
-                            <span className="text-xs text-gray-400">Descanso:</span>
+                            <span className="text-xs text-muted-foreground">Descanso:</span>
                             <input
                                 type="number"
                                 value={item.rest_seconds || ''}
                                 onChange={(e) => onUpdate({ rest_seconds: parseInt(e.target.value) || null })}
                                 placeholder="60"
-                                className="w-14 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-xs text-center focus:outline-none focus:ring-1 focus:ring-violet-500/50"
+                                className="w-14 px-2 py-1 bg-muted border border-border rounded text-foreground text-xs text-center focus:outline-none focus:ring-1 focus:ring-violet-500/50"
                             />
-                            <span className="text-xs text-gray-500">seg</span>
+                            <span className="text-xs text-muted-foreground">seg</span>
                         </div>
                         <div className="flex items-center gap-1">
-                            <button onClick={onMoveUp} disabled={index === 0} className="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-white disabled:opacity-30">
+                            <button onClick={onMoveUp} disabled={index === 0} className="w-6 h-6 flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30">
                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
                                 </svg>
                             </button>
-                            <button onClick={onMoveDown} disabled={index === totalItems - 1} className="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-white disabled:opacity-30">
+                            <button onClick={onMoveDown} disabled={index === totalItems - 1} className="w-6 h-6 flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30">
                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                                 </svg>
@@ -139,13 +139,13 @@ export function WorkoutItemCard({
                             <button
                                 onClick={onDissolveSuperset}
                                 title="Dissolver superset"
-                                className="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-violet-400"
+                                className="w-6 h-6 flex items-center justify-center text-muted-foreground hover:text-violet-400"
                             >
                                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                                 </svg>
                             </button>
-                            <button onClick={onDelete} className="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-red-400">
+                            <button onClick={onDelete} className="w-6 h-6 flex items-center justify-center text-muted-foreground hover:text-red-400">
                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                 </svg>
@@ -231,40 +231,40 @@ function SupersetChildCard({
     onRemoveFromSuperset?: () => void
 }) {
     return (
-        <div className="bg-gray-900/50 rounded-xl border border-gray-700/30 p-3 group relative">
+        <div className="bg-card rounded-xl border border-border/70 p-3 group relative">
             <div className="flex items-start gap-3">
                 {/* Exercise number */}
-                <div className="w-6 h-6 text-xs rounded-lg bg-gray-800 flex items-center justify-center text-gray-400 font-medium flex-shrink-0">
+                <div className="w-6 h-6 text-xs rounded-lg bg-muted flex items-center justify-center text-muted-foreground font-medium flex-shrink-0">
                     {index + 1}
                 </div>
 
                 {/* Exercise info */}
                 <div className="flex-1 min-w-0">
-                    <div className="font-medium text-white text-sm mb-2 truncate">
+                    <div className="font-medium text-foreground text-sm mb-2 truncate">
                         {item.exercise?.name || 'Exercício sem nome'}
                     </div>
 
                     {/* Config inputs */}
                     <div className="flex items-center gap-3 flex-wrap">
                         <div className="flex items-center gap-1.5">
-                            <span className="text-xs text-gray-500">Séries:</span>
+                            <span className="text-xs text-muted-foreground">Séries:</span>
                             <input
                                 type="number"
                                 value={item.sets || ''}
                                 onChange={(e) => onUpdate({ sets: parseInt(e.target.value) || null })}
                                 placeholder="3"
                                 min="1"
-                                className="w-12 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-xs text-center focus:outline-none focus:ring-1 focus:ring-violet-500/50"
+                                className="w-12 px-2 py-1 bg-muted border border-border rounded text-foreground text-xs text-center focus:outline-none focus:ring-1 focus:ring-violet-500/50"
                             />
                         </div>
                         <div className="flex items-center gap-1.5">
-                            <span className="text-xs text-gray-500">Reps:</span>
+                            <span className="text-xs text-muted-foreground">Reps:</span>
                             <input
                                 type="text"
                                 value={item.reps || ''}
                                 onChange={(e) => onUpdate({ reps: e.target.value || null })}
                                 placeholder="10-12"
-                                className="w-16 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-xs text-center focus:outline-none focus:ring-1 focus:ring-violet-500/50"
+                                className="w-16 px-2 py-1 bg-muted border border-border rounded text-foreground text-xs text-center focus:outline-none focus:ring-1 focus:ring-violet-500/50"
                             />
                         </div>
                     </div>
@@ -272,19 +272,19 @@ function SupersetChildCard({
 
                 {/* Actions */}
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                    <button onClick={onMoveUp} disabled={index === 0} className="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-white disabled:opacity-30">
+                    <button onClick={onMoveUp} disabled={index === 0} className="w-6 h-6 flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30">
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
                         </svg>
                     </button>
-                    <button onClick={onMoveDown} disabled={index === totalItems - 1} className="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-white disabled:opacity-30">
+                    <button onClick={onMoveDown} disabled={index === totalItems - 1} className="w-6 h-6 flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30">
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                         </svg>
                     </button>
 
                     {/* More options menu */}
-                    <button onClick={onDelete} className="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-red-400">
+                    <button onClick={onDelete} className="w-6 h-6 flex items-center justify-center text-muted-foreground hover:text-red-400">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
@@ -326,61 +326,61 @@ function ExerciseItemCard({
     dragHandleProps?: any
 }) {
     return (
-        <div className="bg-gray-900/50 rounded-xl border border-gray-700/30 p-4 group relative">
+        <div className="bg-card rounded-xl border border-border/70 p-4 group relative">
             <div className="flex items-start gap-3">
                 {/* Drag Handle */}
                 <div
                     {...dragHandleProps}
-                    className="mt-1.5 text-gray-600 hover:text-gray-400 cursor-grab active:cursor-grabbing touch-none"
+                    className="mt-1.5 text-muted-foreground/80 hover:text-muted-foreground cursor-grab active:cursor-grabbing touch-none"
                     title="Arrastar para reordenar"
                 >
                     <GripVertical className="w-5 h-5" />
                 </div>
 
                 {/* Exercise number */}
-                <div className="w-8 h-8 text-sm rounded-lg bg-gray-800 flex items-center justify-center text-gray-400 font-medium flex-shrink-0">
+                <div className="w-8 h-8 text-sm rounded-lg bg-muted flex items-center justify-center text-muted-foreground font-medium flex-shrink-0">
                     {index + 1}
                 </div>
 
                 {/* Exercise info */}
                 <div className="flex-1 min-w-0">
-                    <div className="font-medium text-white text-sm mb-2 truncate">
+                    <div className="font-medium text-foreground text-sm mb-2 truncate">
                         {item.exercise?.name || 'Exercício sem nome'}
                     </div>
 
                     {/* Config inputs */}
                     <div className="flex items-center gap-3 flex-wrap">
                         <div className="flex items-center gap-1.5">
-                            <span className="text-xs text-gray-500">Séries:</span>
+                            <span className="text-xs text-muted-foreground">Séries:</span>
                             <input
                                 type="number"
                                 value={item.sets || ''}
                                 onChange={(e) => onUpdate({ sets: parseInt(e.target.value) || null })}
                                 placeholder="3"
                                 min="1"
-                                className="w-12 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-xs text-center focus:outline-none focus:ring-1 focus:ring-violet-500/50"
+                                className="w-12 px-2 py-1 bg-muted border border-border rounded text-foreground text-xs text-center focus:outline-none focus:ring-1 focus:ring-violet-500/50"
                             />
                         </div>
                         <div className="flex items-center gap-1.5">
-                            <span className="text-xs text-gray-500">Reps:</span>
+                            <span className="text-xs text-muted-foreground">Reps:</span>
                             <input
                                 type="text"
                                 value={item.reps || ''}
                                 onChange={(e) => onUpdate({ reps: e.target.value || null })}
                                 placeholder="10-12"
-                                className="w-16 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-xs text-center focus:outline-none focus:ring-1 focus:ring-violet-500/50"
+                                className="w-16 px-2 py-1 bg-muted border border-border rounded text-foreground text-xs text-center focus:outline-none focus:ring-1 focus:ring-violet-500/50"
                             />
                         </div>
                         <div className="flex items-center gap-1.5">
-                            <span className="text-xs text-gray-500">Descanso:</span>
+                            <span className="text-xs text-muted-foreground">Descanso:</span>
                             <input
                                 type="number"
                                 value={item.rest_seconds || ''}
                                 onChange={(e) => onUpdate({ rest_seconds: parseInt(e.target.value) || null })}
                                 placeholder="60"
-                                className="w-14 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-xs text-center focus:outline-none focus:ring-1 focus:ring-violet-500/50"
+                                className="w-14 px-2 py-1 bg-muted border border-border rounded text-foreground text-xs text-center focus:outline-none focus:ring-1 focus:ring-violet-500/50"
                             />
-                            <span className="text-xs text-gray-500">seg</span>
+                            <span className="text-xs text-muted-foreground">seg</span>
                         </div>
                     </div>
 
@@ -391,26 +391,26 @@ function ExerciseItemCard({
                             value={item.notes || ''}
                             onChange={(e) => onUpdate({ notes: e.target.value || null })}
                             placeholder="Nota técnica (opcional)"
-                            className="w-full px-2 py-1.5 bg-gray-800 border border-gray-700 rounded text-white text-xs placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-violet-500/50"
+                            className="w-full px-2 py-1.5 bg-muted border border-border rounded text-foreground text-xs placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-violet-500/50"
                         />
                     </div>
                 </div>
 
                 {/* Actions */}
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                    <button onClick={onMoveUp} disabled={index === 0} className="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-white disabled:opacity-30">
+                    <button onClick={onMoveUp} disabled={index === 0} className="w-6 h-6 flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30">
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
                         </svg>
                     </button>
-                    <button onClick={onMoveDown} disabled={index === totalItems - 1} className="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-white disabled:opacity-30">
+                    <button onClick={onMoveDown} disabled={index === totalItems - 1} className="w-6 h-6 flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30">
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                         </svg>
                     </button>
 
                     {/* More options menu */}
-                    <button onClick={onDelete} className="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-red-400">
+                    <button onClick={onDelete} className="w-6 h-6 flex items-center justify-center text-muted-foreground hover:text-red-400">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>

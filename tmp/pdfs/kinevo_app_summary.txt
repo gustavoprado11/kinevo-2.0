@@ -1,0 +1,47 @@
+KINEVO APP - ONE-PAGE REPO SUMMARY
+Generated from repository evidence only
+
+WHAT IT IS
+Kinevo is a trainer-student fitness platform split into a web app for workout prescription and student
+management, plus a mobile app for workout execution and logging. It uses Supabase for auth/data and
+includes Stripe subscription gating in the web product.
+
+WHO IT IS FOR
+Primary persona: strength coaches/personal trainers who prescribe structured programs, with students
+as execution users in the mobile app.
+
+WHAT IT DOES
+- Trainer web dashboard with auth-protected access and student list management.
+- Exercise library with system plus trainer-owned exercises and muscle group metadata.
+- Program template builder (programs, workouts, ordered items: exercise/superset/note).
+- Program assignment flow from templates to student-specific assigned programs/workouts/items.
+- Mobile workout player with per-set logging (load, reps, completion), finish flow, and feedback.
+- Mobile home/history/profile tabs, including support via WhatsApp deep link.
+- Stripe checkout + webhook subscription sync; inactive subscriptions are redirected to blocked page.
+
+HOW IT WORKS (ARCHITECTURE)
+- Monorepo workspaces: web (Next.js App Router), mobile (Expo Router/React Native), shared
+  (TypeScript types), supabase/migrations (database schema).
+- Web data path: server components/routes call Supabase SSR clients; middleware guards sessions;
+  Stripe API routes create checkout/portal flows and webhook handlers upsert subscription state.
+- Mobile data path: Supabase JS with SecureStore-backed session persistence; screens/hooks load active
+  programs/sessions and submit workout logs.
+- Database model includes trainers, students, exercises, program templates, assigned snapshots,
+  workout_sessions, set_logs, and subscriptions with RLS policies.
+- Offline resilience signals in schema: sync_status + local_id/device_id fields for sessions and set logs.
+
+HOW TO RUN (MINIMAL GETTING STARTED)
+1. Install deps at repo root: npm install
+2. Configure web env in /Users/gustavoprado/kinevo/web/.env.local:
+   NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, STRIPE_SECRET_KEY,
+   STRIPE_PRICE_ID, STRIPE_WEBHOOK_SECRET
+3. Configure mobile env in /Users/gustavoprado/kinevo/mobile/.env:
+   EXPO_PUBLIC_SUPABASE_URL, EXPO_PUBLIC_SUPABASE_ANON_KEY
+4. Apply SQL migrations from /Users/gustavoprado/kinevo/supabase/migrations to Supabase project
+5. Run web: npm run web
+6. Run mobile: npm run mobile
+
+NOT FOUND IN REPO
+- A root-level setup guide that covers web and mobile end to end.
+- Mobile .env.example template file.
+- Automated local script for applying Supabase migrations.

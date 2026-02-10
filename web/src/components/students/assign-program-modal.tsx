@@ -149,21 +149,21 @@ export function AssignProgramModal({
             />
 
             {/* Modal */}
-            <div className="relative bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg mx-4 border border-gray-700/50 overflow-hidden max-h-[90vh] flex flex-col">
+            <div className="relative bg-muted rounded-2xl shadow-2xl w-full max-w-lg mx-4 border border-border overflow-hidden max-h-[90vh] flex flex-col">
                 {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700/50 bg-gray-800/80 flex-shrink-0">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-card flex-shrink-0">
                     <div>
-                        <h2 className="text-lg font-semibold text-white">
+                        <h2 className="text-lg font-semibold text-foreground">
                             {step === 'select' ? 'Atribuir Programa' : 'Confirmar Atribuição'}
                         </h2>
-                        <p className="text-sm text-gray-400">
+                        <p className="text-sm text-muted-foreground">
                             {step === 'select' ? `Selecione um programa para ${studentName}` : selectedTemplate?.name}
                         </p>
                     </div>
                     <button
                         onClick={handleClose}
                         disabled={assigning}
-                        className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 transition-colors disabled:opacity-50"
+                        className="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -190,13 +190,13 @@ export function AssignProgramModal({
                                 </div>
                             ) : templates.length === 0 ? (
                                 <div className="text-center py-12">
-                                    <div className="w-16 h-16 rounded-full bg-gray-700/50 flex items-center justify-center mx-auto mb-4">
-                                        <svg className="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mx-auto mb-4">
+                                        <svg className="w-8 h-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                                         </svg>
                                     </div>
-                                    <p className="text-gray-400 mb-2">Nenhum programa disponível</p>
-                                    <p className="text-sm text-gray-500">Crie um programa na biblioteca antes de atribuir.</p>
+                                    <p className="text-muted-foreground mb-2">Nenhum programa disponível</p>
+                                    <p className="text-sm text-muted-foreground">Crie um programa na biblioteca antes de atribuir.</p>
                                 </div>
                             ) : (
                                 <div className="space-y-3">
@@ -204,19 +204,19 @@ export function AssignProgramModal({
                                         <button
                                             key={template.id}
                                             onClick={() => handleSelectTemplate(template)}
-                                            className="w-full text-left p-4 bg-gray-900/50 hover:bg-gray-700/50 border border-gray-700/50 hover:border-violet-500/30 rounded-xl transition-all group"
+                                            className="w-full text-left p-4 bg-card hover:bg-muted/50 border border-border hover:border-violet-500/30 rounded-xl transition-all group"
                                         >
                                             <div className="flex items-start justify-between">
                                                 <div className="flex-1 min-w-0">
-                                                    <h3 className="font-medium text-white group-hover:text-violet-300 transition-colors">
+                                                    <h3 className="font-medium text-foreground group-hover:text-violet-300 transition-colors">
                                                         {template.name}
                                                     </h3>
                                                     {template.description && (
-                                                        <p className="text-sm text-gray-400 mt-1 line-clamp-2">
+                                                        <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
                                                             {template.description}
                                                         </p>
                                                     )}
-                                                    <div className="flex items-center gap-4 mt-3 text-xs text-gray-500">
+                                                    <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
                                                         {template.duration_weeks && (
                                                             <span className="flex items-center gap-1">
                                                                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -233,7 +233,7 @@ export function AssignProgramModal({
                                                         </span>
                                                     </div>
                                                 </div>
-                                                <svg className="w-5 h-5 text-gray-600 group-hover:text-violet-400 transition-colors flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <svg className="w-5 h-5 text-muted-foreground/80 group-hover:text-violet-400 transition-colors flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5l7 7-7 7" />
                                                 </svg>
                                             </div>
@@ -247,12 +247,12 @@ export function AssignProgramModal({
                     {step === 'confirm' && selectedTemplate && (
                         <div className="p-6">
                             {/* Selected Program Summary */}
-                            <div className="bg-gray-900/50 rounded-xl border border-gray-700/30 p-5 mb-6">
-                                <h3 className="font-semibold text-white text-lg mb-2">{selectedTemplate.name}</h3>
+                            <div className="bg-card rounded-xl border border-border/70 p-5 mb-6">
+                                <h3 className="font-semibold text-foreground text-lg mb-2">{selectedTemplate.name}</h3>
                                 {selectedTemplate.description && (
-                                    <p className="text-sm text-gray-400 mb-4">{selectedTemplate.description}</p>
+                                    <p className="text-sm text-muted-foreground mb-4">{selectedTemplate.description}</p>
                                 )}
-                                <div className="flex items-center gap-4 text-sm text-gray-400">
+                                <div className="flex items-center gap-4 text-sm text-muted-foreground">
                                     {selectedTemplate.duration_weeks && (
                                         <span className="flex items-center gap-1.5">
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -289,15 +289,15 @@ export function AssignProgramModal({
 
                             {/* Assigned to */}
                             <div className="flex items-center gap-3 text-sm mb-6">
-                                <span className="text-gray-400">Atribuir para:</span>
+                                <span className="text-muted-foreground">Atribuir para:</span>
                                 <span className="px-3 py-1 bg-violet-500/10 text-violet-300 rounded-lg border border-violet-500/20 font-medium">
                                     {studentName}
                                 </span>
                             </div>
 
                             {/* Scheduling Options */}
-                            <div className="space-y-5 mb-4 border-t border-gray-700/50 pt-5 mt-5">
-                                <h4 className="text-white font-medium flex items-center gap-2">
+                            <div className="space-y-5 mb-4 border-t border-border pt-5 mt-5">
+                                <h4 className="text-foreground font-medium flex items-center gap-2">
                                     <svg className="w-4 h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                     </svg>
@@ -305,39 +305,39 @@ export function AssignProgramModal({
                                 </h4>
 
                                 <div className="grid grid-cols-1 gap-3">
-                                    <label className={`flex items-start gap-3 p-4 rounded-xl border cursor-pointer transition-all ${assignmentType === 'immediate' ? 'bg-violet-500/10 border-violet-500 ring-1 ring-violet-500/50' : 'bg-gray-900/40 border-gray-700 hover:bg-gray-800 hover:border-gray-600'}`}>
+                                    <label className={`flex items-start gap-3 p-4 rounded-xl border cursor-pointer transition-all ${assignmentType === 'immediate' ? 'bg-violet-500/10 border-violet-500 ring-1 ring-violet-500/50' : 'bg-card/90 border-border hover:bg-muted hover:border-border/80'}`}>
                                         <input
                                             type="radio"
                                             name="assignmentTypeModal"
                                             value="immediate"
                                             checked={assignmentType === 'immediate'}
                                             onChange={() => setAssignmentType('immediate')}
-                                            className="mt-1 w-4 h-4 text-violet-600 bg-gray-900 border-gray-600 focus:ring-violet-500"
+                                            className="mt-1 w-4 h-4 text-violet-600 bg-background border-border/80 focus:ring-violet-500"
                                         />
                                         <div>
-                                            <span className={`block font-semibold ${assignmentType === 'immediate' ? 'text-violet-300' : 'text-gray-200'}`}>
+                                            <span className={`block font-semibold ${assignmentType === 'immediate' ? 'text-violet-300' : 'text-foreground'}`}>
                                                 Iniciar Imediatamente
                                             </span>
-                                            <span className="text-sm text-gray-500 mt-1 block leading-relaxed">
+                                            <span className="text-sm text-muted-foreground mt-1 block leading-relaxed">
                                                 O programa atual (se houver) será concluído automaticamente e este novo programa ficará ativo agora.
                                             </span>
                                         </div>
                                     </label>
 
-                                    <label className={`flex items-start gap-3 p-4 rounded-xl border cursor-pointer transition-all ${assignmentType === 'scheduled' ? 'bg-purple-500/10 border-purple-500 ring-1 ring-purple-500/50' : 'bg-gray-900/40 border-gray-700 hover:bg-gray-800 hover:border-gray-600'}`}>
+                                    <label className={`flex items-start gap-3 p-4 rounded-xl border cursor-pointer transition-all ${assignmentType === 'scheduled' ? 'bg-purple-500/10 border-purple-500 ring-1 ring-purple-500/50' : 'bg-card/90 border-border hover:bg-muted hover:border-border/80'}`}>
                                         <input
                                             type="radio"
                                             name="assignmentTypeModal"
                                             value="scheduled"
                                             checked={assignmentType === 'scheduled'}
                                             onChange={() => setAssignmentType('scheduled')}
-                                            className="mt-1 w-4 h-4 text-purple-600 bg-gray-900 border-gray-600 focus:ring-purple-500"
+                                            className="mt-1 w-4 h-4 text-purple-600 bg-background border-border/80 focus:ring-purple-500"
                                         />
                                         <div>
-                                            <span className={`block font-semibold ${assignmentType === 'scheduled' ? 'text-purple-300' : 'text-gray-200'}`}>
+                                            <span className={`block font-semibold ${assignmentType === 'scheduled' ? 'text-purple-300' : 'text-foreground'}`}>
                                                 Agendar para o Futuro
                                             </span>
-                                            <span className="text-sm text-gray-500 mt-1 block leading-relaxed">
+                                            <span className="text-sm text-muted-foreground mt-1 block leading-relaxed">
                                                 O programa será adicionado à fila de "Próximos Programas" e não substituirá o atual até ser ativado.
                                             </span>
 
@@ -350,7 +350,7 @@ export function AssignProgramModal({
                                                         type="date"
                                                         value={startDate}
                                                         onChange={(e) => setStartDate(e.target.value)}
-                                                        className="w-full px-3 py-2 bg-gray-900/80 border border-purple-500/30 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-all [color-scheme:dark]"
+                                                        className="w-full px-3 py-2 bg-background/80 border border-purple-500/30 rounded-lg text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-all [color-scheme:dark]"
                                                     />
                                                 </div>
                                             )}
@@ -364,18 +364,18 @@ export function AssignProgramModal({
 
                 {/* Footer */}
                 {step === 'confirm' && (
-                    <div className="px-6 py-4 border-t border-gray-700/50 bg-gray-800/80 flex gap-3 flex-shrink-0">
+                    <div className="px-6 py-4 border-t border-border bg-card flex gap-3 flex-shrink-0">
                         <button
                             onClick={handleBack}
                             disabled={assigning}
-                            className="flex-1 py-3 px-4 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-700 disabled:opacity-50 text-white font-medium rounded-xl transition-colors"
+                            className="flex-1 py-3 px-4 bg-secondary hover:bg-secondary/80 disabled:bg-muted disabled:opacity-50 text-secondary-foreground font-medium rounded-xl transition-colors"
                         >
                             Voltar
                         </button>
                         <button
                             onClick={handleConfirm}
                             disabled={assigning}
-                            className="flex-1 py-3 px-4 bg-gradient-to-r from-violet-600 to-blue-600 hover:from-violet-500 hover:to-blue-500 disabled:from-gray-600 disabled:to-gray-600 disabled:cursor-not-allowed text-white font-medium rounded-xl transition-all shadow-lg shadow-violet-500/20"
+                            className="flex-1 py-3 px-4 bg-gradient-to-r from-violet-600 to-blue-600 hover:from-violet-500 hover:to-blue-500 disabled:from-muted disabled:to-muted disabled:cursor-not-allowed text-white font-medium rounded-xl transition-all shadow-lg shadow-violet-500/20"
                         >
                             {assigning ? (
                                 <span className="flex items-center justify-center gap-2">

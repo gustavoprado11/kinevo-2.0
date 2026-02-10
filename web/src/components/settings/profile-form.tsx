@@ -71,11 +71,11 @@ export function ProfileForm({ trainer }: ProfileFormProps) {
     const initials = getInitials(name || trainer.name)
 
     return (
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-[0_12px_30px_rgba(2,6,23,0.35)]">
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
             <div className="mb-6 flex items-start justify-between">
                 <div>
-                    <h2 className="text-xl font-semibold text-white">Perfil</h2>
-                    <p className="text-slate-400 text-sm mt-1">Dados públicos da sua conta.</p>
+                    <h2 className="text-xl font-semibold text-card-foreground">Perfil</h2>
+                    <p className="mt-1 text-sm text-muted-foreground">Dados públicos da sua conta.</p>
                 </div>
                 <div className="w-9 h-9 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400">
                     <User size={18} />
@@ -103,7 +103,7 @@ export function ProfileForm({ trainer }: ProfileFormProps) {
             >
                 <div className="flex flex-col items-center text-center">
                     <div className="relative">
-                        <div className="w-24 h-24 rounded-full overflow-hidden ring-2 ring-violet-500/50 bg-slate-800 flex items-center justify-center border border-slate-700">
+                        <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border border-border bg-muted ring-2 ring-violet-500/50">
                             {avatarPreview ? (
                                 <Image
                                     src={avatarPreview}
@@ -114,7 +114,7 @@ export function ProfileForm({ trainer }: ProfileFormProps) {
                                     unoptimized
                                 />
                             ) : (
-                                <span className="text-slate-100 font-semibold text-lg">{initials}</span>
+                                <span className="text-lg font-semibold text-foreground">{initials}</span>
                             )}
                         </div>
                     </div>
@@ -131,17 +131,17 @@ export function ProfileForm({ trainer }: ProfileFormProps) {
                     <button
                         type="button"
                         onClick={handleChooseAvatar}
-                        className="mt-3 inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-slate-900"
+                        className="mt-3 inline-flex items-center gap-2 rounded-lg border border-input bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted"
                     >
                         <Camera size={14} />
                         Alterar foto
                     </button>
-                    <p className="text-xs text-slate-500 mt-2">PNG, JPG ou WEBP.</p>
+                    <p className="mt-2 text-xs text-muted-foreground">PNG, JPG ou WEBP.</p>
                 </div>
 
                 <div className="space-y-4 pt-1">
                     <div>
-                        <label htmlFor="name" className="block text-sm text-slate-300 mb-1.5">
+                        <label htmlFor="name" className="mb-1.5 block text-sm text-foreground">
                             Nome
                         </label>
                         <input
@@ -152,13 +152,13 @@ export function ProfileForm({ trainer }: ProfileFormProps) {
                             onChange={(e) => setName(e.target.value)}
                             required
                             minLength={2}
-                            className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500/40"
+                            className="w-full rounded-xl border border-input bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-violet-500/40"
                             placeholder="Seu nome"
                         />
                     </div>
 
                     <div>
-                        <label htmlFor="email" className="block text-sm text-slate-300 mb-1.5">
+                        <label htmlFor="email" className="mb-1.5 block text-sm text-foreground">
                             Email
                         </label>
                         <input
@@ -166,7 +166,7 @@ export function ProfileForm({ trainer }: ProfileFormProps) {
                             type="email"
                             value={trainer.email}
                             disabled
-                            className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2.5 text-sm text-slate-500 cursor-not-allowed"
+                            className="w-full cursor-not-allowed rounded-xl border border-input bg-background px-3 py-2.5 text-sm text-muted-foreground"
                         />
                     </div>
                 </div>
@@ -183,7 +183,7 @@ export function ProfileForm({ trainer }: ProfileFormProps) {
                     </div>
                 )}
 
-                <div className="pt-2 border-t border-slate-800">
+                <div className="border-t border-border pt-2">
                     <SaveButton />
                 </div>
             </form>

@@ -55,26 +55,26 @@ export function ActiveProgramCard({ program, onAssignProgram, onEditProgram, onC
     // No program assigned
     if (!program) {
         return (
-            <div className="bg-gray-800/50 rounded-xl border border-gray-700/50 p-6">
+            <div className="bg-card rounded-xl border border-border p-6">
                 <div className="flex items-center justify-between mb-6">
                     <div>
-                        <h2 className="text-lg font-semibold text-white">Programa Atual</h2>
-                        <p className="text-sm text-gray-400 mt-0.5">Programa de treino atribuído</p>
+                        <h2 className="text-lg font-semibold text-foreground">Programa Atual</h2>
+                        <p className="text-sm text-muted-foreground mt-0.5">Programa de treino atribuído</p>
                     </div>
                 </div>
 
                 <div className="text-center py-8">
-                    <div className="w-16 h-16 rounded-full bg-gray-700/50 flex items-center justify-center mx-auto mb-4">
-                        <svg className="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mx-auto mb-4">
+                        <svg className="w-8 h-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                         </svg>
                     </div>
-                    <p className="text-gray-400 mb-1">Nenhum programa atribuído</p>
-                    <p className="text-gray-500 text-sm mb-6">Crie um programa personalizado ou atribua um existente</p>
+                    <p className="text-muted-foreground mb-1">Nenhum programa atribuído</p>
+                    <p className="text-muted-foreground text-sm mb-6">Crie um programa personalizado ou atribua um existente</p>
                     <div className="flex items-center justify-center gap-3">
                         <button
                             onClick={onCreateProgram}
-                            className="px-5 py-2.5 bg-gradient-to-r from-violet-600 to-blue-600 hover:from-violet-500 hover:to-blue-500 text-white text-sm font-medium rounded-lg transition-all shadow-lg shadow-violet-500/20 inline-flex items-center gap-2"
+                            className="px-5 py-2.5 bg-gradient-to-r from-violet-600 to-blue-600 hover:from-violet-500 hover:to-blue-500 text-foreground text-sm font-medium rounded-lg transition-all shadow-lg shadow-violet-500/20 inline-flex items-center gap-2"
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -83,7 +83,7 @@ export function ActiveProgramCard({ program, onAssignProgram, onEditProgram, onC
                         </button>
                         <button
                             onClick={onAssignProgram}
-                            className="px-5 py-2.5 bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium rounded-lg transition-all inline-flex items-center gap-2"
+                            className="px-5 py-2.5 bg-muted hover:bg-muted/80 text-foreground text-sm font-medium rounded-lg transition-all inline-flex items-center gap-2"
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
@@ -102,16 +102,16 @@ export function ActiveProgramCard({ program, onAssignProgram, onEditProgram, onC
         : 0
 
     return (
-        <div className="bg-gray-800/50 rounded-xl border border-gray-700/50 p-6">
+        <div className="bg-card rounded-xl border border-border p-6">
             <div className="flex items-center justify-between mb-6">
                 <div>
-                    <h2 className="text-lg font-semibold text-white">Programa Atual</h2>
-                    <p className="text-sm text-gray-400 mt-0.5">Programa de treino atribuído</p>
+                    <h2 className="text-lg font-semibold text-foreground">Programa Atual</h2>
+                    <p className="text-sm text-muted-foreground mt-0.5">Programa de treino atribuído</p>
                 </div>
                 <div className="flex items-center gap-2">
                     <button
                         onClick={onEditProgram}
-                        className="px-3 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/50 rounded-lg transition-colors flex items-center gap-1.5"
+                        className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg transition-colors flex items-center gap-1.5"
                     >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -142,12 +142,12 @@ export function ActiveProgramCard({ program, onAssignProgram, onEditProgram, onC
             </div>
 
             {/* Program Info */}
-            <div className="bg-gray-900/50 rounded-xl border border-gray-700/30 p-5">
+            <div className="bg-card rounded-xl border border-border/70 p-5">
                 <div className="flex items-start justify-between mb-4">
                     <div>
-                        <h3 className="text-lg font-semibold text-white mb-1">{program.name}</h3>
+                        <h3 className="text-lg font-semibold text-foreground mb-1">{program.name}</h3>
                         {program.description && (
-                            <p className="text-sm text-gray-400">{program.description}</p>
+                            <p className="text-sm text-muted-foreground">{program.description}</p>
                         )}
                     </div>
                     <span className={`px-2.5 py-1 text-xs font-medium rounded-full border flex items-center gap-1.5 ${statusConfig.classes}`}>
@@ -160,12 +160,12 @@ export function ActiveProgramCard({ program, onAssignProgram, onEditProgram, onC
                 {program.duration_weeks && (
                     <div className="mb-4">
                         <div className="flex items-center justify-between text-sm mb-2">
-                            <span className="text-gray-400">Progresso</span>
-                            <span className="text-white font-medium">
+                            <span className="text-muted-foreground">Progresso</span>
+                            <span className="text-foreground font-medium">
                                 Semana {program.current_week || 1} de {program.duration_weeks}
                             </span>
                         </div>
-                        <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+                        <div className="h-2 bg-muted rounded-full overflow-hidden">
                             <div
                                 className="h-full bg-gradient-to-r from-violet-500 to-blue-500 rounded-full transition-all"
                                 style={{ width: `${progressPercent}%` }}
@@ -177,7 +177,7 @@ export function ActiveProgramCard({ program, onAssignProgram, onEditProgram, onC
                 {/* Meta info */}
                 <div className="flex items-center gap-6 text-sm">
                     {program.started_at && (
-                        <div className="flex items-center gap-2 text-gray-400">
+                        <div className="flex items-center gap-2 text-muted-foreground">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
@@ -185,7 +185,7 @@ export function ActiveProgramCard({ program, onAssignProgram, onEditProgram, onC
                         </div>
                     )}
                     {program.duration_weeks && (
-                        <div className="flex items-center gap-2 text-gray-400">
+                        <div className="flex items-center gap-2 text-muted-foreground">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>

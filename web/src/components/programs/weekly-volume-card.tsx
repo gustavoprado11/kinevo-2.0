@@ -78,8 +78,8 @@ export function WeeklyVolumeCard({ workouts, exercises }: WeeklyVolumeCardProps)
     const maxSets = Math.max(...volumeData.map(d => d.sets))
 
     return (
-        <div className="bg-gray-800/50 rounded-xl border border-gray-700/50 p-5 mb-6">
-            <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4 border-b border-gray-700/50 pb-2">
+        <div className="bg-card rounded-xl border border-border p-5 mb-6">
+            <h3 className="text-sm font-semibold text-foreground/80 uppercase tracking-wider mb-4 border-b border-border pb-2">
                 Volume Semanal (Séries por Grupamento)
             </h3>
 
@@ -88,10 +88,10 @@ export function WeeklyVolumeCard({ workouts, exercises }: WeeklyVolumeCardProps)
                     <div key={group} className="flex items-center gap-3">
                         <div className="flex-1 min-w-0">
                             <div className="flex-between items-baseline mb-1 flex justify-between">
-                                <span className="text-sm font-medium text-gray-300 truncate">{group}</span>
+                                <span className="text-sm font-medium text-foreground/80 truncate">{group}</span>
                                 <span className="text-sm font-bold text-violet-300">{sets}</span>
                             </div>
-                            <div className="w-full h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                            <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
                                 <div
                                     className="h-full bg-violet-500 rounded-full"
                                     style={{ width: `${(sets / maxSets) * 100}%` }}

@@ -40,9 +40,9 @@ export function CompleteProgramModal({
             />
 
             {/* Modal */}
-            <div className="relative bg-gray-800 rounded-2xl border border-gray-700/50 shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+            <div className="relative bg-muted rounded-2xl border border-border shadow-2xl w-full max-w-md mx-4 overflow-hidden">
                 {/* Header */}
-                <div className="px-6 py-5 border-b border-gray-700/50">
+                <div className="px-6 py-5 border-b border-border">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center">
                             <svg className="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -50,19 +50,19 @@ export function CompleteProgramModal({
                             </svg>
                         </div>
                         <div>
-                            <h2 className="text-lg font-semibold text-white">Concluir Programa</h2>
-                            <p className="text-sm text-gray-400">Finalizar ciclo de treino</p>
+                            <h2 className="text-lg font-semibold text-foreground">Concluir Programa</h2>
+                            <p className="text-sm text-muted-foreground">Finalizar ciclo de treino</p>
                         </div>
                     </div>
                 </div>
 
                 {/* Content */}
                 <div className="px-6 py-5">
-                    <p className="text-gray-300 mb-4">
+                    <p className="text-foreground/80 mb-4">
                         Você está prestes a concluir o programa:
                     </p>
-                    <div className="bg-gray-900/50 rounded-xl border border-gray-700/50 px-4 py-3 mb-4">
-                        <span className="text-white font-medium">{programName}</span>
+                    <div className="bg-card rounded-xl border border-border px-4 py-3 mb-4">
+                        <span className="text-foreground font-medium">{programName}</span>
                     </div>
                     <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-3">
                         <div className="flex items-start gap-3">
@@ -78,18 +78,18 @@ export function CompleteProgramModal({
                 </div>
 
                 {/* Footer */}
-                <div className="px-6 py-4 bg-gray-900/30 flex items-center justify-end gap-3">
+                <div className="px-6 py-4 bg-background/30 flex items-center justify-end gap-3">
                     <button
                         onClick={onClose}
                         disabled={completing}
-                        className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors"
+                        className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
                     >
                         Cancelar
                     </button>
                     <button
                         onClick={handleConfirm}
                         disabled={completing}
-                        className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-gray-600 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+                        className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-muted text-foreground text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
                     >
                         {completing ? (
                             <>

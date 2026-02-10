@@ -81,15 +81,15 @@ export function MuscleGroupManagerModal({ isOpen, onClose, trainerId, manager }:
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-            <div className="w-full max-w-lg bg-gray-900 rounded-2xl border border-gray-800 shadow-xl max-h-[85vh] flex flex-col">
+            <div className="w-full max-w-lg bg-background rounded-2xl border border-border shadow-xl max-h-[85vh] flex flex-col">
 
                 {/* Header */}
-                <div className="p-6 border-b border-gray-800 flex items-center justify-between">
+                <div className="p-6 border-b border-border flex items-center justify-between">
                     <div>
-                        <h2 className="text-xl font-semibold text-white">Gerenciar Grupos</h2>
-                        <p className="text-sm text-gray-400">Adicione, edite ou remova grupos musculares</p>
+                        <h2 className="text-xl font-semibold text-foreground">Gerenciar Grupos</h2>
+                        <p className="text-sm text-muted-foreground">Adicione, edite ou remova grupos musculares</p>
                     </div>
-                    <button onClick={onClose} className="text-gray-400 hover:text-white">
+                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                         </svg>
@@ -107,23 +107,23 @@ export function MuscleGroupManagerModal({ isOpen, onClose, trainerId, manager }:
                             onChange={(e) => setNewName(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
                             placeholder="Nome do novo grupo (ex: Potência)"
-                            className="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                            className="flex-1 px-3 py-2 bg-background border border-input rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-violet-500/50"
                         />
                         <button
                             onClick={handleCreate}
                             disabled={isCreating || !newName.trim()}
-                            className="px-4 py-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white font-medium rounded-lg transition-colors flex items-center gap-2"
+                            className="px-4 py-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-foreground font-medium rounded-lg transition-colors flex items-center gap-2"
                         >
                             {isCreating ? <span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" /> : '+'}
                             Adicionar
                         </button>
                     </div>
 
-                    <div className="h-px bg-gray-800" />
+                    <div className="h-px bg-muted" />
 
                     {/* Search */}
                     <div className="relative">
-                        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
                         <input
@@ -131,16 +131,16 @@ export function MuscleGroupManagerModal({ isOpen, onClose, trainerId, manager }:
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="Buscar grupos..."
-                            className="w-full pl-9 pr-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-1 focus:ring-gray-500"
+                            className="w-full pl-9 pr-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-1 focus:ring-gray-500"
                         />
                     </div>
 
                     {/* List */}
                     <div className="space-y-2">
                         {loading ? (
-                            <div className="text-center text-gray-500 py-4">Carregando...</div>
+                            <div className="text-center text-muted-foreground py-4">Carregando...</div>
                         ) : filteredGroups.length === 0 ? (
-                            <div className="text-center text-gray-500 py-4">Nenhum grupo encontrado</div>
+                            <div className="text-center text-muted-foreground py-4">Nenhum grupo encontrado</div>
                         ) : (
                             filteredGroups.map(group => {
                                 const isSystem = !group.owner_id
@@ -148,7 +148,7 @@ export function MuscleGroupManagerModal({ isOpen, onClose, trainerId, manager }:
                                 const isEditing = editingId === group.id
 
                                 return (
-                                    <div key={group.id} className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg border border-gray-800 group hover:border-gray-700 transition-colors">
+                                    <div key={group.id} className="flex items-center justify-between p-3 bg-card rounded-lg border border-border group hover:border-border transition-colors">
                                         <div className="flex-1 flex items-center gap-3">
                                             {isEditing ? (
                                                 <input
@@ -160,10 +160,10 @@ export function MuscleGroupManagerModal({ isOpen, onClose, trainerId, manager }:
                                                         if (e.key === 'Enter') handleUpdate()
                                                         if (e.key === 'Escape') setEditingId(null)
                                                     }}
-                                                    className="w-full bg-gray-900 border border-violet-500/50 rounded px-2 py-1 text-white text-sm"
+                                                    className="w-full bg-background border border-violet-500/50 rounded px-2 py-1 text-foreground text-sm"
                                                 />
                                             ) : (
-                                                <span className="text-gray-200">{group.name}</span>
+                                                <span className="text-foreground">{group.name}</span>
                                             )}
 
                                             {isSystem && (
@@ -179,21 +179,21 @@ export function MuscleGroupManagerModal({ isOpen, onClose, trainerId, manager }:
                                                     <button onClick={handleUpdate} className="p-1.5 text-green-400 hover:bg-green-500/10 rounded">
                                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                                                     </button>
-                                                    <button onClick={() => setEditingId(null)} className="p-1.5 text-gray-400 hover:bg-gray-700 rounded">
+                                                    <button onClick={() => setEditingId(null)} className="p-1.5 text-muted-foreground hover:bg-muted rounded">
                                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                                                     </button>
                                                 </>
                                             ) : isEditable ? (
                                                 <>
-                                                    <button onClick={() => startEdit(group)} className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors" title="Editar">
+                                                    <button onClick={() => startEdit(group)} className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors" title="Editar">
                                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                                                     </button>
-                                                    <button onClick={() => confirmDelete(group)} className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors" title="Excluir">
+                                                    <button onClick={() => confirmDelete(group)} className="p-1.5 text-muted-foreground hover:text-red-400 hover:bg-red-500/10 rounded transition-colors" title="Excluir">
                                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                                     </button>
                                                 </>
                                             ) : (
-                                                <button disabled className="p-1.5 text-gray-600 cursor-not-allowed">
+                                                <button disabled className="p-1.5 text-muted-foreground/80 cursor-not-allowed">
                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
                                                 </button>
                                             )}
@@ -206,8 +206,8 @@ export function MuscleGroupManagerModal({ isOpen, onClose, trainerId, manager }:
                 </div>
 
                 {/* Footer */}
-                <div className="p-6 border-t border-gray-800 bg-gray-900/50 rounded-b-2xl flex justify-end">
-                    <button onClick={onClose} className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium rounded-lg transition-colors">
+                <div className="p-6 border-t border-border bg-card rounded-b-2xl flex justify-end">
+                    <button onClick={onClose} className="px-4 py-2 bg-muted hover:bg-muted text-foreground text-sm font-medium rounded-lg transition-colors">
                         Fechar
                     </button>
                 </div>
@@ -216,10 +216,10 @@ export function MuscleGroupManagerModal({ isOpen, onClose, trainerId, manager }:
             {/* Delete Confirmation Modal */}
             {deletingGroup && (
                 <div className="absolute inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                    <div className="bg-gray-900 rounded-xl border border-red-500/20 shadow-2xl max-w-sm w-full p-6 animate-in fade-in zoom-in-95 duration-200">
-                        <h3 className="text-lg font-bold text-white mb-2">Excluir Grupo?</h3>
-                        <p className="text-gray-400 mb-4">
-                            Você tem certeza que deseja excluir o grupo <strong className="text-white">{deletingGroup.name}</strong>?
+                    <div className="bg-background rounded-xl border border-red-500/20 shadow-2xl max-w-sm w-full p-6 animate-in fade-in zoom-in-95 duration-200">
+                        <h3 className="text-lg font-bold text-foreground mb-2">Excluir Grupo?</h3>
+                        <p className="text-muted-foreground mb-4">
+                            Você tem certeza que deseja excluir o grupo <strong className="text-foreground">{deletingGroup.name}</strong>?
                         </p>
 
                         {deletingGroup.count > 0 ? (
@@ -233,7 +233,7 @@ export function MuscleGroupManagerModal({ isOpen, onClose, trainerId, manager }:
                                 </div>
                             </div>
                         ) : (
-                            <p className="text-sm text-gray-500 mb-6">
+                            <p className="text-sm text-muted-foreground mb-6">
                                 Este grupo não está sendo usado em nenhum exercício.
                             </p>
                         )}
@@ -241,14 +241,14 @@ export function MuscleGroupManagerModal({ isOpen, onClose, trainerId, manager }:
                         <div className="flex gap-3 justify-end">
                             <button
                                 onClick={() => setDeletingGroup(null)}
-                                className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
+                                className="px-4 py-2 text-muted-foreground hover:text-foreground transition-colors"
                             >
                                 Cancelar
                             </button>
                             <button
                                 onClick={handleDelete}
                                 disabled={isDeleting}
-                                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors flex items-center gap-2"
+                                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-foreground font-medium rounded-lg transition-colors flex items-center gap-2"
                             >
                                 {isDeleting && <span className="w-3 h-3 border-2 border-white/20 border-t-white rounded-full animate-spin" />}
                                 Excluir Permanentemente

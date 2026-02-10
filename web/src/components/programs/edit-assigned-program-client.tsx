@@ -62,6 +62,7 @@ interface Trainer {
     name: string
     email: string
     avatar_url?: string | null
+    theme?: 'light' | 'dark' | 'system'
 }
 
 interface EditAssignedProgramClientProps {
@@ -742,14 +743,19 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
     }
 
     return (
-        <AppLayout trainerName={trainer.name} trainerEmail={trainer.email} trainerAvatarUrl={trainer.avatar_url}>
+        <AppLayout
+            trainerName={trainer.name}
+            trainerEmail={trainer.email}
+            trainerAvatarUrl={trainer.avatar_url}
+            trainerTheme={trainer.theme}
+        >
             <div className="max-w-5xl mx-auto space-y-6">
                 {/* Header */}
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <button
                             onClick={() => router.push(`/students/${studentId}`)}
-                            className="w-10 h-10 rounded-lg bg-gray-800 border border-gray-700 flex items-center justify-center text-gray-400 hover:text-white hover:border-gray-600 transition-colors"
+                            className="w-10 h-10 rounded-lg bg-muted border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-border/80 transition-colors"
                         >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 19l-7-7 7-7" />
@@ -757,12 +763,12 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                         </button>
                         <div>
                             <div className="flex items-center gap-2">
-                                <h1 className="text-2xl font-bold text-white">Editar Programa do Aluno</h1>
+                                <h1 className="text-2xl font-bold text-foreground">Editar Programa do Aluno</h1>
                                 <span className="px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-500 text-xs font-medium border border-amber-500/20">
                                     Edição direta
                                 </span>
                             </div>
-                            <p className="text-gray-400 mt-0.5 text-sm">
+                            <p className="text-muted-foreground mt-0.5 text-sm">
                                 As alterações afetarão imediatamente o treino do aluno. Histórico existente não será resetado.
                             </p>
                         </div>
@@ -803,37 +809,37 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                 {/* Program Info (ReadOnly for tracking, or Partial Edit) */}
                 {/* Requirement says: update structure, NO reset progress. */}
                 {/* Basic Info */}
-                <div className="bg-gray-800/50 rounded-xl border border-gray-700/50 p-5">
+                <div className="bg-card rounded-xl border border-border p-5">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="md:col-span-2">
-                            <label className="block text-sm font-medium text-gray-300 mb-2">
+                            <label className="block text-sm font-medium text-foreground/80 mb-2">
                                 Nome do Programa
                             </label>
                             <input
                                 type="text"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
-                                className="w-full px-4 py-2.5 bg-gray-900/50 border border-gray-700 rounded-lg text-white"
+                                className="w-full px-4 py-2.5 bg-card border border-border rounded-lg text-foreground"
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-2">
+                            <label className="block text-sm font-medium text-foreground/80 mb-2">
                                 Duração (Semanas)
                             </label>
                             <input
                                 type="number"
                                 value={durationWeeks}
                                 onChange={(e) => setDurationWeeks(e.target.value)}
-                                className="w-full px-4 py-2.5 bg-gray-900/50 border border-gray-700 rounded-lg text-white"
+                                className="w-full px-4 py-2.5 bg-card border border-border rounded-lg text-foreground"
                             />
                         </div>
                         <div className="md:col-span-3">
-                            <label className="block text-sm font-medium text-gray-300 mb-2">Descrição</label>
+                            <label className="block text-sm font-medium text-foreground/80 mb-2">Descrição</label>
                             <textarea
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
                                 rows={2}
-                                className="w-full px-4 py-2.5 bg-gray-900/50 border border-gray-700 rounded-lg text-white resize-none"
+                                className="w-full px-4 py-2.5 bg-card border border-border rounded-lg text-foreground resize-none"
                             />
                         </div>
                     </div>
@@ -858,9 +864,9 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                     />
 
                     {/* Panel 2: Treinos */}
-                    <div className="bg-gray-800/50 rounded-xl border border-gray-700/50 overflow-hidden flex flex-col">
+                    <div className="bg-card rounded-xl border border-border overflow-hidden flex flex-col">
                         {/* Workout Tabs Header */}
-                        <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-700/50 bg-gray-800/30">
+                        <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-muted/40">
                             <div className="flex items-center gap-1 flex-1 overflow-x-auto">
                                 {workouts.map((workout, index) => (
                                     <div
@@ -871,18 +877,18 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                                         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setActiveWorkoutId(workout.id) }}
                                         className={`group relative flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap cursor-pointer ${activeWorkoutId === workout.id
                                             ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30'
-                                            : 'text-gray-400 hover:bg-gray-700/50 border border-transparent'
+                                            : 'text-muted-foreground hover:bg-muted/50 border border-transparent'
                                             }`}
                                     >
                                         {workout.name}
-                                        <span className="text-xs text-gray-500">({workout.items.length})</span>
+                                        <span className="text-xs text-muted-foreground">({workout.items.length})</span>
 
                                         {activeWorkoutId === workout.id && (
                                             <div className="flex items-center gap-0.5 ml-1">
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); moveWorkout(workout.id, 'up') }}
                                                     disabled={index === 0}
-                                                    className="w-5 h-5 flex items-center justify-center text-gray-500 hover:text-white disabled:opacity-30"
+                                                    className="w-5 h-5 flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30"
                                                 >
                                                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7 7" />
@@ -891,7 +897,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); moveWorkout(workout.id, 'down') }}
                                                     disabled={index === workouts.length - 1}
-                                                    className="w-5 h-5 flex items-center justify-center text-gray-500 hover:text-white disabled:opacity-30"
+                                                    className="w-5 h-5 flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30"
                                                 >
                                                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -899,7 +905,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                                                 </button>
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); deleteWorkout(workout.id) }}
-                                                    className="w-5 h-5 flex items-center justify-center text-gray-500 hover:text-red-400"
+                                                    className="w-5 h-5 flex items-center justify-center text-muted-foreground hover:text-red-400"
                                                 >
                                                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -948,12 +954,12 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                                 />
                             ) : (
                                 <div className="flex flex-col items-center justify-center h-full py-16">
-                                    <div className="w-16 h-16 rounded-full bg-gray-700/50 flex items-center justify-center mb-4">
-                                        <svg className="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mb-4">
+                                        <svg className="w-8 h-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                                         </svg>
                                     </div>
-                                    <p className="text-gray-400 mb-4">Crie seu primeiro treino</p>
+                                    <p className="text-muted-foreground mb-4">Crie seu primeiro treino</p>
                                     <button
                                         onClick={addWorkout}
                                         className="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"

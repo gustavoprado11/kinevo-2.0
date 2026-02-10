@@ -1,0 +1,30 @@
+'use client'
+
+import { usePathname } from 'next/navigation'
+import { ThemeProvider as NextThemesProvider } from 'next-themes'
+import type { ThemeProviderProps } from 'next-themes'
+
+const LOGGED_AREA_PREFIXES = ['/dashboard', '/students', '/programs', '/exercises', '/settings']
+
+function isLoggedArea(pathname: string): boolean {
+    return LOGGED_AREA_PREFIXES.some((prefix) => pathname.startsWith(prefix))
+}
+
+export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
+    const pathname = usePathname()
+    const forceDark = !isLoggedArea(pathname)
+
+    return (
+        <NextThemesProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+            storageKey="kinevo-theme"
+            forcedTheme={forceDark ? 'dark' : undefined}
+            {...props}
+        >
+            {children}
+        </NextThemesProvider>
+    )
+}

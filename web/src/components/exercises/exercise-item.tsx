@@ -35,11 +35,11 @@ export function ExerciseItem({ exercise, currentTrainerId, onEdit, onDelete }: E
 
     return (
         <>
-            <div className="bg-gray-800/50 hover:bg-gray-800 border border-gray-700/50 hover:border-violet-500/30 rounded-xl p-4 transition-all group">
+            <div className="group rounded-xl border border-border bg-card p-4 shadow-sm transition-all duration-200 hover:border-violet-300/50 hover:shadow-md">
                 <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                            <h3 className="text-base font-semibold text-gray-200 group-hover:text-white truncate">
+                            <h3 className="truncate text-base font-semibold text-foreground group-hover:text-violet-500">
                                 {exercise.name}
                             </h3>
                             {/* Badges */}
@@ -60,7 +60,7 @@ export function ExerciseItem({ exercise, currentTrainerId, onEdit, onDelete }: E
                             {exercise.video_url && (
                                 <button
                                     onClick={handleVideoClick}
-                                    className="px-2 py-0.5 bg-red-500/10 text-red-400 text-xs rounded border border-red-500/20 flex items-center gap-1 hover:bg-red-500/20 transition-colors"
+                                    className="flex items-center gap-1 rounded border border-violet-500/30 bg-violet-500/10 px-2 py-0.5 text-xs font-medium text-violet-400 transition-colors hover:bg-violet-500/20"
                                 >
                                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
@@ -74,7 +74,7 @@ export function ExerciseItem({ exercise, currentTrainerId, onEdit, onDelete }: E
                             {muscleGroups.map((group) => (
                                 <span
                                     key={group.id}
-                                    className="px-2 py-0.5 bg-gray-700/50 text-gray-400 text-xs rounded border border-gray-700"
+                                    className="rounded border border-border bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground"
                                 >
                                     {group.name}
                                 </span>
@@ -82,7 +82,7 @@ export function ExerciseItem({ exercise, currentTrainerId, onEdit, onDelete }: E
 
                             {/* Equipment */}
                             {exercise.equipment && (
-                                <span className="px-2 py-0.5 bg-gray-700/50 text-gray-400 text-xs rounded border border-gray-700 flex items-center gap-1">
+                                <span className="flex items-center gap-1 rounded border border-border bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">
                                     <svg className="w-3 h-3 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                                     </svg>

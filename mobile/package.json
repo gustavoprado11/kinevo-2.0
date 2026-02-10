@@ -9,6 +9,7 @@
     "web": "expo start --web"
   },
   "dependencies": {
+    "@bacons/apple-targets": "^4.0.0",
     "@kinevo/shared": "*",
     "@react-navigation/native": "^7.0.13",
     "@supabase/supabase-js": "^2.49.2",
@@ -20,6 +21,7 @@
     "expo-image-picker": "~17.0.10",
     "expo-linear-gradient": "~15.0.8",
     "expo-linking": "~8.0.11",
+    "expo-modules-core": "~3.0.29",
     "expo-router": "~6.0.0",
     "expo-secure-store": "~15.0.8",
     "expo-status-bar": "~3.0.9",
@@ -46,6 +48,11 @@
     "@types/react": "~19.1.10",
     "tailwindcss": "^3.4.18",
     "typescript": "~5.9.2"
+  },
+  "expo": {
+    "autolinking": {
+      "nativeModulesDir": "./modules"
+    }
   },
   "private": true
 }

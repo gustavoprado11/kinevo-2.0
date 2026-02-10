@@ -106,10 +106,10 @@ export function CheckoutPolling({ trainerName }: CheckoutPollingProps) {
 
     if (phase === 'failed') {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-950">
-                <div className="bg-slate-900/50 border border-slate-800 p-8 rounded-2xl shadow-xl w-full max-w-md text-center">
-                    <h2 className="text-xl font-bold text-white mb-4">Processamento em andamento</h2>
-                    <p className="text-slate-400 mb-6">
+            <div className="min-h-screen flex items-center justify-center bg-background">
+                <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 text-center shadow-xl">
+                    <h2 className="mb-4 text-xl font-bold text-foreground">Processamento em andamento</h2>
+                    <p className="mb-6 text-muted-foreground">
                         Seu pagamento foi recebido mas a ativação está demorando mais que o normal. Tente novamente ou aguarde alguns minutos.
                     </p>
                     <button
@@ -124,13 +124,13 @@ export function CheckoutPolling({ trainerName }: CheckoutPollingProps) {
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-950">
+        <div className="min-h-screen flex items-center justify-center bg-background">
             <div className="text-center">
                 <div className="w-12 h-12 border-4 border-violet-500 border-t-transparent rounded-full animate-spin mx-auto mb-6" />
-                <h2 className="text-xl font-bold text-white mb-2">
+                <h2 className="mb-2 text-xl font-bold text-foreground">
                     {phase === 'syncing' ? 'Sincronizando com o Stripe...' : 'Finalizando configuração da conta...'}
                 </h2>
-                <p className="text-slate-400">Olá, {trainerName}. Estamos ativando sua assinatura.</p>
+                <p className="text-muted-foreground">Olá, {trainerName}. Estamos ativando sua assinatura.</p>
             </div>
         </div>
     )

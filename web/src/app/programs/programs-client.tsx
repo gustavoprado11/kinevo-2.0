@@ -10,6 +10,7 @@ interface Trainer {
     name: string
     email: string
     avatar_url?: string | null
+    theme?: 'light' | 'dark' | 'system'
 }
 
 interface ProgramTemplate {
@@ -65,12 +66,17 @@ export function ProgramsClient({ trainer, programs: initialPrograms }: ProgramsC
     )
 
     return (
-        <AppLayout trainerName={trainer.name} trainerEmail={trainer.email} trainerAvatarUrl={trainer.avatar_url}>
+        <AppLayout
+            trainerName={trainer.name}
+            trainerEmail={trainer.email}
+            trainerAvatarUrl={trainer.avatar_url}
+            trainerTheme={trainer.theme}
+        >
             {/* Page Header */}
             <div className="flex items-center justify-between mb-8">
                 <div>
-                    <h1 className="text-2xl font-bold text-white">Programas</h1>
-                    <p className="text-gray-400 mt-1">Sua biblioteca de programas de treino</p>
+                    <h1 className="text-2xl font-bold text-foreground">Programas</h1>
+                    <p className="mt-1 text-muted-foreground">Sua biblioteca de programas de treino</p>
                 </div>
                 <button
                     onClick={handleCreateProgram}
@@ -84,10 +90,10 @@ export function ProgramsClient({ trainer, programs: initialPrograms }: ProgramsC
             </div>
 
             {/* Search */}
-            <div className="bg-gray-800/50 rounded-xl border border-gray-700/50 mb-6">
+            <div className="bg-card rounded-xl border border-border mb-6">
                 <div className="p-4">
                     <div className="relative">
-                        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
                         <input
@@ -95,7 +101,7 @@ export function ProgramsClient({ trainer, programs: initialPrograms }: ProgramsC
                             placeholder="Buscar programas..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 bg-gray-900/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 transition-all"
+                            className="w-full rounded-lg border border-input bg-background py-2.5 pl-10 pr-4 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 transition-all"
                         />
                     </div>
                 </div>
@@ -103,17 +109,17 @@ export function ProgramsClient({ trainer, programs: initialPrograms }: ProgramsC
 
             {/* Programs Grid */}
             {filteredPrograms.length === 0 ? (
-                <div className="bg-gray-800/50 rounded-xl border border-gray-700/50 p-12 text-center">
-                    <div className="w-16 h-16 rounded-full bg-gray-700/50 flex items-center justify-center mx-auto mb-4">
-                        <svg className="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="bg-card rounded-xl border border-border p-12 text-center">
+                    <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mx-auto mb-4">
+                        <svg className="w-8 h-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                         </svg>
                     </div>
                     {searchQuery ? (
-                        <p className="text-gray-400">Nenhum programa encontrado para &ldquo;{searchQuery}&rdquo;</p>
+                        <p className="text-muted-foreground">Nenhum programa encontrado para &ldquo;{searchQuery}&rdquo;</p>
                     ) : (
                         <>
-                            <p className="text-gray-400 mb-4">Você ainda não tem programas na biblioteca</p>
+                            <p className="text-muted-foreground mb-4">Você ainda não tem programas na biblioteca</p>
                             <button
                                 onClick={handleCreateProgram}
                                 className="px-5 py-2.5 bg-gradient-to-r from-violet-600 to-blue-600 hover:from-violet-500 hover:to-blue-500 text-white text-sm font-medium rounded-lg transition-all"
@@ -129,16 +135,16 @@ export function ProgramsClient({ trainer, programs: initialPrograms }: ProgramsC
                         <div
                             key={program.id}
                             onClick={() => handleEditProgram(program.id)}
-                            className="bg-gray-800/50 rounded-xl border border-gray-700/50 p-5 hover:border-violet-500/30 hover:bg-gray-700/30 cursor-pointer transition-all group"
+                            className="bg-card rounded-xl border border-border p-5 hover:border-violet-500/30 hover:bg-muted/40 cursor-pointer transition-all group"
                         >
                             <div className="flex items-start justify-between mb-3">
-                                <h3 className="font-semibold text-white group-hover:text-violet-300 transition-colors">
+                                <h3 className="font-semibold text-foreground transition-colors group-hover:text-violet-400">
                                     {program.name}
                                 </h3>
                                 <button
                                     onClick={(e) => handleDeleteProgram(program.id, e)}
                                     disabled={deleting === program.id}
-                                    className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all"
+                                    className="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all"
                                 >
                                     {deleting === program.id ? (
                                         <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
@@ -154,12 +160,12 @@ export function ProgramsClient({ trainer, programs: initialPrograms }: ProgramsC
                             </div>
 
                             {program.description && (
-                                <p className="text-sm text-gray-400 mb-4 line-clamp-2">
+                                <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
                                     {program.description}
                                 </p>
                             )}
 
-                            <div className="flex items-center gap-4 text-xs text-gray-500">
+                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
                                 {program.duration_weeks && (
                                     <span className="flex items-center gap-1">
                                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -174,7 +180,7 @@ export function ProgramsClient({ trainer, programs: initialPrograms }: ProgramsC
                                     </svg>
                                     {program.workout_count} treinos
                                 </span>
-                                <span className="text-gray-600">
+                                <span className="text-muted-foreground/80">
                                     {new Date(program.created_at).toLocaleDateString('pt-BR')}
                                 </span>
                             </div>

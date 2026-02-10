@@ -63,6 +63,7 @@ interface Trainer {
     name: string
     email: string
     avatar_url?: string | null
+    theme?: 'light' | 'dark' | 'system'
 }
 
 interface StudentContext {
@@ -580,7 +581,12 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
     }
 
     return (
-        <AppLayout trainerName={trainer.name} trainerEmail={trainer.email} trainerAvatarUrl={trainer.avatar_url}>
+        <AppLayout
+            trainerName={trainer.name}
+            trainerEmail={trainer.email}
+            trainerAvatarUrl={trainer.avatar_url}
+            trainerTheme={trainer.theme}
+        >
             <div className="max-w-5xl mx-auto">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-6">
@@ -590,7 +596,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                 ? router.push(`/students/${studentContext.id}`)
                                 : router.push('/programs')
                             }
-                            className="w-10 h-10 rounded-lg bg-gray-800 border border-gray-700 flex items-center justify-center text-gray-400 hover:text-white hover:border-gray-600 transition-colors"
+                            className="w-10 h-10 rounded-lg bg-muted border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-border/80 transition-colors"
                         >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 19l-7-7 7-7" />
@@ -598,7 +604,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                         </button>
                         <div>
                             <div className="flex items-center gap-3">
-                                <h1 className="text-2xl font-bold text-white">
+                                <h1 className="text-2xl font-bold text-foreground">
                                     {isEditing ? 'Editar Programa' : 'Novo Programa'}
                                 </h1>
                                 {isStudentContext && studentContext && (
@@ -607,7 +613,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                     </span>
                                 )}
                             </div>
-                            <p className="text-gray-400 mt-0.5 text-sm">
+                            <p className="text-muted-foreground mt-0.5 text-sm">
                                 {isStudentContext
                                     ? 'Este programa será atribuído automaticamente ao aluno'
                                     : isEditing ? 'Modifique os treinos do programa' : 'Crie um novo programa de treino'
@@ -622,9 +628,9 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                     type="checkbox"
                                     checked={saveAsTemplate}
                                     onChange={(e) => setSaveAsTemplate(e.target.checked)}
-                                    className="w-4 h-4 rounded border-gray-600 bg-gray-900 text-violet-500 focus:ring-violet-500/50"
+                                    className="w-4 h-4 rounded border-border/80 bg-background text-violet-500 focus:ring-violet-500/50"
                                 />
-                                <span className="text-sm text-gray-400">Salvar como modelo reutilizável</span>
+                                <span className="text-sm text-muted-foreground">Salvar como modelo reutilizável</span>
                             </label>
                         )}
                         <button
@@ -662,10 +668,10 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                 )}
 
                 {/* Program Info */}
-                <div className="bg-gray-800/50 rounded-xl border border-gray-700/50 p-5 mb-6">
+                <div className="bg-card rounded-xl border border-border p-5 mb-6">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="md:col-span-2">
-                            <label className="block text-sm font-medium text-gray-300 mb-2">
+                            <label className="block text-sm font-medium text-foreground/80 mb-2">
                                 Nome do Programa <span className="text-red-400">*</span>
                             </label>
                             <input
@@ -673,11 +679,11 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
                                 placeholder="Ex: Hipertrofia 12 Semanas"
-                                className="w-full px-4 py-2.5 bg-gray-900/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 transition-all"
+                                className="w-full px-4 py-2.5 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 transition-all"
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-2">
+                            <label className="block text-sm font-medium text-foreground/80 mb-2">
                                 Duração (semanas)
                             </label>
                             <input
@@ -686,7 +692,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                 onChange={(e) => setDurationWeeks(e.target.value)}
                                 placeholder="12"
                                 min="1"
-                                className="w-full px-4 py-2.5 bg-gray-900/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 transition-all"
+                                className="w-full px-4 py-2.5 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 transition-all"
                             />
                         </div>
 
@@ -696,72 +702,72 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                 {/* Row: Start Date | End Date */}
                                 <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                                        <label className="block text-sm font-medium text-foreground/80 mb-2">
                                             Data de Início <span className="text-red-400">*</span>
                                         </label>
                                         <input
                                             type="date"
                                             value={startDate}
                                             onChange={(e) => setStartDate(e.target.value)}
-                                            className="w-full px-4 py-2.5 bg-gray-900/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 transition-all [color-scheme:dark]"
+                                            className="w-full px-4 py-2.5 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 transition-all [color-scheme:dark]"
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                                        <label className="block text-sm font-medium text-foreground/80 mb-2">
                                             Previsão de Término
                                         </label>
-                                        <div className="w-full px-4 py-2.5 bg-gray-800/50 border border-gray-700 rounded-lg text-gray-400 flex items-center gap-2">
-                                            <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <div className="w-full px-4 py-2.5 bg-card border border-border rounded-lg text-muted-foreground flex items-center gap-2">
+                                            <svg className="w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                             </svg>
                                             {endDate ? (
-                                                <span>Termina em <span className="text-white font-medium">{endDate}</span></span>
+                                                <span>Termina em <span className="text-foreground font-medium">{endDate}</span></span>
                                             ) : (
-                                                <span className="text-gray-600">Defina o início e duração</span>
+                                                <span className="text-muted-foreground/80">Defina o início e duração</span>
                                             )}
                                         </div>
                                     </div>
                                 </div>
 
                                 {/* Row: Assignment Type */}
-                                <div className="md:col-span-3 bg-gray-900/30 p-4 rounded-lg border border-gray-700/50">
-                                    <label className="block text-sm font-medium text-gray-300 mb-3">
+                                <div className="md:col-span-3 bg-background/30 p-4 rounded-lg border border-border">
+                                    <label className="block text-sm font-medium text-foreground/80 mb-3">
                                         Tipo de Atribuição
                                     </label>
                                     <div className="flex flex-col sm:flex-row gap-4">
-                                        <label className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all flex-1 ${assignmentType === 'immediate' ? 'bg-violet-500/10 border-violet-500/50' : 'bg-transparent border-gray-700 hover:bg-gray-800'}`}>
+                                        <label className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all flex-1 ${assignmentType === 'immediate' ? 'bg-violet-500/10 border-violet-500/50' : 'bg-transparent border-border hover:bg-muted'}`}>
                                             <input
                                                 type="radio"
                                                 name="assignmentType"
                                                 value="immediate"
                                                 checked={assignmentType === 'immediate'}
                                                 onChange={() => setAssignmentType('immediate')}
-                                                className="mt-1 w-4 h-4 text-violet-600 bg-gray-900 border-gray-600 focus:ring-violet-500"
+                                                className="mt-1 w-4 h-4 text-violet-600 bg-background border-border/80 focus:ring-violet-500"
                                             />
                                             <div>
-                                                <span className={`block font-medium ${assignmentType === 'immediate' ? 'text-violet-300' : 'text-gray-300'}`}>
+                                                <span className={`block font-medium ${assignmentType === 'immediate' ? 'text-violet-300' : 'text-foreground/80'}`}>
                                                     Imediata (Substituir Atual)
                                                 </span>
-                                                <span className="text-xs text-gray-500 mt-1 block">
+                                                <span className="text-xs text-muted-foreground mt-1 block">
                                                     O programa atual será concluído e este entrará como ATIVO imediatamente.
                                                 </span>
                                             </div>
                                         </label>
 
-                                        <label className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all flex-1 ${assignmentType === 'scheduled' ? 'bg-purple-500/10 border-purple-500/50' : 'bg-transparent border-gray-700 hover:bg-gray-800'}`}>
+                                        <label className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all flex-1 ${assignmentType === 'scheduled' ? 'bg-purple-500/10 border-purple-500/50' : 'bg-transparent border-border hover:bg-muted'}`}>
                                             <input
                                                 type="radio"
                                                 name="assignmentType"
                                                 value="scheduled"
                                                 checked={assignmentType === 'scheduled'}
                                                 onChange={() => setAssignmentType('scheduled')}
-                                                className="mt-1 w-4 h-4 text-purple-600 bg-gray-900 border-gray-600 focus:ring-purple-500"
+                                                className="mt-1 w-4 h-4 text-purple-600 bg-background border-border/80 focus:ring-purple-500"
                                             />
                                             <div>
-                                                <span className={`block font-medium ${assignmentType === 'scheduled' ? 'text-purple-300' : 'text-gray-300'}`}>
+                                                <span className={`block font-medium ${assignmentType === 'scheduled' ? 'text-purple-300' : 'text-foreground/80'}`}>
                                                     Agendar (Fila)
                                                 </span>
-                                                <span className="text-xs text-gray-500 mt-1 block">
+                                                <span className="text-xs text-muted-foreground mt-1 block">
                                                     Este programa ficará na fila como AGENDADO e iniciará na data acima ({new Date(startDate).toLocaleDateString()}).
                                                 </span>
                                             </div>
@@ -772,7 +778,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                         )}
 
                         <div className="md:col-span-3">
-                            <label className="block text-sm font-medium text-gray-300 mb-2">
+                            <label className="block text-sm font-medium text-foreground/80 mb-2">
                                 Descrição
                             </label>
                             <textarea
@@ -780,7 +786,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                 onChange={(e) => setDescription(e.target.value)}
                                 placeholder="Descreva o objetivo do programa..."
                                 rows={2}
-                                className="w-full px-4 py-2.5 bg-gray-900/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 transition-all resize-none"
+                                className="w-full px-4 py-2.5 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 transition-all resize-none"
                             />
                         </div>
                     </div>
@@ -805,9 +811,9 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                     />
 
                     {/* Panel 2: Treinos */}
-                    <div className="bg-gray-800/50 rounded-xl border border-gray-700/50 overflow-hidden flex flex-col">
+                    <div className="bg-card rounded-xl border border-border overflow-hidden flex flex-col">
                         {/* Workout Tabs Header */}
-                        <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-700/50 bg-gray-800/30">
+                        <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-muted/40">
                             <div className="flex items-center gap-1 flex-1 overflow-x-auto">
                                 {workouts.map((workout, index) => (
                                     <div
@@ -818,11 +824,11 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setActiveWorkoutId(workout.id) }}
                                         className={`group relative flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap cursor-pointer ${activeWorkoutId === workout.id
                                             ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30'
-                                            : 'text-gray-400 hover:bg-gray-700/50 border border-transparent'
+                                            : 'text-muted-foreground hover:bg-muted/50 border border-transparent'
                                             }`}
                                     >
                                         {workout.name}
-                                        <span className="text-xs text-gray-500">({workout.items.length})</span>
+                                        <span className="text-xs text-muted-foreground">({workout.items.length})</span>
 
                                         {/* Workout actions on hover */}
                                         {activeWorkoutId === workout.id && (
@@ -830,7 +836,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); moveWorkout(workout.id, 'up') }}
                                                     disabled={index === 0}
-                                                    className="w-5 h-5 flex items-center justify-center text-gray-500 hover:text-white disabled:opacity-30"
+                                                    className="w-5 h-5 flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30"
                                                 >
                                                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7 7" />
@@ -839,7 +845,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); moveWorkout(workout.id, 'down') }}
                                                     disabled={index === workouts.length - 1}
-                                                    className="w-5 h-5 flex items-center justify-center text-gray-500 hover:text-white disabled:opacity-30"
+                                                    className="w-5 h-5 flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30"
                                                 >
                                                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -847,7 +853,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                                 </button>
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); deleteWorkout(workout.id) }}
-                                                    className="w-5 h-5 flex items-center justify-center text-gray-500 hover:text-red-400"
+                                                    className="w-5 h-5 flex items-center justify-center text-muted-foreground hover:text-red-400"
                                                 >
                                                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -897,12 +903,12 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                 />
                             ) : (
                                 <div className="flex flex-col items-center justify-center h-full py-16">
-                                    <div className="w-16 h-16 rounded-full bg-gray-700/50 flex items-center justify-center mb-4">
-                                        <svg className="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mb-4">
+                                        <svg className="w-8 h-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                                         </svg>
                                     </div>
-                                    <p className="text-gray-400 mb-4">Crie seu primeiro treino</p>
+                                    <p className="text-muted-foreground mb-4">Crie seu primeiro treino</p>
                                     <button
                                         onClick={addWorkout}
                                         className="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"

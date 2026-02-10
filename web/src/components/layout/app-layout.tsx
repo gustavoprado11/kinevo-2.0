@@ -1,16 +1,21 @@
 import { Sidebar } from './sidebar'
 import { Header } from './header'
+import { ThemeSync } from '@/components/theme-sync'
+
+type ThemePreference = 'light' | 'dark' | 'system'
 
 interface AppLayoutProps {
     children: React.ReactNode
     trainerName: string
     trainerEmail?: string
     trainerAvatarUrl?: string | null
+    trainerTheme?: ThemePreference | null
 }
 
-export function AppLayout({ children, trainerName, trainerEmail, trainerAvatarUrl }: AppLayoutProps) {
+export function AppLayout({ children, trainerName, trainerEmail, trainerAvatarUrl, trainerTheme }: AppLayoutProps) {
     return (
-        <div className="min-h-screen bg-gray-900">
+        <div className="min-h-screen bg-background text-foreground">
+            <ThemeSync trainerTheme={trainerTheme} />
             {/* Sidebar */}
             <Sidebar />
 

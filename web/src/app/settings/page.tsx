@@ -5,6 +5,7 @@ import { stripe } from '@/lib/stripe'
 import { AppLayout } from '@/components/layout'
 import { BillingSection } from '@/components/settings/billing-section'
 import { ProfileForm } from '@/components/settings/profile-form'
+import { ThemeSelector } from '@/components/settings/theme-selector'
 import { ChevronRight } from 'lucide-react'
 
 export default async function SettingsPage() {
@@ -15,7 +16,7 @@ export default async function SettingsPage() {
 
     const { data: trainer } = await supabase
         .from('trainers')
-        .select('id, name, email, avatar_url')
+        .select('id, name, email, avatar_url, theme')
         .eq('auth_user_id', user.id)
         .single()
 
@@ -76,18 +77,27 @@ export default async function SettingsPage() {
     }
 
     return (
-        <AppLayout trainerName={trainer.name} trainerEmail={trainer.email} trainerAvatarUrl={trainer.avatar_url}>
+        <AppLayout
+            trainerName={trainer.name}
+            trainerEmail={trainer.email}
+            trainerAvatarUrl={trainer.avatar_url}
+            trainerTheme={trainer.theme}
+        >
             <div className="mb-8">
-                <div className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider mb-2">
+                <div className="mb-2 flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
                     <span>Painel</span>
                     <ChevronRight size={12} />
                     <span>Minha Conta</span>
                 </div>
-                <h1 className="text-3xl font-bold text-white tracking-tight">Minha Conta</h1>
-                <p className="text-slate-400 mt-1">Gerencie seu perfil e assinatura.</p>
+                <h1 className="text-3xl font-bold tracking-tight text-foreground">Minha Conta</h1>
+                <p className="mt-1 text-muted-foreground">Gerencie seu perfil e assinatura.</p>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+            <div className="space-y-6">
+                <ThemeSelector initialTheme={trainer.theme} />
+            </div>
+
+            <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
                 <div className="lg:col-span-1">
                     <ProfileForm trainer={trainer} />
                 </div>

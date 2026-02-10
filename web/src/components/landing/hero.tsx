@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { ChevronRight, Play } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { MacbookMockup } from './mockups/MacbookMockup';
 import { IphoneMockup } from './mockups/IphoneMockup';
 
@@ -59,10 +59,6 @@ export const Hero = () => {
                         Começar Agora
                         <ChevronRight size={20} />
                     </Link>
-                    <button className="w-full sm:w-auto px-8 py-4 rounded-full bg-slate-900 border border-slate-800 text-slate-200 font-bold text-lg hover:bg-slate-800 transition-all flex items-center justify-center gap-2">
-                        Ver Demonstração
-                        <Play size={18} fill="currentColor" />
-                    </button>
                 </motion.div>
 
                 {/* Hybrid Device Mockup Composition */}

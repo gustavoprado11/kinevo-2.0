@@ -63,9 +63,9 @@ export function Sidebar() {
     const pathname = usePathname()
 
     return (
-        <aside className="fixed inset-y-0 left-0 w-60 bg-gray-950 border-r border-gray-800/50 flex flex-col z-30">
+        <aside className="fixed inset-y-0 left-0 z-30 flex w-60 flex-col border-r border-border bg-card">
             {/* Logo */}
-            <div className="h-16 flex items-center px-6 border-b border-gray-800/50">
+            <div className="h-16 flex items-center px-6 border-b border-border">
                 <Link href="/dashboard" className="flex items-center gap-3">
                     <Image
                         src="/logo-icon.png"
@@ -74,7 +74,7 @@ export function Sidebar() {
                         height={32}
                         className="rounded-lg"
                     />
-                    <span className="text-xl font-semibold text-white tracking-tight">Kinevo</span>
+                    <span className="text-xl font-semibold text-foreground tracking-tight">Kinevo</span>
                 </Link>
             </div>
 
@@ -89,8 +89,8 @@ export function Sidebar() {
                             className={`
                 flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150
                 ${isActive
-                                    ? 'bg-gradient-to-r from-violet-600/20 to-blue-600/20 text-white border border-violet-500/30'
-                                    : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
+                                    ? 'bg-gradient-to-r from-violet-600/20 to-blue-600/20 text-foreground border border-violet-500/30'
+                                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                                 }
               `}
                         >
@@ -102,8 +102,8 @@ export function Sidebar() {
             </nav>
 
             {/* Footer */}
-            <div className="px-3 py-4 border-t border-gray-800/50">
-                <div className="px-3 py-2 text-xs text-gray-500">
+            <div className="px-3 py-4 border-t border-border">
+                <div className="px-3 py-2 text-xs text-muted-foreground">
                     Kinevo 2.0
                 </div>
             </div>

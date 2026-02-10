@@ -74,15 +74,15 @@ function SupersetConnector({
     return (
         <div className="relative flex items-center justify-center py-1 group">
             {/* Connector line */}
-            <div className="absolute inset-x-4 h-px bg-gray-700/50 group-hover:bg-violet-500/30 transition-colors" />
+            <div className="absolute inset-x-4 h-px bg-muted/50 group-hover:bg-violet-500/30 transition-colors" />
 
             {/* Connect button */}
             <button
                 onClick={onConnect}
                 className="relative z-10 flex items-center gap-1.5 px-2 py-1 rounded-full 
-                           bg-gray-800 border border-gray-700/50 
+                           bg-muted border border-border 
                            hover:bg-violet-600 hover:border-violet-500 
-                           text-gray-500 hover:text-white
+                           text-muted-foreground hover:text-foreground
                            transition-all duration-200 
                            opacity-0 group-hover:opacity-100
                            text-xs font-medium"
@@ -164,9 +164,9 @@ export function WorkoutPanel({
     }
 
     return (
-        <div className="bg-gray-800/50 rounded-xl border border-gray-700/50">
+        <div className="bg-card rounded-xl border border-border">
             {/* Workout Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-700/50">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
                 <div className="flex items-center gap-3">
                     {isEditingName ? (
                         <input
@@ -176,15 +176,15 @@ export function WorkoutPanel({
                             onBlur={handleNameSave}
                             onKeyDown={(e) => e.key === 'Enter' && handleNameSave()}
                             autoFocus
-                            className="px-3 py-1.5 bg-gray-900 border border-gray-700 rounded-lg text-white text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                            className="px-3 py-1.5 bg-background border border-border rounded-lg text-foreground text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-violet-500/50"
                         />
                     ) : (
                         <button
                             onClick={() => { setTempName(workout.name); setIsEditingName(true) }}
-                            className="text-lg font-semibold text-white hover:text-violet-300 transition-colors flex items-center gap-2"
+                            className="text-lg font-semibold text-foreground hover:text-violet-300 transition-colors flex items-center gap-2"
                         >
                             {workout.name}
-                            <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                             </svg>
                         </button>
@@ -193,7 +193,7 @@ export function WorkoutPanel({
 
                 <div className="flex items-center gap-4">
                     {/* Day Selector */}
-                    <div className="flex items-center gap-1 bg-gray-900/50 p-1 rounded-lg border border-gray-700/30">
+                    <div className="flex items-center gap-1 bg-card p-1 rounded-lg border border-border/70">
                         {[
                             { key: 'sun', label: 'D' },
                             { key: 'mon', label: 'S' },
@@ -217,7 +217,7 @@ export function WorkoutPanel({
                                 buttonClass += "bg-violet-900/40 text-violet-300 border-violet-500/30 hover:bg-violet-900/60"
                             } else {
                                 // Free - Gray
-                                buttonClass += "text-gray-500 border-transparent hover:text-gray-300 hover:bg-gray-800"
+                                buttonClass += "text-muted-foreground border-transparent hover:text-foreground/80 hover:bg-muted"
                             }
 
                             return (
@@ -239,7 +239,7 @@ export function WorkoutPanel({
                         })}
                     </div>
 
-                    <div className="flex items-center gap-2 text-sm text-gray-400 border-l border-gray-700/50 pl-4">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground border-l border-border pl-4">
                         <span>{workout.items.length} itens</span>
                     </div>
                 </div>
@@ -248,12 +248,12 @@ export function WorkoutPanel({
             {/* Items with connectors */}
             <div className="p-5">
                 {workout.items.length === 0 ? (
-                    <div className="text-center py-8 border-2 border-dashed border-gray-700 rounded-xl">
-                        <p className="text-gray-400 mb-4">Adicione exercícios ao treino</p>
+                    <div className="text-center py-8 border-2 border-dashed border-border rounded-xl">
+                        <p className="text-muted-foreground mb-4">Adicione exercícios ao treino</p>
                         <div className="flex items-center justify-center gap-2">
                             <button
                                 onClick={onAddNote}
-                                className="px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium rounded-lg transition-colors"
+                                className="px-3 py-2 bg-secondary hover:bg-secondary/80 text-foreground text-sm font-medium rounded-lg transition-colors"
                             >
                                 + Nota
                             </button>
@@ -307,7 +307,7 @@ export function WorkoutPanel({
                                 <div className="flex items-center gap-2 pt-4 mt-2">
                                     <button
                                         onClick={onAddNote}
-                                        className="px-3 py-2 text-sm text-gray-400 hover:bg-gray-700/50 rounded-lg transition-colors flex items-center gap-1.5"
+                                        className="px-3 py-2 text-sm text-muted-foreground hover:bg-muted/50 rounded-lg transition-colors flex items-center gap-1.5"
                                     >
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />

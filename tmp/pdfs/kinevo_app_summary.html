@@ -1,0 +1,58 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title></title>
+  <meta name="Generator" content="Cocoa HTML Writer">
+  <meta name="CocoaVersion" content="2685.3">
+  <style type="text/css">
+    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 11.0px Helvetica}
+    p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; font: 9.0px Helvetica}
+    p.p3 {margin: 0.0px 0.0px 0.0px 0.0px; font: 9.0px Helvetica; min-height: 11.0px}
+    p.p4 {margin: 0.0px 0.0px 0.0px 0.0px; font: 9.0px Courier}
+    span.s1 {font: 9.0px Courier}
+    span.s2 {font: 9.0px Helvetica}
+    span.Apple-tab-span {white-space:pre}
+  </style>
+</head>
+<body>
+<p class="p1"><b>Kinevo App - One-Page Repo Summary</b><b></b></p>
+<p class="p2">Generated from repository evidence only</p>
+<p class="p3"><br></p>
+<p class="p2"><b>What it is</b><b></b></p>
+<p class="p2">Kinevo is a trainer-student fitness platform split into a web app for workout prescription and student management, plus a mobile app for workout execution and logging. It uses Supabase for auth/data and includes Stripe subscription gating in the web product.</p>
+<p class="p3"><br></p>
+<p class="p2"><b>Who it is for</b><b></b></p>
+<p class="p2">Primary persona: strength coaches/personal trainers who prescribe structured programs, with students as execution users in the mobile app.</p>
+<p class="p3"><br></p>
+<p class="p2"><b>What it does</b><b></b></p>
+<p class="p2">•<span class="Apple-tab-span">	</span>Trainer web dashboard with auth-protected access and student list management.</p>
+<p class="p2">•<span class="Apple-tab-span">	</span>Exercise library with system plus trainer-owned exercises and muscle group metadata.</p>
+<p class="p2">•<span class="Apple-tab-span">	</span>Program template builder (programs, workouts, ordered workout items including exercise/superset/note types).</p>
+<p class="p2">•<span class="Apple-tab-span">	</span>Program assignment flow from templates to student-specific assigned programs/workouts/items.</p>
+<p class="p2">•<span class="Apple-tab-span">	</span>Mobile workout player with per-set logging (load, reps, completion), finish flow, and session feedback modal.</p>
+<p class="p2">•<span class="Apple-tab-span">	</span>Mobile home/history/profile tabs, including workout history/performance views and support via WhatsApp deep link.</p>
+<p class="p2">•<span class="Apple-tab-span">	</span>Stripe subscription checkout + webhook sync; inactive subscriptions are redirected to a blocked page.</p>
+<p class="p3"><br></p>
+<p class="p2"><b>How it works (architecture)</b><b></b></p>
+<p class="p2">•<span class="Apple-tab-span">	</span>Monorepo workspaces: <span class="s1">web</span> (Next.js App Router), <span class="s1">mobile</span> (Expo Router/React Native), <span class="s1">shared</span> (shared TypeScript types), <span class="s1">supabase/migrations</span> (database schema).</p>
+<p class="p2">•<span class="Apple-tab-span">	</span>Web data path: Next.js server routes/components call Supabase SSR clients; auth/session protected by middleware; Stripe API routes create checkout/portal sessions and webhook handlers upsert subscription state.</p>
+<p class="p2">•<span class="Apple-tab-span">	</span>Mobile data path: Expo app uses Supabase JS with SecureStore-backed auth session persistence; screens/hooks fetch active programs/sessions and submit workout session logs.</p>
+<p class="p2">•<span class="Apple-tab-span">	</span>Database model includes trainers, students, exercises, program templates, assigned program snapshots, workout sessions, set logs, and subscriptions with RLS policies.</p>
+<p class="p2">•<span class="Apple-tab-span">	</span>Offline resilience signals in schema: sync status, local_id/device_id fields for sessions and set logs.</p>
+<p class="p3"><br></p>
+<p class="p2"><b>How to run (minimal getting started)</b><b></b></p>
+<p class="p2">1. Install deps at repo root: <span class="s1">npm install</span></p>
+<p class="p4"><span class="s2">2. Configure web env in </span>/Users/gustavoprado/kinevo/web/.env.local<span class="s2">: </span>NEXT_PUBLIC_SUPABASE_URL<span class="s2">, </span>NEXT_PUBLIC_SUPABASE_ANON_KEY<span class="s2">, </span>STRIPE_SECRET_KEY<span class="s2">, </span>STRIPE_PRICE_ID<span class="s2">, </span>STRIPE_WEBHOOK_SECRET</p>
+<p class="p4"><span class="s2">3. Configure mobile env in </span>/Users/gustavoprado/kinevo/mobile/.env<span class="s2">: </span>EXPO_PUBLIC_SUPABASE_URL<span class="s2">, </span>EXPO_PUBLIC_SUPABASE_ANON_KEY</p>
+<p class="p2">4. Apply Supabase SQL migrations in order from <span class="s1">/Users/gustavoprado/kinevo/supabase/migrations</span> to your Supabase project.</p>
+<p class="p2">5. Run web: <span class="s1">npm run web</span></p>
+<p class="p2">6. Run mobile: <span class="s1">npm run mobile</span></p>
+<p class="p3"><br></p>
+<p class="p2"><b>Not found in repo</b><b></b></p>
+<p class="p2">•<span class="Apple-tab-span">	</span>A root-level setup guide that covers both web and mobile end to end.</p>
+<p class="p2">•<span class="Apple-tab-span">	</span>Mobile <span class="s1">.env.example</span> template file.</p>
+<p class="p2">•<span class="Apple-tab-span">	</span>An automated local script for applying Supabase migrations.</p>
+</body>
+</html>

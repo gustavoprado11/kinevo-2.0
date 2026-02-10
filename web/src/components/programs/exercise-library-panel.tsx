@@ -112,17 +112,17 @@ export function ExerciseLibraryPanel({
 
     return (
         <>
-            <div className="flex flex-col bg-gray-800/50 rounded-xl border border-gray-700/50 overflow-hidden h-full">
+            <div className="flex flex-col bg-card rounded-xl border border-border overflow-hidden h-full">
                 {/* Header */}
-                <div className="px-4 py-3 border-b border-gray-700/50 bg-gray-800/30">
-                    <h3 className="text-sm font-semibold text-white">Biblioteca de Exercícios</h3>
-                    <p className="text-xs text-gray-500 mt-0.5">{filteredExercises.length} exercícios</p>
+                <div className="px-4 py-3 border-b border-border bg-muted/40">
+                    <h3 className="text-sm font-semibold text-foreground">Biblioteca de Exercícios</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">{filteredExercises.length} exercícios</p>
                 </div>
 
                 {/* Search & Filters */}
-                <div className="px-4 py-3 border-b border-gray-700/50">
+                <div className="px-4 py-3 border-b border-border">
                     <div className="relative">
-                        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
                         <input
@@ -130,7 +130,7 @@ export function ExerciseLibraryPanel({
                             placeholder="Buscar exercício..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-9 pr-3 py-2 text-sm bg-gray-900/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 transition-all"
+                            className="w-full pl-9 pr-3 py-2 text-sm bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 transition-all"
                         />
                     </div>
 
@@ -142,7 +142,7 @@ export function ExerciseLibraryPanel({
                                 onClick={clearFilters}
                                 className={`px-2.5 py-1 text-xs font-medium rounded-full border transition-colors ${selectedMuscleGroups.size === 0
                                     ? 'bg-violet-500/20 text-violet-300 border-violet-500/30'
-                                    : 'text-gray-400 border-gray-700 hover:border-gray-600'
+                                    : 'text-muted-foreground border-border hover:border-border/80'
                                     }`}
                             >
                                 Todos
@@ -155,7 +155,7 @@ export function ExerciseLibraryPanel({
                                     onClick={() => toggleMuscleGroup(group)}
                                     className={`px-2.5 py-1 text-xs font-medium rounded-full border transition-colors ${selectedMuscleGroups.has(group)
                                         ? 'bg-violet-500/20 text-violet-300 border-violet-500/30'
-                                        : 'text-gray-400 border-gray-700 hover:border-gray-600'
+                                        : 'text-muted-foreground border-border hover:border-border/80'
                                         }`}
                                 >
                                     {group}
@@ -169,7 +169,7 @@ export function ExerciseLibraryPanel({
                                         onClick={() => setShowMoreFilters(!showMoreFilters)}
                                         className={`px-2.5 py-1 text-xs font-medium rounded-full border transition-colors flex items-center gap-1 ${hiddenSelectedCount > 0
                                             ? 'bg-violet-500/20 text-violet-300 border-violet-500/30'
-                                            : 'text-gray-400 border-gray-700 hover:border-gray-600'
+                                            : 'text-muted-foreground border-border hover:border-border/80'
                                             }`}
                                     >
                                         +{hiddenGroups.length}
@@ -185,14 +185,14 @@ export function ExerciseLibraryPanel({
 
                                     {/* Dropdown menu */}
                                     {showMoreFilters && (
-                                        <div className="absolute z-50 top-full left-0 mt-1 w-48 bg-gray-900 border border-gray-700 rounded-lg shadow-xl py-1 max-h-64 overflow-y-auto">
+                                        <div className="absolute z-50 top-full left-0 mt-1 w-48 bg-background border border-border rounded-lg shadow-xl py-1 max-h-64 overflow-y-auto">
                                             {hiddenGroups.map(group => (
                                                 <button
                                                     key={group}
                                                     onClick={() => toggleMuscleGroup(group)}
-                                                    className="w-full px-3 py-2 text-left text-sm flex items-center justify-between hover:bg-gray-800 transition-colors"
+                                                    className="w-full px-3 py-2 text-left text-sm flex items-center justify-between hover:bg-muted transition-colors"
                                                 >
-                                                    <span className={selectedMuscleGroups.has(group) ? 'text-violet-300' : 'text-gray-300'}>
+                                                    <span className={selectedMuscleGroups.has(group) ? 'text-violet-300' : 'text-foreground/80'}>
                                                         {group}
                                                     </span>
                                                     {selectedMuscleGroups.has(group) && (
@@ -211,7 +211,7 @@ export function ExerciseLibraryPanel({
                             {selectedMuscleGroups.size > 0 && (
                                 <button
                                     onClick={clearFilters}
-                                    className="px-2 py-1 text-xs text-gray-500 hover:text-gray-300 transition-colors flex items-center gap-1"
+                                    className="px-2 py-1 text-xs text-muted-foreground hover:text-foreground/80 transition-colors flex items-center gap-1"
                                     title="Limpar filtros"
                                 >
                                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -228,7 +228,7 @@ export function ExerciseLibraryPanel({
                 <div className="flex-1 overflow-y-auto p-2 min-h-0">
                     {filteredExercises.length === 0 ? (
                         <div className="text-center py-6">
-                            <p className="text-gray-500 text-sm mb-3">Nenhum exercício encontrado</p>
+                            <p className="text-muted-foreground text-sm mb-3">Nenhum exercício encontrado</p>
 
                             {/* Create Exercise CTA */}
                             {searchQuery.trim() && (
@@ -273,10 +273,10 @@ export function ExerciseLibraryPanel({
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2">
                                                 {/* Add indicator icon */}
-                                                <svg className={`w-4 h-4 flex-shrink-0 transition-colors ${activeWorkoutId ? 'text-violet-400 group-hover:text-violet-300' : 'text-gray-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <svg className={`w-4 h-4 flex-shrink-0 transition-colors ${activeWorkoutId ? 'text-violet-400 group-hover:text-violet-300' : 'text-muted-foreground/80'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                                                 </svg>
-                                                <span className={`text-sm font-medium truncate transition-colors ${activeWorkoutId ? 'text-white group-hover:text-violet-200' : 'text-gray-400'}`}>
+                                                <span className={`text-sm font-medium truncate transition-colors ${activeWorkoutId ? 'text-foreground group-hover:text-violet-200' : 'text-muted-foreground'}`}>
                                                     {exercise.name}
                                                 </span>
                                             </div>
@@ -292,7 +292,7 @@ export function ExerciseLibraryPanel({
                                                     )
                                                 })}
                                                 {exercise.equipment && (
-                                                    <span className="px-1.5 py-0.5 text-xs bg-gray-800 text-gray-400 rounded">
+                                                    <span className="px-1.5 py-0.5 text-xs bg-muted text-muted-foreground rounded">
                                                         {exercise.equipment}
                                                     </span>
                                                 )}
@@ -308,8 +308,8 @@ export function ExerciseLibraryPanel({
                                                 setPreviewExercise(exercise)
                                             }}
                                             className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all flex-shrink-0 ${exercise.video_url
-                                                ? 'bg-gray-700/50 text-gray-400 hover:bg-violet-600 hover:text-white'
-                                                : 'bg-gray-800/30 text-gray-600 hover:bg-gray-700/30 hover:text-gray-400'
+                                                ? 'bg-muted/50 text-muted-foreground hover:bg-violet-600 hover:text-white'
+                                                : 'bg-muted/40 text-muted-foreground/80 hover:bg-muted/40 hover:text-muted-foreground'
                                                 }`}
                                             title={exercise.video_url ? 'Ver vídeo de execução' : 'Vídeo não disponível'}
                                         >
@@ -326,8 +326,8 @@ export function ExerciseLibraryPanel({
                 </div>
 
                 {/* Help text at bottom */}
-                <div className="px-4 py-2 border-t border-gray-700/50 bg-gray-800/20">
-                    <p className="text-xs text-gray-500 text-center">
+                <div className="px-4 py-2 border-t border-border bg-muted/30">
+                    <p className="text-xs text-muted-foreground text-center">
                         Clique no exercício para adicionar • ▶ para ver vídeo
                     </p>
                 </div>

@@ -1,17 +1,43 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { useLocalSearchParams, Stack, useRouter, useNavigation } from 'expo-router';
 import { ScreenWrapper } from '../../components/ScreenWrapper';
 import { ExerciseCard } from '../../components/workout/ExerciseCard';
 import { useWorkoutSession } from '../../hooks/useWorkoutSession';
+import { useLiveActivity } from '../../hooks/useLiveActivity';
+import { useStudentProfile } from '../../hooks/useStudentProfile';
 import { ChevronLeft } from 'lucide-react-native';
 import { WorkoutFeedbackModal } from '../../components/workout/WorkoutFeedbackModal';
 import { WorkoutSuccessModal } from '../../components/workout/WorkoutSuccessModal';
 import { ExerciseVideoModal } from '../../components/workout/ExerciseVideoModal';
+import { RestTimerOverlay } from '../../components/workout/RestTimerOverlay';
 
 export default function WorkoutPlayerScreen() {
     const { id } = useLocalSearchParams();
     const router = useRouter();
+    const { profile } = useStudentProfile();
+
+    // Live Activity rest timer trigger
+    const liveActivityRef = useRef<{ startRestTimer: (exerciseIndex: number, seconds: number) => void } | null>(null);
+
+    const onSetComplete = useCallback((exerciseIndex: number, _setIndex: number) => {
+        const exercise = exercisesRef.current[exerciseIndex];
+        if (exercise && exercise.rest_seconds > 0) {
+            // Check if there are remaining incomplete sets
+            const hasRemainingSets = exercise.setsData.some((s, i) => i > _setIndex && !s.completed);
+            if (hasRemainingSets) {
+                // Trigger Live Activity rest timer (if available)
+                liveActivityRef.current?.startRestTimer(exerciseIndex, exercise.rest_seconds);
+                // Show on-screen rest timer
+                setRestTimer({
+                    endTime: Date.now() + exercise.rest_seconds * 1000,
+                    totalSeconds: exercise.rest_seconds,
+                    exerciseName: exercise.name,
+                });
+            }
+        }
+    }, []);
+
     const {
         isLoading,
         workoutName,
@@ -21,13 +47,36 @@ export default function WorkoutPlayerScreen() {
         handleToggleSetComplete,
         finishWorkout,
         isSubmitting
-    } = useWorkoutSession(id as string);
+    } = useWorkoutSession(id as string, { onSetComplete });
+
+    // Keep a ref to exercises for the onSetComplete callback
+    const exercisesRef = useRef(exercises);
+    exercisesRef.current = exercises;
+
+    // Live Activity hook
+    const { startRestTimer, stopActivity } = useLiveActivity({
+        workoutName,
+        workoutId: id as string,
+        exercises,
+        studentName: profile?.name ?? 'Aluno',
+        isLoading,
+    });
+
+    // Expose startRestTimer to onSetComplete callback via ref
+    useEffect(() => {
+        liveActivityRef.current = { startRestTimer };
+    }, [startRestTimer]);
 
     const navigation = useNavigation();
     const isFinishingRef = useRef(false);
     const [isFeedbackVisible, setIsFeedbackVisible] = React.useState(false);
     const [showSuccessModal, setShowSuccessModal] = React.useState(false);
     const [videoModalUrl, setVideoModalUrl] = React.useState<string | null>(null);
+    const [restTimer, setRestTimer] = React.useState<{
+        endTime: number;
+        totalSeconds: number;
+        exerciseName: string;
+    } | null>(null);
 
     // Protect against accidental exit
     useEffect(() => {
@@ -68,6 +117,8 @@ export default function WorkoutPlayerScreen() {
             setIsFeedbackVisible(false);
             const success = await finishWorkout(rpe, feedback);
             if (success) {
+                // Stop Live Activity immediately
+                stopActivity();
                 // Show celebration modal
                 setShowSuccessModal(true);
                 // Mark as finishing so we can navigate away later
@@ -133,7 +184,7 @@ export default function WorkoutPlayerScreen() {
             >
                 <ScrollView
                     className="flex-1 px-4 pt-4"
-                    contentContainerStyle={{ paddingBottom: 100 }}
+                    contentContainerStyle={{ paddingBottom: restTimer ? 260 : 100 }}
                     showsVerticalScrollIndicator={false}
                 >
                     {exercises.map((exercise, index) => (
@@ -187,6 +238,29 @@ export default function WorkoutPlayerScreen() {
                 onClose={() => setVideoModalUrl(null)}
                 videoUrl={videoModalUrl}
             />
+            {/* Rest Timer Overlay */}
+            {restTimer && (
+                <RestTimerOverlay
+                    endTime={restTimer.endTime}
+                    totalSeconds={restTimer.totalSeconds}
+                    exerciseName={restTimer.exerciseName}
+                    onSkip={() => setRestTimer(null)}
+                    onComplete={() => setRestTimer(null)}
+                    onAdjustTime={(delta) => {
+                        setRestTimer(prev => {
+                            if (!prev) return null;
+                            const newEnd = prev.endTime + delta * 1000;
+                            // Don't allow adjusting below current time
+                            if (newEnd <= Date.now()) return null;
+                            return {
+                                ...prev,
+                                endTime: newEnd,
+                                totalSeconds: prev.totalSeconds + delta,
+                            };
+                        });
+                    }}
+                />
+            )}
         </ScreenWrapper>
     );
 }

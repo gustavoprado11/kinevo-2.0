@@ -42,7 +42,7 @@ export function StudentAccessDialog({ isOpen, onClose, studentData }: StudentAcc
             />
 
             {/* Modal */}
-            <div className="relative bg-gray-900 border border-gray-800 rounded-3xl p-8 max-w-sm w-full shadow-2xl overflow-hidden">
+            <div className="relative bg-background border border-border rounded-3xl p-8 max-w-sm w-full shadow-2xl overflow-hidden">
                 {/* Background Glow */}
                 <div className="absolute -top-24 -right-24 w-48 h-48 bg-emerald-500/10 blur-3xl rounded-full" />
 
@@ -53,19 +53,19 @@ export function StudentAccessDialog({ isOpen, onClose, studentData }: StudentAcc
                         </svg>
                     </div>
 
-                    <h3 className="text-xl font-bold text-white text-center mb-2">Aluno Criado!</h3>
-                    <p className="text-gray-400 text-sm text-center mb-8">
+                    <h3 className="text-xl font-bold text-foreground text-center mb-2">Aluno Criado!</h3>
+                    <p className="text-muted-foreground text-sm text-center mb-8">
                         Envie as informações de acesso para o seu aluno agora mesmo.
                     </p>
 
                     {/* Credentials Card */}
-                    <div className="bg-gray-800/50 border border-gray-700/50 rounded-2xl p-5 space-y-4 mb-8">
+                    <div className="bg-card border border-border rounded-2xl p-5 space-y-4 mb-8">
                         <div>
-                            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">E-mail / Login</span>
-                            <p className="text-white font-medium select-all">{studentData.email}</p>
+                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">E-mail / Login</span>
+                            <p className="text-foreground font-medium select-all">{studentData.email}</p>
                         </div>
-                        <div className="pt-4 border-t border-gray-700/50">
-                            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Senha Provisória</span>
+                        <div className="pt-4 border-t border-border">
+                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">Senha Provisória</span>
                             <p className="text-2xl font-mono font-bold text-emerald-400 tracking-widest">{studentData.password}</p>
                         </div>
                     </div>
@@ -84,7 +84,7 @@ export function StudentAccessDialog({ isOpen, onClose, studentData }: StudentAcc
 
                         <button
                             onClick={handleCopy}
-                            className={`w-full h-12 bg-gray-800 hover:bg-gray-700 text-white font-medium rounded-xl transition-all flex items-center justify-center gap-2 border border-gray-700/50 ${copied ? 'ring-2 ring-emerald-500/50' : ''}`}
+                            className={`w-full h-12 bg-secondary hover:bg-secondary/80 text-secondary-foreground font-medium rounded-xl transition-all flex items-center justify-center gap-2 border border-border ${copied ? 'ring-2 ring-emerald-500/50' : ''}`}
                         >
                             {copied ? (
                                 <>
@@ -95,7 +95,7 @@ export function StudentAccessDialog({ isOpen, onClose, studentData }: StudentAcc
                                 </>
                             ) : (
                                 <>
-                                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg className="w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
                                     </svg>
                                     Copiar Texto
@@ -105,7 +105,7 @@ export function StudentAccessDialog({ isOpen, onClose, studentData }: StudentAcc
 
                         <button
                             onClick={onClose}
-                            className="w-full pt-4 text-gray-500 hover:text-gray-300 text-sm font-medium transition-colors"
+                            className="w-full pt-4 text-muted-foreground hover:text-foreground/80 text-sm font-medium transition-colors"
                         >
                             Fechar e voltar para a lista
                         </button>

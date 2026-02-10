@@ -13,7 +13,7 @@ export default async function NewProgramPage() {
 
     const { data: trainer } = await supabase
         .from('trainers')
-        .select('id, name, email, avatar_url')
+        .select('id, name, email, avatar_url, theme')
         .eq('auth_user_id', user.id)
         .single()
 

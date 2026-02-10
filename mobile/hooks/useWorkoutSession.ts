@@ -22,21 +22,26 @@ export interface ExerciseData {
     previousLoad?: string;
 }
 
-export function useWorkoutSession(workoutId: string) {
+interface UseWorkoutSessionOptions {
+    onSetComplete?: (exerciseIndex: number, setIndex: number) => void;
+}
+
+export function useWorkoutSession(workoutId: string, options?: UseWorkoutSessionOptions) {
     const { user } = useAuth();
     const [isLoading, setIsLoading] = useState(true);
     const [exercises, setExercises] = useState<ExerciseData[]>([]);
-    const [duration, setDuration] = useState(0);
+    const [startTime] = useState(() => Date.now());
+    const [elapsed, setElapsed] = useState(0);
     const [workoutName, setWorkoutName] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Timer
+    // Timer — timestamp-based so it survives background/lock screen
     useEffect(() => {
         const interval = setInterval(() => {
-            setDuration(prev => prev + 1);
+            setElapsed(Math.floor((Date.now() - startTime) / 1000));
         }, 1000);
         return () => clearInterval(interval);
-    }, []);
+    }, [startTime]);
 
     // Fetch Workout Data
     useEffect(() => {
@@ -164,8 +169,15 @@ export function useWorkoutSession(workoutId: string) {
         setExercises(prev => {
             const newExercises = [...prev];
             const newSets = [...newExercises[exerciseIndex].setsData];
-            newSets[setIndex] = { ...newSets[setIndex], completed: !newSets[setIndex].completed };
+            const wasCompleted = newSets[setIndex].completed;
+            newSets[setIndex] = { ...newSets[setIndex], completed: !wasCompleted };
             newExercises[exerciseIndex].setsData = newSets;
+
+            // Fire callback when marking as complete (not when unchecking)
+            if (!wasCompleted && options?.onSetComplete) {
+                options.onSetComplete(exerciseIndex, setIndex);
+            }
+
             return newExercises;
         });
     };
@@ -195,8 +207,8 @@ export function useWorkoutSession(workoutId: string) {
                 .eq('id', workoutId)
                 .single();
 
-            const startedAt = new Date();
-            startedAt.setSeconds(startedAt.getSeconds() - duration);
+            const startedAt = new Date(startTime);
+            const durationSeconds = Math.floor((Date.now() - startTime) / 1000);
 
             // 1. Create Session
             const { data: session, error: sessionError }: { data: any; error: any } = await supabase
@@ -209,7 +221,7 @@ export function useWorkoutSession(workoutId: string) {
                     status: 'completed',
                     started_at: startedAt.toISOString(),
                     completed_at: new Date().toISOString(),
-                    duration_seconds: duration,
+                    duration_seconds: durationSeconds,
                     sync_status: 'synced',
                     rpe: rpe || null,
                     feedback: feedback || null
@@ -273,7 +285,7 @@ export function useWorkoutSession(workoutId: string) {
         isLoading,
         workoutName,
         exercises,
-        duration: formatTime(duration),
+        duration: formatTime(elapsed),
         handleSetChange,
         handleToggleSetComplete,
         finishWorkout,

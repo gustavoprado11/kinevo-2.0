@@ -153,20 +153,20 @@ export function StudentModal({
                     />
 
                     {/* Modal Content */}
-                    <div className="relative bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md mx-4 border border-gray-700/50 overflow-hidden">
+                    <div className="relative mx-4 w-full max-w-md overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
                         {/* Header */}
-                        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700/50 bg-gray-800/80">
+                        <div className="flex items-center justify-between border-b border-border bg-card px-6 py-4">
                             <div>
-                                <h2 className="text-lg font-semibold text-white">
+                                <h2 className="text-lg font-semibold text-foreground">
                                     {isEdit ? 'Editar Aluno' : 'Novo Aluno'}
                                 </h2>
-                                <p className="text-sm text-gray-400">
+                                <p className="text-sm text-muted-foreground">
                                     {isEdit ? 'Atualize as informações do aluno' : 'Adicione um novo aluno ao seu painel'}
                                 </p>
                             </div>
                             <button
                                 onClick={handleClose}
-                                className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+                                className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                             >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -186,7 +186,7 @@ export function StudentModal({
                             )}
 
                             <div>
-                                <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-2">
+                                <label htmlFor="name" className="mb-2 block text-sm font-medium text-foreground">
                                     Nome <span className="text-red-400">*</span>
                                 </label>
                                 <input
@@ -195,13 +195,13 @@ export function StudentModal({
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
                                     required
-                                    className="w-full px-4 py-3 bg-gray-900/50 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 transition-all"
+                                    className="w-full rounded-xl border border-input bg-background px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 transition-all"
                                     placeholder="Nome completo do aluno"
                                 />
                             </div>
 
                             <div>
-                                <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
+                                <label htmlFor="email" className="mb-2 block text-sm font-medium text-foreground">
                                     Email <span className="text-red-400">*</span>
                                 </label>
                                 <input
@@ -210,27 +210,27 @@ export function StudentModal({
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     required
-                                    className="w-full px-4 py-3 bg-gray-900/50 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 transition-all"
+                                    className="w-full rounded-xl border border-input bg-background px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 transition-all"
                                     placeholder="aluno@email.com"
                                 />
                             </div>
 
                             <div>
-                                <label htmlFor="phone" className="block text-sm font-medium text-gray-300 mb-2">
-                                    Telefone <span className="text-gray-500 font-normal">(WhatsApp para credenciais)</span>
+                                <label htmlFor="phone" className="mb-2 block text-sm font-medium text-foreground">
+                                    Telefone <span className="font-normal text-muted-foreground">(WhatsApp para credenciais)</span>
                                 </label>
                                 <input
                                     id="phone"
                                     type="tel"
                                     value={phone}
                                     onChange={(e) => setPhone(e.target.value)}
-                                    className="w-full px-4 py-3 bg-gray-900/50 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 transition-all"
+                                    className="w-full rounded-xl border border-input bg-background px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 transition-all"
                                     placeholder="(11) 99999-9999"
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-3">
+                                <label className="mb-3 block text-sm font-medium text-foreground">
                                     Modalidade
                                 </label>
                                 <div className="grid grid-cols-2 gap-3">
@@ -238,7 +238,7 @@ export function StudentModal({
                                         flex flex-col items-center justify-between rounded-xl border-2 p-4 cursor-pointer transition-all
                                         ${modality === 'online'
                                             ? 'border-violet-500 bg-violet-500/10 text-violet-400'
-                                            : 'border-gray-700 bg-gray-900/50 hover:bg-gray-800 text-gray-400 hover:text-white'}
+                                            : 'border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground'}
                                     `}>
                                         <input
                                             type="radio"
@@ -258,7 +258,7 @@ export function StudentModal({
                                         flex flex-col items-center justify-between rounded-xl border-2 p-4 cursor-pointer transition-all
                                         ${modality === 'presential'
                                             ? 'border-violet-500 bg-violet-500/10 text-violet-400'
-                                            : 'border-gray-700 bg-gray-900/50 hover:bg-gray-800 text-gray-400 hover:text-white'}
+                                            : 'border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground'}
                                     `}>
                                         <input
                                             type="radio"
@@ -281,14 +281,14 @@ export function StudentModal({
                                 <button
                                     type="button"
                                     onClick={handleClose}
-                                    className="flex-1 py-3 px-4 bg-gray-700 hover:bg-gray-600 text-white font-medium rounded-xl transition-colors"
+                                    className="flex-1 rounded-xl border border-border bg-secondary px-4 py-3 font-medium text-secondary-foreground transition-colors hover:bg-secondary/80"
                                 >
                                     Cancelar
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={loading}
-                                    className="flex-1 py-3 px-4 bg-gradient-to-r from-violet-600 to-blue-600 hover:from-violet-500 hover:to-blue-500 disabled:from-gray-600 disabled:to-gray-600 disabled:cursor-not-allowed text-white font-medium rounded-xl transition-all shadow-lg shadow-violet-500/20"
+                                    className="flex-1 rounded-xl bg-gradient-to-r from-violet-600 to-blue-600 px-4 py-3 font-medium text-white transition-all shadow-lg shadow-violet-500/20 hover:from-violet-500 hover:to-blue-500 disabled:cursor-not-allowed disabled:from-muted disabled:to-muted"
                                 >
                                     {loading ? (
                                         <span className="flex items-center justify-center gap-2">
@@ -320,5 +320,4 @@ export function StudentModal({
         </>
     )
 }
-
 
