@@ -1,20 +1,11 @@
-import { View, Text, TouchableOpacity, Alert, TextInput } from "react-native";
+import { View, Text, TouchableOpacity, Alert } from "react-native";
 import { Stack, useRouter } from "expo-router";
-import { useState } from "react";
-import { FileText, Shield, Trash2, ChevronRight, ExternalLink } from "lucide-react-native";
-import * as WebBrowser from "expo-web-browser";
+import { FileText, Shield, Trash2, ChevronRight } from "lucide-react-native";
 import { useStudentProfile } from "../../hooks/useStudentProfile";
-
-// TODO: Substituir pelas URLs reais quando os documentos estiverem prontos
-const TERMS_URL = "https://kinevo.app/termos";
-const PRIVACY_URL = "https://kinevo.app/privacidade";
 
 export default function PrivacyScreen() {
     const router = useRouter();
     const { deleteAccount } = useStudentProfile();
-
-    const openTerms = () => WebBrowser.openBrowserAsync(TERMS_URL);
-    const openPrivacy = () => WebBrowser.openBrowserAsync(PRIVACY_URL);
 
     const handleDeleteAccount = () => {
         Alert.alert(
@@ -61,7 +52,7 @@ export default function PrivacyScreen() {
 
     return (
         <>
-            <Stack.Screen options={{ title: "Privacidade" }} />
+            <Stack.Screen options={{ title: "Legal" }} />
             <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 24 }}>
                 {/* Legal Documents */}
                 <Text
@@ -87,7 +78,7 @@ export default function PrivacyScreen() {
                     }}
                 >
                     <TouchableOpacity
-                        onPress={openTerms}
+                        onPress={() => router.push("/profile/terms")}
                         activeOpacity={0.6}
                         style={{
                             flexDirection: "row",
@@ -112,13 +103,13 @@ export default function PrivacyScreen() {
                         <Text style={{ fontSize: 14, fontWeight: "500", color: "#cbd5e1", flex: 1 }}>
                             Termos de Uso
                         </Text>
-                        <ExternalLink size={16} color="#475569" strokeWidth={1.5} />
+                        <ChevronRight size={16} color="#475569" strokeWidth={1.5} />
                     </TouchableOpacity>
 
                     <View style={{ height: 1, backgroundColor: "rgba(255,255,255,0.04)", marginHorizontal: 20 }} />
 
                     <TouchableOpacity
-                        onPress={openPrivacy}
+                        onPress={() => router.push("/profile/privacy-policy")}
                         activeOpacity={0.6}
                         style={{
                             flexDirection: "row",
@@ -143,7 +134,7 @@ export default function PrivacyScreen() {
                         <Text style={{ fontSize: 14, fontWeight: "500", color: "#cbd5e1", flex: 1 }}>
                             Política de Privacidade
                         </Text>
-                        <ExternalLink size={16} color="#475569" strokeWidth={1.5} />
+                        <ChevronRight size={16} color="#475569" strokeWidth={1.5} />
                     </TouchableOpacity>
                 </View>
 

@@ -64,8 +64,8 @@ export const Footer = () => {
                     <div>
                         <h4 className="text-white font-bold mb-6">Legal</h4>
                         <ul className="space-y-4 text-slate-500 font-medium">
-                            <li><Link href="#" className="hover:text-violet-400">Privacidade</Link></li>
-                            <li><Link href="#" className="hover:text-violet-400">Termos de Uso</Link></li>
+                            <li><Link href="/privacy" className="hover:text-violet-400">Privacidade</Link></li>
+                            <li><Link href="/terms" className="hover:text-violet-400">Termos de Uso</Link></li>
                         </ul>
                     </div>
                 </div>
