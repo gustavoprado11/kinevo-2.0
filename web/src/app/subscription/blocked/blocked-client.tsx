@@ -1,25 +1,33 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
+import { Lock, AlertCircle, RefreshCw } from 'lucide-react'
 
 const stateConfig = {
     no_subscription: {
+        icon: <Lock size={28} className="text-violet-400" />,
         title: 'Complete sua assinatura',
         description: 'Para acessar o Kinevo, você precisa ativar sua assinatura. Comece com 7 dias grátis!',
         buttonText: 'Assinar agora — 7 dias grátis',
         action: 'checkout' as const,
+        showPrice: true,
     },
     past_due: {
+        icon: <AlertCircle size={28} className="text-amber-400" />,
         title: 'Pagamento pendente',
-        description: 'Seu último pagamento falhou. Atualize seu método de pagamento para restaurar o acesso.',
+        description: 'Seu último pagamento falhou. Atualize seu método de pagamento para restaurar o acesso ao Kinevo.',
         buttonText: 'Atualizar pagamento',
         action: 'portal' as const,
+        showPrice: false,
     },
     canceled: {
+        icon: <RefreshCw size={28} className="text-violet-400" />,
         title: 'Assinatura cancelada',
-        description: 'Sua assinatura foi cancelada. Reative para continuar usando o Kinevo.',
+        description: 'Sua assinatura foi cancelada. Reative para continuar gerenciando seus alunos e treinos no Kinevo.',
         buttonText: 'Reativar assinatura',
         action: 'checkout' as const,
+        showPrice: true,
     },
 }
 
@@ -59,38 +67,71 @@ export function BlockedClient({ trainerName, state }: BlockedClientProps) {
         }
     }
 
+    const handleLogout = async () => {
+        const { createClient } = await import('@/lib/supabase/client')
+        const supabase = createClient()
+        await supabase.auth.signOut()
+        window.location.href = '/login'
+    }
+
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-900">
-            <div className="bg-gray-800 p-8 rounded-lg shadow-xl w-full max-w-md text-center">
-                <div className="w-16 h-16 rounded-full bg-violet-500/10 flex items-center justify-center mx-auto mb-6">
-                    <svg className="w-8 h-8 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                    </svg>
+        <div className="min-h-screen flex items-center justify-center bg-slate-950 px-6">
+            {/* Background glows */}
+            <div className="fixed top-0 -left-1/4 w-1/2 h-1/2 bg-violet-600/5 blur-[120px] rounded-full pointer-events-none" />
+            <div className="fixed bottom-0 -right-1/4 w-1/2 h-1/2 bg-blue-500/5 blur-[120px] rounded-full pointer-events-none" />
+
+            <div className="relative z-10 w-full max-w-md text-center">
+                {/* Logo */}
+                <div className="flex items-center justify-center gap-3 mb-10">
+                    <Image
+                        src="/logo-icon.png"
+                        alt="Kinevo"
+                        width={32}
+                        height={32}
+                        className="rounded-lg"
+                    />
+                    <span className="text-xl font-bold text-white tracking-tight">Kinevo</span>
                 </div>
 
-                <h1 className="text-2xl font-bold text-white mb-2">{config.title}</h1>
-                <p className="text-gray-400 mb-2">Olá, {trainerName}.</p>
-                <p className="text-gray-400 mb-8">{config.description}</p>
-
-                {error && (
-                    <div className="bg-red-500/10 border border-red-500 text-red-500 px-4 py-3 rounded-lg text-sm mb-4">
-                        {error}
+                {/* Card */}
+                <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-8">
+                    {/* Icon */}
+                    <div className="w-16 h-16 rounded-2xl bg-slate-800 border border-slate-700 flex items-center justify-center mx-auto mb-6">
+                        {config.icon}
                     </div>
-                )}
 
+                    <h1 className="text-2xl font-bold text-white mb-2">{config.title}</h1>
+                    <p className="text-slate-400 mb-1">Olá, {trainerName}.</p>
+                    <p className="text-slate-400 mb-8">{config.description}</p>
+
+                    {error && (
+                        <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl text-sm mb-4">
+                            {error}
+                        </div>
+                    )}
+
+                    <button
+                        onClick={handleAction}
+                        disabled={loading}
+                        className="w-full py-3 px-4 bg-violet-600 hover:bg-violet-500 disabled:bg-violet-600/50 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all shadow-lg shadow-violet-500/20 hover:shadow-violet-500/30"
+                    >
+                        {loading ? 'Processando...' : config.buttonText}
+                    </button>
+
+                    {config.showPrice && (
+                        <p className="text-slate-500 text-sm mt-4">
+                            R$ 39,90/mês {state === 'no_subscription' ? 'após o período de teste' : ''}
+                        </p>
+                    )}
+                </div>
+
+                {/* Logout link */}
                 <button
-                    onClick={handleAction}
-                    disabled={loading}
-                    className="w-full py-3 px-4 bg-violet-600 hover:bg-violet-700 disabled:bg-violet-800 disabled:cursor-not-allowed text-white font-bold rounded-lg transition-colors"
+                    onClick={handleLogout}
+                    className="text-slate-500 hover:text-slate-400 text-sm mt-6 transition-colors"
                 >
-                    {loading ? 'Processando...' : config.buttonText}
+                    Sair da conta
                 </button>
-
-                {state === 'no_subscription' && (
-                    <p className="text-gray-500 text-sm mt-4">
-                        R$ 39,90/mês após o período de teste
-                    </p>
-                )}
             </div>
         </div>
     )
