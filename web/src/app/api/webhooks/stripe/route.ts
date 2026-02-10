@@ -43,22 +43,31 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
     }
 
-    switch (event.type) {
-        case 'checkout.session.completed':
-            await handleCheckoutCompleted(event.data.object as Stripe.Checkout.Session)
-            break
-        case 'invoice.payment_succeeded':
-            await handlePaymentSucceeded(event.data.object as Stripe.Invoice)
-            break
-        case 'invoice.payment_failed':
-            await handlePaymentFailed(event.data.object as Stripe.Invoice)
-            break
-        case 'customer.subscription.updated':
-            await handleSubscriptionUpdated(event.data.object as Stripe.Subscription)
-            break
-        case 'customer.subscription.deleted':
-            await handleSubscriptionDeleted(event.data.object as Stripe.Subscription)
-            break
+    console.log(`[webhook] Received event: ${event.type} (${event.id})`)
+
+    try {
+        switch (event.type) {
+            case 'checkout.session.completed':
+                await handleCheckoutCompleted(event.data.object as Stripe.Checkout.Session)
+                break
+            case 'invoice.payment_succeeded':
+                await handlePaymentSucceeded(event.data.object as Stripe.Invoice)
+                break
+            case 'invoice.payment_failed':
+                await handlePaymentFailed(event.data.object as Stripe.Invoice)
+                break
+            case 'customer.subscription.updated':
+                await handleSubscriptionUpdated(event.data.object as Stripe.Subscription)
+                break
+            case 'customer.subscription.deleted':
+                await handleSubscriptionDeleted(event.data.object as Stripe.Subscription)
+                break
+            default:
+                console.log(`[webhook] Unhandled event type: ${event.type}`)
+        }
+    } catch (handlerError) {
+        console.error(`[webhook] Error handling ${event.type}:`, handlerError)
+        return NextResponse.json({ error: 'Handler failed' }, { status: 500 })
     }
 
     return NextResponse.json({ received: true })
@@ -66,13 +75,20 @@ export async function POST(request: NextRequest) {
 
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     const trainerId = session.metadata?.trainer_id
-    if (!trainerId || session.mode !== 'subscription') return
+    console.log(`[webhook:checkout] trainer_id=${trainerId}, mode=${session.mode}, subscription=${session.subscription}`)
+
+    if (!trainerId || session.mode !== 'subscription') {
+        console.log('[webhook:checkout] Skipped — missing trainer_id or not subscription mode')
+        return
+    }
 
     const subscription = await stripe.subscriptions.retrieve(session.subscription as string, {
         expand: ['items.data'],
     })
 
-    await supabaseAdmin.from('subscriptions').upsert({
+    console.log(`[webhook:checkout] Stripe subscription status: ${subscription.status}, id: ${subscription.id}`)
+
+    const { error: upsertError } = await supabaseAdmin.from('subscriptions').upsert({
         trainer_id: trainerId,
         stripe_customer_id: session.customer as string,
         stripe_subscription_id: subscription.id,
@@ -80,6 +96,13 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
         current_period_end: getPeriodEnd(subscription),
         cancel_at_period_end: subscription.cancel_at_period_end,
     }, { onConflict: 'trainer_id' })
+
+    if (upsertError) {
+        console.error('[webhook:checkout] Supabase upsert error:', upsertError)
+        throw upsertError
+    }
+
+    console.log(`[webhook:checkout] Subscription upserted for trainer ${trainerId}`)
 }
 
 async function handlePaymentSucceeded(invoice: Stripe.Invoice) {

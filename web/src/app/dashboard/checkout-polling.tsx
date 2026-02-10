@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
@@ -10,66 +10,111 @@ interface CheckoutPollingProps {
 
 export function CheckoutPolling({ trainerName }: CheckoutPollingProps) {
     const router = useRouter()
-    const [timedOut, setTimedOut] = useState(false)
+    const [phase, setPhase] = useState<'polling' | 'syncing' | 'success' | 'failed'>('polling')
+
+    const checkSubscription = useCallback(async (): Promise<boolean> => {
+        const supabase = createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return false
+
+        const { data: trainer } = await supabase
+            .from('trainers')
+            .select('id')
+            .eq('auth_user_id', user.id)
+            .single()
+
+        if (!trainer) return false
+
+        const { data: subscription } = await supabase
+            .from('subscriptions')
+            .select('status')
+            .eq('trainer_id', trainer.id)
+            .single()
+
+        return subscription?.status === 'trialing' || subscription?.status === 'active'
+    }, [])
+
+    const syncFromStripe = useCallback(async (): Promise<boolean> => {
+        try {
+            const res = await fetch('/api/stripe/sync', { method: 'POST' })
+            const json = await res.json()
+            return json.status === 'trialing' || json.status === 'active'
+        } catch {
+            return false
+        }
+    }, [])
 
     useEffect(() => {
-        const supabase = createClient()
-        let attempts = 0
-        const maxAttempts = 5 // 5 attempts × 2s = 10s total
+        let cancelled = false
 
-        const interval = setInterval(async () => {
-            attempts++
+        async function run() {
+            // Phase 1: Poll DB for webhook-created subscription (16s, every 2s)
+            for (let i = 0; i < 8; i++) {
+                if (cancelled) return
+                await new Promise(r => setTimeout(r, 2000))
+                if (cancelled) return
 
-            const { data: { user } } = await supabase.auth.getUser()
-            if (!user) return
-
-            const { data: trainer } = await supabase
-                .from('trainers')
-                .select('id')
-                .eq('auth_user_id', user.id)
-                .single()
-
-            if (!trainer) return
-
-            const { data: subscription } = await supabase
-                .from('subscriptions')
-                .select('status')
-                .eq('trainer_id', trainer.id)
-                .single()
-
-            const isActive = subscription?.status === 'trialing' || subscription?.status === 'active'
-
-            if (isActive) {
-                clearInterval(interval)
-                // Navigate to dashboard without the checkout param
-                router.replace('/dashboard')
-                router.refresh()
-                return
+                const found = await checkSubscription()
+                if (found) {
+                    setPhase('success')
+                    router.replace('/dashboard')
+                    router.refresh()
+                    return
+                }
             }
 
-            if (attempts >= maxAttempts) {
-                clearInterval(interval)
-                setTimedOut(true)
+            if (cancelled) return
+
+            // Phase 2: Webhook didn't fire — sync directly from Stripe API
+            setPhase('syncing')
+
+            for (let i = 0; i < 3; i++) {
+                if (cancelled) return
+                const synced = await syncFromStripe()
+                if (synced) {
+                    setPhase('success')
+                    await new Promise(r => setTimeout(r, 500))
+                    router.replace('/dashboard')
+                    router.refresh()
+                    return
+                }
+                if (cancelled) return
+                await new Promise(r => setTimeout(r, 2000))
             }
-        }, 2000)
 
-        return () => clearInterval(interval)
-    }, [router])
+            if (!cancelled) {
+                setPhase('failed')
+            }
+        }
 
-    if (timedOut) {
+        run()
+        return () => { cancelled = true }
+    }, [router, checkSubscription, syncFromStripe])
+
+    const handleRetry = async () => {
+        setPhase('syncing')
+        const synced = await syncFromStripe()
+        if (synced) {
+            setPhase('success')
+            await new Promise(r => setTimeout(r, 500))
+            router.replace('/dashboard')
+            router.refresh()
+        } else {
+            setPhase('failed')
+        }
+    }
+
+    if (phase === 'failed') {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-900">
-                <div className="bg-gray-800 p-8 rounded-lg shadow-xl w-full max-w-md text-center">
+            <div className="min-h-screen flex items-center justify-center bg-slate-950">
+                <div className="bg-slate-900/50 border border-slate-800 p-8 rounded-2xl shadow-xl w-full max-w-md text-center">
                     <h2 className="text-xl font-bold text-white mb-4">Processamento em andamento</h2>
-                    <p className="text-gray-400 mb-6">
-                        Seu pagamento está sendo processado. Isso pode levar alguns instantes.
+                    <p className="text-slate-400 mb-6">
+                        Seu pagamento foi recebido mas a ativação está demorando mais que o normal. Tente novamente ou aguarde alguns minutos.
                     </p>
                     <button
-                        onClick={() => {
-                            setTimedOut(false)
-                            window.location.href = '/dashboard?checkout=success'
-                        }}
-                        className="w-full py-3 px-4 bg-violet-600 hover:bg-violet-700 text-white font-medium rounded-lg transition-colors"
+                        onClick={handleRetry}
+                        className="w-full py-3 px-4 bg-violet-600 hover:bg-violet-500 text-white font-semibold rounded-xl transition-all shadow-lg shadow-violet-500/20"
                     >
                         Tentar novamente
                     </button>
@@ -79,11 +124,13 @@ export function CheckoutPolling({ trainerName }: CheckoutPollingProps) {
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-900">
+        <div className="min-h-screen flex items-center justify-center bg-slate-950">
             <div className="text-center">
                 <div className="w-12 h-12 border-4 border-violet-500 border-t-transparent rounded-full animate-spin mx-auto mb-6" />
-                <h2 className="text-xl font-bold text-white mb-2">Finalizando configuração da conta...</h2>
-                <p className="text-gray-400">Olá, {trainerName}. Estamos ativando sua assinatura.</p>
+                <h2 className="text-xl font-bold text-white mb-2">
+                    {phase === 'syncing' ? 'Sincronizando com o Stripe...' : 'Finalizando configuração da conta...'}
+                </h2>
+                <p className="text-slate-400">Olá, {trainerName}. Estamos ativando sua assinatura.</p>
             </div>
         </div>
     )
