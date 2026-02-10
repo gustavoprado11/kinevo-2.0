@@ -14,7 +14,7 @@ export const Navbar = () => {
         >
             <Link href="/" className="flex items-center gap-2">
                 <Image
-                    src="/logo-icon.jpg"
+                    src="/logo-icon.png"
                     alt="Kinevo Logo"
                     width={32}
                     height={32}

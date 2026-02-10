@@ -68,7 +68,7 @@ export function Sidebar() {
             <div className="h-16 flex items-center px-6 border-b border-gray-800/50">
                 <Link href="/dashboard" className="flex items-center gap-3">
                     <Image
-                        src="/logo-icon.jpg"
+                        src="/logo-icon.png"
                         alt="Kinevo Logo"
                         width={32}
                         height={32}

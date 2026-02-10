@@ -38,7 +38,7 @@ export const Footer = () => {
                     <div className="col-span-1 md:col-span-2">
                         <Link href="/" className="flex items-center gap-2 mb-6 text-white font-bold text-2xl tracking-tighter">
                             <Image
-                                src="/logo-icon.jpg"
+                                src="/logo-icon.png"
                                 alt="Kinevo Logo"
                                 width={40}
                                 height={40}
