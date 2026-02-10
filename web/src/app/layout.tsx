@@ -16,12 +16,8 @@ export const metadata: Metadata = {
   title: "Kinevo - Sua evolução, guiada.",
   description: "Plataforma de gestão de treinos e evolução de atletas.",
   icons: {
-    icon: [
-      { url: "/favicon.ico", type: "image/x-icon" },
-      { url: "/logo-icon.png", type: "image/png" },
-    ],
-    shortcut: "/favicon.ico",
-    apple: "/logo-icon.png",
+    icon: "/icon.png",
+    apple: "/icon.png",
   },
 };
 
