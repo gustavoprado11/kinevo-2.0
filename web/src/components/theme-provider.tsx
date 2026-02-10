@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import { ThemeProvider as NextThemesProvider } from 'next-themes'
-import type { ReactNode } from 'react'
+import type { ComponentType, ReactNode } from 'react'
 
 const LOGGED_AREA_PREFIXES = ['/dashboard', '/students', '/programs', '/exercises', '/settings']
 
@@ -17,9 +17,10 @@ type AppThemeProviderProps = {
 export function ThemeProvider({ children }: AppThemeProviderProps) {
     const pathname = usePathname()
     const forceDark = !isLoggedArea(pathname)
+    const Provider = NextThemesProvider as ComponentType<any>
 
     return (
-        <NextThemesProvider
+        <Provider
             attribute="class"
             defaultTheme="system"
             enableSystem
@@ -28,6 +29,6 @@ export function ThemeProvider({ children }: AppThemeProviderProps) {
             forcedTheme={forceDark ? 'dark' : undefined}
         >
             {children}
-        </NextThemesProvider>
+        </Provider>
     )
 }
