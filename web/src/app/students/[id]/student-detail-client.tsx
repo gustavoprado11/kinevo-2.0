@@ -36,6 +36,11 @@ interface AssignedProgram {
     started_at: string | null
     scheduled_start_date?: string | null
     created_at: string
+    assigned_workouts?: Array<{
+        id: string
+        name: string
+        scheduled_days: number[]
+    }>
 }
 
 interface CompletedProgram {
@@ -71,6 +76,7 @@ interface StudentDetailClientProps {
     historySummary: HistorySummary
     completedPrograms: CompletedProgram[]
     recentSessions: any[]
+    sessionsLast7Days: any[]
 }
 
 export function StudentDetailClient({
@@ -79,8 +85,9 @@ export function StudentDetailClient({
     activeProgram,
     scheduledPrograms,
     historySummary,
-    completedPrograms,
-    recentSessions
+    recentSessions,
+    sessionsLast7Days = [],
+    completedPrograms
 }: StudentDetailClientProps) {
     console.log('StudentDetailClient Rendered. Scheduled:', scheduledPrograms) // DEBUG LOG
     const router = useRouter()
@@ -195,7 +202,7 @@ export function StudentDetailClient({
             trainerAvatarUrl={trainer.avatar_url}
             trainerTheme={trainer.theme}
         >
-            <div className="space-y-6">
+            <div className="min-h-screen bg-surface-primary -m-8 p-8 space-y-6">
                 {/* Student Header */}
                 <StudentHeader
                     student={student}
@@ -204,13 +211,14 @@ export function StudentDetailClient({
                 />
 
                 {/* Main Content Grid - New Layout */}
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
                     {/* Left Column: Active Program Dashboard */}
                     <div>
                         <ActiveProgramDashboard
                             program={activeProgram}
                             summary={historySummary}
                             recentSessions={recentSessions}
+                            sessionsLast7Days={sessionsLast7Days}
                             onAssignProgram={handleAssignProgram}
                             onEditProgram={handleEditProgram}
                             onCompleteProgram={handleCompleteProgram}
@@ -220,57 +228,54 @@ export function StudentDetailClient({
 
                     {/* Right Column: Queue & History (Span 1) */}
                     <div className="space-y-6 lg:col-span-1">
-                        {/* Scheduled Programs Section */}
-                        <div className="bg-card rounded-xl border border-border p-6">
-                            <div className="flex items-center justify-between mb-6">
+                        {/* Scheduled Programs Section - Platter Style */}
+                        <div className="bg-glass-bg backdrop-blur-md rounded-2xl border border-k-border-primary p-8">
+                            <div className="flex items-center justify-between mb-8">
                                 <div>
-                                    <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                                    <h3 className="text-xl font-black text-white tracking-tight flex items-center gap-2">
                                         Próximos Programas
-                                        <span className="px-2 py-0.5 rounded-full bg-muted/50 text-xs text-muted-foreground font-normal border border-border">
+                                        <span className="px-2 py-0.5 rounded bg-glass-bg text-[10px] text-k-text-tertiary font-bold uppercase tracking-widest border border-k-border-subtle">
                                             Fila
                                         </span>
                                     </h3>
-                                    <p className="text-sm text-muted-foreground mt-0.5">Programas agendados</p>
+                                    <p className="text-sm text-k-text-tertiary mt-1">Programas agendados para o aluno.</p>
                                 </div>
                                 {/* Header Actions (Visible when list is NOT empty) */}
                                 {scheduledPrograms && scheduledPrograms.length > 0 && (
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-3">
                                         <button
                                             onClick={handleCreateScheduled}
-                                            className="px-3 py-1.5 text-sm text-violet-400 hover:text-violet-300 hover:bg-violet-500/10 rounded-lg transition-colors flex items-center gap-1.5"
+                                            className="p-2 text-k-text-tertiary hover:text-k-text-primary hover:bg-glass-bg rounded-xl transition-all border border-transparent hover:border-k-border-primary"
                                         >
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                                             </svg>
-                                            Novo
                                         </button>
                                         <button
                                             onClick={handleAssignScheduled}
-                                            className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg transition-colors flex items-center gap-1.5"
+                                            className="p-2 text-k-text-tertiary hover:text-k-text-primary hover:bg-glass-bg rounded-xl transition-all border border-transparent hover:border-k-border-primary"
                                         >
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                                             </svg>
-                                            Biblioteca
                                         </button>
                                     </div>
                                 )}
                             </div>
 
                             {!scheduledPrograms || scheduledPrograms.length === 0 ? (
-                                <div className="text-center py-8">
-                                    <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mx-auto mb-4">
-                                        <svg className="w-8 h-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div className="text-center py-10 border border-dashed border-k-border-primary rounded-2xl">
+                                    <div className="w-16 h-16 rounded-full bg-glass-bg flex items-center justify-center mx-auto mb-6">
+                                        <svg className="w-8 h-8 text-k-text-quaternary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                         </svg>
                                     </div>
-                                    <p className="text-muted-foreground mb-1">Nenhum programa na fila</p>
-                                    <p className="text-muted-foreground text-sm mb-6">Agende programas para o futuro</p>
+                                    <p className="text-k-text-tertiary font-medium mb-8">Nenhum programa agendado na fila.</p>
 
-                                    <div className="flex items-center justify-center gap-3">
+                                    <div className="flex items-center justify-center gap-4">
                                         <button
                                             onClick={handleCreateScheduled}
-                                            className="px-5 py-2.5 bg-gradient-to-r from-violet-600 to-blue-600 hover:from-violet-500 hover:to-blue-500 text-white text-sm font-medium rounded-lg transition-all shadow-lg shadow-violet-500/20 inline-flex items-center gap-2"
+                                            className="px-6 py-3 bg-violet-600 hover:bg-violet-500 text-white text-[11px] font-black uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-violet-600/20 flex items-center gap-2"
                                         >
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -279,7 +284,7 @@ export function StudentDetailClient({
                                         </button>
                                         <button
                                             onClick={handleAssignScheduled}
-                                            className="px-5 py-2.5 bg-secondary hover:bg-secondary/80 text-secondary-foreground text-sm font-medium rounded-lg transition-all inline-flex items-center gap-2"
+                                            className="px-6 py-3 bg-transparent hover:bg-glass-bg text-k-text-secondary hover:text-k-text-primary text-[11px] font-black uppercase tracking-widest rounded-xl transition-all border border-k-border-primary flex items-center gap-2"
                                         >
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
@@ -289,65 +294,54 @@ export function StudentDetailClient({
                                     </div>
                                 </div>
                             ) : (
-                                <div className="space-y-3">
+                                <div className="space-y-4">
                                     {scheduledPrograms.map(program => (
-                                        <div key={program.id} className="bg-card rounded-xl p-4 border border-border hover:border-violet-500/30 transition-all group">
-                                            <div className="flex justify-between items-start mb-3">
-                                                <div>
-                                                    <h4 className="font-medium text-foreground text-base group-hover:text-violet-300 transition-colors">{program.name}</h4>
-                                                    <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
+                                        <div key={program.id} className="bg-glass-bg rounded-2xl p-5 border border-k-border-subtle hover:border-violet-500/30 transition-all group relative overflow-hidden">
+                                            <div className="flex justify-between items-start">
+                                                <div className="relative z-10">
+                                                    <h4 className="font-black text-white text-lg tracking-tight group-hover:text-violet-300 transition-colors">{program.name}</h4>
+                                                    <div className="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-k-text-tertiary mt-2">
                                                         {program.duration_weeks && (
-                                                            <span className="flex items-center gap-1">
-                                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                            <span className="flex items-center gap-1.5">
+                                                                <svg className="w-3.5 h-3.5 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                                                 </svg>
-                                                                {program.duration_weeks} sem
+                                                                {program.duration_weeks} semanas
                                                             </span>
                                                         )}
                                                         {program.scheduled_start_date && (
-                                                            <span className="flex items-center gap-1 text-purple-400">
-                                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                            <span className="flex items-center gap-1.5 text-violet-400">
+                                                                <svg className="w-3.5 h-3.5 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                                                 </svg>
-                                                                Início: {new Date(program.scheduled_start_date).toLocaleDateString('pt-BR')}
+                                                                {new Date(program.scheduled_start_date).toLocaleDateString('pt-BR')}
                                                             </span>
                                                         )}
                                                     </div>
                                                 </div>
 
-                                                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0 relative z-10">
                                                     <button
                                                         onClick={() => handleActivateScheduled(program.id)}
                                                         disabled={!!processingId}
-                                                        title="Ativar Agora"
-                                                        className="p-2 text-violet-400 hover:text-foreground hover:bg-violet-600 rounded-lg transition-colors"
+                                                        className="p-2 text-violet-400 hover:text-white hover:bg-violet-600 rounded-xl transition-all"
                                                     >
-                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                                         </svg>
                                                     </button>
                                                     <button
                                                         onClick={() => handleEditScheduled(program.id)}
-                                                        title="Editar"
-                                                        className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                                                        className="p-2 text-k-text-tertiary hover:text-k-text-primary hover:bg-glass-bg-active rounded-xl transition-all"
                                                     >
-                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                        </svg>
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleDeleteScheduled(program.id)}
-                                                        disabled={!!processingId}
-                                                        title="Excluir da fila"
-                                                        className="p-2 text-red-400 hover:text-foreground hover:bg-red-600 rounded-lg transition-colors"
-                                                    >
-                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                                         </svg>
                                                     </button>
                                                 </div>
                                             </div>
+                                            {/* Subtle gradient background on hover */}
+                                            <div className="absolute inset-0 bg-gradient-to-br from-violet-600/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                                         </div>
                                     ))}
                                 </div>

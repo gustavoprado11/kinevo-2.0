@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AppLayout } from '@/components/layout'
 import { StudentModal } from '@/components/student-modal'
+import { Users, UserCheck, Activity, Plus, ChevronRight } from 'lucide-react'
+import { DailyActivityFeed } from '@/components/dashboard/daily-activity-feed'
 
 interface Trainer {
     id: string
@@ -21,8 +23,6 @@ interface Student {
     status: 'active' | 'inactive' | 'pending'
     created_at: string
 }
-
-import { DailyActivityFeed } from '@/components/dashboard/daily-activity-feed'
 
 interface DashboardClientProps {
     trainer: Trainer
@@ -45,29 +45,17 @@ export function DashboardClient({ trainer, initialStudents, dailyActivity }: Das
         {
             label: 'Total de Alunos',
             value: students.length,
-            icon: (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-            ),
+            icon: <Users size={24} strokeWidth={1.5} />,
         },
         {
             label: 'Alunos Ativos',
             value: students.filter(s => s.status === 'active').length,
-            icon: (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-            ),
+            icon: <UserCheck size={24} strokeWidth={1.5} />,
         },
         {
             label: 'Atividade Hoje',
             value: dailyActivity.length,
-            icon: (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-            ),
+            icon: <Activity size={24} strokeWidth={1.5} />,
         },
     ]
 
@@ -78,19 +66,13 @@ export function DashboardClient({ trainer, initialStudents, dailyActivity }: Das
             trainerAvatarUrl={trainer.avatar_url}
             trainerTheme={trainer.theme}
         >
+
             {/* Page Header */}
             <div className="mb-8 flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
+                    <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-br from-[var(--gradient-text-from)] to-[var(--gradient-text-to)] bg-clip-text text-transparent">Dashboard</h1>
                     <p className="mt-1 text-muted-foreground">Visão geral do seu dia</p>
                 </div>
-                {/* Secondary Action: Manage Students */}
-                <button
-                    onClick={() => router.push('/students')} // Assuming there is a /students page, or we can make a dedicated one later if needed. For now let's keep the modal or rethink navigation.
-                    className="rounded-lg px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                >
-                    Gerenciar Alunos
-                </button>
             </div>
 
             {/* Stats Grid */}
@@ -98,14 +80,14 @@ export function DashboardClient({ trainer, initialStudents, dailyActivity }: Das
                 {stats.map((stat, i) => (
                     <div
                         key={i}
-                        className="rounded-xl border border-border bg-card p-5 shadow-soft transition-all hover:border-violet-200 hover:shadow-md dark:hover:border-border/80"
+                        className="rounded-2xl border border-k-border-primary bg-surface-card p-6 shadow-xl transition-all hover:border-k-border-primary/200"
                     >
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="mb-1 text-sm text-muted-foreground">{stat.label}</p>
-                                <p className="text-3xl font-bold text-card-foreground">{stat.value}</p>
+                                <p className="mb-2 text-[11px] uppercase tracking-widest font-semibold text-muted-foreground/60">{stat.label}</p>
+                                <p className="text-4xl font-extrabold tracking-tighter text-foreground">{stat.value}</p>
                             </div>
-                            <div className="w-12 h-12 rounded-xl bg-violet-500/10 flex items-center justify-center text-violet-400">
+                            <div className="text-primary">
                                 {stat.icon}
                             </div>
                         </div>
@@ -119,46 +101,24 @@ export function DashboardClient({ trainer, initialStudents, dailyActivity }: Das
                     <DailyActivityFeed activities={dailyActivity} />
                 </div>
 
-                {/* Right Column: Quick Actions / Students Shortcut */}
+                {/* Right Column: Quick Actions */}
                 <div className="space-y-6">
-                    <div className="rounded-xl border border-border bg-card p-5 shadow-soft">
-                        <div className="mb-4 flex items-center justify-between">
-                            <h3 className="text-lg font-semibold text-card-foreground">Acesso Rápido</h3>
-                            <span className="rounded-full border border-violet-500/20 bg-violet-500/10 px-2.5 py-1 text-[11px] font-medium text-violet-400">
-                                Ação
-                            </span>
+                    <button
+                        onClick={() => setIsModalOpen(true)}
+                        className="group w-full flex items-center gap-4 rounded-2xl border border-transparent bg-glass-bg p-4 backdrop-blur-md transition-all duration-200 hover:bg-glass-bg-active"
+                    >
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-violet-600 text-white transition-transform group-hover:scale-110">
+                            <Plus size={24} strokeWidth={2} />
                         </div>
-                        <div className="space-y-3">
-                            <button
-                                onClick={() => setIsModalOpen(true)}
-                                className="group relative flex w-full items-center gap-3 overflow-hidden rounded-xl border border-border bg-gradient-to-r from-background to-background/80 px-4 py-3 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-violet-500/30 hover:shadow-md hover:shadow-violet-500/10"
-                            >
-                                <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-violet-500/70 to-blue-500/70 opacity-70 transition-opacity group-hover:opacity-100" />
-                                <div className="relative flex h-10 w-10 items-center justify-center rounded-lg border border-violet-500/20 bg-violet-500/10 text-violet-400 transition-all group-hover:scale-105 group-hover:bg-violet-500/20">
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                    </svg>
-                                </div>
-                                <div className="relative flex-1">
-                                    <p className="font-medium text-foreground">Novo Aluno</p>
-                                    <p className="text-xs text-muted-foreground">Cadastrar aluno</p>
-                                </div>
-                                <svg
-                                    className="relative h-4 w-4 text-muted-foreground transition-all group-hover:translate-x-0.5 group-hover:text-violet-400"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                </svg>
-                                <div className="pointer-events-none absolute inset-0 opacity-0 transition-opacity group-hover:opacity-100">
-                                    <div className="absolute -right-16 top-1/2 h-24 w-24 -translate-y-1/2 rounded-full bg-violet-500/10 blur-2xl" />
-                                </div>
-                            </button>
+                        <div className="flex-1 text-left">
+                            <h3 className="font-semibold text-foreground">Novo Aluno</h3>
+                            <p className="text-sm text-muted-foreground">Cadastrar um novo aluno</p>
+                        </div>
+                        <ChevronRight size={20} className="text-muted-foreground transition-transform group-hover:translate-x-1" strokeWidth={1.5} />
+                    </button>
 
-                            {/* We can add 'Create Program' shortcut later */}
-                        </div>
-                    </div>
+                    {/* Placeholder for future actions to keep the layout balanced if needed, 
+                        or we can leave it with just the main action for now as requested. */}
                 </div>
             </div>
 

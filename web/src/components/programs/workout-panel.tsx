@@ -27,7 +27,6 @@ interface WorkoutPanelProps {
     onUpdateName: (name: string) => void
     onAddExercise: () => void
     onAddNote: () => void
-    onAddExerciseToSuperset: (parentId: string) => void
     onUpdateItem: (itemId: string, updates: Partial<WorkoutItem>) => void
     onDeleteItem: (itemId: string) => void
     onMoveItem: (itemId: string, direction: 'up' | 'down') => void
@@ -102,7 +101,6 @@ export function WorkoutPanel({
     onUpdateName,
     onAddExercise,
     onAddNote,
-    onAddExerciseToSuperset,
     onUpdateItem,
     onDeleteItem,
     onMoveItem,
@@ -164,9 +162,9 @@ export function WorkoutPanel({
     }
 
     return (
-        <div className="bg-card rounded-xl border border-border">
+        <div className="space-y-6">
             {/* Workout Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+            <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     {isEditingName ? (
                         <input
@@ -176,15 +174,15 @@ export function WorkoutPanel({
                             onBlur={handleNameSave}
                             onKeyDown={(e) => e.key === 'Enter' && handleNameSave()}
                             autoFocus
-                            className="px-3 py-1.5 bg-background dark:bg-slate-950 border border-border dark:border-slate-800 rounded-lg text-foreground dark:text-slate-100 text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                            className="px-0 py-1 bg-transparent border-0 border-b border-violet-500 rounded-none text-k-text-primary text-xl font-bold focus:outline-none focus:ring-0 placeholder:text-k-text-quaternary w-auto min-w-[200px]"
                         />
                     ) : (
                         <button
                             onClick={() => { setTempName(workout.name); setIsEditingName(true) }}
-                            className="text-lg font-semibold text-foreground dark:text-slate-100 hover:text-violet-300 dark:hover:text-violet-400 transition-colors flex items-center gap-2"
+                            className="text-xl font-bold text-k-text-primary hover:text-violet-400 transition-colors flex items-center gap-2 group"
                         >
                             {workout.name}
-                            <svg className="w-4 h-4 text-muted-foreground dark:text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-4 h-4 text-k-text-quaternary group-hover:text-violet-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                             </svg>
                         </button>
@@ -193,7 +191,7 @@ export function WorkoutPanel({
 
                 <div className="flex items-center gap-4">
                     {/* Day Selector */}
-                    <div className="flex items-center gap-1 bg-card p-1 rounded-lg border border-border/70">
+                    <div className="flex items-center gap-1 bg-surface-card p-1 rounded-lg border border-k-border-subtle">
                         {[
                             { key: 'sun', label: 'D' },
                             { key: 'mon', label: 'S' },
@@ -207,17 +205,17 @@ export function WorkoutPanel({
                             const isOccupied = occupiedDays.includes(day.key)
 
                             // Determine button styling based on state
-                            let buttonClass = "w-6 h-6 flex items-center justify-center rounded text-xs font-bold transition-all border "
+                            let buttonClass = "w-7 h-7 flex items-center justify-center rounded-md text-xs font-bold transition-all border "
 
                             if (isSelected) {
-                                // Active (selected for this workout) - Strong Purple
-                                buttonClass += "bg-violet-600 dark:bg-violet-500 text-white shadow-sm border-violet-500"
+                                // Active (selected for this workout)
+                                buttonClass += "bg-violet-600 text-white border-violet-500 shadow-sm"
                             } else if (isOccupied) {
-                                // Occupied (by another workout) - Light Purple / Indication
-                                buttonClass += "bg-violet-900/40 dark:bg-violet-900/60 text-violet-300 dark:text-violet-200 border-violet-500/30 dark:border-violet-500/40 hover:bg-violet-900/60"
+                                // Occupied (by another workout)
+                                buttonClass += "bg-glass-bg text-k-text-quaternary border-transparent cursor-not-allowed"
                             } else {
-                                // Free - Gray
-                                buttonClass += "text-muted-foreground dark:text-slate-500 border-transparent hover:text-foreground/80 dark:hover:text-slate-300 hover:bg-muted dark:hover:bg-slate-800"
+                                // Free
+                                buttonClass += "text-k-text-tertiary border-transparent hover:bg-glass-bg-active hover:text-k-text-primary"
                             }
 
                             return (
@@ -239,23 +237,23 @@ export function WorkoutPanel({
                         })}
                     </div>
 
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground border-l border-border pl-4">
+                    <div className="flex items-center gap-2 text-sm text-k-text-quaternary border-l border-k-border-primary pl-4 h-8">
                         <span>{workout.items.length} itens</span>
                     </div>
                 </div>
             </div>
 
             {/* Items with connectors */}
-            <div className="p-5">
+            <div className="">
                 {workout.items.length === 0 ? (
-                    <div className="text-center py-8 border-2 border-dashed border-border dark:border-slate-800 rounded-xl bg-muted/20 dark:bg-slate-900/20">
-                        <p className="text-muted-foreground mb-4">Adicione exercícios ao treino</p>
+                    <div className="text-center py-12 border border-dashed border-k-border-primary rounded-2xl bg-glass-bg">
+                        <p className="text-k-text-tertiary mb-4">Arraste exercícios da biblioteca ou adicione uma nota</p>
                         <div className="flex items-center justify-center gap-2">
                             <button
                                 onClick={onAddNote}
-                                className="px-3 py-2 bg-secondary hover:bg-secondary/80 text-foreground text-sm font-medium rounded-lg transition-colors"
+                                className="px-4 py-2 bg-glass-bg hover:bg-glass-bg-active border border-k-border-subtle text-k-text-primary text-sm font-medium rounded-lg transition-colors"
                             >
-                                + Nota
+                                + Adicionar Nota
                             </button>
                         </div>
                     </div>
@@ -269,9 +267,9 @@ export function WorkoutPanel({
                             items={workout.items.map(i => i.id)}
                             strategy={verticalListSortingStrategy}
                         >
-                            <div className="space-y-0">
+                            <div className="space-y-4">
                                 {workout.items.map((item, index) => (
-                                    <div key={item.id}>
+                                    <div key={item.id} className="relative">
                                         {/* Sortable Workout Item */}
                                         <SortableWorkoutItem
                                             item={item}
@@ -283,7 +281,6 @@ export function WorkoutPanel({
                                             onDelete={() => onDeleteItem(item.id)}
                                             onMoveUp={() => onMoveItem(item.id, 'up')}
                                             onMoveDown={() => onMoveItem(item.id, 'down')}
-                                            onAddExerciseToSuperset={() => onAddExerciseToSuperset(item.id)}
                                             onUpdateChild={(childId, updates) => onUpdateItem(childId, updates)}
                                             onDeleteChild={(childId) => onDeleteItem(childId)}
                                             onMoveChild={(childId, direction) => onMoveItem(childId, direction)}
@@ -295,25 +292,27 @@ export function WorkoutPanel({
 
                                         {/* Connector between items (if there's a next item) */}
                                         {index < workout.items.length - 1 && (
-                                            <SupersetConnector
-                                                currentItem={item}
-                                                nextItem={workout.items[index + 1]}
-                                                onConnect={() => handleConnect(index)}
-                                            />
+                                            <div className="absolute left-0 right-0 -bottom-4 z-10 flex justify-center">
+                                                <SupersetConnector
+                                                    currentItem={item}
+                                                    nextItem={workout.items[index + 1]}
+                                                    onConnect={() => handleConnect(index)}
+                                                />
+                                            </div>
                                         )}
                                     </div>
                                 ))}
 
-                                {/* Add buttons */}
-                                <div className="flex items-center gap-2 pt-4 mt-2">
+                                {/* Add buttons footer */}
+                                <div className="flex justify-center pt-6">
                                     <button
                                         onClick={onAddNote}
-                                        className="px-3 py-2 text-sm text-muted-foreground hover:bg-muted/50 rounded-lg transition-colors flex items-center gap-1.5"
+                                        className="px-4 py-2 text-sm text-k-text-tertiary hover:text-k-text-primary hover:bg-glass-bg rounded-full transition-colors flex items-center gap-2 border border-transparent hover:border-k-border-primary"
                                     >
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                         </svg>
-                                        Nota
+                                        Adicionar Nota
                                     </button>
                                 </div>
                             </div>

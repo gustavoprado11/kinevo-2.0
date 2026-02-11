@@ -1,61 +1,42 @@
 'use client'
 
+
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
+import { LayoutDashboard, Users, Dumbbell, Calendar, Settings } from 'lucide-react'
 
 interface NavItem {
     name: string
     href: string
-    icon: React.ReactNode
+    icon: React.ElementType
 }
 
 const navigation: NavItem[] = [
     {
         name: 'Dashboard',
         href: '/dashboard',
-        icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-            </svg>
-        ),
+        icon: LayoutDashboard,
     },
     {
         name: 'Alunos',
         href: '/students',
-        icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-            </svg>
-        ),
+        icon: Users,
     },
     {
         name: 'Exercícios',
         href: '/exercises',
-        icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-            </svg>
-        ),
+        icon: Dumbbell,
     },
     {
         name: 'Programas',
         href: '/programs',
-        icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-            </svg>
-        ),
+        icon: Calendar,
     },
     {
         name: 'Configurações',
         href: '/settings',
-        icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-        ),
+        icon: Settings,
     },
 ]
 
@@ -63,38 +44,48 @@ export function Sidebar() {
     const pathname = usePathname()
 
     return (
-        <aside className="fixed inset-y-0 left-0 z-30 flex w-60 flex-col border-r border-border bg-card">
-            {/* Logo */}
-            <div className="h-16 flex items-center px-6 border-b border-border">
-                <Link href="/dashboard" className="flex items-center gap-3">
-                    <Image
-                        src="/logo-icon.png"
-                        alt="Kinevo Logo"
-                        width={32}
-                        height={32}
-                        className="rounded-lg"
-                    />
-                    <span className="text-xl font-semibold text-foreground tracking-tight">Kinevo</span>
+        <aside className="fixed inset-y-0 left-0 z-30 flex w-64 flex-col border-r border-k-border-subtle bg-surface-sidebar/60 backdrop-blur-2xl transition-all duration-300">
+            {/* Header / Logo */}
+            <div className="px-6 pt-8 pb-8 flex items-center">
+                <Link href="/dashboard" className="flex items-center gap-3 group">
+                    <div className="relative flex items-center justify-center w-8 h-8 rounded-lg bg-glass-bg-active group-hover:bg-glass-bg-hover transition-colors">
+                        <Image
+                            src="/logo-icon.png"
+                            alt="Kinevo Logo"
+                            width={20}
+                            height={20}
+                            className="opacity-90"
+                        />
+                    </div>
+                    <span className="text-lg font-semibold text-foreground/90 tracking-tight">Kinevo</span>
                 </Link>
             </div>
 
             {/* Navigation */}
-            <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+            <nav className="flex-1 px-4 space-y-1 overflow-y-auto">
                 {navigation.map((item) => {
                     const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+                    const Icon = item.icon
                     return (
                         <Link
                             key={item.name}
                             href={item.href}
                             className={`
-                flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150
-                ${isActive
-                                    ? 'bg-gradient-to-r from-violet-600/20 to-blue-600/20 text-foreground border border-violet-500/30'
-                                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                                relative flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium tracking-tight transition-all duration-200 ease-out group
+                                ${isActive
+                                    ? 'bg-glass-bg-active text-foreground'
+                                    : 'text-muted-foreground/60 hover:text-foreground hover:bg-glass-bg'
                                 }
-              `}
+                            `}
                         >
-                            <span className={isActive ? 'text-violet-400' : ''}>{item.icon}</span>
+                            {isActive && (
+                                <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] bg-violet-500 rounded-r-full shadow-sm shadow-purple-500/50" />
+                            )}
+                            <Icon
+                                size={18}
+                                strokeWidth={1.5}
+                                className={`transition-colors duration-200 ${isActive ? 'text-violet-400' : 'text-muted-foreground/60 group-hover:text-foreground'}`}
+                            />
                             {item.name}
                         </Link>
                     )
@@ -102,8 +93,8 @@ export function Sidebar() {
             </nav>
 
             {/* Footer */}
-            <div className="px-3 py-4 border-t border-border">
-                <div className="px-3 py-2 text-xs text-muted-foreground">
+            <div className="px-6 py-6 border-t border-k-border-subtle">
+                <div className="px-2 py-1 text-xs font-medium text-muted-foreground/40 tracking-wider uppercase">
                     Kinevo 2.0
                 </div>
             </div>

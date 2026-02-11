@@ -18,7 +18,6 @@ interface SortableWorkoutItemProps {
     onMoveUp: () => void
     onMoveDown: () => void
     // Superset props
-    onAddExerciseToSuperset?: () => void
     onUpdateChild?: (childId: string, updates: Partial<WorkoutItem>) => void
     onDeleteChild?: (childId: string) => void
     onMoveChild?: (childId: string, direction: 'up' | 'down') => void

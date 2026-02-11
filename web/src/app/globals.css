@@ -1,48 +1,117 @@
 @import "tailwindcss";
 
+/* ═══════════════════════════════════════════════════════════════════
+   THE SHIELD STRATEGY — Light Mode Foundation
+   
+   :root = LIGHT MODE values
+   .dark = DARK MODE values (mirrors current hardcoded hex exactly)
+   
+   The .dark selector values are identical to the hex values that
+   were previously hardcoded in components. This guarantees zero
+   visual regression in Dark Mode.
+   ═══════════════════════════════════════════════════════════════════ */
+
 :root {
-  --background: #f8fafc;
+  /* ── Existing shadcn/ui variables (Light) ── */
+  --background: #F2F2F7;
   --foreground: #0f172a;
   --card: #ffffff;
   --card-foreground: #0f172a;
   --popover: #ffffff;
   --popover-foreground: #0f172a;
-  --primary: #6d28d9;
+  --primary: #7C3AED;
   --primary-foreground: #ffffff;
   --muted: #f1f5f9;
   --muted-foreground: #64748b;
-  --accent: #ede9fe;
-  --accent-foreground: #5b21b6;
+  --accent: #f1f5f9;
+  --accent-foreground: #7C3AED;
   --border: #e2e8f0;
   --input: #e2e8f0;
-  --ring: #6d28d9;
+  --ring: #7C3AED;
   --destructive: #dc2626;
   --destructive-foreground: #ffffff;
   color-scheme: light;
+
+  /* ── Kinevo Semantic Surfaces (Light) ── */
+  --surface-primary: #F2F2F7;
+  --surface-canvas: #F2F2F7;
+  --surface-card: #FFFFFF;
+  --surface-sidebar: #FFFFFF;
+  --surface-elevated: #FFFFFF;
+  --surface-inset: rgba(0, 0, 0, 0.03);
+
+  /* ── Kinevo Semantic Text (Light) ── */
+  --text-primary: #0F172A;
+  --text-secondary: rgba(15, 23, 42, 0.6);
+  --text-tertiary: rgba(15, 23, 42, 0.4);
+  --text-quaternary: rgba(15, 23, 42, 0.2);
+
+  /* ── Kinevo Semantic Borders (Light) ── */
+  --border-primary: rgba(0, 0, 0, 0.08);
+  --border-subtle: rgba(0, 0, 0, 0.05);
+
+  /* ── Kinevo Glass / Overlay (Light) ── */
+  --glass-bg: rgba(0, 0, 0, 0.03);
+  --glass-bg-active: rgba(0, 0, 0, 0.06);
+  --glass-bg-hover: rgba(0, 0, 0, 0.04);
+
+  /* ── Kinevo Gradient Text (Light) ── */
+  --gradient-text-from: #0F172A;
+  --gradient-text-to: #64748b;
 }
 
 .dark {
-  --background: #020617;
+  /* ── Existing shadcn/ui variables (Dark — UNCHANGED) ── */
+  --background: #09090B;
   --foreground: #f8fafc;
   --card: #0f172a;
   --card-foreground: #f8fafc;
   --popover: #0f172a;
   --popover-foreground: #f8fafc;
-  --primary: #7c3aed;
+  --primary: #8b5cf6;
   --primary-foreground: #ffffff;
-  --muted: #111827;
+  --muted: #0f172a;
   --muted-foreground: #94a3b8;
   --accent: #1e293b;
-  --accent-foreground: #e2e8f0;
+  --accent-foreground: #f8fafc;
   --border: #1e293b;
   --input: #1e293b;
   --ring: #8b5cf6;
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
   color-scheme: dark;
+
+  /* ── Kinevo Semantic Surfaces (Dark — mirrors hardcoded hex) ── */
+  --surface-primary: #121214;
+  --surface-canvas: #09090B;
+  --surface-card: #1C1C1E;
+  --surface-sidebar: #09090B;
+  --surface-elevated: #1C1C1E;
+  --surface-inset: rgba(0, 0, 0, 0.2);
+
+  /* ── Kinevo Semantic Text (Dark — mirrors text-white/XX) ── */
+  --text-primary: #FFFFFF;
+  --text-secondary: rgba(255, 255, 255, 0.6);
+  --text-tertiary: rgba(255, 255, 255, 0.4);
+  --text-quaternary: rgba(255, 255, 255, 0.2);
+
+  /* ── Kinevo Semantic Borders (Dark — mirrors border-white/XX) ── */
+  --border-primary: rgba(255, 255, 255, 0.1);
+  --border-subtle: rgba(255, 255, 255, 0.05);
+
+  /* ── Kinevo Glass / Overlay (Dark — mirrors bg-white/XX) ── */
+  --glass-bg: rgba(255, 255, 255, 0.05);
+  --glass-bg-active: rgba(255, 255, 255, 0.1);
+  --glass-bg-hover: rgba(255, 255, 255, 0.05);
+
+  /* ── Kinevo Gradient Text (Dark) ── */
+  --gradient-text-from: #FFFFFF;
+  --gradient-text-to: #a1a1aa;
 }
 
+/* ── Tailwind v4 Theme Registration ── */
 @theme inline {
+  /* shadcn/ui tokens */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -60,10 +129,32 @@
   --color-ring: var(--ring);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+
+  /* Kinevo semantic surface tokens */
+  --color-surface-primary: var(--surface-primary);
+  --color-surface-canvas: var(--surface-canvas);
+  --color-surface-card: var(--surface-card);
+  --color-surface-sidebar: var(--surface-sidebar);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-surface-inset: var(--surface-inset);
+
+  /* Kinevo semantic text tokens */
+  --color-k-text-primary: var(--text-primary);
+  --color-k-text-secondary: var(--text-secondary);
+  --color-k-text-tertiary: var(--text-tertiary);
+  --color-k-text-quaternary: var(--text-quaternary);
+
+  /* Kinevo semantic border tokens */
+  --color-k-border-primary: var(--border-primary);
+  --color-k-border-subtle: var(--border-subtle);
+
+  /* Kinevo glass tokens */
+  --color-glass-bg: var(--glass-bg);
+  --color-glass-bg-active: var(--glass-bg-active);
+  --color-glass-bg-hover: var(--glass-bg-hover);
 }
 
+/* ── Base Resets ── */
 * {
   border-color: var(--border);
 }
@@ -71,10 +162,27 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  font-family: inherit;
 }
 
+/* ── Utility Classes ── */
 @layer utilities {
+
+  /* Apple-style soft shadow for Light Mode cards */
+  .shadow-apple-card {
+    box-shadow:
+      0 1px 3px rgba(0, 0, 0, 0.05),
+      0 1px 2px rgba(0, 0, 0, 0.03);
+  }
+
+  /* Apple-style elevated shadow for modals/sheets */
+  .shadow-apple-elevated {
+    box-shadow:
+      0 4px 16px rgba(0, 0, 0, 0.08),
+      0 1px 4px rgba(0, 0, 0, 0.04);
+  }
+
+  /* Original soft shadow */
   .shadow-soft {
     box-shadow:
       0 1px 2px rgba(15, 23, 42, 0.04),

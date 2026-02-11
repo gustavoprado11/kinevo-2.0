@@ -22,7 +22,14 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
     // Get active program for this student
     const { data: activeProgram } = await supabase
         .from('assigned_programs')
-        .select('id, name, description, status, duration_weeks, current_week, started_at, created_at')
+        .select(`
+            id, name, description, status, duration_weeks, current_week, started_at, created_at,
+            assigned_workouts (
+                id,
+                name,
+                scheduled_days
+            )
+        `)
         .eq('student_id', id)
         .eq('status', 'active')
         .single()
@@ -115,19 +122,22 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
             .order('completed_at', { ascending: false })
             .limit(5)
 
-        if (recent) {
-            recentSessions = recent
-        }
     }
+
+    // Get sessions from the last 7 days for the tracker
+    const sessionsLast7Days = sessions?.filter(s =>
+        new Date(s.started_at) >= oneWeekAgo
+    ) || []
 
     return (
         <StudentDetailClient
             trainer={trainer}
             student={student}
-            activeProgram={activeProgram}
+            activeProgram={activeProgram as any}
             scheduledPrograms={scheduledPrograms || []}
             historySummary={historySummary}
             recentSessions={recentSessions}
+            sessionsLast7Days={sessionsLast7Days}
             completedPrograms={completedPrograms}
         />
     )

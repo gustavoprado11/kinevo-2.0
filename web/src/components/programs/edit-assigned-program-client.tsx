@@ -2,12 +2,14 @@
 
 import { useState, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
+import { ChevronLeft, Check, Loader2, Calendar, ArrowRight, Edit3 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { AppLayout } from '@/components/layout'
 import { createClient } from '@/lib/supabase/client'
 import { WorkoutPanel } from './workout-panel'
 import { arrayMove } from '@dnd-kit/sortable'
 import { ExerciseLibraryPanel } from './exercise-library-panel'
-import { WeeklyVolumeCard } from './weekly-volume-card'
+import { VolumeSummary } from './volume-summary'
 
 import type { Exercise } from '@/types/exercise'
 
@@ -39,6 +41,8 @@ interface AssignedProgramData {
     name: string
     description: string | null
     duration_weeks: number | null
+    started_at?: string | null
+    scheduled_start_date?: string | null
     assigned_workouts: Array<{
         id: string
         name: string
@@ -83,7 +87,71 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
     // Program state
     const [name, setName] = useState(program.name)
     const [description, setDescription] = useState(program.description || '')
-    const [durationWeeks, setDurationWeeks] = useState(program.duration_weeks?.toString() || '')
+    const [durationWeeks, setDurationWeeks] = useState(program.duration_weeks?.toString() || '0')
+    const [startDate, setStartDate] = useState(() => {
+        const date = program.started_at || program.scheduled_start_date || new Date().toISOString()
+        return date.split('T')[0]
+    })
+    const [isEndDateFixed, setIsEndDateFixed] = useState(false)
+    const [isDescriptionOpen, setIsDescriptionOpen] = useState(false)
+    const [assignmentType, setAssignmentType] = useState<'immediate' | 'scheduled'>(
+        program.scheduled_start_date ? 'scheduled' : 'immediate'
+    )
+
+    // Helper to calculate end date from weeks
+    const calculateEndDate = useCallback((start: string, weeksStr: string) => {
+        const startObj = new Date(start)
+        const weeks = parseInt(weeksStr) || 0
+        if (isNaN(startObj.getTime())) return ''
+        const endObj = new Date(startObj)
+        endObj.setDate(endObj.getDate() + (weeks * 7) - 1)
+        return endObj.toISOString().split('T')[0]
+    }, [])
+
+    // Helper to calculate weeks from end date
+    const calculateWeeks = useCallback((start: string, end: string) => {
+        const startObj = new Date(start)
+        const endObj = new Date(end)
+        if (isNaN(startObj.getTime()) || isNaN(endObj.getTime())) return '0'
+        const diffTime = endObj.getTime() - startObj.getTime()
+        const diffDays = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1)
+        return Math.round(diffDays / 7).toString()
+    }, [])
+
+    const [endDate, setEndDate] = useState(() =>
+        calculateEndDate(startDate, program.duration_weeks?.toString() || '0')
+    )
+
+    // Handlers for bidirectional sync
+    const handleWeeksChange = (weeks: string) => {
+        const weeksNum = Math.max(0, parseInt(weeks) || 0)
+        const weeksStr = weeksNum.toString()
+
+        setDurationWeeks(weeksStr)
+        const newEnd = calculateEndDate(startDate, weeksStr)
+        setEndDate(newEnd)
+    }
+
+    const handleEndDateChange = (end: string) => {
+        // Prevent end date being before start date
+        if (new Date(end) < new Date(startDate)) {
+            const resetEnd = calculateEndDate(startDate, '0')
+            setEndDate(resetEnd)
+            setDurationWeeks('0')
+            return
+        }
+
+        setEndDate(end)
+        setIsEndDateFixed(true)
+        const newWeeks = calculateWeeks(startDate, end)
+        setDurationWeeks(newWeeks)
+    }
+
+    const handleStartDateChange = (start: string) => {
+        setStartDate(start)
+        const newEnd = calculateEndDate(start, durationWeeks)
+        setEndDate(newEnd)
+    }
 
     const [localExercises, setLocalExercises] = useState<Exercise[]>(exercises)
 
@@ -562,13 +630,26 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
 
         try {
             // 1. Update Program Details
+            const updatePayload: any = {
+                name: name.trim(),
+                description: description.trim() || null,
+                duration_weeks: durationWeeks ? parseInt(durationWeeks) : null,
+            }
+
+            // Update the correct date field and status
+            if (assignmentType === 'immediate') {
+                updatePayload.started_at = startDate
+                updatePayload.scheduled_start_date = null
+                updatePayload.status = 'active'
+            } else {
+                updatePayload.scheduled_start_date = startDate
+                updatePayload.started_at = null
+                updatePayload.status = 'scheduled'
+            }
+
             const { error: updateError } = await supabase
                 .from('assigned_programs')
-                .update({
-                    name: name.trim(),
-                    description: description.trim() || null,
-                    duration_weeks: durationWeeks ? parseInt(durationWeeks) : null,
-                })
+                .update(updatePayload)
                 .eq('id', program.id)
 
             if (updateError) throw updateError
@@ -759,56 +840,180 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
             trainerAvatarUrl={trainer.avatar_url}
             trainerTheme={trainer.theme}
         >
-            <div className="max-w-5xl mx-auto space-y-6">
-                {/* Header */}
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <button
+            <div className="flex flex-col h-[calc(100vh-64px)] overflow-hidden bg-surface-canvas">
+                {/* Scheduling Bar (Fixed Header) */}
+                <div className="flex-shrink-0 h-24 bg-surface-primary backdrop-blur-md border-b border-k-border-primary flex items-center justify-between px-8 z-30">
+                    {/* Left Section: Identity */}
+                    <div className="flex items-center gap-6 flex-1 min-w-0">
+                        <Button
+                            variant="ghost"
+                            size="icon"
                             onClick={() => router.push(`/students/${studentId}`)}
-                            className="w-10 h-10 rounded-lg bg-muted border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-border/80 transition-colors"
+                            className="w-10 h-10 rounded-full hover:bg-glass-bg-active text-k-text-tertiary hover:text-k-text-primary transition-all"
                         >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 19l-7-7 7-7" />
-                            </svg>
-                        </button>
-                        <div>
-                            <div className="flex items-center gap-2">
-                                <h1 className="text-2xl font-bold text-foreground">Editar Programa do Aluno</h1>
-                                <span className="px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-500 text-xs font-medium border border-amber-500/20">
-                                    Edição direta
-                                </span>
+                            <ChevronLeft className="w-5 h-5" />
+                        </Button>
+
+                        <div className="flex flex-col min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-k-text-quaternary">Editando Programa</span>
+                                <div className="px-2 py-0.5 bg-amber-500/10 border border-amber-500/20 rounded-full">
+                                    <span className="text-[9px] font-bold text-amber-500 tracking-wider">EDIÇÃO DIRETA</span>
+                                </div>
                             </div>
-                            <p className="text-muted-foreground mt-0.5 text-sm">
-                                As alterações afetarão imediatamente o treino do aluno. Histórico existente não será resetado.
-                            </p>
+                            <div className="flex items-center gap-3">
+                                <input
+                                    type="text"
+                                    value={name}
+                                    onChange={(e) => setName(e.target.value)}
+                                    placeholder="Ex: Força e Hipertrofia"
+                                    className="bg-transparent border-none text-lg font-bold text-k-text-primary placeholder:text-k-text-quaternary focus:ring-0 p-0 w-full max-w-[250px] truncate"
+                                />
+                                <button
+                                    onClick={() => setIsDescriptionOpen(!isDescriptionOpen)}
+                                    className={`p-1.5 rounded-lg transition-all ${isDescriptionOpen ? 'bg-violet-500/20 text-violet-400' : 'text-k-text-quaternary hover:text-k-text-tertiary hover:bg-glass-bg'
+                                        }`}
+                                    title="Editar descrição"
+                                >
+                                    <Edit3 className="w-3.5 h-3.5" strokeWidth={2.5} />
+                                </button>
+                            </div>
                         </div>
                     </div>
-                    <button
-                        onClick={saveProgram}
-                        disabled={saving}
-                        className="px-5 py-2.5 bg-gradient-to-r from-violet-600 to-blue-600 hover:from-violet-500 hover:to-blue-500 disabled:from-gray-600 disabled:to-gray-600 text-white text-sm font-medium rounded-lg transition-all shadow-lg shadow-violet-500/20 flex items-center gap-2"
-                    >
-                        {saving ? (
-                            <>
-                                <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                                </svg>
-                                Salvando...
-                            </>
-                        ) : (
-                            <>
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                </svg>
-                                Salvar Alterações
-                            </>
-                        )}
-                    </button>
+
+                    {/* Center Section: Timeline & Scheduling */}
+                    <div className="flex items-center gap-8 px-8 border-x border-k-border-subtle">
+                        {/* Timeline Row */}
+                        <div className="flex flex-col gap-1.5">
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-k-text-quaternary">
+                                Cronograma do Programa
+                            </span>
+                            <div className="flex items-center gap-2">
+                                {/* Start Date */}
+                                <div className="flex items-center gap-3 bg-glass-bg border border-k-border-subtle rounded-xl px-4 py-2 group hover:border-k-border-primary transition-all">
+                                    <Calendar className="w-4 h-4 text-k-text-tertiary group-hover:text-violet-400 transition-colors" strokeWidth={1.5} />
+                                    <div className="flex flex-col">
+                                        <span className="text-[9px] font-bold text-k-text-quaternary uppercase tracking-tight -mb-0.5">Início</span>
+                                        <input
+                                            type="date"
+                                            value={startDate}
+                                            onChange={(e) => handleStartDateChange(e.target.value)}
+                                            className="bg-transparent border-none text-xs font-bold text-k-text-primary focus:ring-0 p-0 [color-scheme:dark]"
+                                        />
+                                    </div>
+                                </div>
+
+                                <ArrowRight className="w-3.5 h-3.5 text-k-border-subtle shrink-0" />
+
+                                {/* Weeks Input (Platter Style) */}
+                                <div className="flex flex-col items-center bg-glass-bg border border-k-border-subtle rounded-xl px-3 py-2 min-w-[70px]">
+                                    <span className="text-[9px] font-bold text-k-text-quaternary uppercase tracking-tight -mb-1">Semanas</span>
+                                    <input
+                                        type="number"
+                                        value={durationWeeks}
+                                        onChange={(e) => handleWeeksChange(e.target.value)}
+                                        min="0"
+                                        className="bg-transparent border-none text-sm font-black text-violet-400 focus:ring-0 p-0 w-full text-center"
+                                    />
+                                </div>
+
+                                <ArrowRight className="w-3.5 h-3.5 text-k-border-subtle shrink-0" />
+
+                                {/* End Date (Manual vs Auto Visuals) */}
+                                <div
+                                    className="relative flex items-center gap-3 bg-glass-bg border border-k-border-subtle rounded-xl px-4 py-2 group hover:border-k-border-primary transition-all cursor-help"
+                                    title="A duração em semanas será ajustada automaticamente ao alterar a data fim."
+                                >
+                                    <div className="flex flex-col">
+                                        <span className="text-[9px] font-bold text-k-text-quaternary uppercase tracking-tight -mb-0.5">Fim Previsto</span>
+                                        <div className="flex items-center gap-1.5">
+                                            <input
+                                                type="date"
+                                                value={endDate}
+                                                onChange={(e) => handleEndDateChange(e.target.value)}
+                                                className={`bg-transparent border-none text-xs font-bold focus:ring-0 p-0 [color-scheme:dark] transition-colors ${isEndDateFixed ? 'text-violet-400' : 'text-k-text-tertiary'
+                                                    }`}
+                                            />
+                                            {isEndDateFixed && <Edit3 className="w-3 h-3 text-violet-400 animate-in fade-in zoom-in duration-300" />}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Activation Control */}
+                        <div className="flex flex-col gap-1.5 min-w-[200px]">
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-k-text-quaternary">
+                                Ativação
+                            </span>
+                            <div className="bg-surface-inset p-1 rounded-xl flex items-center gap-1 border border-k-border-subtle">
+                                <button
+                                    onClick={() => setAssignmentType('immediate')}
+                                    className={`flex-1 px-3 py-1.5 text-[10px] font-bold rounded-lg transition-all ${assignmentType === 'immediate'
+                                        ? 'bg-glass-bg-active text-k-text-primary shadow-sm ring-1 ring-k-border-subtle'
+                                        : 'text-k-text-tertiary hover:text-k-text-primary'
+                                        }`}
+                                >
+                                    Imediata
+                                </button>
+                                <button
+                                    onClick={() => setAssignmentType('scheduled')}
+                                    className={`flex-1 px-3 py-1.5 text-[10px] font-bold rounded-lg transition-all ${assignmentType === 'scheduled'
+                                        ? 'bg-glass-bg-active text-k-text-primary shadow-sm ring-1 ring-k-border-subtle'
+                                        : 'text-k-text-tertiary hover:text-k-text-primary'
+                                        }`}
+                                >
+                                    Agendar Fila
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Right Section: Actions */}
+                    <div className="flex items-center gap-4 ml-8">
+                        <div className="relative">
+                            <Button
+                                onClick={saveProgram}
+                                disabled={saving}
+                                className="bg-violet-600 hover:bg-violet-500 text-white rounded-full px-8 py-2.5 h-11 text-sm font-bold transition-all shadow-lg shadow-violet-500/20 min-w-[160px]"
+                            >
+                                {saving ? (
+                                    <div className="flex items-center gap-2">
+                                        <Loader2 className="animate-spin w-4 h-4" />
+                                        <span>Salvando...</span>
+                                    </div>
+                                ) : (
+                                    assignmentType === 'immediate' ? 'Salvar Alterações' : 'Agendar Programa'
+                                )}
+                            </Button>
+
+                            {/* Alert Note */}
+                            {assignmentType === 'immediate' && (
+                                <p className="absolute -bottom-5 right-0 text-[10px] text-amber-500 font-medium whitespace-nowrap animate-in fade-in slide-in-from-top-1">
+                                    Alterações em tempo real.
+                                </p>
+                            )}
+                        </div>
+                    </div>
                 </div>
 
+                {/* Header-based Description Area */}
+                {isDescriptionOpen && (
+                    <div className="flex-shrink-0 bg-surface-primary border-b border-k-border-subtle px-8 py-4 animate-in slide-in-from-top-4 duration-300">
+                        <div className="max-w-3xl">
+                            <label className="block text-[10px] font-bold text-k-text-quaternary uppercase tracking-widest mb-2">Descrição do Programa</label>
+                            <textarea
+                                value={description}
+                                onChange={(e) => setDescription(e.target.value)}
+                                placeholder="Adicione detalhes sobre o objetivo, metodologia ou observações gerais..."
+                                className="w-full bg-glass-bg border border-k-border-subtle rounded-xl px-4 py-3 text-sm text-k-text-primary placeholder:text-k-border-subtle focus:ring-1 focus:ring-violet-500/50 focus:border-violet-500/30 transition-all min-h-[80px] resize-none"
+                            />
+                        </div>
+                    </div>
+                )}
+
                 {error && (
-                    <div className="bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-3 rounded-xl text-sm flex items-start gap-3">
+                    <div className="mx-8 mt-4 bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-3 rounded-xl text-sm flex items-start gap-3 z-10">
                         <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
@@ -816,171 +1021,97 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                     </div>
                 )}
 
-                {/* Program Info (ReadOnly for tracking, or Partial Edit) */}
-                {/* Requirement says: update structure, NO reset progress. */}
-                {/* Basic Info */}
-                <div className="bg-card rounded-xl border border-border p-5">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="md:col-span-2">
-                            <label className="block text-sm font-medium text-foreground/80 mb-2">
-                                Nome do Programa
-                            </label>
-                            <input
-                                type="text"
-                                value={name}
-                                onChange={(e) => setName(e.target.value)}
-                                className="w-full px-4 py-2.5 bg-card border border-border rounded-lg text-foreground"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-foreground/80 mb-2">
-                                Duração (Semanas)
-                            </label>
-                            <input
-                                type="number"
-                                value={durationWeeks}
-                                onChange={(e) => setDurationWeeks(e.target.value)}
-                                className="w-full px-4 py-2.5 bg-card border border-border rounded-lg text-foreground"
-                            />
-                        </div>
-                        <div className="md:col-span-3">
-                            <label className="block text-sm font-medium text-foreground/80 mb-2">Descrição</label>
-                            <textarea
-                                value={description}
-                                onChange={(e) => setDescription(e.target.value)}
-                                rows={2}
-                                className="w-full px-4 py-2.5 bg-card border border-border rounded-lg text-foreground resize-none"
-                            />
-                        </div>
-                    </div>
-                </div>
 
 
                 {/* Weekly Volume Summary */}
-                <WeeklyVolumeCard workouts={workouts} exercises={localExercises} />
+                <VolumeSummary workouts={workouts} />
 
-                {/* 2-Panel Layout: Biblioteca | Treinos */}
-                <div
-                    className="grid grid-cols-[2fr_3fr] gap-6 overflow-hidden"
-                    style={{ height: 'calc(100vh - 300px)', minHeight: '400px' }}
-                >
-                    {/* Panel 1: Biblioteca de Exercícios */}
-                    <ExerciseLibraryPanel
-                        exercises={localExercises}
-                        trainerId={trainer.id}
-                        onAddExercise={addExerciseFromLibrary}
-                        onExerciseCreated={handleExerciseCreated}
-                        activeWorkoutId={activeWorkoutId}
-                    />
+                {/* Workspace (Layout Columns) — identical to program-builder-client */}
+                <div className="flex flex-1 overflow-hidden">
+                    {/* Left Panel: Exercise Library */}
+                    <div className="w-[320px] bg-surface-primary border-r border-k-border-subtle flex flex-col flex-shrink-0">
+                        <ExerciseLibraryPanel
+                            exercises={localExercises}
+                            trainerId={trainer.id}
+                            onAddExercise={addExerciseFromLibrary}
+                            onExerciseCreated={handleExerciseCreated}
+                            activeWorkoutId={activeWorkoutId}
+                        />
+                    </div>
 
-                    {/* Panel 2: Treinos */}
-                    <div className="bg-card rounded-xl border border-border overflow-hidden flex flex-col">
-                        {/* Workout Tabs Header */}
-                        <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-muted/40">
-                            <div className="flex items-center gap-1 flex-1 overflow-x-auto">
-                                {workouts.map((workout, index) => (
-                                    <div
+                    {/* Right Panel: Canvas */}
+                    <div className="flex-1 flex flex-col min-w-0 bg-[#09090B]">
+                        {/* Workout Tabs (Segmented Control) */}
+                        <div className="flex items-center gap-1 p-4 overflow-x-auto no-scrollbar border-b border-white/5 bg-[#09090B]">
+                            <div className="bg-[#1C1C1E] p-1 rounded-xl flex gap-1 items-center border border-white/5">
+                                {workouts.map((workout) => (
+                                    <button
                                         key={workout.id}
-                                        role="button"
-                                        tabIndex={0}
                                         onClick={() => setActiveWorkoutId(workout.id)}
-                                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setActiveWorkoutId(workout.id) }}
-                                        className={`group relative flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap cursor-pointer ${activeWorkoutId === workout.id
-                                            ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30'
-                                            : 'text-muted-foreground hover:bg-muted/50 border border-transparent'
-                                            }`}
+                                        className={`
+                                            px-4 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap
+                                            ${activeWorkoutId === workout.id
+                                                ? 'bg-glass-bg-active text-k-text-primary shadow-sm ring-1 ring-k-border-subtle'
+                                                : 'text-k-text-tertiary hover:text-k-text-primary hover:bg-glass-bg'
+                                            }
+                                        `}
                                     >
                                         {workout.name}
-                                        <span className="text-xs text-muted-foreground">({workout.items.length})</span>
-
-                                        {activeWorkoutId === workout.id && (
-                                            <div className="flex items-center gap-0.5 ml-1">
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); moveWorkout(workout.id, 'up') }}
-                                                    disabled={index === 0}
-                                                    className="w-5 h-5 flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30"
-                                                >
-                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7 7" />
-                                                    </svg>
-                                                </button>
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); moveWorkout(workout.id, 'down') }}
-                                                    disabled={index === workouts.length - 1}
-                                                    className="w-5 h-5 flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30"
-                                                >
-                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                                    </svg>
-                                                </button>
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); deleteWorkout(workout.id) }}
-                                                    className="w-5 h-5 flex items-center justify-center text-muted-foreground hover:text-red-400"
-                                                >
-                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                                    </svg>
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
+                                    </button>
                                 ))}
                             </div>
 
                             <button
                                 onClick={addWorkout}
-                                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-violet-400 hover:bg-violet-500/10 rounded-lg transition-colors whitespace-nowrap"
+                                className="w-8 h-8 flex items-center justify-center rounded-lg text-k-text-quaternary hover:text-k-text-primary hover:bg-glass-bg transition-all ml-2"
+                                title="Adicionar Treino"
                             >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
                                 </svg>
-                                Treino
                             </button>
                         </div>
 
-                        {/* Workout Content */}
-                        <div className="flex-1 overflow-auto">
-                            {activeWorkout ? (
-                                <WorkoutPanel
-                                    workout={activeWorkout}
-                                    exercises={localExercises}
-                                    onUpdateName={(name) => updateWorkoutName(activeWorkout.id, name)}
-                                    onAddExercise={() => {/* Handled by library panel */ }}
-                                    onAddNote={() => addNote(activeWorkout.id)}
-                                    onAddExerciseToSuperset={(parentId) => {
-                                        // The exercise library panel handles adding exercises to supersets
-                                    }}
-                                    onUpdateItem={(itemId, updates) => updateItem(activeWorkout.id, itemId, updates)}
-                                    onDeleteItem={(itemId) => deleteItem(activeWorkout.id, itemId)}
-                                    onMoveItem={(itemId, direction) => moveItem(activeWorkout.id, itemId, direction)}
-                                    onReorderItem={handleReorderItem}
-                                    // Superset handlers
-                                    onCreateSupersetWithNext={(exerciseItemId) => createSupersetWithNext(activeWorkout.id, exerciseItemId)}
-                                    onAddToExistingSuperset={(exerciseItemId, supersetId) => addToExistingSuperset(activeWorkout.id, exerciseItemId, supersetId)}
-                                    onRemoveFromSuperset={(supersetId, exerciseItemId) => removeFromSuperset(activeWorkout.id, supersetId, exerciseItemId)}
-                                    onDissolveSuperset={(supersetId) => dissolveSuperset(activeWorkout.id, supersetId)}
-                                    onUpdateFrequency={(days) => updateWorkoutFrequency(activeWorkout.id, days)}
-                                    occupiedDays={occupiedDays}
-                                />
-                            ) : (
-                                <div className="flex flex-col items-center justify-center h-full py-16">
-                                    <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mb-4">
-                                        <svg className="w-8 h-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                                        </svg>
+                        {/* Workout Canvas */}
+                        <div className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+                            <div className="max-w-3xl mx-auto pb-20">
+                                {activeWorkout ? (
+                                    <WorkoutPanel
+                                        workout={activeWorkout}
+                                        exercises={localExercises}
+                                        onUpdateName={(newName) => updateWorkoutName(activeWorkout.id, newName)}
+                                        onAddExercise={() => { }}
+                                        onAddNote={() => addNote(activeWorkout.id)}
+                                        onUpdateItem={(itemId, updates) => updateItem(activeWorkout.id, itemId, updates)}
+                                        onDeleteItem={(itemId) => deleteItem(activeWorkout.id, itemId)}
+                                        onMoveItem={(itemId, dir) => moveItem(activeWorkout.id, itemId, dir)}
+                                        onReorderItem={handleReorderItem}
+                                        onCreateSupersetWithNext={(itemId) => createSupersetWithNext(activeWorkout.id, itemId)}
+                                        onAddToExistingSuperset={(itemId, supersetId) => addToExistingSuperset(activeWorkout.id, itemId, supersetId)}
+                                        onRemoveFromSuperset={(supersetId, exerciseItemId) => removeFromSuperset(activeWorkout.id, supersetId, exerciseItemId)}
+                                        onDissolveSuperset={(supersetId) => dissolveSuperset(activeWorkout.id, supersetId)}
+                                        onUpdateFrequency={(days) => updateWorkoutFrequency(activeWorkout.id, days)}
+                                        occupiedDays={occupiedDays}
+                                    />
+                                ) : (
+                                    <div className="text-center py-20">
+                                        <p className="text-k-text-quaternary text-sm">Selecione ou crie um treino para começar</p>
                                     </div>
-                                    <p className="text-muted-foreground mb-4">Crie seu primeiro treino</p>
+                                )}
+
+                                <div className="mt-8 flex justify-center">
                                     <button
-                                        onClick={addWorkout}
-                                        className="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+                                        onClick={() => deleteWorkout(activeWorkoutId!)}
+                                        className="text-k-text-quaternary hover:text-red-400 text-xs font-semibold py-2 px-4 rounded-lg hover:bg-red-500/10 transition-all flex items-center gap-2"
+                                        disabled={workouts.length <= 1}
                                     >
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                         </svg>
-                                        Adicionar Treino
+                                        Excluir Treino Atual
                                     </button>
                                 </div>
-                            )}
+                            </div>
                         </div>
                     </div>
                 </div>

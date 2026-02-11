@@ -70,17 +70,17 @@ export function BillingSection({ subscription }: BillingSectionProps) {
     }
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-6 h-full flex flex-col">
             {/* Cancellation Banner */}
             {subscription.cancel_at_period_end && (
-                <div className="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-5 flex items-start gap-4">
+                <div className="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-5 flex items-start gap-4 shadow-sm">
                     <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
-                        <AlertTriangle size={20} className="text-amber-400" />
+                        <AlertTriangle size={20} className="text-amber-400" strokeWidth={1.5} />
                     </div>
                     <div className="flex-1">
-                        <h3 className="text-amber-400 font-semibold text-sm">Cancelamento agendado</h3>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                            Sua assinatura será encerrada em <strong className="text-foreground">{formatDate(subscription.current_period_end)}</strong>.
+                        <h3 className="text-amber-400 font-bold text-[11px] uppercase tracking-widest">Cancelamento agendado</h3>
+                        <p className="mt-1 text-sm text-k-text-tertiary">
+                            Sua assinatura será encerrada em <strong className="text-k-text-primary">{formatDate(subscription.current_period_end)}</strong>.
                             Você mantém acesso total até essa data. Para reativar, clique em &quot;Gerenciar assinatura&quot; abaixo.
                         </p>
                     </div>
@@ -88,79 +88,81 @@ export function BillingSection({ subscription }: BillingSectionProps) {
             )}
 
             {/* Main Billing Card */}
-            <div className="rounded-2xl border border-violet-500/20 bg-gradient-to-br from-card to-card/80 p-6 shadow-sm">
-                <div className="flex items-start justify-between gap-4 mb-6">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
-                            <CreditCard size={18} className="text-violet-400" />
+            <div className="rounded-2xl border border-k-border-primary bg-surface-card p-6 shadow-sm flex-1 flex flex-col justify-between">
+                <div>
+                    <div className="flex items-start justify-between gap-4 mb-8">
+                        <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400">
+                                <CreditCard size={18} strokeWidth={1.5} />
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-semibold text-k-text-primary">Plano e Cobrança</h2>
+                                <p className="mt-0.5 text-sm text-k-text-tertiary">Visão financeira da sua assinatura.</p>
+                            </div>
                         </div>
-                        <div>
-                            <h2 className="text-xl font-semibold text-card-foreground">Plano e Cobrança</h2>
-                            <p className="mt-0.5 text-sm text-muted-foreground">Visão financeira da sua assinatura.</p>
-                        </div>
-                    </div>
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${badge.color}`}>
-                        {badge.label}
-                    </span>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div className="rounded-xl border border-border bg-background p-4">
-                        <div className="mb-2 flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
-                            <Wallet size={14} />
-                            Plano
-                        </div>
-                        <p className="font-semibold text-foreground">Kinevo Pro</p>
-                        <p className="text-violet-300 text-sm mt-0.5">R$ 39,90/mês</p>
-                    </div>
-
-                    <div className="rounded-xl border border-border bg-background p-4">
-                        <div className="mb-2 flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
-                            <CalendarDays size={14} />
-                            {subscription.cancel_at_period_end
-                                ? 'Acesso até'
-                                : subscription.status === 'trialing'
-                                    ? 'Primeira cobrança'
-                                    : 'Próxima cobrança'}
-                        </div>
-                        <p className="font-semibold text-foreground">{formatDate(subscription.current_period_end)}</p>
-                        <p className="mt-0.5 text-xs text-muted-foreground">Data de referência da assinatura</p>
-                    </div>
-                </div>
-
-                <div className="my-5 h-px bg-border" />
-
-                <div className="space-y-3">
-                    <div className="flex items-center justify-between text-sm">
-                        <span className="inline-flex items-center gap-2 text-muted-foreground">
-                            <Activity size={15} />
-                            Status de cobrança
+                        <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border ${badge.color}`}>
+                            {badge.label}
                         </span>
-                        <span className="font-medium text-foreground">{badge.label}</span>
                     </div>
 
-                    {trialDays !== null && !subscription.cancel_at_period_end && (
-                        <div className="flex items-center justify-between text-sm">
-                            <span className="inline-flex items-center gap-2 text-muted-foreground">
-                                <CalendarDays size={15} />
-                                Dias restantes do teste
-                            </span>
-                            <span className="text-violet-300 font-semibold">{trialDays} dias</span>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="rounded-xl border border-k-border-subtle bg-glass-bg p-4">
+                            <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-k-text-tertiary">
+                                <Wallet size={12} strokeWidth={2} />
+                                Plano
+                            </div>
+                            <p className="font-bold text-k-text-primary">Kinevo Pro</p>
+                            <p className="text-violet-400 text-sm mt-0.5 font-medium">R$ 39,90/mês</p>
                         </div>
-                    )}
+
+                        <div className="rounded-xl border border-k-border-subtle bg-glass-bg p-4">
+                            <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-k-text-tertiary">
+                                <CalendarDays size={12} strokeWidth={2} />
+                                {subscription.cancel_at_period_end
+                                    ? 'Acesso até'
+                                    : subscription.status === 'trialing'
+                                        ? 'Primeira cobrança'
+                                        : 'Próxima cobrança'}
+                            </div>
+                            <p className="font-bold text-k-text-primary">{formatDate(subscription.current_period_end)}</p>
+                            <p className="mt-0.5 text-[10px] font-bold text-k-text-quaternary uppercase tracking-widest">Data de referência</p>
+                        </div>
+                    </div>
+
+                    <div className="my-6 h-px bg-k-border-subtle" />
+
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between text-sm">
+                            <span className="inline-flex items-center gap-2 text-k-text-tertiary font-medium">
+                                <Activity size={14} strokeWidth={1.5} />
+                                Status de cobrança
+                            </span>
+                            <span className="font-bold text-k-text-primary">{badge.label}</span>
+                        </div>
+
+                        {trialDays !== null && !subscription.cancel_at_period_end && (
+                            <div className="flex items-center justify-between text-sm">
+                                <span className="inline-flex items-center gap-2 text-k-text-tertiary font-medium">
+                                    <CalendarDays size={14} strokeWidth={1.5} />
+                                    Dias restantes do teste
+                                </span>
+                                <span className="text-violet-400 font-bold">{trialDays} dias</span>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Manage button */}
-                <div className="mt-6 border-t border-border pt-6">
+                <div className="mt-8 border-t border-k-border-subtle pt-6">
                     <button
                         onClick={handleManageBilling}
                         disabled={loading}
-                        className="inline-flex items-center gap-2 rounded-xl border border-input bg-background px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:bg-background"
+                        className="inline-flex items-center gap-2 rounded-xl border border-k-border-primary bg-glass-bg px-5 py-2.5 text-sm font-bold text-k-text-primary transition-all hover:bg-glass-bg-active disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         {loading ? 'Abrindo...' : 'Gerenciar assinatura'}
-                        <ExternalLink size={14} />
+                        <ExternalLink size={14} strokeWidth={2} />
                     </button>
-                    <p className="mt-2 text-xs text-muted-foreground">
+                    <p className="mt-3 text-xs text-k-text-quaternary italic">
                         {subscription.cancel_at_period_end
                             ? 'Reative sua assinatura, altere método de pagamento ou veja faturas.'
                             : 'Altere método de pagamento, veja faturas ou cancele sua assinatura.'}

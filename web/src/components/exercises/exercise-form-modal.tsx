@@ -6,6 +6,7 @@ import type { ExerciseWithDetails } from './exercise-item'
 import { VideoPlayer } from './video-player'
 import { useMuscleGroups } from '@/hooks/use-muscle-groups'
 import { MuscleGroup } from '@/types/exercise'
+import { X, Loader2, Plus, Check } from 'lucide-react'
 
 interface ExerciseFormModalProps {
     isOpen: boolean
@@ -158,23 +159,36 @@ export function ExerciseFormModal({ isOpen, onClose, onSuccess, exercise, traine
     if (!isOpen) return null
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-            <div className="w-full max-w-2xl bg-card rounded-2xl border border-border shadow-xl max-h-[90vh] overflow-y-auto">
-                <div className="p-6 border-b border-border flex items-center justify-between sticky top-0 bg-card z-10">
-                    <h2 className="text-xl font-semibold text-foreground">
-                        {isEditing ? 'Editar Exercício' : 'Novo Exercício'}
-                    </h2>
-                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300"
+                onClick={onClose}
+            />
+
+            <div className="relative w-full max-w-2xl bg-surface-card backdrop-blur-2xl rounded-3xl shadow-2xl ring-1 ring-inset ring-k-border-primary max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-200">
+
+                {/* Header */}
+                <div className="p-6 pb-4 flex items-center justify-between z-10">
+                    <div>
+                        <h2 className="text-xl font-bold text-white tracking-tight">
+                            {isEditing ? 'Editar Exercício' : 'Novo Exercício'}
+                        </h2>
+                        <p className="text-xs text-muted-foreground/60 uppercase tracking-widest font-semibold mt-1">
+                            {isEditing ? 'Atualize os detalhes do exercício' : 'Adicione um novo exercício à biblioteca'}
+                        </p>
+                    </div>
+                    <button
+                        onClick={onClose}
+                        className="p-2 text-k-text-quaternary hover:text-k-text-primary transition-colors rounded-full hover:bg-glass-bg-active"
+                    >
+                        <X className="w-5 h-5" strokeWidth={1.5} />
                     </button>
                 </div>
 
-                <div className="p-6 space-y-6">
+                <div className="p-6 pt-2 space-y-6 overflow-y-auto scrollbar-hide">
                     {/* Name */}
                     <div>
-                        <label className="block text-sm font-medium text-muted-foreground mb-1">
+                        <label className="block text-[11px] font-bold text-k-text-tertiary uppercase tracking-widest mb-1.5">
                             Nome do Exercício
                         </label>
                         <input
@@ -182,13 +196,13 @@ export function ExerciseFormModal({ isOpen, onClose, onSuccess, exercise, traine
                             value={name}
                             onChange={e => setName(e.target.value)}
                             placeholder="Ex: Supino Reto"
-                            className="w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                            className="w-full px-4 py-3 bg-glass-bg border border-k-border-subtle rounded-xl text-k-text-primary placeholder:text-k-text-quaternary focus:outline-none focus:ring-2 focus:ring-violet-500/10 focus:border-violet-500/50 transition-all text-sm"
                         />
                     </div>
 
                     {/* Muscle Groups - Creatable MultiSelect */}
                     <div>
-                        <label className="block text-sm font-medium text-muted-foreground mb-1">
+                        <label className="block text-[11px] font-bold text-k-text-tertiary uppercase tracking-widest mb-1.5">
                             Grupos Musculares
                         </label>
                         <CreatableMultiSelect
@@ -201,14 +215,14 @@ export function ExerciseFormModal({ isOpen, onClose, onSuccess, exercise, traine
                             }}
                             isLoading={loadingMuscles}
                         />
-                        <p className="text-xs text-muted-foreground mt-1">
-                            Selecione um ou mais grupos. Digite para buscar ou criar um novo.
+                        <p className="text-[10px] text-k-text-quaternary mt-1.5 font-medium tracking-wide">
+                            Selecione um ou mais grupos. Digite para buscar ou criar.
                         </p>
                     </div>
 
                     {/* Equipment */}
                     <div>
-                        <label className="block text-sm font-medium text-muted-foreground mb-1">
+                        <label className="block text-[11px] font-bold text-k-text-tertiary uppercase tracking-widest mb-1.5">
                             Equipamento (Opcional)
                         </label>
                         <input
@@ -216,13 +230,13 @@ export function ExerciseFormModal({ isOpen, onClose, onSuccess, exercise, traine
                             value={equipment}
                             onChange={e => setEquipment(e.target.value)}
                             placeholder="Ex: Barra, Halteres, Máquina..."
-                            className="w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                            className="w-full px-4 py-3 bg-glass-bg border border-k-border-subtle rounded-xl text-k-text-primary placeholder:text-k-text-quaternary focus:outline-none focus:ring-2 focus:ring-violet-500/10 focus:border-violet-500/50 transition-all text-sm"
                         />
                     </div>
 
                     {/* Video URL */}
                     <div>
-                        <label className="block text-sm font-medium text-muted-foreground mb-1">
+                        <label className="block text-[11px] font-bold text-k-text-tertiary uppercase tracking-widest mb-1.5">
                             Link do Vídeo (YouTube/Vimeo)
                         </label>
                         <input
@@ -230,10 +244,10 @@ export function ExerciseFormModal({ isOpen, onClose, onSuccess, exercise, traine
                             value={videoUrl}
                             onChange={e => setVideoUrl(e.target.value)}
                             placeholder="https://..."
-                            className="w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                            className="w-full px-4 py-3 bg-glass-bg border border-k-border-subtle rounded-xl text-k-text-primary placeholder:text-k-text-quaternary focus:outline-none focus:ring-2 focus:ring-violet-500/10 focus:border-violet-500/50 transition-all text-sm"
                         />
                         {videoUrl && (
-                            <div className="mt-2 aspect-video rounded-lg overflow-hidden bg-black border border-border">
+                            <div className="mt-3 aspect-video rounded-xl overflow-hidden bg-surface-inset border border-k-border-subtle ring-1 ring-k-border-subtle">
                                 <VideoPlayer url={videoUrl} title={name} />
                             </div>
                         )}
@@ -241,7 +255,7 @@ export function ExerciseFormModal({ isOpen, onClose, onSuccess, exercise, traine
 
                     {/* Instructions */}
                     <div>
-                        <label className="block text-sm font-medium text-muted-foreground mb-1">
+                        <label className="block text-[11px] font-bold text-k-text-tertiary uppercase tracking-widest mb-1.5">
                             Instruções (Opcional)
                         </label>
                         <textarea
@@ -249,33 +263,32 @@ export function ExerciseFormModal({ isOpen, onClose, onSuccess, exercise, traine
                             onChange={e => setInstructions(e.target.value)}
                             rows={3}
                             placeholder="Dicas de execução..."
-                            className="w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-violet-500/50 resize-none"
+                            className="w-full px-4 py-3 bg-white/5 border border-white/5 rounded-xl text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-violet-500/10 focus:border-violet-500/50 transition-all resize-none text-sm"
                         />
                     </div>
 
                     {/* Errors */}
                     {error && (
-                        <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
+                        <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-xs font-medium flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
                             {error}
                         </div>
                     )}
                 </div>
 
-                <div className="p-6 border-t border-border bg-card sticky bottom-0 rounded-b-2xl flex justify-end gap-3">
+                <div className="p-6 pt-4 border-t border-k-border-subtle flex justify-end gap-3 rounded-b-3xl">
                     <button
                         onClick={onClose}
-                        className="px-4 py-2 text-muted-foreground hover:text-foreground transition-colors"
+                        className="px-6 py-2.5 text-k-text-secondary hover:text-k-text-primary hover:bg-glass-bg rounded-xl transition-all text-sm font-medium"
                     >
                         Cancelar
                     </button>
                     <button
                         onClick={handleSave}
                         disabled={saving}
-                        className="px-6 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        className="px-6 py-2.5 bg-violet-600 hover:bg-violet-500 text-white rounded-xl font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg shadow-violet-500/20 active:scale-95 text-sm"
                     >
-                        {saving && (
-                            <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                        )}
+                        {saving && <Loader2 className="w-4 h-4 animate-spin" />}
                         Salvar Exercício
                     </button>
                 </div>
@@ -356,7 +369,7 @@ function CreatableMultiSelect({ availableGroups, selectedGroups, onChange, onCre
     return (
         <div className="relative" ref={containerRef}>
             <div
-                className={`w-full bg-muted border border-border rounded-lg min-h-[42px] p-1.5 flex flex-wrap gap-1.5 transition-colors ${isOpen ? 'ring-2 ring-violet-500/50 border-transparent' : ''}`}
+                className={`w-full bg-glass-bg border border-k-border-subtle rounded-xl min-h-[46px] p-1.5 flex flex-wrap gap-1.5 transition-all ${isOpen ? 'ring-2 ring-violet-500/10 border-violet-500/50' : ''}`}
                 onClick={() => {
                     // Focus input when clicking container
                     const input = containerRef.current?.querySelector('input')
@@ -365,7 +378,7 @@ function CreatableMultiSelect({ availableGroups, selectedGroups, onChange, onCre
                 }}
             >
                 {selectedGroups.map(group => (
-                    <span key={group.id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-violet-500/20 text-violet-200 text-sm border border-violet-500/30">
+                    <span key={group.id} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-violet-500/10 text-violet-300 text-[11px] font-bold uppercase tracking-wider border border-violet-500/20">
                         {group.name}
                         <button
                             type="button"
@@ -373,9 +386,9 @@ function CreatableMultiSelect({ availableGroups, selectedGroups, onChange, onCre
                                 e.stopPropagation()
                                 handleRemove(group.id)
                             }}
-                            className="hover:text-foreground"
+                            className="hover:text-white transition-colors ml-0.5"
                         >
-                            &times;
+                            <X className="w-3 h-3" strokeWidth={2.5} />
                         </button>
                     </span>
                 ))}
@@ -390,29 +403,36 @@ function CreatableMultiSelect({ availableGroups, selectedGroups, onChange, onCre
                     onFocus={() => setIsOpen(true)}
                     onKeyDown={handleKeyDown}
                     placeholder={selectedGroups.length === 0 ? "Selecione ou crie..." : ""}
-                    className="bg-transparent border-none outline-none text-foreground text-sm flex-1 min-w-[120px] placeholder:text-muted-foreground h-7"
+                    className="bg-transparent border-none outline-none text-k-text-primary text-sm flex-1 min-w-[120px] placeholder:text-k-text-quaternary h-8 px-1"
                     disabled={isCreating}
                 />
             </div>
 
             {isOpen && (inputValue || filteredGroups.length > 0 || isLoading) && (
-                <div className="absolute z-20 left-0 right-0 top-full mt-1 bg-background border border-border rounded-lg shadow-xl max-h-60 overflow-y-auto">
+                <div className="absolute z-50 left-0 right-0 top-full mt-2 bg-surface-card border border-k-border-primary rounded-xl shadow-2xl max-h-60 overflow-y-auto ring-1 ring-k-border-subtle animate-in fade-in zoom-in-95 duration-150">
                     {isLoading ? (
-                        <div className="p-3 text-center text-muted-foreground text-sm">Carregando...</div>
+                        <div className="p-4 text-center text-muted-foreground text-xs font-medium flex items-center justify-center gap-2">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Carregando...
+                        </div>
                     ) : (
                         <>
                             {filteredGroups.map(group => (
                                 <button
                                     key={group.id}
                                     onClick={() => handleSelect(group)}
-                                    className="w-full px-3 py-2 text-left text-sm text-foreground/80 hover:bg-muted hover:text-foreground flex items-center justify-between group"
+                                    className="w-full px-4 py-2.5 text-left text-sm text-k-text-secondary hover:bg-glass-bg hover:text-k-text-primary flex items-center justify-between group transition-colors"
                                 >
                                     <span>{group.name}</span>
-                                    {group.owner_id && (
-                                        <span className="text-xs text-violet-500 opacity-50 group-hover:opacity-100">
-                                            Custom
-                                        </span>
-                                    )}
+                                    <div className="flex items-center gap-2">
+                                        {group.owner_id && (
+                                            <span className="text-[10px] font-bold text-violet-400 bg-violet-500/10 px-1.5 py-0.5 rounded border border-violet-500/20">
+                                                CUSTOM
+                                            </span>
+                                        )}
+                                        {selectedGroups.some(g => g.id === group.id) && <Check className="w-4 h-4 text-violet-400" />}
+                                    </div>
+
                                 </button>
                             ))}
 
@@ -420,20 +440,20 @@ function CreatableMultiSelect({ availableGroups, selectedGroups, onChange, onCre
                                 <button
                                     onClick={handleCreate}
                                     disabled={isCreating}
-                                    className="w-full px-3 py-2 text-left text-sm text-violet-400 hover:bg-violet-500/10 flex items-center gap-2 border-t border-border"
+                                    className="w-full px-4 py-3 text-left text-sm text-violet-300 hover:bg-violet-500/10 flex items-center gap-2 border-t border-k-border-subtle transition-colors"
                                 >
                                     {isCreating ? (
-                                        <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                        <Loader2 className="w-4 h-4 animate-spin" />
                                     ) : (
-                                        <span>+</span>
+                                        <Plus className="w-4 h-4" />
                                     )}
-                                    Criar "{inputValue}"
+                                    <span className="font-semibold">Criar "{inputValue}"</span>
                                 </button>
                             )}
 
                             {filteredGroups.length === 0 && !showCreateOption && !isLoading && (
-                                <div className="p-3 text-center text-muted-foreground text-sm">
-                                    Nenhum resultado
+                                <div className="p-4 text-center text-k-text-quaternary text-xs font-medium">
+                                    Nenhum resultado encontrado
                                 </div>
                             )}
                         </>

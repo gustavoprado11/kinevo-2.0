@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { createStudent } from '@/actions/create-student'
 import { StudentAccessDialog } from '@/components/students'
+import { Button } from '@/components/ui/button'
+import { X, User, Mail, Phone, Globe, MapPin, Loader2, AlertCircle } from 'lucide-react'
 
 interface Student {
     id: string
@@ -145,163 +147,166 @@ export function StudentModal({
     return (
         <>
             {!createdCredentials && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                     {/* Backdrop */}
                     <div
-                        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+                        className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300"
                         onClick={handleClose}
                     />
 
                     {/* Modal Content */}
-                    <div className="relative mx-4 w-full max-w-md overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
+                    <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-transparent bg-surface-card backdrop-blur-xl shadow-2xl ring-1 ring-k-border-primary animate-in fade-in zoom-in-95 duration-200">
                         {/* Header */}
-                        <div className="flex items-center justify-between border-b border-border bg-card px-6 py-4">
+                        <div className="flex items-center justify-between border-b border-k-border-subtle bg-surface-inset px-8 py-6">
                             <div>
-                                <h2 className="text-lg font-semibold text-foreground">
+                                <h2 className="text-xl font-bold text-white tracking-tight">
                                     {isEdit ? 'Editar Aluno' : 'Novo Aluno'}
                                 </h2>
-                                <p className="text-sm text-muted-foreground">
-                                    {isEdit ? 'Atualize as informações do aluno' : 'Adicione um novo aluno ao seu painel'}
+                                <p className="text-xs text-muted-foreground/60 uppercase tracking-widest font-semibold mt-1">
+                                    {isEdit ? 'Atualize as informações' : 'Adicione um novo aluno'}
                                 </p>
                             </div>
-                            <button
+                            <Button
+                                variant="ghost"
+                                size="icon"
                                 onClick={handleClose}
-                                className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                                className="h-8 w-8 text-muted-foreground/50 hover:text-k-text-primary hover:bg-glass-bg-active rounded-full transition-colors"
                             >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
+                                <X className="w-5 h-5" strokeWidth={1.5} />
+                            </Button>
                         </div>
 
                         {/* Form */}
-                        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+                        <form onSubmit={handleSubmit} className="p-8 space-y-6">
                             {error && (
-                                <div className="bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-3 rounded-xl text-sm flex items-start gap-3">
-                                    <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
+                                <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl text-sm flex items-start gap-3">
+                                    <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
                                     {error}
                                 </div>
                             )}
 
-                            <div>
-                                <label htmlFor="name" className="mb-2 block text-sm font-medium text-foreground">
-                                    Nome <span className="text-red-400">*</span>
-                                </label>
-                                <input
-                                    id="name"
-                                    type="text"
-                                    value={name}
-                                    onChange={(e) => setName(e.target.value)}
-                                    required
-                                    className="w-full rounded-xl border border-input bg-background px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 transition-all"
-                                    placeholder="Nome completo do aluno"
-                                />
-                            </div>
-
-                            <div>
-                                <label htmlFor="email" className="mb-2 block text-sm font-medium text-foreground">
-                                    Email <span className="text-red-400">*</span>
-                                </label>
-                                <input
-                                    id="email"
-                                    type="email"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    required
-                                    className="w-full rounded-xl border border-input bg-background px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 transition-all"
-                                    placeholder="aluno@email.com"
-                                />
-                            </div>
-
-                            <div>
-                                <label htmlFor="phone" className="mb-2 block text-sm font-medium text-foreground">
-                                    Telefone <span className="font-normal text-muted-foreground">(WhatsApp para credenciais)</span>
-                                </label>
-                                <input
-                                    id="phone"
-                                    type="tel"
-                                    value={phone}
-                                    onChange={(e) => setPhone(e.target.value)}
-                                    className="w-full rounded-xl border border-input bg-background px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 transition-all"
-                                    placeholder="(11) 99999-9999"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="mb-3 block text-sm font-medium text-foreground">
-                                    Modalidade
-                                </label>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <label className={`
-                                        flex flex-col items-center justify-between rounded-xl border-2 p-4 cursor-pointer transition-all
-                                        ${modality === 'online'
-                                            ? 'border-violet-500 bg-violet-500/10 text-violet-400'
-                                            : 'border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground'}
-                                    `}>
-                                        <input
-                                            type="radio"
-                                            name="modality"
-                                            value="online"
-                                            checked={modality === 'online'}
-                                            onChange={() => setModality('online')}
-                                            className="sr-only"
-                                        />
-                                        <svg className="mb-2 h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                        </svg>
-                                        Online
+                            <div className="space-y-5">
+                                <div>
+                                    <label htmlFor="name" className="mb-1.5 block text-[11px] font-bold text-k-text-tertiary uppercase tracking-wider">
+                                        Nome completo <span className="text-violet-500">*</span>
                                     </label>
-
-                                    <label className={`
-                                        flex flex-col items-center justify-between rounded-xl border-2 p-4 cursor-pointer transition-all
-                                        ${modality === 'presential'
-                                            ? 'border-violet-500 bg-violet-500/10 text-violet-400'
-                                            : 'border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground'}
-                                    `}>
+                                    <div className="relative group">
+                                        <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-k-text-quaternary group-focus-within:text-violet-400 transition-colors" strokeWidth={1.5} />
                                         <input
-                                            type="radio"
-                                            name="modality"
-                                            value="presential"
-                                            checked={modality === 'presential'}
-                                            onChange={() => setModality('presential')}
-                                            className="sr-only"
+                                            id="name"
+                                            type="text"
+                                            value={name}
+                                            onChange={(e) => setName(e.target.value)}
+                                            required
+                                            className="w-full rounded-xl border border-k-border-subtle bg-glass-bg px-10 py-3 text-k-text-primary placeholder:text-k-text-quaternary focus:outline-none focus:border-violet-500/50 focus:ring-4 focus:ring-violet-500/20 transition-all text-sm"
+                                            placeholder="Ex: João Silva"
                                         />
-                                        <svg className="mb-2 h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                        Presencial
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label htmlFor="email" className="mb-1.5 block text-[11px] font-bold text-white/40 uppercase tracking-wider">
+                                        Email <span className="text-violet-500">*</span>
                                     </label>
+                                    <div className="relative group">
+                                        <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-k-text-quaternary group-focus-within:text-violet-400 transition-colors" strokeWidth={1.5} />
+                                        <input
+                                            id="email"
+                                            type="email"
+                                            value={email}
+                                            onChange={(e) => setEmail(e.target.value)}
+                                            required
+                                            className="w-full rounded-xl border border-k-border-subtle bg-glass-bg px-10 py-3 text-k-text-primary placeholder:text-k-text-quaternary focus:outline-none focus:border-violet-500/50 focus:ring-4 focus:ring-violet-500/20 transition-all text-sm"
+                                            placeholder="aluno@email.com"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label htmlFor="phone" className="mb-1.5 block text-[11px] font-bold text-white/40 uppercase tracking-wider">
+                                        Telefone <span className="font-medium text-k-text-quaternary ml-1">(WhatsApp)</span>
+                                    </label>
+                                    <div className="relative group">
+                                        <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-k-text-quaternary group-focus-within:text-violet-400 transition-colors" strokeWidth={1.5} />
+                                        <input
+                                            id="phone"
+                                            type="tel"
+                                            value={phone}
+                                            onChange={(e) => setPhone(e.target.value)}
+                                            className="w-full rounded-xl border border-k-border-subtle bg-glass-bg px-10 py-3 text-k-text-primary placeholder:text-k-text-quaternary focus:outline-none focus:border-violet-500/50 focus:ring-4 focus:ring-violet-500/20 transition-all text-sm"
+                                            placeholder="(11) 99999-9999"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="mb-2 block text-[11px] font-bold text-white/40 uppercase tracking-wider">
+                                        Modalidade
+                                    </label>
+                                    <div className="grid grid-cols-2 gap-1 bg-surface-inset p-1 rounded-xl">
+                                        <label className={`
+                                            flex items-center justify-center gap-2 rounded-lg px-3 py-2.5 cursor-pointer transition-all duration-200
+                                            ${modality === 'online'
+                                                ? 'bg-glass-bg-active text-k-text-primary shadow-sm ring-1 ring-k-border-subtle'
+                                                : 'text-k-text-tertiary hover:text-k-text-secondary hover:bg-glass-bg'}
+                                        `}>
+                                            <input
+                                                type="radio"
+                                                name="modality"
+                                                value="online"
+                                                checked={modality === 'online'}
+                                                onChange={() => setModality('online')}
+                                                className="sr-only"
+                                            />
+                                            <Globe className="h-4 w-4" strokeWidth={1.5} />
+                                            <span className="font-semibold text-xs tracking-wide">Online</span>
+                                        </label>
+
+                                        <label className={`
+                                            flex items-center justify-center gap-2 rounded-lg px-3 py-2.5 cursor-pointer transition-all duration-200
+                                            ${modality === 'presential'
+                                                ? 'bg-glass-bg-active text-k-text-primary shadow-sm ring-1 ring-k-border-subtle'
+                                                : 'text-k-text-tertiary hover:text-k-text-secondary hover:bg-glass-bg'}
+                                        `}>
+                                            <input
+                                                type="radio"
+                                                name="modality"
+                                                value="presential"
+                                                checked={modality === 'presential'}
+                                                onChange={() => setModality('presential')}
+                                                className="sr-only"
+                                            />
+                                            <MapPin className="h-4 w-4" strokeWidth={1.5} />
+                                            <span className="font-semibold text-xs tracking-wide">Presencial</span>
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
 
                             {/* Actions */}
                             <div className="flex gap-3 pt-2">
-                                <button
+                                <Button
                                     type="button"
+                                    variant="ghost"
                                     onClick={handleClose}
-                                    className="flex-1 rounded-xl border border-border bg-secondary px-4 py-3 font-medium text-secondary-foreground transition-colors hover:bg-secondary/80"
+                                    className="flex-1 text-k-text-secondary hover:text-k-text-primary hover:bg-glass-bg rounded-xl transition-all"
                                 >
                                     Cancelar
-                                </button>
-                                <button
+                                </Button>
+                                <Button
                                     type="submit"
                                     disabled={loading}
-                                    className="flex-1 rounded-xl bg-gradient-to-r from-violet-600 to-blue-600 px-4 py-3 font-medium text-white transition-all shadow-lg shadow-violet-500/20 hover:from-violet-500 hover:to-blue-500 disabled:cursor-not-allowed disabled:from-muted disabled:to-muted"
+                                    className="flex-1 bg-violet-600 hover:bg-violet-500 text-white font-bold rounded-xl shadow-lg shadow-violet-500/20 transition-all active:scale-95"
                                 >
                                     {loading ? (
-                                        <span className="flex items-center justify-center gap-2">
-                                            <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                                            </svg>
+                                        <>
+                                            <Loader2 className="animate-spin w-4 h-4 mr-2" />
                                             Processando...
-                                        </span>
+                                        </>
                                     ) : (
                                         isEdit ? 'Salvar Alterações' : 'Criar Aluno'
                                     )}
-                                </button>
+                                </Button>
                             </div>
                         </form>
                     </div>

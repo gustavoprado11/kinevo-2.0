@@ -20,12 +20,12 @@ export function AppLayout({ children, trainerName, trainerEmail, trainerAvatarUr
             <Sidebar />
 
             {/* Main content area */}
-            <div className="pl-60">
+            <div className="pl-64 bg-surface-primary min-h-screen">
                 {/* Header */}
                 <Header trainerName={trainerName} trainerEmail={trainerEmail} trainerAvatarUrl={trainerAvatarUrl} />
 
                 {/* Page content */}
-                <main className="p-6">
+                <main className="p-8">
                     {children}
                 </main>
             </div>

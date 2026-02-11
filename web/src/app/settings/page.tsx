@@ -84,20 +84,22 @@ export default async function SettingsPage() {
             trainerTheme={trainer.theme}
         >
             <div className="mb-8">
-                <div className="mb-2 flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
+                <div className="mb-2 flex items-center gap-2 text-[10px] uppercase tracking-widest text-k-text-quaternary font-bold">
                     <span>Painel</span>
-                    <ChevronRight size={12} />
+                    <ChevronRight size={10} strokeWidth={3} />
                     <span>Minha Conta</span>
                 </div>
-                <h1 className="text-3xl font-bold tracking-tight text-foreground">Minha Conta</h1>
-                <p className="mt-1 text-muted-foreground">Gerencie seu perfil e assinatura.</p>
+                <h1 className="text-3xl font-bold tracking-tighter bg-gradient-to-b from-[var(--gradient-text-from)] to-[var(--gradient-text-to)] bg-clip-text text-transparent">
+                    Minha Conta
+                </h1>
+                <p className="mt-1 text-sm text-k-text-tertiary">Gerencie seu perfil e assinatura.</p>
             </div>
 
             <div className="space-y-6">
                 <ThemeSelector initialTheme={trainer.theme} />
             </div>
 
-            <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+            <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
                 <div className="lg:col-span-1">
                     <ProfileForm trainer={trainer} />
                 </div>

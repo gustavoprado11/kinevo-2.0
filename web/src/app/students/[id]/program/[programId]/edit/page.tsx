@@ -24,6 +24,8 @@ export default async function EditProgramPage({ params }: PageProps) {
             name,
             description,
             duration_weeks,
+            started_at,
+            scheduled_start_date,
             assigned_workouts (
                 id,
                 name,

@@ -3,6 +3,8 @@
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { Button } from '@/components/ui/button'
+import { LogOut } from 'lucide-react'
 
 interface HeaderProps {
     trainerName: string
@@ -62,15 +64,15 @@ export function Header({ trainerName, trainerEmail, trainerAvatarUrl }: HeaderPr
                 </div>
 
                 {/* Logout button */}
-                <button
+                <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={handleLogout}
-                    className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors flex items-center gap-2"
+                    className="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 gap-2"
                 >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                    </svg>
+                    <LogOut className="w-4 h-4" />
                     <span className="hidden sm:inline">Sair</span>
-                </button>
+                </Button>
             </div>
         </header>
     )

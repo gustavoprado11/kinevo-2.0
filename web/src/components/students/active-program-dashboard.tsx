@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { SessionDetailSheet } from './session-detail-sheet'
+import { WeeklyPerformanceTracker } from './weekly-performance-tracker'
 
 interface AssignedProgram {
     id: string
@@ -12,6 +13,11 @@ interface AssignedProgram {
     current_week: number | null
     started_at: string | null
     created_at: string
+    assigned_workouts?: Array<{
+        id: string
+        name: string
+        scheduled_days: number[]
+    }>
 }
 
 interface HistorySummary {
@@ -24,6 +30,7 @@ interface ActiveProgramDashboardProps {
     program: AssignedProgram | null
     summary: HistorySummary
     recentSessions?: any[]
+    sessionsLast7Days?: any[]
     onAssignProgram?: () => void
     onEditProgram?: () => void
     onCompleteProgram?: () => void
@@ -34,6 +41,7 @@ export function ActiveProgramDashboard({
     program,
     summary,
     recentSessions = [],
+    sessionsLast7Days = [],
     onAssignProgram,
     onEditProgram,
     onCompleteProgram,
@@ -144,190 +152,186 @@ export function ActiveProgramDashboard({
         : 0
 
     return (
-        <div className="bg-card rounded-xl border border-border p-6">
-            {/* Header / Actions */}
-            <div className="flex items-start justify-between mb-6">
-                <div>
-                    <div className="flex items-center gap-3 mb-1">
-                        <h2 className="text-xl font-bold text-foreground">{program.name}</h2>
-                        <span className={`px-2.5 py-0.5 text-xs font-medium rounded-full border flex items-center gap-1.5 ${statusConfig.classes}`}>
-                            {statusConfig.icon}
-                            {statusConfig.label}
-                        </span>
+        <div className="space-y-6">
+            {/* Main Program Card */}
+            <div className="bg-surface-card rounded-2xl border border-k-border-primary p-8 shadow-sm">
+                {/* Header / Actions */}
+                <div className="flex items-start justify-between mb-8">
+                    <div>
+                        <div className="flex items-center gap-3 mb-1">
+                            <h2 className="text-2xl font-black text-white tracking-tight">{program.name}</h2>
+                            <span className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded border ${statusConfig.classes.replace('text-emerald-400', 'text-emerald-300').replace('border-emerald-500/20', 'border-emerald-500/30')}`}>
+                                {statusConfig.label}
+                            </span>
+                        </div>
+                        {program.description && (
+                            <p className="text-sm text-k-text-tertiary leading-relaxed max-w-md">{program.description}</p>
+                        )}
                     </div>
-                    {program.description && (
-                        <p className="text-sm text-muted-foreground">{program.description}</p>
-                    )}
-                </div>
-                <div className="flex items-center gap-2">
-                    <button
-                        onClick={onEditProgram}
-                        className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg transition-colors flex items-center gap-1.5"
-                    >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                        Editar
-                    </button>
-                    {program.status === 'active' && (
+                    <div className="flex items-center gap-2">
                         <button
-                            onClick={onCompleteProgram}
-                            className="px-3 py-1.5 text-sm text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 rounded-lg transition-colors flex items-center gap-1.5"
+                            onClick={onEditProgram}
+                            className="p-2 text-k-text-quaternary hover:text-k-text-primary hover:bg-glass-bg rounded-xl transition-all border border-transparent hover:border-k-border-primary"
+                            title="Editar"
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                             </svg>
-                            Concluir
                         </button>
-                    )}
-                    <button
-                        onClick={onAssignProgram}
-                        className="px-3 py-1.5 text-sm text-violet-400 hover:text-violet-300 hover:bg-violet-500/10 rounded-lg transition-colors flex items-center gap-1.5"
-                    >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
-                        Trocar
-                    </button>
+                        {program.status === 'active' && (
+                            <button
+                                onClick={onCompleteProgram}
+                                className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-emerald-300 hover:text-emerald-200 hover:bg-emerald-500/10 rounded-xl transition-all border border-emerald-500/20"
+                            >
+                                Concluir
+                            </button>
+                        )}
+                        <button
+                            onClick={onAssignProgram}
+                            className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-violet-300 hover:text-violet-200 hover:bg-violet-500/10 rounded-xl transition-all border border-violet-500/20"
+                        >
+                            Trocar
+                        </button>
+                    </div>
                 </div>
-            </div>
 
-            {/* Progress Bar & Dates */}
-            <div className="bg-card rounded-xl border border-border/70 p-5 mb-6">
+                {/* Progress Bar & Dates */}
                 {program.duration_weeks && (
-                    <div className="mb-4">
-                        <div className="flex items-center justify-between text-sm mb-2">
-                            <span className="text-muted-foreground">Progresso do Ciclo</span>
-                            <span className="text-foreground font-medium">
+                    <div className="mb-10">
+                        <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.2em] text-k-text-quaternary mb-3">
+                            <span>Progresso do Ciclo</span>
+                            <span className="text-k-text-secondary">
                                 Semana {program.current_week || 1} de {program.duration_weeks}
                             </span>
                         </div>
-                        <div className="h-2 bg-muted rounded-full overflow-hidden">
+                        <div className="h-2.5 bg-glass-bg rounded-full overflow-hidden relative">
                             <div
-                                className="h-full bg-gradient-to-r from-violet-500 to-blue-500 rounded-full transition-all duration-1000 ease-out"
+                                className="h-full bg-gradient-to-r from-violet-600 to-indigo-400 rounded-full transition-all duration-1000 ease-out relative"
                                 style={{ width: `${progressPercent}%` }}
-                            />
+                            >
+                                {/* Glow tip */}
+                                <div className="absolute right-0 top-0 bottom-0 w-4 bg-white/20 blur-sm rounded-full" />
+                            </div>
+                        </div>
+                        <div className="mt-4 flex items-center gap-6 text-[10px] font-bold uppercase tracking-widest">
+                            {program.started_at && (
+                                <div className="flex items-center gap-2 text-k-text-quaternary">
+                                    <svg className="w-3.5 h-3.5 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                    <span>Início <span className="text-k-text-tertiary ml-1">{new Date(program.started_at).toLocaleDateString('pt-BR')}</span></span>
+                                </div>
+                            )}
+                            {program.duration_weeks && (
+                                <div className="flex items-center gap-2 text-k-text-quaternary">
+                                    <svg className="w-3.5 h-3.5 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <span>Duração <span className="text-k-text-tertiary ml-1">{program.duration_weeks} semanas</span></span>
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}
 
-                <div className="flex items-center gap-6 text-sm">
-                    {program.started_at && (
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                {/* Stats Grid - Hero Style */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10">
+                    {/* Total Sessions */}
+                    <div className="relative group">
+                        <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-k-text-quaternary">
+                            <svg className="w-3.5 h-3.5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                             </svg>
-                            <span>Início: <span className="text-foreground/80">{new Date(program.started_at).toLocaleDateString('pt-BR')}</span></span>
+                            Treinos totais
                         </div>
-                    )}
-                    {program.duration_weeks && (
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <p className="text-4xl font-black text-white tracking-tighter">{summary.totalSessions}</p>
+                    </div>
+
+                    {/* This Week */}
+                    <div className="relative group">
+                        <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-k-text-quaternary">
+                            <svg className="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Esta semana
+                        </div>
+                        <p className="text-4xl font-black text-white tracking-tighter">{summary.completedThisWeek}</p>
+                    </div>
+
+                    {/* Last Session */}
+                    <div className="relative group">
+                        <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-k-text-quaternary">
+                            <svg className="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
-                            <span>Duração: <span className="text-foreground/80">{program.duration_weeks} semanas</span></span>
+                            Último treino
+                        </div>
+                        <p className="text-4xl font-black text-white tracking-tighter leading-none">
+                            {summary.lastSessionDate
+                                ? new Date(summary.lastSessionDate).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '')
+                                : '-'}
+                        </p>
+                    </div>
+                </div>
+
+                {/* Weekly Performance Tracker */}
+                {program.assigned_workouts && (
+                    <WeeklyPerformanceTracker
+                        scheduledWorkouts={program.assigned_workouts}
+                        recentSessions={sessionsLast7Days}
+                    />
+                )}
+
+                {/* Recent Sessions List - Compact Feed */}
+                <div>
+                    <h3 className="text-[10px] font-bold text-k-text-quaternary uppercase tracking-[0.3em] mb-6 flex items-center gap-4">
+                        Últimas Sessões
+                        <div className="h-px flex-1 bg-k-border-subtle" />
+                    </h3>
+
+                    {recentSessions.length === 0 ? (
+                        <div className="text-center py-10 text-k-text-quaternary text-xs italic font-medium">
+                            Nenhuma sessão registrada neste programa ainda.
+                        </div>
+                    ) : (
+                        <div className="flex flex-col space-y-1">
+                            {recentSessions.map((session) => (
+                                <button
+                                    key={session.id}
+                                    onClick={() => handleSessionClick(session.id)}
+                                    className="w-full bg-transparent hover:bg-glass-bg rounded-xl px-4 py-3 flex items-center justify-between transition-all group text-left border border-transparent hover:border-k-border-subtle"
+                                >
+                                    <div className="flex items-center gap-4">
+                                        <div className={`w-10 h-10 rounded-xl flex flex-col items-center justify-center shrink-0 border transition-colors ${session.rpe
+                                            ? (session.rpe <= 4 ? 'bg-emerald-500/5 border-emerald-500/10 text-emerald-400/60 group-hover:text-emerald-400 group-hover:border-emerald-500/20' : session.rpe <= 7 ? 'bg-amber-500/5 border-amber-500/10 text-amber-500/60 group-hover:text-amber-500 group-hover:border-amber-500/20' : 'bg-red-500/5 border-red-500/10 text-red-400/60 group-hover:text-red-400 group-hover:border-red-500/20')
+                                            : 'bg-glass-bg border-k-border-subtle text-k-text-quaternary'
+                                            }`}>
+                                            <span className="text-[8px] uppercase font-black tracking-widest opacity-40">RPE</span>
+                                            <span className="text-sm font-black leading-none">{session.rpe || '-'}</span>
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-bold text-k-text-secondary group-hover:text-k-text-primary transition-colors truncate">
+                                                {session.assigned_workouts?.name}
+                                            </p>
+                                            <p className="text-[10px] font-medium text-k-text-quaternary uppercase tracking-widest">
+                                                {new Date(session.completed_at).toLocaleDateString('pt-BR', {
+                                                    weekday: 'short',
+                                                    day: 'numeric',
+                                                    month: 'short',
+                                                    hour: '2-digit',
+                                                    minute: '2-digit'
+                                                })}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <svg className="w-4 h-4 text-k-border-subtle group-hover:text-k-text-tertiary group-hover:translate-x-0.5 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                    </svg>
+                                </button>
+                            ))}
                         </div>
                     )}
                 </div>
-            </div>
-
-            <hr className="border-border my-6" />
-
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-                {/* Total Sessions */}
-                <div className="bg-background/30 rounded-xl border border-border/70 p-4 flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-lg bg-violet-500/10 flex items-center justify-center shrink-0">
-                        <svg className="w-6 h-6 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                        </svg>
-                    </div>
-                    <div>
-                        <p className="text-2xl font-bold text-foreground leading-none">{summary.totalSessions}</p>
-                        <p className="text-xs text-muted-foreground mt-1">Treinos totais</p>
-                    </div>
-                </div>
-
-                {/* This Week */}
-                <div className="bg-background/30 rounded-xl border border-border/70 p-4 flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0">
-                        <svg className="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                    </div>
-                    <div>
-                        <p className="text-2xl font-bold text-foreground leading-none">{summary.completedThisWeek}</p>
-                        <p className="text-xs text-muted-foreground mt-1">Esta semana</p>
-                    </div>
-                </div>
-
-                {/* Last Session */}
-                <div className="bg-background/30 rounded-xl border border-border/70 p-4 flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
-                        <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                    </div>
-                    <div>
-                        <p className="text-sm font-bold text-foreground leading-tight">
-                            {summary.lastSessionDate
-                                ? new Date(summary.lastSessionDate).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
-                                : '-'}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">Último treino</p>
-                    </div>
-                </div>
-            </div>
-
-            {/* Recent Sessions List */}
-            <div>
-                <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-4 flex items-center gap-2">
-                    Últimas Sessões
-                    <span className="h-px flex-1 bg-muted"></span>
-                </h3>
-
-                {recentSessions.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground text-sm">
-                        Nenhuma sessão registrada neste programa ainda.
-                    </div>
-                ) : (
-                    <div className="flex flex-col space-y-2">
-                        {recentSessions.map((session) => (
-                            <button
-                                key={session.id}
-                                onClick={() => handleSessionClick(session.id)}
-                                className="w-full bg-background/30 hover:bg-card border border-border/70 hover:border-violet-500/30 rounded-xl p-3 flex items-center justify-between transition-all group text-left"
-                            >
-                                <div className="flex items-center gap-3">
-                                    <div className={`w-10 h-10 rounded-lg flex flex-col items-center justify-center shrink-0 ${session.rpe
-                                        ? (session.rpe <= 4 ? 'bg-emerald-500/10 text-emerald-400' : session.rpe <= 7 ? 'bg-yellow-500/10 text-yellow-500' : 'bg-red-500/10 text-red-400')
-                                        : 'bg-muted/40 text-muted-foreground'
-                                        }`}>
-                                        <span className="text-[10px] uppercase font-bold opacity-70">RPE</span>
-                                        <span className="text-sm font-bold leading-none">{session.rpe || '-'}</span>
-                                    </div>
-                                    <div className="min-w-0">
-                                        <p className="text-sm font-medium text-foreground group-hover:text-violet-300 transition-colors truncate">
-                                            {session.assigned_workouts?.name}
-                                        </p>
-                                        <p className="text-xs text-muted-foreground truncate">
-                                            {new Date(session.completed_at).toLocaleDateString('pt-BR', {
-                                                weekday: 'short',
-                                                day: 'numeric',
-                                                month: 'short',
-                                                hour: '2-digit',
-                                                minute: '2-digit'
-                                            })}
-                                        </p>
-                                    </div>
-                                </div>
-                                <svg className="w-4 h-4 text-muted-foreground/80 group-hover:text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5l7 7-7 7" />
-                                </svg>
-                            </button>
-                        ))}
-                    </div>
-                )}
             </div>
 
             <SessionDetailSheet

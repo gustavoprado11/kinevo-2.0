@@ -52,13 +52,20 @@ export function ThemeSelector({ initialTheme = 'system' }: ThemeSelectorProps) {
     }
 
     return (
-        <div className="bg-card border border-border rounded-2xl p-6 shadow-[0_10px_26px_rgba(2,6,23,0.18)]">
-            <div className="mb-5">
-                <h2 className="text-lg font-semibold text-foreground">Aparência</h2>
-                <p className="text-sm text-muted-foreground mt-1">Escolha como o sistema será exibido.</p>
+        <div className="bg-surface-card border border-k-border-primary rounded-2xl p-6 shadow-sm">
+            <div className="mb-5 flex items-start justify-between">
+                <div>
+                    <h2 className="text-xl font-semibold text-k-text-primary">Aparência</h2>
+                    <p className="text-sm text-k-text-tertiary mt-1">Escolha como o sistema será exibido.</p>
+                </div>
+                <div className="w-9 h-9 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400">
+                    {selectedTheme === 'light' ? <Sun size={18} strokeWidth={1.5} /> :
+                        selectedTheme === 'dark' ? <Moon size={18} strokeWidth={1.5} /> :
+                            <Monitor size={18} strokeWidth={1.5} />}
+                </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="bg-surface-inset p-1 rounded-xl border border-k-border-subtle flex gap-1">
                 {OPTIONS.map((option) => {
                     const active = mounted && selectedTheme === option.value
                     return (
@@ -67,11 +74,10 @@ export function ThemeSelector({ initialTheme = 'system' }: ThemeSelectorProps) {
                             type="button"
                             onClick={() => handleSelect(option.value)}
                             disabled={isPending}
-                            className={`rounded-xl border px-4 py-3 text-sm font-medium transition-all flex items-center justify-center gap-2 ${
-                                active
-                                    ? 'border-violet-500/50 bg-violet-500/15 text-foreground'
-                                    : 'border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted'
-                            } ${isPending ? 'opacity-70 cursor-wait' : ''}`}
+                            className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-all flex items-center justify-center gap-2 ${active
+                                ? 'bg-glass-bg-active text-k-text-primary shadow-sm border border-k-border-primary backdrop-blur-md'
+                                : 'text-k-text-tertiary hover:text-k-text-primary hover:bg-glass-bg border border-transparent'
+                                } ${isPending ? 'opacity-70 cursor-wait' : ''}`}
                         >
                             {option.icon}
                             {option.label}
@@ -80,12 +86,12 @@ export function ThemeSelector({ initialTheme = 'system' }: ThemeSelectorProps) {
                 })}
             </div>
 
-            <p className="text-xs text-muted-foreground mt-3">
+            <p className="text-[10px] uppercase tracking-widest font-bold text-k-text-quaternary mt-4">
                 {isPending ? 'Salvando preferência...' : 'Sua escolha é salva no navegador e na sua conta.'}
             </p>
 
             {error && (
-                <div className="mt-3 rounded-xl border border-destructive/30 bg-destructive/10 text-destructive px-3 py-2 text-sm">
+                <div className="mt-3 rounded-xl border border-red-500/30 bg-red-500/10 text-red-300 px-3 py-2 text-sm">
                     {error}
                 </div>
             )}

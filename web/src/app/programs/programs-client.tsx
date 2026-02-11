@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AppLayout } from '@/components/layout'
 import { createClient } from '@/lib/supabase/client'
+import { Plus, Search, Trash2, Calendar, Dumbbell, FolderPlus, Loader2 } from 'lucide-react'
 
 interface Trainer {
     id: string
@@ -72,122 +73,123 @@ export function ProgramsClient({ trainer, programs: initialPrograms }: ProgramsC
             trainerAvatarUrl={trainer.avatar_url}
             trainerTheme={trainer.theme}
         >
-            {/* Page Header */}
-            <div className="flex items-center justify-between mb-8">
-                <div>
-                    <h1 className="text-2xl font-bold text-foreground">Programas</h1>
-                    <p className="mt-1 text-muted-foreground">Sua biblioteca de programas de treino</p>
-                </div>
-                <button
-                    onClick={handleCreateProgram}
-                    className="px-4 py-2.5 bg-gradient-to-r from-violet-600 to-blue-600 hover:from-violet-500 hover:to-blue-500 text-white text-sm font-medium rounded-lg transition-all shadow-lg shadow-violet-500/20 flex items-center gap-2"
-                >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                    </svg>
-                    Novo Programa
-                </button>
-            </div>
+            <div className="min-h-screen bg-surface-primary p-8 font-sans">
+                <div className="max-w-7xl mx-auto space-y-8">
 
-            {/* Search */}
-            <div className="bg-card rounded-xl border border-border mb-6">
-                <div className="p-4">
-                    <div className="relative">
-                        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
+                    {/* Header */}
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                        <div>
+                            <h1 className="text-3xl font-bold tracking-tighter bg-gradient-to-br from-[var(--gradient-text-from)] to-[var(--gradient-text-to)] bg-clip-text text-transparent">
+                                Programas
+                            </h1>
+                            <p className="mt-1 text-sm text-muted-foreground/60">
+                                Sua biblioteca de programas de treino
+                            </p>
+                        </div>
+                        <button
+                            onClick={handleCreateProgram}
+                            className="bg-violet-600 hover:bg-violet-500 text-white rounded-full px-6 py-2.5 text-sm font-semibold shadow-lg shadow-violet-500/20 transition-all active:scale-95 flex items-center gap-2 w-fit"
+                        >
+                            <Plus size={18} strokeWidth={2} />
+                            Novo Programa
+                        </button>
+                    </div>
+
+                    {/* Search Bar */}
+                    <div className="relative group">
+                        <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+                            <Search className="w-[18px] h-[18px] text-k-text-quaternary group-focus-within:text-violet-500 transition-colors" strokeWidth={1.5} />
+                        </div>
                         <input
                             type="text"
                             placeholder="Buscar programas..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full rounded-lg border border-input bg-background py-2.5 pl-10 pr-4 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 transition-all"
+                            className="w-full bg-glass-bg border border-k-border-primary rounded-2xl py-3.5 pl-11 pr-4 text-k-text-primary placeholder:text-k-text-quaternary focus:outline-none focus:ring-2 focus:ring-violet-500/10 focus:border-violet-500/50 backdrop-blur-md transition-all"
                         />
                     </div>
-                </div>
-            </div>
 
-            {/* Programs Grid */}
-            {filteredPrograms.length === 0 ? (
-                <div className="bg-card rounded-xl border border-border p-12 text-center">
-                    <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mx-auto mb-4">
-                        <svg className="w-8 h-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                        </svg>
-                    </div>
-                    {searchQuery ? (
-                        <p className="text-muted-foreground">Nenhum programa encontrado para &ldquo;{searchQuery}&rdquo;</p>
+                    {/* Content Grid */}
+                    {filteredPrograms.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-24 px-4 bg-surface-card rounded-2xl border border-k-border-subtle border-dashed">
+                            <div className="w-16 h-16 rounded-full bg-glass-bg flex items-center justify-center mb-4">
+                                <FolderPlus className="w-8 h-8 text-k-text-quaternary" strokeWidth={1} />
+                            </div>
+                            {searchQuery ? (
+                                <p className="text-muted-foreground/50 font-medium">
+                                    Nenhum programa encontrado para "{searchQuery}"
+                                </p>
+                            ) : (
+                                <>
+                                    <p className="text-muted-foreground/50 font-medium mb-6">
+                                        Você ainda não tem programas na biblioteca
+                                    </p>
+                                    <button
+                                        onClick={handleCreateProgram}
+                                        className="text-violet-400 hover:text-violet-300 text-sm font-medium hover:underline transition-all"
+                                    >
+                                        Criar primeiro programa
+                                    </button>
+                                </>
+                            )}
+                        </div>
                     ) : (
-                        <>
-                            <p className="text-muted-foreground mb-4">Você ainda não tem programas na biblioteca</p>
-                            <button
-                                onClick={handleCreateProgram}
-                                className="px-5 py-2.5 bg-gradient-to-r from-violet-600 to-blue-600 hover:from-violet-500 hover:to-blue-500 text-white text-sm font-medium rounded-lg transition-all"
-                            >
-                                Criar primeiro programa
-                            </button>
-                        </>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {filteredPrograms.map((program) => (
+                                <div
+                                    key={program.id}
+                                    onClick={() => handleEditProgram(program.id)}
+                                    className="group relative bg-surface-card border border-k-border-primary rounded-2xl p-5 shadow-xl hover:border-k-border-primary hover:bg-glass-bg hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden"
+                                >
+                                    {/* Card Header & Title */}
+                                    <div className="flex justify-between items-start mb-3 gap-4">
+                                        <h3 className="text-lg font-bold text-k-text-primary tracking-tight leading-snug group-hover:text-violet-200 transition-colors line-clamp-2">
+                                            {program.name}
+                                        </h3>
+
+                                        <button
+                                            onClick={(e) => handleDeleteProgram(program.id, e)}
+                                            disabled={deleting === program.id}
+                                            className="text-k-text-quaternary hover:text-red-400 hover:bg-glass-bg p-2 rounded-lg transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
+                                        >
+                                            {deleting === program.id ? (
+                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                            ) : (
+                                                <Trash2 className="w-4 h-4" strokeWidth={1.5} />
+                                            )}
+                                        </button>
+                                    </div>
+
+                                    {/* Description */}
+                                    {program.description && (
+                                        <p className="text-sm text-muted-foreground/60 mb-6 line-clamp-2 h-10">
+                                            {program.description}
+                                        </p>
+                                    )}
+                                    {!program.description && <div className="h-10 mb-6" />}
+
+                                    {/* Badges Footer */}
+                                    <div className="flex items-center gap-2 mt-auto">
+                                        {program.duration_weeks && (
+                                            <div className="flex items-center gap-1.5 bg-glass-bg text-[11px] font-semibold text-k-text-tertiary px-2.5 py-1.5 rounded-md border border-k-border-subtle">
+                                                <Calendar size={12} strokeWidth={2} />
+                                                <span>{program.duration_weeks} semanas</span>
+                                            </div>
+                                        )}
+                                        <div className="flex items-center gap-1.5 bg-glass-bg text-[11px] font-semibold text-k-text-secondary px-2.5 py-1.5 rounded-md border border-k-border-subtle">
+                                            <Dumbbell size={12} strokeWidth={2} />
+                                            <span>{program.workout_count} treinos</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Hover Glow Effect */}
+                                    <div className="absolute inset-0 rounded-2xl ring-1 ring-inset ring-k-border-subtle group-hover:ring-k-border-primary pointer-events-none" />
+                                </div>
+                            ))}
+                        </div>
                     )}
                 </div>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {filteredPrograms.map((program) => (
-                        <div
-                            key={program.id}
-                            onClick={() => handleEditProgram(program.id)}
-                            className="bg-card rounded-xl border border-border p-5 hover:border-violet-500/30 hover:bg-muted/40 cursor-pointer transition-all group"
-                        >
-                            <div className="flex items-start justify-between mb-3">
-                                <h3 className="font-semibold text-foreground transition-colors group-hover:text-violet-400">
-                                    {program.name}
-                                </h3>
-                                <button
-                                    onClick={(e) => handleDeleteProgram(program.id, e)}
-                                    disabled={deleting === program.id}
-                                    className="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all"
-                                >
-                                    {deleting === program.id ? (
-                                        <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                                        </svg>
-                                    ) : (
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                        </svg>
-                                    )}
-                                </button>
-                            </div>
-
-                            {program.description && (
-                                <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                                    {program.description}
-                                </p>
-                            )}
-
-                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                {program.duration_weeks && (
-                                    <span className="flex items-center gap-1">
-                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                        </svg>
-                                        {program.duration_weeks} semanas
-                                    </span>
-                                )}
-                                <span className="flex items-center gap-1">
-                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                                    </svg>
-                                    {program.workout_count} treinos
-                                </span>
-                                <span className="text-muted-foreground/80">
-                                    {new Date(program.created_at).toLocaleDateString('pt-BR')}
-                                </span>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
+            </div>
         </AppLayout>
     )
 }

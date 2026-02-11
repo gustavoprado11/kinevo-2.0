@@ -1,3 +1,6 @@
+import { Button } from '@/components/ui/button'
+import { Play, CheckCircle2, PauseCircle, Plus, RefreshCw, Edit2, Calendar, Clock, Layout } from 'lucide-react'
+
 interface AssignedProgram {
     id: string
     name: string
@@ -22,31 +25,18 @@ export function ActiveProgramCard({ program, onAssignProgram, onEditProgram, onC
         const config = {
             active: {
                 label: 'Em andamento',
-                classes: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-                icon: (
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                ),
+                classes: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+                icon: <Play className="w-3.5 h-3.5" />,
             },
             completed: {
                 label: 'Concluído',
-                classes: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-                icon: (
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                ),
+                classes: 'bg-blue-50 text-blue-700 border-blue-100',
+                icon: <CheckCircle2 className="w-3.5 h-3.5" />,
             },
             paused: {
                 label: 'Pausado',
-                classes: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-                icon: (
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                ),
+                classes: 'bg-amber-50 text-amber-700 border-amber-100',
+                icon: <PauseCircle className="w-3.5 h-3.5" />,
             },
         }
         return config[status]
@@ -55,41 +45,38 @@ export function ActiveProgramCard({ program, onAssignProgram, onEditProgram, onC
     // No program assigned
     if (!program) {
         return (
-            <div className="bg-card rounded-xl border border-border p-6">
-                <div className="flex items-center justify-between mb-6">
+            <div className="bg-white rounded-2xl border border-border p-6 shadow-sm">
+                <div className="flex items-center justify-between mb-8">
                     <div>
-                        <h2 className="text-lg font-semibold text-foreground">Programa Atual</h2>
-                        <p className="text-sm text-muted-foreground mt-0.5">Programa de treino atribuído</p>
+                        <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                            <Layout className="w-5 h-5 text-primary" />
+                            Programa Atual
+                        </h2>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Nenhum programa de treino atribuído no momento</p>
                     </div>
                 </div>
 
-                <div className="text-center py-8">
-                    <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mx-auto mb-4">
-                        <svg className="w-8 h-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                        </svg>
+                <div className="text-center py-10 bg-slate-50/50 dark:bg-slate-950/50 rounded-2xl border-2 border-dashed border-slate-100 dark:border-slate-800">
+                    <div className="w-16 h-16 rounded-full bg-white dark:bg-slate-900 shadow-sm border border-slate-100 dark:border-slate-800 flex items-center justify-center mx-auto mb-4">
+                        <Plus className="w-8 h-8 text-slate-300 dark:text-slate-700" />
                     </div>
-                    <p className="text-muted-foreground mb-1">Nenhum programa atribuído</p>
-                    <p className="text-muted-foreground text-sm mb-6">Crie um programa personalizado ou atribua um existente</p>
+                    <p className="text-slate-900 dark:text-slate-100 font-bold mb-6">Comece agora</p>
                     <div className="flex items-center justify-center gap-3">
-                        <button
+                        <Button
                             onClick={onCreateProgram}
-                            className="px-5 py-2.5 bg-gradient-to-r from-violet-600 to-blue-600 hover:from-violet-500 hover:to-blue-500 text-foreground text-sm font-medium rounded-lg transition-all shadow-lg shadow-violet-500/20 inline-flex items-center gap-2"
+                            className="gap-2"
                         >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                            </svg>
+                            <Plus className="w-4 h-4" />
                             Criar Programa
-                        </button>
-                        <button
+                        </Button>
+                        <Button
+                            variant="outline"
                             onClick={onAssignProgram}
-                            className="px-5 py-2.5 bg-muted hover:bg-muted/80 text-foreground text-sm font-medium rounded-lg transition-all inline-flex items-center gap-2"
+                            className="gap-2"
                         >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                            </svg>
+                            <RefreshCw className="w-4 h-4" />
                             Atribuir Existente
-                        </button>
+                        </Button>
                     </div>
                 </div>
             </div>
@@ -102,55 +89,58 @@ export function ActiveProgramCard({ program, onAssignProgram, onEditProgram, onC
         : 0
 
     return (
-        <div className="bg-card rounded-xl border border-border p-6">
-            <div className="flex items-center justify-between mb-6">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-border dark:border-slate-800 p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-8">
                 <div>
-                    <h2 className="text-lg font-semibold text-foreground">Programa Atual</h2>
-                    <p className="text-sm text-muted-foreground mt-0.5">Programa de treino atribuído</p>
+                    <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                        <Layout className="w-5 h-5 text-primary" />
+                        Programa Atual
+                    </h2>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Gestão do programa de treino do aluno</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <button
+                    <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={onEditProgram}
-                        className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg transition-colors flex items-center gap-1.5"
+                        className="text-slate-500 hover:text-slate-900 gap-1.5"
                     >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
+                        <Edit2 className="w-4 h-4" />
                         Editar
-                    </button>
+                    </Button>
                     {program.status === 'active' && (
-                        <button
+                        <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={onCompleteProgram}
-                            className="px-3 py-1.5 text-sm text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 rounded-lg transition-colors flex items-center gap-1.5"
+                            className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 gap-1.5"
                         >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
+                            <CheckCircle2 className="w-4 h-4" />
                             Concluir
-                        </button>
+                        </Button>
                     )}
-                    <button
+                    <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={onAssignProgram}
-                        className="px-3 py-1.5 text-sm text-violet-400 hover:text-violet-300 hover:bg-violet-500/10 rounded-lg transition-colors flex items-center gap-1.5"
+                        className="text-primary hover:text-primary hover:bg-primary/5 gap-1.5"
                     >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
+                        <RefreshCw className="w-4 h-4" />
                         Trocar
-                    </button>
+                    </Button>
                 </div>
             </div>
 
             {/* Program Info */}
-            <div className="bg-card rounded-xl border border-border/70 p-5">
-                <div className="flex items-start justify-between mb-4">
+            <div className="bg-slate-50/50 dark:bg-slate-950/50 rounded-2xl border border-slate-100 dark:border-slate-800 p-6">
+                <div className="flex items-start justify-between mb-6">
                     <div>
-                        <h3 className="text-lg font-semibold text-foreground mb-1">{program.name}</h3>
+                        <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-1.5">{program.name}</h3>
                         {program.description && (
-                            <p className="text-sm text-muted-foreground">{program.description}</p>
+                            <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md">{program.description}</p>
                         )}
                     </div>
-                    <span className={`px-2.5 py-1 text-xs font-medium rounded-full border flex items-center gap-1.5 ${statusConfig.classes}`}>
+                    <span className={`px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider rounded-full border flex items-center gap-1.5 ${statusConfig.classes}`}>
                         {statusConfig.icon}
                         {statusConfig.label}
                     </span>
@@ -158,16 +148,16 @@ export function ActiveProgramCard({ program, onAssignProgram, onEditProgram, onC
 
                 {/* Progress */}
                 {program.duration_weeks && (
-                    <div className="mb-4">
-                        <div className="flex items-center justify-between text-sm mb-2">
-                            <span className="text-muted-foreground">Progresso</span>
-                            <span className="text-foreground font-medium">
+                    <div className="mb-6">
+                        <div className="flex items-center justify-between text-sm mb-2.5">
+                            <span className="text-slate-500 dark:text-slate-400 font-medium">Progresso</span>
+                            <span className="text-slate-900 dark:text-slate-100 font-bold">
                                 Semana {program.current_week || 1} de {program.duration_weeks}
                             </span>
                         </div>
-                        <div className="h-2 bg-muted rounded-full overflow-hidden">
+                        <div className="h-2.5 bg-white dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-full overflow-hidden">
                             <div
-                                className="h-full bg-gradient-to-r from-violet-500 to-blue-500 rounded-full transition-all"
+                                className="h-full bg-primary rounded-full transition-all shadow-sm shadow-primary/20"
                                 style={{ width: `${progressPercent}%` }}
                             />
                         </div>
@@ -175,21 +165,17 @@ export function ActiveProgramCard({ program, onAssignProgram, onEditProgram, onC
                 )}
 
                 {/* Meta info */}
-                <div className="flex items-center gap-6 text-sm">
+                <div className="flex items-center gap-6 text-sm border-t border-slate-200/60 pt-6">
                     {program.started_at && (
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                            <span>Início: {new Date(program.started_at).toLocaleDateString('pt-BR')}</span>
+                        <div className="flex items-center gap-2 text-slate-500 font-medium">
+                            <Calendar className="w-4 h-4 text-slate-400" />
+                            <span>Iniciou em <span className="text-slate-900">{new Date(program.started_at).toLocaleDateString('pt-BR')}</span></span>
                         </div>
                     )}
                     {program.duration_weeks && (
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            <span>{program.duration_weeks} semanas</span>
+                        <div className="flex items-center gap-2 text-slate-500 font-medium">
+                            <Clock className="w-4 h-4 text-slate-400" />
+                            <span><span className="text-slate-900">{program.duration_weeks}</span> semanas</span>
                         </div>
                     )}
                 </div>
