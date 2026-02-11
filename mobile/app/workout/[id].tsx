@@ -6,6 +6,7 @@ import { ExerciseCard } from '../../components/workout/ExerciseCard';
 import { useWorkoutSession } from '../../hooks/useWorkoutSession';
 import { useLiveActivity } from '../../hooks/useLiveActivity';
 import { useStudentProfile } from '../../hooks/useStudentProfile';
+import { useWatchConnectivity } from '../../hooks/useWatchConnectivity';
 import { ChevronLeft } from 'lucide-react-native';
 import { WorkoutFeedbackModal } from '../../components/workout/WorkoutFeedbackModal';
 import { WorkoutSuccessModal } from '../../components/workout/WorkoutSuccessModal';
@@ -71,6 +72,39 @@ export default function WorkoutPlayerScreen() {
     useEffect(() => {
         liveActivityRef.current = { startRestTimer };
     }, [startRestTimer]);
+
+    // Apple Watch connectivity
+    const { sendWorkoutToWatch } = useWatchConnectivity({
+        onWatchSetComplete: (exerciseIndex, setIndex) => {
+            console.log(`[WorkoutScreen] Watch reported set complete: exercise ${exerciseIndex}, set ${setIndex}`);
+            handleToggleSetComplete(exerciseIndex, setIndex);
+        },
+    });
+
+    // Send workout data to Apple Watch when loaded
+    useEffect(() => {
+        if (!isLoading && exercises.length > 0 && workoutName && profile?.name) {
+            const watchPayload = {
+                workoutId: id as string,
+                studentName: profile.name,
+                exercises: exercises.map((ex, idx) => ({
+                    id: ex.id || `ex-${idx}`,
+                    name: ex.name,
+                    sets: ex.setsData.length,
+                    reps: ex.setsData[0]?.reps || 0,
+                    weight: ex.setsData[0]?.weight || undefined,
+                    restTime: ex.rest_seconds || 0,
+                    completedSets: ex.setsData.filter((s) => s.completed).length,
+                })),
+                currentExerciseIndex: 0,
+                currentSetIndex: 0,
+                isActive: true,
+            };
+
+            console.log('[WorkoutScreen] Sending workout to watch:', watchPayload);
+            sendWorkoutToWatch(watchPayload);
+        }
+    }, [isLoading, exercises, workoutName, profile, id, sendWorkoutToWatch]);
 
     const navigation = useNavigation();
     const isFinishingRef = useRef(false);

@@ -16,11 +16,14 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.kinevo.mobile",
+      "appleTeamId": "3D5M22J52M",
       "entitlements": {
-        "com.apple.developer.live-activity": true
+        "com.apple.developer.healthkit": true
       },
       "infoPlist": {
-        "NSSupportsLiveActivities": true
+        "NSSupportsLiveActivities": true,
+        "NSHealthShareUsageDescription": "O Kinevo usa dados de saúde para mostrar frequência cardíaca durante o treino.",
+        "NSHealthUpdateUsageDescription": "O Kinevo salva dados do treino no Apple Saúde."
       }
     },
     "android": {
@@ -45,7 +48,8 @@
           "photosPermission": "O Kinevo precisa de acesso à sua galeria para você alterar sua foto de perfil."
         }
       ],
-      "@bacons/apple-targets"
+      "@bacons/apple-targets",
+      "./plugins/with-watch-app"
     ]
   }
 }
