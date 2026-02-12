@@ -233,7 +233,7 @@ export function StudentDetailClient({
                         <div className="bg-glass-bg backdrop-blur-md rounded-2xl border border-k-border-primary p-8">
                             <div className="flex items-center justify-between mb-8">
                                 <div>
-                                    <h3 className="text-xl font-black text-k-text-primary dark:text-white tracking-tight flex items-center gap-2">
+                                    <h3 className="text-xl font-black text-white tracking-tight flex items-center gap-2">
                                         Próximos Programas
                                         <span className="px-2 py-0.5 rounded bg-glass-bg text-[10px] text-k-text-tertiary font-bold uppercase tracking-widest border border-k-border-subtle">
                                             Fila
@@ -300,7 +300,7 @@ export function StudentDetailClient({
                                         <div key={program.id} className="bg-glass-bg rounded-2xl p-5 border border-k-border-subtle hover:border-violet-500/30 transition-all group relative overflow-hidden">
                                             <div className="flex justify-between items-start">
                                                 <div className="relative z-10">
-                                                    <h4 className="font-black text-k-text-primary dark:text-white text-lg tracking-tight group-hover:text-violet-300 transition-colors">{program.name}</h4>
+                                                    <h4 className="font-black text-white text-lg tracking-tight group-hover:text-violet-300 transition-colors">{program.name}</h4>
                                                     <div className="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-k-text-tertiary mt-2">
                                                         {program.duration_weeks && (
                                                             <span className="flex items-center gap-1.5">

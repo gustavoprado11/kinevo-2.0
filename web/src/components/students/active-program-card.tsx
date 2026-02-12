@@ -25,17 +25,17 @@ export function ActiveProgramCard({ program, onAssignProgram, onEditProgram, onC
         const config = {
             active: {
                 label: 'Em andamento',
-                classes: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+                classes: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
                 icon: <Play className="w-3.5 h-3.5" />,
             },
             completed: {
                 label: 'Concluído',
-                classes: 'bg-blue-50 text-blue-700 border-blue-100',
+                classes: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
                 icon: <CheckCircle2 className="w-3.5 h-3.5" />,
             },
             paused: {
                 label: 'Pausado',
-                classes: 'bg-amber-50 text-amber-700 border-amber-100',
+                classes: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
                 icon: <PauseCircle className="w-3.5 h-3.5" />,
             },
         }

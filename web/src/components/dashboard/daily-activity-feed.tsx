@@ -14,6 +14,7 @@ interface DailyActivityItem {
     completedAt: string
     duration: string
     rpe: number | null
+    feedback: string | null
 }
 
 interface DailyActivityFeedProps {
@@ -36,9 +37,9 @@ export function DailyActivityFeed({ activities }: DailyActivityFeedProps) {
 
     const getRpeColor = (rpe: number | null) => {
         if (!rpe) return 'border-border bg-muted text-muted-foreground'
-        if (rpe <= 4) return 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-500/20'
-        if (rpe <= 7) return 'bg-yellow-50 dark:bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-100 dark:border-yellow-500/20'
-        return 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 border-red-100 dark:border-red-500/20'
+        if (rpe <= 4) return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+        if (rpe <= 7) return 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
+        return 'bg-red-500/10 text-red-400 border-red-500/20'
     }
 
 
@@ -95,10 +96,18 @@ export function DailyActivityFeed({ activities }: DailyActivityFeedProps) {
                                     <div className="flex items-center gap-3">
                                         {activity.rpe && (
                                             <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${getRpeColor(activity.rpe)}`}>
-                                                RPE {activity.rpe}
+                                                PSE {activity.rpe}
                                             </span>
                                         )}
                                     </div>
+                                    {activity.feedback && (
+                                        <p className="text-xs text-muted-foreground/70 italic mt-1 truncate flex items-center gap-1.5 max-w-md">
+                                            <svg className="w-3 h-3 shrink-0 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                            </svg>
+                                            <span className="truncate">&ldquo;{activity.feedback}&rdquo;</span>
+                                        </p>
+                                    )}
                                 </div>
                             </div>
 

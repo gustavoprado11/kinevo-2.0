@@ -28,7 +28,7 @@ export function StudentHeader({ student, onEdit, onDelete }: StudentHeaderProps)
         const config = {
             active: {
                 label: 'Ativo',
-                classes: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20',
+                classes: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
             },
             inactive: {
                 label: 'Inativo',
@@ -36,7 +36,7 @@ export function StudentHeader({ student, onEdit, onDelete }: StudentHeaderProps)
             },
             pending: {
                 label: 'Pendente',
-                classes: 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/20',
+                classes: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
             },
         }
         return config[status]
@@ -87,9 +87,9 @@ export function StudentHeader({ student, onEdit, onDelete }: StudentHeaderProps)
                 {/* Info */}
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 mb-1">
-                        <h1 className="text-2xl font-black text-k-text-primary dark:text-white tracking-tight truncate">{student.name}</h1>
+                        <h1 className="text-2xl font-black text-white tracking-tight truncate">{student.name}</h1>
                         <div className="flex items-center gap-2">
-                            <span className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded border ${statusConfig.classes.replace('border-emerald-500/20', 'border-emerald-500/30').replace('text-emerald-400', 'text-emerald-300')}`}>
+                            <span className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded border ${statusConfig.classes}`}>
                                 {statusConfig.label}
                             </span>
                             {student.modality === 'presential' ? (

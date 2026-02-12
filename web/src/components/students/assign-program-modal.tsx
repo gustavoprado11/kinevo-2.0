@@ -153,7 +153,7 @@ export function AssignProgramModal({
                 {/* Header */}
                 <div className="flex items-start justify-between p-8 pb-4">
                     <div>
-                        <h2 className="text-xl font-bold text-k-text-primary dark:text-white tracking-tight">
+                        <h2 className="text-xl font-bold text-white tracking-tight">
                             {step === 'select' ? 'Atribuir Programa' : 'Confirmar Atribuição'}
                         </h2>
                         <p className="text-sm text-k-text-tertiary mt-1">
@@ -203,7 +203,7 @@ export function AssignProgramModal({
                                         >
                                             <div className="flex items-center justify-between">
                                                 <div className="flex-1 min-w-0 pr-4">
-                                                    <h3 className="text-base font-bold text-k-text-primary dark:text-white mb-1 group-hover:text-violet-300 transition-colors">
+                                                    <h3 className="text-base font-bold text-white mb-1 group-hover:text-violet-300 transition-colors">
                                                         {template.name}
                                                     </h3>
                                                     {template.description ? (
@@ -241,7 +241,7 @@ export function AssignProgramModal({
                             {/* Selected Info Card */}
                             <div className="bg-glass-bg rounded-2xl border border-k-border-subtle p-6 relative overflow-hidden">
                                 <div className="absolute top-0 left-0 w-1 h-full bg-violet-500/50" />
-                                <h3 className="font-bold text-k-text-primary dark:text-white text-lg mb-1">{selectedTemplate.name}</h3>
+                                <h3 className="font-bold text-white text-lg mb-1">{selectedTemplate.name}</h3>
                                 <div className="flex items-center gap-4 mt-2">
                                     {selectedTemplate.duration_weeks && (
                                         <div className="text-[10px] font-bold text-k-text-tertiary uppercase tracking-widest flex items-center gap-1.5">

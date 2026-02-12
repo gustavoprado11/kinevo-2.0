@@ -61,8 +61,8 @@ function IntensityGauge({ value }: IntensityGaugeProps) {
             <div className="absolute inset-1 rounded-full bg-surface-card border border-k-border-primary" />
 
             <div className="relative z-10 flex flex-col items-center justify-center">
-                <span className="text-[10px] font-black text-violet-400 uppercase tracking-[0.2em] mb-0.5">RPE</span>
-                <span className="text-4xl font-black text-k-text-primary dark:text-white tracking-tighter leading-none">{value}</span>
+                <span className="text-[10px] font-black text-violet-400 uppercase tracking-[0.2em] mb-0.5">PSE</span>
+                <span className="text-4xl font-black text-white tracking-tighter leading-none">{value}</span>
             </div>
         </div>
     )
@@ -168,7 +168,7 @@ export function SessionDetailSheet({ isOpen, onClose, sessionId }: SessionDetail
                             <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mb-4 border border-red-500/20">
                                 <X className="text-red-400" size={32} strokeWidth={1.5} />
                             </div>
-                            <p className="text-k-text-primary dark:text-white font-bold tracking-tight mb-2">Erro ao carregar detalhes</p>
+                            <p className="text-white font-bold tracking-tight mb-2">Erro ao carregar detalhes</p>
                             <p className="text-sm text-k-text-tertiary mb-6">{error}</p>
                             <button
                                 onClick={onClose}
@@ -183,7 +183,7 @@ export function SessionDetailSheet({ isOpen, onClose, sessionId }: SessionDetail
                             <header className="flex items-start justify-between gap-6">
                                 <div className="flex-1 min-w-0">
                                     <p className="text-[10px] font-black text-violet-400 uppercase tracking-[0.2em] mb-2">Treino Executado</p>
-                                    <h2 className="text-3xl font-black text-k-text-primary dark:text-white tracking-tighter truncate leading-none mb-4">
+                                    <h2 className="text-3xl font-black text-white tracking-tighter truncate leading-none mb-4">
                                         {details.assigned_workouts?.name || 'Treino'}
                                     </h2>
                                     <p className="text-xs text-k-text-quaternary uppercase tracking-[0.15em] font-bold">
@@ -237,7 +237,7 @@ export function SessionDetailSheet({ isOpen, onClose, sessionId }: SessionDetail
                                     <div key={exercise.exercise_id} className="group">
                                         <div className="flex items-center justify-between mb-4">
                                             <div>
-                                                <h4 className="text-lg font-black text-k-text-primary dark:text-white tracking-tight leading-none mb-1 group-hover:text-violet-400 transition-colors">
+                                                <h4 className="text-lg font-black text-white tracking-tight leading-none mb-1 group-hover:text-violet-400 transition-colors">
                                                     {exercise.name}
                                                 </h4>
                                                 <p className="text-[10px] font-bold text-k-text-quaternary uppercase tracking-widest">
@@ -251,14 +251,14 @@ export function SessionDetailSheet({ isOpen, onClose, sessionId }: SessionDetail
                                                 <div>Série</div>
                                                 <div className="text-center">Carga</div>
                                                 <div className="text-center">Reps</div>
-                                                <div className="text-right">RPE</div>
+                                                <div className="text-right">PSE</div>
                                             </div>
 
                                             <div className="divide-y divide-white/5">
                                                 {exercise.sets.map((set, idx) => (
                                                     <div key={idx} className="grid grid-cols-4 items-center py-4 px-5 hover:bg-glass-bg transition-colors group/row">
                                                         <div className="text-xs font-mono text-k-text-tertiary">{set.set_number}</div>
-                                                        <div className="text-center text-sm font-semibold text-k-text-primary dark:text-white">
+                                                        <div className="text-center text-sm font-semibold text-white">
                                                             {set.weight > 0 ? `${set.weight}${set.weight_unit || 'kg'}` : '-'}
                                                         </div>
                                                         <div className="text-center text-sm font-mono text-k-text-secondary">{set.reps}</div>

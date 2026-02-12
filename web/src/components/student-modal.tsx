@@ -161,7 +161,7 @@ export function StudentModal({
                         {/* Header */}
                         <div className="flex items-center justify-between border-b border-k-border-subtle bg-surface-inset px-8 py-6">
                             <div>
-                                <h2 className="text-xl font-bold text-k-text-primary dark:text-white tracking-tight">
+                                <h2 className="text-xl font-bold text-white tracking-tight">
                                     {isEdit ? 'Editar Aluno' : 'Novo Aluno'}
                                 </h2>
                                 <p className="text-xs text-muted-foreground/60 uppercase tracking-widest font-semibold mt-1">

@@ -11,6 +11,7 @@ interface DailyActivityItem {
     completedAt: string
     duration: string
     rpe: number | null
+    feedback: string | null
 }
 
 export async function getDailyActivity(): Promise<{ success: boolean; data?: DailyActivityItem[]; error?: string }> {
@@ -82,7 +83,8 @@ export async function getDailyActivity(): Promise<{ success: boolean; data?: Dai
             workoutName: session.assigned_workouts.name,
             completedAt: session.completed_at,
             duration: formatDuration(session.duration_seconds),
-            rpe: session.rpe
+            rpe: session.rpe,
+            feedback: session.feedback || null
         }))
 
         return { success: true, data: activity }

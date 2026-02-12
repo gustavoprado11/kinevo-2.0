@@ -5,7 +5,7 @@ import { stripe } from '@/lib/stripe'
 import { AppLayout } from '@/components/layout'
 import { BillingSection } from '@/components/settings/billing-section'
 import { ProfileForm } from '@/components/settings/profile-form'
-import { ThemeSelector } from '@/components/settings/theme-selector'
+
 import { ChevronRight } from 'lucide-react'
 
 export default async function SettingsPage() {
@@ -95,9 +95,7 @@ export default async function SettingsPage() {
                 <p className="mt-1 text-sm text-k-text-tertiary">Gerencie seu perfil e assinatura.</p>
             </div>
 
-            <div className="space-y-6">
-                <ThemeSelector initialTheme={trainer.theme} />
-            </div>
+
 
             <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
                 <div className="lg:col-span-1">

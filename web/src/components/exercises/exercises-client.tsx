@@ -165,7 +165,7 @@ export function ExercisesClient({
                             placeholder="Buscar por nome..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full rounded-2xl border border-slate-200 dark:border-k-border-primary bg-white dark:bg-glass-bg py-3 pl-12 pr-4 text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500/50 transition-all duration-300"
+                            className="w-full rounded-2xl border border-k-border-primary bg-glass-bg py-3 pl-12 pr-4 text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500/50 transition-all duration-300"
                         />
                     </div>
                     <Button
@@ -230,7 +230,7 @@ export function ExercisesClient({
                         <div className="w-16 h-16 rounded-full bg-glass-bg flex items-center justify-center mx-auto mb-4">
                             <Search className="w-6 h-6 text-muted-foreground/40" strokeWidth={1.5} />
                         </div>
-                        <p className="text-k-text-primary dark:text-white font-semibold">Nenhum exercício encontrado</p>
+                        <p className="text-white font-semibold">Nenhum exercício encontrado</p>
                         <p className="text-muted-foreground/60 text-sm mt-1">Tente buscar por outro termo ou limpar os filtros</p>
                         <Button
                             variant="outline"

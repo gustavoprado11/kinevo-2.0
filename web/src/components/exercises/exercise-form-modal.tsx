@@ -170,7 +170,7 @@ export function ExerciseFormModal({ isOpen, onClose, onSuccess, exercise, traine
                 {/* Header */}
                 <div className="p-6 pb-4 flex items-center justify-between z-10">
                     <div>
-                        <h2 className="text-xl font-bold text-k-text-primary dark:text-white tracking-tight">
+                        <h2 className="text-xl font-bold text-white tracking-tight">
                             {isEditing ? 'Editar Exercício' : 'Novo Exercício'}
                         </h2>
                         <p className="text-xs text-muted-foreground/60 uppercase tracking-widest font-semibold mt-1">
@@ -263,7 +263,7 @@ export function ExerciseFormModal({ isOpen, onClose, onSuccess, exercise, traine
                             onChange={e => setInstructions(e.target.value)}
                             rows={3}
                             placeholder="Dicas de execução..."
-                            className="w-full px-4 py-3 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-xl text-k-text-primary dark:text-white placeholder:text-k-text-quaternary dark:placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-violet-500/10 focus:border-violet-500/50 transition-all resize-none text-sm"
+                            className="w-full px-4 py-3 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-xl text-white placeholder:text-k-text-quaternary dark:placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-violet-500/10 focus:border-violet-500/50 transition-all resize-none text-sm"
                         />
                     </div>
 
