@@ -46,6 +46,7 @@ export async function POST(request: NextRequest) {
         customer: stripeCustomerId,
         mode: 'subscription',
         payment_method_types: ['card'],
+        allow_promotion_codes: true,
         line_items: [{
             price: process.env.STRIPE_PRICE_ID!,
             quantity: 1,
