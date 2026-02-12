@@ -92,7 +92,7 @@ export function MuscleGroupManagerModal({ isOpen, onClose, trainerId, manager }:
                 {/* Header */}
                 <div className="p-6 pb-2 flex items-center justify-between">
                     <div>
-                        <h2 className="text-xl font-bold text-white tracking-tight">Gerenciar Grupos</h2>
+                        <h2 className="text-xl font-bold text-k-text-primary dark:text-white tracking-tight">Gerenciar Grupos</h2>
                         <p className="text-xs text-muted-foreground/60 uppercase tracking-widest font-semibold mt-1">Adicione ou remova grupos</p>
                     </div>
                     <button
@@ -229,7 +229,7 @@ export function MuscleGroupManagerModal({ isOpen, onClose, trainerId, manager }:
                 <div className="p-6 border-t border-white/5 flex justify-end">
                     <button
                         onClick={onClose}
-                        className="px-6 py-2.5 bg-white/5 hover:bg-white/10 text-white font-medium rounded-xl transition-all text-sm"
+                        className="px-6 py-2.5 bg-glass-bg hover:bg-glass-bg-active text-k-text-primary dark:text-white font-medium rounded-xl transition-all text-sm"
                     >
                         Fechar
                     </button>
@@ -244,9 +244,9 @@ export function MuscleGroupManagerModal({ isOpen, onClose, trainerId, manager }:
                             <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
                                 <Trash2 className="w-6 h-6 text-red-500" strokeWidth={1.5} />
                             </div>
-                            <h3 className="text-lg font-bold text-white mb-2">Excluir Grupo?</h3>
+                            <h3 className="text-lg font-bold text-k-text-primary dark:text-white mb-2">Excluir Grupo?</h3>
                             <p className="text-muted-foreground text-sm">
-                                Você tem certeza que deseja excluir <strong className="text-white">{deletingGroup.name}</strong>?
+                                Você tem certeza que deseja excluir <strong className="text-k-text-primary dark:text-white">{deletingGroup.name}</strong>?
                             </p>
                         </div>
 
@@ -255,7 +255,7 @@ export function MuscleGroupManagerModal({ isOpen, onClose, trainerId, manager }:
                                 <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
                                 <div className="text-sm text-red-200/80">
                                     <p className="font-bold text-red-400 mb-1">Atenção!</p>
-                                    Este grupo está sendo usado em <strong className="text-white">{deletingGroup.count} exercícios</strong>.
+                                    Este grupo está sendo usado em <strong className="text-k-text-primary dark:text-white">{deletingGroup.count} exercícios</strong>.
                                 </div>
                             </div>
                         ) : null}
@@ -263,7 +263,7 @@ export function MuscleGroupManagerModal({ isOpen, onClose, trainerId, manager }:
                         <div className="flex gap-3">
                             <button
                                 onClick={() => setDeletingGroup(null)}
-                                className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-white font-medium rounded-xl transition-all text-sm"
+                                className="flex-1 px-4 py-2.5 bg-glass-bg hover:bg-glass-bg-active text-k-text-primary dark:text-white font-medium rounded-xl transition-all text-sm"
                             >
                                 Cancelar
                             </button>

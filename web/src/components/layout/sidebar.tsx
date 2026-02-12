@@ -44,7 +44,7 @@ export function Sidebar() {
     const pathname = usePathname()
 
     return (
-        <aside className="fixed inset-y-0 left-0 z-30 flex w-64 flex-col border-r border-k-border-subtle bg-surface-sidebar/60 backdrop-blur-2xl transition-all duration-300">
+        <aside className="sidebar-container fixed inset-y-0 left-0 z-30 flex w-64 flex-col border-r border-k-border-subtle bg-surface-sidebar/60 backdrop-blur-2xl transition-all duration-300">
             {/* Header / Logo */}
             <div className="px-6 pt-8 pb-8 flex items-center">
                 <Link href="/dashboard" className="flex items-center gap-3 group">

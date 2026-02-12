@@ -99,14 +99,14 @@ export function WeeklyPerformanceTracker({
                                 <div className={`
                                     w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300
                                     ${day.session
-                                        ? 'bg-violet-600 shadow-lg shadow-violet-600/20'
+                                        ? 'bg-violet-600 shadow-lg shadow-violet-500/30 dark:shadow-violet-600/20'
                                         : day.isMissed
-                                            ? 'bg-red-500/10 border border-red-500/20'
+                                            ? 'bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20'
                                             : day.isScheduled
                                                 ? 'border-2 border-dashed border-k-text-quaternary'
-                                                : 'bg-glass-bg'
+                                                : 'bg-slate-100 dark:bg-glass-bg'
                                     }
-                                    ${day.isToday ? 'ring-2 ring-white/20 ring-offset-2 ring-offset-[#1C1C1E]' : ''}
+                                    ${day.isToday ? 'ring-2 ring-violet-300 dark:ring-white/20 ring-offset-2 ring-offset-surface-primary dark:ring-offset-surface-card' : ''}
                                 `}>
                                     {day.session ? (
                                         <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -132,7 +132,7 @@ export function WeeklyPerformanceTracker({
                                     ) : (
                                         <span className="text-k-text-tertiary">Descanso</span>
                                     )}
-                                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-[4px] border-transparent border-t-[#1C1C1E]" />
+                                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-[4px] border-transparent border-t-surface-card" />
                                 </div>
                             </div>
                         </div>
@@ -147,7 +147,7 @@ export function WeeklyPerformanceTracker({
                     <div>
                         <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-k-text-quaternary mb-1">Taxa de Adesão</p>
                         <div className="flex items-baseline gap-1">
-                            <span className="text-2xl font-black text-white">{metrics.rate}%</span>
+                            <span className="text-2xl font-black text-k-text-primary dark:text-white">{metrics.rate}%</span>
                         </div>
                     </div>
                     <div>

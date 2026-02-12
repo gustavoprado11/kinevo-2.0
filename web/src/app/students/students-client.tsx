@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { AppLayout } from '@/components/layout'
 import { StudentModal } from '@/components/student-modal'
 import { Button } from '@/components/ui/button'
+import Image from 'next/image'
 import { Plus, Search, ChevronRight } from 'lucide-react'
 
 interface Trainer {
@@ -22,6 +23,7 @@ interface Student {
     phone: string | null
     status: 'active' | 'inactive' | 'pending'
     modality: 'online' | 'presential'
+    avatar_url: string | null
     created_at: string
 }
 
@@ -48,9 +50,9 @@ export function StudentsClient({ trainer, initialStudents }: StudentsClientProps
 
     const getStatusBadge = (status: Student['status']) => {
         const styles = {
-            active: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+            active: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20',
             inactive: 'bg-glass-bg text-muted-foreground border-k-border-primary',
-            pending: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+            pending: 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/20',
         }
         const labels = {
             active: 'Ativo',
@@ -156,10 +158,21 @@ export function StudentsClient({ trainer, initialStudents }: StudentsClientProps
                                     >
                                         <td className="px-6 py-5 whitespace-nowrap">
                                             <div className="flex items-center gap-4">
-                                                <div className="flex h-10 w-10 items-center justify-center rounded-full border border-k-border-primary bg-glass-bg">
-                                                    <span className="text-sm font-semibold text-k-text-primary">
-                                                        {student.name.charAt(0).toUpperCase()}
-                                                    </span>
+                                                <div className="flex h-10 w-10 items-center justify-center rounded-full border border-k-border-primary bg-glass-bg overflow-hidden flex-shrink-0">
+                                                    {student.avatar_url ? (
+                                                        <Image
+                                                            src={student.avatar_url}
+                                                            alt={student.name}
+                                                            width={40}
+                                                            height={40}
+                                                            className="h-10 w-10 rounded-full object-cover"
+                                                            unoptimized
+                                                        />
+                                                    ) : (
+                                                        <span className="text-sm font-semibold text-k-text-primary">
+                                                            {student.name.charAt(0).toUpperCase()}
+                                                        </span>
+                                                    )}
                                                 </div>
                                                 <span className="text-base font-medium text-k-text-primary">{student.name}</span>
                                             </div>

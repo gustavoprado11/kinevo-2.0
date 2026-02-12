@@ -130,7 +130,7 @@ export function ExerciseLibraryPanel({
                             placeholder="Buscar exercício..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-9 pr-3 py-2 text-sm bg-glass-bg border border-k-border-subtle rounded-lg text-k-text-primary placeholder:text-k-text-quaternary focus:outline-none focus:ring-1 focus:ring-violet-500/50 transition-all"
+                            className="w-full pl-9 pr-3 py-2 text-sm bg-white dark:bg-glass-bg border border-slate-200 dark:border-k-border-subtle rounded-lg text-k-text-primary placeholder:text-k-text-quaternary focus:outline-none focus:ring-1 focus:ring-violet-500/50 transition-all"
                         />
                     </div>
 

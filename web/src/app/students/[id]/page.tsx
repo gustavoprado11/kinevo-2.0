@@ -11,7 +11,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
     // Get student data
     const { data: student } = await supabase
         .from('students')
-        .select('id, name, email, phone, status, modality, created_at')
+        .select('id, name, email, phone, status, modality, avatar_url, created_at')
         .eq('id', id)
         .single()
 
@@ -122,6 +122,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
             .order('completed_at', { ascending: false })
             .limit(5)
 
+        recentSessions = recent || []
     }
 
     // Get sessions from the last 7 days for the tracker

@@ -37,12 +37,12 @@ export default function LoginPage() {
     }
 
     return (
-        <div className="min-h-screen flex bg-slate-950">
+        <div className="min-h-screen flex bg-white">
             {/* Left Panel — Branding (Desktop only) */}
-            <div className="hidden lg:flex lg:w-[45%] relative bg-slate-900 flex-col justify-between p-12 overflow-hidden">
-                {/* Subtle background texture */}
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_40%,rgba(124,58,237,0.08),transparent_60%)]" />
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_80%,rgba(59,130,246,0.06),transparent_50%)]" />
+            <div className="hidden lg:flex lg:w-[45%] relative bg-[#F9F9FB] flex-col justify-between p-12 overflow-hidden">
+                {/* Subtle background accents */}
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_40%,rgba(124,58,237,0.04),transparent_60%)]" />
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_80%,rgba(124,58,237,0.03),transparent_50%)]" />
 
                 {/* Logo */}
                 <div className="relative z-10 flex items-center gap-3">
@@ -53,24 +53,24 @@ export default function LoginPage() {
                         height={36}
                         className="rounded-lg"
                     />
-                    <span className="text-xl font-bold text-white tracking-tight">Kinevo</span>
+                    <span className="text-xl font-bold text-slate-900 tracking-tight">Kinevo</span>
                 </div>
 
                 {/* Tagline */}
                 <div className="relative z-10 max-w-md">
-                    <h2 className="text-4xl font-extrabold text-white leading-tight tracking-tight">
+                    <h2 className="text-4xl font-extrabold text-slate-900 leading-tight tracking-tighter">
                         A evolução da sua consultoria
-                        <span className="block text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-blue-400">
+                        <span className="block text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-violet-400">
                             começa aqui.
                         </span>
                     </h2>
-                    <p className="mt-4 text-slate-400 text-lg leading-relaxed">
+                    <p className="mt-4 text-slate-500 text-lg leading-relaxed">
                         Gerencie treinos, acompanhe alunos e escale sua consultoria fitness com a plataforma feita por treinadores.
                     </p>
                 </div>
 
                 {/* Bottom decorative element */}
-                <div className="relative z-10 flex items-center gap-2 text-slate-500 text-sm">
+                <div className="relative z-10 flex items-center gap-2 text-slate-400 text-sm">
                     <Lock size={14} />
                     <span>Seus dados estão protegidos com criptografia de ponta a ponta</span>
                 </div>
@@ -82,7 +82,7 @@ export default function LoginPage() {
                 <div className="p-6">
                     <Link
                         href="/"
-                        className="inline-flex items-center gap-2 text-slate-500 hover:text-slate-300 transition-colors text-sm"
+                        className="inline-flex items-center gap-2 text-slate-400 hover:text-slate-600 transition-colors text-sm"
                     >
                         <ArrowLeft size={16} />
                         <span>Voltar</span>
@@ -101,25 +101,25 @@ export default function LoginPage() {
                                 height={32}
                                 className="rounded-lg"
                             />
-                            <span className="text-xl font-bold text-white tracking-tight">Kinevo</span>
+                            <span className="text-xl font-bold text-slate-900 tracking-tight">Kinevo</span>
                         </div>
 
                         {/* Card */}
-                        <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-8">
+                        <div className="bg-white border border-black/[0.06] rounded-2xl p-8 shadow-apple-card">
                             <div className="mb-8">
-                                <h1 className="text-2xl font-bold text-white">Bem-vindo de volta</h1>
-                                <p className="text-slate-400 mt-1.5">Entre na sua conta para continuar</p>
+                                <h1 className="text-2xl font-bold text-slate-900">Bem-vindo de volta</h1>
+                                <p className="text-slate-500 mt-1.5">Entre na sua conta para continuar</p>
                             </div>
 
                             <form onSubmit={handleLogin} className="space-y-5">
                                 {error && (
-                                    <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl text-sm">
+                                    <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl text-sm">
                                         {error}
                                     </div>
                                 )}
 
                                 <div>
-                                    <label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-2">
+                                    <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-2">
                                         Email
                                     </label>
                                     <input
@@ -128,13 +128,13 @@ export default function LoginPage() {
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
                                         required
-                                        className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700/50 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500/40 focus:border-violet-500/40 transition-all"
+                                        className="w-full px-4 py-3 bg-[#F9F9FB] border border-black/[0.08] rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/30 transition-all"
                                         placeholder="seu@email.com"
                                     />
                                 </div>
 
                                 <div>
-                                    <label htmlFor="password" className="block text-sm font-medium text-slate-300 mb-2">
+                                    <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-2">
                                         Senha
                                     </label>
                                     <input
@@ -143,7 +143,7 @@ export default function LoginPage() {
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
                                         required
-                                        className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700/50 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500/40 focus:border-violet-500/40 transition-all"
+                                        className="w-full px-4 py-3 bg-[#F9F9FB] border border-black/[0.08] rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/30 transition-all"
                                         placeholder="••••••••"
                                     />
                                 </div>
@@ -151,7 +151,7 @@ export default function LoginPage() {
                                 <button
                                     type="submit"
                                     disabled={loading}
-                                    className="w-full py-3 px-4 bg-violet-600 hover:bg-violet-500 disabled:bg-violet-600/50 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all shadow-lg shadow-violet-500/20 hover:shadow-violet-500/30"
+                                    className="w-full py-3 px-4 bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-500 hover:to-violet-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all shadow-lg shadow-violet-500/15"
                                 >
                                     {loading ? 'Entrando...' : 'Entrar'}
                                 </button>
@@ -160,7 +160,7 @@ export default function LoginPage() {
 
                         <p className="text-center text-sm text-slate-500 mt-6">
                             Não tem uma conta?{' '}
-                            <Link href="/signup" className="text-violet-400 hover:text-violet-300 font-medium transition-colors">
+                            <Link href="/signup" className="text-violet-600 hover:text-violet-500 font-medium transition-colors">
                                 Criar conta
                             </Link>
                         </p>

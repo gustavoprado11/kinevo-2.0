@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useCallback } from "react";
 import { View, Text, ScrollView, RefreshControl, ActivityIndicator, Image, TouchableOpacity } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { useAuth } from "../../contexts/AuthContext";
 import { useActiveProgram } from "../../hooks/useActiveProgram";
 import { useStudentProfile } from "../../hooks/useStudentProfile";
@@ -16,7 +16,14 @@ import { WorkoutList } from "../../components/home/WorkoutList";
 export default function HomeScreen() {
     const router = useRouter();
     const { user } = useAuth();
-    const { profile } = useStudentProfile();
+    const { profile, refreshProfile } = useStudentProfile();
+
+    // Re-fetch profile when tab gains focus (avatar may have changed on Profile tab)
+    useFocusEffect(
+        useCallback(() => {
+            refreshProfile();
+        }, [refreshProfile])
+    );
     const {
         programName,
         workouts,
@@ -33,9 +40,9 @@ export default function HomeScreen() {
 
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
-        await refetch();
+        await Promise.all([refetch(), refreshProfile()]);
         setRefreshing(false);
-    }, [refetch]);
+    }, [refetch, refreshProfile]);
 
     const getGreeting = () => {
         const hour = new Date().getHours();

@@ -2,101 +2,153 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Zap, Video, TrendingUp } from 'lucide-react';
+import { Moon, History, TrendingUp, MessageCircle, Watch } from 'lucide-react';
 import { IphoneMockup } from './mockups/IphoneMockup';
 
-export const StudentExperience = () => {
-    const features = [
-        {
-            icon: <Zap className="text-emerald-400" size={24} />,
-            title: "Smart Auto-fill",
-            description: "O app preenche as cargas automaticamente baseado no histórico. Adeus anotações manuais e perda de tempo."
-        },
-        {
-            icon: <Video className="text-violet-400" size={24} />,
-            title: "Vídeo Nativo",
-            description: "Aulas de execução perfeitas sem sair da tela do treino. Seu aluno nunca mais terá dúvida no movimento."
-        },
-        {
-            icon: <TrendingUp className="text-blue-400" size={24} />,
-            title: "Gamificação Real",
-            description: "Histórico de cargas e recordes pessoais visuais que motivam o aluno a bater suas próprias metas."
-        }
-    ];
+const features = [
+    {
+        icon: Moon,
+        title: 'Dark Mode Nativo',
+        description: 'Interface premium otimizada para uso na academia. Elegante, legível e sem distrações.',
+    },
+    {
+        icon: History,
+        title: 'Histórico de Cargas',
+        description: 'Acesso completo a todas as cargas de sessões anteriores. O app preenche automaticamente.',
+    },
+    {
+        icon: TrendingUp,
+        title: 'Progressão Visual',
+        description: 'Recordes pessoais, volume total e gráficos de evolução para manter o aluno motivado.',
+    },
+    {
+        icon: MessageCircle,
+        title: 'Feedback & PSE',
+        description: 'Avaliação pós-treino com escala de esforço. Você recebe os dados em tempo real.',
+    },
+    {
+        icon: Watch,
+        title: 'Apple Watch',
+        description: 'Timer de descanso no pulso e marcação de séries sem pegar o celular.',
+    },
+];
 
+export const StudentExperience = () => {
     return (
-        <section id="features" className="py-24 bg-slate-950">
+        <section className="py-24 bg-[#F9F9FB]">
             <div className="container mx-auto px-6">
                 <div className="flex flex-col lg:flex-row items-center gap-16">
-                    {/* Text Section */}
-                    <div className="flex-1 order-2 lg:order-1">
+                    {/* Visual Section — iPhone Mockup (Left) */}
+                    <div className="flex-1 relative">
                         <motion.div
-                            initial={{ opacity: 0, x: -20 }}
-                            whileInView={{ opacity: 1, x: 0 }}
-                            viewport={{ once: true }}
-                            className="max-w-xl"
-                        >
-                            <h2 className="text-3xl md:text-5xl font-bold text-white leading-tight mb-8">
-                                Seu aluno nunca viu <br />
-                                <span className="text-emerald-500 italic font-serif">nada igual.</span>
-                            </h2>
-
-                            <div className="space-y-10">
-                                {features.map((feature, index) => (
-                                    <motion.div
-                                        key={index}
-                                        initial={{ opacity: 0, y: 10 }}
-                                        whileInView={{ opacity: 1, y: 0 }}
-                                        viewport={{ once: true }}
-                                        transition={{ delay: index * 0.1 }}
-                                        className="flex gap-5"
-                                    >
-                                        <div className="flex-shrink-0 w-12 h-12 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center shadow-lg shadow-black/50">
-                                            {feature.icon}
-                                        </div>
-                                        <div>
-                                            <h3 className="text-xl font-bold text-slate-100 mb-2">{feature.title}</h3>
-                                            <p className="text-slate-400 leading-relaxed">{feature.description}</p>
-                                        </div>
-                                    </motion.div>
-                                ))}
-                            </div>
-                        </motion.div>
-                    </div>
-
-                    {/* Visual Section — Real iPhone Mockup */}
-                    <div className="flex-1 order-1 lg:order-2 relative">
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.9, rotateY: -10 }}
-                            whileInView={{ opacity: 1, scale: 1, rotateY: 0 }}
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            whileInView={{ opacity: 1, scale: 1 }}
                             viewport={{ once: true }}
                             className="relative flex justify-center"
                         >
-                            {/* Glow behind mobile */}
-                            <div className="absolute -inset-10 bg-emerald-500/10 blur-[80px] rounded-full pointer-events-none" />
-
                             {/* iPhone with workout screenshot */}
                             <div className="relative w-[240px] md:w-[280px]">
                                 <IphoneMockup
                                     src="/mobile-workout.png"
-                                    alt="Tela de execução de treino com vídeo integrado"
+                                    alt="App do Aluno — Execução de treino"
                                 />
                             </div>
 
-                            {/* Floating Badge */}
+                            {/* Floating Badge — Top Left */}
                             <motion.div
-                                animate={{ y: [0, -10, 0] }}
-                                transition={{ duration: 3, repeat: Infinity }}
-                                className="absolute bottom-16 -right-2 md:right-4 lg:right-8 bg-slate-800 border border-slate-700 p-3 rounded-2xl shadow-2xl flex items-center gap-3 z-10"
+                                animate={{ y: [0, -8, 0] }}
+                                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                                className="absolute top-12 -left-2 md:left-4 bg-white rounded-xl p-3 shadow-apple-elevated border border-black/[0.06] flex items-center gap-2.5 z-10"
                             >
-                                <div className="w-10 h-10 rounded-xl bg-violet-600 flex items-center justify-center">
-                                    <TrendingUp size={20} className="text-white" />
+                                <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center">
+                                    <TrendingUp className="text-violet-600" size={14} />
                                 </div>
                                 <div>
-                                    <div className="text-[10px] text-slate-500 font-black uppercase">Progresso</div>
-                                    <div className="text-white font-bold text-sm">+15% Volume</div>
+                                    <div className="text-[10px] text-slate-400 font-semibold uppercase tracking-wide">Progresso</div>
+                                    <div className="text-slate-900 font-bold text-sm">+15% Volume</div>
                                 </div>
                             </motion.div>
+
+                            {/* Floating Badge — Bottom Right */}
+                            <motion.div
+                                animate={{ y: [0, 8, 0] }}
+                                transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+                                className="absolute bottom-20 -right-2 md:right-4 bg-white rounded-xl p-3 shadow-apple-elevated border border-black/[0.06] flex items-center gap-2.5 z-10"
+                            >
+                                <div className="w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center">
+                                    <MessageCircle className="text-orange-500" size={14} />
+                                </div>
+                                <div>
+                                    <div className="text-[10px] text-slate-400 font-semibold uppercase tracking-wide">PSE</div>
+                                    <div className="text-slate-900 font-bold text-sm">7 — Intenso</div>
+                                </div>
+                            </motion.div>
+
+                            {/* Floating Badge — Mid Left */}
+                            <motion.div
+                                animate={{ y: [0, -6, 0] }}
+                                transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+                                className="absolute bottom-40 -left-4 md:left-0 bg-white rounded-xl p-3 shadow-apple-elevated border border-black/[0.06] flex items-center gap-2.5 z-10"
+                            >
+                                <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
+                                    <Watch className="text-emerald-600" size={14} />
+                                </div>
+                                <div>
+                                    <div className="text-[10px] text-slate-400 font-semibold uppercase tracking-wide">Watch</div>
+                                    <div className="text-slate-900 font-bold text-sm">Descanso: 1:30</div>
+                                </div>
+                            </motion.div>
+                        </motion.div>
+                    </div>
+
+                    {/* Text Section (Right) */}
+                    <div className="flex-1">
+                        <motion.div
+                            initial={{ opacity: 0, x: 20 }}
+                            whileInView={{ opacity: 1, x: 0 }}
+                            viewport={{ once: true }}
+                            className="max-w-xl"
+                        >
+                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-50 border border-violet-200/60 text-violet-600 font-bold text-xs mb-6 uppercase tracking-wider">
+                                <Moon size={14} />
+                                A Experiência do Aluno
+                            </div>
+
+                            <h2 className="text-3xl md:text-5xl font-extrabold text-slate-900 leading-tight tracking-tighter mb-6">
+                                Premium no bolso{' '}
+                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-violet-400">
+                                    do seu aluno.
+                                </span>
+                            </h2>
+
+                            <p className="text-slate-500 text-lg leading-relaxed mb-10">
+                                Um aplicativo que seus alunos vão amar usar. Design premium, cargas automáticas e
+                                feedback inteligente em um app nativo para iOS e Android.
+                            </p>
+
+                            <div className="space-y-5">
+                                {features.map((feature, index) => {
+                                    const Icon = feature.icon;
+                                    return (
+                                        <motion.div
+                                            key={index}
+                                            initial={{ opacity: 0, y: 10 }}
+                                            whileInView={{ opacity: 1, y: 0 }}
+                                            viewport={{ once: true }}
+                                            transition={{ delay: index * 0.08 }}
+                                            className="flex items-start gap-4"
+                                        >
+                                            <div className="mt-0.5 w-9 h-9 rounded-lg bg-violet-50 border border-violet-100 flex items-center justify-center flex-shrink-0">
+                                                <Icon className="text-violet-600" size={16} />
+                                            </div>
+                                            <div>
+                                                <h4 className="text-slate-900 font-bold">{feature.title}</h4>
+                                                <p className="text-slate-500 text-sm mt-0.5 leading-relaxed">{feature.description}</p>
+                                            </div>
+                                        </motion.div>
+                                    );
+                                })}
+                            </div>
                         </motion.div>
                     </div>
                 </div>

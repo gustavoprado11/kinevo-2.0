@@ -5,9 +5,14 @@ import { ThemeProvider as NextThemesProvider } from 'next-themes'
 import type { ComponentType, ReactNode } from 'react'
 
 const LOGGED_AREA_PREFIXES = ['/dashboard', '/students', '/programs', '/exercises', '/settings']
+const FORCE_LIGHT_ROUTES = ['/', '/login', '/signup']
+const FORCE_DARK_ROUTES = ['/terms', '/privacy', '/subscription']
 
-function isLoggedArea(pathname: string): boolean {
-    return LOGGED_AREA_PREFIXES.some((prefix) => pathname.startsWith(prefix))
+function getThemeForRoute(pathname: string): 'light' | 'dark' | undefined {
+    if (FORCE_LIGHT_ROUTES.includes(pathname)) return 'light'
+    if (FORCE_DARK_ROUTES.some((r) => pathname.startsWith(r))) return 'dark'
+    if (LOGGED_AREA_PREFIXES.some((r) => pathname.startsWith(r))) return undefined
+    return 'dark'
 }
 
 type AppThemeProviderProps = {
@@ -16,7 +21,7 @@ type AppThemeProviderProps = {
 
 export function ThemeProvider({ children }: AppThemeProviderProps) {
     const pathname = usePathname()
-    const forceDark = !isLoggedArea(pathname)
+    const forcedTheme = getThemeForRoute(pathname)
     const Provider = NextThemesProvider as ComponentType<any>
 
     return (
@@ -26,7 +31,7 @@ export function ThemeProvider({ children }: AppThemeProviderProps) {
             enableSystem
             disableTransitionOnChange
             storageKey="kinevo-theme"
-            forcedTheme={forceDark ? 'dark' : undefined}
+            forcedTheme={forcedTheme}
         >
             {children}
         </Provider>

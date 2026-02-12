@@ -83,11 +83,9 @@ export function useStudentProfile() {
             // Append cache-bust to force UI refresh
             const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
 
-            // Update student record
+            // Update student record via RPC (students have SELECT-only RLS)
             const { error: updateError } = await supabase
-                .from("students" as any)
-                .update({ avatar_url: publicUrl } as any)
-                .eq("auth_user_id", user.id);
+                .rpc("update_student_avatar" as any, { p_avatar_url: publicUrl });
 
             if (updateError) throw updateError;
 

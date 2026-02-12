@@ -65,7 +65,7 @@ export function ActiveProgramDashboard({
         const config = {
             active: {
                 label: 'Em andamento',
-                classes: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+                classes: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20',
                 icon: (
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
@@ -75,7 +75,7 @@ export function ActiveProgramDashboard({
             },
             completed: {
                 label: 'Concluído',
-                classes: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+                classes: 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-500/20',
                 icon: (
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -84,7 +84,7 @@ export function ActiveProgramDashboard({
             },
             paused: {
                 label: 'Pausado',
-                classes: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+                classes: 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/20',
                 icon: (
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -159,7 +159,7 @@ export function ActiveProgramDashboard({
                 <div className="flex items-start justify-between mb-8">
                     <div>
                         <div className="flex items-center gap-3 mb-1">
-                            <h2 className="text-2xl font-black text-white tracking-tight">{program.name}</h2>
+                            <h2 className="text-2xl font-black text-k-text-primary dark:text-white tracking-tight">{program.name}</h2>
                             <span className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded border ${statusConfig.classes.replace('text-emerald-400', 'text-emerald-300').replace('border-emerald-500/20', 'border-emerald-500/30')}`}>
                                 {statusConfig.label}
                             </span>
@@ -244,7 +244,7 @@ export function ActiveProgramDashboard({
                             </svg>
                             Treinos totais
                         </div>
-                        <p className="text-4xl font-black text-white tracking-tighter">{summary.totalSessions}</p>
+                        <p className="text-4xl font-black text-k-text-primary dark:text-white tracking-tighter">{summary.totalSessions}</p>
                     </div>
 
                     {/* This Week */}
@@ -255,7 +255,7 @@ export function ActiveProgramDashboard({
                             </svg>
                             Esta semana
                         </div>
-                        <p className="text-4xl font-black text-white tracking-tighter">{summary.completedThisWeek}</p>
+                        <p className="text-4xl font-black text-k-text-primary dark:text-white tracking-tighter">{summary.completedThisWeek}</p>
                     </div>
 
                     {/* Last Session */}
@@ -266,7 +266,7 @@ export function ActiveProgramDashboard({
                             </svg>
                             Último treino
                         </div>
-                        <p className="text-4xl font-black text-white tracking-tighter leading-none">
+                        <p className="text-4xl font-black text-k-text-primary dark:text-white tracking-tighter leading-none">
                             {summary.lastSessionDate
                                 ? new Date(summary.lastSessionDate).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '')
                                 : '-'}

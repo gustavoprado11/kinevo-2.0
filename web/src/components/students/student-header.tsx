@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 
 interface Student {
@@ -10,6 +11,7 @@ interface Student {
     phone: string | null
     status: 'active' | 'inactive' | 'pending'
     modality?: 'online' | 'presential'
+    avatar_url?: string | null
     created_at: string
 }
 
@@ -26,7 +28,7 @@ export function StudentHeader({ student, onEdit, onDelete }: StudentHeaderProps)
         const config = {
             active: {
                 label: 'Ativo',
-                classes: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+                classes: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20',
             },
             inactive: {
                 label: 'Inativo',
@@ -34,7 +36,7 @@ export function StudentHeader({ student, onEdit, onDelete }: StudentHeaderProps)
             },
             pending: {
                 label: 'Pendente',
-                classes: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+                classes: 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/20',
             },
         }
         return config[status]
@@ -65,14 +67,27 @@ export function StudentHeader({ student, onEdit, onDelete }: StudentHeaderProps)
 
                 {/* Avatar */}
                 <div className="w-14 h-14 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center flex-shrink-0 shadow-xl shadow-black/40 ring-2 ring-violet-500/20 relative overflow-hidden">
-                    <span className="text-xl font-black text-white tracking-tighter">{initials}</span>
-                    <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent pointer-events-none" />
+                    {student.avatar_url ? (
+                        <Image
+                            src={student.avatar_url}
+                            alt={student.name}
+                            width={56}
+                            height={56}
+                            className="w-14 h-14 rounded-full object-cover"
+                            unoptimized
+                        />
+                    ) : (
+                        <>
+                            <span className="text-xl font-black text-white tracking-tighter">{initials}</span>
+                            <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent pointer-events-none" />
+                        </>
+                    )}
                 </div>
 
                 {/* Info */}
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 mb-1">
-                        <h1 className="text-2xl font-black text-white tracking-tight truncate">{student.name}</h1>
+                        <h1 className="text-2xl font-black text-k-text-primary dark:text-white tracking-tight truncate">{student.name}</h1>
                         <div className="flex items-center gap-2">
                             <span className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded border ${statusConfig.classes.replace('border-emerald-500/20', 'border-emerald-500/30').replace('text-emerald-400', 'text-emerald-300')}`}>
                                 {statusConfig.label}
