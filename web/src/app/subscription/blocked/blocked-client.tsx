@@ -75,10 +75,10 @@ export function BlockedClient({ trainerName, state }: BlockedClientProps) {
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-950 px-6">
+        <div className="min-h-screen flex items-center justify-center bg-surface-bg px-6">
             {/* Background glows */}
             <div className="fixed top-0 -left-1/4 w-1/2 h-1/2 bg-violet-600/5 blur-[120px] rounded-full pointer-events-none" />
-            <div className="fixed bottom-0 -right-1/4 w-1/2 h-1/2 bg-blue-500/5 blur-[120px] rounded-full pointer-events-none" />
+            <div className="fixed bottom-0 -right-1/4 w-1/2 h-1/2 bg-indigo-500/5 blur-[120px] rounded-full pointer-events-none" />
 
             <div className="relative z-10 w-full max-w-md text-center">
                 {/* Logo */}
@@ -90,19 +90,19 @@ export function BlockedClient({ trainerName, state }: BlockedClientProps) {
                         height={32}
                         className="rounded-lg"
                     />
-                    <span className="text-xl font-bold text-white tracking-tight">Kinevo</span>
+                    <span className="text-xl font-black text-white tracking-tight">Kinevo</span>
                 </div>
 
                 {/* Card */}
-                <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-8">
+                <div className="bg-glass-bg backdrop-blur-md border border-k-border-primary rounded-2xl p-8">
                     {/* Icon */}
-                    <div className="w-16 h-16 rounded-2xl bg-slate-800 border border-slate-700 flex items-center justify-center mx-auto mb-6">
+                    <div className="w-16 h-16 rounded-2xl bg-glass-bg border border-k-border-subtle flex items-center justify-center mx-auto mb-6">
                         {config.icon}
                     </div>
 
-                    <h1 className="text-2xl font-bold text-white mb-2">{config.title}</h1>
-                    <p className="text-slate-400 mb-1">Olá, {trainerName}.</p>
-                    <p className="text-slate-400 mb-8">{config.description}</p>
+                    <h1 className="text-2xl font-black text-white tracking-tight mb-2">{config.title}</h1>
+                    <p className="text-k-text-tertiary mb-1">Olá, {trainerName}.</p>
+                    <p className="text-k-text-tertiary mb-8">{config.description}</p>
 
                     {error && (
                         <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl text-sm mb-4">
@@ -113,13 +113,13 @@ export function BlockedClient({ trainerName, state }: BlockedClientProps) {
                     <button
                         onClick={handleAction}
                         disabled={loading}
-                        className="w-full py-3 px-4 bg-violet-600 hover:bg-violet-500 disabled:bg-violet-600/50 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all shadow-lg shadow-violet-500/20 hover:shadow-violet-500/30"
+                        className="w-full py-3 px-4 bg-violet-600 hover:bg-violet-500 disabled:bg-violet-600/50 disabled:cursor-not-allowed text-white text-[11px] font-black uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-violet-600/20 hover:shadow-violet-500/30"
                     >
                         {loading ? 'Processando...' : config.buttonText}
                     </button>
 
                     {config.showPrice && (
-                        <p className="text-slate-500 text-sm mt-4">
+                        <p className="text-k-text-quaternary text-sm mt-4">
                             R$ 39,90/mês {state === 'no_subscription' ? 'após o período de teste' : ''}
                         </p>
                     )}
@@ -128,7 +128,7 @@ export function BlockedClient({ trainerName, state }: BlockedClientProps) {
                 {/* Logout link */}
                 <button
                     onClick={handleLogout}
-                    className="text-slate-500 hover:text-slate-400 text-sm mt-6 transition-colors"
+                    className="text-k-text-quaternary hover:text-k-text-tertiary text-sm mt-6 transition-colors"
                 >
                     Sair da conta
                 </button>

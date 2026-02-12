@@ -6,6 +6,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { ArrowLeft, Lock } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { translateAuthError } from '@/lib/translate-auth-error'
 
 export default function LoginPage() {
     const router = useRouter()
@@ -27,7 +28,7 @@ export default function LoginPage() {
         })
 
         if (error) {
-            setError(error.message)
+            setError(translateAuthError(error.message))
             setLoading(false)
             return
         }

@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import Image from 'next/image'
 import { ArrowLeft, Sparkles } from 'lucide-react'
+import { translateAuthError } from '@/lib/translate-auth-error'
 
 export default function SignupPage() {
     const [name, setName] = useState('')
@@ -40,7 +41,7 @@ export default function SignupPage() {
         })
 
         if (signUpError) {
-            setError(signUpError.message)
+            setError(translateAuthError(signUpError.message))
             setLoading(false)
             return
         }
@@ -59,7 +60,8 @@ export default function SignupPage() {
         })
 
         if (trainerError) {
-            setError('Erro ao configurar conta de treinador.')
+            console.error('Trainer insert error:', trainerError)
+            setError(translateAuthError(trainerError.message))
             setLoading(false)
             return
         }
