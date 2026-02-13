@@ -1,6 +1,6 @@
 import { Tabs } from "expo-router";
 import { View } from "react-native";
-import { Home, User, Clock } from "lucide-react-native";
+import { Home, User, Clock, Inbox } from "lucide-react-native";
 
 export default function TabsLayout() {
     return (
@@ -26,6 +26,15 @@ export default function TabsLayout() {
                     title: "Início",
                     tabBarIcon: ({ color, size, focused }) => (
                         <Home size={24} color={color} strokeWidth={focused ? 2.5 : 1.5} />
+                    ),
+                }}
+            />
+            <Tabs.Screen
+                name="inbox"
+                options={{
+                    title: "Inbox",
+                    tabBarIcon: ({ color, focused }) => (
+                        <Inbox size={24} color={color} strokeWidth={focused ? 2.5 : 1.5} />
                     ),
                 }}
             />

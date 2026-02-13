@@ -32,7 +32,10 @@
         "backgroundColor": "#18181b"
       },
       "package": "com.kinevo.mobile",
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -50,6 +53,26 @@
       ],
       "@bacons/apple-targets",
       "./plugins/with-watch-app"
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "build": {
+          "experimental": {
+            "ios": {
+              "appExtensions": [
+                {
+                  "bundleIdentifier": "com.kinevo.mobile.WorkoutActivity",
+                  "targetName": "WorkoutActivity",
+                  "entitlements": {}
+                }
+              ]
+            }
+          }
+        },
+        "projectId": "3bfbd791-f08d-4df0-96db-eed6cde4275a"
+      }
+    },
+    "owner": "gustavocprado"
   }
 }

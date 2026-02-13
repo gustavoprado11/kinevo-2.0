@@ -24,7 +24,20 @@ Edite `.env.local`:
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://seu-projeto.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=sua-anon-key
+SUPABASE_SERVICE_ROLE_KEY=sua-service-role-key
+
+# IA (Forms)
+OPENAI_API_KEY=sua-openai-api-key
+OPENAI_FORMS_MODEL=gpt-4o-mini
+FORMS_AI_LLM_ENABLED=true
+OPENAI_FORMS_TIMEOUT_MS=12000
 ```
+
+Notas de configuração de IA:
+
+- `FORMS_AI_LLM_ENABLED=true` ativa chamada ao modelo; com `false`, o sistema usa fallback heurístico local.
+- `OPENAI_FORMS_TIMEOUT_MS` define timeout da chamada ao modelo (3000 a 30000 ms).
+- Se a OpenAI estiver indisponível, a tela continua funcionando com fallback heurístico.
 
 ### 2. Instalar dependências
 

@@ -40,7 +40,7 @@ export async function createStudent(data: {
             // @ts-ignore - Os tipos do projeto estão desatualizados em relação ao banco real
             .insert({
                 auth_user_id: userId,
-                trainer_id: data.trainerId,
+                coach_id: data.trainerId,
                 name: data.name.trim(),
                 email: data.email.trim().toLowerCase(),
                 phone: data.phone,

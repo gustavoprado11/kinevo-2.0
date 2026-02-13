@@ -263,7 +263,7 @@ export function ExerciseFormModal({ isOpen, onClose, onSuccess, exercise, traine
                             onChange={e => setInstructions(e.target.value)}
                             rows={3}
                             placeholder="Dicas de execução..."
-                            className="w-full px-4 py-3 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-xl text-white placeholder:text-k-text-quaternary dark:placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-violet-500/10 focus:border-violet-500/50 transition-all resize-none text-sm"
+                            className="w-full px-4 py-3 bg-glass-bg border border-k-border-subtle rounded-xl text-k-text-primary placeholder:text-k-text-quaternary focus:outline-none focus:ring-2 focus:ring-violet-500/10 focus:border-violet-500/50 transition-all resize-none text-sm"
                         />
                     </div>
 

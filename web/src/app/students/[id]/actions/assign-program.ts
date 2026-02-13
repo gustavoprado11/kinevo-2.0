@@ -32,7 +32,7 @@ export async function assignProgram({ studentId, templateId, startDate, isSchedu
             .from('students')
             .select('id')
             .eq('id', studentId)
-            .eq('trainer_id', trainer.id)
+            .eq('coach_id', trainer.id)
             .single()
 
         if (!student) throw new Error('Student not found or unauthorized')

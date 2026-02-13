@@ -4,7 +4,9 @@ import { useRouter, useFocusEffect } from "expo-router";
 import { useAuth } from "../../contexts/AuthContext";
 import { useActiveProgram } from "../../hooks/useActiveProgram";
 import { useStudentProfile } from "../../hooks/useStudentProfile";
+import { useStudentAccess } from "../../hooks/useStudentAccess";
 import { ScreenWrapper } from "../../components/ScreenWrapper";
+import { PaymentBlockedScreen } from "../../components/PaymentBlockedScreen";
 import { User } from "lucide-react-native";
 
 // Import new home components
@@ -17,12 +19,14 @@ export default function HomeScreen() {
     const router = useRouter();
     const { user } = useAuth();
     const { profile, refreshProfile } = useStudentProfile();
+    const { allowed, reason, isLoading: accessLoading, refresh: refreshAccess } = useStudentAccess();
 
-    // Re-fetch profile when tab gains focus (avatar may have changed on Profile tab)
+    // Re-fetch profile and access when tab gains focus
     useFocusEffect(
         useCallback(() => {
             refreshProfile();
-        }, [refreshProfile])
+            refreshAccess();
+        }, [refreshProfile, refreshAccess])
     );
     const {
         programName,
@@ -40,9 +44,9 @@ export default function HomeScreen() {
 
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
-        await Promise.all([refetch(), refreshProfile()]);
+        await Promise.all([refetch(), refreshProfile(), refreshAccess()]);
         setRefreshing(false);
-    }, [refetch, refreshProfile]);
+    }, [refetch, refreshProfile, refreshAccess]);
 
     const getGreeting = () => {
         const hour = new Date().getHours();
@@ -155,6 +159,11 @@ export default function HomeScreen() {
 
         return { workout, isCompleted, title };
     }, [workouts, sessions, selectedDate]);
+
+    // Block access if student has unpaid subscription
+    if (!accessLoading && !allowed) {
+        return <PaymentBlockedScreen reason={reason} />;
+    }
 
     return (
         <ScreenWrapper>

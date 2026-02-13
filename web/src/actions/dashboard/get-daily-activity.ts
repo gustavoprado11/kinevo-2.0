@@ -61,8 +61,7 @@ export async function getDailyActivity(): Promise<{ success: boolean; data?: Dai
                 ),
                 students:student_id!inner (
                     id,
-                    name,
-                    trainer_id
+                    name
                 )
             `)
             .eq('status', 'completed')

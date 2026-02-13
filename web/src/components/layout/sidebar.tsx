@@ -4,7 +4,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, Users, Dumbbell, Calendar, Settings } from 'lucide-react'
+import { LayoutDashboard, Users, Dumbbell, Calendar, Wallet, Settings, FileText } from 'lucide-react'
 
 interface NavItem {
     name: string
@@ -32,6 +32,16 @@ const navigation: NavItem[] = [
         name: 'Programas',
         href: '/programs',
         icon: Calendar,
+    },
+    {
+        name: 'Avaliações',
+        href: '/forms',
+        icon: FileText,
+    },
+    {
+        name: 'Financeiro',
+        href: '/financial',
+        icon: Wallet,
     },
     {
         name: 'Configurações',

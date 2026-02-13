@@ -872,7 +872,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                     rounded-full px-8 py-2.5 h-10 text-sm font-bold transition-all shadow-lg min-w-[140px]
                                     ${isStudentContext
                                         ? 'bg-violet-600 hover:bg-violet-500 text-white shadow-violet-500/20'
-                                        : 'bg-white text-black hover:bg-white/90 shadow-white/10'
+                                        : 'bg-violet-600 hover:bg-violet-500 text-white shadow-violet-500/20'
                                     }
                                 `}
                             >

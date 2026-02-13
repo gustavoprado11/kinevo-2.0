@@ -4,7 +4,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useStudentProfile } from "../../hooks/useStudentProfile";
 import { AvatarPicker } from "../../components/profile/AvatarPicker";
 import { useRouter } from "expo-router";
-import { LogOut, Settings, HelpCircle, Shield, ChevronRight } from "lucide-react-native";
+import { LogOut, Settings, HelpCircle, Shield, ChevronRight, CreditCard } from "lucide-react-native";
 
 export default function ProfileScreen() {
     const router = useRouter();
@@ -111,6 +111,12 @@ export default function ProfileScreen() {
                         icon={<Settings size={20} color="#64748b" strokeWidth={1.5} />}
                         label="Configurações"
                         onPress={() => router.push("/profile/settings")}
+                    />
+                    <View style={{ height: 1, backgroundColor: "rgba(255,255,255,0.04)", marginHorizontal: 20 }} />
+                    <MenuItem
+                        icon={<CreditCard size={20} color="#64748b" strokeWidth={1.5} />}
+                        label="Minha Assinatura"
+                        onPress={() => router.push("/profile/subscription")}
                     />
                     <View style={{ height: 1, backgroundColor: "rgba(255,255,255,0.04)", marginHorizontal: 20 }} />
                     <MenuItem
