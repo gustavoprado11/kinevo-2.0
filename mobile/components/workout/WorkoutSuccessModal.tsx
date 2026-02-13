@@ -1,20 +1,34 @@
-import React, { useEffect } from 'react';
-import { View, Text, Modal, TouchableOpacity } from 'react-native';
-import { Trophy, Check } from 'lucide-react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring, withSequence, withDelay } from 'react-native-reanimated';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, Modal, TouchableOpacity, Share, Platform, Alert, Dimensions } from 'react-native';
+import { Trophy, Share2, X } from 'lucide-react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring, withSequence } from 'react-native-reanimated';
+import { ShareWorkoutModal } from './ShareWorkoutModal';
+import { WorkoutShareableCard } from './WorkoutShareableCard';
 
 interface WorkoutSuccessModalProps {
     visible: boolean;
     onClose: () => void;
+    data?: {
+        workoutName: string;
+        duration: string;
+        exerciseCount: number;
+        volume: number;
+        date: string;
+        studentName: string;
+        coach: { name: string; avatar_url: string | null } | null;
+    };
 }
 
-export function WorkoutSuccessModal({ visible, onClose }: WorkoutSuccessModalProps) {
+const { width } = Dimensions.get('window');
+
+export function WorkoutSuccessModal({ visible, onClose, data }: WorkoutSuccessModalProps) {
     const scale = useSharedValue(0);
+    const [shareModalVisible, setShareModalVisible] = useState(false);
 
     useEffect(() => {
         if (visible) {
             scale.value = withSequence(
-                withSpring(1.2),
+                withSpring(1.05),
                 withSpring(1)
             );
         } else {
@@ -28,38 +42,80 @@ export function WorkoutSuccessModal({ visible, onClose }: WorkoutSuccessModalPro
         };
     });
 
+    // Removed handleShare logic in favor of opening ShareWorkoutModal
+    const handleOpenShare = () => {
+        setShareModalVisible(true);
+    };
+
+    if (!data) return null; // Should not happen given logic in parent
+
     return (
         <Modal
             visible={visible}
             animationType="fade"
             transparent={true}
-            onRequestClose={() => { }} // Prevent closing by back button during success
+            onRequestClose={onClose}
         >
-            <View className="flex-1 bg-black/90 justify-center items-center p-6">
-                <Animated.View style={animatedStyle} className="bg-slate-900 w-full rounded-3xl p-8 items-center border border-slate-800">
+            <View className="flex-1 bg-black/95 justify-center items-center p-4">
 
-                    {/* Icon Circle */}
-                    <View className="w-24 h-24 bg-violet-600/20 rounded-full items-center justify-center mb-6 border border-violet-500/30">
-                        <Trophy size={48} color="#A78BFA" strokeWidth={1.5} />
+                {/* Close Button */}
+                <TouchableOpacity
+                    onPress={onClose}
+                    className="absolute top-12 right-6 z-50 bg-slate-800/50 p-2 rounded-full"
+                >
+                    <X size={24} color="white" />
+                </TouchableOpacity>
+
+                <Animated.View style={[animatedStyle, { width: '100%', alignItems: 'center' }]}>
+
+                    <Text className="text-white text-2xl font-bold mb-6 text-center">
+                        Treino Finalizado! 🔥
+                    </Text>
+
+                    {/* Preview Container */}
+                    <View
+                        style={{
+                            width: width * 0.75,
+                            height: (width * 0.75) * (16 / 9),
+                            overflow: 'hidden',
+                            borderRadius: 24,
+                            marginBottom: 24,
+                            backgroundColor: '#0F172A',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                        }}
+                    >
+                        <WorkoutShareableCard {...data} />
                     </View>
 
-                    <Text className="text-2xl font-bold text-white mb-2 text-center">
-                        Parabéns!
-                    </Text>
 
-                    <Text className="text-slate-400 text-center mb-8 text-base">
-                        Treino concluído com sucesso. Você está um passo mais perto do seu objetivo.
-                    </Text>
+                    {/* Action Buttons */}
+                    <View className="w-full space-y-3 px-4">
+                        <TouchableOpacity
+                            onPress={handleOpenShare}
+                            className="w-full bg-violet-600 py-4 rounded-xl flex-row items-center justify-center space-x-2"
+                        >
+                            <Share2 size={20} color="white" />
+                            <Text className="text-white font-bold text-base ml-2">Compartilhar Resultado</Text>
+                        </TouchableOpacity>
 
-                    <TouchableOpacity
-                        onPress={onClose}
-                        className="w-full bg-violet-600 py-4 rounded-xl flex-row items-center justify-center space-x-2"
-                    >
-                        <Text className="text-white font-bold text-base">Voltar ao Início</Text>
-                    </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={onClose}
+                            className="w-full bg-slate-800 py-4 rounded-xl flex-row items-center justify-center"
+                        >
+                            <Text className="text-slate-300 font-bold text-base">Voltar ao Início</Text>
+                        </TouchableOpacity>
+                    </View>
 
                 </Animated.View>
             </View>
+            <ShareWorkoutModal
+                visible={shareModalVisible}
+                onClose={() => setShareModalVisible(false)}
+                data={data}
+                sessionId={(data as any).sessionId} // Passing sessionId we added in workout/[id]
+            />
         </Modal>
     );
 }
+

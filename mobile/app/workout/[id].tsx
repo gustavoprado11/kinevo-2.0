@@ -14,6 +14,7 @@ import { ExerciseVideoModal } from '../../components/workout/ExerciseVideoModal'
 import { RestTimerOverlay } from '../../components/workout/RestTimerOverlay';
 import { ExerciseSwapModal } from '../../components/workout/ExerciseSwapModal';
 import type { ExerciseSubstituteOption } from '../../hooks/useWorkoutSession';
+import { ShareableCardProps } from '../../components/workout/sharing/types';
 
 export default function WorkoutPlayerScreen() {
     const { id } = useLocalSearchParams();
@@ -91,8 +92,8 @@ export default function WorkoutPlayerScreen() {
                     id: ex.id || `ex-${idx}`,
                     name: ex.name,
                     sets: ex.setsData.length,
-                    reps: ex.setsData[0]?.reps || 0,
-                    weight: ex.setsData[0]?.weight || undefined,
+                    reps: parseInt(ex.setsData[0]?.reps || '0') || 0,
+                    weight: ex.setsData[0]?.weight ? parseFloat(ex.setsData[0].weight) : undefined,
                     restTime: ex.rest_seconds || 0,
                     completedSets: ex.setsData.filter((s) => s.completed).length,
                 })),
@@ -243,6 +244,8 @@ export default function WorkoutPlayerScreen() {
         setIsFeedbackVisible(true);
     };
 
+    const [successData, setSuccessData] = React.useState<ShareableCardProps & { sessionId?: string } | undefined>(undefined);
+
     const handleConfirmFinish = async (rpe: number, feedback: string) => {
         try {
             setIsFeedbackVisible(false);
@@ -250,6 +253,72 @@ export default function WorkoutPlayerScreen() {
             if (success) {
                 // Stop Live Activity immediately
                 stopActivity();
+
+                // Calculate Stats for Shareable Card
+                let totalVolume = 0;
+                let completedExercisesCount = 0;
+
+                exercises.forEach(ex => {
+                    // Check if at least one set is completed
+                    const hasCompletedSet = ex.setsData.some(s => s.completed);
+                    if (hasCompletedSet) completedExercisesCount++;
+
+                    // Calculate volume for completed sets
+                    ex.setsData.forEach(s => {
+                        if (s.completed) {
+                            const weight = parseFloat(s.weight) || 0;
+                            const reps = parseInt(s.reps) || 0;
+                            totalVolume += weight * reps;
+                        }
+                    });
+                });
+
+                // Calculate Max Loads for Sharing
+                const exerciseMaxes: Record<string, { weight: number, reps: number, name: string }> = {};
+                exercises.forEach(ex => {
+                    const maxWeightSet = ex.setsData
+                        .filter(s => s.completed)
+                        .reduce((max, current) => {
+                            const wCurrent = parseFloat(current.weight) || 0;
+                            const wMax = parseFloat(max.weight) || 0;
+                            return wCurrent > wMax ? current : max;
+                        }, { weight: '0', reps: '0', completed: false });
+
+                    if (parseFloat(maxWeightSet.weight) > 0) {
+                        // Only consider if valid weight
+                        const w = parseFloat(maxWeightSet.weight);
+                        if (!exerciseMaxes[ex.name] || w > exerciseMaxes[ex.name].weight) {
+                            exerciseMaxes[ex.name] = {
+                                weight: w,
+                                reps: parseInt(maxWeightSet.reps) || 0,
+                                name: ex.name
+                            };
+                        }
+                    }
+                });
+
+                const maxLoads = Object.values(exerciseMaxes)
+                    .sort((a, b) => b.weight - a.weight)
+                    .slice(0, 3)
+                    .map(item => ({
+                        exerciseName: item.name,
+                        weight: item.weight,
+                        reps: item.reps,
+                        isPr: false
+                    }));
+
+                setSuccessData({
+                    workoutName: workoutName,
+                    duration: duration, // "MM:SS"
+                    exerciseCount: completedExercisesCount,
+                    volume: totalVolume,
+                    date: new Date().toLocaleDateString('pt-BR'),
+                    studentName: profile?.name || 'Aluno Kinevo',
+                    coach: profile?.coach || null,
+                    maxLoads: maxLoads,
+                    sessionId: success // finishWorkout returns sessionId string or true/false (now string)
+                });
+
                 // Show celebration modal
                 setShowSuccessModal(true);
                 // Mark as finishing so we can navigate away later
@@ -364,6 +433,7 @@ export default function WorkoutPlayerScreen() {
             <WorkoutSuccessModal
                 visible={showSuccessModal}
                 onClose={handleSuccessClose}
+                data={successData}
             />
             {/* Video Modal */}
             <ExerciseVideoModal

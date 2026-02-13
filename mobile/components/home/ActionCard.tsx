@@ -13,9 +13,10 @@ interface ActionCardProps {
     isCompleted?: boolean;
     title?: string;
     onPress?: () => void;
+    onShare?: () => void;
 }
 
-export function ActionCard({ workout, isCompleted, title, onPress }: ActionCardProps) {
+export function ActionCard({ workout, isCompleted, title, onPress, onShare }: ActionCardProps) {
     const sectionTitle = title || "Hoje";
 
     if (!workout) {
@@ -135,6 +136,25 @@ export function ActionCard({ workout, isCompleted, title, onPress }: ActionCardP
                                 Concluído com sucesso!
                             </Text>
                         </View>
+
+                        {/* Share Button (if onShare provided) */}
+                        {onShare && (
+                            <TouchableOpacity
+                                onPress={onShare}
+                                style={{
+                                    backgroundColor: 'rgba(124, 58, 237, 0.15)', // Violet tint
+                                    paddingHorizontal: 12,
+                                    paddingVertical: 8,
+                                    borderRadius: 10,
+                                    borderWidth: 1,
+                                    borderColor: 'rgba(124, 58, 237, 0.3)',
+                                }}
+                            >
+                                <Text style={{ color: '#A78BFA', fontSize: 12, fontWeight: '600' }}>
+                                    Compartilhar
+                                </Text>
+                            </TouchableOpacity>
+                        )}
                     </View>
                 </View>
             </View>

@@ -30,18 +30,39 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Missing stripe-signature header' }, { status: 400 })
     }
 
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
+    if (!webhookSecret) {
+        console.error('[webhook] STRIPE_WEBHOOK_SECRET not set')
+        return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 })
+    }
+
     let event: Stripe.Event
 
     try {
-        event = stripe.webhooks.constructEvent(
-            body,
-            signature,
-            process.env.STRIPE_WEBHOOK_SECRET!
-        )
+        event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
     } catch (err) {
-        console.error('Webhook signature verification failed:', err)
+        console.error('[webhook] Signature verification failed:', err)
         return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
     }
+
+    // Idempotency check
+    const { data: existing } = await supabaseAdmin
+        .from('webhook_events')
+        .select('id')
+        .eq('event_id', event.id)
+        .single()
+
+    if (existing) {
+        console.log(`[webhook] Event ${event.id} already processed, skipping`)
+        return NextResponse.json({ received: true })
+    }
+
+    // Record event for idempotency
+    await supabaseAdmin.from('webhook_events').insert({
+        event_id: event.id,
+        event_type: event.type,
+        metadata: {},
+    })
 
     console.log(`[webhook] Received event: ${event.type} (${event.id})`)
 

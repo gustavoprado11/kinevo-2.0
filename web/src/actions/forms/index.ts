@@ -1,4 +1,6 @@
 export { createFormTemplate } from './create-form-template'
+export { updateFormTemplate } from './update-form-template'
+export { deleteFormTemplate } from './delete-form-template'
 export { assignFormToStudents } from './assign-form'
 export { sendFormFeedback } from './send-form-feedback'
 export { generateFormDraftWithAI } from './generate-form-with-ai'

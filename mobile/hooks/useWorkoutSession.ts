@@ -532,8 +532,8 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                 if (logsError) throw logsError;
             }
 
-            // Success! We just return here and let the component handle the UI/Navigation
-            return true;
+            // Success! Return the session ID
+            return session.id;
 
         } catch (error: any) {
             console.error("Error finishing workout:", error);

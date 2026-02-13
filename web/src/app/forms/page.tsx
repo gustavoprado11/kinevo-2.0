@@ -1,37 +1,77 @@
 import { getTrainerWithSubscription } from '@/lib/auth/get-trainer'
 import { createClient } from '@/lib/supabase/server'
-import { FormsClient } from './forms-client'
+import { supabaseAdmin } from '@/lib/supabase-admin'
+import { FormsDashboardClient } from './forms-dashboard-client'
 
 export default async function FormsPage() {
     const { trainer } = await getTrainerWithSubscription()
     const supabase = await createClient()
 
-    const { data: templates } = await supabase
+    // Templates count
+    const { count: templatesCount } = await supabase
         .from('form_templates')
-        .select('id, title, description, category, version, is_active, created_source, schema_json, created_at, updated_at')
+        .select('id', { count: 'exact', head: true })
         .eq('trainer_id', trainer.id)
-        .order('created_at', { ascending: false })
 
-    const { data: students } = await supabase
-        .from('students')
-        .select('id, name, email, status')
-        .eq('coach_id', trainer.id)
-        .order('name', { ascending: true })
-
-    const { data: submissions } = await supabase
+    // Total submissions (submitted + reviewed)
+    const { count: submissionsCount } = await supabaseAdmin
         .from('form_submissions')
-        .select('id, form_template_id, student_id, status, submitted_at, feedback_sent_at, trainer_feedback, answers_json, schema_snapshot_json, created_at')
+        .select('id', { count: 'exact', head: true })
+        .eq('trainer_id', trainer.id)
+        .in('status', ['submitted', 'reviewed'])
+
+    // Pending feedback (submitted but no feedback yet)
+    const { count: pendingFeedbackCount } = await supabaseAdmin
+        .from('form_submissions')
+        .select('id', { count: 'exact', head: true })
+        .eq('trainer_id', trainer.id)
+        .eq('status', 'submitted')
+
+    // Recent submissions
+    const { data: rawSubmissions } = await supabaseAdmin
+        .from('form_submissions')
+        .select('id, status, submitted_at, feedback_sent_at, created_at, student_id, form_template_id')
         .eq('trainer_id', trainer.id)
         .in('status', ['submitted', 'reviewed'])
         .order('created_at', { ascending: false })
-        .limit(100)
+        .limit(10)
+
+    // Fetch students and templates for display names
+    const { data: students } = await supabase
+        .from('students')
+        .select('id, name, avatar_url')
+        .eq('coach_id', trainer.id)
+
+    const { data: templates } = await supabase
+        .from('form_templates')
+        .select('id, title')
+        .eq('trainer_id', trainer.id)
+
+    const studentsMap = new Map((students || []).map(s => [s.id, s]))
+    const templatesMap = new Map((templates || []).map(t => [t.id, t]))
+
+    const recentSubmissions = (rawSubmissions || []).map(sub => {
+        const student = studentsMap.get(sub.student_id)
+        const template = templatesMap.get(sub.form_template_id)
+        return {
+            id: sub.id,
+            status: sub.status,
+            submitted_at: sub.submitted_at,
+            created_at: sub.created_at,
+            feedback_sent_at: sub.feedback_sent_at,
+            student_name: student?.name || null,
+            student_avatar: student?.avatar_url || null,
+            template_title: template?.title || null,
+        }
+    })
 
     return (
-        <FormsClient
+        <FormsDashboardClient
             trainer={trainer}
-            templates={templates || []}
-            students={students || []}
-            submissions={submissions || []}
+            templatesCount={templatesCount ?? 0}
+            submissionsCount={submissionsCount ?? 0}
+            pendingFeedbackCount={pendingFeedbackCount ?? 0}
+            recentSubmissions={recentSubmissions}
         />
     )
 }

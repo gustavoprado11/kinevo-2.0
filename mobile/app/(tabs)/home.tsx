@@ -14,6 +14,9 @@ import { WeekCalendar } from "../../components/home/WeekCalendar";
 import { ProgressCard } from "../../components/home/ProgressCard";
 import { ActionCard } from "../../components/home/ActionCard";
 import { WorkoutList } from "../../components/home/WorkoutList";
+import { ShareWorkoutModal } from "../../components/workout/ShareWorkoutModal";
+import { supabase } from "../../lib/supabase";
+import { ShareableCardProps } from "../../components/workout/sharing/types";
 
 export default function HomeScreen() {
     const router = useRouter();
@@ -41,6 +44,80 @@ export default function HomeScreen() {
 
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [refreshing, setRefreshing] = useState(false);
+
+    // Share Modal State
+    const [shareModalVisible, setShareModalVisible] = useState(false);
+    const [shareData, setShareData] = useState<any>(null);
+    const [shareSessionId, setShareSessionId] = useState<string | undefined>(undefined);
+
+    const handleShareWorkout = useCallback(async (workout: any) => {
+        if (!workout) return;
+
+        // We need to calculate stats for the COMPLETED session of this workout
+        // The workout object here comes from useActiveProgram -> workouts
+        // We need to find the matching session in the sessions array
+
+        // Find the completed session for today (or selected date)
+        const sessionDate = selectedDate;
+        const session = sessions.find(s => {
+            const sDate = new Date(s.started_at);
+            return s.assigned_workout_id === workout.id &&
+                s.status === 'completed' &&
+                sDate.getDate() === sessionDate.getDate() &&
+                sDate.getMonth() === sessionDate.getMonth() &&
+                sDate.getFullYear() === sessionDate.getFullYear();
+        });
+
+        if (!session) {
+            console.log("No completed session found for sharing");
+            return;
+        }
+
+        // We need volume and exercise count. 
+        // These might not be in the 'sessions' summary list from useActiveProgram.
+        // We might need to fetch them or assume useActiveProgram provides enough info.
+        // Checking useActiveProgram... it returns sessions with basic info.
+        // For a rich share card, we ideally need the computed volume. 
+        // A quick hack for now: Use placeholder or 0 if not available, OR fetch details.
+        // Given complexity, let's fetch session details if needed or use defaults.
+
+        // Let's rely on what we have + maybe some intelligent defaults or expanded query in useActiveProgram later.
+        // For now, let's use:
+        // Duration: calculated from started_at/completed_at
+        // Exercises: workout.items.length (approximate)
+        // Volume: 0 (since we don't query set_logs here). TODO: Fetch set_logs for volume.
+
+        const startDate = new Date(session.started_at);
+        const endDate = session.completed_at ? new Date(session.completed_at) : new Date();
+        const diffMs = endDate.getTime() - startDate.getTime();
+        const durationMinutes = Math.floor(diffMs / 60000);
+        const durationStr = `${Math.floor(durationMinutes / 60)}h ${durationMinutes % 60}m`;
+
+        // Fetching handled by ShareWorkoutModal via useSessionStats
+        // Leaving volume as 0 for now in the preview until modal loads it
+
+        // Count exercises
+        const exerciseCount = workout.items?.length || 0;
+
+        setShareData({
+            workoutName: workout.name,
+            duration: durationStr,
+            exerciseCount: exerciseCount,
+            volume: 0, // Will be updated by Modal's internal fetch
+            date: startDate.toLocaleDateString('pt-BR'),
+            studentName: profile?.name || 'Aluno',
+            coach: profile?.coach || null
+        });
+        setShareModalVisible(true);
+        // We pass sessionId via a separate prop to the modal, or add it to shareData
+        // ShareWorkoutModal expects data={...} and sessionId={...}
+        // I need to update the state to include sessionId or pass it separately.
+        // setShareData is just data.
+        // I should set sessionId state as well.
+
+
+        setShareSessionId(session.id);
+    }, [sessions, selectedDate, profile]);
 
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
@@ -189,6 +266,9 @@ export default function HomeScreen() {
                             <Text className="text-xl font-bold text-slate-100">
                                 {displayName}
                             </Text>
+                            <Text className="text-slate-500 text-xs mt-1">
+                                {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                            </Text>
                         </View>
                     </View>
                     <TouchableOpacity
@@ -256,6 +336,7 @@ export default function HomeScreen() {
                                     router.push(`/workout/${selectedWorkoutData.workout.id}`);
                                 }
                             }}
+                            onShare={() => handleShareWorkout(selectedWorkoutData.workout)}
                         />
 
                         {/* Workout List Section */}
@@ -274,6 +355,13 @@ export default function HomeScreen() {
                     </>
                 )}
             </ScrollView>
+
+            <ShareWorkoutModal
+                visible={shareModalVisible}
+                onClose={() => setShareModalVisible(false)}
+                data={shareData}
+                sessionId={shareSessionId}
+            />
         </ScreenWrapper>
     );
 }
