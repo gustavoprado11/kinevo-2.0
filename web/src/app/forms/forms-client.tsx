@@ -4,13 +4,11 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
 import { AppLayout } from '@/components/layout'
-import {
-    assignFormToStudents,
-    auditFormQualityWithAI,
-    createFormTemplate,
-    generateFormDraftWithAI,
-    sendFormFeedback
-} from '@/actions/forms'
+import { assignFormToStudents } from '@/actions/forms/assign-form'
+import { auditFormQualityWithAI } from '@/actions/forms/audit-form-quality-ai'
+import { createFormTemplate } from '@/actions/forms/create-form-template'
+import { generateFormDraftWithAI } from '@/actions/forms/generate-form-with-ai'
+import { sendFormFeedback } from '@/actions/forms/send-form-feedback'
 import { createClient as createBrowserClient } from '@/lib/supabase/client'
 
 // New Modular Components
