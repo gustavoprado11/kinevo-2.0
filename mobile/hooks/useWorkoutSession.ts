@@ -459,7 +459,7 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
             // Get Student ID
             const { data: student }: { data: any; error: any } = await supabase
                 .from('students' as any)
-                .select('id, trainer_id')
+                .select('id, coach_id')
                 .eq('auth_user_id', user.id)
                 .single();
 
@@ -480,7 +480,7 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                 .from('workout_sessions' as any)
                 .insert({
                     student_id: student.id,
-                    trainer_id: student.trainer_id,
+                    trainer_id: student.coach_id,
                     assigned_workout_id: workoutId,
                     assigned_program_id: workout.assigned_program_id,
                     status: 'completed',
