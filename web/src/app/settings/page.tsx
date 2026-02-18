@@ -32,12 +32,20 @@ export default async function SettingsPage() {
         .eq('trainer_id', trainer.id)
         .single()
 
-    // Sync from Stripe for fresh data (cancel_at_period_end, status changes)
+    // Sync from Stripe for fresh data (cancel_at_period_end, status changes, pricing)
+    let planName = 'Kinevo Pro'
+    let planAmount: number | null = null // in cents
+    let planCurrency = 'brl'
+    let planInterval = 'month'
+    let discountName: string | null = null
+    let discountPercent: number | null = null
+    let discountAmountOff: number | null = null
+
     if (subscription?.stripe_subscription_id) {
         try {
             const stripeSub = await stripe.subscriptions.retrieve(
                 subscription.stripe_subscription_id,
-                { expand: ['items.data'] }
+                { expand: ['items.data', 'discount.coupon'] }
             )
 
             const item = stripeSub.items?.data?.[0]
@@ -46,6 +54,38 @@ export default async function SettingsPage() {
                 periodEnd = new Date(item.current_period_end * 1000).toISOString()
             } else if (stripeSub.trial_end) {
                 periodEnd = new Date(stripeSub.trial_end * 1000).toISOString()
+            }
+
+            // Extract plan pricing from subscription item
+            if (item?.price) {
+                planAmount = item.price.unit_amount
+                planCurrency = item.price.currency || 'brl'
+                planInterval = item.price.recurring?.interval || 'month'
+                // Try to get product name
+                const productId = typeof item.price.product === 'string' ? item.price.product : (item.price.product as any)?.id
+                if (productId) {
+                    try {
+                        const product = await stripe.products.retrieve(productId)
+                        if (product.name) planName = product.name
+                    } catch {
+                        // keep default name
+                    }
+                }
+            }
+
+            // Extract discount/coupon info (Stripe v20+: discounts is array, coupon lives in source.coupon)
+            const activeDiscount = stripeSub.discounts?.[0]
+            if (activeDiscount && typeof activeDiscount !== 'string' && activeDiscount.source) {
+                const couponRef = activeDiscount.source.coupon
+                const coupon = couponRef && typeof couponRef !== 'string' ? couponRef : null
+                if (coupon) {
+                    discountName = coupon.name || null
+                    if (coupon.percent_off) {
+                        discountPercent = coupon.percent_off
+                    } else if (coupon.amount_off) {
+                        discountAmountOff = coupon.amount_off
+                    }
+                }
             }
 
             // Update DB with fresh data
@@ -102,7 +142,16 @@ export default async function SettingsPage() {
                     <ProfileForm trainer={trainer} />
                 </div>
                 <div className="lg:col-span-2">
-                    <BillingSection subscription={subscription!} />
+                    <BillingSection
+                        subscription={subscription!}
+                        planName={planName}
+                        planAmount={planAmount}
+                        planCurrency={planCurrency}
+                        planInterval={planInterval}
+                        discountName={discountName}
+                        discountPercent={discountPercent}
+                        discountAmountOff={discountAmountOff}
+                    />
                 </div>
             </div>
         </AppLayout>

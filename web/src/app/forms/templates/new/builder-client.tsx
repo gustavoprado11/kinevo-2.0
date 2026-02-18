@@ -395,7 +395,7 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                 }
             }
 
-            router.push('/forms/templates')
+            router.push('/forms')
             router.refresh()
         } finally {
             setIsSaving(false)

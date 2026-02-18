@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { AlertTriangle, CreditCard, ExternalLink, CalendarDays, Activity, Wallet } from 'lucide-react'
+import { AlertTriangle, CreditCard, ExternalLink, CalendarDays, Activity, Wallet, Tag } from 'lucide-react'
 
 interface Subscription {
     status: string
@@ -12,6 +12,13 @@ interface Subscription {
 
 interface BillingSectionProps {
     subscription: Subscription
+    planName: string
+    planAmount: number | null // in cents
+    planCurrency: string
+    planInterval: string
+    discountName: string | null
+    discountPercent: number | null
+    discountAmountOff: number | null // in cents
 }
 
 function getStatusBadge(status: string, cancelAtPeriodEnd: boolean) {
@@ -50,11 +57,56 @@ function getTrialDaysRemaining(periodEnd: string | null): number | null {
     return diff > 0 ? diff : 0
 }
 
-export function BillingSection({ subscription }: BillingSectionProps) {
+function formatCurrency(amountInCents: number, currency: string): string {
+    const amount = amountInCents / 100
+    if (currency === 'brl') {
+        return amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+    }
+    return amount.toLocaleString('en-US', { style: 'currency', currency: currency.toUpperCase() })
+}
+
+function getIntervalLabel(interval: string): string {
+    switch (interval) {
+        case 'month': return 'mês'
+        case 'year': return 'ano'
+        case 'week': return 'semana'
+        case 'day': return 'dia'
+        default: return interval
+    }
+}
+
+function getEffectivePrice(
+    baseAmount: number | null,
+    discountPercent: number | null,
+    discountAmountOff: number | null,
+): number | null {
+    if (baseAmount === null) return null
+    if (discountPercent) {
+        return Math.round(baseAmount * (1 - discountPercent / 100))
+    }
+    if (discountAmountOff) {
+        return Math.max(0, baseAmount - discountAmountOff)
+    }
+    return baseAmount
+}
+
+export function BillingSection({
+    subscription,
+    planName,
+    planAmount,
+    planCurrency,
+    planInterval,
+    discountName,
+    discountPercent,
+    discountAmountOff,
+}: BillingSectionProps) {
     const [loading, setLoading] = useState(false)
 
     const badge = getStatusBadge(subscription.status, subscription.cancel_at_period_end)
     const trialDays = subscription.status === 'trialing' ? getTrialDaysRemaining(subscription.current_period_end) : null
+
+    const hasDiscount = !!(discountPercent || discountAmountOff)
+    const effectiveAmount = getEffectivePrice(planAmount, discountPercent, discountAmountOff)
 
     const handleManageBilling = async () => {
         setLoading(true)
@@ -106,15 +158,36 @@ export function BillingSection({ subscription }: BillingSectionProps) {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Plan card */}
                         <div className="rounded-xl border border-k-border-subtle bg-glass-bg p-4">
                             <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-k-text-tertiary">
                                 <Wallet size={12} strokeWidth={2} />
                                 Plano
                             </div>
-                            <p className="font-bold text-k-text-primary">Kinevo Pro</p>
-                            <p className="text-violet-400 text-sm mt-0.5 font-medium">R$ 39,90/mês</p>
+                            <p className="font-bold text-k-text-primary">{planName}</p>
+                            {effectiveAmount !== null ? (
+                                <div className="mt-0.5">
+                                    {hasDiscount && planAmount !== null ? (
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-k-text-quaternary text-sm line-through">
+                                                {formatCurrency(planAmount, planCurrency)}
+                                            </span>
+                                            <span className="text-violet-400 text-sm font-medium">
+                                                {formatCurrency(effectiveAmount, planCurrency)}/{getIntervalLabel(planInterval)}
+                                            </span>
+                                        </div>
+                                    ) : (
+                                        <p className="text-violet-400 text-sm font-medium">
+                                            {formatCurrency(effectiveAmount, planCurrency)}/{getIntervalLabel(planInterval)}
+                                        </p>
+                                    )}
+                                </div>
+                            ) : (
+                                <p className="text-violet-400 text-sm mt-0.5 font-medium">—</p>
+                            )}
                         </div>
 
+                        {/* Date card */}
                         <div className="rounded-xl border border-k-border-subtle bg-glass-bg p-4">
                             <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-k-text-tertiary">
                                 <CalendarDays size={12} strokeWidth={2} />
@@ -128,6 +201,22 @@ export function BillingSection({ subscription }: BillingSectionProps) {
                             <p className="mt-0.5 text-[10px] font-bold text-k-text-quaternary uppercase tracking-widest">Data de referência</p>
                         </div>
                     </div>
+
+                    {/* Coupon badge */}
+                    {hasDiscount && discountName && (
+                        <div className="mt-4 flex items-center gap-2 rounded-xl bg-emerald-500/5 border border-emerald-500/20 px-4 py-2.5">
+                            <Tag size={14} className="text-emerald-400 shrink-0" />
+                            <div className="flex-1 min-w-0">
+                                <span className="text-sm font-medium text-emerald-400">{discountName}</span>
+                                {discountPercent && (
+                                    <span className="ml-2 text-xs text-emerald-400/70">(-{discountPercent}%)</span>
+                                )}
+                                {discountAmountOff && (
+                                    <span className="ml-2 text-xs text-emerald-400/70">(-{formatCurrency(discountAmountOff, planCurrency)})</span>
+                                )}
+                            </div>
+                        </div>
+                    )}
 
                     <div className="my-6 h-px bg-k-border-subtle" />
 
