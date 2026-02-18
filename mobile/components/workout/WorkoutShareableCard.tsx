@@ -1,9 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet, Dimensions, Image } from 'react-native';
+import { View, Text, StyleSheet, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Dumbbell, Clock, CheckCircle2, TrendingUp } from 'lucide-react-native';
-
-const { width } = Dimensions.get('window');
+import { Clock, CheckCircle2, TrendingUp, Dumbbell } from 'lucide-react-native';
 
 interface WorkoutShareableCardProps {
     workoutName: string;
@@ -16,20 +14,20 @@ interface WorkoutShareableCardProps {
 }
 
 export const WorkoutShareableCard = (
-    { workoutName, duration, exerciseCount, volume, date, studentName, coach }: WorkoutShareableCardProps
+    { workoutName, duration, exerciseCount, volume, date, coach }: WorkoutShareableCardProps
 ) => {
+    const coachHandle = coach ? `@${coach.name.replace(/\s+/g, '').toLowerCase()}` : '';
+
     return (
         <View style={[styles.container, { width: 320, height: 568 }]}>
-            {/* Background Gradient */}
             <LinearGradient
                 colors={['#0F172A', '#1E1B4B', '#020617']}
                 locations={[0, 0.6, 1]}
                 style={styles.gradient}
             />
 
-            {/* Content */}
             <View style={styles.content}>
-                {/* Header: Title & Subtitle */}
+                {/* Header */}
                 <View style={styles.header}>
                     <Text style={styles.mainTitle}>Treino{'\n'}Concluído</Text>
                     <Text style={styles.subTitle}>{workoutName}</Text>
@@ -65,34 +63,39 @@ export const WorkoutShareableCard = (
                     </View>
                 </View>
 
-                {/* Footer: Coach Branding */}
+                {/* Footer: Coach Promotion */}
                 <View style={styles.footer}>
                     {coach ? (
                         <View style={styles.coachSection}>
-                            {coach.avatar_url && (
+                            {coach.avatar_url ? (
                                 <View style={styles.coachAvatarContainer}>
                                     <Image
                                         source={{ uri: coach.avatar_url }}
                                         style={styles.coachAvatar}
                                     />
                                 </View>
+                            ) : (
+                                <View style={[styles.coachAvatarContainer, { backgroundColor: '#334155', alignItems: 'center', justifyContent: 'center' }]}>
+                                    <Text style={{ color: '#94A3B8', fontWeight: 'bold', fontSize: 16 }}>{coach.name.charAt(0)}</Text>
+                                </View>
                             )}
                             <View style={styles.coachInfo}>
-                                <Text style={styles.coachLabel}>Treinado por</Text>
+                                <Text style={styles.coachLabel}>TREINADO POR</Text>
                                 <Text style={styles.coachName}>{coach.name}</Text>
+                                <Text style={styles.coachRole}>{coachHandle}</Text>
                             </View>
                         </View>
                     ) : (
                         <View style={styles.coachSection}>
                             <View style={styles.coachInfo}>
-                                <Text style={styles.coachLabel}>Atleta</Text>
-                                <Text style={styles.coachName}>{studentName}</Text>
+                                <Text style={styles.coachLabel}>POWERED BY</Text>
+                                <Text style={styles.coachName}>Kinevo</Text>
                             </View>
                         </View>
                     )}
 
                     <View style={styles.logoSection}>
-                        <Text style={styles.logoText}>KINEVO</Text>
+                        <Text style={styles.logoText}>kinevo.app</Text>
                     </View>
                 </View>
             </View>
@@ -169,7 +172,7 @@ const styles = StyleSheet.create({
     },
     footer: {
         borderTopWidth: 1,
-        borderTopColor: 'rgba(255, 255, 255, 0.1)',
+        borderTopColor: 'rgba(255, 255, 255, 0.08)',
         paddingTop: 24,
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -178,11 +181,12 @@ const styles = StyleSheet.create({
     coachSection: {
         flexDirection: 'row',
         alignItems: 'center',
+        flex: 1,
     },
     coachAvatarContainer: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
         backgroundColor: '#1E293B',
         marginRight: 12,
         overflow: 'hidden',
@@ -195,26 +199,35 @@ const styles = StyleSheet.create({
     },
     coachInfo: {
         justifyContent: 'center',
+        flex: 1,
     },
     coachLabel: {
-        color: '#94A3B8',
-        fontSize: 11,
+        color: 'rgba(255,255,255,0.45)',
+        fontSize: 9,
         textTransform: 'uppercase',
-        letterSpacing: 1,
-        marginBottom: 2,
+        letterSpacing: 2,
+        marginBottom: 3,
+        fontWeight: '700',
     },
     coachName: {
         color: 'white',
         fontSize: 16,
         fontWeight: '700',
+        marginBottom: 1,
+    },
+    coachRole: {
+        color: '#A78BFA',
+        fontSize: 12,
+        fontWeight: '500',
     },
     logoSection: {
         alignItems: 'flex-end',
+        opacity: 0.5,
     },
     logoText: {
-        color: 'rgba(255,255,255,0.3)',
-        fontWeight: '800',
-        fontSize: 14,
-        letterSpacing: 2,
+        color: 'white',
+        fontWeight: '700',
+        fontSize: 11,
+        letterSpacing: 1,
     }
 });

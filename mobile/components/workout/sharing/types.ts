@@ -15,4 +15,11 @@ export interface ShareableCardProps {
         reps: number;
         isPr?: boolean;
     }[];
+    // For Full Workout Template
+    exerciseDetails?: {
+        name: string;
+        sets: number;
+        reps: number;
+        weight: number;
+    }[];
 }

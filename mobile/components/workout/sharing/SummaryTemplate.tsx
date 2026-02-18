@@ -1,20 +1,16 @@
 import React from 'react';
-import { View, Text, StyleSheet, Dimensions, Image } from 'react-native';
+import { View, Text, StyleSheet, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Dumbbell, Clock, CheckCircle2, TrendingUp, Instagram } from 'lucide-react-native';
+import { Clock, CheckCircle2, TrendingUp } from 'lucide-react-native';
 import { ShareableCardProps } from './types';
 
-const { width } = Dimensions.get('window');
-
 export const SummaryTemplate = (
-    { workoutName, duration, exerciseCount, volume, date, studentName, coach }: ShareableCardProps
+    { workoutName, duration, exerciseCount, volume, date, coach }: ShareableCardProps
 ) => {
-    // Generate handle from name if not available
     const coachHandle = coach ? `@${coach.name.replace(/\s+/g, '').toLowerCase()}` : '';
 
     return (
         <View style={[styles.container, { width: 320, height: 568 }]}>
-            {/* Background Gradient - Deeper, more premium */}
             <LinearGradient
                 colors={['#020617', '#1E1B4B', '#0F172A']}
                 start={{ x: 0, y: 0 }}
@@ -22,11 +18,11 @@ export const SummaryTemplate = (
                 style={styles.gradient}
             />
 
-            {/* Decorative Elements */}
+            {/* Subtle decorative glow */}
             <View style={styles.decorativeCircle} />
 
             <View style={styles.content}>
-                {/* 1. Header with Emotional Headline */}
+                {/* Header */}
                 <View style={styles.header}>
                     <View style={styles.badge}>
                         <CheckCircle2 size={12} color="#4ADE80" />
@@ -36,7 +32,7 @@ export const SummaryTemplate = (
                     <Text style={styles.date}>{date}</Text>
                 </View>
 
-                {/* Primary Metrics (Hero) */}
+                {/* Hero Metrics */}
                 <View style={styles.heroMetrics}>
                     <View style={styles.heroItem}>
                         <View style={styles.iconContainer}>
@@ -61,7 +57,7 @@ export const SummaryTemplate = (
                     </View>
                 </View>
 
-                {/* Secondary Metrics (Subtle) */}
+                {/* Secondary Metrics */}
                 <View style={styles.secondaryMetrics}>
                     <Text style={styles.secondaryText}>
                         <Text style={{ fontWeight: '700', color: 'white' }}>{exerciseCount}</Text> exercícios
@@ -74,7 +70,7 @@ export const SummaryTemplate = (
 
                 <View style={{ flex: 1 }} />
 
-                {/* 4. Footer: Coach Branding - Consistent with other templates */}
+                {/* Footer: Coach Promotion + Brand */}
                 <View style={styles.footer}>
                     {coach ? (
                         <View style={styles.coachSection}>
@@ -85,11 +81,11 @@ export const SummaryTemplate = (
                                 />
                             ) : (
                                 <View style={[styles.coachAvatar, { backgroundColor: '#334155', alignItems: 'center', justifyContent: 'center' }]}>
-                                    <Text style={{ color: '#94A3B8', fontWeight: 'bold' }}>{coach.name.charAt(0)}</Text>
+                                    <Text style={{ color: '#94A3B8', fontWeight: 'bold', fontSize: 14 }}>{coach.name.charAt(0)}</Text>
                                 </View>
                             )}
                             <View style={styles.coachInfo}>
-                                <Text style={styles.coachLabel}>Treinado por</Text>
+                                <Text style={styles.coachLabel}>TREINADO POR</Text>
                                 <Text style={styles.coachName}>{coach.name}</Text>
                                 <Text style={styles.coachRole}>Personal Trainer • {coachHandle}</Text>
                             </View>
@@ -97,8 +93,9 @@ export const SummaryTemplate = (
                     ) : (
                         <View style={styles.coachSection}>
                             <View style={styles.coachInfo}>
-                                <Text style={styles.coachLabel}>Atleta</Text>
-                                <Text style={styles.coachName}>{studentName}</Text>
+                                <Text style={styles.coachLabel}>POWERED BY</Text>
+                                <Text style={styles.coachName}>Kinevo</Text>
+                                <Text style={styles.coachRole}>Plataforma de Treinamento</Text>
                             </View>
                         </View>
                     )}
@@ -127,8 +124,7 @@ const styles = StyleSheet.create({
         width: 300,
         height: 300,
         borderRadius: 150,
-        backgroundColor: 'rgba(124, 58, 237, 0.1)', // Reduced opacity
-        filter: 'blur(60px)',
+        backgroundColor: 'rgba(124, 58, 237, 0.08)',
     },
     content: {
         flex: 1,
@@ -233,25 +229,27 @@ const styles = StyleSheet.create({
     coachSection: {
         flexDirection: 'row',
         alignItems: 'center',
+        flex: 1,
     },
     coachAvatar: {
-        width: 36, // Smaller avatar
-        height: 36,
-        borderRadius: 18,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
         borderWidth: 1.5,
         borderColor: '#7C3AED',
         marginRight: 10,
     },
     coachInfo: {
         justifyContent: 'center',
+        flex: 1,
     },
     coachLabel: {
-        color: '#94A3B8',
-        fontSize: 10,
+        color: 'rgba(255,255,255,0.45)',
+        fontSize: 9,
         textTransform: 'uppercase',
-        letterSpacing: 0.5,
-        marginBottom: 2,
-        fontWeight: '600',
+        letterSpacing: 2,
+        marginBottom: 3,
+        fontWeight: '700',
     },
     coachName: {
         color: 'white',
@@ -266,12 +264,12 @@ const styles = StyleSheet.create({
     },
     brandSection: {
         marginBottom: 4,
-        opacity: 0.7,
+        opacity: 0.5,
     },
     brandName: {
         color: 'white',
-        fontSize: 12,
-        fontWeight: '800',
+        fontSize: 11,
+        fontWeight: '700',
         letterSpacing: 1,
     }
 });

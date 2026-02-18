@@ -1,16 +1,13 @@
 import React from 'react';
-import { View, Text, StyleSheet, Dimensions, Image } from 'react-native';
+import { View, Text, StyleSheet, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ShareableCardProps } from './types';
-import { Trophy, Flame, TrendingUp } from 'lucide-react-native';
-
-const { width } = Dimensions.get('window');
+import { Trophy, Flame } from 'lucide-react-native';
 
 export const PRTemplate = ({
-    workoutName, date, coach, studentName, maxLoads, volume
+    workoutName, date, coach, maxLoads, volume
 }: ShareableCardProps) => {
 
-    // Get the top lift (highest weight)
     const topLift = maxLoads?.sort((a, b) => b.weight - a.weight)[0];
     const coachHandle = coach ? `@${coach.name.replace(/\s+/g, '').toLowerCase()}` : '';
 
@@ -30,12 +27,12 @@ export const PRTemplate = ({
                 style={styles.gradient}
             />
 
-            {/* Decorative Elements - Explosive energy */}
+            {/* Decorative glows */}
             <View style={styles.decorativeCircle} />
             <View style={styles.decorativeCircleSmall} />
 
             <View style={styles.content}>
-                {/* 1. Header - Consistent Badge Style */}
+                {/* Header */}
                 <View style={styles.header}>
                     <View style={styles.badge}>
                         <Flame size={12} color="#FDA4AF" />
@@ -44,7 +41,7 @@ export const PRTemplate = ({
                     <Text style={styles.date}>{date}</Text>
                 </View>
 
-                {/* 2. Main PR Display */}
+                {/* Main PR Display */}
                 <View style={styles.mainContent}>
                     <Trophy size={48} color="#FBCFE8" style={{ marginBottom: 24, alignSelf: 'center' }} />
 
@@ -56,7 +53,7 @@ export const PRTemplate = ({
                     </View>
                 </View>
 
-                {/* 3. Secondary Stat */}
+                {/* Secondary Stat */}
                 <View style={styles.secondaryStats}>
                     <Text style={styles.secondaryLabel}>VOLUME TOTAL</Text>
                     <Text style={styles.secondaryValue}>{(volume / 1000).toFixed(1)} TON</Text>
@@ -64,7 +61,7 @@ export const PRTemplate = ({
 
                 <View style={{ flex: 1 }} />
 
-                {/* 4. Footer - Consistent Coach & Brand */}
+                {/* Footer: Coach Promotion + Brand */}
                 <View style={styles.footer}>
                     {coach ? (
                         <View style={styles.coachSection}>
@@ -72,20 +69,21 @@ export const PRTemplate = ({
                                 <Image source={{ uri: coach.avatar_url }} style={styles.coachAvatar} />
                             ) : (
                                 <View style={[styles.coachAvatar, { backgroundColor: '#334155', alignItems: 'center', justifyContent: 'center' }]}>
-                                    <Text style={{ color: '#94A3B8', fontWeight: 'bold' }}>{coach.name.charAt(0)}</Text>
+                                    <Text style={{ color: '#94A3B8', fontWeight: 'bold', fontSize: 14 }}>{coach.name.charAt(0)}</Text>
                                 </View>
                             )}
-                            <View>
-                                <Text style={styles.coachLabel}>Treinado por</Text>
+                            <View style={styles.coachInfo}>
+                                <Text style={styles.coachLabel}>TREINADO POR</Text>
                                 <Text style={styles.coachName}>{coach.name}</Text>
                                 <Text style={styles.coachRole}>Personal Trainer • {coachHandle}</Text>
                             </View>
                         </View>
                     ) : (
                         <View style={styles.coachSection}>
-                            <View>
-                                <Text style={styles.coachLabel}>Atleta</Text>
-                                <Text style={styles.coachName}>{studentName}</Text>
+                            <View style={styles.coachInfo}>
+                                <Text style={styles.coachLabel}>POWERED BY</Text>
+                                <Text style={styles.coachName}>Kinevo</Text>
+                                <Text style={styles.coachRole}>Plataforma de Treinamento</Text>
                             </View>
                         </View>
                     )}
@@ -111,21 +109,19 @@ const styles = StyleSheet.create({
         position: 'absolute',
         top: '20%',
         left: -100,
-        width: 500,
-        height: 500,
-        borderRadius: 250,
-        backgroundColor: 'rgba(219, 39, 119, 0.2)',
-        filter: 'blur(80px)',
+        width: 400,
+        height: 400,
+        borderRadius: 200,
+        backgroundColor: 'rgba(219, 39, 119, 0.15)',
     },
     decorativeCircleSmall: {
         position: 'absolute',
         bottom: 100,
         right: -50,
-        width: 200,
-        height: 200,
-        borderRadius: 100,
-        backgroundColor: 'rgba(219, 39, 119, 0.15)',
-        filter: 'blur(40px)',
+        width: 180,
+        height: 180,
+        borderRadius: 90,
+        backgroundColor: 'rgba(219, 39, 119, 0.10)',
     },
     content: {
         flex: 1,
@@ -208,8 +204,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginTop: 48,
         paddingTop: 32,
-        // borderTopWidth: 1,
-        // borderTopColor: 'rgba(255,255,255,0.1)',
         width: '100%',
     },
     secondaryLabel: {
@@ -238,23 +232,28 @@ const styles = StyleSheet.create({
     coachSection: {
         flexDirection: 'row',
         alignItems: 'center',
+        flex: 1,
     },
     coachAvatar: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
         backgroundColor: '#1E293B',
         marginRight: 10,
         borderWidth: 1.5,
         borderColor: '#EC4899',
     },
+    coachInfo: {
+        justifyContent: 'center',
+        flex: 1,
+    },
     coachLabel: {
-        color: '#FBCFE8',
-        fontSize: 10,
+        color: 'rgba(255,255,255,0.45)',
+        fontSize: 9,
         textTransform: 'uppercase',
-        marginBottom: 2,
-        fontWeight: '600',
-        letterSpacing: 0.5,
+        letterSpacing: 2,
+        marginBottom: 3,
+        fontWeight: '700',
     },
     coachName: {
         color: 'white',
@@ -268,13 +267,13 @@ const styles = StyleSheet.create({
         fontWeight: '500',
     },
     brandSection: {
-        opacity: 0.7,
+        opacity: 0.5,
         marginBottom: 4,
     },
     brandName: {
         color: 'white',
-        fontSize: 12,
-        fontWeight: '800',
+        fontSize: 11,
+        fontWeight: '700',
         letterSpacing: 1,
     }
 });

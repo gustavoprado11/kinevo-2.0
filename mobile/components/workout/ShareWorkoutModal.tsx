@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { View, Text, Modal, TouchableOpacity, Share, Platform, Alert, Dimensions, StyleSheet, ScrollView, Image } from 'react-native';
-import { Share2, X, Camera, Image as ImageIcon, LayoutTemplate, Trophy, FileText, Flame } from 'lucide-react-native';
+import { View, Text, Modal, TouchableOpacity, Platform, Alert, Dimensions, StyleSheet, ScrollView } from 'react-native';
+import { Share2, X, Camera, Image as ImageIcon, LayoutTemplate, Trophy, FileText } from 'lucide-react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withSequence } from 'react-native-reanimated';
 import ViewShot, { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
@@ -8,31 +8,32 @@ import * as ImagePicker from 'expo-image-picker';
 import { useSessionStats } from '../../hooks/useSessionStats';
 
 // Templates
-import { SummaryTemplate } from './sharing/SummaryTemplate';
 import { PhotoOverlayTemplate } from './sharing/PhotoOverlayTemplate';
 import { MaxLoadsTemplate } from './sharing/MaxLoadsTemplate';
+import { FullWorkoutTemplate } from './sharing/FullWorkoutTemplate';
+import { SummaryTemplate } from './sharing/SummaryTemplate';
 import { PRTemplate } from './sharing/PRTemplate';
 import { ShareableCardProps } from './sharing/types';
 
 interface ShareWorkoutModalProps {
     visible: boolean;
     onClose: () => void;
-    data?: ShareableCardProps; // Using shared type
+    data?: ShareableCardProps;
     sessionId?: string;
 }
 
 const { width } = Dimensions.get('window');
 
-type TemplateType = 'summary' | 'photo' | 'max_loads' | 'pr';
+type TemplateType = 'photo' | 'highlights' | 'full_workout' | 'summary' | 'pr';
 
 export function ShareWorkoutModal({ visible, onClose, data, sessionId }: ShareWorkoutModalProps) {
     const scale = useSharedValue(0);
     const viewShotRef = useRef<ViewShot>(null);
     const [isSharing, setIsSharing] = useState(false);
-    const [selectedTemplate, setSelectedTemplate] = useState<TemplateType>('summary');
+    const [selectedTemplate, setSelectedTemplate] = useState<TemplateType>('photo');
     const [backgroundImage, setBackgroundImage] = useState<string | undefined>(undefined);
 
-    const { volume: statsVolume, maxLoads: statsMaxLoads } = useSessionStats(sessionId || null);
+    const { volume: statsVolume, maxLoads: statsMaxLoads, exerciseDetails: statsExerciseDetails } = useSessionStats(sessionId || null);
 
     useEffect(() => {
         if (visible) {
@@ -42,9 +43,8 @@ export function ShareWorkoutModal({ visible, onClose, data, sessionId }: ShareWo
             );
         } else {
             scale.value = 0;
-            // Reset state on close
             setTimeout(() => {
-                setSelectedTemplate('summary');
+                setSelectedTemplate('photo');
                 setBackgroundImage(undefined);
             }, 300);
         }
@@ -98,7 +98,6 @@ export function ShareWorkoutModal({ visible, onClose, data, sessionId }: ShareWo
         setIsSharing(true);
 
         try {
-            // Add a small delay to ensure rendering is complete (especially for images)
             await new Promise(resolve => setTimeout(resolve, 100));
 
             const uri = await captureRef(viewShotRef, {
@@ -130,13 +129,20 @@ export function ShareWorkoutModal({ visible, onClose, data, sessionId }: ShareWo
 
     if (!data) return null;
 
-    // Merge picked image and stats into data for template
-    const templateData = {
+    const templateData: ShareableCardProps = {
         ...data,
         backgroundImageUri: backgroundImage,
         volume: statsVolume || data.volume,
-        maxLoads: (statsMaxLoads && statsMaxLoads.length > 0) ? statsMaxLoads : data.maxLoads
+        maxLoads: (statsMaxLoads && statsMaxLoads.length > 0) ? statsMaxLoads : data.maxLoads,
+        exerciseDetails: (statsExerciseDetails && statsExerciseDetails.length > 0) ? statsExerciseDetails : data.exerciseDetails
     };
+
+    const templates: { key: TemplateType; label: string; icon: React.ReactNode }[] = [
+        { key: 'photo', label: 'Foto', icon: <Camera size={18} color={selectedTemplate === 'photo' ? 'white' : '#94A3B8'} /> },
+        { key: 'highlights', label: 'Destaques', icon: <Trophy size={18} color={selectedTemplate === 'highlights' ? 'white' : '#94A3B8'} /> },
+        { key: 'full_workout', label: 'Completo', icon: <FileText size={18} color={selectedTemplate === 'full_workout' ? 'white' : '#94A3B8'} /> },
+        { key: 'summary', label: 'Resumo', icon: <LayoutTemplate size={18} color={selectedTemplate === 'summary' ? 'white' : '#94A3B8'} /> },
+    ];
 
     return (
         <Modal
@@ -146,7 +152,7 @@ export function ShareWorkoutModal({ visible, onClose, data, sessionId }: ShareWo
             onRequestClose={onClose}
         >
             <View style={styles.overlay}>
-                {/* Header Actions */}
+                {/* Header */}
                 <View style={styles.headerActions}>
                     <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                         <X size={24} color="white" />
@@ -156,7 +162,7 @@ export function ShareWorkoutModal({ visible, onClose, data, sessionId }: ShareWo
                 <Animated.View style={[animatedStyle, styles.modalContent]}>
                     <Text style={styles.title}>Compartilhar Resultado</Text>
 
-                    {/* Preview Container */}
+                    {/* Preview */}
                     <View style={styles.previewWrapper}>
                         <View style={styles.previewContainer}>
                             <ViewShot
@@ -165,13 +171,13 @@ export function ShareWorkoutModal({ visible, onClose, data, sessionId }: ShareWo
                                 style={{
                                     width: 320,
                                     height: 568,
-                                    transform: [{ scale: (width * 0.70) / 320 }], // Slightly smaller scale to fit UI
-                                    // Use a container for centering if origin fails, but scale origin helps
+                                    transform: [{ scale: (width * 0.70) / 320 }],
                                 }}
                             >
-                                {selectedTemplate === 'summary' && <SummaryTemplate {...templateData} />}
                                 {selectedTemplate === 'photo' && <PhotoOverlayTemplate {...templateData} />}
-                                {selectedTemplate === 'max_loads' && <MaxLoadsTemplate {...templateData} />}
+                                {selectedTemplate === 'highlights' && <MaxLoadsTemplate {...templateData} />}
+                                {selectedTemplate === 'full_workout' && <FullWorkoutTemplate {...templateData} />}
+                                {selectedTemplate === 'summary' && <SummaryTemplate {...templateData} />}
                                 {selectedTemplate === 'pr' && <PRTemplate {...templateData} />}
                             </ViewShot>
                         </View>
@@ -180,41 +186,20 @@ export function ShareWorkoutModal({ visible, onClose, data, sessionId }: ShareWo
                     {/* Template Selector */}
                     <View style={styles.templateSelector}>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.templateList}>
-                            <TouchableOpacity
-                                style={[styles.templateOption, selectedTemplate === 'summary' && styles.selectedOption]}
-                                onPress={() => setSelectedTemplate('summary')}
-                            >
-                                <LayoutTemplate size={20} color={selectedTemplate === 'summary' ? 'white' : '#94A3B8'} />
-                                <Text style={[styles.optionText, selectedTemplate === 'summary' && styles.selectedOptionText]}>Resumo</Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                                style={[styles.templateOption, selectedTemplate === 'photo' && styles.selectedOption]}
-                                onPress={() => setSelectedTemplate('photo')}
-                            >
-                                <Camera size={20} color={selectedTemplate === 'photo' ? 'white' : '#94A3B8'} />
-                                <Text style={[styles.optionText, selectedTemplate === 'photo' && styles.selectedOptionText]}>Foto</Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                                style={[styles.templateOption, selectedTemplate === 'max_loads' && styles.selectedOption]}
-                                onPress={() => setSelectedTemplate('max_loads')}
-                            >
-                                <Trophy size={20} color={selectedTemplate === 'max_loads' ? 'white' : '#94A3B8'} />
-                                <Text style={[styles.optionText, selectedTemplate === 'max_loads' && styles.selectedOptionText]}>Cargas</Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                                style={[styles.templateOption, selectedTemplate === 'pr' && styles.selectedOption]}
-                                onPress={() => setSelectedTemplate('pr')}
-                            >
-                                <Flame size={20} color={selectedTemplate === 'pr' ? 'white' : '#94A3B8'} />
-                                <Text style={[styles.optionText, selectedTemplate === 'pr' && styles.selectedOptionText]}>Recorde</Text>
-                            </TouchableOpacity>
+                            {templates.map(t => (
+                                <TouchableOpacity
+                                    key={t.key}
+                                    style={[styles.templateOption, selectedTemplate === t.key && styles.selectedOption]}
+                                    onPress={() => setSelectedTemplate(t.key)}
+                                >
+                                    {t.icon}
+                                    <Text style={[styles.optionText, selectedTemplate === t.key && styles.selectedOptionText]}>{t.label}</Text>
+                                </TouchableOpacity>
+                            ))}
                         </ScrollView>
                     </View>
 
-                    {/* Controls for Photo Template */}
+                    {/* Photo Controls */}
                     {selectedTemplate === 'photo' && (
                         <View style={styles.photoControls}>
                             <TouchableOpacity style={styles.photoButton} onPress={handlePickImage}>
@@ -228,7 +213,7 @@ export function ShareWorkoutModal({ visible, onClose, data, sessionId }: ShareWo
                         </View>
                     )}
 
-                    {/* Footer Actions */}
+                    {/* Share Button */}
                     <View style={styles.footerActions}>
                         <TouchableOpacity
                             onPress={handleShare}
@@ -297,12 +282,8 @@ const styles = StyleSheet.create({
         transform: [{ scale: (width * 0.70) / 320 }],
         borderRadius: 20,
         overflow: 'hidden',
-        // Shadow for preview
         shadowColor: "#000",
-        shadowOffset: {
-            width: 0,
-            height: 10,
-        },
+        shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.5,
         shadowRadius: 10,
         elevation: 10,
@@ -313,19 +294,19 @@ const styles = StyleSheet.create({
         height: 50,
     },
     templateList: {
-        gap: 12,
+        gap: 10,
         paddingHorizontal: 10,
     },
     templateOption: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 16,
+        paddingHorizontal: 14,
         paddingVertical: 10,
         borderRadius: 20,
         backgroundColor: 'rgba(255,255,255,0.05)',
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.1)',
-        gap: 8,
+        gap: 6,
     },
     selectedOption: {
         backgroundColor: '#4338CA',
@@ -334,7 +315,7 @@ const styles = StyleSheet.create({
     optionText: {
         color: '#94A3B8',
         fontWeight: '600',
-        fontSize: 14,
+        fontSize: 13,
     },
     selectedOptionText: {
         color: 'white',
@@ -378,4 +359,3 @@ const styles = StyleSheet.create({
         fontSize: 16,
     },
 });
-

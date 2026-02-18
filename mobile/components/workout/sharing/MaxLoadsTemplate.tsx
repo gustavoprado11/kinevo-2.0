@@ -1,16 +1,13 @@
 import React from 'react';
-import { View, Text, StyleSheet, Dimensions, Image } from 'react-native';
+import { View, Text, StyleSheet, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ShareableCardProps } from './types';
-import { Trophy, Dumbbell, Flame } from 'lucide-react-native';
-
-const { width } = Dimensions.get('window');
+import { Trophy, Flame } from 'lucide-react-native';
 
 export const MaxLoadsTemplate = ({
-    workoutName, date, coach, studentName, maxLoads, volume
+    workoutName, date, coach, maxLoads, volume
 }: ShareableCardProps) => {
 
-    // Sort by weight desc just to be safe, though usage site does it too
     const displayLoads = maxLoads?.sort((a, b) => b.weight - a.weight).slice(0, 3) || [];
     const coachHandle = coach ? `@${coach.name.replace(/\s+/g, '').toLowerCase()}` : '';
 
@@ -22,11 +19,11 @@ export const MaxLoadsTemplate = ({
                 style={styles.gradient}
             />
 
-            {/* Decorative */}
+            {/* Subtle decorative glow */}
             <View style={styles.decorativeCircle} />
 
             <View style={styles.content}>
-                {/* Header - Elite Hierarchy */}
+                {/* Header */}
                 <View style={styles.header}>
                     <View style={styles.badge}>
                         <Trophy size={12} color="#FBBF24" />
@@ -62,7 +59,7 @@ export const MaxLoadsTemplate = ({
                     )}
                 </View>
 
-                {/* Volume Highlight */}
+                {/* Volume */}
                 <View style={styles.volumeContainer}>
                     <Text style={styles.volumeValue}>{(volume / 1000).toFixed(1)} TON</Text>
                     <Text style={styles.volumeLabel}>Volume Total Movimentado</Text>
@@ -70,7 +67,7 @@ export const MaxLoadsTemplate = ({
 
                 <View style={{ flex: 1 }} />
 
-                {/* Footer */}
+                {/* Footer: Coach Promotion + Brand */}
                 <View style={styles.footer}>
                     {coach ? (
                         <View style={styles.coachSection}>
@@ -78,27 +75,28 @@ export const MaxLoadsTemplate = ({
                                 <Image source={{ uri: coach.avatar_url }} style={styles.coachAvatar} />
                             ) : (
                                 <View style={[styles.coachAvatar, { backgroundColor: '#334155', alignItems: 'center', justifyContent: 'center' }]}>
-                                    <Text style={{ color: '#94A3B8', fontWeight: 'bold' }}>{coach.name.charAt(0)}</Text>
+                                    <Text style={{ color: '#94A3B8', fontWeight: 'bold', fontSize: 14 }}>{coach.name.charAt(0)}</Text>
                                 </View>
                             )}
-                            <View>
-                                <Text style={styles.coachLabel}>Plano desenvolvido por</Text>
+                            <View style={styles.coachInfo}>
+                                <Text style={styles.coachLabel}>TREINADO POR</Text>
                                 <Text style={styles.coachName}>{coach.name}</Text>
                                 <Text style={styles.coachRole}>Personal Trainer • {coachHandle}</Text>
                             </View>
                         </View>
                     ) : (
                         <View style={styles.coachSection}>
-                            <View>
-                                <Text style={styles.coachLabel}>Atleta</Text>
-                                <Text style={styles.coachName}>{studentName}</Text>
+                            <View style={styles.coachInfo}>
+                                <Text style={styles.coachLabel}>POWERED BY</Text>
+                                <Text style={styles.coachName}>Kinevo</Text>
+                                <Text style={styles.coachRole}>Plataforma de Treinamento</Text>
                             </View>
                         </View>
                     )}
 
                     <View style={styles.brandSection}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#FBBF24' }} />
+                            <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: '#FBBF24' }} />
                             <Text style={styles.brandName}>kinevo.app</Text>
                         </View>
                     </View>
@@ -120,11 +118,10 @@ const styles = StyleSheet.create({
         position: 'absolute',
         top: -50,
         right: -50,
-        width: 300,
-        height: 300,
-        borderRadius: 150,
-        backgroundColor: 'rgba(99, 102, 241, 0.08)', // Reduced opacity significantly
-        filter: 'blur(80px)',
+        width: 250,
+        height: 250,
+        borderRadius: 125,
+        backgroundColor: 'rgba(99, 102, 241, 0.06)',
     },
     content: {
         flex: 1,
@@ -243,11 +240,6 @@ const styles = StyleSheet.create({
         fontWeight: '800',
         letterSpacing: -0.5,
     },
-    volumeUnit: {
-        fontSize: 14,
-        color: '#94A3B8',
-        fontWeight: '600',
-    },
     volumeLabel: {
         color: '#64748B',
         fontSize: 11,
@@ -268,23 +260,28 @@ const styles = StyleSheet.create({
     coachSection: {
         flexDirection: 'row',
         alignItems: 'center',
+        flex: 1,
     },
     coachAvatar: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
         backgroundColor: '#1E293B',
         marginRight: 10,
         borderWidth: 1.5,
         borderColor: '#6366F1',
     },
+    coachInfo: {
+        justifyContent: 'center',
+        flex: 1,
+    },
     coachLabel: {
-        color: '#64748B',
-        fontSize: 10,
+        color: 'rgba(255,255,255,0.45)',
+        fontSize: 9,
         textTransform: 'uppercase',
-        marginBottom: 2,
-        fontWeight: '600',
-        letterSpacing: 0.5,
+        letterSpacing: 2,
+        marginBottom: 3,
+        fontWeight: '700',
     },
     coachName: {
         color: 'white',
@@ -298,13 +295,13 @@ const styles = StyleSheet.create({
         fontWeight: '500',
     },
     brandSection: {
-        opacity: 0.7,
+        opacity: 0.5,
         marginBottom: 4,
     },
     brandName: {
         color: 'white',
-        fontSize: 12,
-        fontWeight: '800',
+        fontSize: 11,
+        fontWeight: '700',
         letterSpacing: 1,
     }
 });

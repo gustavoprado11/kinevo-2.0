@@ -1,18 +1,15 @@
 import React from 'react';
-import { View, Text, StyleSheet, Dimensions, Image, ImageBackground } from 'react-native';
+import { View, Text, StyleSheet, Image, ImageBackground } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ShareableCardProps } from './types';
 import { Camera, CheckCircle2 } from 'lucide-react-native';
 
-const { width } = Dimensions.get('window');
-
 export const PhotoOverlayTemplate = ({
-    workoutName, duration, volume, date, studentName, coach, backgroundImageUri, exerciseCount
+    workoutName, duration, volume, date, coach, backgroundImageUri, exerciseCount
 }: ShareableCardProps) => {
 
     const coachHandle = coach ? `@${coach.name.replace(/\s+/g, '').toLowerCase()}` : '';
 
-    // Fallback / Placeholder State
     if (!backgroundImageUri) {
         return (
             <View style={[styles.container, { width: 320, height: 568 }]}>
@@ -31,20 +28,17 @@ export const PhotoOverlayTemplate = ({
                 style={styles.imageBackground}
                 resizeMode="cover"
             >
-                {/* Elite Overlay - Deeper gradient for text legibility */}
                 <LinearGradient
-                    colors={['transparent', 'rgba(2, 6, 23, 0.2)', 'rgba(2, 6, 23, 0.8)', '#020617']}
-                    locations={[0, 0.4, 0.7, 1]}
+                    colors={['transparent', 'rgba(2, 6, 23, 0.2)', 'rgba(2, 6, 23, 0.85)', '#020617']}
+                    locations={[0, 0.35, 0.65, 1]}
                     style={styles.overlay}
                 />
 
                 <View style={styles.content}>
-                    {/* Empty top space for the photo subject */}
                     <View style={{ flex: 1 }} />
 
-                    {/* Bottom Overlay Content */}
                     <View style={styles.infoContainer}>
-                        {/* 1. Header & Title */}
+                        {/* Header */}
                         <View style={styles.header}>
                             <View style={styles.badge}>
                                 <CheckCircle2 size={10} color="#4ADE80" />
@@ -54,7 +48,7 @@ export const PhotoOverlayTemplate = ({
                             <Text style={styles.date}>{date}</Text>
                         </View>
 
-                        {/* 2. Vertical Stack Metrics - The "Elite" requirement */}
+                        {/* Metrics */}
                         <View style={styles.metricsStack}>
                             <Text style={styles.metricItem}>{duration}</Text>
                             <Text style={styles.metricItem}>{(volume / 1000).toFixed(1)} toneladas</Text>
@@ -64,7 +58,7 @@ export const PhotoOverlayTemplate = ({
                         {/* Divider */}
                         <View style={styles.divider} />
 
-                        {/* 3. Footer: Coach & Brand */}
+                        {/* Footer: Coach + Brand */}
                         <View style={styles.footer}>
                             {coach ? (
                                 <View style={styles.coachSection}>
@@ -72,11 +66,11 @@ export const PhotoOverlayTemplate = ({
                                         <Image source={{ uri: coach.avatar_url }} style={styles.coachAvatar} />
                                     ) : (
                                         <View style={[styles.coachAvatar, { backgroundColor: '#334155', alignItems: 'center', justifyContent: 'center' }]}>
-                                            <Text style={{ color: '#94A3B8', fontWeight: 'bold' }}>{coach.name.charAt(0)}</Text>
+                                            <Text style={{ color: '#94A3B8', fontWeight: 'bold', fontSize: 14 }}>{coach.name.charAt(0)}</Text>
                                         </View>
                                     )}
                                     <View>
-                                        <Text style={styles.coachLabel}>Treinado por</Text>
+                                        <Text style={styles.coachLabel}>TREINADO POR</Text>
                                         <Text style={styles.coachName}>{coach.name}</Text>
                                         <Text style={styles.coachRole}>Personal Trainer • {coachHandle}</Text>
                                     </View>
@@ -84,8 +78,8 @@ export const PhotoOverlayTemplate = ({
                             ) : (
                                 <View style={styles.coachSection}>
                                     <View>
-                                        {/* Removed 'Atleta' label redundancy per elite prompt if clean */}
-                                        <Text style={styles.coachName}>{studentName}</Text>
+                                        <Text style={styles.coachLabel}>POWERED BY</Text>
+                                        <Text style={styles.coachName}>Kinevo</Text>
                                     </View>
                                 </View>
                             )}
@@ -120,16 +114,14 @@ const styles = StyleSheet.create({
         padding: 32,
         paddingBottom: 40,
     },
-    infoContainer: {
-        // Container for all bottom content
-    },
+    infoContainer: {},
     header: {
         marginBottom: 24,
     },
     badge: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(74, 222, 128, 0.1)',
+        backgroundColor: 'rgba(74, 222, 128, 0.15)',
         paddingHorizontal: 8,
         paddingVertical: 4,
         borderRadius: 4,
@@ -137,7 +129,7 @@ const styles = StyleSheet.create({
         marginBottom: 12,
         gap: 6,
         borderWidth: 1,
-        borderColor: 'rgba(74, 222, 128, 0.2)',
+        borderColor: 'rgba(74, 222, 128, 0.25)',
     },
     badgeText: {
         color: '#4ADE80',
@@ -156,15 +148,15 @@ const styles = StyleSheet.create({
         marginBottom: 4,
     },
     date: {
-        color: '#94A3B8',
+        color: 'rgba(255,255,255,0.6)',
         fontSize: 14,
         fontWeight: '500',
     },
     metricsStack: {
-        marginBottom: 32,
+        marginBottom: 28,
         gap: 2,
     },
-    metricItem: { // Vertical stack style
+    metricItem: {
         color: 'white',
         fontSize: 20,
         fontWeight: '700',
@@ -173,7 +165,7 @@ const styles = StyleSheet.create({
     divider: {
         height: 1,
         backgroundColor: 'rgba(255,255,255,0.1)',
-        marginBottom: 24,
+        marginBottom: 20,
     },
     footer: {
         flexDirection: 'row',
@@ -183,23 +175,24 @@ const styles = StyleSheet.create({
     coachSection: {
         flexDirection: 'row',
         alignItems: 'center',
+        flex: 1,
     },
     coachAvatar: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
         backgroundColor: '#1E293B',
         marginRight: 10,
         borderWidth: 1.5,
-        borderColor: '#4ADE80', // Green accent for completed/photo
+        borderColor: '#4ADE80',
     },
     coachLabel: {
-        color: '#94A3B8',
-        fontSize: 10,
+        color: 'rgba(255,255,255,0.45)',
+        fontSize: 9,
         textTransform: 'uppercase',
-        letterSpacing: 0.5,
-        fontWeight: '600',
-        marginBottom: 2,
+        letterSpacing: 2,
+        fontWeight: '700',
+        marginBottom: 3,
     },
     coachName: {
         color: 'white',
@@ -213,11 +206,11 @@ const styles = StyleSheet.create({
         fontWeight: '500',
     },
     brandSection: {
-        opacity: 0.7,
+        opacity: 0.5,
     },
     brandName: {
         color: 'white',
-        fontSize: 12,
+        fontSize: 11,
         fontWeight: '700',
         letterSpacing: 0.5,
     },

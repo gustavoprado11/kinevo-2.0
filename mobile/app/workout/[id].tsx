@@ -307,16 +307,32 @@ export default function WorkoutPlayerScreen() {
                         isPr: false
                     }));
 
+                // Build exercise details for full workout template
+                const exerciseDetails = exercises
+                    .filter(ex => ex.setsData.some(s => s.completed))
+                    .map(ex => {
+                        const completedSets = ex.setsData.filter(s => s.completed);
+                        const maxWeight = Math.max(...completedSets.map(s => parseFloat(s.weight) || 0));
+                        const maxReps = Math.max(...completedSets.map(s => parseInt(s.reps) || 0));
+                        return {
+                            name: ex.name,
+                            sets: completedSets.length,
+                            reps: maxReps,
+                            weight: maxWeight,
+                        };
+                    });
+
                 setSuccessData({
                     workoutName: workoutName,
-                    duration: duration, // "MM:SS"
+                    duration: duration,
                     exerciseCount: completedExercisesCount,
                     volume: totalVolume,
                     date: new Date().toLocaleDateString('pt-BR'),
                     studentName: profile?.name || 'Aluno Kinevo',
                     coach: profile?.coach || null,
                     maxLoads: maxLoads,
-                    sessionId: success // finishWorkout returns sessionId string or true/false (now string)
+                    exerciseDetails: exerciseDetails,
+                    sessionId: success
                 });
 
                 // Show celebration modal
