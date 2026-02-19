@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useCallback } from "react";
-import { View, Text, ScrollView, RefreshControl, ActivityIndicator, Image, TouchableOpacity } from "react-native";
+import { View, Text, ScrollView, RefreshControl, ActivityIndicator, Image, TouchableOpacity, LayoutAnimation, Platform, UIManager } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useAuth } from "../../contexts/AuthContext";
 import { useActiveProgram } from "../../hooks/useActiveProgram";
@@ -8,15 +8,19 @@ import { useStudentAccess } from "../../hooks/useStudentAccess";
 import { ScreenWrapper } from "../../components/ScreenWrapper";
 import { PaymentBlockedScreen } from "../../components/PaymentBlockedScreen";
 import { User } from "lucide-react-native";
+import { toDateKey } from "@kinevo/shared/utils/schedule-projection";
 
-// Import new home components
 import { WeekCalendar } from "../../components/home/WeekCalendar";
+import { MonthCalendar } from "../../components/home/MonthCalendar";
 import { ProgressCard } from "../../components/home/ProgressCard";
 import { ActionCard } from "../../components/home/ActionCard";
 import { WorkoutList } from "../../components/home/WorkoutList";
 import { ShareWorkoutModal } from "../../components/workout/ShareWorkoutModal";
-import { supabase } from "../../lib/supabase";
-import { ShareableCardProps } from "../../components/workout/sharing/types";
+
+// Enable LayoutAnimation on Android
+if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
+    UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 export default function HomeScreen() {
     const router = useRouter();
@@ -24,26 +28,31 @@ export default function HomeScreen() {
     const { profile, refreshProfile } = useStudentProfile();
     const { allowed, reason, isLoading: accessLoading, refresh: refreshAccess } = useStudentAccess();
 
-    // Re-fetch profile and access when tab gains focus
     useFocusEffect(
         useCallback(() => {
             refreshProfile();
             refreshAccess();
         }, [refreshProfile, refreshAccess])
     );
+
     const {
         programName,
         workouts,
         sessions,
+        sessionsMap,
         weeklyProgress,
         studentName,
+        programStartedAt,
+        programDurationWeeks,
         isLoading,
         error,
-        refetch
+        refetch,
+        fetchRange,
     } = useActiveProgram();
 
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [refreshing, setRefreshing] = useState(false);
+    const [calendarMode, setCalendarMode] = useState<'week' | 'month'>('week');
 
     // Share Modal State
     const [shareModalVisible, setShareModalVisible] = useState(false);
@@ -53,11 +62,6 @@ export default function HomeScreen() {
     const handleShareWorkout = useCallback(async (workout: any) => {
         if (!workout) return;
 
-        // We need to calculate stats for the COMPLETED session of this workout
-        // The workout object here comes from useActiveProgram -> workouts
-        // We need to find the matching session in the sessions array
-
-        // Find the completed session for today (or selected date)
         const sessionDate = selectedDate;
         const session = sessions.find(s => {
             const sDate = new Date(s.started_at);
@@ -73,49 +77,24 @@ export default function HomeScreen() {
             return;
         }
 
-        // We need volume and exercise count. 
-        // These might not be in the 'sessions' summary list from useActiveProgram.
-        // We might need to fetch them or assume useActiveProgram provides enough info.
-        // Checking useActiveProgram... it returns sessions with basic info.
-        // For a rich share card, we ideally need the computed volume. 
-        // A quick hack for now: Use placeholder or 0 if not available, OR fetch details.
-        // Given complexity, let's fetch session details if needed or use defaults.
-
-        // Let's rely on what we have + maybe some intelligent defaults or expanded query in useActiveProgram later.
-        // For now, let's use:
-        // Duration: calculated from started_at/completed_at
-        // Exercises: workout.items.length (approximate)
-        // Volume: 0 (since we don't query set_logs here). TODO: Fetch set_logs for volume.
-
         const startDate = new Date(session.started_at);
         const endDate = session.completed_at ? new Date(session.completed_at) : new Date();
         const diffMs = endDate.getTime() - startDate.getTime();
         const durationMinutes = Math.floor(diffMs / 60000);
         const durationStr = `${Math.floor(durationMinutes / 60)}h ${durationMinutes % 60}m`;
 
-        // Fetching handled by ShareWorkoutModal via useSessionStats
-        // Leaving volume as 0 for now in the preview until modal loads it
-
-        // Count exercises
         const exerciseCount = workout.items?.length || 0;
 
         setShareData({
             workoutName: workout.name,
             duration: durationStr,
             exerciseCount: exerciseCount,
-            volume: 0, // Will be updated by Modal's internal fetch
+            volume: 0,
             date: startDate.toLocaleDateString('pt-BR'),
             studentName: profile?.name || 'Aluno',
             coach: profile?.coach || null
         });
         setShareModalVisible(true);
-        // We pass sessionId via a separate prop to the modal, or add it to shareData
-        // ShareWorkoutModal expects data={...} and sessionId={...}
-        // I need to update the state to include sessionId or pass it separately.
-        // setShareData is just data.
-        // I should set sessionId state as well.
-
-
         setShareSessionId(session.id);
     }, [sessions, selectedDate, profile]);
 
@@ -136,111 +115,81 @@ export default function HomeScreen() {
         ? studentName.split(" ")[0]
         : (user?.email?.split("@")[0] || "Atleta");
 
-    // Calendar & Schedule Logic
-    const calendarData = useMemo(() => {
-        const today = new Date();
-        const startOfWeek = new Date(today);
-        startOfWeek.setDate(today.getDate() - today.getDay()); // Sunday as start
-
-        const days = Array.from({ length: 7 }).map((_, i) => {
-            const date = new Date(startOfWeek);
-            date.setDate(startOfWeek.getDate() + i);
-
-            // Simple date comparison (ignoring time)
-            const isToday = date.getDate() === today.getDate() &&
-                date.getMonth() === today.getMonth() &&
-                date.getFullYear() === today.getFullYear();
-
-            // Determine Status
-            // 0=Sun, 6=Sat matches JS getDay()
-            const dayOfWeek = i; // aligned with date.getDay() since we start from Sunday
-
-            // Find workouts scheduled for this day
-            const scheduledWorkouts = workouts.filter(w => w.scheduled_days?.includes(dayOfWeek));
-            const isScheduled = scheduledWorkouts.length > 0;
-
-            // Check if ANY workout was completed on this date
-            // Simple check: start date matches day
-            const isDone = sessions.some(s => {
-                const sessionDate = new Date(s.started_at);
-                return sessionDate.getDate() === date.getDate() &&
-                    sessionDate.getMonth() === date.getMonth() &&
-                    sessionDate.getFullYear() === date.getFullYear() &&
-                    s.status === 'completed';
-            });
-
-            // Missed: Scheduled + Past + Not Done
-            // Compare dates without time
-            const todayNoTime = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-            const dateNoTime = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-
-            const isPast = dateNoTime < todayNoTime;
-
-            let status: 'done' | 'missed' | 'scheduled' | 'rest' = 'rest';
-
-            if (isDone) {
-                status = 'done';
-            } else if (isScheduled) {
-                if (isPast) {
-                    status = 'missed';
-                } else {
-                    status = 'scheduled';
-                }
-            }
-
-            return {
-                date,
-                dayName: ["D", "S", "T", "Q", "Q", "S", "S"][i],
-                dayNumber: date.getDate(),
-                isToday,
-                status
-            };
-        });
-
-        return days;
-    }, [workouts, sessions]);
-
-    // Determine Workout for Selected Date
+    // Determine Workout for Selected Date (with contextual info)
     const selectedWorkoutData = useMemo(() => {
         const selectedDayIndex = selectedDate.getDay();
 
         const workout = workouts.find(w => {
             if (!w.scheduled_days) return false;
-            // Robust check: handle string "1" vs number 1
-            const isScheduled = w.scheduled_days.some((d: any) => Number(d) === selectedDayIndex);
-            return isScheduled;
+            return w.scheduled_days.some((d: any) => Number(d) === selectedDayIndex);
         });
 
         // Check completion for selected date
-        const isCompleted = sessions.some(s => {
-            const sessionDate = new Date(s.started_at);
-            return sessionDate.getDate() === selectedDate.getDate() &&
-                sessionDate.getMonth() === selectedDate.getMonth() &&
-                sessionDate.getFullYear() === selectedDate.getFullYear() &&
-                s.status === 'completed';
-        });
+        const selectedKey = toDateKey(selectedDate);
+        const daySessions = sessionsMap.get(selectedKey) || [];
+        const isCompleted = daySessions.some(s => s.status === 'completed');
 
-        // Determine display title
+        // Time context
         const today = new Date();
-        const isToday = selectedDate.getDate() === today.getDate() &&
-            selectedDate.getMonth() === today.getMonth() &&
-            selectedDate.getFullYear() === today.getFullYear();
+        const todayNoTime = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        const selectedNoTime = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
 
+        const isToday = selectedNoTime.getTime() === todayNoTime.getTime();
+        const isPast = selectedNoTime < todayNoTime;
+        const isFuture = selectedNoTime > todayNoTime;
+
+        const isMissed = isPast && !!workout && !isCompleted;
+
+        type TimeContext = 'today' | 'past' | 'future';
+        const timeContext: TimeContext = isToday ? 'today' : isPast ? 'past' : 'future';
+
+        // Contextual title
         const weekDays = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
         const dayName = weekDays[selectedDayIndex];
-
-        // Format short date DD/MM
         const dateStr = `${selectedDate.getDate().toString().padStart(2, '0')}/${(selectedDate.getMonth() + 1).toString().padStart(2, '0')}`;
 
-        const title = isToday ? "Treino de Hoje" : `Treino de ${dayName} (${dateStr})`;
+        let title: string;
+        if (isToday) {
+            title = "Treino de Hoje";
+        } else if (isFuture && workout) {
+            title = `Treino Previsto — ${dayName}, ${dateStr}`;
+        } else if (isPast && isCompleted) {
+            title = `Treino Realizado — ${dayName}, ${dateStr}`;
+        } else if (isPast && isMissed) {
+            title = `Treino Perdido — ${dayName}, ${dateStr}`;
+        } else {
+            title = `Treino de ${dayName} (${dateStr})`;
+        }
 
-        return { workout, isCompleted, title };
-    }, [workouts, sessions, selectedDate]);
+        return { workout, isCompleted, isMissed, title, timeContext };
+    }, [workouts, sessionsMap, selectedDate]);
+
+    // Calendar mode toggle
+    const handleExpand = useCallback(() => {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        setCalendarMode('month');
+    }, []);
+
+    const handleCollapse = useCallback((date: Date) => {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        setSelectedDate(date);
+        setCalendarMode('week');
+    }, []);
 
     // Block access if student has unpaid subscription
     if (!accessLoading && !allowed) {
         return <PaymentBlockedScreen reason={reason} />;
     }
+
+    // Cast workouts for calendar (needs scheduled_days as number[])
+    const calendarWorkouts = workouts.map(w => ({
+        id: w.id,
+        name: w.name,
+        scheduled_days: (w.scheduled_days || []) as number[],
+    }));
+
+    // Cast sessionsMap for calendar (SessionRef type)
+    const calendarSessionsMap = sessionsMap as any;
 
     return (
         <ScreenWrapper>
@@ -304,11 +253,30 @@ export default function HomeScreen() {
                 </View>
 
                 {/* Calendar */}
-                <WeekCalendar
-                    days={calendarData}
-                    selectedDate={selectedDate}
-                    onDayPress={(date) => setSelectedDate(date)}
-                />
+                {calendarMode === 'week' ? (
+                    <WeekCalendar
+                        workouts={calendarWorkouts}
+                        sessionsMap={calendarSessionsMap}
+                        programStartedAt={programStartedAt}
+                        programDurationWeeks={programDurationWeeks}
+                        selectedDate={selectedDate}
+                        onDayPress={(date) => setSelectedDate(date)}
+                        onWeekChange={() => {}}
+                        onExpand={handleExpand}
+                        fetchRange={fetchRange}
+                    />
+                ) : (
+                    <MonthCalendar
+                        workouts={calendarWorkouts}
+                        sessionsMap={calendarSessionsMap}
+                        programStartedAt={programStartedAt}
+                        programDurationWeeks={programDurationWeeks}
+                        selectedDate={selectedDate}
+                        onDayPress={(date) => setSelectedDate(date)}
+                        onCollapse={handleCollapse}
+                        fetchRange={fetchRange}
+                    />
+                )}
 
                 {isLoading && !programName ? (
                     <View className="py-20 items-center">
@@ -330,13 +298,15 @@ export default function HomeScreen() {
                         <ActionCard
                             workout={selectedWorkoutData.workout}
                             isCompleted={selectedWorkoutData.isCompleted}
+                            isMissed={selectedWorkoutData.isMissed}
                             title={selectedWorkoutData.title}
+                            timeContext={selectedWorkoutData.timeContext}
                             onPress={() => {
                                 if (selectedWorkoutData.workout?.id) {
                                     router.push(`/workout/${selectedWorkoutData.workout.id}`);
                                 }
                             }}
-                            onShare={() => handleShareWorkout(selectedWorkoutData.workout)}
+                            onShare={selectedWorkoutData.isCompleted ? () => handleShareWorkout(selectedWorkoutData.workout) : undefined}
                         />
 
                         {/* Workout List Section */}

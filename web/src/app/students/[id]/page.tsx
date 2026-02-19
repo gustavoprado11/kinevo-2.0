@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { getTrainerWithSubscription } from '@/lib/auth/get-trainer'
+import { getWeekRange } from '@kinevo/shared/utils/schedule-projection'
 import { StudentDetailClient } from './student-detail-client'
 
 export default async function StudentDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -91,12 +92,12 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
     const totalSessions = sessions?.length || 0
     const lastSessionDate = sessions?.[0]?.started_at || null
 
-    // Calculate sessions this week
-    const oneWeekAgo = new Date()
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
-    const completedThisWeek = sessions?.filter(s =>
-        new Date(s.started_at) >= oneWeekAgo
-    ).length || 0
+    // Calculate sessions this week (Sunday–Saturday)
+    const currentWeekRange = getWeekRange(new Date())
+    const completedThisWeek = sessions?.filter(s => {
+        const d = new Date(s.started_at)
+        return d >= currentWeekRange.start && d <= currentWeekRange.end
+    }).length || 0
 
     const historySummary = {
         totalSessions,
@@ -125,10 +126,20 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
         recentSessions = recent || []
     }
 
-    // Get sessions from the last 7 days for the tracker
-    const sessionsLast7Days = sessions?.filter(s =>
-        new Date(s.started_at) >= oneWeekAgo
-    ) || []
+    // Get sessions for the current week (Sun–Sat) for the calendar
+    let calendarInitialSessions: { id: string; assigned_workout_id: string; started_at: string; completed_at: string | null; status: string }[] = []
+    if (activeProgram) {
+        const weekRange = getWeekRange(new Date())
+        const { data: weekSessions } = await supabase
+            .from('workout_sessions')
+            .select('id, assigned_workout_id, started_at, completed_at, status')
+            .eq('assigned_program_id', activeProgram.id)
+            .gte('started_at', weekRange.start.toISOString())
+            .lte('started_at', weekRange.end.toISOString())
+            .order('started_at', { ascending: false })
+
+        calendarInitialSessions = (weekSessions || []) as any
+    }
 
     return (
         <StudentDetailClient
@@ -138,7 +149,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
             scheduledPrograms={scheduledPrograms || []}
             historySummary={historySummary}
             recentSessions={recentSessions}
-            sessionsLast7Days={sessionsLast7Days}
+            calendarInitialSessions={calendarInitialSessions as any}
             completedPrograms={completedPrograms}
         />
     )

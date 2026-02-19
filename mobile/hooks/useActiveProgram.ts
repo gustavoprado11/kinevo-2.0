@@ -1,26 +1,15 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
+import { getWeekRange, toDateKey } from "@kinevo/shared/utils/schedule-projection";
 
 interface AssignedWorkout {
     id: string;
     assigned_program_id: string;
     name: string;
     order_index: number;
-    items?: { id: string }[]; // Added items for count
-    scheduled_days?: number[]; // 0=Sun, 6=Sat
-    // Add other fields as needed based on usage
-    [key: string]: any;
-}
-
-interface AssignedProgram {
-    id: string;
-    student_id: string;
-    program_id?: string;
-    status: string;
-    created_at: string;
-    description?: string;
-    // Add other fields as needed
+    items?: { id: string }[];
+    scheduled_days?: number[];
     [key: string]: any;
 }
 
@@ -32,14 +21,23 @@ interface WorkoutSession {
     status: 'in_progress' | 'completed';
 }
 
-interface ActiveProgramData extends AssignedProgram {
+interface ActiveProgramData {
+    id: string;
+    student_id: string;
+    program_id?: string;
+    status: string;
+    created_at: string;
+    description?: string;
+    name: string;
+    started_at?: string;
+    duration_weeks?: number;
     workouts: AssignedWorkout[];
     program: { name: string };
-    sessions: WorkoutSession[];
     weeklyProgress: {
         totalSessions: number;
         targetSessions: number;
     };
+    [key: string]: any;
 }
 
 export function useActiveProgram() {
@@ -49,6 +47,53 @@ export function useActiveProgram() {
     const [error, setError] = useState<string | null>(null);
     const [studentName, setStudentName] = useState<string>("");
     const [studentId, setStudentId] = useState<string | null>(null);
+
+    // Sessions cache: dateKey → WorkoutSession[]
+    const [sessionsMap, setSessionsMap] = useState<Map<string, WorkoutSession[]>>(new Map());
+
+    // Keep programId in ref for fetchRange
+    const programIdRef = useRef<string | null>(null);
+
+    // Fetch sessions for an arbitrary date range and merge into cache
+    const fetchRange = useCallback(async (start: Date, end: Date) => {
+        const pid = programIdRef.current;
+        if (!pid) return;
+
+        try {
+            const { data: sessionsData, error: sessionsError }: { data: any; error: any } = await supabase
+                .from("workout_sessions" as any)
+                .select("id, assigned_workout_id, started_at, completed_at, status")
+                .eq("assigned_program_id", pid)
+                .gte("started_at", start.toISOString())
+                .lte("started_at", end.toISOString())
+                .order("started_at", { ascending: false });
+
+            if (sessionsError) {
+                console.error("[useActiveProgram] fetchRange error:", sessionsError);
+                return;
+            }
+
+            const sessions: WorkoutSession[] = sessionsData || [];
+
+            setSessionsMap((prev) => {
+                const next = new Map(prev);
+                // Index new sessions by date key
+                for (const s of sessions) {
+                    const key = toDateKey(new Date(s.started_at));
+                    const existing = next.get(key) || [];
+                    // Avoid duplicates by id
+                    const ids = new Set(existing.map(e => e.id));
+                    if (!ids.has(s.id)) {
+                        existing.push(s);
+                    }
+                    next.set(key, existing);
+                }
+                return next;
+            });
+        } catch (err) {
+            console.error("[useActiveProgram] fetchRange exception:", err);
+        }
+    }, []);
 
     const fetchActiveProgram = useCallback(async () => {
         if (!user) return;
@@ -86,7 +131,9 @@ export function useActiveProgram() {
             let programData: any = null;
 
             if (program) {
-                // 2. Get Workout Workouts with Items for count
+                programIdRef.current = program.id;
+
+                // 2. Get Workouts with Items for count
                 const { data: workouts, error: workoutsError }: { data: any; error: any } = await supabase
                     .from("assigned_workouts" as any)
                     .select("*, items:assigned_workout_items(id)")
@@ -97,41 +144,45 @@ export function useActiveProgram() {
 
                 programData = {
                     ...program,
-                    workouts: workouts || []
+                    workouts: (workouts || []).sort(
+                        (a: AssignedWorkout, b: AssignedWorkout) => a.order_index - b.order_index,
+                    ),
                 };
+            } else {
+                programIdRef.current = null;
             }
 
             if (programData) {
-                // 3. Get Recent Sessions (This Week)
-                // Calculate start of week (Sunday)
-                const now = new Date();
-                const startOfWeek = new Date(now);
-                startOfWeek.setDate(now.getDate() - now.getDay());
-                startOfWeek.setHours(0, 0, 0, 0);
+                // 3. Fetch sessions for the current week
+                const weekRange = getWeekRange(new Date());
 
-                // Use assigned_program_id and assigned_workout_id based on database.ts schema
                 const { data: sessionsData, error: sessionsError }: { data: any; error: any } = await supabase
                     .from("workout_sessions" as any)
                     .select("id, assigned_workout_id, started_at, completed_at, status")
                     .eq("assigned_program_id", programData.id)
-                    .gte("started_at", startOfWeek.toISOString())
+                    .gte("started_at", weekRange.start.toISOString())
+                    .lte("started_at", weekRange.end.toISOString())
                     .order("started_at", { ascending: false });
 
                 if (sessionsError) {
                     console.error("[useActiveProgram] Error fetching sessions:", sessionsError);
-                    // Don't block the whole hook if sessions fail, just return empty
                 }
 
-                // Sort workouts
-                if (programData.workouts) {
-                    programData.workouts.sort((a: AssignedWorkout, b: AssignedWorkout) => a.order_index - b.order_index);
+                const sessions: WorkoutSession[] = sessionsData || [];
+
+                // Populate sessions cache
+                const newMap = new Map<string, WorkoutSession[]>();
+                for (const s of sessions) {
+                    const key = toDateKey(new Date(s.started_at));
+                    const arr = newMap.get(key) || [];
+                    arr.push(s);
+                    newMap.set(key, arr);
                 }
+                setSessionsMap(newMap);
 
                 // Calculate Progress
-                const sessions: any[] = sessionsData || [];
                 const completedSessionsCount = sessions.filter(s => s.status === 'completed').length;
 
-                // Target: Sum of scheduled days for all workouts. If no schedules, default to 3 or number of workouts.
                 let targetSessions = 0;
                 let hasSchedules = false;
 
@@ -143,13 +194,12 @@ export function useActiveProgram() {
                 });
 
                 if (!hasSchedules) {
-                    targetSessions = programData.workouts.length > 0 ? 3 : 0; // Default target
+                    targetSessions = programData.workouts.length > 0 ? 3 : 0;
                 }
 
                 const formattedData: ActiveProgramData = {
                     ...programData,
-                    program: { name: programData.name }, // This might need adjustment if program name is separate
-                    sessions,
+                    program: { name: programData.name },
                     weeklyProgress: {
                         totalSessions: completedSessionsCount,
                         targetSessions,
@@ -159,6 +209,7 @@ export function useActiveProgram() {
                 setData(formattedData);
             } else {
                 setData(null);
+                setSessionsMap(new Map());
             }
         } catch (err: any) {
             console.error("[useActiveProgram] Error:", err);
@@ -196,15 +247,25 @@ export function useActiveProgram() {
         };
     }, [fetchActiveProgram, user, studentId]);
 
+    // Flatten sessionsMap into a flat array (for backward compatibility)
+    const allSessions: WorkoutSession[] = [];
+    sessionsMap.forEach((arr) => {
+        for (const s of arr) allSessions.push(s);
+    });
+
     return {
         data,
         programName: data?.program?.name,
         workouts: data?.workouts || [],
-        sessions: data?.sessions || [],
+        sessions: allSessions,
+        sessionsMap,
         weeklyProgress: data?.weeklyProgress,
         studentName,
+        programStartedAt: data?.started_at || null,
+        programDurationWeeks: data?.duration_weeks || null,
         isLoading,
         error,
         refetch: fetchActiveProgram,
+        fetchRange,
     };
 }

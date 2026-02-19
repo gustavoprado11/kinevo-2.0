@@ -69,6 +69,14 @@ interface Trainer {
     theme?: 'light' | 'dark' | 'system'
 }
 
+interface CalendarSession {
+    id: string
+    assigned_workout_id: string
+    started_at: string
+    completed_at: string | null
+    status: 'in_progress' | 'completed'
+}
+
 interface StudentDetailClientProps {
     trainer: Trainer
     student: Student
@@ -77,7 +85,7 @@ interface StudentDetailClientProps {
     historySummary: HistorySummary
     completedPrograms: CompletedProgram[]
     recentSessions: any[]
-    sessionsLast7Days: any[]
+    calendarInitialSessions: CalendarSession[]
 }
 
 export function StudentDetailClient({
@@ -87,7 +95,7 @@ export function StudentDetailClient({
     scheduledPrograms,
     historySummary,
     recentSessions,
-    sessionsLast7Days = [],
+    calendarInitialSessions = [],
     completedPrograms
 }: StudentDetailClientProps) {
     console.log('StudentDetailClient Rendered. Scheduled:', scheduledPrograms) // DEBUG LOG
@@ -219,7 +227,7 @@ export function StudentDetailClient({
                             program={activeProgram}
                             summary={historySummary}
                             recentSessions={recentSessions}
-                            sessionsLast7Days={sessionsLast7Days}
+                            calendarInitialSessions={calendarInitialSessions}
                             onAssignProgram={handleAssignProgram}
                             onEditProgram={handleEditProgram}
                             onCompleteProgram={handleCompleteProgram}

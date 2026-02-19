@@ -2,7 +2,9 @@
 
 import { useState } from 'react'
 import { SessionDetailSheet } from './session-detail-sheet'
-import { WeeklyPerformanceTracker } from './weekly-performance-tracker'
+import { ProgramCalendar } from './program-calendar'
+import { getProgramWeek } from '@kinevo/shared/utils/schedule-projection'
+import type { RangeSession } from '@/app/students/[id]/actions/get-sessions-for-range'
 
 interface AssignedProgram {
     id: string
@@ -30,7 +32,7 @@ interface ActiveProgramDashboardProps {
     program: AssignedProgram | null
     summary: HistorySummary
     recentSessions?: any[]
-    sessionsLast7Days?: any[]
+    calendarInitialSessions?: RangeSession[]
     onAssignProgram?: () => void
     onEditProgram?: () => void
     onCompleteProgram?: () => void
@@ -41,7 +43,7 @@ export function ActiveProgramDashboard({
     program,
     summary,
     recentSessions = [],
-    sessionsLast7Days = [],
+    calendarInitialSessions = [],
     onAssignProgram,
     onEditProgram,
     onCompleteProgram,
@@ -145,8 +147,14 @@ export function ActiveProgramDashboard({
     }
 
     const statusConfig = getStatusConfig(program.status)
-    const progressPercent = program.duration_weeks && program.current_week
-        ? Math.min((program.current_week / program.duration_weeks) * 100, 100)
+
+    // Calculate current week dynamically from started_at instead of static DB value
+    const currentWeek = program.started_at
+        ? getProgramWeek(new Date(), program.started_at, program.duration_weeks) ?? 1
+        : (program.current_week || 1)
+
+    const progressPercent = program.duration_weeks && currentWeek
+        ? Math.min((currentWeek / program.duration_weeks) * 100, 100)
         : 0
 
     return (
@@ -199,7 +207,7 @@ export function ActiveProgramDashboard({
                         <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.2em] text-k-text-quaternary mb-3">
                             <span>Progresso do Ciclo</span>
                             <span className="text-k-text-secondary">
-                                Semana {program.current_week || 1} de {program.duration_weeks}
+                                Semana {currentWeek} de {program.duration_weeks}
                             </span>
                         </div>
                         <div className="h-2.5 bg-glass-bg rounded-full overflow-hidden relative">
@@ -272,11 +280,19 @@ export function ActiveProgramDashboard({
                     </div>
                 </div>
 
-                {/* Weekly Performance Tracker */}
-                {program.assigned_workouts && (
-                    <WeeklyPerformanceTracker
+                {/* Navigable Calendar */}
+                {program.assigned_workouts && program.started_at && (
+                    <ProgramCalendar
+                        programId={program.id}
+                        programStartedAt={program.started_at}
+                        programDurationWeeks={program.duration_weeks}
                         scheduledWorkouts={program.assigned_workouts}
-                        recentSessions={sessionsLast7Days}
+                        initialSessions={calendarInitialSessions}
+                        onDayClick={(day) => {
+                            if (day.status === 'done' && day.completedSessions.length > 0) {
+                                handleSessionClick(day.completedSessions[0].id)
+                            }
+                        }}
                     />
                 )}
 

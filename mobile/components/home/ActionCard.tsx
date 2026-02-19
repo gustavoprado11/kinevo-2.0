@@ -3,6 +3,8 @@ import { View, Text, TouchableOpacity } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Dumbbell, ChevronRight, Coffee, Check } from "lucide-react-native";
 
+type TimeContext = 'today' | 'past' | 'future';
+
 interface ActionCardProps {
     workout?: {
         id: string;
@@ -11,12 +13,21 @@ interface ActionCardProps {
         notes?: string;
     } | null;
     isCompleted?: boolean;
+    isMissed?: boolean;
     title?: string;
+    timeContext?: TimeContext;
     onPress?: () => void;
     onShare?: () => void;
 }
 
-export function ActionCard({ workout, isCompleted, title, onPress, onShare }: ActionCardProps) {
+const BADGE_CONFIG: Record<string, { label: string; bg: string; text: string }> = {
+    scheduled: { label: 'AGENDADO', bg: 'rgba(0,0,0,0.15)', text: 'rgba(255,255,255,0.75)' },
+    predicted: { label: 'PREVISTO', bg: 'rgba(99,102,241,0.2)', text: '#a5b4fc' },
+    completed: { label: 'REALIZADO', bg: 'rgba(16,185,129,0.15)', text: '#34d399' },
+    missed: { label: 'PERDIDO', bg: 'rgba(239,68,68,0.15)', text: '#f87171' },
+};
+
+export function ActionCard({ workout, isCompleted, isMissed, title, timeContext = 'today', onPress, onShare }: ActionCardProps) {
     const sectionTitle = title || "Hoje";
 
     if (!workout) {
@@ -161,6 +172,81 @@ export function ActionCard({ workout, isCompleted, title, onPress, onShare }: Ac
         );
     }
 
+    if (isMissed) {
+        // Missed Workout Card
+        return (
+            <View style={{ marginBottom: 28 }}>
+                <Text
+                    style={{
+                        fontSize: 18,
+                        fontWeight: '700',
+                        color: '#e2e8f0',
+                        marginBottom: 14,
+                        letterSpacing: 0.5,
+                    }}
+                >
+                    {sectionTitle}
+                </Text>
+                <View
+                    style={{
+                        backgroundColor: '#1A1A2E',
+                        borderRadius: 16,
+                        overflow: 'hidden',
+                    }}
+                >
+                    <View
+                        style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            paddingVertical: 18,
+                            paddingHorizontal: 20,
+                        }}
+                    >
+                        <View
+                            style={{
+                                height: 48,
+                                width: 48,
+                                borderRadius: 14,
+                                backgroundColor: 'rgba(239,68,68,0.08)',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                marginRight: 16,
+                            }}
+                        >
+                            <Text style={{ fontSize: 20, color: '#f87171' }}>✕</Text>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <Text
+                                style={{
+                                    fontSize: 15,
+                                    fontWeight: '600',
+                                    color: '#e2e8f0',
+                                    marginBottom: 3,
+                                }}
+                            >
+                                {workout.name}
+                            </Text>
+                            <Text
+                                style={{
+                                    fontSize: 12,
+                                    fontWeight: '500',
+                                    color: '#f87171',
+                                }}
+                            >
+                                Treino não realizado
+                            </Text>
+                        </View>
+                    </View>
+                </View>
+            </View>
+        );
+    }
+
+    // Determine badge for active/future cards
+    const badgeKey = timeContext === 'future' ? 'predicted' : 'scheduled';
+    const badge = BADGE_CONFIG[badgeKey];
+    const isDisabledFuture = timeContext === 'future';
+
     // Active Workout Card
     return (
         <View style={{ marginBottom: 32 }}>
@@ -176,12 +262,13 @@ export function ActionCard({ workout, isCompleted, title, onPress, onShare }: Ac
                 {title || "Treino de Hoje"}
             </Text>
             <TouchableOpacity
-                activeOpacity={0.85}
-                onPress={onPress}
-                style={{ borderRadius: 20, overflow: 'hidden' }}
+                activeOpacity={isDisabledFuture ? 1 : 0.85}
+                onPress={isDisabledFuture ? undefined : onPress}
+                disabled={isDisabledFuture}
+                style={{ borderRadius: 20, overflow: 'hidden', opacity: isDisabledFuture ? 0.7 : 1 }}
             >
                 <LinearGradient
-                    colors={['#8b5cf6', '#7c3aed', '#6d28d9']}
+                    colors={isDisabledFuture ? ['#475569', '#334155', '#1e293b'] : ['#8b5cf6', '#7c3aed', '#6d28d9']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={{ padding: 24 }}
@@ -209,7 +296,7 @@ export function ActionCard({ workout, isCompleted, title, onPress, onShare }: Ac
                         </View>
                         <View
                             style={{
-                                backgroundColor: 'rgba(0,0,0,0.15)',
+                                backgroundColor: badge.bg,
                                 paddingHorizontal: 12,
                                 paddingVertical: 5,
                                 borderRadius: 20,
@@ -217,14 +304,14 @@ export function ActionCard({ workout, isCompleted, title, onPress, onShare }: Ac
                         >
                             <Text
                                 style={{
-                                    color: 'rgba(255,255,255,0.75)',
+                                    color: badge.text,
                                     fontSize: 9,
                                     fontWeight: '700',
                                     textTransform: 'uppercase',
                                     letterSpacing: 2.5,
                                 }}
                             >
-                                Agendado
+                                {badge.label}
                             </Text>
                         </View>
                     </View>

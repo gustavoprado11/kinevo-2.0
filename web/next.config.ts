@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  transpilePackages: ["@kinevo/shared"],
   reactCompiler: false,
   turbopack: {},
   experimental: {
