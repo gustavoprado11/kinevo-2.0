@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { stripe } from '@/lib/stripe'
+import { revalidatePath } from 'next/cache'
 
 export async function generateCheckoutLink({ studentId, planId }: { studentId: string; planId: string }) {
     const supabase = await createClient()
@@ -159,9 +160,11 @@ export async function generateCheckoutLink({ studentId, planId }: { studentId: s
 
             if (insertError) {
                 console.error('[generate-checkout-link] Erro ao criar contrato pendente:', insertError)
+                return { error: 'Ocorreu um erro no banco de dados ao salvar a assinatura. Contate o suporte.' }
             }
         }
 
+        revalidatePath('/financial/subscriptions')
         return { success: true, url: session.url }
     } catch (err) {
         console.error('[generate-checkout-link] Error:', err)
