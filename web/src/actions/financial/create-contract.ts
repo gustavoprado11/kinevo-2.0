@@ -6,7 +6,7 @@ import { revalidatePath } from 'next/cache'
 
 interface CreateContractInput {
     studentId: string
-    planId: string
+    planId: string | null
     billingType: 'manual_recurring' | 'manual_one_off' | 'courtesy'
     blockOnFail: boolean
 }
@@ -62,19 +62,27 @@ export async function createContract(input: CreateContractInput) {
         return { error: 'Este aluno não pertence a você' }
     }
 
-    // Fetch plan details
-    const { data: plan } = await supabaseAdmin
-        .from('trainer_plans')
-        .select('id, title, price, interval, trainer_id')
-        .eq('id', input.planId)
-        .single()
+    // Fetch plan details (optional for courtesy without plan)
+    let plan: { id: string; title: string; price: number; interval: string; trainer_id: string } | null = null
 
-    if (!plan) {
-        return { error: 'Plano não encontrado' }
-    }
+    if (input.planId) {
+        const { data: planData } = await supabaseAdmin
+            .from('trainer_plans')
+            .select('id, title, price, interval, trainer_id')
+            .eq('id', input.planId)
+            .single()
 
-    if (plan.trainer_id !== trainer.id) {
-        return { error: 'Este plano não pertence a você' }
+        if (!planData) {
+            return { error: 'Plano não encontrado' }
+        }
+
+        if (planData.trainer_id !== trainer.id) {
+            return { error: 'Este plano não pertence a você' }
+        }
+
+        plan = planData
+    } else if (input.billingType !== 'courtesy') {
+        return { error: 'Selecione um plano.' }
     }
 
     // Cancel any existing active contract for this student
@@ -101,12 +109,12 @@ export async function createContract(input: CreateContractInput) {
             current_period_end: null,
         }
     } else if (input.billingType === 'manual_one_off') {
-        const endDate = addInterval(now, plan.interval || 'month')
+        const endDate = addInterval(now, plan!.interval || 'month')
         contractData = {
             student_id: input.studentId,
             trainer_id: trainer.id,
             plan_id: input.planId,
-            amount: plan.price,
+            amount: plan!.price,
             status: 'active',
             billing_type: 'manual_one_off',
             block_on_fail: input.blockOnFail,
@@ -116,12 +124,12 @@ export async function createContract(input: CreateContractInput) {
         }
     } else {
         // manual_recurring
-        const periodEnd = addInterval(now, plan.interval || 'month')
+        const periodEnd = addInterval(now, plan!.interval || 'month')
         contractData = {
             student_id: input.studentId,
             trainer_id: trainer.id,
             plan_id: input.planId,
-            amount: plan.price,
+            amount: plan!.price,
             status: 'active',
             billing_type: 'manual_recurring',
             block_on_fail: input.blockOnFail,
@@ -145,7 +153,7 @@ export async function createContract(input: CreateContractInput) {
         .update({
             plan_status: 'active',
             pending_plan_id: null,
-            current_plan_name: plan.title,
+            current_plan_name: plan?.title ?? 'Acesso Gratuito',
         })
         .eq('id', input.studentId)
 

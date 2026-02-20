@@ -5,7 +5,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { stripe } from '@/lib/stripe'
 import { revalidatePath } from 'next/cache'
 
-export async function cancelContract({ contractId }: { contractId: string }) {
+export async function cancelContract({ contractId, cancelAtPeriodEnd }: { contractId: string; cancelAtPeriodEnd?: boolean }) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
@@ -39,7 +39,7 @@ export async function cancelContract({ contractId }: { contractId: string }) {
     }
 
     try {
-        // If stripe_auto with an active subscription, cancel on Stripe
+        // If stripe_auto with an active subscription
         if (contract.billing_type === 'stripe_auto' && contract.stripe_subscription_id) {
             const { data: settings } = await supabaseAdmin
                 .from('payment_settings')
@@ -48,17 +48,37 @@ export async function cancelContract({ contractId }: { contractId: string }) {
                 .single()
 
             if (settings?.stripe_connect_id) {
-                await stripe.subscriptions.cancel(
-                    contract.stripe_subscription_id,
-                    { stripeAccount: settings.stripe_connect_id }
-                )
+                if (cancelAtPeriodEnd) {
+                    // Schedule cancellation at period end
+                    await stripe.subscriptions.update(
+                        contract.stripe_subscription_id,
+                        { cancel_at_period_end: true },
+                        { stripeAccount: settings.stripe_connect_id }
+                    )
+
+                    await supabaseAdmin
+                        .from('student_contracts')
+                        .update({ cancel_at_period_end: true })
+                        .eq('id', contractId)
+
+                    revalidatePath('/financial')
+                    revalidatePath('/financial/subscriptions')
+
+                    return { success: true, scheduledCancellation: true }
+                } else {
+                    // Immediate cancellation
+                    await stripe.subscriptions.cancel(
+                        contract.stripe_subscription_id,
+                        { stripeAccount: settings.stripe_connect_id }
+                    )
+                }
             }
         }
 
-        // Update contract status in DB
+        // Update contract status in DB (immediate cancel)
         const { error: updateError } = await supabaseAdmin
             .from('student_contracts')
-            .update({ status: 'canceled' })
+            .update({ status: 'canceled', cancel_at_period_end: false })
             .eq('id', contractId)
 
         if (updateError) {

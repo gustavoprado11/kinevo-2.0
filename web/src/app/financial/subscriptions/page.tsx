@@ -6,7 +6,7 @@ export default async function SubscriptionsPage() {
     const { trainer } = await getTrainerWithSubscription()
 
     // Fetch contracts with student and plan data
-    const { data: contracts } = await supabaseAdmin
+    const { data: contracts, error: contractsError } = await supabaseAdmin
         .from('student_contracts')
         .select(`
             *,
@@ -15,6 +15,10 @@ export default async function SubscriptionsPage() {
         `)
         .eq('trainer_id', trainer.id)
         .order('created_at', { ascending: false })
+
+    if (contractsError) {
+        console.error('[subscriptions] Failed to fetch contracts:', contractsError)
+    }
 
     // Fetch payment settings for connect status
     const { data: paymentSettings } = await supabaseAdmin

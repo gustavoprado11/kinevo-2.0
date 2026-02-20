@@ -91,7 +91,7 @@ export function NewSubscriptionModal({
             setError('Selecione um aluno.')
             return
         }
-        if (!planId) {
+        if (billingType !== 'courtesy' && !planId) {
             setError('Selecione um plano.')
             return
         }
@@ -118,7 +118,7 @@ export function NewSubscriptionModal({
                 // Create manual or courtesy contract
                 const result = await createContract({
                     studentId,
-                    planId,
+                    planId: planId || null,
                     billingType: billingType === 'courtesy' ? 'courtesy' : 'manual_recurring',
                     blockOnFail: billingType === 'courtesy' ? false : blockOnFail,
                 })
@@ -293,30 +293,32 @@ export function NewSubscriptionModal({
                                 </select>
                             </div>
 
-                            {/* Plan Select */}
-                            <div>
-                                <label className="mb-1.5 block text-[11px] font-bold text-k-text-tertiary uppercase tracking-wider">
-                                    Plano <span className="text-violet-500">*</span>
-                                </label>
-                                <select
-                                    value={planId}
-                                    onChange={(e) => setPlanId(e.target.value)}
-                                    className="w-full rounded-xl border border-k-border-subtle bg-glass-bg px-4 py-3 text-k-text-primary focus:outline-none focus:border-violet-500/50 focus:ring-4 focus:ring-violet-500/20 transition-all text-sm"
-                                >
-                                    <option value="">Selecione um plano...</option>
-                                    {plans
-                                        .filter((p) => {
-                                            // For stripe_auto, only show plans with stripe_price_id
-                                            if (billingType === 'stripe_auto') return !!p.stripe_price_id
-                                            return true
-                                        })
-                                        .map((p) => (
-                                            <option key={p.id} value={p.id}>
-                                                {p.title} — {formatCurrency(p.price)}{intervalLabels[p.interval] || '/mês'}
-                                            </option>
-                                        ))}
-                                </select>
-                            </div>
+                            {/* Plan Select (hidden for courtesy) */}
+                            {billingType !== 'courtesy' && (
+                                <div>
+                                    <label className="mb-1.5 block text-[11px] font-bold text-k-text-tertiary uppercase tracking-wider">
+                                        Plano <span className="text-violet-500">*</span>
+                                    </label>
+                                    <select
+                                        value={planId}
+                                        onChange={(e) => setPlanId(e.target.value)}
+                                        className="w-full rounded-xl border border-k-border-subtle bg-glass-bg px-4 py-3 text-k-text-primary focus:outline-none focus:border-violet-500/50 focus:ring-4 focus:ring-violet-500/20 transition-all text-sm"
+                                    >
+                                        <option value="">Selecione um plano...</option>
+                                        {plans
+                                            .filter((p) => {
+                                                // For stripe_auto, only show plans with stripe_price_id
+                                                if (billingType === 'stripe_auto') return !!p.stripe_price_id
+                                                return true
+                                            })
+                                            .map((p) => (
+                                                <option key={p.id} value={p.id}>
+                                                    {p.title} — {formatCurrency(p.price)}{intervalLabels[p.interval] || '/mês'}
+                                                </option>
+                                            ))}
+                                    </select>
+                                </div>
+                            )}
 
                             {/* Block on fail toggle (only for manual) */}
                             {billingType === 'manual_recurring' && (

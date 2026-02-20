@@ -1,12 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { AppLayout } from '@/components/layout'
 import { EmptyState } from '@/components/financial/empty-state'
 import { BillingTypeBadge } from '@/components/financial/billing-type-badge'
 import { NewSubscriptionModal } from '@/components/financial/new-subscription-modal'
+import { ContractDetailModal } from '@/components/financial/contract-detail-modal'
 import { markAsPaid } from '@/actions/financial/mark-as-paid'
 import { cancelContract } from '@/actions/financial/cancel-contract'
 import { generateCheckoutLink } from '@/actions/financial/generate-checkout-link'
@@ -71,7 +72,14 @@ export function SubscriptionsClient({
     const router = useRouter()
     const [contracts, setContracts] = useState(initialContracts)
     const [searchQuery, setSearchQuery] = useState('')
+
+    // Sync local state when server data changes (after router.refresh())
+    useEffect(() => {
+        setContracts(initialContracts)
+    }, [initialContracts])
     const [modalOpen, setModalOpen] = useState(false)
+    const [detailModalOpen, setDetailModalOpen] = useState(false)
+    const [selectedContract, setSelectedContract] = useState<Contract | null>(null)
     const [actionLoading, setActionLoading] = useState<string | null>(null)
 
     const formatCurrency = (value: number) => {
@@ -142,6 +150,25 @@ export function SubscriptionsClient({
         setActionLoading(null)
     }
 
+    const handleCancelAtPeriodEnd = async (contractId: string, e: React.MouseEvent) => {
+        e.stopPropagation()
+        if (!confirm('Agendar cancelamento? A assinatura continuará ativa até o final do período atual.')) return
+
+        setActionLoading(contractId)
+
+        const result = await cancelContract({ contractId, cancelAtPeriodEnd: true })
+        if (result.success) {
+            router.refresh()
+        }
+
+        setActionLoading(null)
+    }
+
+    const handleRowClick = (contract: Contract) => {
+        setSelectedContract(contract)
+        setDetailModalOpen(true)
+    }
+
     const handleCopyLink = async (contract: Contract, e: React.MouseEvent) => {
         e.stopPropagation()
         if (!contract.plan_id) return
@@ -170,9 +197,6 @@ export function SubscriptionsClient({
 
     const handleSuccess = () => {
         router.refresh()
-        setTimeout(() => {
-            window.location.reload()
-        }, 300)
     }
 
     const filteredContracts = contracts.filter((contract) => {
@@ -301,7 +325,8 @@ export function SubscriptionsClient({
                                         {filteredContracts.map((contract) => (
                                             <tr
                                                 key={contract.id}
-                                                className="group transition-colors hover:bg-glass-bg"
+                                                className="group transition-colors hover:bg-glass-bg cursor-pointer"
+                                                onClick={() => handleRowClick(contract)}
                                             >
                                                 {/* Student */}
                                                 <td className="px-6 py-5 whitespace-nowrap">
@@ -356,7 +381,14 @@ export function SubscriptionsClient({
 
                                                 {/* Status */}
                                                 <td className="px-6 py-5 whitespace-nowrap">
-                                                    {getStatusBadge(contract.status)}
+                                                    <div className="flex items-center gap-2">
+                                                        {getStatusBadge(contract.status)}
+                                                        {contract.cancel_at_period_end && contract.status !== 'canceled' && (
+                                                            <span className="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                                                                Cancela em {formatDate(contract.current_period_end)}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </td>
 
                                                 {/* Period End */}
@@ -387,15 +419,20 @@ export function SubscriptionsClient({
                                                                         </button>
                                                                     )}
 
-                                                                {/* Cancel — for active/past_due (not already canceled) */}
-                                                                {(contract.status === 'active' || contract.status === 'past_due') && (
+                                                                {/* Cancel — for active/past_due (not already canceled or scheduled) */}
+                                                                {(contract.status === 'active' || contract.status === 'past_due') && !contract.cancel_at_period_end && (
                                                                     <button
-                                                                        onClick={(e) => handleCancel(contract.id, e)}
-                                                                        title="Cancelar assinatura"
+                                                                        onClick={(e) => contract.billing_type === 'stripe_auto'
+                                                                            ? handleCancelAtPeriodEnd(contract.id, e)
+                                                                            : handleCancel(contract.id, e)
+                                                                        }
+                                                                        title={contract.billing_type === 'stripe_auto'
+                                                                            ? 'Agendar cancelamento'
+                                                                            : 'Cancelar assinatura'}
                                                                         className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-gray-500/10 text-gray-400 border border-gray-500/20 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20 transition-colors"
                                                                     >
                                                                         <XCircle size={13} strokeWidth={2} />
-                                                                        Cancelar
+                                                                        {contract.billing_type === 'stripe_auto' ? 'Agendar' : 'Cancelar'}
                                                                     </button>
                                                                 )}
 
@@ -432,6 +469,18 @@ export function SubscriptionsClient({
                 students={modalStudents}
                 plans={modalPlans}
                 hasStripeConnect={hasStripeConnect}
+            />
+
+            {/* Contract Detail/Edit Modal */}
+            <ContractDetailModal
+                isOpen={detailModalOpen}
+                onClose={() => {
+                    setDetailModalOpen(false)
+                    setSelectedContract(null)
+                }}
+                onSuccess={handleSuccess}
+                contract={selectedContract}
+                plans={modalPlans}
             />
         </AppLayout>
     )
