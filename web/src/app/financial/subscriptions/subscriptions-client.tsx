@@ -9,8 +9,9 @@ import { BillingTypeBadge } from '@/components/financial/billing-type-badge'
 import { NewSubscriptionModal } from '@/components/financial/new-subscription-modal'
 import { markAsPaid } from '@/actions/financial/mark-as-paid'
 import { cancelContract } from '@/actions/financial/cancel-contract'
+import { generateCheckoutLink } from '@/actions/financial/generate-checkout-link'
 import Image from 'next/image'
-import { Plus, Search, Users, Loader2, CheckCircle, XCircle, ArrowLeft } from 'lucide-react'
+import { Plus, Search, Users, Loader2, CheckCircle, XCircle, ArrowLeft, Copy } from 'lucide-react'
 
 interface Trainer {
     id: string
@@ -139,6 +140,32 @@ export function SubscriptionsClient({
         }
 
         setActionLoading(null)
+    }
+
+    const handleCopyLink = async (contract: Contract, e: React.MouseEvent) => {
+        e.stopPropagation()
+        if (!contract.plan_id) return
+
+        setActionLoading(contract.id)
+
+        try {
+            const result = await generateCheckoutLink({
+                studentId: contract.student_id,
+                planId: contract.plan_id
+            })
+
+            if (result.error) {
+                alert(result.error)
+            } else if (result.url) {
+                await navigator.clipboard.writeText(result.url)
+                alert('Link de pagamento copiado com sucesso!')
+            }
+        } catch (error) {
+            console.error('Failed to copy link:', error)
+            alert('Erro ao gerar link de pagamento')
+        } finally {
+            setActionLoading(null)
+        }
     }
 
     const handleSuccess = () => {
@@ -369,6 +396,18 @@ export function SubscriptionsClient({
                                                                     >
                                                                         <XCircle size={13} strokeWidth={2} />
                                                                         Cancelar
+                                                                    </button>
+                                                                )}
+
+                                                                {/* Copy Payment Link — for pending stripe_auto */}
+                                                                {contract.status === 'pending' && contract.billing_type === 'stripe_auto' && (
+                                                                    <button
+                                                                        onClick={(e) => handleCopyLink(contract, e)}
+                                                                        title="Copiar link de pagamento"
+                                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-violet-500/10 text-violet-400 border border-violet-500/20 hover:bg-violet-500/20 transition-colors"
+                                                                    >
+                                                                        <Copy size={13} strokeWidth={2} />
+                                                                        Copiar Link
                                                                     </button>
                                                                 )}
                                                             </>

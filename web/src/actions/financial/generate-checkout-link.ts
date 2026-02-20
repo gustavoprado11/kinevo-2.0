@@ -51,7 +51,7 @@ export async function generateCheckoutLink({ studentId, planId }: { studentId: s
     // Validate plan belongs to trainer and has Stripe price
     const { data: plan } = await supabaseAdmin
         .from('trainer_plans')
-        .select('id, title, trainer_id, stripe_price_id, stripe_product_id')
+        .select('id, title, trainer_id, stripe_price_id, stripe_product_id, price')
         .eq('id', planId)
         .single()
 
@@ -128,6 +128,39 @@ export async function generateCheckoutLink({ studentId, planId }: { studentId: s
                 plan_status: 'pending',
             })
             .eq('id', studentId)
+
+        // Insert or Update the pending contract
+        const { data: existingContract } = await supabaseAdmin
+            .from('student_contracts')
+            .select('id')
+            .eq('student_id', studentId)
+            .eq('plan_id', planId)
+            .eq('status', 'pending')
+            .single()
+
+        if (existingContract) {
+            await supabaseAdmin
+                .from('student_contracts')
+                .update({ updated_at: new Date().toISOString() })
+                .eq('id', existingContract.id)
+        } else {
+            const { error: insertError } = await supabaseAdmin
+                .from('student_contracts')
+                .insert({
+                    student_id: studentId,
+                    trainer_id: trainer.id,
+                    plan_id: planId,
+                    amount: plan.price,
+                    status: 'pending',
+                    billing_type: 'stripe_auto',
+                    block_on_fail: true,
+                    stripe_customer_id: stripeCustomerId,
+                })
+
+            if (insertError) {
+                console.error('[generate-checkout-link] Erro ao criar contrato pendente:', insertError)
+            }
+        }
 
         return { success: true, url: session.url }
     } catch (err) {

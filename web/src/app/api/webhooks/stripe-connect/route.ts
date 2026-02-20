@@ -152,34 +152,72 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
         .eq('id', planId)
         .single()
 
-    // Cancel any existing active contracts for this student
-    await supabaseAdmin
+    // Check if there is a pending contract to update
+    const { data: pendingContract } = await supabaseAdmin
         .from('student_contracts')
-        .update({ status: 'canceled' })
+        .select('id')
         .eq('student_id', studentId)
-        .eq('trainer_id', trainerId)
-        .in('status', ['active', 'past_due', 'pending'])
+        .eq('plan_id', planId)
+        .eq('status', 'pending')
+        .single()
 
-    // Create student_contract
-    const { error: insertError } = await supabaseAdmin
-        .from('student_contracts')
-        .insert({
-            student_id: studentId,
-            trainer_id: trainerId,
-            plan_id: planId,
-            amount: plan?.price || 0,
-            status: 'active',
-            billing_type: 'stripe_auto',
-            block_on_fail: true,
-            stripe_customer_id: typeof session.customer === 'string' ? session.customer : session.customer?.id || null,
-            stripe_subscription_id: subscriptionId,
-            start_date: new Date().toISOString(),
-            current_period_end: getPeriodEnd(subscription),
-        })
+    if (pendingContract) {
+        // Cancel any OTHER existing active contracts for this student
+        await supabaseAdmin
+            .from('student_contracts')
+            .update({ status: 'canceled' })
+            .eq('student_id', studentId)
+            .eq('trainer_id', trainerId)
+            .neq('id', pendingContract.id) // keep the pending one!
+            .in('status', ['active', 'past_due', 'pending'])
 
-    if (insertError) {
-        console.error('[connect-webhook:checkout] Insert error:', insertError)
-        throw insertError
+        // Update the pending contract
+        const { error: updateError } = await supabaseAdmin
+            .from('student_contracts')
+            .update({
+                status: 'active',
+                stripe_customer_id: typeof session.customer === 'string' ? session.customer : session.customer?.id || null,
+                stripe_subscription_id: subscriptionId,
+                start_date: new Date().toISOString(),
+                current_period_end: getPeriodEnd(subscription),
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', pendingContract.id)
+
+        if (updateError) {
+            console.error('[connect-webhook:checkout] Update error:', updateError)
+            throw updateError
+        }
+    } else {
+        // Fallback: Cancel any existing active contracts for this student
+        await supabaseAdmin
+            .from('student_contracts')
+            .update({ status: 'canceled' })
+            .eq('student_id', studentId)
+            .eq('trainer_id', trainerId)
+            .in('status', ['active', 'past_due', 'pending'])
+
+        // Create student_contract
+        const { error: insertError } = await supabaseAdmin
+            .from('student_contracts')
+            .insert({
+                student_id: studentId,
+                trainer_id: trainerId,
+                plan_id: planId,
+                amount: plan?.price || 0,
+                status: 'active',
+                billing_type: 'stripe_auto',
+                block_on_fail: true,
+                stripe_customer_id: typeof session.customer === 'string' ? session.customer : session.customer?.id || null,
+                stripe_subscription_id: subscriptionId,
+                start_date: new Date().toISOString(),
+                current_period_end: getPeriodEnd(subscription),
+            })
+
+        if (insertError) {
+            console.error('[connect-webhook:checkout] Insert error:', insertError)
+            throw insertError
+        }
     }
 
     // Update student status
