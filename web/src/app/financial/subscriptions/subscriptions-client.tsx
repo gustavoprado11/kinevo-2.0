@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { AppLayout } from '@/components/layout'
 import { EmptyState } from '@/components/financial/empty-state'
 import { BillingTypeBadge } from '@/components/financial/billing-type-badge'
@@ -9,7 +10,7 @@ import { NewSubscriptionModal } from '@/components/financial/new-subscription-mo
 import { markAsPaid } from '@/actions/financial/mark-as-paid'
 import { cancelContract } from '@/actions/financial/cancel-contract'
 import Image from 'next/image'
-import { Plus, Search, Users, Loader2, CheckCircle, XCircle } from 'lucide-react'
+import { Plus, Search, Users, Loader2, CheckCircle, XCircle, ArrowLeft } from 'lucide-react'
 
 interface Trainer {
     id: string
@@ -182,6 +183,13 @@ export function SubscriptionsClient({
                     {/* Header */}
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                         <div>
+                            <Link
+                                href="/financial"
+                                className="inline-flex items-center gap-1.5 text-xs text-k-text-secondary hover:text-violet-400 transition-colors mb-3"
+                            >
+                                <ArrowLeft size={14} />
+                                Voltar para Financeiro
+                            </Link>
                             <h1 className="text-3xl font-bold tracking-tighter bg-gradient-to-br from-[var(--gradient-text-from)] to-[var(--gradient-text-to)] bg-clip-text text-transparent">
                                 Assinaturas
                             </h1>

@@ -34,11 +34,15 @@ export async function generateCheckoutLink({ studentId, planId }: { studentId: s
     }
 
     // Validate student belongs to trainer
-    const { data: student } = await supabaseAdmin
+    const { data: student, error: studentError } = await supabaseAdmin
         .from('students')
         .select('id, coach_id, name, email, stripe_customer_id')
         .eq('id', studentId)
         .single()
+
+    if (studentError) {
+        console.error('[generate-checkout-link] Erro ao buscar aluno:', studentError)
+    }
 
     if (!student || student.coach_id !== trainer.id) {
         return { error: 'Aluno não encontrado' }

@@ -2,12 +2,13 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { AppLayout } from '@/components/layout'
 import { EmptyState } from '@/components/financial/empty-state'
 import { PlanFormModal } from '@/components/financial/plan-form-modal'
 import { togglePlan } from '@/actions/financial/toggle-plan'
 import { deletePlan } from '@/actions/financial/delete-plan'
-import { Plus, Search, Trash2, Loader2, Wallet, Pencil } from 'lucide-react'
+import { Plus, Search, Trash2, Loader2, Wallet, Pencil, ArrowLeft } from 'lucide-react'
 
 interface Trainer {
     id: string
@@ -124,6 +125,13 @@ export function PlansClient({ trainer, plans: initialPlans, hasStripeConnect }: 
                     {/* Header */}
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                         <div>
+                            <Link
+                                href="/financial"
+                                className="inline-flex items-center gap-1.5 text-xs text-k-text-secondary hover:text-violet-400 transition-colors mb-3"
+                            >
+                                <ArrowLeft size={14} />
+                                Voltar para Financeiro
+                            </Link>
                             <h1 className="text-3xl font-bold tracking-tighter bg-gradient-to-br from-[var(--gradient-text-from)] to-[var(--gradient-text-to)] bg-clip-text text-transparent">
                                 Meus Planos
                             </h1>
@@ -235,11 +243,10 @@ export function PlansClient({ trainer, plans: initialPlans, hasStripeConnect }: 
                                             <button
                                                 onClick={(e) => handleTogglePlan(plan.id, e)}
                                                 disabled={toggling === plan.id}
-                                                className={`px-2.5 py-1 text-[11px] font-semibold rounded-md border transition-colors ${
-                                                    plan.is_active
+                                                className={`px-2.5 py-1 text-[11px] font-semibold rounded-md border transition-colors ${plan.is_active
                                                         ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20'
                                                         : 'bg-gray-500/10 text-gray-400 border-gray-500/20 hover:bg-gray-500/20'
-                                                }`}
+                                                    }`}
                                             >
                                                 {toggling === plan.id ? (
                                                     <Loader2 className="w-3 h-3 animate-spin inline" />
