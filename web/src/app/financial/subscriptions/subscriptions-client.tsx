@@ -12,7 +12,7 @@ import { markAsPaid } from '@/actions/financial/mark-as-paid'
 import { cancelContract } from '@/actions/financial/cancel-contract'
 import { generateCheckoutLink } from '@/actions/financial/generate-checkout-link'
 import Image from 'next/image'
-import { Plus, Search, Users, Loader2, CheckCircle, XCircle, ArrowLeft, Copy } from 'lucide-react'
+import { Plus, Search, Users, Loader2, CheckCircle, XCircle, ArrowLeft, Copy, RefreshCw } from 'lucide-react'
 
 interface Trainer {
     id: string
@@ -81,6 +81,7 @@ export function SubscriptionsClient({
     const [detailModalOpen, setDetailModalOpen] = useState(false)
     const [selectedContract, setSelectedContract] = useState<Contract | null>(null)
     const [actionLoading, setActionLoading] = useState<string | null>(null)
+    const [syncing, setSyncing] = useState(false)
 
     const formatCurrency = (value: number) => {
         return new Intl.NumberFormat('pt-BR', {
@@ -195,6 +196,21 @@ export function SubscriptionsClient({
         }
     }
 
+    const handleSyncContracts = async () => {
+        setSyncing(true)
+        try {
+            const res = await fetch('/api/stripe/connect/sync-contracts', { method: 'POST' })
+            const data = await res.json()
+            if (data.synced > 0) {
+                router.refresh()
+            }
+        } catch {
+            // silently fail
+        } finally {
+            setSyncing(false)
+        }
+    }
+
     const handleSuccess = () => {
         router.refresh()
     }
@@ -248,13 +264,26 @@ export function SubscriptionsClient({
                                 Gerencie as assinaturas dos seus alunos
                             </p>
                         </div>
-                        <button
-                            onClick={() => setModalOpen(true)}
-                            className="bg-violet-600 hover:bg-violet-500 text-white rounded-full px-6 py-2.5 text-sm font-semibold shadow-lg shadow-violet-500/20 transition-all active:scale-95 flex items-center gap-2 w-fit"
-                        >
-                            <Plus size={18} strokeWidth={2} />
-                            Nova Assinatura
-                        </button>
+                        <div className="flex items-center gap-3">
+                            {hasStripeConnect && (
+                                <button
+                                    onClick={handleSyncContracts}
+                                    disabled={syncing}
+                                    title="Sincronizar assinaturas com o Stripe"
+                                    className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-full border border-k-border-primary bg-glass-bg hover:bg-violet-500/10 text-k-text-secondary hover:text-violet-400 transition-all disabled:opacity-50"
+                                >
+                                    <RefreshCw size={16} className={syncing ? 'animate-spin' : ''} />
+                                    {syncing ? 'Sincronizando...' : 'Sincronizar'}
+                                </button>
+                            )}
+                            <button
+                                onClick={() => setModalOpen(true)}
+                                className="bg-violet-600 hover:bg-violet-500 text-white rounded-full px-6 py-2.5 text-sm font-semibold shadow-lg shadow-violet-500/20 transition-all active:scale-95 flex items-center gap-2 w-fit"
+                            >
+                                <Plus size={18} strokeWidth={2} />
+                                Nova Assinatura
+                            </button>
+                        </div>
                     </div>
 
                     {/* Search Bar */}

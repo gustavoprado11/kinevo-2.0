@@ -17,9 +17,21 @@ function getPeriodEnd(subscription: Stripe.Subscription): string | null {
 
 // In Stripe v20+, Invoice.subscription moved to Invoice.parent.subscription_details.subscription
 function getSubscriptionIdFromInvoice(invoice: Stripe.Invoice): string | null {
+    // Try new v20+ path first
     const sub = invoice.parent?.subscription_details?.subscription
-    if (!sub) return null
-    return typeof sub === 'string' ? sub : sub.id
+    if (sub) {
+        return typeof sub === 'string' ? sub : sub.id
+    }
+    // Fallback: check subscription_details at top level or lines
+    const lineItem = invoice.lines?.data?.[0]
+    if (lineItem?.parent?.subscription_item_details?.subscription) {
+        return lineItem.parent.subscription_item_details.subscription
+    }
+    // Last resort: check metadata
+    if (invoice.metadata?.subscription_id) {
+        return invoice.metadata.subscription_id
+    }
+    return null
 }
 
 export async function POST(request: NextRequest) {
@@ -64,7 +76,10 @@ export async function POST(request: NextRequest) {
         metadata: { account: event.account },
     })
 
-    console.log(`[connect-webhook] Received event: ${event.type} (${event.id}) for account ${event.account}`)
+    // The connected account ID — critical for all Stripe API calls
+    const connectedAccountId = event.account || undefined
+
+    console.log(`[connect-webhook] Received event: ${event.type} (${event.id}) for account ${connectedAccountId}`)
 
     try {
         switch (event.type) {
@@ -72,13 +87,13 @@ export async function POST(request: NextRequest) {
                 await handleAccountUpdated(event.data.object as Stripe.Account)
                 break
             case 'checkout.session.completed':
-                await handleCheckoutCompleted(event.data.object as Stripe.Checkout.Session)
+                await handleCheckoutCompleted(event.data.object as Stripe.Checkout.Session, connectedAccountId)
                 break
             case 'invoice.payment_succeeded':
-                await handlePaymentSucceeded(event.data.object as Stripe.Invoice)
+                await handlePaymentSucceeded(event.data.object as Stripe.Invoice, connectedAccountId)
                 break
             case 'invoice.payment_failed':
-                await handlePaymentFailed(event.data.object as Stripe.Invoice)
+                await handlePaymentFailed(event.data.object as Stripe.Invoice, connectedAccountId)
                 break
             case 'customer.subscription.updated':
                 await handleSubscriptionUpdated(event.data.object as Stripe.Subscription)
@@ -120,12 +135,12 @@ async function handleAccountUpdated(account: Stripe.Account) {
     console.log(`[connect-webhook:account.updated] Synced account ${account.id}`)
 }
 
-async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
+async function handleCheckoutCompleted(session: Stripe.Checkout.Session, connectedAccountId?: string) {
     const trainerId = session.metadata?.trainer_id
     const studentId = session.metadata?.student_id
     const planId = session.metadata?.plan_id
 
-    console.log(`[connect-webhook:checkout] trainer=${trainerId}, student=${studentId}, plan=${planId}`)
+    console.log(`[connect-webhook:checkout] trainer=${trainerId}, student=${studentId}, plan=${planId}, account=${connectedAccountId}`)
 
     if (!trainerId || !studentId || !planId || session.mode !== 'subscription') {
         console.log('[connect-webhook:checkout] Skipped — missing metadata or not subscription')
@@ -136,19 +151,22 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
         ? session.subscription
         : session.subscription?.id
 
-    if (!subscriptionId) return
+    if (!subscriptionId) {
+        console.error('[connect-webhook:checkout] No subscription ID found in session')
+        return
+    }
 
-    // Retrieve subscription details
+    // Retrieve subscription details — MUST use stripeAccount for connected accounts
     const subscription = await stripe.subscriptions.retrieve(
         subscriptionId,
         { expand: ['items.data'] },
-        { stripeAccount: session.metadata?.stripe_account || undefined }
+        connectedAccountId ? { stripeAccount: connectedAccountId } : undefined
     )
 
     // Fetch plan amount
     const { data: plan } = await supabaseAdmin
         .from('trainer_plans')
-        .select('price')
+        .select('price, title')
         .eq('id', planId)
         .single()
 
@@ -161,6 +179,8 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
         .eq('status', 'pending')
         .single()
 
+    const customerId = typeof session.customer === 'string' ? session.customer : session.customer?.id || null
+
     if (pendingContract) {
         // Cancel any OTHER existing active contracts for this student
         await supabaseAdmin
@@ -171,12 +191,12 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
             .neq('id', pendingContract.id) // keep the pending one!
             .in('status', ['active', 'past_due', 'pending'])
 
-        // Update the pending contract
+        // Update the pending contract to active
         const { error: updateError } = await supabaseAdmin
             .from('student_contracts')
             .update({
                 status: 'active',
-                stripe_customer_id: typeof session.customer === 'string' ? session.customer : session.customer?.id || null,
+                stripe_customer_id: customerId,
                 stripe_subscription_id: subscriptionId,
                 start_date: new Date().toISOString(),
                 current_period_end: getPeriodEnd(subscription),
@@ -188,6 +208,8 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
             console.error('[connect-webhook:checkout] Update error:', updateError)
             throw updateError
         }
+
+        console.log(`[connect-webhook:checkout] Updated pending contract ${pendingContract.id} → active`)
     } else {
         // Fallback: Cancel any existing active contracts for this student
         await supabaseAdmin
@@ -208,7 +230,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
                 status: 'active',
                 billing_type: 'stripe_auto',
                 block_on_fail: true,
-                stripe_customer_id: typeof session.customer === 'string' ? session.customer : session.customer?.id || null,
+                stripe_customer_id: customerId,
                 stripe_subscription_id: subscriptionId,
                 start_date: new Date().toISOString(),
                 current_period_end: getPeriodEnd(subscription),
@@ -218,6 +240,8 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
             console.error('[connect-webhook:checkout] Insert error:', insertError)
             throw insertError
         }
+
+        console.log(`[connect-webhook:checkout] Created new contract for student ${studentId}`)
     }
 
     // Update student status
@@ -226,17 +250,23 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
         .update({
             plan_status: 'active',
             pending_plan_id: null,
-            current_plan_name: plan?.price ? undefined : null,
+            current_plan_name: plan?.title || null,
             stripe_subscription_id: subscriptionId,
         })
         .eq('id', studentId)
 
-    console.log(`[connect-webhook:checkout] Contract created for student ${studentId}`)
+    console.log(`[connect-webhook:checkout] Contract activated for student ${studentId}`)
 }
 
-async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
+async function handlePaymentSucceeded(invoice: Stripe.Invoice, connectedAccountId?: string) {
     const subscriptionId = getSubscriptionIdFromInvoice(invoice)
-    if (!subscriptionId) return
+
+    console.log(`[connect-webhook:payment_succeeded] invoice=${invoice.id}, subscriptionId=${subscriptionId}, account=${connectedAccountId}`)
+
+    if (!subscriptionId) {
+        console.log('[connect-webhook:payment_succeeded] No subscription ID found, skipping')
+        return
+    }
 
     // Find contract by stripe subscription
     const { data: contract } = await supabaseAdmin
@@ -245,12 +275,17 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
         .eq('stripe_subscription_id', subscriptionId)
         .single()
 
-    if (!contract) return
+    if (!contract) {
+        console.log(`[connect-webhook:payment_succeeded] No contract found for subscription ${subscriptionId}`)
+        return
+    }
 
-    // Retrieve subscription for period end
-    const subscription = await stripe.subscriptions.retrieve(subscriptionId, {
-        expand: ['items.data'],
-    })
+    // Retrieve subscription for period end — MUST use stripeAccount for connected accounts
+    const subscription = await stripe.subscriptions.retrieve(
+        subscriptionId,
+        { expand: ['items.data'] },
+        connectedAccountId ? { stripeAccount: connectedAccountId } : undefined
+    )
 
     // Update contract
     await supabaseAdmin
@@ -285,12 +320,18 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
         .update({ plan_status: 'active' })
         .eq('id', contract.student_id)
 
-    console.log(`[connect-webhook:payment_succeeded] Recorded for contract ${contract.id}`)
+    console.log(`[connect-webhook:payment_succeeded] Recorded for contract ${contract.id}, amount=${amountPaid}`)
 }
 
-async function handlePaymentFailed(invoice: Stripe.Invoice) {
+async function handlePaymentFailed(invoice: Stripe.Invoice, connectedAccountId?: string) {
     const subscriptionId = getSubscriptionIdFromInvoice(invoice)
-    if (!subscriptionId) return
+
+    console.log(`[connect-webhook:payment_failed] invoice=${invoice.id}, subscriptionId=${subscriptionId}, account=${connectedAccountId}`)
+
+    if (!subscriptionId) {
+        console.log('[connect-webhook:payment_failed] No subscription ID found, skipping')
+        return
+    }
 
     const { data: contract } = await supabaseAdmin
         .from('student_contracts')
