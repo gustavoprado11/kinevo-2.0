@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, Modal, TouchableOpacity, Share, Platform, Alert, Dimensions } from 'react-native';
 import { Trophy, Share2, X } from 'lucide-react-native';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withSequence } from 'react-native-reanimated';
 import { ShareWorkoutModal } from './ShareWorkoutModal';
 import { WorkoutShareableCard } from './WorkoutShareableCard';
@@ -90,20 +92,35 @@ export function WorkoutSuccessModal({ visible, onClose, data }: WorkoutSuccessMo
 
 
                     {/* Action Buttons */}
-                    <View className="w-full space-y-3 px-4">
+                    <View className="w-full space-y-4 px-4">
                         <TouchableOpacity
                             onPress={handleOpenShare}
-                            className="w-full bg-violet-600 py-4 rounded-xl flex-row items-center justify-center space-x-2"
+                            activeOpacity={0.8}
+                            className="w-full rounded-xl overflow-hidden shadow-lg shadow-violet-500/40"
                         >
-                            <Share2 size={20} color="white" />
-                            <Text className="text-white font-bold text-base ml-2">Compartilhar Resultado</Text>
+                            <BlurView intensity={80} tint="light" className="bg-violet-600/85">
+                                <View className="border border-white/20 rounded-xl overflow-hidden">
+                                    <LinearGradient
+                                        colors={['rgba(139, 92, 246, 0.5)', 'rgba(109, 40, 217, 0.5)']}
+                                        className="py-4 flex-row items-center justify-center"
+                                    >
+                                        <Share2 size={20} color="white" />
+                                        <Text className="text-white font-extrabold text-base ml-2">Compartilhar Resultado</Text>
+                                    </LinearGradient>
+                                </View>
+                            </BlurView>
                         </TouchableOpacity>
 
                         <TouchableOpacity
                             onPress={onClose}
-                            className="w-full bg-slate-800 py-4 rounded-xl flex-row items-center justify-center"
+                            activeOpacity={0.7}
+                            className="w-full rounded-xl overflow-hidden mt-2"
                         >
-                            <Text className="text-slate-300 font-bold text-base">Voltar ao Início</Text>
+                            <BlurView intensity={30} tint="light" className="bg-white/10">
+                                <View className="py-4 items-center border border-white/10 rounded-xl">
+                                    <Text className="text-slate-300 font-bold text-base">Voltar ao Início</Text>
+                                </View>
+                            </BlurView>
                         </TouchableOpacity>
                     </View>
 

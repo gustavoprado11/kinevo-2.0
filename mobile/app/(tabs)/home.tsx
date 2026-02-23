@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useCallback } from "react";
-import { View, Text, ScrollView, RefreshControl, ActivityIndicator, Image, TouchableOpacity, LayoutAnimation, Platform, UIManager } from "react-native";
+import { View, Text, ScrollView, RefreshControl, ActivityIndicator, Image, TouchableOpacity } from "react-native";
+import Animated, { FadeIn, FadeInDown, FadeInUp } from "react-native-reanimated";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useAuth } from "../../contexts/AuthContext";
 import { useActiveProgram } from "../../hooks/useActiveProgram";
@@ -10,17 +11,14 @@ import { PaymentBlockedScreen } from "../../components/PaymentBlockedScreen";
 import { User } from "lucide-react-native";
 import { toDateKey } from "@kinevo/shared/utils/schedule-projection";
 
-import { WeekCalendar } from "../../components/home/WeekCalendar";
-import { MonthCalendar } from "../../components/home/MonthCalendar";
+import { UnifiedCalendar } from "../../components/home/UnifiedCalendar";
 import { ProgressCard } from "../../components/home/ProgressCard";
 import { ActionCard } from "../../components/home/ActionCard";
 import { WorkoutList } from "../../components/home/WorkoutList";
 import { ShareWorkoutModal } from "../../components/workout/ShareWorkoutModal";
 
-// Enable LayoutAnimation on Android
-if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
-    UIManager.setLayoutAnimationEnabledExperimental(true);
-}
+// ─── Spring-based entering animation configs ───
+const SPRING_ENTER = { damping: 18, stiffness: 100, mass: 0.8 };
 
 export default function HomeScreen() {
     const router = useRouter();
@@ -52,7 +50,6 @@ export default function HomeScreen() {
 
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [refreshing, setRefreshing] = useState(false);
-    const [calendarMode, setCalendarMode] = useState<'week' | 'month'>('week');
 
     // Share Modal State
     const [shareModalVisible, setShareModalVisible] = useState(false);
@@ -164,17 +161,7 @@ export default function HomeScreen() {
         return { workout, isCompleted, isMissed, title, timeContext };
     }, [workouts, sessionsMap, selectedDate]);
 
-    // Calendar mode toggle
-    const handleExpand = useCallback(() => {
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-        setCalendarMode('month');
-    }, []);
 
-    const handleCollapse = useCallback((date: Date) => {
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-        setSelectedDate(date);
-        setCalendarMode('week');
-    }, []);
 
     // Block access if student has unpaid subscription
     if (!accessLoading && !allowed) {
@@ -201,18 +188,21 @@ export default function HomeScreen() {
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#8b5cf6" />
                 }
             >
-                {/* Header */}
-                <View className="flex-row justify-between items-center mb-6">
+                {/* ── Header: Fade-In 300ms ── */}
+                <Animated.View
+                    entering={FadeIn.duration(300)}
+                    className="flex-row justify-between items-center mb-6"
+                >
                     <View className="flex-row items-center gap-3">
                         <Image
                             source={require("../../assets/images/logo-icon.jpg")}
                             style={{ width: 32, height: 32, borderRadius: 8 }}
                         />
                         <View>
-                            <Text className="text-slate-400 text-xs font-medium">
+                            <Text className="text-slate-500 text-xs font-medium">
                                 {getGreeting()},
                             </Text>
-                            <Text className="text-xl font-bold text-slate-100">
+                            <Text className="text-xl font-bold text-slate-900">
                                 {displayName}
                             </Text>
                             <Text className="text-slate-500 text-xs mt-1">
@@ -239,78 +229,77 @@ export default function HomeScreen() {
                                     width: 48,
                                     height: 48,
                                     borderRadius: 24,
-                                    backgroundColor: '#1e293b',
+                                    backgroundColor: '#e2e8f0',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    borderWidth: 1,
-                                    borderColor: '#334155',
                                 }}
                             >
-                                <User size={24} color="#94a3b8" />
+                                <User size={24} color="#475569" />
                             </View>
                         )}
                     </TouchableOpacity>
-                </View>
+                </Animated.View>
 
-                {/* Calendar */}
-                {calendarMode === 'week' ? (
-                    <WeekCalendar
+                {/* ── Calendar: Unified accordion with smooth expand/collapse ── */}
+                <Animated.View
+                    entering={FadeInDown.delay(100).duration(400).springify().damping(18).stiffness(100)}
+                >
+                    <UnifiedCalendar
                         workouts={calendarWorkouts}
                         sessionsMap={calendarSessionsMap}
                         programStartedAt={programStartedAt}
                         programDurationWeeks={programDurationWeeks}
                         selectedDate={selectedDate}
                         onDayPress={(date) => setSelectedDate(date)}
-                        onWeekChange={() => {}}
-                        onExpand={handleExpand}
+                        onWeekChange={() => { }}
                         fetchRange={fetchRange}
                     />
-                ) : (
-                    <MonthCalendar
-                        workouts={calendarWorkouts}
-                        sessionsMap={calendarSessionsMap}
-                        programStartedAt={programStartedAt}
-                        programDurationWeeks={programDurationWeeks}
-                        selectedDate={selectedDate}
-                        onDayPress={(date) => setSelectedDate(date)}
-                        onCollapse={handleCollapse}
-                        fetchRange={fetchRange}
-                    />
-                )}
+                </Animated.View>
 
                 {isLoading && !programName ? (
                     <View className="py-20 items-center">
-                        <ActivityIndicator className="text-violet-500" />
+                        <ActivityIndicator color="#7c3aed" />
                         <Text className="text-slate-500 mt-4 font-medium">Sincronizando...</Text>
                     </View>
                 ) : (
                     <>
-                        {/* Progress */}
+                        {/* ── Progress Card: Slide-Up stagger delay 200ms ── */}
                         {programName && (
-                            <ProgressCard
-                                programName={programName}
-                                completedSessions={weeklyProgress?.totalSessions || 0}
-                                targetSessions={weeklyProgress?.targetSessions || 0}
-                            />
+                            <Animated.View
+                                entering={FadeInUp.delay(200).springify().damping(SPRING_ENTER.damping).stiffness(SPRING_ENTER.stiffness).mass(SPRING_ENTER.mass)}
+                            >
+                                <ProgressCard
+                                    programName={programName}
+                                    completedSessions={weeklyProgress?.totalSessions || 0}
+                                    targetSessions={weeklyProgress?.targetSessions || 0}
+                                />
+                            </Animated.View>
                         )}
 
-                        {/* Action Card (Selected Day) */}
-                        <ActionCard
-                            workout={selectedWorkoutData.workout}
-                            isCompleted={selectedWorkoutData.isCompleted}
-                            isMissed={selectedWorkoutData.isMissed}
-                            title={selectedWorkoutData.title}
-                            timeContext={selectedWorkoutData.timeContext}
-                            onPress={() => {
-                                if (selectedWorkoutData.workout?.id) {
-                                    router.push(`/workout/${selectedWorkoutData.workout.id}`);
-                                }
-                            }}
-                            onShare={selectedWorkoutData.isCompleted ? () => handleShareWorkout(selectedWorkoutData.workout) : undefined}
-                        />
+                        {/* ── Action Card: Slide-Up stagger delay 300ms ── */}
+                        <Animated.View
+                            entering={FadeInUp.delay(300).springify().damping(SPRING_ENTER.damping).stiffness(SPRING_ENTER.stiffness).mass(SPRING_ENTER.mass)}
+                        >
+                            <ActionCard
+                                workout={selectedWorkoutData.workout}
+                                isCompleted={selectedWorkoutData.isCompleted}
+                                isMissed={selectedWorkoutData.isMissed}
+                                title={selectedWorkoutData.title}
+                                timeContext={selectedWorkoutData.timeContext}
+                                onPress={() => {
+                                    if (selectedWorkoutData.workout?.id) {
+                                        router.push(`/workout/${selectedWorkoutData.workout.id}`);
+                                    }
+                                }}
+                                onShare={selectedWorkoutData.isCompleted ? () => handleShareWorkout(selectedWorkoutData.workout) : undefined}
+                            />
+                        </Animated.View>
 
-                        {/* Workout List Section */}
-                        <View className="mb-6">
+                        {/* ── Workout List: Slide-Up stagger delay 400ms ── */}
+                        <Animated.View
+                            entering={FadeInUp.delay(400).springify().damping(SPRING_ENTER.damping).stiffness(SPRING_ENTER.stiffness).mass(SPRING_ENTER.mass)}
+                            className="mb-6"
+                        >
                             {workouts.length > 0 ? (
                                 <WorkoutList
                                     workouts={workouts}
@@ -318,10 +307,10 @@ export default function HomeScreen() {
                                 />
                             ) : (
                                 <View className="items-center py-6">
-                                    <Text className="text-slate-500">Nenhum treino encontrado neste programa.</Text>
+                                    <Text className="text-slate-400">Nenhum treino encontrado neste programa.</Text>
                                 </View>
                             )}
-                        </View>
+                        </Animated.View>
                     </>
                 )}
             </ScrollView>

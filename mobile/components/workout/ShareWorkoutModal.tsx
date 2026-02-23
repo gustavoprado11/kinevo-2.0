@@ -1,10 +1,19 @@
-import React, { useRef, useState, useEffect } from 'react';
-import { View, Text, Modal, TouchableOpacity, Platform, Alert, Dimensions, StyleSheet, ScrollView } from 'react-native';
-import { Share2, X, Camera, Image as ImageIcon, LayoutTemplate, Trophy, FileText } from 'lucide-react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring, withSequence } from 'react-native-reanimated';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
+import {
+    View, Text, Modal, Pressable, Platform, Alert, Dimensions, StyleSheet,
+} from 'react-native';
+import {
+    Share2, X, Camera, Image as ImageIcon, Trophy, FileText, LayoutTemplate,
+} from 'lucide-react-native';
+import Animated, {
+    useSharedValue, useAnimatedStyle, withSpring, withTiming, withSequence,
+    interpolate, Extrapolation, Easing,
+} from 'react-native-reanimated';
 import ViewShot, { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import * as ImagePicker from 'expo-image-picker';
+import * as Haptics from 'expo-haptics';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSessionStats } from '../../hooks/useSessionStats';
 
 // Templates
@@ -22,11 +31,122 @@ interface ShareWorkoutModalProps {
     sessionId?: string;
 }
 
-const { width } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+// Preview — controlled proportion, never dominates.
+const CARD_W = 320;
+const CARD_H = 568;
+const MAX_PREVIEW_H = SCREEN_HEIGHT * 0.48; // cap at ~48vh
+const IDEAL_SCALE = (SCREEN_WIDTH - 64) / CARD_W;  // comfortable side margins
+const PREVIEW_SCALE = Math.min(IDEAL_SCALE, MAX_PREVIEW_H / CARD_H);
+const SCALED_H = CARD_H * PREVIEW_SCALE;
 
 type TemplateType = 'photo' | 'highlights' | 'full_workout' | 'summary' | 'pr';
 
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+// ── Opacity Press Button (iOS Native pattern — no bouncy scale) ──
+function OpacityButton({
+    onPress,
+    children,
+    style,
+}: {
+    onPress: () => void;
+    children: React.ReactNode;
+    style?: any;
+}) {
+    const opacity = useSharedValue(1);
+
+    const animStyle = useAnimatedStyle(() => ({
+        opacity: opacity.value,
+    }));
+
+    return (
+        <AnimatedPressable
+            onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                onPress();
+            }}
+            onPressIn={() => {
+                opacity.value = withTiming(0.5, { duration: 80 });
+            }}
+            onPressOut={() => {
+                opacity.value = withTiming(1, { duration: 150 });
+            }}
+            style={[style, animStyle]}
+        >
+            {children}
+        </AnimatedPressable>
+    );
+}
+
+// ── Animated Segmented Control (sliding pill, no bouncy tabs) ──
+function TemplateSegment({
+    templates,
+    selected,
+    onSelect,
+}: {
+    templates: { key: TemplateType; label: string; Icon: any }[];
+    selected: TemplateType;
+    onSelect: (key: TemplateType) => void;
+}) {
+    const pillX = useSharedValue(templates.findIndex(t => t.key === selected));
+
+    useEffect(() => {
+        const idx = templates.findIndex(t => t.key === selected);
+        pillX.value = withSpring(idx, { damping: 22, stiffness: 260, mass: 0.8 });
+    }, [selected]);
+
+    const segmentWidth = (SCREEN_WIDTH - 48 - 8) / templates.length;
+
+    const pillStyle = useAnimatedStyle(() => ({
+        transform: [{
+            translateX: interpolate(
+                pillX.value,
+                [0, templates.length - 1],
+                [0, segmentWidth * (templates.length - 1)],
+                Extrapolation.CLAMP,
+            ),
+        }],
+        width: segmentWidth,
+    }));
+
+    return (
+        <View style={styles.segmentContainer}>
+            {/* Sliding pill */}
+            <Animated.View style={[styles.segmentPill, pillStyle]} />
+
+            {templates.map((t) => {
+                const isActive = selected === t.key;
+                return (
+                    <OpacityButton
+                        key={t.key}
+                        onPress={() => {
+                            Haptics.selectionAsync();
+                            onSelect(t.key);
+                        }}
+                        style={styles.segmentTab}
+                    >
+                        <t.Icon size={14} color={isActive ? '#0f172a' : '#94a3b8'} />
+                        <Text
+                            style={{
+                                fontSize: 12,
+                                fontWeight: isActive ? '600' : '500',
+                                color: isActive ? '#0f172a' : '#94a3b8',
+                            }}
+                        >
+                            {t.label}
+                        </Text>
+                    </OpacityButton>
+                );
+            })}
+        </View>
+    );
+}
+
+// ── Main Modal ──
 export function ShareWorkoutModal({ visible, onClose, data, sessionId }: ShareWorkoutModalProps) {
+    const insets = useSafeAreaInsets();
     const scale = useSharedValue(0);
     const viewShotRef = useRef<ViewShot>(null);
     const [isSharing, setIsSharing] = useState(false);
@@ -37,12 +157,9 @@ export function ShareWorkoutModal({ visible, onClose, data, sessionId }: ShareWo
 
     useEffect(() => {
         if (visible) {
-            scale.value = withSequence(
-                withSpring(1.05),
-                withSpring(1)
-            );
+            scale.value = withSpring(1, { damping: 24, stiffness: 260, mass: 0.9 });
         } else {
-            scale.value = 0;
+            scale.value = withTiming(0, { duration: 200 });
             setTimeout(() => {
                 setSelectedTemplate('photo');
                 setBackgroundImage(undefined);
@@ -50,82 +167,76 @@ export function ShareWorkoutModal({ visible, onClose, data, sessionId }: ShareWo
         }
     }, [visible]);
 
-    const animatedStyle = useAnimatedStyle(() => {
-        return {
-            transform: [{ scale: scale.value }],
-        };
-    });
+    const animatedStyle = useAnimatedStyle(() => ({
+        transform: [{ scale: scale.value }],
+        opacity: interpolate(scale.value, [0, 0.6, 1], [0, 0.9, 1], Extrapolation.CLAMP),
+    }));
 
-    const handlePickImage = async () => {
+    // Share button press physics — firm, no oscillation
+    const shareScale = useSharedValue(1);
+    const shareAnimStyle = useAnimatedStyle(() => ({
+        transform: [{ scale: shareScale.value }],
+    }));
+
+    const handleSharePressIn = useCallback(() => {
+        shareScale.value = withTiming(0.98, { duration: 120, easing: Easing.out(Easing.ease) });
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }, []);
+
+    const handleSharePressOut = useCallback(() => {
+        shareScale.value = withSpring(1, { damping: 28, stiffness: 400, mass: 0.7 });
+    }, []);
+
+    const handlePickImage = useCallback(async () => {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== 'granted') {
             Alert.alert('Desculpe', 'Precisamos de permissão para acessar suas fotos.');
             return;
         }
-
         const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true,
-            aspect: [9, 16],
+            allowsEditing: false,
             quality: 1,
         });
+        if (!result.canceled) setBackgroundImage(result.assets[0].uri);
+    }, []);
 
-        if (!result.canceled) {
-            setBackgroundImage(result.assets[0].uri);
-        }
-    };
-
-    const handleTakePhoto = async () => {
+    const handleTakePhoto = useCallback(async () => {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== 'granted') {
             Alert.alert('Desculpe', 'Precisamos de permissão para acessar a câmera.');
             return;
         }
-
         const result = await ImagePicker.launchCameraAsync({
-            allowsEditing: true,
-            aspect: [9, 16],
+            allowsEditing: false,
             quality: 1,
         });
+        if (!result.canceled) setBackgroundImage(result.assets[0].uri);
+    }, []);
 
-        if (!result.canceled) {
-            setBackgroundImage(result.assets[0].uri);
-        }
-    };
-
-    const handleShare = async () => {
+    const handleShare = useCallback(async () => {
         if (!viewShotRef.current) return;
         setIsSharing(true);
-
         try {
             await new Promise(resolve => setTimeout(resolve, 100));
-
             const uri = await captureRef(viewShotRef, {
                 format: 'png',
                 quality: 1.0,
-                result: 'tmpfile'
+                result: 'tmpfile',
             });
-
-            if (Platform.OS === 'android') {
-                await Sharing.shareAsync(uri, {
-                    mimeType: 'image/png',
-                    dialogTitle: 'Compartilhar Treino'
-                });
-            } else {
-                await Sharing.shareAsync(uri, {
-                    UTI: 'public.png',
-                    mimeType: 'image/png',
-                    dialogTitle: 'Compartilhar Treino'
-                });
-            }
-
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            await Sharing.shareAsync(uri, {
+                mimeType: 'image/png',
+                dialogTitle: 'Compartilhar Treino',
+                ...(Platform.OS === 'ios' ? { UTI: 'public.png' } : {}),
+            });
         } catch (error) {
             console.error("Error sharing:", error);
             Alert.alert("Erro", "Não foi possível compartilhar a imagem.");
         } finally {
             setIsSharing(false);
         }
-    };
+    }, []);
 
     if (!data) return null;
 
@@ -134,44 +245,38 @@ export function ShareWorkoutModal({ visible, onClose, data, sessionId }: ShareWo
         backgroundImageUri: backgroundImage,
         volume: statsVolume || data.volume,
         maxLoads: (statsMaxLoads && statsMaxLoads.length > 0) ? statsMaxLoads : data.maxLoads,
-        exerciseDetails: (statsExerciseDetails && statsExerciseDetails.length > 0) ? statsExerciseDetails : data.exerciseDetails
+        exerciseDetails: (statsExerciseDetails && statsExerciseDetails.length > 0) ? statsExerciseDetails : data.exerciseDetails,
     };
 
-    const templates: { key: TemplateType; label: string; icon: React.ReactNode }[] = [
-        { key: 'photo', label: 'Foto', icon: <Camera size={18} color={selectedTemplate === 'photo' ? 'white' : '#94A3B8'} /> },
-        { key: 'highlights', label: 'Destaques', icon: <Trophy size={18} color={selectedTemplate === 'highlights' ? 'white' : '#94A3B8'} /> },
-        { key: 'full_workout', label: 'Completo', icon: <FileText size={18} color={selectedTemplate === 'full_workout' ? 'white' : '#94A3B8'} /> },
-        { key: 'summary', label: 'Resumo', icon: <LayoutTemplate size={18} color={selectedTemplate === 'summary' ? 'white' : '#94A3B8'} /> },
+    const templates: { key: TemplateType; label: string; Icon: any }[] = [
+        { key: 'photo', label: 'Foto', Icon: Camera },
+        { key: 'highlights', label: 'Destaques', Icon: Trophy },
+        { key: 'full_workout', label: 'Completo', Icon: FileText },
+        { key: 'summary', label: 'Resumo', Icon: LayoutTemplate },
     ];
 
     return (
-        <Modal
-            visible={visible}
-            animationType="fade"
-            transparent={true}
-            onRequestClose={onClose}
-        >
+        <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
             <View style={styles.overlay}>
-                {/* Header */}
-                <View style={styles.headerActions}>
-                    <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                        <X size={24} color="white" />
-                    </TouchableOpacity>
-                </View>
+                <Animated.View style={[animatedStyle, styles.modalSheet]}>
+                    {/* ── Header ── */}
+                    <View style={styles.header}>
+                        <Text style={styles.title}>Compartilhar Resultado</Text>
+                        <OpacityButton onPress={onClose} style={styles.closeButton}>
+                            <X size={18} color="#64748b" strokeWidth={2.5} />
+                        </OpacityButton>
+                    </View>
 
-                <Animated.View style={[animatedStyle, styles.modalContent]}>
-                    <Text style={styles.title}>Compartilhar Resultado</Text>
-
-                    {/* Preview */}
+                    {/* ── Preview (large, dominant) ── */}
                     <View style={styles.previewWrapper}>
-                        <View style={styles.previewContainer}>
+                        <View style={styles.previewFrame}>
                             <ViewShot
                                 ref={viewShotRef}
                                 options={{ format: "png", quality: 1.0 }}
                                 style={{
-                                    width: 320,
-                                    height: 568,
-                                    transform: [{ scale: (width * 0.70) / 320 }],
+                                    width: CARD_W,
+                                    height: CARD_H,
+                                    transform: [{ scale: PREVIEW_SCALE }],
                                 }}
                             >
                                 {selectedTemplate === 'photo' && <PhotoOverlayTemplate {...templateData} />}
@@ -183,52 +288,45 @@ export function ShareWorkoutModal({ visible, onClose, data, sessionId }: ShareWo
                         </View>
                     </View>
 
-                    {/* Template Selector */}
-                    <View style={styles.templateSelector}>
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.templateList}>
-                            {templates.map(t => (
-                                <TouchableOpacity
-                                    key={t.key}
-                                    style={[styles.templateOption, selectedTemplate === t.key && styles.selectedOption]}
-                                    onPress={() => setSelectedTemplate(t.key)}
-                                >
-                                    {t.icon}
-                                    <Text style={[styles.optionText, selectedTemplate === t.key && styles.selectedOptionText]}>{t.label}</Text>
-                                </TouchableOpacity>
-                            ))}
-                        </ScrollView>
-                    </View>
+                    {/* ── Segmented Control ── */}
+                    <TemplateSegment
+                        templates={templates}
+                        selected={selectedTemplate}
+                        onSelect={setSelectedTemplate}
+                    />
 
-                    {/* Photo Controls */}
+                    {/* ── Photo Controls ── */}
                     {selectedTemplate === 'photo' && (
                         <View style={styles.photoControls}>
-                            <TouchableOpacity style={styles.photoButton} onPress={handlePickImage}>
-                                <ImageIcon size={20} color="#94A3B8" />
+                            <OpacityButton onPress={handlePickImage} style={styles.photoButton}>
+                                <ImageIcon size={20} color="#475569" />
                                 <Text style={styles.photoButtonText}>Galeria</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={styles.photoButton} onPress={handleTakePhoto}>
-                                <Camera size={20} color="#94A3B8" />
+                            </OpacityButton>
+                            <OpacityButton onPress={handleTakePhoto} style={styles.photoButton}>
+                                <Camera size={20} color="#475569" />
                                 <Text style={styles.photoButtonText}>Câmera</Text>
-                            </TouchableOpacity>
+                            </OpacityButton>
                         </View>
                     )}
 
-                    {/* Share Button */}
-                    <View style={styles.footerActions}>
-                        <TouchableOpacity
+                    {/* ── Share Button (Liquid Glass — firm press) ── */}
+                    <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) + 12 }]}>
+                        <AnimatedPressable
                             onPress={handleShare}
+                            onPressIn={handleSharePressIn}
+                            onPressOut={handleSharePressOut}
                             disabled={isSharing}
-                            style={styles.shareButton}
+                            style={[styles.shareButton, shareAnimStyle]}
                         >
                             {isSharing ? (
-                                <Text style={styles.buttonText}>Gerando...</Text>
+                                <Text style={styles.shareText}>Gerando...</Text>
                             ) : (
                                 <>
                                     <Share2 size={20} color="white" />
-                                    <Text style={[styles.buttonText, { marginLeft: 8 }]}>Compartilhar</Text>
+                                    <Text style={styles.shareText}>Compartilhar</Text>
                                 </>
                             )}
-                        </TouchableOpacity>
+                        </AnimatedPressable>
                     </View>
                 </Animated.View>
             </View>
@@ -239,123 +337,152 @@ export function ShareWorkoutModal({ visible, onClose, data, sessionId }: ShareWo
 const styles = StyleSheet.create({
     overlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.95)',
-        justifyContent: 'flex-start',
-        paddingTop: Platform.OS === 'ios' ? 60 : 40,
-    },
-    headerActions: {
-        flexDirection: 'row',
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
         justifyContent: 'flex-end',
-        paddingHorizontal: 20,
-        zIndex: 50,
     },
-    closeButton: {
-        backgroundColor: 'rgba(30, 41, 59, 0.5)',
-        padding: 8,
-        borderRadius: 20,
+    modalSheet: {
+        backgroundColor: '#ffffff',
+        borderTopLeftRadius: 28,
+        borderTopRightRadius: 28,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 16,
+        elevation: 20,
     },
-    modalContent: {
-        flex: 1,
-        alignItems: 'center',
-        paddingTop: 10,
-    },
-    title: {
-        color: 'white',
-        fontSize: 20,
-        fontWeight: 'bold',
-        marginBottom: 20,
-        marginTop: 10,
-        textAlign: 'center',
-        letterSpacing: 0.5,
-    },
-    previewWrapper: {
-        height: (width * 0.70) * (16 / 9),
-        width: width * 0.70,
+    header: {
+        flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
+        paddingTop: 20,
+        paddingBottom: 14,
+        paddingHorizontal: 24,
+        position: 'relative',
+    },
+    title: {
+        fontSize: 17,
+        fontWeight: '600',
+        color: '#0f172a',
+        letterSpacing: 0.2,
+    },
+    closeButton: {
+        position: 'absolute',
+        right: 20,
+        top: 16,
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        backgroundColor: '#f1f5f9',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+
+    // ── Preview ──
+    previewWrapper: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: SCALED_H + 12,
         marginBottom: 24,
     },
-    previewContainer: {
-        width: 320,
-        height: 568,
+    previewFrame: {
+        width: CARD_W,
+        height: CARD_H,
         position: 'absolute',
-        transform: [{ scale: (width * 0.70) / 320 }],
-        borderRadius: 20,
+        transform: [{ scale: PREVIEW_SCALE }],
+        borderRadius: 16,
         overflow: 'hidden',
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.5,
-        shadowRadius: 10,
-        elevation: 10,
+        backgroundColor: '#f8fafc',
+        borderWidth: 1,
+        borderColor: 'rgba(0, 0, 0, 0.06)',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.06,
+        shadowRadius: 12,
+        elevation: 6,
     },
-    templateSelector: {
-        marginBottom: 16,
-        paddingHorizontal: 20,
-        height: 50,
+
+    // ── Segmented Control ──
+    segmentContainer: {
+        backgroundColor: '#f1f5f9',
+        borderRadius: 14,
+        padding: 4,
+        flexDirection: 'row',
+        marginHorizontal: 24,
+        marginBottom: 20,
+        position: 'relative',
     },
-    templateList: {
-        gap: 10,
-        paddingHorizontal: 10,
+    segmentPill: {
+        position: 'absolute',
+        top: 4,
+        left: 4,
+        bottom: 4,
+        borderRadius: 11,
+        backgroundColor: '#ffffff',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.08,
+        shadowRadius: 3,
+        elevation: 2,
     },
-    templateOption: {
+    segmentTab: {
+        flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 14,
+        justifyContent: 'center',
         paddingVertical: 10,
-        borderRadius: 20,
-        backgroundColor: 'rgba(255,255,255,0.05)',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
-        gap: 6,
+        gap: 5,
+        zIndex: 1,
     },
-    selectedOption: {
-        backgroundColor: '#4338CA',
-        borderColor: '#6366F1',
-    },
-    optionText: {
-        color: '#94A3B8',
-        fontWeight: '600',
-        fontSize: 13,
-    },
-    selectedOptionText: {
-        color: 'white',
-    },
+
+    // ── Photo Controls ──
     photoControls: {
         flexDirection: 'row',
-        gap: 16,
+        gap: 12,
+        justifyContent: 'center',
         marginBottom: 20,
+        paddingHorizontal: 24,
     },
     photoButton: {
+        flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'center',
         gap: 8,
-        backgroundColor: 'rgba(30, 41, 59, 0.5)',
+        backgroundColor: '#f1f5f9',
         paddingHorizontal: 16,
-        paddingVertical: 10,
-        borderRadius: 12,
+        paddingVertical: 12,
+        borderRadius: 14,
     },
     photoButtonText: {
-        color: '#94A3B8',
+        color: '#475569',
         fontSize: 14,
         fontWeight: '500',
     },
-    footerActions: {
-        width: '100%',
-        paddingHorizontal: 32,
-        marginBottom: 40,
+
+    // ── Share Button ──
+    footer: {
+        paddingHorizontal: 24,
     },
     shareButton: {
-        width: '100%',
-        backgroundColor: '#7C3AED',
-        paddingVertical: 16,
-        borderRadius: 12,
+        backgroundColor: '#7c3aed',
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
+        paddingVertical: 16,
+        borderRadius: 16,
+        gap: 8,
+        shadowColor: '#7c3aed',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
+        shadowRadius: 16,
+        elevation: 8,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.15)',
     },
-    buttonText: {
+    shareText: {
         color: 'white',
-        fontWeight: 'bold',
+        fontWeight: '700',
         fontSize: 16,
+        letterSpacing: 0.2,
     },
 });

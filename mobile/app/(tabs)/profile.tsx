@@ -1,10 +1,49 @@
-import { View, Text, TouchableOpacity, Alert } from "react-native";
+import React from "react";
+import { View, Text, Alert, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../contexts/AuthContext";
 import { useStudentProfile } from "../../hooks/useStudentProfile";
 import { AvatarPicker } from "../../components/profile/AvatarPicker";
 import { useRouter } from "expo-router";
+import Animated, { FadeInUp, FadeIn, Easing } from "react-native-reanimated";
 import { LogOut, Settings, HelpCircle, Shield, ChevronRight, CreditCard } from "lucide-react-native";
+import { PressableScale } from "../../components/shared/PressableScale";
+
+// ── Menu item config with semantic colors ──
+const MENU_ITEMS = [
+    {
+        id: 'settings',
+        label: 'Configurações',
+        Icon: Settings,
+        iconColor: '#475569',
+        iconBg: '#f1f5f9',
+        route: '/profile/settings',
+    },
+    {
+        id: 'subscription',
+        label: 'Minha Assinatura',
+        Icon: CreditCard,
+        iconColor: '#2563eb',
+        iconBg: '#eff6ff',
+        route: '/profile/subscription',
+    },
+    {
+        id: 'support',
+        label: 'Suporte',
+        Icon: HelpCircle,
+        iconColor: '#7c3aed',
+        iconBg: '#f5f3ff',
+        route: '/profile/support',
+    },
+    {
+        id: 'privacy',
+        label: 'Privacidade',
+        Icon: Shield,
+        iconColor: '#059669',
+        iconBg: '#ecfdf5',
+        route: '/profile/privacy',
+    },
+] as const;
 
 export default function ProfileScreen() {
     const router = useRouter();
@@ -38,189 +77,229 @@ export default function ProfileScreen() {
     const displayEmail = profile?.email ?? user?.email;
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: "#0D0D17" }} edges={["top"]}>
-            <View style={{ flex: 1, paddingHorizontal: 20 }}>
-                {/* Profile Card */}
-                <View
+        <SafeAreaView style={{ flex: 1, backgroundColor: "#F2F2F7" }} edges={["top"]}>
+            <ScrollView
+                style={{ flex: 1 }}
+                contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 120 }}
+                showsVerticalScrollIndicator={false}
+            >
+                {/* ── Profile Card ── */}
+                <Animated.View
+                    entering={FadeIn.duration(500)}
                     style={{
-                        backgroundColor: "#1A1A2E",
-                        borderRadius: 20,
-                        padding: 32,
+                        backgroundColor: '#ffffff',
+                        borderRadius: 24,
+                        padding: 24,
                         alignItems: "center",
                         marginTop: 24,
-                        marginBottom: 28,
+                        marginBottom: 24,
+                        borderWidth: 1,
+                        borderColor: 'rgba(0, 0, 0, 0.04)',
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.04,
+                        shadowRadius: 8,
+                        elevation: 2,
                     }}
                 >
-                    {/* Avatar with upload */}
+                    {/* Avatar with cutout badge */}
                     <View style={{ marginBottom: 20 }}>
                         <AvatarPicker
                             avatarUrl={profile?.avatar_url ?? null}
                             isUploading={isUploading}
                             onPick={updateAvatar}
-                            size={80}
+                            size={88}
                         />
                     </View>
 
                     {/* Name */}
                     <Text
                         style={{
-                            fontSize: 20,
+                            fontSize: 24,
                             fontWeight: "700",
-                            color: "#f1f5f9",
+                            color: "#0f172a",
                             marginBottom: 4,
+                            marginTop: 8,
                         }}
                     >
                         {displayName}
                     </Text>
 
                     {/* Email */}
-                    <Text
-                        style={{
-                            fontSize: 13,
-                            color: "rgba(255,255,255,0.40)",
-                        }}
-                    >
+                    <Text style={{ fontSize: 14, color: "#64748b" }}>
                         {displayEmail}
                     </Text>
-                </View>
+                </Animated.View>
 
-                {/* Menu Section */}
-                <Text
-                    style={{
-                        fontSize: 11,
-                        fontWeight: "700",
-                        color: "rgba(255,255,255,0.35)",
-                        textTransform: "uppercase",
-                        letterSpacing: 2,
-                        marginBottom: 12,
-                        paddingLeft: 4,
-                    }}
-                >
-                    Geral
-                </Text>
-
-                <View
-                    style={{
-                        backgroundColor: "#1A1A2E",
-                        borderRadius: 16,
-                        overflow: "hidden",
-                        marginBottom: 28,
-                    }}
-                >
-                    <MenuItem
-                        icon={<Settings size={20} color="#64748b" strokeWidth={1.5} />}
-                        label="Configurações"
-                        onPress={() => router.push("/profile/settings")}
-                    />
-                    <View style={{ height: 1, backgroundColor: "rgba(255,255,255,0.04)", marginHorizontal: 20 }} />
-                    <MenuItem
-                        icon={<CreditCard size={20} color="#64748b" strokeWidth={1.5} />}
-                        label="Minha Assinatura"
-                        onPress={() => router.push("/profile/subscription")}
-                    />
-                    <View style={{ height: 1, backgroundColor: "rgba(255,255,255,0.04)", marginHorizontal: 20 }} />
-                    <MenuItem
-                        icon={<HelpCircle size={20} color="#64748b" strokeWidth={1.5} />}
-                        label="Suporte"
-                        onPress={() => router.push("/profile/support")}
-                    />
-                    <View style={{ height: 1, backgroundColor: "rgba(255,255,255,0.04)", marginHorizontal: 20 }} />
-                    <MenuItem
-                        icon={<Shield size={20} color="#64748b" strokeWidth={1.5} />}
-                        label="Privacidade"
-                        onPress={() => router.push("/profile/privacy")}
-                    />
-                </View>
-
-                {/* Logout */}
-                <TouchableOpacity
-                    onPress={handleSignOut}
-                    activeOpacity={0.7}
-                    style={{
-                        backgroundColor: "rgba(239,68,68,0.08)",
-                        borderRadius: 16,
-                        flexDirection: "row",
-                        alignItems: "center",
-                        paddingVertical: 16,
-                        paddingHorizontal: 20,
-                    }}
-                >
-                    <View
-                        style={{
-                            height: 40,
-                            width: 40,
-                            borderRadius: 12,
-                            backgroundColor: "rgba(239,68,68,0.1)",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            marginRight: 14,
-                        }}
-                    >
-                        <LogOut size={18} color="#f87171" strokeWidth={1.5} />
-                    </View>
+                {/* ── Menu Section ── */}
+                <Animated.View entering={FadeInUp.delay(100).duration(400).easing(Easing.out(Easing.cubic))}>
                     <Text
                         style={{
-                            fontSize: 14,
-                            fontWeight: "600",
-                            color: "#f87171",
-                            flex: 1,
+                            fontSize: 12,
+                            fontWeight: "700",
+                            color: "#94a3b8",
+                            textTransform: "uppercase",
+                            letterSpacing: 1,
+                            marginBottom: 8,
+                            paddingHorizontal: 16,
                         }}
                     >
-                        Sair da conta
+                        Geral
                     </Text>
-                    <ChevronRight size={16} color="rgba(248,113,113,0.5)" strokeWidth={1.5} />
-                </TouchableOpacity>
-            </View>
+
+                    <View
+                        style={{
+                            backgroundColor: '#ffffff',
+                            borderRadius: 20,
+                            overflow: "hidden",
+                            marginBottom: 24,
+                            borderWidth: 1,
+                            borderColor: 'rgba(0, 0, 0, 0.04)',
+                            shadowColor: '#000',
+                            shadowOffset: { width: 0, height: 2 },
+                            shadowOpacity: 0.04,
+                            shadowRadius: 8,
+                            elevation: 2,
+                        }}
+                    >
+                        {MENU_ITEMS.map((item, index) => (
+                            <React.Fragment key={item.id}>
+                                <MenuItem
+                                    icon={
+                                        <View
+                                            style={{
+                                                height: 32,
+                                                width: 32,
+                                                borderRadius: 8,
+                                                backgroundColor: item.iconBg,
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                            }}
+                                        >
+                                            <item.Icon size={18} color={item.iconColor} strokeWidth={1.5} />
+                                        </View>
+                                    }
+                                    label={item.label}
+                                    onPress={() => router.push(item.route as any)}
+                                    index={index}
+                                />
+                                {/* Inset divider — aligned with text, not full width. Skip last item. */}
+                                {index < MENU_ITEMS.length - 1 && (
+                                    <View
+                                        style={{
+                                            height: 1,
+                                            backgroundColor: "#f1f5f9",
+                                            marginLeft: 66,
+                                            marginRight: 20,
+                                        }}
+                                    />
+                                )}
+                            </React.Fragment>
+                        ))}
+                    </View>
+                </Animated.View>
+
+                {/* ── Logout (Destructive Action) ── */}
+                <Animated.View entering={FadeInUp.delay(200).duration(400).easing(Easing.out(Easing.cubic))}>
+                    <PressableScale
+                        onPress={handleSignOut}
+                        pressScale={0.97}
+                        style={{
+                            marginBottom: 32,
+                            borderRadius: 20,
+                            overflow: 'hidden',
+                            shadowColor: '#000',
+                            shadowOffset: { width: 0, height: 2 },
+                            shadowOpacity: 0.04,
+                            shadowRadius: 8,
+                            elevation: 2,
+                        }}
+                    >
+                        <View
+                            style={{
+                                backgroundColor: '#fef2f2',
+                                flexDirection: "row",
+                                alignItems: "center",
+                                paddingVertical: 16,
+                                paddingHorizontal: 20,
+                                borderRadius: 20,
+                                borderWidth: 1,
+                                borderColor: 'rgba(239, 68, 68, 0.08)',
+                            }}
+                        >
+                            <View
+                                style={{
+                                    height: 32,
+                                    width: 32,
+                                    borderRadius: 8,
+                                    backgroundColor: "rgba(239, 68, 68, 0.1)",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    marginRight: 14,
+                                }}
+                            >
+                                <LogOut size={16} color="#ef4444" strokeWidth={2} />
+                            </View>
+                            <Text
+                                style={{
+                                    fontSize: 16,
+                                    fontWeight: "500",
+                                    color: "#ef4444",
+                                    flex: 1,
+                                }}
+                            >
+                                Sair da conta
+                            </Text>
+                            <ChevronRight size={16} color="#fca5a5" strokeWidth={1.5} />
+                        </View>
+                    </PressableScale>
+                </Animated.View>
+            </ScrollView>
         </SafeAreaView>
     );
 }
 
-/* ─── Menu Item ─── */
+/* ─── Menu Item with Squish ─── */
 
 function MenuItem({
     icon,
     label,
     onPress,
+    index,
 }: {
     icon: React.ReactNode;
     label: string;
     onPress: () => void;
+    index: number;
 }) {
     return (
-        <TouchableOpacity
-            onPress={onPress}
-            activeOpacity={0.6}
-            style={{
-                flexDirection: "row",
-                alignItems: "center",
-                paddingVertical: 16,
-                paddingHorizontal: 20,
-            }}
-        >
-            <View
+        <Animated.View entering={FadeInUp.delay(150 + index * 20).duration(400).easing(Easing.out(Easing.cubic))}>
+            <PressableScale
+                onPress={onPress}
+                pressScale={0.98}
                 style={{
-                    height: 40,
-                    width: 40,
-                    borderRadius: 12,
-                    backgroundColor: "rgba(255,255,255,0.04)",
+                    flexDirection: "row",
                     alignItems: "center",
-                    justifyContent: "center",
-                    marginRight: 14,
+                    paddingVertical: 14,
+                    paddingHorizontal: 20,
+                    backgroundColor: "transparent",
                 }}
             >
-                {icon}
-            </View>
-            <Text
-                style={{
-                    fontSize: 14,
-                    fontWeight: "500",
-                    color: "#cbd5e1",
-                    flex: 1,
-                }}
-            >
-                {label}
-            </Text>
-            <ChevronRight size={16} color="#475569" strokeWidth={1.5} />
-        </TouchableOpacity>
+                <View style={{ marginRight: 14 }}>
+                    {icon}
+                </View>
+                <Text
+                    style={{
+                        fontSize: 16,
+                        fontWeight: "500",
+                        color: "#0f172a",
+                        flex: 1,
+                    }}
+                >
+                    {label}
+                </Text>
+                <ChevronRight size={16} color="#cbd5e1" strokeWidth={1.5} />
+            </PressableScale>
+        </Animated.View>
     );
 }

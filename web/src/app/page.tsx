@@ -1,5 +1,6 @@
 import { Navbar } from "@/components/landing/navbar";
 import { Hero } from "@/components/landing/hero";
+import { StatsBar } from "@/components/landing/stats-bar";
 import { StudentMetrics } from "@/components/landing/student-metrics";
 import { TrainerManagement } from "@/components/landing/trainer-management";
 import { StudentExperience } from "@/components/landing/student-experience";
@@ -14,6 +15,7 @@ export default function Home() {
 
       <main>
         <Hero />
+        <StatsBar />
         <StudentMetrics />
         <TrainerManagement />
         <StudentExperience />

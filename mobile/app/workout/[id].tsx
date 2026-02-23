@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform, Alert, StyleSheet } from 'react-native';
 import { useLocalSearchParams, Stack, useRouter, useNavigation } from 'expo-router';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import { ScreenWrapper } from '../../components/ScreenWrapper';
 import { ExerciseCard } from '../../components/workout/ExerciseCard';
 import { useWorkoutSession } from '../../hooks/useWorkoutSession';
@@ -10,6 +12,7 @@ import { useWatchConnectivity } from '../../hooks/useWatchConnectivity';
 import { ChevronLeft } from 'lucide-react-native';
 import { WorkoutFeedbackModal } from '../../components/workout/WorkoutFeedbackModal';
 import { WorkoutSuccessModal } from '../../components/workout/WorkoutSuccessModal';
+import { WorkoutCelebration } from '../../components/workout/WorkoutCelebration';
 import { ExerciseVideoModal } from '../../components/workout/ExerciseVideoModal';
 import { RestTimerOverlay } from '../../components/workout/RestTimerOverlay';
 import { ExerciseSwapModal } from '../../components/workout/ExerciseSwapModal';
@@ -110,6 +113,7 @@ export default function WorkoutPlayerScreen() {
     const navigation = useNavigation();
     const isFinishingRef = useRef(false);
     const [isFeedbackVisible, setIsFeedbackVisible] = React.useState(false);
+    const [showCelebration, setShowCelebration] = React.useState(false);
     const [showSuccessModal, setShowSuccessModal] = React.useState(false);
     const [videoModalUrl, setVideoModalUrl] = React.useState<string | null>(null);
     const [swapModalVisible, setSwapModalVisible] = React.useState(false);
@@ -335,8 +339,8 @@ export default function WorkoutPlayerScreen() {
                     sessionId: success
                 });
 
-                // Show celebration modal
-                setShowSuccessModal(true);
+                // Show full-screen celebration animation first
+                setShowCelebration(true);
                 // Mark as finishing so we can navigate away later
                 isFinishingRef.current = true;
             }
@@ -344,6 +348,12 @@ export default function WorkoutPlayerScreen() {
             Alert.alert("Erro", error.message || "Falha ao finalizar.");
         }
     };
+
+    const handleCelebrationComplete = useCallback(() => {
+        setShowCelebration(false);
+        // After celebration fades out, show the success/share modal
+        setShowSuccessModal(true);
+    }, []);
 
     const handleSuccessClose = () => {
         setShowSuccessModal(false);
@@ -354,7 +364,7 @@ export default function WorkoutPlayerScreen() {
     if (isLoading) {
         return (
             <ScreenWrapper>
-                <View className="flex-1 items-center justify-center">
+                <View className="flex-1 items-center justify-center bg-slate-50">
                     <ActivityIndicator size="large" color="#8b5cf6" />
                     <Text className="text-slate-500 mt-4">Carregando treino...</Text>
                 </View>
@@ -371,14 +381,14 @@ export default function WorkoutPlayerScreen() {
             />
 
             {/* Header */}
-            <View className="flex-row items-center justify-between px-5 py-4 border-b border-slate-900 bg-slate-950">
+            <View className="flex-row items-center justify-between px-5 py-4 border-b border-slate-200 bg-white">
                 <TouchableOpacity onPress={() => router.back()} className="p-2 -ml-2">
-                    <ChevronLeft size={24} color="#fff" />
+                    <ChevronLeft size={24} color="#0f172a" />
                 </TouchableOpacity>
 
                 <View className="items-center">
-                    <Text className="text-white font-bold text-lg">{workoutName}</Text>
-                    <Text className="text-slate-400 font-mono text-sm">{duration}</Text>
+                    <Text className="text-slate-900 font-bold text-lg">{workoutName}</Text>
+                    <Text className="text-slate-500 font-mono text-sm">{duration}</Text>
                 </View>
 
                 <TouchableOpacity
@@ -395,11 +405,11 @@ export default function WorkoutPlayerScreen() {
 
             <KeyboardAvoidingView
                 behavior={Platform.OS === "ios" ? "padding" : "height"}
-                className="flex-1"
+                className="flex-1 bg-slate-50"
                 keyboardVerticalOffset={Platform.OS === "ios" ? 10 : 0}
             >
                 <ScrollView
-                    className="flex-1 px-4 pt-4"
+                    className="flex-1 px-4 pt-4 bg-slate-50"
                     contentContainerStyle={{ paddingBottom: restTimer ? 260 : 100 }}
                     showsVerticalScrollIndicator={false}
                 >
@@ -428,13 +438,23 @@ export default function WorkoutPlayerScreen() {
                     )}
 
                     <TouchableOpacity
-                        className="bg-violet-600 p-4 rounded-xl items-center mt-6 mb-10"
+                        className="rounded-xl overflow-hidden mt-6 mb-10 shadow-lg shadow-violet-500/40"
                         onPress={handleFinish}
                         disabled={isSubmitting}
+                        activeOpacity={0.8}
                     >
-                        <Text className="text-white font-bold text-lg">
-                            Finalizar Treino
-                        </Text>
+                        <BlurView intensity={80} tint="light" className="bg-violet-600/85">
+                            <View className="border border-white/20 rounded-xl overflow-hidden">
+                                <LinearGradient
+                                    colors={['rgba(139, 92, 246, 0.5)', 'rgba(109, 40, 217, 0.5)']}
+                                    className="p-4 items-center"
+                                >
+                                    <Text className="text-white font-bold text-lg">
+                                        Finalizar Treino
+                                    </Text>
+                                </LinearGradient>
+                            </View>
+                        </BlurView>
                     </TouchableOpacity>
 
                 </ScrollView>
@@ -468,6 +488,11 @@ export default function WorkoutPlayerScreen() {
                 onSearchQueryChange={setSwapSearchQuery}
                 searchResults={swapSearchResults}
                 isSearching={swapSearchLoading}
+            />
+            {/* Celebration Full-Screen Takeover */}
+            <WorkoutCelebration
+                visible={showCelebration}
+                onComplete={handleCelebrationComplete}
             />
             {/* Rest Timer Overlay */}
             {restTimer && (

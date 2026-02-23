@@ -67,10 +67,11 @@ export default function SubscriptionScreen() {
     if (!contract) {
         return (
             <>
-                <Stack.Screen options={{ title: "Minha Assinatura" }} />
+                <Stack.Screen options={{ title: "Minha Assinatura", headerStyle: { backgroundColor: '#f8fafc' }, headerTintColor: '#0f172a' }} />
                 <View
                     style={{
                         flex: 1,
+                        backgroundColor: "#f8fafc",
                         alignItems: "center",
                         justifyContent: "center",
                         paddingHorizontal: 32,
@@ -81,19 +82,19 @@ export default function SubscriptionScreen() {
                             width: 64,
                             height: 64,
                             borderRadius: 32,
-                            backgroundColor: "#1A1A2E",
+                            backgroundColor: "#f1f5f9",
                             alignItems: "center",
                             justifyContent: "center",
                             marginBottom: 16,
                         }}
                     >
-                        <FileText size={28} color="#64748b" strokeWidth={1.5} />
+                        <FileText size={28} color="#94a3b8" strokeWidth={1.5} />
                     </View>
                     <Text
                         style={{
                             fontSize: 16,
                             fontWeight: "700",
-                            color: "#e2e8f0",
+                            color: "#0f172a",
                             marginBottom: 6,
                         }}
                     >
@@ -120,27 +121,32 @@ export default function SubscriptionScreen() {
 
     return (
         <>
-            <Stack.Screen options={{ title: "Minha Assinatura" }} />
+            <Stack.Screen options={{ title: "Minha Assinatura", headerStyle: { backgroundColor: '#f8fafc' }, headerTintColor: '#0f172a' }} />
             <ScrollView
-                style={{ flex: 1 }}
+                style={{ flex: 1, backgroundColor: "#f8fafc" }}
                 contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 24, paddingBottom: 40 }}
                 showsVerticalScrollIndicator={false}
             >
                 {/* Plan Overview Card */}
                 <View
                     style={{
-                        backgroundColor: "#1A1A2E",
+                        backgroundColor: "#fff",
                         borderRadius: 16,
                         padding: 24,
                         alignItems: "center",
                         marginBottom: 20,
+                        shadowColor: "#000",
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: 0.05,
+                        shadowRadius: 2,
+                        elevation: 2,
                     }}
                 >
                     <Text
                         style={{
                             fontSize: 18,
                             fontWeight: "700",
-                            color: "#f1f5f9",
+                            color: "#0f172a",
                             marginBottom: 8,
                             textAlign: "center",
                         }}
@@ -164,7 +170,7 @@ export default function SubscriptionScreen() {
                                 style={{
                                     fontSize: 28,
                                     fontWeight: "800",
-                                    color: "#f1f5f9",
+                                    color: "#0f172a",
                                 }}
                             >
                                 {formatCurrency(contract.amount)}
@@ -185,10 +191,15 @@ export default function SubscriptionScreen() {
                 {/* Details Card */}
                 <View
                     style={{
-                        backgroundColor: "#1A1A2E",
+                        backgroundColor: "#fff",
                         borderRadius: 16,
                         overflow: "hidden",
                         marginBottom: 20,
+                        shadowColor: "#000",
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: 0.05,
+                        shadowRadius: 2,
+                        elevation: 2,
                     }}
                 >
                     {/* Status */}
@@ -224,7 +235,7 @@ export default function SubscriptionScreen() {
                         icon={<Tag size={20} color="#64748b" strokeWidth={1.5} />}
                         label="Tipo de Cobrança"
                         value={
-                            <Text style={{ fontSize: 13, fontWeight: "600", color: "#cbd5e1" }}>
+                            <Text style={{ fontSize: 13, fontWeight: "600", color: "#0f172a" }}>
                                 {billingLabel}
                             </Text>
                         }
@@ -242,7 +253,7 @@ export default function SubscriptionScreen() {
                                         style={{
                                             fontSize: 13,
                                             fontWeight: "600",
-                                            color: "#cbd5e1",
+                                            color: "#0f172a",
                                         }}
                                     >
                                         {formatDate(contract.current_period_end)}
@@ -287,12 +298,17 @@ export default function SubscriptionScreen() {
                     onPress={() => router.push("/profile/payment-history")}
                     activeOpacity={0.6}
                     style={{
-                        backgroundColor: "#1A1A2E",
+                        backgroundColor: "#fff",
                         borderRadius: 16,
                         flexDirection: "row",
                         alignItems: "center",
                         paddingVertical: 16,
                         paddingHorizontal: 20,
+                        shadowColor: "#000",
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: 0.05,
+                        shadowRadius: 2,
+                        elevation: 2,
                     }}
                 >
                     <View
@@ -312,13 +328,13 @@ export default function SubscriptionScreen() {
                         style={{
                             fontSize: 14,
                             fontWeight: "500",
-                            color: "#cbd5e1",
+                            color: "#0f172a",
                             flex: 1,
                         }}
                     >
                         Histórico de Pagamentos
                     </Text>
-                    <ChevronRight size={16} color="#475569" strokeWidth={1.5} />
+                    <ChevronRight size={16} color="#94a3b8" strokeWidth={1.5} />
                 </TouchableOpacity>
             </ScrollView>
         </>
@@ -350,7 +366,7 @@ function DetailRow({
                     height: 40,
                     width: 40,
                     borderRadius: 12,
-                    backgroundColor: "rgba(255,255,255,0.04)",
+                    backgroundColor: "#f1f5f9",
                     alignItems: "center",
                     justifyContent: "center",
                     marginRight: 14,
@@ -377,7 +393,7 @@ function Divider() {
         <View
             style={{
                 height: 1,
-                backgroundColor: "rgba(255,255,255,0.04)",
+                backgroundColor: "#f1f5f9",
                 marginHorizontal: 20,
             }}
         />

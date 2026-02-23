@@ -24,16 +24,21 @@ export default function SupportScreen() {
 
     return (
         <>
-            <Stack.Screen options={{ title: "Suporte" }} />
-            <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 24 }}>
+            <Stack.Screen options={{ title: "Suporte", headerStyle: { backgroundColor: '#f8fafc' }, headerTintColor: '#0f172a' }} />
+            <View style={{ flex: 1, backgroundColor: "#f8fafc", paddingHorizontal: 20, paddingTop: 24 }}>
                 {/* Info Card */}
                 <View
                     style={{
-                        backgroundColor: "#1A1A2E",
-                        borderRadius: 16,
+                        backgroundColor: "#fff",
+                        borderRadius: 24,
                         padding: 24,
                         alignItems: "center",
                         marginBottom: 24,
+                        shadowColor: "#000",
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: 0.05,
+                        shadowRadius: 2,
+                        elevation: 2,
                     }}
                 >
                     <View
@@ -41,7 +46,7 @@ export default function SupportScreen() {
                             width: 56,
                             height: 56,
                             borderRadius: 28,
-                            backgroundColor: "rgba(124,58,237,0.1)",
+                            backgroundColor: "#f5f3ff",
                             alignItems: "center",
                             justifyContent: "center",
                             marginBottom: 16,
@@ -53,7 +58,7 @@ export default function SupportScreen() {
                         style={{
                             fontSize: 16,
                             fontWeight: "700",
-                            color: "#e2e8f0",
+                            color: "#0f172a",
                             marginBottom: 8,
                             textAlign: "center",
                         }}
@@ -63,7 +68,7 @@ export default function SupportScreen() {
                     <Text
                         style={{
                             fontSize: 13,
-                            color: "rgba(255,255,255,0.45)",
+                            color: "#64748b",
                             textAlign: "center",
                             lineHeight: 20,
                         }}
@@ -77,13 +82,18 @@ export default function SupportScreen() {
                     onPress={handleWhatsApp}
                     activeOpacity={0.7}
                     style={{
-                        backgroundColor: "#25D366",
+                        backgroundColor: "#10b981",
                         borderRadius: 16,
                         flexDirection: "row",
                         alignItems: "center",
                         justifyContent: "center",
                         paddingVertical: 16,
                         gap: 10,
+                        shadowColor: "#10b981",
+                        shadowOffset: { width: 0, height: 4 },
+                        shadowOpacity: 0.2,
+                        shadowRadius: 8,
+                        elevation: 4,
                     }}
                 >
                     <MessageCircle size={20} color="#fff" strokeWidth={2} />

@@ -36,16 +36,16 @@ export function SetRow({
     return (
         <View className="flex-row items-center justify-between mb-3">
             {/* Set Number */}
-            <View className="w-8 h-8 rounded-full bg-slate-800 items-center justify-center mr-3">
-                <Text className="text-slate-400 font-bold text-sm">{index + 1}</Text>
+            <View className="w-8 h-8 rounded-full bg-slate-100 items-center justify-center mr-3">
+                <Text className="text-slate-500 font-medium text-sm">{index + 1}</Text>
             </View>
 
             {/* Weight Input */}
             <View className="flex-1 mr-3">
                 <TextInput
-                    className={`bg-slate-800 text-white p-3 rounded-lg text-center font-medium ${isCompleted ? 'opacity-50' : ''}`}
+                    className={`bg-white/60 text-slate-900 border border-white/40 p-3 rounded-xl text-center font-bold text-lg shadow-sm ${isCompleted ? 'opacity-50 bg-slate-100/50' : ''}`}
                     placeholder="kg"
-                    placeholderTextColor="#64748b"
+                    placeholderTextColor="#94a3b8"
                     keyboardType="numeric"
                     value={weight}
                     onChangeText={onWeightChange}
@@ -56,9 +56,9 @@ export function SetRow({
             {/* Reps Input */}
             <View className="flex-1 mr-3">
                 <TextInput
-                    className={`bg-slate-800 text-white p-3 rounded-lg text-center font-medium ${isCompleted ? 'opacity-50' : ''}`}
+                    className={`bg-white/60 text-slate-900 border border-white/40 p-3 rounded-xl text-center font-bold text-lg shadow-sm ${isCompleted ? 'opacity-50 bg-slate-100/50' : ''}`}
                     placeholder="Reps"
-                    placeholderTextColor="#64748b"
+                    placeholderTextColor="#94a3b8"
                     keyboardType="numeric"
                     value={reps}
                     onChangeText={onRepsChange}
@@ -69,9 +69,9 @@ export function SetRow({
             {/* Check Button */}
             <TouchableOpacity
                 onPress={handleToggle}
-                className={`w-12 h-12 rounded-lg items-center justify-center border ${isCompleted
-                        ? 'bg-emerald-500 border-emerald-500'
-                        : 'bg-transparent border-slate-700'
+                className={`w-12 h-12 rounded-xl items-center justify-center border-2 shadow-sm ${isCompleted
+                    ? 'bg-emerald-500 border-emerald-400 shadow-emerald-500/30'
+                    : 'bg-white/60 border-white/40'
                     }`}
             >
                 {isCompleted && <Check size={20} color="#fff" />}

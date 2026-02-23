@@ -2,111 +2,114 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Dumbbell, Flame, TrendingUp } from 'lucide-react';
-import { MacbookMockup } from './mockups/MacbookMockup';
+import { PenLine, Smartphone, Crown, ArrowRight } from 'lucide-react';
 
-const metrics = [
+const steps = [
     {
-        label: 'Treinos Totais',
-        value: '142',
-        change: '+12 este mês',
-        icon: Dumbbell,
+        number: '01',
+        icon: PenLine,
+        title: 'Prescreva',
+        heading: 'Monte programas com facilidade e controle total',
+        description: 'Use o Builder Pro com drag & drop, calculo de volume em tempo real por grupo muscular, exercicios substitutos e avaliacoes com IA — tudo em um canvas intuitivo.',
+        color: 'violet',
         iconBg: 'bg-violet-50',
         iconColor: 'text-violet-600',
-        changeBg: 'bg-emerald-50',
-        changeColor: 'text-emerald-600',
     },
     {
-        label: 'Streak Semanal',
-        value: '4/5',
-        change: '80% de adesão',
-        icon: Flame,
-        iconBg: 'bg-orange-50',
-        iconColor: 'text-orange-500',
-        changeBg: 'bg-orange-50',
-        changeColor: 'text-orange-600',
-    },
-    {
-        label: 'Taxa de Adesão',
-        value: '94%',
-        change: '+3% vs. mês anterior',
-        icon: TrendingUp,
+        number: '02',
+        icon: Smartphone,
+        title: 'Entregue',
+        heading: 'Seus alunos treinam com um app premium',
+        description: 'App nativo para iOS e Android com cargas automaticas, timer de descanso, historico completo, calendario inteligente e Apple Watch. Uma experiencia premium.',
+        color: 'emerald',
         iconBg: 'bg-emerald-50',
         iconColor: 'text-emerald-600',
-        changeBg: 'bg-emerald-50',
-        changeColor: 'text-emerald-600',
+    },
+    {
+        number: '03',
+        icon: Crown,
+        title: 'Escale',
+        heading: 'Agregue valor e profissionalize sua consultoria',
+        description: 'Receba pagamentos com zero taxa do Kinevo, acompanhe metricas de adesao, envie avaliacoes e ofereca uma experiencia que transmite credibilidade.',
+        color: 'amber',
+        iconBg: 'bg-amber-50',
+        iconColor: 'text-amber-600',
     },
 ];
 
 export const StudentMetrics = () => {
     return (
-        <section className="py-24 bg-[#F9F9FB]">
-            <div className="container mx-auto px-6">
+        <section id="como-funciona" className="py-24 sm:py-32 bg-[#FAFAFA]">
+            <div className="max-w-7xl mx-auto px-6">
                 {/* Section Header */}
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
-                    className="text-center max-w-2xl mx-auto mb-16"
+                    className="text-center max-w-2xl mx-auto mb-20"
                 >
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-50 border border-violet-200/60 text-violet-600 font-bold text-xs mb-6 uppercase tracking-wider">
-                        <TrendingUp size={14} />
-                        Monitoramento Inteligente
+                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 text-slate-600 font-bold text-[11px] mb-6 uppercase tracking-wider">
+                        Como Funciona
                     </div>
-                    <h2 className="text-3xl md:text-5xl font-extrabold text-slate-900 tracking-tighter mb-4">
-                        O Aluno em Dados.
+                    <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-extrabold text-slate-900 tracking-[-0.03em] leading-[1.1]">
+                        Simples para voce.{' '}
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-violet-400">
+                            Premium para o aluno.
+                        </span>
                     </h2>
-                    <p className="text-slate-500 text-lg leading-relaxed">
-                        Monitore o progresso de cada aluno com métricas reais.
-                        Saiba exatamente quem está treinando, quem parou e quem precisa de atenção.
+                    <p className="mt-5 text-slate-500 text-lg leading-relaxed">
+                        Tres etapas para transformar sua consultoria fitness em uma experiencia profissional.
                     </p>
                 </motion.div>
 
-                {/* Metrics Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-4xl mx-auto">
-                    {metrics.map((metric, index) => {
-                        const Icon = metric.icon;
+                {/* Steps */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+                    {steps.map((step, index) => {
+                        const Icon = step.icon;
                         return (
                             <motion.div
                                 key={index}
-                                initial={{ opacity: 0, y: 20 }}
+                                initial={{ opacity: 0, y: 24 }}
                                 whileInView={{ opacity: 1, y: 0 }}
                                 viewport={{ once: true }}
-                                transition={{ delay: index * 0.1 }}
-                                className="bg-white rounded-2xl p-6 border border-black/[0.06] shadow-apple-card hover:shadow-apple-elevated transition-shadow"
+                                transition={{ delay: index * 0.15, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                                className="relative group"
                             >
-                                <div className="flex items-center justify-between mb-4">
-                                    <div className={`w-10 h-10 rounded-xl ${metric.iconBg} flex items-center justify-center`}>
-                                        <Icon className={metric.iconColor} size={20} />
+                                <div className="bg-white rounded-2xl p-8 border border-black/[0.04] hover:shadow-lg hover:shadow-violet-500/[0.04] transition-all duration-300 h-full">
+                                    {/* Step Number */}
+                                    <div className="flex items-center justify-between mb-6">
+                                        <div className={`w-12 h-12 rounded-2xl ${step.iconBg} flex items-center justify-center group-hover:scale-110 transition-transform`}>
+                                            <Icon className={step.iconColor} size={22} />
+                                        </div>
+                                        <span className="font-display text-5xl font-extrabold text-slate-100 tracking-tight select-none">
+                                            {step.number}
+                                        </span>
                                     </div>
-                                    <span className={`text-[11px] font-semibold ${metric.changeColor} ${metric.changeBg} px-2.5 py-0.5 rounded-full`}>
-                                        {metric.change}
-                                    </span>
+
+                                    {/* Label */}
+                                    <div className={`text-xs font-bold uppercase tracking-wider ${step.iconColor} mb-3`}>
+                                        {step.title}
+                                    </div>
+
+                                    {/* Content */}
+                                    <h3 className="font-display text-xl font-extrabold text-slate-900 tracking-tight mb-3 leading-snug">
+                                        {step.heading}
+                                    </h3>
+                                    <p className="text-slate-500 text-[15px] leading-relaxed">
+                                        {step.description}
+                                    </p>
                                 </div>
-                                <div className="text-3xl font-extrabold text-slate-900 tracking-tight">
-                                    {metric.value}
-                                </div>
-                                <div className="text-sm text-slate-500 mt-1 font-medium">
-                                    {metric.label}
-                                </div>
+
+                                {/* Arrow between steps (desktop only) */}
+                                {index < steps.length - 1 && (
+                                    <div className="hidden md:flex absolute -right-4 lg:-right-5 top-1/2 -translate-y-1/2 z-10">
+                                        <ArrowRight size={18} className="text-slate-300" />
+                                    </div>
+                                )}
                             </motion.div>
                         );
                     })}
                 </div>
-
-                {/* Real Screenshot — Student Detail */}
-                <motion.div
-                    initial={{ opacity: 0, y: 30 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: 0.2, duration: 0.7 }}
-                    className="mt-16 max-w-5xl mx-auto"
-                >
-                    <MacbookMockup
-                        src="/treino.png"
-                        alt="Painel do aluno — Métricas, calendário semanal e histórico"
-                    />
-                </motion.div>
             </div>
         </section>
     );

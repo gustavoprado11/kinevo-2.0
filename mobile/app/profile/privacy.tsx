@@ -52,16 +52,16 @@ export default function PrivacyScreen() {
 
     return (
         <>
-            <Stack.Screen options={{ title: "Legal" }} />
-            <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 24 }}>
+            <Stack.Screen options={{ title: "Legal", headerStyle: { backgroundColor: '#f8fafc' }, headerTintColor: '#0f172a' }} />
+            <View style={{ flex: 1, backgroundColor: "#f8fafc", paddingHorizontal: 20, paddingTop: 24 }}>
                 {/* Legal Documents */}
                 <Text
                     style={{
                         fontSize: 11,
                         fontWeight: "700",
-                        color: "rgba(255,255,255,0.35)",
+                        color: "#94a3b8",
                         textTransform: "uppercase",
-                        letterSpacing: 2,
+                        letterSpacing: 1.5,
                         marginBottom: 12,
                         paddingLeft: 4,
                     }}
@@ -71,10 +71,15 @@ export default function PrivacyScreen() {
 
                 <View
                     style={{
-                        backgroundColor: "#1A1A2E",
+                        backgroundColor: "#fff",
                         borderRadius: 16,
                         overflow: "hidden",
                         marginBottom: 28,
+                        shadowColor: "#000",
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: 0.05,
+                        shadowRadius: 2,
+                        elevation: 2,
                     }}
                 >
                     <TouchableOpacity
@@ -92,7 +97,7 @@ export default function PrivacyScreen() {
                                 height: 40,
                                 width: 40,
                                 borderRadius: 12,
-                                backgroundColor: "rgba(255,255,255,0.04)",
+                                backgroundColor: "#f1f5f9",
                                 alignItems: "center",
                                 justifyContent: "center",
                                 marginRight: 14,
@@ -100,13 +105,13 @@ export default function PrivacyScreen() {
                         >
                             <FileText size={20} color="#64748b" strokeWidth={1.5} />
                         </View>
-                        <Text style={{ fontSize: 14, fontWeight: "500", color: "#cbd5e1", flex: 1 }}>
+                        <Text style={{ fontSize: 14, fontWeight: "500", color: "#0f172a", flex: 1 }}>
                             Termos de Uso
                         </Text>
                         <ChevronRight size={16} color="#475569" strokeWidth={1.5} />
                     </TouchableOpacity>
 
-                    <View style={{ height: 1, backgroundColor: "rgba(255,255,255,0.04)", marginHorizontal: 20 }} />
+                    <View style={{ height: 1, backgroundColor: "#f1f5f9", marginHorizontal: 20 }} />
 
                     <TouchableOpacity
                         onPress={() => router.push("/profile/privacy-policy")}
@@ -123,7 +128,7 @@ export default function PrivacyScreen() {
                                 height: 40,
                                 width: 40,
                                 borderRadius: 12,
-                                backgroundColor: "rgba(255,255,255,0.04)",
+                                backgroundColor: "#f1f5f9",
                                 alignItems: "center",
                                 justifyContent: "center",
                                 marginRight: 14,
@@ -131,7 +136,7 @@ export default function PrivacyScreen() {
                         >
                             <Shield size={20} color="#64748b" strokeWidth={1.5} />
                         </View>
-                        <Text style={{ fontSize: 14, fontWeight: "500", color: "#cbd5e1", flex: 1 }}>
+                        <Text style={{ fontSize: 14, fontWeight: "500", color: "#0f172a", flex: 1 }}>
                             Política de Privacidade
                         </Text>
                         <ChevronRight size={16} color="#475569" strokeWidth={1.5} />
@@ -143,9 +148,9 @@ export default function PrivacyScreen() {
                     style={{
                         fontSize: 11,
                         fontWeight: "700",
-                        color: "rgba(239,68,68,0.6)",
+                        color: "#ef4444",
                         textTransform: "uppercase",
-                        letterSpacing: 2,
+                        letterSpacing: 1.5,
                         marginBottom: 12,
                         paddingLeft: 4,
                     }}
@@ -157,12 +162,17 @@ export default function PrivacyScreen() {
                     onPress={handleDeleteAccount}
                     activeOpacity={0.7}
                     style={{
-                        backgroundColor: "rgba(239,68,68,0.08)",
+                        backgroundColor: "#fff",
                         borderRadius: 16,
                         flexDirection: "row",
                         alignItems: "center",
                         paddingVertical: 16,
                         paddingHorizontal: 20,
+                        shadowColor: "#000",
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: 0.05,
+                        shadowRadius: 2,
+                        elevation: 2,
                     }}
                 >
                     <View
@@ -170,19 +180,19 @@ export default function PrivacyScreen() {
                             height: 40,
                             width: 40,
                             borderRadius: 12,
-                            backgroundColor: "rgba(239,68,68,0.1)",
+                            backgroundColor: "#fef2f2",
                             alignItems: "center",
                             justifyContent: "center",
                             marginRight: 14,
                         }}
                     >
-                        <Trash2 size={18} color="#f87171" strokeWidth={1.5} />
+                        <Trash2 size={18} color="#ef4444" strokeWidth={1.5} />
                     </View>
                     <View style={{ flex: 1 }}>
-                        <Text style={{ fontSize: 14, fontWeight: "600", color: "#f87171" }}>
+                        <Text style={{ fontSize: 14, fontWeight: "600", color: "#ef4444" }}>
                             Excluir Minha Conta
                         </Text>
-                        <Text style={{ fontSize: 11, color: "rgba(248,113,113,0.5)", marginTop: 2 }}>
+                        <Text style={{ fontSize: 11, color: "#f87171", marginTop: 2 }}>
                             Ação permanente e irreversível
                         </Text>
                     </View>

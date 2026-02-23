@@ -20,9 +20,9 @@ if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental
 const DAY_NAMES = ["D", "S", "T", "Q", "Q", "S", "S"];
 
 const STATUS_DOT_COLORS: Record<CalendarDay["status"], string | null> = {
-    done: "#8b5cf6",
-    missed: "#f87171",
-    scheduled: "#475569",
+    done: "#7c3aed",
+    missed: "#ef4444",
+    scheduled: "#94a3b8",
     rest: null,
     out_of_program: null,
 };
@@ -99,14 +99,14 @@ export function MonthCalendar({
             {/* Month header with navigation */}
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
                 <TouchableOpacity onPress={() => navigate(-1)} style={{ padding: 6 }}>
-                    <ChevronLeft size={18} color="#64748b" />
+                    <ChevronLeft size={18} color="#94a3b8" />
                 </TouchableOpacity>
 
                 <Text
                     style={{
                         fontSize: 13,
                         fontWeight: "700",
-                        color: "#e2e8f0",
+                        color: "#0f172a",
                         textTransform: "capitalize",
                         letterSpacing: 1,
                     }}
@@ -116,14 +116,14 @@ export function MonthCalendar({
 
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                     <TouchableOpacity onPress={() => navigate(1)} style={{ padding: 6 }}>
-                        <ChevronRight size={18} color="#64748b" />
+                        <ChevronRight size={18} color="#94a3b8" />
                     </TouchableOpacity>
                     {onCollapse && (
                         <TouchableOpacity
                             onPress={() => onCollapse(selectedDate)}
                             style={{ padding: 6, marginLeft: 4 }}
                         >
-                            <ChevronUp size={16} color="#64748b" />
+                            <ChevronUp size={16} color="#94a3b8" />
                         </TouchableOpacity>
                     )}
                 </View>
@@ -139,7 +139,7 @@ export function MonthCalendar({
                                 fontWeight: "600",
                                 letterSpacing: 2,
                                 textTransform: "uppercase",
-                                color: "#475569",
+                                color: "#94a3b8",
                             }}
                         >
                             {name}
@@ -197,8 +197,8 @@ export function MonthCalendar({
                                         color: isSelected
                                             ? "#ffffff"
                                             : isToday
-                                                ? "#a78bfa"
-                                                : "#94a3b8",
+                                                ? "#7c3aed"
+                                                : "#334155",
                                     }}
                                 >
                                     {day.date.getDate()}

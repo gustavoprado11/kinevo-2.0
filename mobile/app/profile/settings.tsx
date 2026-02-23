@@ -42,15 +42,20 @@ export default function SettingsScreen() {
 
     return (
         <>
-            <Stack.Screen options={{ title: "Configurações" }} />
-            <ScrollView style={{ flex: 1, paddingHorizontal: 20, paddingTop: 24 }}>
+            <Stack.Screen options={{ title: "Configurações", headerStyle: { backgroundColor: '#f8fafc' }, headerTintColor: '#0f172a' }} />
+            <ScrollView style={{ flex: 1, backgroundColor: "#f8fafc", paddingHorizontal: 20, paddingTop: 24 }}>
                 {/* Settings Card */}
                 <View
                     style={{
-                        backgroundColor: "#1A1A2E",
+                        backgroundColor: "#fff",
                         borderRadius: 16,
                         overflow: "hidden",
                         marginBottom: 28,
+                        shadowColor: "#000",
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: 0.05,
+                        shadowRadius: 2,
+                        elevation: 2,
                     }}
                 >
                     {/* Notifications */}
@@ -67,7 +72,7 @@ export default function SettingsScreen() {
                                 height: 40,
                                 width: 40,
                                 borderRadius: 12,
-                                backgroundColor: "rgba(255,255,255,0.04)",
+                                backgroundColor: "#f1f5f9",
                                 alignItems: "center",
                                 justifyContent: "center",
                                 marginRight: 14,
@@ -75,18 +80,18 @@ export default function SettingsScreen() {
                         >
                             <Bell size={20} color="#64748b" strokeWidth={1.5} />
                         </View>
-                        <Text style={{ fontSize: 14, fontWeight: "500", color: "#cbd5e1", flex: 1 }}>
+                        <Text style={{ fontSize: 14, fontWeight: "500", color: "#0f172a", flex: 1 }}>
                             Notificações
                         </Text>
                         <Switch
                             value={notificationsEnabled}
                             onValueChange={setNotificationsEnabled}
-                            trackColor={{ false: "#334155", true: "#7c3aed" }}
+                            trackColor={{ false: "#e2e8f0", true: "#7c3aed" }}
                             thumbColor="#fff"
                         />
                     </View>
 
-                    <View style={{ height: 1, backgroundColor: "rgba(255,255,255,0.04)", marginHorizontal: 20 }} />
+                    <View style={{ height: 1, backgroundColor: "#f1f5f9", marginHorizontal: 20 }} />
 
                     {/* Reset Password */}
                     <TouchableOpacity
@@ -104,7 +109,7 @@ export default function SettingsScreen() {
                                 height: 40,
                                 width: 40,
                                 borderRadius: 12,
-                                backgroundColor: "rgba(255,255,255,0.04)",
+                                backgroundColor: "#f1f5f9",
                                 alignItems: "center",
                                 justifyContent: "center",
                                 marginRight: 14,
@@ -112,7 +117,7 @@ export default function SettingsScreen() {
                         >
                             <KeyRound size={20} color="#64748b" strokeWidth={1.5} />
                         </View>
-                        <Text style={{ fontSize: 14, fontWeight: "500", color: "#cbd5e1", flex: 1 }}>
+                        <Text style={{ fontSize: 14, fontWeight: "500", color: "#0f172a", flex: 1 }}>
                             Alterar Senha
                         </Text>
                     </TouchableOpacity>
@@ -123,9 +128,9 @@ export default function SettingsScreen() {
                     style={{
                         fontSize: 11,
                         fontWeight: "700",
-                        color: "rgba(255,255,255,0.35)",
+                        color: "#94a3b8",
                         textTransform: "uppercase",
-                        letterSpacing: 2,
+                        letterSpacing: 1.5,
                         marginBottom: 12,
                         paddingLeft: 4,
                     }}
@@ -135,10 +140,15 @@ export default function SettingsScreen() {
 
                 <View
                     style={{
-                        backgroundColor: "#1A1A2E",
+                        backgroundColor: "#fff",
                         borderRadius: 16,
                         overflow: "hidden",
                         marginBottom: 28,
+                        shadowColor: "#000",
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: 0.05,
+                        shadowRadius: 2,
+                        elevation: 2,
                     }}
                 >
                     {/* Header row */}
@@ -155,7 +165,7 @@ export default function SettingsScreen() {
                                 height: 40,
                                 width: 40,
                                 borderRadius: 12,
-                                backgroundColor: "rgba(239,68,68,0.08)",
+                                backgroundColor: "#fef2f2",
                                 alignItems: "center",
                                 justifyContent: "center",
                                 marginRight: 14,
@@ -163,28 +173,28 @@ export default function SettingsScreen() {
                         >
                             <Heart size={20} color="#ef4444" strokeWidth={1.5} />
                         </View>
-                        <Text style={{ fontSize: 14, fontWeight: "500", color: "#cbd5e1", flex: 1 }}>
+                        <Text style={{ fontSize: 14, fontWeight: "500", color: "#0f172a", flex: 1 }}>
                             Apple Saúde
                         </Text>
                         <View
                             style={{
-                                backgroundColor: "rgba(74,222,128,0.1)",
+                                backgroundColor: "#f0fdf4",
                                 paddingHorizontal: 10,
                                 paddingVertical: 4,
                                 borderRadius: 100,
                             }}
                         >
-                            <Text style={{ fontSize: 11, fontWeight: "600", color: "#4ADE80" }}>
+                            <Text style={{ fontSize: 11, fontWeight: "600", color: "#15803d" }}>
                                 Conectado
                             </Text>
                         </View>
                     </View>
 
-                    <View style={{ height: 1, backgroundColor: "rgba(255,255,255,0.04)", marginHorizontal: 20 }} />
+                    <View style={{ height: 1, backgroundColor: "#f1f5f9", marginHorizontal: 20 }} />
 
                     {/* Description */}
                     <View style={{ paddingHorizontal: 20, paddingVertical: 16 }}>
-                        <Text style={{ fontSize: 13, color: "#94a3b8", lineHeight: 20, marginBottom: 12 }}>
+                        <Text style={{ fontSize: 13, color: "#475569", lineHeight: 20, marginBottom: 12 }}>
                             O Kinevo sincroniza seus treinos com o Apple Saúde:
                         </Text>
                         <View style={{ gap: 6 }}>
@@ -197,7 +207,7 @@ export default function SettingsScreen() {
                         </View>
                     </View>
 
-                    <View style={{ height: 1, backgroundColor: "rgba(255,255,255,0.04)", marginHorizontal: 20 }} />
+                    <View style={{ height: 1, backgroundColor: "#f1f5f9", marginHorizontal: 20 }} />
 
                     {/* Manage button */}
                     <TouchableOpacity
@@ -222,13 +232,18 @@ export default function SettingsScreen() {
                 {/* App Version */}
                 <View
                     style={{
-                        backgroundColor: "#1A1A2E",
+                        backgroundColor: "#fff",
                         borderRadius: 16,
                         flexDirection: "row",
                         alignItems: "center",
                         paddingVertical: 16,
                         paddingHorizontal: 20,
                         marginBottom: 40,
+                        shadowColor: "#000",
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: 0.05,
+                        shadowRadius: 2,
+                        elevation: 2,
                     }}
                 >
                     <View
@@ -244,7 +259,7 @@ export default function SettingsScreen() {
                     >
                         <Info size={20} color="#64748b" strokeWidth={1.5} />
                     </View>
-                    <Text style={{ fontSize: 14, fontWeight: "500", color: "#cbd5e1", flex: 1 }}>
+                    <Text style={{ fontSize: 14, fontWeight: "500", color: "#0f172a", flex: 1 }}>
                         Versão do App
                     </Text>
                     <Text style={{ fontSize: 13, color: "#64748b" }}>

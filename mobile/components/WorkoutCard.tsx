@@ -1,6 +1,7 @@
 import React from "react";
-import { View, Text, TouchableOpacity } from "react-native";
+import { View, Text } from "react-native";
 import { Dumbbell, ChevronRight } from "lucide-react-native";
+import { PressableScale } from "./shared/PressableScale";
 
 interface WorkoutCardProps {
     title: string;
@@ -12,22 +13,29 @@ interface WorkoutCardProps {
 
 export function WorkoutCard({ title, subtitle, exerciseCount, onPress, index = 0 }: WorkoutCardProps) {
     return (
-        <TouchableOpacity
-            activeOpacity={0.7}
+        <PressableScale
             onPress={onPress}
             style={{
-                marginBottom: 14,
-                borderRadius: 16,
-                backgroundColor: '#1A1A2E',
+                marginBottom: 12,
+                borderRadius: 20,
                 overflow: 'hidden',
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.04,
+                shadowRadius: 8,
+                elevation: 2,
             }}
         >
             <View
                 style={{
+                    backgroundColor: '#ffffff',
+                    borderWidth: 1,
+                    borderColor: 'rgba(0, 0, 0, 0.04)',
                     flexDirection: 'row',
                     alignItems: 'center',
                     paddingVertical: 18,
                     paddingHorizontal: 20,
+                    borderRadius: 20,
                 }}
             >
                 {/* Icon Badge */}
@@ -36,13 +44,13 @@ export function WorkoutCard({ title, subtitle, exerciseCount, onPress, index = 0
                         height: 48,
                         width: 48,
                         borderRadius: 14,
-                        backgroundColor: 'rgba(139,92,246,0.08)',
+                        backgroundColor: '#f5f3ff',
                         alignItems: 'center',
                         justifyContent: 'center',
                         marginRight: 16,
                     }}
                 >
-                    <Dumbbell size={22} color="#a78bfa" strokeWidth={1.5} />
+                    <Dumbbell size={22} color="#7c3aed" strokeWidth={1.5} />
                 </View>
 
                 {/* Content */}
@@ -51,7 +59,7 @@ export function WorkoutCard({ title, subtitle, exerciseCount, onPress, index = 0
                         style={{
                             fontSize: 15,
                             fontWeight: '600',
-                            color: '#e2e8f0',
+                            color: '#0f172a',
                             marginBottom: 3,
                         }}
                     >
@@ -75,7 +83,7 @@ export function WorkoutCard({ title, subtitle, exerciseCount, onPress, index = 0
                     <Text
                         style={{
                             fontSize: 12,
-                            color: 'rgba(255,255,255,0.40)',
+                            color: '#94a3b8',
                             fontWeight: '400',
                         }}
                     >
@@ -84,8 +92,8 @@ export function WorkoutCard({ title, subtitle, exerciseCount, onPress, index = 0
                 </View>
 
                 {/* Chevron */}
-                <ChevronRight size={18} color="#475569" strokeWidth={1.5} />
+                <ChevronRight size={18} color="#cbd5e1" strokeWidth={1.5} />
             </View>
-        </TouchableOpacity>
+        </PressableScale>
     );
 }

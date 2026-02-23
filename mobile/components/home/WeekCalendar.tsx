@@ -16,9 +16,9 @@ const CALENDAR_PADDING = 40; // px-5 on each side
 const CALENDAR_WIDTH = SCREEN_WIDTH - CALENDAR_PADDING;
 
 const STATUS_COLORS: Record<CalendarDay["status"], string> = {
-    done: "#34d399",
-    missed: "#f87171",
-    scheduled: "#475569",
+    done: "#22c55e",
+    missed: "#ef4444",
+    scheduled: "#94a3b8",
     rest: "transparent",
     out_of_program: "transparent",
 };
@@ -72,10 +72,8 @@ function WeekRow({
                                 marginBottom: 10,
                                 fontWeight: isSelected ? "600" : isToday ? "500" : "400",
                                 color: isSelected
-                                    ? "#a78bfa"
-                                    : isToday
-                                        ? "#7c3aed"
-                                        : "#475569",
+                                    ? "#7c3aed"
+                                    : "#94a3b8",
                             }}
                         >
                             {DAY_NAMES[index]}
@@ -99,7 +97,7 @@ function WeekRow({
                                         color: isSelected
                                             ? "#ffffff"
                                             : isToday
-                                                ? "#cbd5e1"
+                                                ? "#0f172a"
                                                 : "#64748b",
                                     }}
                                 >
@@ -236,10 +234,10 @@ export function WeekCalendar({
                     <Text
                         style={{
                             fontSize: 11,
-                            fontWeight: "700",
+                            fontWeight: "600",
                             letterSpacing: 2,
                             textTransform: "uppercase",
-                            color: "rgba(255,255,255,0.45)",
+                            color: "#94a3b8",
                         }}
                     >
                         {weekLabel}
@@ -254,11 +252,10 @@ export function WeekCalendar({
                                 paddingHorizontal: 8,
                                 paddingVertical: 2,
                                 borderRadius: 6,
-                                borderWidth: 1,
-                                borderColor: "rgba(124, 58, 237, 0.3)",
+                                backgroundColor: '#f5f3ff',
                             }}
                         >
-                            <Text style={{ fontSize: 9, fontWeight: "700", color: "#a78bfa", letterSpacing: 1.5, textTransform: "uppercase" }}>
+                            <Text style={{ fontSize: 9, fontWeight: "700", color: "#7c3aed", letterSpacing: 1.5, textTransform: "uppercase" }}>
                                 Hoje
                             </Text>
                         </TouchableOpacity>
@@ -266,7 +263,7 @@ export function WeekCalendar({
                 </View>
                 {onExpand && (
                     <TouchableOpacity onPress={onExpand} style={{ padding: 4 }}>
-                        <ChevronDown size={16} color="#64748b" />
+                        <ChevronDown size={16} color="#94a3b8" />
                     </TouchableOpacity>
                 )}
             </View>

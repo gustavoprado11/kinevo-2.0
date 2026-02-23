@@ -1,12 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { View, Text, ScrollView, TextInput, Pressable, Alert, ActivityIndicator, Image } from "react-native";
+import { View, Text, ScrollView, TextInput, Pressable, Alert, ActivityIndicator, Image, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { BlurView } from "expo-blur";
+import { LinearGradient } from "expo-linear-gradient";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import * as SecureStore from "expo-secure-store";
-import { ChevronLeft, Upload, CheckCircle2 } from "lucide-react-native";
+import { ChevronLeft, Upload, CheckCircle2, MessageCircle } from "lucide-react-native";
+import Animated, { FadeInUp, FadeIn, ZoomIn } from "react-native-reanimated";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../contexts/AuthContext";
+import { PressableScale } from "../../components/shared/PressableScale";
 
 type QuestionType = "short_text" | "long_text" | "single_choice" | "scale" | "photo";
 
@@ -58,7 +62,7 @@ export default function InboxItemDetailScreen() {
 
     const draftKey = useMemo(() => {
         if (!id) return null;
-        return `forms:draft:${id}`;
+        return `forms.draft.${id}`;
     }, [id]);
 
     const schemaVersion = useMemo(() => {
@@ -90,110 +94,116 @@ export default function InboxItemDetailScreen() {
         setIsLoading(true);
         setDraftReady(false);
 
-        const { data: inboxData, error: inboxError }: { data: any; error: any } = await supabase
-            .from("student_inbox_items" as any)
-            .select("id, type, status, title, subtitle, payload")
-            .eq("id", id)
-            .single();
+        try {
+            const { data: inboxData, error: inboxError }: { data: any; error: any } = await supabase
+                .from("student_inbox_items" as any)
+                .select("id, type, status, title, subtitle, payload")
+                .eq("id", id)
+                .single();
 
-        if (inboxError || !inboxData) {
-            console.error("[inbox/[id]] inbox fetch error:", inboxError);
-            Alert.alert("Erro", "Item não encontrado.");
-            router.back();
-            return;
-        }
-
-        setItem(inboxData as InboxItem);
-
-        if (inboxData.type === "form_request" || inboxData.type === "feedback") {
-            const submissionId = inboxData.payload?.submission_id as string | undefined;
-
-            let submissionQuery = supabase
-                .from("form_submissions" as any)
-                .select("id, status, schema_snapshot_json, answers_json, submitted_at, trainer_feedback");
-
-            if (submissionId) {
-                submissionQuery = submissionQuery.eq("id", submissionId);
-            } else {
-                submissionQuery = submissionQuery.eq("inbox_item_id", inboxData.id);
+            if (inboxError || !inboxData) {
+                console.error("[inbox/[id]] inbox fetch error:", inboxError);
+                Alert.alert("Erro", "Item não encontrado.");
+                router.back();
+                return;
             }
 
-            const { data: submissionData, error: submissionError }: { data: any; error: any } = await submissionQuery.single();
-            if (submissionError) {
-                console.error("[inbox/[id]] submission fetch error:", submissionError);
-            } else {
-                setSubmission(submissionData as Submission);
-                const initialAnswers = submissionData?.answers_json?.answers || {};
-                setAnswers(initialAnswers);
+            setItem(inboxData as InboxItem);
 
-                const isDraftSubmission = submissionData?.status === "draft";
-                if (isDraftSubmission && draftKey) {
-                    try {
-                        const rawDraft = await SecureStore.getItemAsync(draftKey);
-                        if (rawDraft) {
-                            const localDraft = JSON.parse(rawDraft) as LocalDraft;
-                            const localAnswers = localDraft?.answers || {};
+            if (inboxData.type === "form_request" || inboxData.type === "feedback") {
+                const submissionId = inboxData.payload?.submission_id as string | undefined;
 
-                            const localSchemaVersion = localDraft?.schema_version || null;
-                            const localTemplateVersion = localDraft?.template_version ?? null;
-                            const currentSchemaVersion = submissionData?.schema_snapshot_json?.schema_version
-                                ? String(submissionData?.schema_snapshot_json?.schema_version)
-                                : null;
-                            const currentTemplateVersion = (() => {
-                                const raw = inboxData?.payload?.form_template_version;
-                                if (typeof raw === "number") return raw;
-                                if (typeof raw === "string") {
-                                    const parsed = Number(raw);
-                                    return Number.isFinite(parsed) ? parsed : null;
+                let submissionQuery = supabase
+                    .from("form_submissions" as any)
+                    .select("id, status, schema_snapshot_json, answers_json, submitted_at, trainer_feedback");
+
+                if (submissionId) {
+                    submissionQuery = submissionQuery.eq("id", submissionId);
+                } else {
+                    submissionQuery = submissionQuery.eq("inbox_item_id", inboxData.id);
+                }
+
+                const { data: submissionData, error: submissionError }: { data: any; error: any } = await submissionQuery.maybeSingle();
+                if (submissionError) {
+                    console.error("[inbox/[id]] submission fetch error:", submissionError);
+                } else if (submissionData) {
+                    setSubmission(submissionData as Submission);
+                    const initialAnswers = submissionData?.answers_json?.answers || {};
+                    setAnswers(initialAnswers);
+
+                    const isDraftSubmission = submissionData?.status === "draft";
+                    if (isDraftSubmission && draftKey) {
+                        try {
+                            const rawDraft = await SecureStore.getItemAsync(draftKey);
+                            if (rawDraft) {
+                                const localDraft = JSON.parse(rawDraft) as LocalDraft;
+                                const localAnswers = localDraft?.answers || {};
+
+                                const localSchemaVersion = localDraft?.schema_version || null;
+                                const localTemplateVersion = localDraft?.template_version ?? null;
+                                const currentSchemaVersion = submissionData?.schema_snapshot_json?.schema_version
+                                    ? String(submissionData?.schema_snapshot_json?.schema_version)
+                                    : null;
+                                const currentTemplateVersion = (() => {
+                                    const raw = inboxData?.payload?.form_template_version;
+                                    if (typeof raw === "number") return raw;
+                                    if (typeof raw === "string") {
+                                        const parsed = Number(raw);
+                                        return Number.isFinite(parsed) ? parsed : null;
+                                    }
+                                    return null;
+                                })();
+
+                                const hasVersionConflict =
+                                    localSchemaVersion !== currentSchemaVersion ||
+                                    localTemplateVersion !== currentTemplateVersion;
+
+                                const hasLocalAnswers = Object.keys(localAnswers).length > 0;
+
+                                if (hasVersionConflict) {
+                                    await SecureStore.deleteItemAsync(draftKey);
+                                } else if (hasLocalAnswers) {
+                                    await new Promise<void>((resolve) => {
+                                        Alert.alert(
+                                            "Rascunho encontrado",
+                                            "Encontramos um rascunho salvo neste formulário. Deseja restaurar?",
+                                            [
+                                                {
+                                                    text: "Descartar",
+                                                    style: "destructive",
+                                                    onPress: async () => {
+                                                        await SecureStore.deleteItemAsync(draftKey);
+                                                        resolve();
+                                                    },
+                                                },
+                                                {
+                                                    text: "Restaurar",
+                                                    onPress: () => {
+                                                        setAnswers(localAnswers);
+                                                        resolve();
+                                                    },
+                                                },
+                                            ]
+                                        );
+                                    });
                                 }
-                                return null;
-                            })();
-
-                            const hasVersionConflict =
-                                localSchemaVersion !== currentSchemaVersion ||
-                                localTemplateVersion !== currentTemplateVersion;
-
-                            const hasLocalAnswers = Object.keys(localAnswers).length > 0;
-
-                            if (hasVersionConflict) {
-                                await SecureStore.deleteItemAsync(draftKey);
-                            } else if (hasLocalAnswers) {
-                                await new Promise<void>((resolve) => {
-                                    Alert.alert(
-                                        "Rascunho encontrado",
-                                        "Encontramos um rascunho salvo neste formulário. Deseja restaurar?",
-                                        [
-                                            {
-                                                text: "Descartar",
-                                                style: "destructive",
-                                                onPress: async () => {
-                                                    await SecureStore.deleteItemAsync(draftKey);
-                                                    resolve();
-                                                },
-                                            },
-                                            {
-                                                text: "Restaurar",
-                                                onPress: () => {
-                                                    setAnswers(localAnswers);
-                                                    resolve();
-                                                },
-                                            },
-                                        ]
-                                    );
-                                });
                             }
+                        } catch (err) {
+                            console.error("[inbox/[id]] restore draft error:", err);
                         }
-                    } catch (err) {
-                        console.error("[inbox/[id]] restore draft error:", err);
+                    } else if (!isDraftSubmission && draftKey) {
+                        await SecureStore.deleteItemAsync(draftKey);
                     }
-                } else if (!isDraftSubmission && draftKey) {
-                    await SecureStore.deleteItemAsync(draftKey);
                 }
             }
+        } catch (err) {
+            console.error("[inbox/[id]] fetchData unhandled error:", err);
+            Alert.alert("Erro", "Não foi possível carregar o item.");
+            router.back();
+        } finally {
+            setIsLoading(false);
+            setDraftReady(true);
         }
-
-        setIsLoading(false);
-        setDraftReady(true);
     }, [draftKey, id, router]);
 
     useEffect(() => {
@@ -333,15 +343,16 @@ export default function InboxItemDetailScreen() {
                     placeholder="Digite sua resposta"
                     style={{
                         borderWidth: 1,
-                        borderColor: "rgba(148,163,184,0.25)",
+                        borderColor: "#e2e8f0",
                         borderRadius: 10,
                         padding: 10,
-                        color: "#f1f5f9",
+                        color: "#0f172a",
+                        backgroundColor: "#f8fafc",
                         minHeight: question.type === "long_text" ? 90 : 44,
                         textAlignVertical: "top",
                         marginTop: 8,
                     }}
-                    placeholderTextColor="#64748b"
+                    placeholderTextColor="#94a3b8"
                 />
             );
         }
@@ -357,13 +368,13 @@ export default function InboxItemDetailScreen() {
                                 onPress={() => setAnswer(question.id, { type: "single_choice", value: opt.value })}
                                 style={{
                                     borderWidth: 1,
-                                    borderColor: isSelected ? "#8b5cf6" : "rgba(148,163,184,0.25)",
-                                    backgroundColor: isSelected ? "rgba(139,92,246,0.18)" : "transparent",
+                                    borderColor: isSelected ? "#7c3aed" : "#e2e8f0",
+                                    backgroundColor: isSelected ? "#f5f3ff" : "#f8fafc",
                                     borderRadius: 10,
                                     padding: 10,
                                 }}
                             >
-                                <Text style={{ color: "#e2e8f0", fontSize: 14 }}>{opt.label}</Text>
+                                <Text style={{ color: "#0f172a", fontSize: 14 }}>{opt.label}</Text>
                             </Pressable>
                         );
                     })}
@@ -390,11 +401,11 @@ export default function InboxItemDetailScreen() {
                                     alignItems: "center",
                                     justifyContent: "center",
                                     borderWidth: 1,
-                                    borderColor: selected ? "#8b5cf6" : "rgba(148,163,184,0.25)",
-                                    backgroundColor: selected ? "rgba(139,92,246,0.2)" : "transparent",
+                                    borderColor: selected ? "#7c3aed" : "#e2e8f0",
+                                    backgroundColor: selected ? "#f5f3ff" : "#f8fafc",
                                 }}
                             >
-                                <Text style={{ color: "#f1f5f9", fontWeight: "700" }}>{value}</Text>
+                                <Text style={{ color: "#0f172a", fontWeight: "700" }}>{value}</Text>
                             </Pressable>
                         );
                     })}
@@ -409,17 +420,18 @@ export default function InboxItemDetailScreen() {
                     <Pressable
                         onPress={() => handlePickImage(question.id)}
                         style={{
-                            borderWidth: 1,
-                            borderColor: "rgba(148,163,184,0.25)",
-                            borderRadius: 10,
-                            padding: 10,
+                            backgroundColor: 'rgba(124, 58, 237, 0.05)',
+                            borderRadius: 12,
+                            padding: 12,
                             flexDirection: "row",
                             alignItems: "center",
                             gap: 8,
+                            borderWidth: 1,
+                            borderColor: 'rgba(124, 58, 237, 0.1)',
                         }}
                     >
-                        <Upload size={16} color="#94a3b8" />
-                        <Text style={{ color: "#e2e8f0" }}>
+                        <Upload size={16} color="#7c3aed" />
+                        <Text style={{ color: "#7c3aed", fontWeight: "600", fontSize: 13 }}>
                             {file ? "Trocar foto" : "Selecionar foto"}
                         </Text>
                     </Pressable>
@@ -427,7 +439,7 @@ export default function InboxItemDetailScreen() {
                     {!!file?.url && (
                         <Image
                             source={{ uri: file.url }}
-                            style={{ width: "100%", height: 180, borderRadius: 10, marginTop: 10 }}
+                            style={{ width: "100%", height: 180, borderRadius: 12, marginTop: 12 }}
                             resizeMode="cover"
                         />
                     )}
@@ -439,58 +451,168 @@ export default function InboxItemDetailScreen() {
     };
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: "#0D0D17" }} edges={["top"]}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: "#F2F2F7" }} edges={["top"]}>
             <Stack.Screen options={{ headerShown: false }} />
 
-            <View style={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 10, flexDirection: "row", alignItems: "center" }}>
+            <View
+                style={{
+                    paddingHorizontal: 20,
+                    paddingTop: 12,
+                    paddingBottom: 10,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    backgroundColor: "#F2F2F7",
+                }}
+            >
                 <Pressable onPress={() => router.back()} style={{ marginRight: 10 }}>
-                    <ChevronLeft size={22} color="#94a3b8" />
+                    <ChevronLeft size={22} color="#64748b" />
                 </Pressable>
-                <Text style={{ color: "#f1f5f9", fontWeight: "700", fontSize: 17 }}>Detalhe da Inbox</Text>
+                <Text style={{ color: "#0f172a", fontWeight: "700", fontSize: 17 }}>Detalhe da Inbox</Text>
             </View>
 
             {isLoading ? (
                 <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-                    <ActivityIndicator color="#8b5cf6" />
-                    <Text style={{ marginTop: 10, color: "#64748b" }}>Carregando item...</Text>
+                    <ActivityIndicator color="#7c3aed" />
+                    <Text style={{ marginTop: 10, color: "#94a3b8" }}>Carregando item...</Text>
                 </View>
             ) : !item ? (
                 <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-                    <Text style={{ color: "#64748b" }}>Item não encontrado.</Text>
+                    <Text style={{ color: "#94a3b8" }}>Item não encontrado.</Text>
                 </View>
             ) : (
                 <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 30 }}>
-                    <View
+                    {/* Title card */}
+                    <Animated.View
+                        entering={FadeInUp.delay(50).springify().damping(18)}
                         style={{
-                            backgroundColor: "#1A1A2E",
+                            backgroundColor: '#ffffff',
+                            borderRadius: 20,
+                            padding: 16,
                             borderWidth: 1,
-                            borderColor: "rgba(148,163,184,0.2)",
-                            borderRadius: 14,
-                            padding: 14,
+                            borderColor: 'rgba(0, 0, 0, 0.04)',
+                            shadowColor: '#000',
+                            shadowOffset: { width: 0, height: 2 },
+                            shadowOpacity: 0.04,
+                            shadowRadius: 8,
+                            elevation: 2,
                         }}
                     >
-                        <Text style={{ color: "#f1f5f9", fontWeight: "800", fontSize: 16 }}>{item.title}</Text>
-                        {!!item.subtitle && <Text style={{ color: "#94a3b8", marginTop: 6 }}>{item.subtitle}</Text>}
-                    </View>
+                        <Text style={{ color: "#0f172a", fontWeight: "800", fontSize: 16 }}>{item.title}</Text>
+                        {!!item.subtitle && <Text style={{ color: "#64748b", marginTop: 6, fontSize: 14 }}>{item.subtitle}</Text>}
+                    </Animated.View>
 
                     {item.type === "feedback" && (
-                        <View
-                            style={{
-                                marginTop: 12,
-                                backgroundColor: "#1A1A2E",
-                                borderWidth: 1,
-                                borderColor: "rgba(34,197,94,0.35)",
-                                borderRadius: 14,
-                                padding: 14,
-                            }}
-                        >
-                            <Text style={{ color: "#86efac", fontWeight: "700", marginBottom: 6 }}>Feedback do treinador</Text>
-                            <Text style={{ color: "#e2e8f0" }}>
-                                {submission?.trainer_feedback?.message ||
-                                    item.payload?.feedback_preview ||
-                                    "Novo feedback disponível."}
-                            </Text>
-                        </View>
+                        <>
+                            {/* Feedback card — VIP Glow */}
+                            <Animated.View
+                                entering={
+                                    FadeIn.delay(150).duration(400)
+                                        .springify().damping(18).stiffness(100)
+                                }
+                            >
+                                <PressableScale
+                                    pressScale={0.97}
+                                    style={{
+                                        marginTop: 12,
+                                        borderRadius: 20,
+                                        overflow: 'hidden',
+                                        shadowColor: '#10b981',
+                                        shadowOffset: { width: 0, height: 6 },
+                                        shadowOpacity: 0.15,
+                                        shadowRadius: 20,
+                                        elevation: 6,
+                                    }}
+                                >
+                                    <View
+                                        style={{
+                                            backgroundColor: '#f0fdf9',
+                                            borderRadius: 20,
+                                            padding: 20,
+                                            borderWidth: 1,
+                                            borderColor: 'rgba(16, 185, 129, 0.15)',
+                                            position: 'relative',
+                                        }}
+                                    >
+                                        {/* Watermark icon */}
+                                        <View style={{ position: 'absolute', top: 14, right: 14, opacity: 0.12 }}>
+                                            <MessageCircle size={32} color="#10b981" fill="#10b981" />
+                                        </View>
+
+                                        {/* Left accent bar */}
+                                        <View
+                                            style={{
+                                                position: 'absolute',
+                                                left: 0,
+                                                top: 16,
+                                                bottom: 16,
+                                                width: 3,
+                                                backgroundColor: '#10b981',
+                                                borderTopRightRadius: 2,
+                                                borderBottomRightRadius: 2,
+                                            }}
+                                        />
+
+                                        <Text style={{ color: "#059669", fontWeight: "700", fontSize: 14, marginBottom: 8 }}>
+                                            Feedback do treinador
+                                        </Text>
+                                        <Text style={{ color: "#1e293b", lineHeight: 22, fontSize: 15 }}>
+                                            {submission?.trainer_feedback?.message ||
+                                                item.payload?.feedback_preview ||
+                                                "Novo feedback disponível."}
+                                        </Text>
+                                    </View>
+                                </PressableScale>
+                            </Animated.View>
+
+                            {submission && questions.length > 0 && (
+                                <View style={{ marginTop: 20 }}>
+                                    <Animated.View entering={FadeInUp.delay(250).springify().damping(18)}>
+                                        <Text style={{ color: "#94a3b8", fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 2, marginBottom: 10, paddingLeft: 1 }}>
+                                            Suas respostas
+                                        </Text>
+                                    </Animated.View>
+                                    {questions.map((question, qIdx) => {
+                                        const answer = answers[question.id];
+                                        const rawValue = answer?.value ?? answer?.files?.[0]?.url;
+                                        // For select/radio questions, map value to label
+                                        let answerText = "—";
+                                        if (rawValue != null) {
+                                            const matchedOption = question.options?.find(
+                                                (opt: any) => opt.value === rawValue
+                                            );
+                                            answerText = matchedOption?.label ?? String(rawValue);
+                                        }
+                                        return (
+                                            <Animated.View
+                                                key={question.id}
+                                                entering={FadeInUp.delay(300 + qIdx * 80).springify().damping(18).stiffness(100)}
+                                            >
+                                                <View
+                                                    style={{
+                                                        backgroundColor: '#ffffff',
+                                                        borderRadius: 16,
+                                                        padding: 14,
+                                                        marginBottom: 10,
+                                                        borderWidth: 1,
+                                                        borderColor: 'rgba(0, 0, 0, 0.04)',
+                                                        shadowColor: '#000',
+                                                        shadowOffset: { width: 0, height: 1 },
+                                                        shadowOpacity: 0.03,
+                                                        shadowRadius: 4,
+                                                        elevation: 1,
+                                                    }}
+                                                >
+                                                    <Text style={{ color: "#94a3b8", fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>
+                                                        {question.label}
+                                                    </Text>
+                                                    <Text style={{ color: "#0f172a", fontSize: 14, lineHeight: 20 }}>{answerText}</Text>
+                                                </View>
+                                            </Animated.View>
+                                        );
+                                    })}
+                                </View>
+                            )}
+                        </>
                     )}
 
                     {item.type === "form_request" && submission && (
@@ -499,38 +621,46 @@ export default function InboxItemDetailScreen() {
                                 <View
                                     style={{
                                         borderWidth: 1,
-                                        borderColor: "rgba(34,197,94,0.35)",
-                                        backgroundColor: "rgba(34,197,94,0.12)",
+                                        borderColor: "#bbf7d0",
+                                        backgroundColor: "#f0fdf4",
                                         borderRadius: 12,
-                                        padding: 10,
+                                        padding: 12,
                                         flexDirection: "row",
                                         alignItems: "center",
                                         gap: 8,
                                         marginBottom: 12,
                                     }}
                                 >
-                                    <CheckCircle2 size={16} color="#4ade80" />
-                                    <Text style={{ color: "#86efac" }}>Formulário já enviado.</Text>
+                                    <CheckCircle2 size={16} color="#16a34a" />
+                                    <Text style={{ color: "#16a34a", fontWeight: "500" }}>Formulário já enviado.</Text>
                                 </View>
                             )}
 
                             {questions.map((question) => (
-                                <View
+                                <BlurView
                                     key={question.id}
+                                    intensity={60}
+                                    tint="light"
                                     style={{
-                                        backgroundColor: "#1A1A2E",
+                                        backgroundColor: 'rgba(255, 255, 255, 0.7)',
+                                        borderRadius: 20,
+                                        padding: 14,
+                                        marginBottom: 12,
+                                        overflow: 'hidden',
                                         borderWidth: 1,
-                                        borderColor: "rgba(148,163,184,0.2)",
-                                        borderRadius: 14,
-                                        padding: 12,
-                                        marginBottom: 10,
+                                        borderColor: 'rgba(255, 255, 255, 0.5)',
+                                        shadowColor: '#000',
+                                        shadowOffset: { width: 0, height: 2 },
+                                        shadowOpacity: 0.04,
+                                        shadowRadius: 8,
+                                        elevation: 2,
                                     }}
                                 >
-                                    <Text style={{ color: "#f1f5f9", fontWeight: "600" }}>
+                                    <Text style={{ color: "#0f172a", fontWeight: "700", fontSize: 15, marginBottom: 4 }}>
                                         {question.label} {question.required ? "*" : ""}
                                     </Text>
                                     {renderQuestion(question)}
-                                </View>
+                                </BlurView>
                             ))}
 
                             {submission.status === "draft" && (
@@ -538,16 +668,32 @@ export default function InboxItemDetailScreen() {
                                     onPress={handleSubmit}
                                     disabled={isSubmitting}
                                     style={{
-                                        marginTop: 6,
-                                        backgroundColor: isSubmitting ? "#4c1d95" : "#7c3aed",
-                                        borderRadius: 12,
-                                        paddingVertical: 13,
-                                        alignItems: "center",
+                                        marginTop: 10,
+                                        borderRadius: 16,
+                                        overflow: 'hidden',
+                                        shadowColor: '#8b5cf6',
+                                        shadowOffset: { width: 0, height: 4 },
+                                        shadowOpacity: 0.3,
+                                        shadowRadius: 10,
+                                        elevation: 6,
                                     }}
                                 >
-                                    <Text style={{ color: "#fff", fontWeight: "700" }}>
-                                        {isSubmitting ? "Enviando..." : "Enviar formulário"}
-                                    </Text>
+                                    <BlurView intensity={80} tint="light" style={{ backgroundColor: 'rgba(124, 58, 237, 0.85)' }}>
+                                        <LinearGradient
+                                            colors={['rgba(139, 92, 246, 0.5)', 'rgba(109, 40, 217, 0.5)']}
+                                            style={{
+                                                paddingVertical: 16,
+                                                alignItems: "center",
+                                                borderWidth: 1,
+                                                borderColor: 'rgba(255, 255, 255, 0.2)',
+                                                borderRadius: 16,
+                                            }}
+                                        >
+                                            <Text style={{ color: "#fff", fontWeight: "800", fontSize: 16, letterSpacing: 0.5 }}>
+                                                {isSubmitting ? "ENVIANDO..." : "ENVIAR FORMULÁRIO"}
+                                            </Text>
+                                        </LinearGradient>
+                                    </BlurView>
                                 </Pressable>
                             )}
                         </View>

@@ -9,7 +9,7 @@ import { arrayMove } from '@dnd-kit/sortable'
 import { ExerciseLibraryPanel } from './exercise-library-panel'
 import { VolumeSummary } from './volume-summary'
 import { Button } from '@/components/ui/button'
-import { ChevronLeft, Check, Loader2, Calendar, ArrowRight, Edit3 } from 'lucide-react'
+import { ChevronLeft, Check, Loader2, Calendar, ArrowRight, Edit3, AlertCircle } from 'lucide-react'
 
 import type { Exercise } from '@/types/exercise'
 import { assignProgram } from '@/app/students/[id]/actions/assign-program'
@@ -231,6 +231,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
     )
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [nameShake, setNameShake] = useState(false)
 
     // Derived state
     const activeWorkout = useMemo(() =>
@@ -561,7 +562,9 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
     // Save program
     const saveProgram = async () => {
         if (!name.trim()) {
-            setError('Nome do programa é obrigatório')
+            setError('Por favor, preencha o nome do programa.')
+            setNameShake(true)
+            setTimeout(() => setNameShake(false), 600)
             return
         }
 
@@ -724,10 +727,10 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
             trainerTheme={trainer.theme}
         >
             <div className="flex flex-col h-[calc(100vh-64px)] overflow-hidden bg-surface-canvas">
-                {/* Scheduling Bar (Fixed Header) */}
-                <div className="flex-shrink-0 h-24 bg-surface-card backdrop-blur-md border-b border-k-border-primary flex items-center justify-between px-8 z-30">
+                {/* Scheduling Bar (Responsive Header) */}
+                <div className="flex-shrink-0 min-h-[72px] bg-surface-card backdrop-blur-md border-b border-k-border-primary flex flex-wrap items-center gap-4 px-6 py-3 z-30">
                     {/* Left Section: Identity */}
-                    <div className="flex items-center gap-6 flex-1 min-w-0">
+                    <div className="flex items-center gap-4 flex-1 min-w-0">
                         <Button
                             variant="ghost"
                             size="icon"
@@ -735,12 +738,12 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                 ? router.push(`/students/${studentContext.id}`)
                                 : router.push('/programs')
                             }
-                            className="w-10 h-10 rounded-full hover:bg-glass-bg-active text-k-text-tertiary hover:text-k-text-primary transition-all"
+                            className="w-10 h-10 rounded-full hover:bg-glass-bg-active text-k-text-tertiary hover:text-k-text-primary transition-all flex-shrink-0"
                         >
                             <ChevronLeft className="w-5 h-5" />
                         </Button>
 
-                        <div className="flex flex-col min-w-0">
+                        <div className="flex flex-col min-w-[200px] flex-1">
                             <span className="text-[10px] font-bold uppercase tracking-widest text-k-text-quaternary mb-1">
                                 Nome do Programa
                             </span>
@@ -748,9 +751,13 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                 <input
                                     type="text"
                                     value={name}
-                                    onChange={(e) => setName(e.target.value)}
+                                    onChange={(e) => {
+                                        setName(e.target.value)
+                                        if (error) setError(null)
+                                    }}
                                     placeholder="Ex: Força e Hipertrofia"
-                                    className="bg-transparent border-none text-lg font-bold text-k-text-primary placeholder:text-k-text-quaternary focus:ring-0 p-0 w-full max-w-[200px] truncate"
+                                    className={`bg-transparent border-none text-lg font-bold text-k-text-primary placeholder:text-k-text-quaternary focus:ring-0 p-0 w-full min-w-[180px] truncate transition-all ${nameShake ? 'animate-[shake_0.5s_ease-in-out]' : ''
+                                        } ${error && !name.trim() ? 'placeholder:text-red-400/60' : ''}`}
                                 />
                             </div>
                         </div>
@@ -847,7 +854,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                     )}
 
                     {/* Right Section: Actions */}
-                    <div className="flex items-center gap-4 ml-8">
+                    <div className="flex items-center gap-4 ml-auto flex-shrink-0">
                         {isStudentContext && !isEditing && (
                             <label className="flex items-center gap-2 cursor-pointer select-none group">
                                 <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${saveAsTemplate ? 'bg-violet-600 border-violet-600' : 'border-k-border-primary bg-glass-bg group-hover:border-k-text-tertiary'
@@ -897,6 +904,20 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                         </div>
                     </div>
                 </div>
+
+                {/* Error Banner */}
+                {error && (
+                    <div className="flex-shrink-0 mx-6 mt-3 bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl text-sm flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                        <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                        <span className="font-medium">{error}</span>
+                        <button
+                            onClick={() => setError(null)}
+                            className="ml-auto text-red-400/60 hover:text-red-400 transition-colors text-xs font-bold"
+                        >
+                            ✕
+                        </button>
+                    </div>
+                )}
 
                 <VolumeSummary workouts={workouts} />
 

@@ -1,5 +1,5 @@
 import { Stack, useRouter } from "expo-router";
-import { View, Text, TouchableOpacity } from "react-native";
+import { Text, TouchableOpacity } from "react-native";
 import { ChevronLeft } from "lucide-react-native";
 
 export default function ProfileLayout() {
@@ -12,11 +12,14 @@ export default function ProfileLayout() {
     return (
         <Stack
             screenOptions={{
-                headerStyle: { backgroundColor: "#0D0D17" },
-                headerTintColor: "#e2e8f0",
-                headerTitleStyle: { fontWeight: "600", fontSize: 16 },
+                headerStyle: { backgroundColor: "#F2F2F7" },
+                headerTintColor: "#0f172a",
+                headerTitleStyle: { fontWeight: "600", fontSize: 16, color: "#0f172a" },
                 headerShadowVisible: false,
-                contentStyle: { backgroundColor: "#0D0D17" },
+                contentStyle: { backgroundColor: "#F2F2F7" },
+                gestureEnabled: true,
+                gestureDirection: 'horizontal',
+                animation: 'slide_from_right',
                 headerLeft: () => (
                     <TouchableOpacity
                         onPress={goToProfile}

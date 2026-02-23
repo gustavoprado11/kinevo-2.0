@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { X } from 'lucide-react-native';
+import { BlurView } from 'expo-blur';
 
 interface RestTimerOverlayProps {
     endTime: number;
@@ -51,28 +52,31 @@ export function RestTimerOverlay({
             right: 0,
         }}>
             {/* Bottom sheet container */}
-            <View style={{
-                backgroundColor: '#0F172A',
-                borderTopLeftRadius: 28,
-                borderTopRightRadius: 28,
-                borderTopWidth: 1,
-                borderLeftWidth: 1,
-                borderRightWidth: 1,
-                borderColor: 'rgba(255, 255, 255, 0.08)',
-                paddingTop: 16,
-                paddingBottom: 44,
-                paddingHorizontal: 24,
-                shadowColor: '#7C3AED',
-                shadowOffset: { width: 0, height: -8 },
-                shadowOpacity: 0.08,
-                shadowRadius: 24,
-                elevation: 12,
-            }}>
+            <BlurView
+                intensity={100}
+                tint="light"
+                style={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+                    borderTopLeftRadius: 32,
+                    borderTopRightRadius: 32,
+                    borderTopWidth: 1,
+                    borderColor: 'rgba(255, 255, 255, 0.5)',
+                    paddingTop: 16,
+                    paddingBottom: 44,
+                    paddingHorizontal: 24,
+                    shadowColor: '#7C3AED',
+                    shadowOffset: { width: 0, height: -8 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 24,
+                    elevation: 12,
+                    overflow: 'hidden',
+                }}
+            >
                 {/* Handle bar */}
                 <View style={{
                     width: 36,
                     height: 4,
-                    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+                    backgroundColor: '#E2E8F0',
                     borderRadius: 2,
                     alignSelf: 'center',
                     marginBottom: 16,
@@ -86,7 +90,7 @@ export function RestTimerOverlay({
                     marginBottom: 20,
                 }}>
                     <Text style={{
-                        color: 'rgba(255, 255, 255, 0.45)',
+                        color: '#64748B',
                         fontSize: 11,
                         fontWeight: '600',
                         textTransform: 'uppercase',
@@ -99,23 +103,33 @@ export function RestTimerOverlay({
                         onPress={onSkip}
                         activeOpacity={0.6}
                         style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            gap: 6,
-                            paddingVertical: 8,
-                            paddingHorizontal: 14,
                             borderRadius: 12,
-                            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                            overflow: 'hidden',
                         }}
                     >
-                        <Text style={{
-                            color: 'rgba(255, 255, 255, 0.50)',
-                            fontSize: 14,
-                            fontWeight: '600',
-                        }}>
-                            Pular
-                        </Text>
-                        <X size={14} color="rgba(255, 255, 255, 0.40)" />
+                        <BlurView
+                            intensity={40}
+                            tint="light"
+                            style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                gap: 6,
+                                paddingVertical: 8,
+                                paddingHorizontal: 14,
+                                backgroundColor: 'rgba(148, 163, 184, 0.15)',
+                                borderWidth: 1,
+                                borderColor: 'rgba(255, 255, 255, 0.2)',
+                            }}
+                        >
+                            <Text style={{
+                                color: '#64748B',
+                                fontSize: 14,
+                                fontWeight: '600',
+                            }}>
+                                Pular
+                            </Text>
+                            <X size={14} color="#64748B" />
+                        </BlurView>
                     </TouchableOpacity>
                 </View>
 
@@ -132,27 +146,35 @@ export function RestTimerOverlay({
                         onPress={() => onAdjustTime(-10)}
                         activeOpacity={0.6}
                         style={{
-                            paddingVertical: 10,
-                            paddingHorizontal: 16,
                             borderRadius: 14,
+                            overflow: 'hidden',
                             borderWidth: 1,
-                            borderColor: 'rgba(255, 255, 255, 0.08)',
-                            backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                            borderColor: 'rgba(255, 255, 255, 0.5)',
                         }}
                     >
-                        <Text style={{
-                            color: 'rgba(255, 255, 255, 0.45)',
-                            fontSize: 14,
-                            fontWeight: '700',
-                            fontVariant: ['tabular-nums'],
-                        }}>
-                            -10s
-                        </Text>
+                        <BlurView
+                            intensity={40}
+                            tint="light"
+                            style={{
+                                paddingVertical: 10,
+                                paddingHorizontal: 16,
+                                backgroundColor: 'rgba(248, 250, 252, 0.4)',
+                            }}
+                        >
+                            <Text style={{
+                                color: '#64748B',
+                                fontSize: 14,
+                                fontWeight: '700',
+                                fontVariant: ['tabular-nums'],
+                            }}>
+                                -10s
+                            </Text>
+                        </BlurView>
                     </TouchableOpacity>
 
                     {/* Timer display */}
                     <Text style={{
-                        color: '#F1F5F9',
+                        color: '#0F172A',
                         fontSize: 64,
                         fontWeight: '200',
                         textAlign: 'center',
@@ -168,29 +190,37 @@ export function RestTimerOverlay({
                         onPress={() => onAdjustTime(30)}
                         activeOpacity={0.6}
                         style={{
-                            paddingVertical: 10,
-                            paddingHorizontal: 16,
                             borderRadius: 14,
+                            overflow: 'hidden',
                             borderWidth: 1,
-                            borderColor: 'rgba(255, 255, 255, 0.08)',
-                            backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                            borderColor: 'rgba(255, 255, 255, 0.5)',
                         }}
                     >
-                        <Text style={{
-                            color: 'rgba(255, 255, 255, 0.45)',
-                            fontSize: 14,
-                            fontWeight: '700',
-                            fontVariant: ['tabular-nums'],
-                        }}>
-                            +30s
-                        </Text>
+                        <BlurView
+                            intensity={40}
+                            tint="light"
+                            style={{
+                                paddingVertical: 10,
+                                paddingHorizontal: 16,
+                                backgroundColor: 'rgba(248, 250, 252, 0.4)',
+                            }}
+                        >
+                            <Text style={{
+                                color: '#64748B',
+                                fontSize: 14,
+                                fontWeight: '700',
+                                fontVariant: ['tabular-nums'],
+                            }}>
+                                +30s
+                            </Text>
+                        </BlurView>
                     </TouchableOpacity>
                 </View>
 
                 {/* Progress bar */}
                 <View style={{
                     height: 5,
-                    backgroundColor: '#1E293B',
+                    backgroundColor: '#F1F5F9',
                     borderRadius: 3,
                     overflow: 'hidden',
                     marginBottom: 12,
@@ -207,15 +237,14 @@ export function RestTimerOverlay({
                     }} />
                 </View>
 
-                {/* Exercise name */}
                 <Text style={{
-                    color: 'rgba(255, 255, 255, 0.35)',
+                    color: '#94A3B8',
                     fontSize: 12,
                     textAlign: 'center',
                 }}>
                     {exerciseName}
                 </Text>
-            </View>
+            </BlurView>
         </View>
     );
 }

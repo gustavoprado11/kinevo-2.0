@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, Check, Loader2, Calendar, ArrowRight, Edit3 } from 'lucide-react'
+import { ChevronLeft, Check, Loader2, Calendar, ArrowRight, Edit3, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { AppLayout } from '@/components/layout'
 import { createClient } from '@/lib/supabase/client'
@@ -220,6 +220,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
     )
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [nameShake, setNameShake] = useState(false)
 
     const activeWorkout = workouts.find(w => w.id === activeWorkoutId)
 
@@ -619,7 +620,9 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
 
     const saveProgram = async () => {
         if (!name.trim()) {
-            setError('Nome do programa é obrigatório')
+            setError('Por favor, preencha o nome do programa.')
+            setNameShake(true)
+            setTimeout(() => setNameShake(false), 600)
             return
         }
 
@@ -841,20 +844,20 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
             trainerTheme={trainer.theme}
         >
             <div className="flex flex-col h-[calc(100vh-64px)] overflow-hidden bg-surface-canvas">
-                {/* Scheduling Bar (Fixed Header) */}
-                <div className="flex-shrink-0 h-24 bg-surface-primary backdrop-blur-md border-b border-k-border-primary flex items-center justify-between px-8 z-30">
+                {/* Scheduling Bar (Responsive Header) */}
+                <div className="flex-shrink-0 min-h-[72px] bg-surface-primary backdrop-blur-md border-b border-k-border-primary flex flex-wrap items-center gap-4 px-6 py-3 z-30">
                     {/* Left Section: Identity */}
-                    <div className="flex items-center gap-6 flex-1 min-w-0">
+                    <div className="flex items-center gap-4 flex-1 min-w-0">
                         <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => router.push(`/students/${studentId}`)}
-                            className="w-10 h-10 rounded-full hover:bg-glass-bg-active text-k-text-tertiary hover:text-k-text-primary transition-all"
+                            className="w-10 h-10 rounded-full hover:bg-glass-bg-active text-k-text-tertiary hover:text-k-text-primary transition-all flex-shrink-0"
                         >
                             <ChevronLeft className="w-5 h-5" />
                         </Button>
 
-                        <div className="flex flex-col min-w-0">
+                        <div className="flex flex-col min-w-[200px] flex-1">
                             <div className="flex items-center gap-2 mb-1">
                                 <span className="text-[10px] font-bold uppercase tracking-widest text-k-text-quaternary">Editando Programa</span>
                                 <div className="px-2 py-0.5 bg-amber-500/10 border border-amber-500/20 rounded-full">
@@ -865,9 +868,13 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                                 <input
                                     type="text"
                                     value={name}
-                                    onChange={(e) => setName(e.target.value)}
+                                    onChange={(e) => {
+                                        setName(e.target.value)
+                                        if (error) setError(null)
+                                    }}
                                     placeholder="Ex: Força e Hipertrofia"
-                                    className="bg-transparent border-none text-lg font-bold text-k-text-primary placeholder:text-k-text-quaternary focus:ring-0 p-0 w-full max-w-[250px] truncate"
+                                    className={`bg-transparent border-none text-lg font-bold text-k-text-primary placeholder:text-k-text-quaternary focus:ring-0 p-0 w-full min-w-[180px] truncate transition-all ${nameShake ? 'animate-[shake_0.5s_ease-in-out]' : ''
+                                        } ${error && !name.trim() ? 'placeholder:text-red-400/60' : ''}`}
                                 />
                                 <button
                                     onClick={() => setIsDescriptionOpen(!isDescriptionOpen)}
@@ -970,7 +977,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                     </div>
 
                     {/* Right Section: Actions */}
-                    <div className="flex items-center gap-4 ml-8">
+                    <div className="flex items-center gap-4 ml-auto flex-shrink-0">
                         <div className="relative">
                             <Button
                                 onClick={saveProgram}
@@ -1013,11 +1020,15 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                 )}
 
                 {error && (
-                    <div className="mx-8 mt-4 bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-3 rounded-xl text-sm flex items-start gap-3 z-10">
-                        <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        {error}
+                    <div className="flex-shrink-0 mx-6 mt-3 bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl text-sm flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                        <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                        <span className="font-medium">{error}</span>
+                        <button
+                            onClick={() => setError(null)}
+                            className="ml-auto text-red-400/60 hover:text-red-400 transition-colors text-xs font-bold"
+                        >
+                            ✕
+                        </button>
                     </div>
                 )}
 

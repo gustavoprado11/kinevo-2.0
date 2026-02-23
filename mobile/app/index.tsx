@@ -1,30 +1,73 @@
-import { View, ActivityIndicator } from "react-native";
+import React, { useEffect } from "react";
+import { View, Text, Image, StyleSheet, StatusBar } from "react-native";
 import { Redirect } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Animated, {
+    useSharedValue,
+    useAnimatedStyle,
+    withTiming,
+    withDelay,
+    Easing,
+} from "react-native-reanimated";
 import { useAuth } from "../contexts/AuthContext";
 
 export default function IndexScreen() {
     const { session, isLoading, isEmailVerified } = useAuth();
+    const insets = useSafeAreaInsets();
 
-    // 1. Estado Loading — aguardar sessão do Supabase
+    // Entrance animations
+    const logoOpacity = useSharedValue(0);
+    const logoScale = useSharedValue(0.9);
+    const footerOpacity = useSharedValue(0);
+
+    useEffect(() => {
+        logoOpacity.value = withTiming(1, { duration: 600, easing: Easing.out(Easing.ease) });
+        logoScale.value = withTiming(1, { duration: 700, easing: Easing.out(Easing.cubic) });
+        footerOpacity.value = withDelay(400, withTiming(1, { duration: 500 }));
+    }, []);
+
+    const logoAnimStyle = useAnimatedStyle(() => ({
+        opacity: logoOpacity.value,
+        transform: [{ scale: logoScale.value }],
+    }));
+
+    const footerAnimStyle = useAnimatedStyle(() => ({
+        opacity: footerOpacity.value,
+    }));
+
+    // 1. Loading state — premium splash
     if (isLoading) {
         return (
-            <View className="flex-1 justify-center items-center bg-zinc-900">
-                <ActivityIndicator size="large" color="#3b82f6" />
+            <View style={styles.container}>
+                <StatusBar barStyle="light-content" backgroundColor="#111019" />
+                <Animated.Image
+                    source={require("../assets/splash-v2.png")}
+                    style={[StyleSheet.absoluteFill, logoAnimStyle]}
+                    resizeMode="cover"
+                />
             </View>
         );
     }
 
-    // 2. Estado Deslogado — se não há sessão, ir para login
+    // 2. Not logged in
     if (!session) {
         return <Redirect href="/(auth)/login" />;
     }
 
-    // 3. Estado Não Verificado — sessão existe mas e-mail NÃO verificado
+    // 3. Email not verified
     if (!isEmailVerified) {
         return <Redirect href="/(auth)/verify-email" />;
     }
 
-    // 4. Estado Sucesso — sessão existe e e-mail está verificado
+    // 4. Success — go to home
     return <Redirect href="/(tabs)/home" />;
 }
 
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: "#111019",
+        alignItems: "center",
+        justifyContent: "center",
+    },
+});

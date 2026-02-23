@@ -8,12 +8,12 @@ interface ScreenWrapperProps {
     bg?: string;
 }
 
-export function ScreenWrapper({ children, bg = "bg-kinevo-background" }: ScreenWrapperProps) {
+export function ScreenWrapper({ children, bg = "bg-[#F2F2F7]" }: ScreenWrapperProps) {
     const insets = useSafeAreaInsets();
 
     return (
         <View className={`flex-1 ${bg}`}>
-            <StatusBar style="light" backgroundColor="transparent" translucent />
+            <StatusBar style="dark" backgroundColor="transparent" translucent />
 
             {/* Custom Spacer for Status Bar on Android (if not handled by SafeAreaView) */}
             {Platform.OS === 'android' && (

@@ -12,7 +12,7 @@ export function WorkoutList({ workouts, onWorkoutPress }: WorkoutListProps) {
 
     return (
         <View>
-            <Text className="text-lg font-bold text-slate-100 mb-3 tracking-wide">
+            <Text className="text-xl font-bold text-slate-900 mb-4 tracking-wide">
                 Seus Treinos
             </Text>
             {workouts.map((workout, index) => (

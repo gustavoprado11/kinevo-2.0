@@ -9,9 +9,9 @@
     "newArchEnabled": true,
     "scheme": "kinevo",
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/splash-v2.png",
       "resizeMode": "contain",
-      "backgroundColor": "#18181b"
+      "backgroundColor": "#111019"
     },
     "ios": {
       "supportsTablet": true,
@@ -29,7 +29,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#18181b"
+        "backgroundColor": "#111019"
       },
       "package": "com.kinevo.mobile",
       "edgeToEdgeEnabled": true,

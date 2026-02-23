@@ -65,12 +65,12 @@ export function AvatarPicker({ avatarUrl, isUploading, onPick, size = 80 }: Avat
                             width: size,
                             height: size,
                             borderRadius,
-                            backgroundColor: "rgba(124,58,237,0.1)",
+                            backgroundColor: "#f1f5f9",
                             alignItems: "center",
                             justifyContent: "center",
                         }}
                     >
-                        <User size={size * 0.45} color="#7c3aed" strokeWidth={1.5} />
+                        <User size={size * 0.45} color="#94a3b8" strokeWidth={1.5} />
                     </View>
                 )}
 
@@ -98,16 +98,21 @@ export function AvatarPicker({ avatarUrl, isUploading, onPick, size = 80 }: Avat
                     <View
                         style={{
                             position: "absolute",
-                            bottom: 0,
-                            right: 0,
+                            bottom: -2,
+                            right: -2,
                             width: badgeSize,
                             height: badgeSize,
                             borderRadius: badgeSize / 2,
                             backgroundColor: "#7c3aed",
                             alignItems: "center",
                             justifyContent: "center",
-                            borderWidth: 2,
-                            borderColor: "#1A1A2E",
+                            borderWidth: 4,
+                            borderColor: "#ffffff",
+                            shadowColor: '#7c3aed',
+                            shadowOffset: { width: 0, height: 2 },
+                            shadowOpacity: 0.25,
+                            shadowRadius: 4,
+                            elevation: 4,
                         }}
                     >
                         <Camera size={14} color="#fff" strokeWidth={2} />

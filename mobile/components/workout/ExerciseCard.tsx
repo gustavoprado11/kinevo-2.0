@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, Alert, Platform } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { ArrowRightLeft, PlayCircle } from 'lucide-react-native';
 import { SetRow } from './SetRow';
 
@@ -48,31 +49,53 @@ export function ExerciseCard({
     };
 
     return (
-        <View className="bg-slate-900 rounded-xl p-4 mb-4 border border-slate-800">
+        <BlurView
+            intensity={60}
+            tint="light"
+            className="rounded-3xl p-4 mb-4 overflow-hidden"
+            style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.7)',
+                borderWidth: 1,
+                borderColor: 'rgba(255, 255, 255, 0.6)',
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.05,
+                shadowRadius: 8,
+                elevation: 3,
+            }}
+        >
             {/* Header */}
             <View className="flex-row justify-between items-start mb-4">
                 <View className="flex-1 mr-2">
-                    <Text className="text-lg font-bold text-white mb-1">{exerciseName}</Text>
-                    <Text className="text-slate-400 text-sm">
+                    <Text className="text-xl font-bold text-slate-900 mb-1">{exerciseName}</Text>
+                    <Text className="text-slate-500 text-sm">
                         {sets} séries • {reps} reps • {restSeconds}s descanso
                     </Text>
                     {previousLoad && (
-                        <Text className="text-slate-500 text-xs italic mt-1">
+                        <Text className="text-slate-400 text-sm italic mt-1">
                             Carga anterior: {previousLoad}
                         </Text>
                     )}
                     {isSwapped && (
-                        <Text className="text-violet-300 text-xs mt-1">
-                            Exercicio substituido nesta sessao
+                        <Text className="text-violet-600 text-xs mt-1">
+                            Exercicio substituído nesta sessão
                         </Text>
                     )}
                 </View>
                 <View className="flex-row items-center gap-3">
-                    <TouchableOpacity onPress={onSwapPress}>
-                        <ArrowRightLeft size={20} color="#a78bfa" />
+                    <TouchableOpacity
+                        onPress={onSwapPress}
+                        className="p-2.5 rounded-full"
+                        style={{ backgroundColor: 'rgba(124, 58, 237, 0.1)' }}
+                    >
+                        <ArrowRightLeft size={20} color="#7c3aed" />
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={handleOpenVideo}>
-                        <PlayCircle size={24} color="#8b5cf6" />
+                    <TouchableOpacity
+                        onPress={handleOpenVideo}
+                        className="p-2.5 rounded-full"
+                        style={{ backgroundColor: 'rgba(124, 58, 237, 0.1)' }}
+                    >
+                        <PlayCircle size={20} color="#7c3aed" />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -92,6 +115,6 @@ export function ExerciseCard({
                     />
                 ))}
             </View>
-        </View>
+        </BlurView>
     );
 }
