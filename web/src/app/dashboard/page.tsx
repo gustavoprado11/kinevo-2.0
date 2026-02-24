@@ -53,12 +53,15 @@ export default async function DashboardPage({
     // Get students for this trainer (RLS will filter automatically)
     const { data: students } = await supabase
         .from('students')
-        .select('id, name, email, phone, status, created_at')
+        .select('id, name, email, phone, status, created_at, is_trainer_profile')
         .order('created_at', { ascending: false })
+
+    // Find the trainer's self-student profile
+    const selfStudent = students?.find(s => (s as any).is_trainer_profile) ?? null
 
     // Get daily activity
     const { getDailyActivity } = await import('@/actions/dashboard/get-daily-activity')
     const { data: dailyActivity } = await getDailyActivity()
 
-    return <DashboardClient trainer={trainer} initialStudents={students || []} dailyActivity={dailyActivity || []} />
+    return <DashboardClient trainer={trainer} initialStudents={students || []} dailyActivity={dailyActivity || []} selfStudentId={selfStudent?.id ?? null} />
 }

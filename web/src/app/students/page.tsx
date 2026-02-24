@@ -8,7 +8,7 @@ export default async function StudentsPage() {
     const supabase = await createClient()
     const { data: students } = await supabase
         .from('students')
-        .select('id, name, email, phone, status, modality, avatar_url, created_at')
+        .select('id, name, email, phone, status, modality, avatar_url, created_at, is_trainer_profile')
         .order('created_at', { ascending: false })
 
     return <StudentsClient trainer={trainer} initialStudents={students || []} />

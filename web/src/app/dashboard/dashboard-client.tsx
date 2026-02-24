@@ -6,6 +6,9 @@ import { AppLayout } from '@/components/layout'
 import { StudentModal } from '@/components/student-modal'
 import { Users, UserCheck, Activity, Plus, ChevronRight } from 'lucide-react'
 import { DailyActivityFeed } from '@/components/dashboard/daily-activity-feed'
+import { TrainerProfileWelcomeModal } from '@/components/dashboard/trainer-profile-welcome-modal'
+import { TrainerProfileBanner } from '@/components/dashboard/trainer-profile-banner'
+import { AppDownloadCard } from '@/components/dashboard/app-download-card'
 
 interface Trainer {
     id: string
@@ -28,9 +31,10 @@ interface DashboardClientProps {
     trainer: Trainer
     initialStudents: Student[]
     dailyActivity: any[]
+    selfStudentId?: string | null
 }
 
-export function DashboardClient({ trainer, initialStudents, dailyActivity }: DashboardClientProps) {
+export function DashboardClient({ trainer, initialStudents, dailyActivity, selfStudentId }: DashboardClientProps) {
     const router = useRouter()
     const [students, setStudents] = useState<Student[]>(initialStudents)
     const [isModalOpen, setIsModalOpen] = useState(false)
@@ -66,6 +70,9 @@ export function DashboardClient({ trainer, initialStudents, dailyActivity }: Das
             trainerAvatarUrl={trainer.avatar_url}
             trainerTheme={trainer.theme}
         >
+
+            {/* Trainer Profile Banner */}
+            <TrainerProfileBanner selfStudentId={selfStudentId} />
 
             {/* Page Header */}
             <div className="mb-8 flex items-center justify-between">
@@ -117,8 +124,8 @@ export function DashboardClient({ trainer, initialStudents, dailyActivity }: Das
                         <ChevronRight size={20} className="text-muted-foreground transition-transform group-hover:translate-x-1" strokeWidth={1.5} />
                     </button>
 
-                    {/* Placeholder for future actions to keep the layout balanced if needed, 
-                        or we can leave it with just the main action for now as requested. */}
+                    {/* App Download Card */}
+                    <AppDownloadCard />
                 </div>
             </div>
 
@@ -129,6 +136,9 @@ export function DashboardClient({ trainer, initialStudents, dailyActivity }: Das
                 onStudentCreated={handleStudentCreated}
                 trainerId={trainer.id}
             />
+
+            {/* Welcome Modal (first time only) */}
+            <TrainerProfileWelcomeModal />
         </AppLayout>
     )
 }

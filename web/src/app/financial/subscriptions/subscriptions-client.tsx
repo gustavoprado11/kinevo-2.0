@@ -77,6 +77,24 @@ export function SubscriptionsClient({
     useEffect(() => {
         setContracts(initialContracts)
     }, [initialContracts])
+
+    // Auto-sync pending Stripe contracts on page load
+    useEffect(() => {
+        const hasPendingStripe = initialContracts.some(
+            c => c.billing_type === 'stripe_auto' && c.status === 'pending'
+        )
+        if (!hasPendingStripe || !hasStripeConnect) return
+
+        fetch('/api/stripe/connect/sync-contracts', { method: 'POST' })
+            .then(res => res.json())
+            .then(data => {
+                if (data.synced > 0) {
+                    router.refresh()
+                }
+            })
+            .catch(() => {})
+    }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
     const [modalOpen, setModalOpen] = useState(false)
     const [detailModalOpen, setDetailModalOpen] = useState(false)
     const [selectedContract, setSelectedContract] = useState<Contract | null>(null)

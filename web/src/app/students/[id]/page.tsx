@@ -12,7 +12,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
     // Get student data
     const { data: student } = await supabase
         .from('students')
-        .select('id, name, email, phone, status, modality, avatar_url, created_at')
+        .select('id, name, email, phone, status, modality, avatar_url, created_at, is_trainer_profile')
         .eq('id', id)
         .single()
 

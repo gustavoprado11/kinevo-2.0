@@ -25,6 +25,7 @@ interface Student {
     modality: 'online' | 'presential'
     avatar_url: string | null
     created_at: string
+    is_trainer_profile: boolean | null
 }
 
 interface AssignedProgram {
@@ -156,8 +157,8 @@ export function StudentDetailClient({
         setIsEditModalOpen(true)
     }
 
-    const handleStudentUpdated = (updatedStudent: Student) => {
-        setStudent(updatedStudent)
+    const handleStudentUpdated = (updatedStudent: Omit<Student, 'is_trainer_profile'> & { is_trainer_profile?: boolean | null }) => {
+        setStudent({ ...student, ...updatedStudent })
         setIsEditModalOpen(false)
         router.refresh()
     }

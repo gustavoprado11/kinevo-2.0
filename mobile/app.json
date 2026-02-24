@@ -22,6 +22,7 @@
         "com.apple.developer.healthkit": true
       },
       "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
         "NSSupportsLiveActivities": true,
         "NSHealthShareUsageDescription": "O Kinevo usa dados de saúde para mostrar frequência cardíaca durante o treino.",
         "NSHealthUpdateUsageDescription": "O Kinevo salva dados do treino no Apple Saúde."
@@ -64,8 +65,7 @@
               "appExtensions": [
                 {
                   "bundleIdentifier": "com.kinevo.mobile.WorkoutActivity",
-                  "targetName": "WorkoutActivity",
-                  "entitlements": {}
+                  "targetName": "WorkoutActivity"
                 }
               ]
             }

@@ -25,6 +25,7 @@ interface Student {
     modality: 'online' | 'presential'
     avatar_url: string | null
     created_at: string
+    is_trainer_profile: boolean | null
 }
 
 interface StudentsClientProps {
@@ -38,15 +39,21 @@ export function StudentsClient({ trainer, initialStudents }: StudentsClientProps
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [searchQuery, setSearchQuery] = useState('')
 
-    const handleStudentCreated = (newStudent: Student) => {
-        setStudents([newStudent, ...students])
+    const handleStudentCreated = (newStudent: Omit<Student, 'is_trainer_profile'> & { is_trainer_profile?: boolean | null }) => {
+        setStudents([{ is_trainer_profile: null, ...newStudent }, ...students])
     }
 
-    const filteredStudents = students.filter(
-        (student) =>
-            student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            student.email.toLowerCase().includes(searchQuery.toLowerCase())
-    )
+    const filteredStudents = students
+        .filter(
+            (student) =>
+                student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                student.email.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+        .sort((a, b) => {
+            if (a.is_trainer_profile) return -1
+            if (b.is_trainer_profile) return 1
+            return 0
+        })
 
     const getStatusBadge = (status: Student['status']) => {
         const styles = {
@@ -175,6 +182,11 @@ export function StudentsClient({ trainer, initialStudents }: StudentsClientProps
                                                     )}
                                                 </div>
                                                 <span className="text-base font-medium text-k-text-primary">{student.name}</span>
+                                                {student.is_trainer_profile && (
+                                                    <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full bg-violet-500/10 text-violet-300 border border-violet-500/20">
+                                                        Meu Perfil
+                                                    </span>
+                                                )}
                                             </div>
                                         </td>
                                         <td className="px-6 py-5 whitespace-nowrap">
