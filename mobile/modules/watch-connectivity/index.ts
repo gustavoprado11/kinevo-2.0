@@ -1,4 +1,5 @@
 export {
+  syncWorkoutToWatch,
   sendWorkoutState,
   sendMessage,
   addWatchMessageListener,
@@ -9,5 +10,6 @@ export type {
   WatchWorkoutPayload,
   WatchWorkoutExercise,
   WatchSetCompletionEvent,
+  WatchStartWorkoutEvent,
   WatchMessageEvent,
 } from './src/WatchConnectivityModule.types';

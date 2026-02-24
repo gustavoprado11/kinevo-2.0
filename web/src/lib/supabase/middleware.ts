@@ -43,6 +43,7 @@ export async function updateSession(request: NextRequest) {
         !request.nextUrl.pathname.startsWith('/terms') &&
         !request.nextUrl.pathname.startsWith('/auth') &&
         !request.nextUrl.pathname.startsWith('/api/webhooks') &&
+        !request.nextUrl.pathname.startsWith('/api/stripe/cancel-subscription') &&
         !request.nextUrl.pathname.startsWith('/subscription') &&
         request.nextUrl.pathname !== '/'
     ) {

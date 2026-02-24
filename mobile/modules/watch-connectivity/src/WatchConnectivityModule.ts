@@ -1,7 +1,6 @@
 import { NativeModulesProxy, EventEmitter, Subscription } from 'expo-modules-core';
 import type {
   WatchWorkoutPayload,
-  WatchSetCompletionEvent,
   WatchMessageEvent,
 } from './WatchConnectivityModule.types';
 
@@ -10,19 +9,27 @@ const WatchConnectivityModule = NativeModulesProxy.WatchConnectivityModule;
 const emitter = new EventEmitter(WatchConnectivityModule);
 
 /**
- * Send workout state to Apple Watch
- * Uses updateApplicationContext (overwrites previous state)
+ * Sync the latest workout snapshot to Apple Watch.
+ * Uses updateApplicationContext (last-write-wins state channel).
  */
-export function sendWorkoutState(payload: WatchWorkoutPayload): void {
+export function syncWorkoutToWatch(workout: WatchWorkoutPayload | null): void {
   console.log('[WatchConnectivityModule.ts] Module exists:', !!WatchConnectivityModule);
-  console.log('[WatchConnectivityModule.ts] sendWorkoutState function exists:', !!WatchConnectivityModule?.sendWorkoutState);
+  console.log('[WatchConnectivityModule.ts] syncWorkoutToWatch function exists:', !!WatchConnectivityModule?.syncWorkoutToWatch);
 
-  if (!WatchConnectivityModule || !WatchConnectivityModule.sendWorkoutState) {
+  if (!WatchConnectivityModule || !WatchConnectivityModule.syncWorkoutToWatch) {
     console.error('[WatchConnectivityModule.ts] Native module or function not found!');
     return;
   }
 
-  return WatchConnectivityModule.sendWorkoutState(payload);
+  const workoutJSON = JSON.stringify(workout);
+  return WatchConnectivityModule.syncWorkoutToWatch(workoutJSON);
+}
+
+/**
+ * Backward-compatible alias used by current RN screens/hooks.
+ */
+export function sendWorkoutState(payload: WatchWorkoutPayload): void {
+  return syncWorkoutToWatch(payload);
 }
 
 /**

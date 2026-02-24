@@ -2,7 +2,7 @@
   "expo": {
     "name": "Kinevo",
     "slug": "kinevo",
-    "version": "1.1.2",
+    "version": "1.1.4",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.kinevo.mobile",
-      "buildNumber": "5",
+      "buildNumber": "7",
       "appleTeamId": "3D5M22J52M",
       "entitlements": {
         "com.apple.developer.healthkit": true

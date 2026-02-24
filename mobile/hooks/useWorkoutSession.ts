@@ -317,6 +317,42 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
         });
     };
 
+    const applyWatchSetCompletion = (
+        exerciseIndex: number,
+        setIndex: number,
+        reps?: number,
+        weight?: number
+    ) => {
+        setExercises(prev => {
+            if (!prev[exerciseIndex] || !prev[exerciseIndex].setsData[setIndex]) return prev;
+
+            const newExercises = [...prev];
+            const exercise = { ...newExercises[exerciseIndex] };
+            const newSets = [...exercise.setsData];
+            const currentSet = { ...newSets[setIndex] };
+            const wasCompleted = currentSet.completed;
+
+            if (reps !== undefined && Number.isFinite(reps)) {
+                currentSet.reps = String(reps);
+            }
+
+            if (weight !== undefined && Number.isFinite(weight)) {
+                currentSet.weight = String(weight);
+            }
+
+            currentSet.completed = true;
+            newSets[setIndex] = currentSet;
+            exercise.setsData = newSets;
+            newExercises[exerciseIndex] = exercise;
+
+            if (!wasCompleted && options?.onSetComplete) {
+                options.onSetComplete(exerciseIndex, setIndex);
+            }
+
+            return newExercises;
+        });
+    };
+
     const loadSubstituteOptions = async (exerciseIndex: number): Promise<ExerciseSubstituteOption[]> => {
         const current = exercises[exerciseIndex];
         if (!current?.id) return [];
@@ -556,6 +592,7 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
         duration: formatTime(elapsed),
         handleSetChange,
         handleToggleSetComplete,
+        applyWatchSetCompletion,
         loadSubstituteOptions,
         searchSubstituteOptions,
         swapExercise,

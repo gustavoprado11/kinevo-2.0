@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform, Alert, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform, Alert, StyleSheet, AppState } from 'react-native';
 import { useLocalSearchParams, Stack, useRouter, useNavigation } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -52,6 +52,7 @@ export default function WorkoutPlayerScreen() {
         duration,
         handleSetChange,
         handleToggleSetComplete,
+        applyWatchSetCompletion,
         loadSubstituteOptions,
         searchSubstituteOptions,
         swapExercise,
@@ -79,17 +80,35 @@ export default function WorkoutPlayerScreen() {
 
     // Apple Watch connectivity
     const { sendWorkoutToWatch } = useWatchConnectivity({
-        onWatchSetComplete: (exerciseIndex, setIndex) => {
-            console.log(`[WorkoutScreen] Watch reported set complete: exercise ${exerciseIndex}, set ${setIndex}`);
-            handleToggleSetComplete(exerciseIndex, setIndex);
+        onWatchSetComplete: ({ workoutId, exerciseIndex, setIndex, reps, weight }) => {
+            if (workoutId && workoutId !== (id as string)) {
+                return;
+            }
+
+            console.log(
+                `[WorkoutScreen] Watch reported set complete: exercise ${exerciseIndex}, set ${setIndex}, reps ${reps ?? '-'}, weight ${weight ?? '-'}`
+            );
+            applyWatchSetCompletion(exerciseIndex, setIndex, reps, weight);
         },
+        onWatchFinishWorkout: ({ workoutId, rpe }) => {
+            if (workoutId && workoutId !== (id as string)) {
+                return;
+            }
+
+            console.log(`[WorkoutScreen] Watch reported workout finished. Syncing success state with RPE: ${rpe}.`);
+            handleConfirmFinish(rpe, "");
+        }
     });
 
     // Send workout data to Apple Watch when loaded
+    const lastWatchPayloadRef = useRef<any>(null);
+    const workoutStartedAtRef = useRef<string>(new Date().toISOString());
+
     useEffect(() => {
         if (!isLoading && exercises.length > 0 && workoutName && profile?.name) {
             const watchPayload = {
                 workoutId: id as string,
+                workoutName,
                 studentName: profile.name,
                 exercises: exercises.map((ex, idx) => ({
                     id: ex.id || `ex-${idx}`,
@@ -103,12 +122,27 @@ export default function WorkoutPlayerScreen() {
                 currentExerciseIndex: 0,
                 currentSetIndex: 0,
                 isActive: true,
+                startedAt: workoutStartedAtRef.current,
+                updatedAt: new Date().toISOString(),
             };
 
             console.log('[WorkoutScreen] Sending workout to watch:', watchPayload);
+            lastWatchPayloadRef.current = watchPayload;
             sendWorkoutToWatch(watchPayload);
         }
     }, [isLoading, exercises, workoutName, profile, id, sendWorkoutToWatch]);
+
+    // Re-sync watch when app returns to foreground.
+    useEffect(() => {
+        const subscription = AppState.addEventListener('change', (nextState) => {
+            if (nextState === 'active' && lastWatchPayloadRef.current) {
+                console.log('[WorkoutScreen] App became active, re-syncing workout to watch');
+                sendWorkoutToWatch(lastWatchPayloadRef.current);
+            }
+        });
+
+        return () => subscription.remove();
+    }, [sendWorkoutToWatch]);
 
     const navigation = useNavigation();
     const isFinishingRef = useRef(false);
@@ -438,18 +472,18 @@ export default function WorkoutPlayerScreen() {
                     )}
 
                     <TouchableOpacity
-                        className="rounded-xl overflow-hidden mt-6 mb-10 shadow-lg shadow-violet-500/40"
+                        className="mx-5 mb-8 mt-6 rounded-2xl overflow-hidden shadow-lg shadow-violet-500/40"
                         onPress={handleFinish}
                         disabled={isSubmitting}
                         activeOpacity={0.8}
                     >
                         <BlurView intensity={80} tint="light" className="bg-violet-600/85">
-                            <View className="border border-white/20 rounded-xl overflow-hidden">
+                            <View className="border border-white/20 rounded-2xl overflow-hidden">
                                 <LinearGradient
                                     colors={['rgba(139, 92, 246, 0.5)', 'rgba(109, 40, 217, 0.5)']}
-                                    className="p-4 items-center"
+                                    className="h-14 flex-row items-center justify-center space-x-2"
                                 >
-                                    <Text className="text-white font-bold text-lg">
+                                    <Text className="text-white font-bold text-lg text-center">
                                         Finalizar Treino
                                     </Text>
                                 </LinearGradient>

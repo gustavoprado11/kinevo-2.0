@@ -92,20 +92,20 @@ export function WorkoutSuccessModal({ visible, onClose, data }: WorkoutSuccessMo
 
 
                     {/* Action Buttons */}
-                    <View className="w-full space-y-4 px-4">
+                    <View className="w-full px-4 mb-4">
                         <TouchableOpacity
                             onPress={handleOpenShare}
                             activeOpacity={0.8}
-                            className="w-full rounded-xl overflow-hidden shadow-lg shadow-violet-500/40"
+                            className="w-full rounded-2xl overflow-hidden shadow-lg shadow-violet-500/40"
                         >
                             <BlurView intensity={80} tint="light" className="bg-violet-600/85">
-                                <View className="border border-white/20 rounded-xl overflow-hidden">
+                                <View className="border border-white/20 rounded-2xl overflow-hidden">
                                     <LinearGradient
                                         colors={['rgba(139, 92, 246, 0.5)', 'rgba(109, 40, 217, 0.5)']}
-                                        className="py-4 flex-row items-center justify-center"
+                                        className="h-14 flex-row items-center justify-center gap-2"
                                     >
                                         <Share2 size={20} color="white" />
-                                        <Text className="text-white font-extrabold text-base ml-2">Compartilhar Resultado</Text>
+                                        <Text className="text-white font-bold text-lg">Compartilhar Resultado</Text>
                                     </LinearGradient>
                                 </View>
                             </BlurView>
@@ -114,13 +114,9 @@ export function WorkoutSuccessModal({ visible, onClose, data }: WorkoutSuccessMo
                         <TouchableOpacity
                             onPress={onClose}
                             activeOpacity={0.7}
-                            className="w-full rounded-xl overflow-hidden mt-2"
+                            className="w-full h-14 bg-slate-800 rounded-2xl items-center justify-center mt-3 border border-white/10"
                         >
-                            <BlurView intensity={30} tint="light" className="bg-white/10">
-                                <View className="py-4 items-center border border-white/10 rounded-xl">
-                                    <Text className="text-slate-300 font-bold text-base">Voltar ao Início</Text>
-                                </View>
-                            </BlurView>
+                            <Text className="text-white font-bold text-lg">Voltar ao Início</Text>
                         </TouchableOpacity>
                     </View>
 

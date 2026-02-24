@@ -1,6 +1,8 @@
-import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView } from "react-native";
+import { useState } from "react";
+import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, Alert } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { useStudentSubscription } from "../../hooks/useStudentSubscription";
+import { supabase } from "../../lib/supabase";
 import {
     CreditCard,
     Calendar,
@@ -10,7 +12,10 @@ import {
     Clock,
     AlertTriangle,
     FileText,
+    XCircle,
 } from "lucide-react-native";
+
+const WEB_URL = process.env.EXPO_PUBLIC_WEB_URL || "https://app.kinevo.com.br";
 
 const intervalLabels: Record<string, string> = {
     month: "/mês",
@@ -48,7 +53,74 @@ function formatDate(dateStr: string): string {
 
 export default function SubscriptionScreen() {
     const router = useRouter();
-    const { contract, isLoading } = useStudentSubscription();
+    const { contract, isLoading, refresh } = useStudentSubscription();
+    const [isCanceling, setIsCanceling] = useState(false);
+
+    const canCancel =
+        contract &&
+        contract.billing_type === "stripe_auto" &&
+        !contract.cancel_at_period_end &&
+        contract.status === "active";
+
+    async function handleCancelSubscription() {
+        if (!contract) return;
+
+        const periodEndLabel = contract.current_period_end
+            ? formatDate(contract.current_period_end)
+            : "o final do período atual";
+
+        Alert.alert(
+            "Cancelar Assinatura?",
+            `A sua assinatura não será renovada, mas você continuará com acesso normal ao aplicativo até o dia ${periodEndLabel}.`,
+            [
+                { text: "Voltar", style: "cancel" },
+                {
+                    text: "Sim, Cancelar",
+                    style: "destructive",
+                    onPress: () => performCancellation(),
+                },
+            ]
+        );
+    }
+
+    async function performCancellation() {
+        if (!contract) return;
+        setIsCanceling(true);
+
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session?.access_token) {
+                Alert.alert("Erro", "Sessão expirada. Faça login novamente.");
+                return;
+            }
+
+            const res = await fetch(`${WEB_URL}/api/stripe/cancel-subscription`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${session.access_token}`,
+                },
+                body: JSON.stringify({ contract_id: contract.id }),
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                Alert.alert("Erro", data.error || "Não foi possível cancelar a assinatura.");
+                return;
+            }
+
+            Alert.alert(
+                "Cancelamento Programado",
+                "Sua assinatura não será renovada. Você mantém o acesso até o final do período pago."
+            );
+            refresh();
+        } catch {
+            Alert.alert("Erro de Conexão", "Verifique sua conexão e tente novamente.");
+        } finally {
+            setIsCanceling(false);
+        }
+    }
 
     if (isLoading) {
         return (
@@ -242,7 +314,7 @@ export default function SubscriptionScreen() {
                     />
 
                     {/* Next Billing */}
-                    {contract.current_period_end && contract.status === "active" && (
+                    {contract.current_period_end && contract.status === "active" && !contract.cancel_at_period_end && (
                         <>
                             <Divider />
                             <DetailRow
@@ -286,7 +358,9 @@ export default function SubscriptionScreen() {
                                         lineHeight: 18,
                                     }}
                                 >
-                                    Assinatura será cancelada ao final do período atual.
+                                    {contract.current_period_end
+                                        ? `Cancelamento programado para ${formatDate(contract.current_period_end)}. Acesso mantido até esta data.`
+                                        : "Assinatura será cancelada ao final do período atual."}
                                 </Text>
                             </View>
                         </>
@@ -304,6 +378,7 @@ export default function SubscriptionScreen() {
                         alignItems: "center",
                         paddingVertical: 16,
                         paddingHorizontal: 20,
+                        marginBottom: canCancel ? 20 : 0,
                         shadowColor: "#000",
                         shadowOffset: { width: 0, height: 1 },
                         shadowOpacity: 0.05,
@@ -336,6 +411,44 @@ export default function SubscriptionScreen() {
                     </Text>
                     <ChevronRight size={16} color="#94a3b8" strokeWidth={1.5} />
                 </TouchableOpacity>
+
+                {/* Cancel Subscription Button */}
+                {canCancel && (
+                    <TouchableOpacity
+                        onPress={handleCancelSubscription}
+                        disabled={isCanceling}
+                        activeOpacity={0.6}
+                        style={{
+                            borderRadius: 16,
+                            flexDirection: "row",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            paddingVertical: 16,
+                            paddingHorizontal: 20,
+                            gap: 8,
+                            borderWidth: 1,
+                            borderColor: "rgba(239,68,68,0.3)",
+                            backgroundColor: "rgba(239,68,68,0.04)",
+                        }}
+                    >
+                        {isCanceling ? (
+                            <ActivityIndicator size="small" color="#ef4444" />
+                        ) : (
+                            <>
+                                <XCircle size={18} color="#ef4444" strokeWidth={1.5} />
+                                <Text
+                                    style={{
+                                        fontSize: 14,
+                                        fontWeight: "600",
+                                        color: "#ef4444",
+                                    }}
+                                >
+                                    Cancelar Assinatura
+                                </Text>
+                            </>
+                        )}
+                    </TouchableOpacity>
+                )}
             </ScrollView>
         </>
     );

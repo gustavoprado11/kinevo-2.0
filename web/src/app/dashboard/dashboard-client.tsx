@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AppLayout } from '@/components/layout'
 import { StudentModal } from '@/components/student-modal'
-import { Users, UserCheck, Activity, Plus, ChevronRight } from 'lucide-react'
+import { Users, UserCheck, Activity, Plus, ChevronRight, Monitor } from 'lucide-react'
 import { DailyActivityFeed } from '@/components/dashboard/daily-activity-feed'
 import { TrainerProfileWelcomeModal } from '@/components/dashboard/trainer-profile-welcome-modal'
 import { TrainerProfileBanner } from '@/components/dashboard/trainer-profile-banner'
@@ -120,6 +120,21 @@ export function DashboardClient({ trainer, initialStudents, dailyActivity, selfS
                         <div className="flex-1 text-left">
                             <h3 className="font-semibold text-foreground">Novo Aluno</h3>
                             <p className="text-sm text-muted-foreground">Cadastrar um novo aluno</p>
+                        </div>
+                        <ChevronRight size={20} className="text-muted-foreground transition-transform group-hover:translate-x-1" strokeWidth={1.5} />
+                    </button>
+
+                    {/* Training Room Card */}
+                    <button
+                        onClick={() => router.push('/training-room')}
+                        className="group w-full flex items-center gap-4 rounded-2xl border border-transparent bg-glass-bg p-4 backdrop-blur-md transition-all duration-200 hover:bg-glass-bg-active"
+                    >
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-600 text-white transition-transform group-hover:scale-110">
+                            <Monitor size={24} strokeWidth={2} />
+                        </div>
+                        <div className="flex-1 text-left">
+                            <h3 className="font-semibold text-foreground">Sala de Treino</h3>
+                            <p className="text-sm text-muted-foreground">Treino presencial ao vivo</p>
                         </div>
                         <ChevronRight size={20} className="text-muted-foreground transition-transform group-hover:translate-x-1" strokeWidth={1.5} />
                     </button>
