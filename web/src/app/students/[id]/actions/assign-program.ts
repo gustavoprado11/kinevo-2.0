@@ -9,9 +9,11 @@ interface AssignProgramParams {
     startDate: string
     isScheduled: boolean
     workoutSchedule?: Record<number, number[]> // order_index -> days (0-6)
+    /** When present, marks this program as AI-generated and links to the generation audit trail */
+    prescriptionGenerationId?: string
 }
 
-export async function assignProgram({ studentId, templateId, startDate, isScheduled, workoutSchedule }: AssignProgramParams) {
+export async function assignProgram({ studentId, templateId, startDate, isScheduled, workoutSchedule, prescriptionGenerationId }: AssignProgramParams) {
     const supabase = await createClient()
 
     try {
@@ -70,20 +72,28 @@ export async function assignProgram({ studentId, templateId, startDate, isSchedu
         }
 
         // 5. Create Assigned Program
+        const insertPayload: Record<string, any> = {
+            student_id: studentId,
+            trainer_id: trainer.id,
+            source_template_id: templateId,
+            name: template.name,
+            description: template.description,
+            duration_weeks: template.duration_weeks,
+            status: status,
+            started_at: startedAt,
+            scheduled_start_date: scheduledStartDate,
+            current_week: 1,
+        }
+
+        // AI prescription metadata (columns from migration 036)
+        if (prescriptionGenerationId) {
+            insertPayload.ai_generated = true
+            insertPayload.prescription_generation_id = prescriptionGenerationId
+        }
+
         const { data: assignedProgram, error: programError } = await supabase
             .from('assigned_programs')
-            .insert({
-                student_id: studentId,
-                trainer_id: trainer.id,
-                source_template_id: templateId,
-                name: template.name,
-                description: template.description,
-                duration_weeks: template.duration_weeks,
-                status: status,
-                started_at: startedAt,
-                scheduled_start_date: scheduledStartDate,
-                current_week: 1
-            })
+            .insert(insertPayload)
             .select('id')
             .single()
 
@@ -229,6 +239,20 @@ export async function assignProgram({ studentId, templateId, startDate, isSchedu
                     }
                 }
             }
+        }
+
+        // 7. Update prescription generation if this was an AI-generated program
+        if (prescriptionGenerationId) {
+            // @ts-ignore — prescription_generations table from migration 035
+            await supabase
+                .from('prescription_generations')
+                .update({
+                    status: 'approved',
+                    approved_at: new Date().toISOString(),
+                    assigned_program_id: assignedProgram.id,
+                    updated_at: new Date().toISOString(),
+                })
+                .eq('id', prescriptionGenerationId)
         }
 
         revalidatePath(`/students/${studentId}`)

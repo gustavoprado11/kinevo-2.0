@@ -9,22 +9,26 @@ interface VolumeSummaryProps {
 }
 
 export function VolumeSummary({ workouts }: VolumeSummaryProps) {
-    // Calculate volume per muscle group across all workouts
+    // Calculate volume per muscle group across all workouts.
+    // Each exercise counts ONCE toward its PRIMARY muscle group (first in the list).
+    // This matches the Kinevo methodology: volume = sets targeting a specific group,
+    // not total stimulus including secondary activation from compounds.
     const volumeByGroup = workouts.reduce((acc, workout) => {
         // Frequency is the number of days this workout is scheduled
         // Fallback to 1 so the user sees volume while building even before scheduling
         const frequency = Math.max(1, workout.frequency?.length || 0)
 
         workout.items.forEach(item => {
-            // Helper to process an item and its sets
+            // Attributes sets to PRIMARY group only (first in the muscle_groups array)
             const processSets = (sets: number | null, muscleGroups: any[] | undefined) => {
-                if (!sets || !muscleGroups) return
+                if (!sets || !muscleGroups || muscleGroups.length === 0) return
                 const weeklySets = sets * frequency
 
-                muscleGroups.forEach(group => {
-                    const groupName = typeof group === 'object' ? group.name : group
+                const primaryGroup = muscleGroups[0]
+                const groupName = typeof primaryGroup === 'object' ? primaryGroup.name : primaryGroup
+                if (groupName) {
                     acc[groupName] = (acc[groupName] || 0) + weeklySets
-                })
+                }
             }
 
             if (item.item_type === 'exercise') {

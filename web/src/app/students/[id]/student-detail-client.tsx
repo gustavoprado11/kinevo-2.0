@@ -68,6 +68,7 @@ interface Trainer {
     email: string
     avatar_url?: string | null
     theme?: 'light' | 'dark' | 'system'
+    ai_prescriptions_enabled?: boolean
 }
 
 interface CalendarSession {
@@ -152,6 +153,10 @@ export function StudentDetailClient({
         router.push(`/students/${student.id}/program/new`)
     }
 
+    const handlePrescribeAI = () => {
+        router.push(`/students/${student.id}/prescribe`)
+    }
+
     // --- Student Actions ---
     const handleEditStudent = () => {
         setIsEditModalOpen(true)
@@ -233,6 +238,8 @@ export function StudentDetailClient({
                             onEditProgram={handleEditProgram}
                             onCompleteProgram={handleCompleteProgram}
                             onCreateProgram={handleCreateProgram}
+                            onPrescribeAI={trainer.ai_prescriptions_enabled ? handlePrescribeAI : undefined}
+                            hasActiveProgram={!!activeProgram}
                         />
                     </div>
 
@@ -269,6 +276,15 @@ export function StudentDetailClient({
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                                             </svg>
                                         </button>
+                                        {trainer.ai_prescriptions_enabled && (
+                                            <button
+                                                onClick={handlePrescribeAI}
+                                                className="p-2 text-indigo-300 hover:text-white hover:bg-gradient-to-r hover:from-violet-600 hover:to-indigo-500 rounded-xl transition-all border border-transparent hover:border-indigo-500/20"
+                                                title="Prescrever com IA"
+                                            >
+                                                <span className="text-base">&#10024;</span>
+                                            </button>
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -301,6 +317,15 @@ export function StudentDetailClient({
                                             </svg>
                                             Atribuir
                                         </button>
+                                        {trainer.ai_prescriptions_enabled && (
+                                            <button
+                                                onClick={handlePrescribeAI}
+                                                className="px-6 py-3 bg-gradient-to-r from-violet-600 to-indigo-500 hover:from-violet-500 hover:to-indigo-400 text-white text-[11px] font-black uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-indigo-600/20 flex items-center gap-2"
+                                            >
+                                                <span className="text-sm">&#10024;</span>
+                                                Prescrever com IA
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             ) : (

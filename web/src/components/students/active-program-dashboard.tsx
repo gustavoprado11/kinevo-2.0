@@ -37,6 +37,8 @@ interface ActiveProgramDashboardProps {
     onEditProgram?: () => void
     onCompleteProgram?: () => void
     onCreateProgram?: () => void
+    onPrescribeAI?: () => void
+    hasActiveProgram?: boolean
 }
 
 export function ActiveProgramDashboard({
@@ -47,7 +49,9 @@ export function ActiveProgramDashboard({
     onAssignProgram,
     onEditProgram,
     onCompleteProgram,
-    onCreateProgram
+    onCreateProgram,
+    onPrescribeAI,
+    hasActiveProgram = false
 }: ActiveProgramDashboardProps) {
     // Sheet State
     const [isSheetOpen, setIsSheetOpen] = useState(false)
@@ -140,6 +144,15 @@ export function ActiveProgramDashboard({
                             </svg>
                             Atribuir
                         </button>
+                        {onPrescribeAI && (
+                            <button
+                                onClick={onPrescribeAI}
+                                className="px-6 py-3 bg-gradient-to-r from-violet-600 to-indigo-500 hover:from-violet-500 hover:to-indigo-400 text-white text-[11px] font-black uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-indigo-600/20 flex items-center gap-2"
+                            >
+                                <span className="text-sm">&#10024;</span>
+                                Prescrever com IA
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>
@@ -198,6 +211,15 @@ export function ActiveProgramDashboard({
                         >
                             Trocar
                         </button>
+                        {onPrescribeAI && (
+                            <button
+                                onClick={onPrescribeAI}
+                                className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-indigo-300 hover:text-white hover:bg-gradient-to-r hover:from-violet-600 hover:to-indigo-500 rounded-xl transition-all border border-indigo-500/20 flex items-center gap-1.5"
+                            >
+                                <span className="text-xs">&#10024;</span>
+                                Novo com IA
+                            </button>
+                        )}
                     </div>
                 </div>
 

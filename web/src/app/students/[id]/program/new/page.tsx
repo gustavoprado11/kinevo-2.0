@@ -2,7 +2,10 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { getTrainerWithSubscription } from '@/lib/auth/get-trainer'
 import { ProgramBuilderClient } from '@/components/programs/program-builder-client'
+import { mapAiOutputToBuilderData } from '@/lib/prescription/builder-mapper'
+import type { BuilderProgramData } from '@/lib/prescription/builder-mapper'
 import type { Exercise } from '@/types/exercise'
+import type { PrescriptionOutputSnapshot } from '@kinevo/shared/types/prescription'
 
 interface PageProps {
     params: Promise<{
@@ -15,6 +18,9 @@ export default async function NewStudentProgramPage({ params, searchParams }: Pa
     const { id: studentId } = await params
     const resolvedSearchParams = await searchParams
     const isScheduled = resolvedSearchParams.scheduled === 'true'
+    const generationId = typeof resolvedSearchParams.generationId === 'string'
+        ? resolvedSearchParams.generationId
+        : undefined
 
     const { trainer } = await getTrainerWithSubscription()
     const supabase = await createClient()
@@ -34,11 +40,11 @@ export default async function NewStudentProgramPage({ params, searchParams }: Pa
     const { data: exercises } = await supabase
         .from('exercises')
         .select(`
-            id, 
-            name, 
-            equipment, 
-            owner_id, 
-            original_system_id, 
+            id,
+            name,
+            equipment,
+            owner_id,
+            original_system_id,
             video_url,
             exercise_muscle_groups (
                 muscle_groups (
@@ -67,16 +73,34 @@ export default async function NewStudentProgramPage({ params, searchParams }: Pa
         updated_at: new Date().toISOString()
     }))
 
+    // ── AI Prescription: load generation data if generationId is present ──
+    let programData: BuilderProgramData | null = null
+
+    if (generationId) {
+        // @ts-ignore — prescription_generations table from migration 035
+        const { data: generation } = await supabase
+            .from('prescription_generations')
+            .select('id, output_snapshot, status, student_id')
+            .eq('id', generationId)
+            .single()
+
+        if (generation && (generation as any).output_snapshot && (generation as any).student_id === studentId) {
+            const outputSnapshot = (generation as any).output_snapshot as PrescriptionOutputSnapshot
+            programData = mapAiOutputToBuilderData(outputSnapshot)
+        }
+    }
+
     return (
         <ProgramBuilderClient
             trainer={trainer}
-            program={null}
+            program={programData}
             exercises={mappedExercises}
             studentContext={{
                 id: student.id,
                 name: student.name
             }}
             initialAssignmentType={isScheduled ? 'scheduled' : 'immediate'}
+            prescriptionGenerationId={generationId}
         />
     )
 }
