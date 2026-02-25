@@ -86,6 +86,11 @@ public class WatchConnectivityModule: Module {
   private let isoFormatter = ISO8601DateFormatter()
   private var pendingApplicationContext: [String: Any]?
 
+  /// Events that arrived via WatchConnectivity before JS started listening.
+  /// Flushed when OnStartObserving fires (i.e., first JS listener is attached).
+  private var bufferedWatchEvents: [[String: Any]] = []
+  private var hasJSListeners = false
+
   public func definition() -> ModuleDefinition {
     Name("WatchConnectivityModule")
 
@@ -94,6 +99,26 @@ public class WatchConnectivityModule: Module {
     OnCreate {
       self.sessionDelegate.module = self
       self.setupWCSession()
+    }
+
+    OnStartObserving {
+      self.hasJSListeners = true
+
+      // Flush any watch events that arrived before JS mounted its listener.
+      // This handles the cold-start scenario: app killed → Watch sends
+      // transferUserInfo → iOS delivers on next launch → event buffered →
+      // JS mounts listener → events flushed here.
+      if !self.bufferedWatchEvents.isEmpty {
+        NSLog("[WatchConnectivity] Flushing \(self.bufferedWatchEvents.count) buffered watch event(s) to JS")
+        for event in self.bufferedWatchEvents {
+          self.sendEvent("onWatchMessage", event)
+        }
+        self.bufferedWatchEvents.removeAll()
+      }
+    }
+
+    OnStopObserving {
+      self.hasJSListeners = false
     }
 
     Function("syncWorkoutToWatch") { (workoutJSON: String) in
@@ -204,14 +229,16 @@ public class WatchConnectivityModule: Module {
   ) {
     guard error == nil else { return }
     guard activationState == .activated else { return }
-    guard let pendingContext = pendingApplicationContext else { return }
 
-    do {
-      try wcSession?.updateApplicationContext(pendingContext)
-      pendingApplicationContext = nil
-      NSLog("[WatchConnectivity] ✅ Flushed queued application context after activation")
-    } catch {
-      NSLog("[WatchConnectivity] ❌ Failed to flush queued context: \(error)")
+    // Flush pending application context (iPhone → Watch).
+    if let pendingContext = pendingApplicationContext {
+      do {
+        try wcSession?.updateApplicationContext(pendingContext)
+        pendingApplicationContext = nil
+        NSLog("[WatchConnectivity] ✅ Flushed queued application context after activation")
+      } catch {
+        NSLog("[WatchConnectivity] ❌ Failed to flush queued context: \(error)")
+      }
     }
   }
 
@@ -229,9 +256,19 @@ public class WatchConnectivityModule: Module {
   }
 
   fileprivate func emitWatchMessageEvent(_ message: [String: Any]) {
-    sendEvent("onWatchMessage", [
+    let event: [String: Any] = [
       "type": message["type"] ?? "unknown",
       "payload": message["payload"] ?? [:]
-    ])
+    ]
+
+    if hasJSListeners {
+      sendEvent("onWatchMessage", event)
+    } else {
+      // Buffer the event — JS hasn't mounted its listener yet.
+      // This happens during cold-start when transferUserInfo messages
+      // are delivered before React Native finishes loading.
+      bufferedWatchEvents.append(event)
+      NSLog("[WatchConnectivity] Buffered watch event (no JS listener yet): \(event["type"] ?? "unknown")")
+    }
   }
 }

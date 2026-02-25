@@ -21,6 +21,7 @@ export interface WatchWorkoutExercise {
   weight?: number;
   restTime?: number;
   completedSets?: number;
+  targetReps?: string; // Prescribed rep range, e.g. "8-12" or "10"
 }
 
 export interface WatchWorkoutPayload {

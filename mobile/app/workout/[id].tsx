@@ -118,6 +118,7 @@ export default function WorkoutPlayerScreen() {
                     weight: ex.setsData[0]?.weight ? parseFloat(ex.setsData[0].weight) : undefined,
                     restTime: ex.rest_seconds || 0,
                     completedSets: ex.setsData.filter((s) => s.completed).length,
+                    targetReps: ex.reps || undefined,
                 })),
                 currentExerciseIndex: 0,
                 currentSetIndex: 0,

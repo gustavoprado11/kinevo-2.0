@@ -18,12 +18,14 @@ private struct EditableExercise: Identifiable {
   let id: String
   let name: String
   let restTime: Int
+  let targetReps: String?  // Prescribed rep range, e.g. "8-12"
   var sets: [EditableSet]
 
   init(snapshot: WatchExerciseSnapshot) {
     self.id = snapshot.id
     self.name = snapshot.name
     self.restTime = snapshot.restTime
+    self.targetReps = snapshot.targetReps
 
     let initialWeight = snapshot.weight ?? 0
     self.sets = (0..<snapshot.sets).map { index in
@@ -41,6 +43,7 @@ private struct RestTimerState: Identifiable {
   let seconds: Int
   let exerciseName: String
   let setNumber: Int
+  let startedAt: Date
 }
 
 private enum WatchDateParser {
@@ -66,6 +69,7 @@ private extension Color {
 
 struct WorkoutExecutionView: View {
   @EnvironmentObject private var sessionManager: WatchSessionManager
+  @EnvironmentObject private var workoutManager: WorkoutManager
   let workout: WatchWorkoutSnapshot
 
   @State private var exerciseIndex: Int
@@ -103,39 +107,50 @@ struct WorkoutExecutionView: View {
         } else if editableExercises.isEmpty {
           emptyView
         } else {
-          TabView(selection: $exerciseIndex) {
-            ForEach(Array(editableExercises.indices), id: \.self) { index in
-              ExerciseExecutionPage(
-                exercise: $editableExercises[index],
-                exerciseNumber: index + 1,
-                totalExercises: editableExercises.count,
-                workoutStartDate: workoutStartDate,
-                onSetCompleted: { setIndex, reps, weight, restTime, hasNextSet in
-                  sessionManager.sendSetCompletion(
-                    workoutId: workout.workoutId,
-                    exerciseIndex: index,
-                    exerciseId: editableExercises[index].id,
-                    setIndex: setIndex,
-                    reps: reps,
-                    weight: weight
-                  )
-
-                  if hasNextSet && restTime > 0 {
-                    restTimerState = RestTimerState(
-                      seconds: restTime,
-                      exerciseName: editableExercises[index].name,
-                      setNumber: setIndex + 1
+          TabView {
+            // Page 0: Exercise carousel (horizontal swipe between exercises)
+            TabView(selection: $exerciseIndex) {
+              ForEach(Array(editableExercises.indices), id: \.self) { index in
+                ExerciseExecutionPage(
+                  exercise: $editableExercises[index],
+                  exerciseNumber: index + 1,
+                  totalExercises: editableExercises.count,
+                  workoutStartDate: workoutStartDate,
+                  onSetCompleted: { setIndex, reps, weight, restTime, hasNextSet in
+                    sessionManager.sendSetCompletion(
+                      workoutId: workout.workoutId,
+                      exerciseIndex: index,
+                      exerciseId: editableExercises[index].id,
+                      setIndex: setIndex,
+                      reps: reps,
+                      weight: weight
                     )
+
+                    if hasNextSet && restTime > 0 {
+                      restTimerState = RestTimerState(
+                        seconds: restTime,
+                        exerciseName: editableExercises[index].name,
+                        setNumber: setIndex + 1,
+                        startedAt: Date()
+                      )
+                    }
+                  },
+                  onFinishWorkout: {
+                    isFinishingWorkout = true
                   }
-                },
-                onFinishWorkout: {
-                  isFinishingWorkout = true
-                }
-              )
-              .tag(index)
+                )
+                .tag(index)
+              }
             }
+            .tabViewStyle(.page(indexDisplayMode: .never))
+
+            // Page 1: Workout dashboard (elapsed time + heart rate)
+            WorkoutDashboardView(workoutStartDate: workoutStartDate)
+
+            // Page 2: Media controls (Now Playing)
+            NowPlayingView()
           }
-          .tabViewStyle(.page(indexDisplayMode: .never))
+          .tabViewStyle(.verticalPage)
         }
       }
     }
@@ -151,6 +166,11 @@ struct WorkoutExecutionView: View {
     }
     .onChange(of: workout.isActive) { _, isActive in
       hasStarted = isActive
+    }
+    .onDisappear {
+      if workoutManager.isSessionActive {
+        workoutManager.endWorkout()
+      }
     }
     .navigationBarTitleDisplayMode(.inline)
   }
@@ -168,6 +188,7 @@ struct WorkoutExecutionView: View {
         .font(.caption2)
         .foregroundStyle(.secondary)
       Button("Iniciar treino") {
+        workoutManager.startWorkout()
         sessionManager.sendStartWorkout(workoutId: workout.workoutId)
         hasStarted = true
         WKInterfaceDevice.current().play(.start)
@@ -224,6 +245,7 @@ struct WorkoutExecutionView: View {
 
       Button("Finalizar Treino") {
         sessionManager.sendFinishWorkout(workoutId: workout.workoutId, rpe: Int(workoutRpe))
+        workoutManager.endWorkout()
         hasFinishedWorkout = true
         WKInterfaceDevice.current().play(.success)
       }
@@ -253,6 +275,8 @@ struct WorkoutExecutionView: View {
   }
 }
 
+// MARK: - Exercise Execution Page
+
 private struct ExerciseExecutionPage: View {
   @Binding var exercise: EditableExercise
   let exerciseNumber: Int
@@ -262,6 +286,7 @@ private struct ExerciseExecutionPage: View {
   let onFinishWorkout: () -> Void
 
   @State private var currentSetIndex: Int
+  @State private var showSwipeHint = false
   @FocusState private var focusedInput: CrownInputFocus?
 
   init(
@@ -320,6 +345,7 @@ private struct ExerciseExecutionPage: View {
             title: "Reps",
             value: "\(currentReps)",
             unit: "rep",
+            subtitle: exercise.targetReps.map { "Meta: \($0)" },
             isFocused: focusedInput == .reps,
             compact: compact
           )
@@ -341,6 +367,7 @@ private struct ExerciseExecutionPage: View {
 
         Spacer(minLength: 4)
 
+        // Bottom area: action button or navigation hint
         if isExerciseCompleted && isLastExercise {
           Button("Finalizar Treino") {
             onFinishWorkout()
@@ -351,8 +378,13 @@ private struct ExerciseExecutionPage: View {
           .frame(maxWidth: .infinity)
           .frame(minHeight: compact ? 36 : 40)
           .padding(.bottom, proxy.safeAreaInsets.bottom > 0 ? 0 : 4)
+        } else if isExerciseCompleted {
+          // Swipe hint — replaces the disabled button
+          SwipeHintView(isVisible: $showSwipeHint)
+            .frame(minHeight: compact ? 36 : 40)
+            .padding(.bottom, proxy.safeAreaInsets.bottom > 0 ? 0 : 4)
         } else {
-          Button(isExerciseCompleted ? "Exercício Concluído" : "Concluir Série") {
+          Button("Concluir Série") {
             completeCurrentSet()
           }
           .font(compact ? .subheadline : .headline)
@@ -360,7 +392,6 @@ private struct ExerciseExecutionPage: View {
           .tint(Color.kinevoViolet)
           .frame(maxWidth: .infinity)
           .frame(minHeight: compact ? 36 : 40)
-          .disabled(isExerciseCompleted)
           .padding(.bottom, proxy.safeAreaInsets.bottom > 0 ? 0 : 4)
         }
       }
@@ -431,9 +462,20 @@ private struct ExerciseExecutionPage: View {
       }
     }
 
-    WKInterfaceDevice.current().play(.success)
-
     let hasNextSet = setIndex < (exercise.sets.count - 1)
+    let justFinishedExercise = !hasNextSet
+
+    if justFinishedExercise {
+      // Exercise completed — directional haptic to suggest swiping
+      WKInterfaceDevice.current().play(.directionUp)
+      // Show the swipe hint with a short delay so the user feels the transition
+      DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+        showSwipeHint = true
+      }
+    } else {
+      WKInterfaceDevice.current().play(.success)
+    }
+
     onSetCompleted(
       setIndex,
       reps,
@@ -499,10 +541,13 @@ private struct ExerciseExecutionPage: View {
   }
 }
 
+// MARK: - Crown Input Card
+
 private struct CrownInputCard: View {
   let title: String
   let value: String
   let unit: String
+  var subtitle: String? = nil
   let isFocused: Bool
   let compact: Bool
 
@@ -514,9 +559,15 @@ private struct CrownInputCard: View {
         .lineLimit(1)
         .minimumScaleFactor(0.75)
 
-      Text(title.lowercased() == "reps" ? "Repetições" : "\(title) (\(unit))")
-        .font(.caption2)
-        .foregroundStyle(.gray)
+      if let subtitle, !subtitle.isEmpty {
+        Text(subtitle)
+          .font(.system(size: compact ? 9 : 10, weight: .medium))
+          .foregroundStyle(Color.kinevoViolet.opacity(0.9))
+      } else {
+        Text(title.lowercased() == "reps" ? "Repetições" : "\(title) (\(unit))")
+          .font(.caption2)
+          .foregroundStyle(.gray)
+      }
     }
     .frame(maxWidth: .infinity, minHeight: compact ? 60 : 70)
     .padding(.vertical, compact ? 6 : 8)
@@ -530,6 +581,38 @@ private struct CrownInputCard: View {
     )
   }
 }
+
+// MARK: - Swipe Hint View
+
+private struct SwipeHintView: View {
+  @Binding var isVisible: Bool
+  @State private var arrowOffset: CGFloat = 0
+
+  var body: some View {
+    HStack(spacing: 6) {
+      Text("Próximo exercício")
+        .font(.system(size: 13, weight: .semibold))
+        .foregroundStyle(.white.opacity(0.85))
+
+      Image(systemName: "chevron.right")
+        .font(.system(size: 12, weight: .bold))
+        .foregroundStyle(Color.kinevoViolet)
+        .offset(x: arrowOffset)
+    }
+    .frame(maxWidth: .infinity)
+    .opacity(isVisible ? 1 : 0)
+    .onAppear {
+      withAnimation(
+        .easeInOut(duration: 0.8)
+        .repeatForever(autoreverses: true)
+      ) {
+        arrowOffset = 5
+      }
+    }
+  }
+}
+
+// MARK: - Rest Timer Sheet
 
 private struct RestTimerSheet: View {
   let timerState: RestTimerState
@@ -586,9 +669,11 @@ private struct RestTimerSheet: View {
       .padding()
     }
     .onReceive(ticker) { _ in
-      guard remainingSeconds > 0 else { return }
-      remainingSeconds -= 1
-      if remainingSeconds == 0 {
+      let elapsed = Int(Date().timeIntervalSince(timerState.startedAt))
+      let newRemaining = max(timerState.seconds - elapsed, 0)
+      remainingSeconds = newRemaining
+
+      if newRemaining == 0 {
         WKInterfaceDevice.current().play(.success)
         dismiss()
       }
