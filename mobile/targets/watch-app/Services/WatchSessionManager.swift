@@ -88,6 +88,68 @@ class WatchSessionManager: NSObject, ObservableObject {
     }
   }
 
+  /// Enriched set completion with exercise data (used by WorkoutExecutionView).
+  func sendSetCompletion(
+    workoutId: String,
+    exerciseIndex: Int,
+    exerciseId: String,
+    setIndex: Int,
+    reps: Int,
+    weight: Double
+  ) {
+    let message: [String: Any] = [
+      "type": "SET_COMPLETE",
+      "payload": [
+        "workoutId": workoutId,
+        "exerciseIndex": exerciseIndex,
+        "exerciseId": exerciseId,
+        "setIndex": setIndex,
+        "reps": reps,
+        "weight": weight
+      ]
+    ]
+
+    sendReliable(message, label: "SET_COMPLETE")
+  }
+
+  /// Notify iPhone that a workout was started from the Watch.
+  func sendStartWorkout(workoutId: String) {
+    let message: [String: Any] = [
+      "type": "START_WORKOUT",
+      "payload": [
+        "workoutId": workoutId
+      ]
+    ]
+
+    sendReliable(message, label: "START_WORKOUT")
+  }
+
+  /// Send FINISH_WORKOUT with RPE, start time, and completed exercises.
+  /// Uses transferUserInfo for guaranteed delivery.
+  func sendFinishWorkout(workoutId: String, rpe: Int, startedAt: Date, exercises: [[String: Any]]) {
+    let formatter = ISO8601DateFormatter()
+    formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+    let message: [String: Any] = [
+      "type": "FINISH_WORKOUT",
+      "payload": [
+        "workoutId": workoutId,
+        "rpe": rpe,
+        "startedAt": formatter.string(from: startedAt),
+        "exercises": exercises,
+      ]
+    ]
+
+    print("[WatchSessionManager] 📤 Sending FINISH_WORKOUT for \(workoutId) with RPE \(rpe), \(exercises.count) exercises")
+
+    guard let session = wcSession, session.activationState == .activated else {
+      print("[WatchSessionManager] ❌ Session not activated for FINISH_WORKOUT")
+      return
+    }
+    session.transferUserInfo(message)
+    print("[WatchSessionManager] ✅ FINISH_WORKOUT queued via transferUserInfo for \(workoutId)")
+  }
+
   func sendMessage(_ message: [String: Any]) {
     guard let session = wcSession, session.isReachable else {
       print("[WatchSessionManager] Cannot send message, session not reachable")
@@ -97,6 +159,27 @@ class WatchSessionManager: NSObject, ObservableObject {
     session.sendMessage(message, replyHandler: nil, errorHandler: { error in
       print("[WatchSessionManager] Error sending message: \(error)")
     })
+  }
+
+  // MARK: - Reliable Send (sendMessage with transferUserInfo fallback)
+
+  private func sendReliable(_ message: [String: Any], label: String) {
+    guard let session = wcSession, session.activationState == .activated else {
+      print("[WatchSessionManager] ❌ Session not activated for \(label)")
+      return
+    }
+
+    if session.isReachable {
+      session.sendMessage(message, replyHandler: { reply in
+        print("[WatchSessionManager] ✅ \(label) acknowledged via sendMessage")
+      }, errorHandler: { error in
+        print("[WatchSessionManager] ⚠️ sendMessage failed for \(label), falling back to transferUserInfo: \(error.localizedDescription)")
+        session.transferUserInfo(message)
+      })
+    } else {
+      session.transferUserInfo(message)
+      print("[WatchSessionManager] 📤 \(label) queued via transferUserInfo (iPhone not reachable)")
+    }
   }
 }
 
@@ -108,14 +191,27 @@ extension WatchSessionManager: WCSessionDelegate {
     activationDidCompleteWith activationState: WCSessionActivationState,
     error: Error?
   ) {
-    DispatchQueue.main.async {
-      self.isConnected = activationState == .activated
-    }
-
     if let error = error {
       print("[WatchSessionManager] Activation failed: \(error)")
     } else {
       print("[WatchSessionManager] Activation complete: \(activationState.rawValue)")
+    }
+
+    DispatchQueue.main.async {
+      self.isConnected = activationState == .activated
+
+      // Read any applicationContext that was already delivered before this session activated.
+      // Without this, the Watch app shows "Aguardando" indefinitely because the
+      // didReceiveApplicationContext delegate is only called for NEW contexts, not cached ones.
+      if activationState == .activated {
+        let cached = session.receivedApplicationContext
+        if !cached.isEmpty {
+          print("[WatchSessionManager] Loaded cached applicationContext on activation: \(cached.keys.sorted())")
+          self.currentWorkout = cached
+        } else {
+          print("[WatchSessionManager] No cached applicationContext — waiting for iPhone to sync")
+        }
+      }
     }
   }
 

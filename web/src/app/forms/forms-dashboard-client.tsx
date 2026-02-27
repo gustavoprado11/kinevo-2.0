@@ -15,6 +15,8 @@ import {
     ChevronRight,
 } from 'lucide-react'
 import Image from 'next/image'
+import { TourRunner } from '@/components/onboarding/tours/tour-runner'
+import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
 
 interface Trainer {
     id: string
@@ -106,7 +108,7 @@ export function FormsDashboardClient({
                         <p className="text-2xl font-bold text-k-text-primary">{submissionsCount}</p>
                     </div>
 
-                    <div className="rounded-2xl border border-k-border-primary bg-surface-card p-5">
+                    <div data-onboarding="forms-pending" className="rounded-2xl border border-k-border-primary bg-surface-card p-5">
                         <div className="flex items-center gap-3 mb-3">
                             <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-amber-500/10">
                                 <AlertCircle size={18} className="text-amber-400" />
@@ -122,6 +124,7 @@ export function FormsDashboardClient({
                 {/* Quick Actions */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
                     <Link
+                        data-onboarding="forms-templates-card"
                         href="/forms/templates"
                         className="rounded-2xl border border-k-border-primary bg-surface-card p-5 hover:border-violet-500/30 transition-colors group"
                     >
@@ -140,6 +143,7 @@ export function FormsDashboardClient({
                     </Link>
 
                     <Link
+                        data-onboarding="forms-inbox-card"
                         href="/forms/inbox"
                         className="rounded-2xl border border-k-border-primary bg-surface-card p-5 hover:border-violet-500/30 transition-colors group"
                     >
@@ -220,6 +224,9 @@ export function FormsDashboardClient({
                     )}
                 </div>
             </div>
+
+            {/* Tour: Forms (auto-start on first visit) */}
+            <TourRunner tourId="forms" steps={TOUR_STEPS.forms} autoStart />
         </AppLayout>
     )
 }

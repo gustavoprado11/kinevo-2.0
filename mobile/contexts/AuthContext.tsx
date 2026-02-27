@@ -5,7 +5,7 @@ import React, {
     useState,
     type ReactNode,
 } from "react";
-import { View, Text, ActivityIndicator } from "react-native";
+import { Platform, View, Text, ActivityIndicator } from "react-native";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
 
@@ -82,6 +82,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     const signOut = async () => {
+        // Clear Watch workout state so the old account's workout doesn't persist.
+        if (Platform.OS === "ios") {
+            try {
+                const { syncWorkoutToWatch } = require("../modules/watch-connectivity");
+                syncWorkoutToWatch(null);
+                console.log("[AuthContext] Cleared Watch workout on sign out");
+            } catch (e: any) {
+                console.warn("[AuthContext] Failed to clear Watch (non-critical):", e?.message);
+            }
+        }
         await supabase.auth.signOut();
     };
 

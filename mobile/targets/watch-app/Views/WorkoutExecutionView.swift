@@ -62,14 +62,9 @@ private enum WatchDateParser {
   }
 }
 
-private extension Color {
-  static let kinevoViolet = Color(red: 124 / 255, green: 58 / 255, blue: 237 / 255)
-  static let kinevoCard = Color(red: 20 / 255, green: 20 / 255, blue: 24 / 255)
-}
-
 struct WorkoutExecutionView: View {
   @EnvironmentObject private var sessionManager: WatchSessionManager
-  @EnvironmentObject private var workoutManager: WorkoutManager
+  @EnvironmentObject private var healthKitManager: HealthKitManager
   let workout: WatchWorkoutSnapshot
 
   @State private var exerciseIndex: Int
@@ -95,15 +90,23 @@ struct WorkoutExecutionView: View {
     self.workoutStartDate = WatchDateParser.parseISO8601(workout.startedAt)
       ?? WatchDateParser.parseISO8601(workout.updatedAt)
       ?? Date()
+
+    NSLog("[KinevoWatch] WorkoutExecutionView.init — exercises=%d, isActive=%d, startIndex=%d", editable.count, workout.isActive ? 1 : 0, startIndex)
   }
 
   var body: some View {
+    // ✅ Capture @EnvironmentObject as local variable BEFORE any closures
+    // This ensures closures in ForEach/TabView use a direct reference,
+    // not the @EnvironmentObject property wrapper (which fails in nested closures on watchOS)
+    let sm = sessionManager
+    let hk = healthKitManager
+
     ZStack {
       Color.black.edgesIgnoringSafeArea(.all)
 
       Group {
         if !hasStarted {
-          startView
+          startView(sm: sm, hk: hk)
         } else if editableExercises.isEmpty {
           emptyView
         } else {
@@ -116,24 +119,29 @@ struct WorkoutExecutionView: View {
                   exerciseNumber: index + 1,
                   totalExercises: editableExercises.count,
                   workoutStartDate: workoutStartDate,
-                  onSetCompleted: { setIndex, reps, weight, restTime, hasNextSet in
-                    sessionManager.sendSetCompletion(
+                  onSetLogged: { setIndex, reps, weight in
+                    guard index < editableExercises.count else { return }
+                    let exerciseId = editableExercises[index].id
+                    NSLog("[KinevoWatch] onSetLogged: sendSetCompletion — exerciseId=%@, set=%d", exerciseId, setIndex)
+                    sm.sendSetCompletion(
                       workoutId: workout.workoutId,
                       exerciseIndex: index,
-                      exerciseId: editableExercises[index].id,
+                      exerciseId: exerciseId,
                       setIndex: setIndex,
                       reps: reps,
                       weight: weight
                     )
-
-                    if hasNextSet && restTime > 0 {
-                      restTimerState = RestTimerState(
-                        seconds: restTime,
-                        exerciseName: editableExercises[index].name,
-                        setNumber: setIndex + 1,
-                        startedAt: Date()
-                      )
-                    }
+                  },
+                  onRestTimerRequested: { setIndex, restTime in
+                    guard index < editableExercises.count else { return }
+                    let exerciseName = editableExercises[index].name
+                    NSLog("[KinevoWatch] onRestTimerRequested: %ds for %@", restTime, exerciseName)
+                    restTimerState = RestTimerState(
+                      seconds: restTime,
+                      exerciseName: exerciseName,
+                      setNumber: setIndex + 1,
+                      startedAt: Date()
+                    )
                   },
                   onFinishWorkout: {
                     isFinishingWorkout = true
@@ -148,7 +156,7 @@ struct WorkoutExecutionView: View {
             WorkoutDashboardView(workoutStartDate: workoutStartDate)
 
             // Page 2: Media controls (Now Playing)
-            NowPlayingView()
+            KinevoNowPlayingView()
           }
           .tabViewStyle(.verticalPage)
         }
@@ -161,21 +169,21 @@ struct WorkoutExecutionView: View {
       if hasFinishedWorkout {
         successFinishView
       } else {
-        pseSelectionView
+        pseSelectionView(sm: sm, hk: hk)
       }
     }
     .onChange(of: workout.isActive) { _, isActive in
       hasStarted = isActive
     }
     .onDisappear {
-      if workoutManager.isSessionActive {
-        workoutManager.endWorkout()
+      if hk.isWorkoutActive {
+        hk.endWorkout()
       }
     }
     .navigationBarTitleDisplayMode(.inline)
   }
 
-  private var startView: some View {
+  private func startView(sm: WatchSessionManager, hk: HealthKitManager) -> some View {
     VStack(spacing: 12) {
       Image(systemName: "figure.run")
         .font(.title2)
@@ -188,8 +196,9 @@ struct WorkoutExecutionView: View {
         .font(.caption2)
         .foregroundStyle(.secondary)
       Button("Iniciar treino") {
-        workoutManager.startWorkout()
-        sessionManager.sendStartWorkout(workoutId: workout.workoutId)
+        NSLog("[KinevoWatch] 🏋️ Iniciar treino tapped — workoutId=%@, exercises=%d", workout.workoutId, workout.exercises.count)
+        hk.startWorkout()
+        sm.sendStartWorkout(workoutId: workout.workoutId)
         hasStarted = true
         WKInterfaceDevice.current().play(.start)
       }
@@ -212,7 +221,7 @@ struct WorkoutExecutionView: View {
     .padding()
   }
 
-  private var pseSelectionView: some View {
+  private func pseSelectionView(sm: WatchSessionManager, hk: HealthKitManager) -> some View {
     VStack(spacing: 8) {
       Text("Como foi o treino?")
         .font(.headline)
@@ -244,8 +253,29 @@ struct WorkoutExecutionView: View {
         )
 
       Button("Finalizar Treino") {
-        sessionManager.sendFinishWorkout(workoutId: workout.workoutId, rpe: Int(workoutRpe))
-        workoutManager.endWorkout()
+        // Build exercises payload from editableExercises (all reps/weight/completion data)
+        let exercisesPayload: [[String: Any]] = editableExercises.map { ex in
+          let setsPayload: [[String: Any]] = ex.sets.enumerated().map { idx, set in
+            [
+              "setIndex": idx,
+              "reps": set.reps,
+              "weight": set.weight,
+              "completed": set.isCompleted
+            ]
+          }
+          return [
+            "id": ex.id,
+            "sets": setsPayload
+          ]
+        }
+
+        sm.sendFinishWorkout(
+          workoutId: workout.workoutId,
+          rpe: Int(workoutRpe),
+          startedAt: workoutStartDate,
+          exercises: exercisesPayload
+        )
+        hk.endWorkout()
         hasFinishedWorkout = true
         WKInterfaceDevice.current().play(.success)
       }
@@ -282,7 +312,8 @@ private struct ExerciseExecutionPage: View {
   let exerciseNumber: Int
   let totalExercises: Int
   let workoutStartDate: Date
-  let onSetCompleted: (_ setIndex: Int, _ reps: Int, _ weight: Double, _ restTime: Int, _ hasNextSet: Bool) -> Void
+  let onSetLogged: (_ setIndex: Int, _ reps: Int, _ weight: Double) -> Void
+  let onRestTimerRequested: (_ setIndex: Int, _ restTime: Int) -> Void
   let onFinishWorkout: () -> Void
 
   @State private var currentSetIndex: Int
@@ -294,14 +325,16 @@ private struct ExerciseExecutionPage: View {
     exerciseNumber: Int,
     totalExercises: Int,
     workoutStartDate: Date,
-    onSetCompleted: @escaping (_ setIndex: Int, _ reps: Int, _ weight: Double, _ restTime: Int, _ hasNextSet: Bool) -> Void,
+    onSetLogged: @escaping (_ setIndex: Int, _ reps: Int, _ weight: Double) -> Void,
+    onRestTimerRequested: @escaping (_ setIndex: Int, _ restTime: Int) -> Void,
     onFinishWorkout: @escaping () -> Void
   ) {
     self._exercise = exercise
     self.exerciseNumber = exerciseNumber
     self.totalExercises = totalExercises
     self.workoutStartDate = workoutStartDate
-    self.onSetCompleted = onSetCompleted
+    self.onSetLogged = onSetLogged
+    self.onRestTimerRequested = onRestTimerRequested
     self.onFinishWorkout = onFinishWorkout
 
     let sets = exercise.wrappedValue.sets
@@ -385,6 +418,7 @@ private struct ExerciseExecutionPage: View {
             .padding(.bottom, proxy.safeAreaInsets.bottom > 0 ? 0 : 4)
         } else {
           Button("Concluir Série") {
+            NSLog("[KinevoWatch] 🔘 Button TAP: Concluir Série — exercise=%@, setIndex=%d", exercise.name, currentSetIndex)
             completeCurrentSet()
           }
           .font(compact ? .subheadline : .headline)
@@ -445,16 +479,27 @@ private struct ExerciseExecutionPage: View {
   }
 
   private func completeCurrentSet() {
+    NSLog("[KinevoWatch] completeCurrentSet called — currentSetIndex: %d, exercise: %@", currentSetIndex, exercise.name)
+
     guard !exercise.sets.isEmpty else { return }
     guard currentSetIndex >= 0 && currentSetIndex < exercise.sets.count else { return }
     guard !exercise.sets[currentSetIndex].isCompleted else { return }
 
+    // Capture ALL values BEFORE mutating @Binding
     let setIndex = currentSetIndex
     let reps = exercise.sets[setIndex].reps
     let weight = exercise.sets[setIndex].weight
+    let restTime = exercise.restTime
+    let hasNextSet = setIndex < (exercise.sets.count - 1)
+
+    // ✅ SYNC: Send set completion BEFORE mutating (sessionManager accessible via parent)
+    NSLog("[KinevoWatch] onSetLogged SYNC — setIndex=%d, reps=%d, weight=%.1f", setIndex, reps, weight)
+    onSetLogged(setIndex, reps, weight)
+
+    // Mutate @Binding (triggers SwiftUI re-render)
     exercise.sets[setIndex].isCompleted = true
 
-    // Replica a carga e as repetições para as próximas séries não concluídas
+    // Copy weight/reps to subsequent incomplete sets
     for i in (setIndex + 1)..<exercise.sets.count {
       if !exercise.sets[i].isCompleted {
         exercise.sets[i].reps = reps
@@ -462,13 +507,9 @@ private struct ExerciseExecutionPage: View {
       }
     }
 
-    let hasNextSet = setIndex < (exercise.sets.count - 1)
-    let justFinishedExercise = !hasNextSet
-
-    if justFinishedExercise {
-      // Exercise completed — directional haptic to suggest swiping
+    // Haptics
+    if !hasNextSet {
       WKInterfaceDevice.current().play(.directionUp)
-      // Show the swipe hint with a short delay so the user feels the transition
       DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
         showSwipeHint = true
       }
@@ -476,18 +517,20 @@ private struct ExerciseExecutionPage: View {
       WKInterfaceDevice.current().play(.success)
     }
 
-    onSetCompleted(
-      setIndex,
-      reps,
-      weight,
-      exercise.restTime,
-      hasNextSet
-    )
+    // ✅ ASYNC: Rest timer AFTER mutation (no @EnvironmentObject needed — only @State)
+    if hasNextSet && restTime > 0 {
+      NSLog("[KinevoWatch] scheduling rest timer — %ds, asyncAfter 0.15s", restTime)
+      DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+        onRestTimerRequested(setIndex, restTime)
+      }
+    }
 
+    // Advance to next set
     if hasNextSet {
       currentSetIndex = setIndex + 1
       focusedInput = .reps
     }
+    NSLog("[KinevoWatch] completeCurrentSet END — new currentSetIndex=%d", currentSetIndex)
   }
 
   private var totalSets: Int {

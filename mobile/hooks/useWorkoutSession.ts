@@ -43,6 +43,7 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
     const [isLoading, setIsLoading] = useState(true);
     const [exercises, setExercises] = useState<ExerciseData[]>([]);
     const [studentId, setStudentId] = useState<string | null>(null);
+    const [sessionId, setSessionId] = useState<string | null>(null);
     const [startTime] = useState(() => Date.now());
     const [elapsed, setElapsed] = useState(0);
     const [workoutName, setWorkoutName] = useState('');
@@ -173,6 +174,47 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
             .filter((option): option is ExerciseSubstituteOption => Boolean(option));
     };
 
+    // Persist a single set_log to Supabase (fire-and-forget, non-blocking).
+    const persistSetLog = async (
+        exercise: ExerciseData,
+        setIndex: number,
+        setData: WorkoutSetData
+    ) => {
+        if (!sessionId || !setData.completed) return;
+
+        const weight = parseFloat(setData.weight) || 0;
+        const repsCompleted = parseInt(setData.reps) || 0;
+
+        try {
+            const { error } = await supabase
+                .from('set_logs' as any)
+                .upsert({
+                    workout_session_id: sessionId,
+                    assigned_workout_item_id: exercise.id,
+                    planned_exercise_id: exercise.planned_exercise_id || exercise.exercise_id,
+                    executed_exercise_id: exercise.exercise_id,
+                    swap_source: exercise.swap_source || 'none',
+                    exercise_id: exercise.exercise_id,
+                    set_number: setIndex + 1,
+                    weight,
+                    reps_completed: repsCompleted,
+                    is_completed: true,
+                    completed_at: new Date().toISOString(),
+                    weight_unit: 'kg',
+                }, {
+                    onConflict: 'workout_session_id,assigned_workout_item_id,set_number',
+                });
+
+            if (error) {
+                console.error(`[useWorkoutSession] persistSetLog error: ${error.message}`);
+            } else {
+                console.log(`[useWorkoutSession] Set persisted: exercise=${exercise.name}, set=${setIndex + 1}, ${repsCompleted}reps x ${weight}kg`);
+            }
+        } catch (err: any) {
+            console.error(`[useWorkoutSession] persistSetLog exception: ${err?.message}`);
+        }
+    };
+
     // Timer — timestamp-based so it survives background/lock screen
     useEffect(() => {
         const interval = setInterval(() => {
@@ -209,6 +251,50 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
 
                 if (workoutError) throw workoutError;
                 if (mounted) setWorkoutName(workout.name);
+
+                // 1b. Find or create workout_session (in_progress)
+                const { data: existingSession }: { data: any; error: any } = await supabase
+                    .from('workout_sessions' as any)
+                    .select('id')
+                    .eq('assigned_workout_id', workoutId)
+                    .eq('student_id', currentStudentId)
+                    .eq('status', 'in_progress')
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+
+                if (existingSession) {
+                    console.log(`[useWorkoutSession] Found existing in_progress session: ${existingSession.id}`);
+                    if (mounted) setSessionId(existingSession.id);
+                } else {
+                    // Get trainer_id from student
+                    const { data: studentFull }: { data: any; error: any } = await supabase
+                        .from('students' as any)
+                        .select('coach_id')
+                        .eq('id', currentStudentId)
+                        .single();
+
+                    const { data: newSession, error: sessionError }: { data: any; error: any } = await supabase
+                        .from('workout_sessions' as any)
+                        .insert({
+                            student_id: currentStudentId,
+                            trainer_id: studentFull?.coach_id,
+                            assigned_workout_id: workoutId,
+                            assigned_program_id: workout.assigned_program_id,
+                            status: 'in_progress',
+                            started_at: new Date().toISOString(),
+                            sync_status: 'synced',
+                        })
+                        .select('id')
+                        .single();
+
+                    if (sessionError) {
+                        console.error('[useWorkoutSession] Failed to create session:', sessionError);
+                    } else {
+                        console.log(`[useWorkoutSession] Created new in_progress session: ${newSession.id}`);
+                        if (mounted) setSessionId(newSession.id);
+                    }
+                }
 
                 // 2. Get Workout Items (Exercises)
                 const { data: items, error: itemsError }: { data: any; error: any } = await supabase
@@ -303,14 +389,21 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
     const handleToggleSetComplete = (exerciseIndex: number, setIndex: number) => {
         setExercises(prev => {
             const newExercises = [...prev];
-            const newSets = [...newExercises[exerciseIndex].setsData];
+            const exercise = { ...newExercises[exerciseIndex] };
+            const newSets = [...exercise.setsData];
             const wasCompleted = newSets[setIndex].completed;
             newSets[setIndex] = { ...newSets[setIndex], completed: !wasCompleted };
-            newExercises[exerciseIndex].setsData = newSets;
+            exercise.setsData = newSets;
+            newExercises[exerciseIndex] = exercise;
 
             // Fire callback when marking as complete (not when unchecking)
             if (!wasCompleted && options?.onSetComplete) {
                 options.onSetComplete(exerciseIndex, setIndex);
+            }
+
+            // Persist to DB immediately (fire-and-forget)
+            if (!wasCompleted) {
+                persistSetLog(exercise, setIndex, newSets[setIndex]);
             }
 
             return newExercises;
@@ -348,6 +441,9 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
             if (!wasCompleted && options?.onSetComplete) {
                 options.onSetComplete(exerciseIndex, setIndex);
             }
+
+            // Persist to DB immediately (fire-and-forget)
+            persistSetLog(exercise, setIndex, currentSet);
 
             return newExercises;
         });
@@ -486,64 +582,76 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
     const finishWorkout = async (rpe?: number, feedback?: string) => {
         if (isSubmitting || !user) return;
 
-        // Validation: Check if at least one set is completed? Or allow partial?
-        // For now allow partial, but maybe warn?
-
         setIsSubmitting(true);
 
         try {
-            // Get Student ID
-            const { data: student }: { data: any; error: any } = await supabase
-                .from('students' as any)
-                .select('id, coach_id')
-                .eq('auth_user_id', user.id)
-                .single();
-
-            if (!student) throw new Error("Student not found");
-
-            // Get assigned_program_id again ensuring accuracy
-            const { data: workout }: { data: any; error: any } = await supabase
-                .from('assigned_workouts' as any)
-                .select('assigned_program_id')
-                .eq('id', workoutId)
-                .single();
-
-            const startedAt = new Date(startTime);
             const durationSeconds = Math.floor((Date.now() - startTime) / 1000);
+            const now = new Date().toISOString();
 
-            // 1. Create Session
-            const { data: session, error: sessionError }: { data: any; error: any } = await supabase
-                .from('workout_sessions' as any)
-                .insert({
-                    student_id: student.id,
-                    trainer_id: student.coach_id,
-                    assigned_workout_id: workoutId,
-                    assigned_program_id: workout.assigned_program_id,
-                    status: 'completed',
-                    started_at: startedAt.toISOString(),
-                    completed_at: new Date().toISOString(),
-                    duration_seconds: durationSeconds,
-                    sync_status: 'synced',
-                    rpe: rpe || null,
-                    feedback: feedback || null
-                })
-                .select()
-                .single();
+            // Use existing session (created on workout start) or create one as fallback
+            let currentSessionId = sessionId;
 
-            if (sessionError) throw sessionError;
+            if (!currentSessionId) {
+                console.warn('[useWorkoutSession] No sessionId at finish — creating session now');
 
-            // 2. Log Sets
-            const setLogs = [];
+                const { data: student }: { data: any; error: any } = await supabase
+                    .from('students' as any)
+                    .select('id, coach_id')
+                    .eq('auth_user_id', user.id)
+                    .single();
 
+                if (!student) throw new Error("Student not found");
+
+                const { data: workout }: { data: any; error: any } = await supabase
+                    .from('assigned_workouts' as any)
+                    .select('assigned_program_id')
+                    .eq('id', workoutId)
+                    .single();
+
+                const { data: newSession, error: sessionError }: { data: any; error: any } = await supabase
+                    .from('workout_sessions' as any)
+                    .insert({
+                        student_id: student.id,
+                        trainer_id: student.coach_id,
+                        assigned_workout_id: workoutId,
+                        assigned_program_id: workout?.assigned_program_id,
+                        status: 'completed',
+                        started_at: new Date(startTime).toISOString(),
+                        completed_at: now,
+                        duration_seconds: durationSeconds,
+                        sync_status: 'synced',
+                        rpe: rpe || null,
+                        feedback: feedback || null,
+                    })
+                    .select('id')
+                    .single();
+
+                if (sessionError) throw sessionError;
+                currentSessionId = newSession.id;
+            } else {
+                // Update existing in_progress session to completed
+                const { error: updateError } = await supabase
+                    .from('workout_sessions' as any)
+                    .update({
+                        status: 'completed',
+                        completed_at: now,
+                        duration_seconds: durationSeconds,
+                        rpe: rpe || null,
+                        feedback: feedback || null,
+                    })
+                    .eq('id', currentSessionId);
+
+                if (updateError) throw updateError;
+            }
+
+            // Upsert any remaining set_logs (catch-up for sets that may not have been persisted)
+            const setLogs: any[] = [];
             for (const exercise of exercises) {
                 for (let i = 0; i < exercise.setsData.length; i++) {
                     const set = exercise.setsData[i];
-                    // Log all sets or only completed? The requirements imply logging completed.
-                    // But if we want to save incomplete but filled sets? 
-                    // Let's save ONLY completed for now as per requirement "Check Button".
                     if (set.completed) {
                         setLogs.push({
-                            workout_session_id: session.id,
+                            workout_session_id: currentSessionId,
                             assigned_workout_item_id: exercise.id,
                             planned_exercise_id: exercise.planned_exercise_id || exercise.exercise_id,
                             executed_exercise_id: exercise.exercise_id,
@@ -553,27 +661,31 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                             weight: parseFloat(set.weight) || 0,
                             reps_completed: parseInt(set.reps) || 0,
                             is_completed: true,
-                            completed_at: new Date().toISOString(),
-                            weight_unit: 'kg'
+                            completed_at: now,
+                            weight_unit: 'kg',
                         });
                     }
                 }
             }
 
             if (setLogs.length > 0) {
-                const { error: logsError }: { error: any } = await supabase
+                const { error: logsError } = await supabase
                     .from('set_logs' as any)
-                    .insert(setLogs);
+                    .upsert(setLogs, {
+                        onConflict: 'workout_session_id,assigned_workout_item_id,set_number',
+                    });
 
-                if (logsError) throw logsError;
+                if (logsError) {
+                    console.error('[useWorkoutSession] Error upserting set_logs at finish:', logsError);
+                }
             }
 
-            // Success! Return the session ID
-            return session.id;
+            console.log(`[useWorkoutSession] Workout finished. Session: ${currentSessionId}, sets: ${setLogs.length}`);
+            return currentSessionId;
 
         } catch (error: any) {
             console.error("Error finishing workout:", error);
-            throw error; // Re-throw to be handled by component
+            throw error;
         } finally {
             setIsSubmitting(false);
         }

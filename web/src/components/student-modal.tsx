@@ -4,6 +4,7 @@ import { createStudent } from '@/actions/create-student'
 import { StudentAccessDialog } from '@/components/students'
 import { Button } from '@/components/ui/button'
 import { X, User, Mail, Phone, Globe, MapPin, Loader2, AlertCircle } from 'lucide-react'
+import { useOnboardingStore } from '@/stores/onboarding-store'
 
 interface Student {
     id: string
@@ -111,7 +112,8 @@ export function StudentModal({
                 return
             }
 
-            // Success!
+            // Success! Mark onboarding milestone
+            useOnboardingStore.getState().completeMilestone('first_student_created')
             setLoading(false)
 
             // Set credentials for the second modal

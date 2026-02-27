@@ -10,6 +10,7 @@ interface NavItem {
     name: string
     href: string
     icon: React.ElementType
+    onboardingId?: string
 }
 
 const navigation: NavItem[] = [
@@ -17,36 +18,43 @@ const navigation: NavItem[] = [
         name: 'Dashboard',
         href: '/dashboard',
         icon: LayoutDashboard,
+        onboardingId: 'sidebar-dashboard',
     },
     {
         name: 'Alunos',
         href: '/students',
         icon: Users,
+        onboardingId: 'sidebar-students',
     },
     {
         name: 'Exercícios',
         href: '/exercises',
         icon: Dumbbell,
+        onboardingId: 'sidebar-exercises',
     },
     {
         name: 'Programas',
         href: '/programs',
         icon: Calendar,
+        onboardingId: 'sidebar-programs',
     },
     {
         name: 'Avaliações',
         href: '/forms',
         icon: FileText,
+        onboardingId: 'sidebar-forms',
     },
     {
         name: 'Financeiro',
         href: '/financial',
         icon: Wallet,
+        onboardingId: 'sidebar-financial',
     },
     {
         name: 'Configurações',
         href: '/settings',
         icon: Settings,
+        onboardingId: 'sidebar-settings',
     },
 ]
 
@@ -80,6 +88,7 @@ export function Sidebar() {
                         <Link
                             key={item.name}
                             href={item.href}
+                            data-onboarding={item.onboardingId}
                             className={`
                                 relative flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium tracking-tight transition-all duration-200 ease-out group
                                 ${isActive

@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { DashboardClient } from './dashboard-client'
 import { CheckoutPolling } from './checkout-polling'
+import { DEFAULT_ONBOARDING_STATE } from '@kinevo/shared/types/onboarding'
 
 export default async function DashboardPage({
     searchParams,
@@ -18,12 +19,25 @@ export default async function DashboardPage({
         redirect('/login')
     }
 
-    // Get trainer data
-    const { data: trainer } = await supabase
+    // Get trainer data (resilient: works with or without onboarding_state column)
+    let trainer: { id: string; name: string; email: string; avatar_url?: string | null; theme?: 'light' | 'dark' | 'system' | null; onboarding_state?: any; [key: string]: any } | null = null
+
+    const { data: t1, error: e1 } = await supabase
         .from('trainers')
-        .select('id, name, email, avatar_url, theme')
+        .select('id, name, email, avatar_url, theme, onboarding_state')
         .eq('auth_user_id', user.id)
         .single()
+
+    if (t1) {
+        trainer = t1 as any
+    } else if (e1 && e1.message?.includes('onboarding_state')) {
+        const { data: t2 } = await supabase
+            .from('trainers')
+            .select('id, name, email, avatar_url, theme')
+            .eq('auth_user_id', user.id)
+            .single()
+        trainer = t2 ? { ...t2, onboarding_state: DEFAULT_ONBOARDING_STATE } as any : null
+    }
 
     if (!trainer) {
         // No trainer record — force logout

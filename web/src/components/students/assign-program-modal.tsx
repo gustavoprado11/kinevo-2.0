@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { assignProgram } from '@/app/students/[id]/actions/assign-program'
 import { getTrainerPrograms } from '@/app/students/[id]/actions/get-trainer-programs'
+import { useOnboardingStore } from '@/stores/onboarding-store'
 
 interface ProgramTemplate {
     id: string
@@ -117,6 +118,7 @@ export function AssignProgramModal({
                 throw new Error(result.error)
             }
 
+            useOnboardingStore.getState().completeMilestone('first_program_assigned')
             setAssigning(false)
             onProgramAssigned()
             onClose()

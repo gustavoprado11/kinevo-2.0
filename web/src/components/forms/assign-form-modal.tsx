@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Send, CheckCircle2, Loader2 } from 'lucide-react'
 import { assignFormToStudents } from '@/actions/forms/assign-form'
+import { useOnboardingStore } from '@/stores/onboarding-store'
 
 interface Student {
     id: string
@@ -67,6 +68,7 @@ export function AssignFormModal({
         })
 
         if (res.success) {
+            useOnboardingStore.getState().completeMilestone('first_form_sent')
             setResult(`Formulário enviado para ${res.assignedCount} aluno(s)${res.skippedCount ? ` (${res.skippedCount} já tinham)` : ''}.`)
             setTimeout(() => {
                 resetAndClose()

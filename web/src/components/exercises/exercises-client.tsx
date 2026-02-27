@@ -8,8 +8,11 @@ import { createClient } from '@/lib/supabase/client'
 import { ExerciseItem, ExerciseWithDetails } from './exercise-item'
 import { ExerciseFormModal } from './exercise-form-modal'
 import { MuscleGroupManagerModal } from './muscle-group-manager-modal'
+import { useOnboardingStore } from '@/stores/onboarding-store'
 import { Button } from '@/components/ui/button'
 import { Plus, Search, Settings2, X } from 'lucide-react'
+import { TourRunner } from '@/components/onboarding/tours/tour-runner'
+import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
 
 interface ExercisesClientProps {
     initialExercises: ExerciseWithDetails[]
@@ -128,6 +131,7 @@ export function ExercisesClient({
     }
 
     const handleSuccess = () => {
+        useOnboardingStore.getState().completeMilestone('first_exercise_added')
         router.refresh()
     }
 
@@ -146,6 +150,7 @@ export function ExercisesClient({
                 </div>
 
                 <Button
+                    data-onboarding="exercises-add-btn"
                     onClick={handleCreate}
                     className="gap-2 bg-violet-600 hover:bg-violet-500 rounded-full px-6 py-2 text-sm font-semibold shadow-lg shadow-violet-500/20 transition-all duration-200"
                 >
@@ -158,7 +163,7 @@ export function ExercisesClient({
             <div className="space-y-8">
                 {/* Search & Management Bar */}
                 <div className="flex flex-col md:flex-row gap-4">
-                    <div className="flex-1 relative group">
+                    <div data-onboarding="exercises-search" className="flex-1 relative group">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/50 group-focus-within:text-violet-500 transition-colors duration-300" strokeWidth={1.5} />
                         <input
                             type="text"
@@ -179,7 +184,7 @@ export function ExercisesClient({
 
                 {/* Tags Filter */}
                 {allMuscleGroups.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
+                    <div data-onboarding="exercises-muscle-filters" className="flex flex-wrap gap-2">
                         {allMuscleGroups.map(group => {
                             const isSelected = selectedMuscleGroups.includes(group)
                             return (
@@ -258,6 +263,9 @@ export function ExercisesClient({
                 trainerId={currentTrainerId}
                 manager={muscleGroupsManager}
             />
+
+            {/* Tour: Exercises (auto-start on first visit) */}
+            <TourRunner tourId="exercises" steps={TOUR_STEPS.exercises} autoStart />
         </AppLayout>
     )
 }

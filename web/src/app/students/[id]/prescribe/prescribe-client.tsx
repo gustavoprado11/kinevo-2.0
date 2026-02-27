@@ -13,6 +13,8 @@ import { generateProgram } from '@/actions/prescription/generate-program'
 
 import type { PrescriptionData } from '@/actions/prescription/get-prescription-data'
 import type { StudentPrescriptionProfile } from '@kinevo/shared/types/prescription'
+import { TourRunner } from '@/components/onboarding/tours/tour-runner'
+import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
 
 // ============================================================================
 // Types
@@ -30,7 +32,7 @@ interface Trainer {
     name: string
     email: string
     avatar_url?: string | null
-    theme?: 'light' | 'dark' | 'system'
+    theme?: 'light' | 'dark' | 'system' | null
 }
 
 type PageState = 'anamnese' | 'generating'
@@ -81,7 +83,7 @@ export function PrescribeClient({ trainer, student, prescriptionData }: Prescrib
             trainerName={trainer.name}
             trainerEmail={trainer.email}
             trainerAvatarUrl={trainer.avatar_url}
-            trainerTheme={trainer.theme}
+            trainerTheme={trainer.theme ?? undefined}
         >
             <div className="max-w-5xl mx-auto">
                 {/* Header */}
@@ -124,15 +126,17 @@ export function PrescribeClient({ trainer, student, prescriptionData }: Prescrib
                 {/* State 1: Anamnese */}
                 {pageState === 'anamnese' && (
                     <div className="space-y-6">
-                        <PrescriptionProfileForm
-                            studentId={student.id}
-                            existingProfile={profile}
-                            onSaved={handleProfileSaved}
-                        />
+                        <div data-onboarding="prescription-profile">
+                            <PrescriptionProfileForm
+                                studentId={student.id}
+                                existingProfile={profile}
+                                onSaved={handleProfileSaved}
+                            />
+                        </div>
 
                         {/* Generate button — only shows when profile exists */}
                         {profile && (
-                            <div className="bg-glass-bg backdrop-blur-md rounded-2xl border border-k-border-primary p-6">
+                            <div data-onboarding="prescription-generate" className="bg-glass-bg backdrop-blur-md rounded-2xl border border-k-border-primary p-6">
                                 <div className="flex items-center justify-between">
                                     <div>
                                         <h3 className="text-lg font-bold text-k-text-primary">Gerar Programa</h3>
@@ -164,6 +168,9 @@ export function PrescribeClient({ trainer, student, prescriptionData }: Prescrib
                     <GenerationStatus studentName={student.name} />
                 )}
             </div>
+
+            {/* Tour: Prescribe (auto-start on first visit) */}
+            <TourRunner tourId="prescribe" steps={TOUR_STEPS.prescribe} autoStart />
         </AppLayout>
     )
 }

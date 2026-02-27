@@ -15,6 +15,8 @@ import { completeProgram } from './actions/complete-program'
 import { deleteStudent } from './actions/student-actions'
 import { activateProgram } from './actions/activate-program'
 import { deleteProgram } from './actions/delete-program'
+import { TourRunner } from '@/components/onboarding/tours/tour-runner'
+import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
 
 interface Student {
     id: string
@@ -67,7 +69,7 @@ interface Trainer {
     name: string
     email: string
     avatar_url?: string | null
-    theme?: 'light' | 'dark' | 'system'
+    theme?: 'light' | 'dark' | 'system' | null
     ai_prescriptions_enabled?: boolean
 }
 
@@ -215,7 +217,7 @@ export function StudentDetailClient({
             trainerName={trainer.name}
             trainerEmail={trainer.email}
             trainerAvatarUrl={trainer.avatar_url}
-            trainerTheme={trainer.theme}
+            trainerTheme={trainer.theme ?? undefined}
         >
             <div className="min-h-screen bg-surface-primary -m-8 p-8 space-y-6">
                 {/* Student Header */}
@@ -228,7 +230,7 @@ export function StudentDetailClient({
                 {/* Main Content Grid - New Layout */}
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
                     {/* Left Column: Active Program Dashboard */}
-                    <div>
+                    <div data-onboarding="student-actions">
                         <ActiveProgramDashboard
                             program={activeProgram}
                             summary={historySummary}
@@ -414,6 +416,9 @@ export function StudentDetailClient({
                 onConfirm={handleConfirmComplete}
                 programName={activeProgram?.name || ''}
             />
+
+            {/* Tour: Student Detail (auto-start on first visit) */}
+            <TourRunner tourId="student_detail" steps={TOUR_STEPS.student_detail} autoStart />
         </AppLayout>
     )
 }

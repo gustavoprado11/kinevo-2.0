@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import {
   syncWorkoutToWatch,
   addWatchMessageListener,
@@ -11,10 +11,29 @@ import {
 interface UseWatchConnectivityProps {
   onWatchSetComplete?: (event: WatchSetCompletionEvent) => void;
   onWatchStartWorkout?: (event: WatchStartWorkoutEvent) => void;
-  onWatchFinishWorkout?: (event: { workoutId: string; rpe: number }) => void;
+  onWatchFinishWorkout?: (event: {
+    workoutId: string;
+    rpe: number;
+    startedAt?: string;
+    exercises?: Array<{
+      id: string;
+      sets: Array<{ setIndex: number; reps: number; weight: number; completed: boolean }>;
+    }>;
+  }) => void;
 }
 
 export function useWatchConnectivity({ onWatchSetComplete, onWatchStartWorkout, onWatchFinishWorkout }: UseWatchConnectivityProps = {}) {
+  // Stable refs — callbacks change every render but the listener stays subscribed once.
+  const setCompleteRef = useRef(onWatchSetComplete);
+  const startWorkoutRef = useRef(onWatchStartWorkout);
+  const finishWorkoutRef = useRef(onWatchFinishWorkout);
+
+  useEffect(() => {
+    setCompleteRef.current = onWatchSetComplete;
+    startWorkoutRef.current = onWatchStartWorkout;
+    finishWorkoutRef.current = onWatchFinishWorkout;
+  });
+
   // Initialize module by checking if watch is reachable (forces module load)
   useEffect(() => {
     try {
@@ -25,10 +44,11 @@ export function useWatchConnectivity({ onWatchSetComplete, onWatchStartWorkout, 
     }
   }, []);
 
-  // Listen for messages from Apple Watch
+  // Listen for messages from Apple Watch — subscribed ONCE, refs always point to latest callbacks.
   useEffect(() => {
+    console.log('[useWatchConnectivity] 📡 Adding watch message listener (stable, once)');
     const subscription = addWatchMessageListener((event) => {
-      console.log('[useWatchConnectivity] Received message:', event);
+      console.log('[useWatchConnectivity] 📥 Received message — type:', event?.type, 'payload keys:', event?.payload ? Object.keys(event.payload).join(', ') : 'NONE');
 
       if (event.type === 'SET_COMPLETE' && event.payload) {
         const parsed: WatchSetCompletionEvent = {
@@ -48,7 +68,7 @@ export function useWatchConnectivity({ onWatchSetComplete, onWatchStartWorkout, 
         console.log(
           `[useWatchConnectivity] Set completed on watch: exercise ${parsed.exerciseIndex}, set ${parsed.setIndex}, reps ${parsed.reps ?? '-'}, weight ${parsed.weight ?? '-'}`
         );
-        onWatchSetComplete?.(parsed);
+        setCompleteRef.current?.(parsed);
       }
 
       if (event.type === 'START_WORKOUT' && event.payload) {
@@ -59,27 +79,42 @@ export function useWatchConnectivity({ onWatchSetComplete, onWatchStartWorkout, 
         }
 
         console.log(`[useWatchConnectivity] Watch requested START_WORKOUT for ${workoutId}`);
-        onWatchStartWorkout?.({ workoutId });
+        startWorkoutRef.current?.({ workoutId });
       }
 
       if (event.type === 'FINISH_WORKOUT' && event.payload) {
         const workoutId = typeof event.payload.workoutId === 'string' ? event.payload.workoutId : null;
         const rpe = Number(event.payload.rpe ?? 0);
+        const startedAt = typeof event.payload.startedAt === 'string' ? event.payload.startedAt : undefined;
+        const exercises = Array.isArray(event.payload.exercises)
+          ? event.payload.exercises.map((ex: any) => ({
+              id: String(ex.id ?? ''),
+              sets: Array.isArray(ex.sets)
+                ? ex.sets.map((s: any) => ({
+                    setIndex: Number(s.setIndex ?? 0),
+                    reps: Number(s.reps ?? 0),
+                    weight: Number(s.weight ?? 0),
+                    completed: Boolean(s.completed),
+                  }))
+                : [],
+            }))
+          : undefined;
 
         if (!workoutId) {
           console.warn('[useWatchConnectivity] Ignoring invalid FINISH_WORKOUT payload:', event.payload);
           return;
         }
 
-        console.log(`[useWatchConnectivity] Watch requested FINISH_WORKOUT for ${workoutId} with rpe ${rpe}`);
-        onWatchFinishWorkout?.({ workoutId, rpe });
+        console.log(`[useWatchConnectivity] Watch requested FINISH_WORKOUT for ${workoutId} with rpe ${rpe}, ${exercises?.length ?? 0} exercises`);
+        finishWorkoutRef.current?.({ workoutId, rpe, startedAt, exercises });
       }
     });
 
     return () => {
+      console.log('[useWatchConnectivity] 🔌 Removing watch message listener');
       subscription.remove();
     };
-  }, [onWatchSetComplete, onWatchStartWorkout, onWatchFinishWorkout]);
+  }, []); // empty deps — subscribe once
 
   // Send workout state to watch
   const sendWorkoutToWatch = useCallback((payload: WatchWorkoutPayload) => {

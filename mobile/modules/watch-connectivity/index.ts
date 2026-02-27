@@ -2,8 +2,11 @@ export {
   syncWorkoutToWatch,
   sendWorkoutState,
   sendMessage,
+  sendAckToWatch,
   addWatchMessageListener,
   isWatchReachable,
+  getDebugLogs,
+  clearDebugLogs,
 } from './src/WatchConnectivityModule';
 
 export type {

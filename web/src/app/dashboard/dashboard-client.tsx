@@ -6,16 +6,20 @@ import { AppLayout } from '@/components/layout'
 import { StudentModal } from '@/components/student-modal'
 import { Users, UserCheck, Activity, Plus, ChevronRight, Monitor } from 'lucide-react'
 import { DailyActivityFeed } from '@/components/dashboard/daily-activity-feed'
-import { TrainerProfileWelcomeModal } from '@/components/dashboard/trainer-profile-welcome-modal'
 import { TrainerProfileBanner } from '@/components/dashboard/trainer-profile-banner'
 import { AppDownloadCard } from '@/components/dashboard/app-download-card'
+import { WelcomeModal } from '@/components/onboarding/widgets/welcome-modal'
+import { TourRunner } from '@/components/onboarding/tours/tour-runner'
+import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
+import type { OnboardingState } from '@kinevo/shared/types/onboarding'
 
 interface Trainer {
     id: string
     name: string
     email: string
     avatar_url?: string | null
-    theme?: 'light' | 'dark' | 'system'
+    theme?: 'light' | 'dark' | 'system' | null
+    onboarding_state?: OnboardingState | null
 }
 
 interface Student {
@@ -68,7 +72,8 @@ export function DashboardClient({ trainer, initialStudents, dailyActivity, selfS
             trainerName={trainer.name}
             trainerEmail={trainer.email}
             trainerAvatarUrl={trainer.avatar_url}
-            trainerTheme={trainer.theme}
+            trainerTheme={trainer.theme ?? undefined}
+            onboardingState={trainer.onboarding_state}
         >
 
             {/* Trainer Profile Banner */}
@@ -111,6 +116,7 @@ export function DashboardClient({ trainer, initialStudents, dailyActivity, selfS
                 {/* Right Column: Quick Actions */}
                 <div className="space-y-6">
                     <button
+                        data-onboarding="dashboard-new-student"
                         onClick={() => setIsModalOpen(true)}
                         className="group w-full flex items-center gap-4 rounded-2xl border border-transparent bg-glass-bg p-4 backdrop-blur-md transition-all duration-200 hover:bg-glass-bg-active"
                     >
@@ -126,6 +132,7 @@ export function DashboardClient({ trainer, initialStudents, dailyActivity, selfS
 
                     {/* Training Room Card */}
                     <button
+                        data-onboarding="dashboard-training-room"
                         onClick={() => router.push('/training-room')}
                         className="group w-full flex items-center gap-4 rounded-2xl border border-transparent bg-glass-bg p-4 backdrop-blur-md transition-all duration-200 hover:bg-glass-bg-active"
                     >
@@ -152,8 +159,11 @@ export function DashboardClient({ trainer, initialStudents, dailyActivity, selfS
                 trainerId={trainer.id}
             />
 
-            {/* Welcome Modal (first time only) */}
-            <TrainerProfileWelcomeModal />
+            {/* Welcome Modal (onboarding — first time only) */}
+            <WelcomeModal trainerName={trainer.name} />
+
+            {/* Welcome Tour (6 steps — triggered by WelcomeModal CTA) */}
+            <TourRunner tourId="welcome" steps={TOUR_STEPS.welcome} />
         </AppLayout>
     )
 }

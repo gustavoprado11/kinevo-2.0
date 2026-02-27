@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CFBundleIconName</key>
+	<string>AppIcon</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
@@ -23,7 +25,7 @@
 	<key>WKCompanionAppBundleIdentifier</key>
 	<string>com.kinevo.mobile</string>
 	<key>NSHealthShareUsageDescription</key>
-	<string>O Kinevo Watch usa dados de saúde para mostrar frequência cardíaca durante o treino.</string>
+	<string>O Kinevo Watch usa dados de saúde para mostrar frequência cardíaca e calorias durante o treino.</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>O Kinevo Watch salva dados do treino no Apple Saúde.</string>
 </dict>

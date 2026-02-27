@@ -9,9 +9,9 @@ struct KinevoWatchApp: App {
         WindowGroup {
             NavigationStack {
                 WorkoutListView()
-                    .environmentObject(sessionManager)
-                    .environmentObject(healthKitManager)
             }
+            .environmentObject(sessionManager)
+            .environmentObject(healthKitManager)
         }
     }
 }

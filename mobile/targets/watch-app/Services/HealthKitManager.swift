@@ -2,7 +2,9 @@ import Foundation
 import HealthKit
 import Combine
 
-/// Manages HealthKit workout session to keep the app alive in background
+/// Manages HealthKit workout session — keeps the app alive in background,
+/// tracks heart rate & active calories in real-time, and saves the workout
+/// to Apple Health on completion (appears as "Musculação" in the Saúde app).
 class HealthKitManager: NSObject, ObservableObject {
     static let shared = HealthKitManager()
 
@@ -11,6 +13,7 @@ class HealthKitManager: NSObject, ObservableObject {
     private var builder: HKLiveWorkoutBuilder?
 
     @Published var heartRate: Double = 0.0
+    @Published var activeCalories: Double = 0.0
     @Published var isWorkoutActive: Bool = false
 
     override init() {
@@ -25,9 +28,13 @@ class HealthKitManager: NSObject, ObservableObject {
             return
         }
 
-        let typesToRead: Set<HKObjectType> = [
-            HKObjectType.quantityType(forIdentifier: .heartRate)!
-        ]
+        var typesToRead: Set<HKObjectType> = []
+        if let heartRateType = HKObjectType.quantityType(forIdentifier: .heartRate) {
+            typesToRead.insert(heartRateType)
+        }
+        if let activeEnergyType = HKObjectType.quantityType(forIdentifier: .activeEnergyBurned) {
+            typesToRead.insert(activeEnergyType)
+        }
 
         let typesToWrite: Set<HKSampleType> = [
             HKObjectType.workoutType()
@@ -78,6 +85,8 @@ class HealthKitManager: NSObject, ObservableObject {
 
             DispatchQueue.main.async {
                 self.isWorkoutActive = true
+                self.activeCalories = 0.0
+                self.heartRate = 0.0
             }
 
             print("[HealthKit] Workout session started")
@@ -93,22 +102,37 @@ class HealthKitManager: NSObject, ObservableObject {
         }
 
         session.end()
-        builder.endCollection(withEnd: Date()) { success, error in
+
+        let endDate = Date()
+
+        // Critical order: endCollection FIRST, then finishWorkout.
+        // Without finishWorkout(), the workout won't appear in Apple Health.
+        builder.endCollection(withEnd: endDate) { [weak self] success, error in
             if let error = error {
                 print("[HealthKit] Failed to end collection: \(error)")
             } else {
-                print("[HealthKit] Workout collection ended")
+                print("[HealthKit] Workout collection ended — saving to HealthKit...")
             }
-        }
 
-        DispatchQueue.main.async {
-            self.isWorkoutActive = false
+            builder.finishWorkout { workout, error in
+                if let error = error {
+                    print("[HealthKit] ❌ Failed to save workout to HealthKit: \(error)")
+                } else if let workout = workout {
+                    let duration = workout.duration
+                    let calories = workout.totalEnergyBurned?.doubleValue(for: .kilocalorie()) ?? 0
+                    print("[HealthKit] ✅ Workout saved to HealthKit — duration: \(Int(duration))s, calories: \(Int(calories)) kcal")
+                }
+
+                DispatchQueue.main.async {
+                    self?.isWorkoutActive = false
+                    self?.activeCalories = 0.0
+                    self?.heartRate = 0.0
+                }
+            }
         }
 
         workoutSession = nil
         self.builder = nil
-
-        print("[HealthKit] Workout session ended")
     }
 }
 
@@ -141,17 +165,30 @@ extension HealthKitManager: HKWorkoutSessionDelegate {
 
 extension HealthKitManager: HKLiveWorkoutBuilderDelegate {
     func workoutBuilder(_ workoutBuilder: HKLiveWorkoutBuilder, didCollectDataOf collectedTypes: Set<HKSampleType>) {
-        // Update heart rate if available
         for type in collectedTypes {
-            guard let quantityType = type as? HKQuantityType,
-                  quantityType == HKQuantityType.quantityType(forIdentifier: .heartRate) else { continue }
+            guard let quantityType = type as? HKQuantityType else { continue }
 
-            if let statistics = workoutBuilder.statistics(for: quantityType) {
-                let heartRateUnit = HKUnit.count().unitDivided(by: .minute())
-                let value = statistics.mostRecentQuantity()?.doubleValue(for: heartRateUnit) ?? 0
+            // Heart rate — instantaneous (mostRecentQuantity)
+            if quantityType == HKQuantityType.quantityType(forIdentifier: .heartRate) {
+                if let statistics = workoutBuilder.statistics(for: quantityType) {
+                    let heartRateUnit = HKUnit.count().unitDivided(by: .minute())
+                    let value = statistics.mostRecentQuantity()?.doubleValue(for: heartRateUnit) ?? 0
 
-                DispatchQueue.main.async {
-                    self.heartRate = value
+                    DispatchQueue.main.async {
+                        self.heartRate = value
+                    }
+                }
+            }
+
+            // Active calories — cumulative (sumQuantity)
+            if quantityType == HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned) {
+                if let statistics = workoutBuilder.statistics(for: quantityType) {
+                    let energyUnit = HKUnit.kilocalorie()
+                    let value = statistics.sumQuantity()?.doubleValue(for: energyUnit) ?? 0
+
+                    DispatchQueue.main.async {
+                        self.activeCalories = value
+                    }
                 }
             }
         }

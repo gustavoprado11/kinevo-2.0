@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Smartphone, Copy, Check, ExternalLink } from 'lucide-react'
+import { useOnboardingStore } from '@/stores/onboarding-store'
 
 const IOS_LINK = 'https://apps.apple.com/br/app/kinevo/id6759053587'
 
@@ -10,6 +11,7 @@ export function AppDownloadCard() {
 
     const handleCopy = async () => {
         await navigator.clipboard.writeText(IOS_LINK)
+        useOnboardingStore.getState().completeMilestone('app_link_shared')
         setCopied(true)
         setTimeout(() => setCopied(false), 2000)
     }

@@ -11,6 +11,9 @@ import { VolumeSummary } from './volume-summary'
 import { Button } from '@/components/ui/button'
 import { ChevronLeft, Check, Loader2, Calendar, ArrowRight, Edit3, AlertCircle } from 'lucide-react'
 
+import { TourRunner } from '@/components/onboarding/tours/tour-runner'
+import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
+import { useOnboardingStore } from '@/stores/onboarding-store'
 import type { Exercise } from '@/types/exercise'
 import { assignProgram } from '@/app/students/[id]/actions/assign-program'
 
@@ -67,7 +70,7 @@ interface Trainer {
     name: string
     email: string
     avatar_url?: string | null
-    theme?: 'light' | 'dark' | 'system'
+    theme?: 'light' | 'dark' | 'system' | null
 }
 
 interface StudentContext {
@@ -708,8 +711,14 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                     return // Stop redirection to show error
                 }
 
+                // Mark both milestones: program created AND assigned
+                useOnboardingStore.getState().completeMilestone('first_program_created')
+                useOnboardingStore.getState().completeMilestone('first_program_assigned')
+
                 router.push(`/students/${studentContext.id}`)
             } else {
+                // Template saved (no assignment)
+                useOnboardingStore.getState().completeMilestone('first_program_created')
                 router.push('/programs')
             }
             router.refresh()
@@ -727,7 +736,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
             trainerName={trainer.name}
             trainerEmail={trainer.email}
             trainerAvatarUrl={trainer.avatar_url}
-            trainerTheme={trainer.theme}
+            trainerTheme={trainer.theme ?? undefined}
         >
             <div className="flex flex-col h-[calc(100vh-64px)] overflow-hidden bg-surface-canvas">
                 {/* Scheduling Bar (Responsive Header) */}
@@ -874,7 +883,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                             </label>
                         )}
 
-                        <div className="relative">
+                        <div data-onboarding="program-save" className="relative">
                             <Button
                                 onClick={saveProgram}
                                 disabled={saving}
@@ -922,12 +931,14 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                     </div>
                 )}
 
-                <VolumeSummary workouts={workouts} />
+                <div data-onboarding="program-volume">
+                    <VolumeSummary workouts={workouts} />
+                </div>
 
                 {/* Workspace (Layout Columns) */}
                 <div className="flex flex-1 overflow-hidden">
                     {/* Left Panel: Exercise Library */}
-                    <div className="w-[320px] bg-surface-primary border-r border-k-border-subtle flex flex-col flex-shrink-0">
+                    <div data-onboarding="program-exercise-library" className="w-[320px] bg-surface-primary border-r border-k-border-subtle flex flex-col flex-shrink-0">
                         <ExerciseLibraryPanel
                             exercises={localExercises}
                             trainerId={trainer.id}
@@ -940,7 +951,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                     {/* Right Panel: Canvas */}
                     <div className="flex-1 flex flex-col min-w-0 bg-surface-canvas">
                         {/* Workout Tabs (Segmented Control) */}
-                        <div className="flex items-center gap-1 p-4 overflow-x-auto no-scrollbar border-b border-k-border-subtle bg-surface-canvas">
+                        <div data-onboarding="program-workouts" className="flex items-center gap-1 p-4 overflow-x-auto no-scrollbar border-b border-k-border-subtle bg-surface-canvas">
                             <div className="bg-surface-card p-1 rounded-xl flex gap-1 items-center border border-k-border-subtle">
                                 {workouts.map((workout) => (
                                     <button
@@ -1017,7 +1028,9 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                     </div>
                 </div>
             </div>
+
+            {/* Tour: Program Builder (auto-start on first visit) */}
+            <TourRunner tourId="program_builder" steps={TOUR_STEPS.program_builder} autoStart />
         </AppLayout>
     )
 }
-

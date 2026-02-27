@@ -18,6 +18,7 @@ import { RestTimerOverlay } from '../../components/workout/RestTimerOverlay';
 import { ExerciseSwapModal } from '../../components/workout/ExerciseSwapModal';
 import type { ExerciseSubstituteOption } from '../../hooks/useWorkoutSession';
 import { ShareableCardProps } from '../../components/workout/sharing/types';
+import { watchFinishState } from '../../lib/finishWorkoutFromWatch';
 
 export default function WorkoutPlayerScreen() {
     const { id } = useLocalSearchParams();
@@ -79,6 +80,8 @@ export default function WorkoutPlayerScreen() {
     }, [startRestTimer]);
 
     // Apple Watch connectivity
+    // Note: FINISH_WORKOUT is handled at root level (_layout.tsx → finishWorkoutFromWatch)
+    // so it works even when this screen is not mounted (app killed during workout).
     const { sendWorkoutToWatch } = useWatchConnectivity({
         onWatchSetComplete: ({ workoutId, exerciseIndex, setIndex, reps, weight }) => {
             if (workoutId && workoutId !== (id as string)) {
@@ -90,14 +93,6 @@ export default function WorkoutPlayerScreen() {
             );
             applyWatchSetCompletion(exerciseIndex, setIndex, reps, weight);
         },
-        onWatchFinishWorkout: ({ workoutId, rpe }) => {
-            if (workoutId && workoutId !== (id as string)) {
-                return;
-            }
-
-            console.log(`[WorkoutScreen] Watch reported workout finished. Syncing success state with RPE: ${rpe}.`);
-            handleConfirmFinish(rpe, "");
-        }
     });
 
     // Send workout data to Apple Watch when loaded
@@ -252,8 +247,9 @@ export default function WorkoutPlayerScreen() {
     // Protect against accidental exit
     useEffect(() => {
         const unsubscribe = navigation.addListener('beforeRemove', (e) => {
-            if (isSubmitting || isFinishingRef.current) {
-                // Allow navigation if submitting or finishing successfully
+            if (isSubmitting || isFinishingRef.current || watchFinishState.isFinished(id as string)) {
+                // Allow navigation if submitting, finishing successfully,
+                // or workout was saved from Apple Watch at root level.
                 return;
             }
 

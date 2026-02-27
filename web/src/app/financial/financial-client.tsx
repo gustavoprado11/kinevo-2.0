@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Users, TrendingUp, Receipt, FileText, ArrowRight, Wallet } from 'lucide-react'
+import { useOnboardingStore } from '@/stores/onboarding-store'
 import Link from 'next/link'
 import { AppLayout } from '@/components/layout'
 import { ConnectStatusCard } from '@/components/financial/connect-status-card'
@@ -72,6 +73,13 @@ export function FinancialDashboardClient({
                 })
         }
     }, [searchParams, router])
+
+    // Mark financial_setup milestone when Stripe is connected and charges enabled
+    useEffect(() => {
+        if (connectStatus.connected && connectStatus.chargesEnabled) {
+            useOnboardingStore.getState().completeMilestone('financial_setup')
+        }
+    }, [connectStatus])
 
     if (showOnboarding) {
         return (

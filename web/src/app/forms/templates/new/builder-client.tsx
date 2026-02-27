@@ -22,6 +22,8 @@ import {
     ChevronLeft,
     Pencil,
 } from 'lucide-react'
+import { TourRunner } from '@/components/onboarding/tours/tour-runner'
+import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -155,7 +157,7 @@ function StepIndicator({ step, isEditing }: { step: BuilderStep; isEditing: bool
 
 function MobilePreview({ title, description, questions }: { title: string; description: string; questions: Question[] }) {
     return (
-        <div className="hidden xl:block">
+        <div data-onboarding="form-mobile-preview" className="hidden xl:block">
             <div className="sticky top-6">
                 {/* Label */}
                 <div className="mb-3 text-center">
@@ -501,7 +503,7 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                         Como deseja criar seu template?
                                     </p>
 
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                    <div data-onboarding="form-choose-method" className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                         {/* Card: AI */}
                                         <button
                                             onClick={() => {
@@ -915,7 +917,7 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                             })}
 
                                             {/* Add Question Button */}
-                                            <div className="relative">
+                                            <div data-onboarding="form-question-types" className="relative">
                                                 <button
                                                     onClick={() => setShowAddMenu(!showAddMenu)}
                                                     className="w-full h-11 border-2 border-dashed border-k-border-subtle hover:border-violet-500/30 rounded-xl text-sm font-semibold text-k-text-secondary hover:text-violet-400 transition-all flex items-center justify-center gap-2"
@@ -984,6 +986,9 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                     </div>
                 </div>
             )}
+
+            {/* Tour: Form Builder (auto-start on first visit) */}
+            <TourRunner tourId="form_builder" steps={TOUR_STEPS.form_builder} autoStart />
         </AppLayout>
     )
 }

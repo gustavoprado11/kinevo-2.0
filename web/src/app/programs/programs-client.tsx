@@ -5,13 +5,15 @@ import { useRouter } from 'next/navigation'
 import { AppLayout } from '@/components/layout'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, Search, Trash2, Calendar, Dumbbell, FolderPlus, Loader2 } from 'lucide-react'
+import { TourRunner } from '@/components/onboarding/tours/tour-runner'
+import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
 
 interface Trainer {
     id: string
     name: string
     email: string
     avatar_url?: string | null
-    theme?: 'light' | 'dark' | 'system'
+    theme?: 'light' | 'dark' | 'system' | null
 }
 
 interface ProgramTemplate {
@@ -71,7 +73,7 @@ export function ProgramsClient({ trainer, programs: initialPrograms }: ProgramsC
             trainerName={trainer.name}
             trainerEmail={trainer.email}
             trainerAvatarUrl={trainer.avatar_url}
-            trainerTheme={trainer.theme}
+            trainerTheme={trainer.theme ?? undefined}
         >
             <div className="min-h-screen bg-surface-primary p-8 font-sans">
                 <div className="max-w-7xl mx-auto space-y-8">
@@ -87,6 +89,7 @@ export function ProgramsClient({ trainer, programs: initialPrograms }: ProgramsC
                             </p>
                         </div>
                         <button
+                            data-onboarding="programs-create-btn"
                             onClick={handleCreateProgram}
                             className="bg-violet-600 hover:bg-violet-500 text-white rounded-full px-6 py-2.5 text-sm font-semibold shadow-lg shadow-violet-500/20 transition-all active:scale-95 flex items-center gap-2 w-fit"
                         >
@@ -190,6 +193,9 @@ export function ProgramsClient({ trainer, programs: initialPrograms }: ProgramsC
                     )}
                 </div>
             </div>
+
+            {/* Tour: Programs (auto-start on first visit) */}
+            <TourRunner tourId="programs" steps={TOUR_STEPS.programs} autoStart />
         </AppLayout>
     )
 }

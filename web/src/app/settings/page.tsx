@@ -121,7 +121,7 @@ export default async function SettingsPage() {
             trainerName={trainer.name}
             trainerEmail={trainer.email}
             trainerAvatarUrl={trainer.avatar_url}
-            trainerTheme={trainer.theme}
+            trainerTheme={trainer.theme ?? undefined}
         >
             <div className="mb-8">
                 <div className="mb-2 flex items-center gap-2 text-[10px] uppercase tracking-widest text-k-text-quaternary font-bold">

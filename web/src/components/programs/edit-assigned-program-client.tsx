@@ -68,7 +68,7 @@ interface Trainer {
     name: string
     email: string
     avatar_url?: string | null
-    theme?: 'light' | 'dark' | 'system'
+    theme?: 'light' | 'dark' | 'system' | null
 }
 
 interface EditAssignedProgramClientProps {
@@ -841,7 +841,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
             trainerName={trainer.name}
             trainerEmail={trainer.email}
             trainerAvatarUrl={trainer.avatar_url}
-            trainerTheme={trainer.theme}
+            trainerTheme={trainer.theme ?? undefined}
         >
             <div className="flex flex-col h-[calc(100vh-64px)] overflow-hidden bg-surface-canvas">
                 {/* Scheduling Bar (Responsive Header) */}

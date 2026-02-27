@@ -165,7 +165,7 @@ export function StudentHeader({ student, onEdit, onDelete }: StudentHeaderProps)
                     </div>
 
                     {/* Quick Actions */}
-                    <div className="flex items-center gap-2 flex-shrink-0">
+                    <div data-onboarding="student-header-actions" className="flex items-center gap-2 flex-shrink-0">
                         <button
                             onClick={onEdit}
                             className="px-4 py-2 text-[11px] font-bold uppercase tracking-widest text-k-text-tertiary hover:text-k-text-primary hover:bg-glass-bg rounded-xl transition-all flex items-center gap-2 border border-k-border-subtle"

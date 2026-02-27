@@ -263,7 +263,7 @@ export function ActiveProgramDashboard({
                 )}
 
                 {/* Stats Grid - Hero Style */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10">
+                <div data-onboarding="student-history-summary" className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10">
                     {/* Total Sessions */}
                     <div className="relative group">
                         <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-k-text-quaternary">
@@ -304,18 +304,20 @@ export function ActiveProgramDashboard({
 
                 {/* Navigable Calendar */}
                 {program.assigned_workouts && program.started_at && (
-                    <ProgramCalendar
-                        programId={program.id}
-                        programStartedAt={program.started_at}
-                        programDurationWeeks={program.duration_weeks}
-                        scheduledWorkouts={program.assigned_workouts}
-                        initialSessions={calendarInitialSessions}
-                        onDayClick={(day) => {
-                            if (day.status === 'done' && day.completedSessions.length > 0) {
-                                handleSessionClick(day.completedSessions[0].id)
-                            }
-                        }}
-                    />
+                    <div data-onboarding="student-calendar">
+                        <ProgramCalendar
+                            programId={program.id}
+                            programStartedAt={program.started_at}
+                            programDurationWeeks={program.duration_weeks}
+                            scheduledWorkouts={program.assigned_workouts}
+                            initialSessions={calendarInitialSessions}
+                            onDayClick={(day) => {
+                                if (day.status === 'done' && day.completedSessions.length > 0) {
+                                    handleSessionClick(day.completedSessions[0].id)
+                                }
+                            }}
+                        />
+                    </div>
                 )}
 
                 {/* Recent Sessions List - Compact Feed */}

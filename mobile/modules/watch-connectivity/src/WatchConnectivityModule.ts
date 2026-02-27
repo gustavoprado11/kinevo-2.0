@@ -1,12 +1,14 @@
-import { NativeModulesProxy, EventEmitter, Subscription } from 'expo-modules-core';
+import { requireNativeModule, type EventSubscription } from 'expo-modules-core';
 import type {
   WatchWorkoutPayload,
   WatchMessageEvent,
 } from './WatchConnectivityModule.types';
 
-const WatchConnectivityModule = NativeModulesProxy.WatchConnectivityModule;
-
-const emitter = new EventEmitter(WatchConnectivityModule);
+// CRITICAL: Use requireNativeModule instead of NativeModulesProxy.
+// NativeModulesProxy (legacy bridge) does NOT trigger OnStartObserving/OnStopObserving,
+// which means hasJSListeners stays false and ALL watch events get buffered but never delivered.
+// In Expo SDK 52+, NativeModule extends EventEmitter — the module IS the emitter.
+const WatchConnectivityModule = requireNativeModule('WatchConnectivityModule');
 
 /**
  * Sync the latest workout snapshot to Apple Watch.
@@ -41,12 +43,26 @@ export function sendMessage(message: any): Promise<any> {
 }
 
 /**
- * Subscribe to messages from Apple Watch
+ * Subscribe to messages from Apple Watch.
+ * NativeModule extends EventEmitter — addListener directly triggers OnStartObserving.
  */
 export function addWatchMessageListener(
   listener: (event: WatchMessageEvent) => void
-): Subscription {
-  return emitter.addListener('onWatchMessage', listener);
+): EventSubscription {
+  return WatchConnectivityModule.addListener('onWatchMessage', listener);
+}
+
+/**
+ * Send SYNC_SUCCESS acknowledgement to Apple Watch after saving workout data.
+ * The Watch persists FINISH_WORKOUT locally until this ACK is received.
+ */
+export function sendAckToWatch(workoutId: string): void {
+  if (!WatchConnectivityModule || !WatchConnectivityModule.sendAckToWatch) {
+    console.error('[WatchConnectivityModule.ts] sendAckToWatch not available on native module');
+    return;
+  }
+  console.log(`[WatchConnectivityModule.ts] Sending SYNC_SUCCESS ACK for workoutId: ${workoutId}`);
+  return WatchConnectivityModule.sendAckToWatch(workoutId);
 }
 
 /**
@@ -54,4 +70,32 @@ export function addWatchMessageListener(
  */
 export function isWatchReachable(): boolean {
   return WatchConnectivityModule.isWatchReachable?.() ?? false;
+}
+
+/**
+ * Get persisted native debug logs (stored in UserDefaults by DebugLogger).
+ * Useful for diagnosing Watch → iPhone data flow without Console.app.
+ */
+export async function getDebugLogs(): Promise<string[]> {
+  if (!WatchConnectivityModule || !WatchConnectivityModule.getDebugLogs) {
+    console.error('[WatchConnectivityModule.ts] getDebugLogs not available');
+    return [];
+  }
+  try {
+    const json = await WatchConnectivityModule.getDebugLogs();
+    return JSON.parse(json) ?? [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Clear all persisted native debug logs.
+ */
+export function clearDebugLogs(): void {
+  if (!WatchConnectivityModule || !WatchConnectivityModule.clearDebugLogs) {
+    console.error('[WatchConnectivityModule.ts] clearDebugLogs not available');
+    return;
+  }
+  WatchConnectivityModule.clearDebugLogs();
 }

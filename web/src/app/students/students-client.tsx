@@ -7,13 +7,15 @@ import { StudentModal } from '@/components/student-modal'
 import { Button } from '@/components/ui/button'
 import Image from 'next/image'
 import { Plus, Search, ChevronRight } from 'lucide-react'
+import { TourRunner } from '@/components/onboarding/tours/tour-runner'
+import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
 
 interface Trainer {
     id: string
     name: string
     email: string
     avatar_url?: string | null
-    theme?: 'light' | 'dark' | 'system'
+    theme?: 'light' | 'dark' | 'system' | null
 }
 
 interface Student {
@@ -78,7 +80,7 @@ export function StudentsClient({ trainer, initialStudents }: StudentsClientProps
             trainerName={trainer.name}
             trainerEmail={trainer.email}
             trainerAvatarUrl={trainer.avatar_url}
-            trainerTheme={trainer.theme}
+            trainerTheme={trainer.theme ?? undefined}
         >
             {/* Page Header */}
             <div className="flex items-center justify-between mb-8">
@@ -87,6 +89,7 @@ export function StudentsClient({ trainer, initialStudents }: StudentsClientProps
                     <p className="mt-1 text-sm text-muted-foreground/60">Gerencie todos os seus alunos</p>
                 </div>
                 <Button
+                    data-onboarding="students-add-btn"
                     onClick={() => setIsModalOpen(true)}
                     className="gap-2 bg-violet-600 hover:bg-violet-500 rounded-full px-5 py-2 text-sm font-semibold shadow-lg shadow-violet-500/20 transition-all duration-200"
                 >
@@ -96,7 +99,7 @@ export function StudentsClient({ trainer, initialStudents }: StudentsClientProps
             </div>
 
             {/* Search and Filters */}
-            <div className="mb-6 rounded-xl border border-k-border-primary bg-glass-bg shadow-sm backdrop-blur-sm">
+            <div data-onboarding="students-search" className="mb-6 rounded-xl border border-k-border-primary bg-glass-bg shadow-sm backdrop-blur-sm">
                 <div className="p-4">
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground/50" strokeWidth={1.5} />
@@ -162,6 +165,7 @@ export function StudentsClient({ trainer, initialStudents }: StudentsClientProps
                                         key={student.id}
                                         className="group cursor-pointer transition-colors hover:bg-glass-bg"
                                         onClick={() => router.push(`/students/${student.id}`)}
+                                        {...(student.is_trainer_profile ? { 'data-onboarding': 'students-self-profile' } : {})}
                                     >
                                         <td className="px-6 py-5 whitespace-nowrap">
                                             <div className="flex items-center gap-4">
@@ -229,6 +233,9 @@ export function StudentsClient({ trainer, initialStudents }: StudentsClientProps
                 onStudentCreated={handleStudentCreated}
                 trainerId={trainer.id}
             />
+
+            {/* Tour: Students (auto-start on first visit) */}
+            <TourRunner tourId="students" steps={TOUR_STEPS.students} autoStart />
         </AppLayout>
     )
 }

@@ -6,7 +6,7 @@ Pod::Spec.new do |s|
   s.author         = 'Kinevo'
   s.homepage       = 'https://kinevo.com'
   s.license        = 'MIT'
-  s.platform       = :ios, '13.0'
+  s.platform       = :ios, '15.1'
   s.swift_version  = '5.4'
   s.source         = { git: '' }
   s.static_framework = true
