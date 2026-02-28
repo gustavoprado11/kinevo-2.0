@@ -63,17 +63,14 @@ export function ProgramHistorySection({ programs }: ProgramHistorySectionProps) 
     }
 
     return (
-        <div className="bg-glass-bg backdrop-blur-md rounded-2xl border border-k-border-primary p-8">
-            <div className="flex items-center justify-between mb-8">
-                <div>
-                    <h3 className="text-xl font-black text-white tracking-tight flex items-center gap-2">
-                        Histórico
-                        <span className="px-2 py-0.5 rounded bg-glass-bg text-[10px] text-k-text-tertiary font-bold uppercase tracking-widest border border-k-border-subtle">
-                            Concluídos
-                        </span>
-                    </h3>
-                    <p className="text-sm text-k-text-tertiary mt-1">Jornada de evolução do aluno.</p>
-                </div>
+        <div className="bg-glass-bg backdrop-blur-md rounded-2xl border border-k-border-primary p-6">
+            <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                    Histórico
+                    <span className="px-2 py-0.5 rounded bg-glass-bg text-[10px] text-k-text-tertiary font-bold uppercase tracking-widest border border-k-border-subtle">
+                        Concluídos
+                    </span>
+                </h3>
             </div>
 
             {programs.length === 0 ? (
@@ -102,9 +99,18 @@ export function ProgramHistorySection({ programs }: ProgramHistorySectionProps) 
                                             {program.name}
                                         </h4>
                                         <div className="flex items-center gap-3">
-                                            <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                                                Concluído
-                                            </span>
+                                            {program.sessions_count === 0 ? (
+                                                <span className="text-[10px] font-bold uppercase tracking-widest text-k-text-quaternary bg-glass-bg px-2 py-0.5 rounded border border-k-border-subtle" title={program.started_at && program.completed_at ? `Ativo por ${Math.max(1, Math.ceil((new Date(program.completed_at).getTime() - new Date(program.started_at).getTime()) / (1000 * 60 * 60 * 24)))} dia(s)` : undefined}>
+                                                    Substituído{program.started_at && program.completed_at && (() => {
+                                                        const days = Math.max(1, Math.ceil((new Date(program.completed_at).getTime() - new Date(program.started_at).getTime()) / (1000 * 60 * 60 * 24)))
+                                                        return ` · ${days}d`
+                                                    })()}
+                                                </span>
+                                            ) : (
+                                                <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                                                    Concluído
+                                                </span>
+                                            )}
                                             <svg
                                                 className={`w-4 h-4 text-k-text-quaternary transition-transform ${expandedProgramId === program.id ? 'rotate-180' : ''}`}
                                                 fill="none"
@@ -121,7 +127,7 @@ export function ProgramHistorySection({ programs }: ProgramHistorySectionProps) 
                                             <svg className="w-3.5 h-3.5 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                             </svg>
-                                            Finalizado em {program.completed_at ? new Date(program.completed_at).toLocaleDateString('pt-BR') : '-'}
+                                            Finalizado em {program.completed_at ? new Date(program.completed_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '-'}
                                         </div>
                                         <div className="flex items-center gap-1.5">
                                             <svg className="w-3.5 h-3.5 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -164,18 +170,23 @@ export function ProgramHistorySection({ programs }: ProgramHistorySectionProps) 
                                                             onClick={() => handleSessionClick(session.id)}
                                                             className="w-full bg-glass-bg hover:bg-glass-bg-active rounded-xl p-4 flex items-center justify-between border border-k-border-subtle transition-all text-left group/session"
                                                         >
-                                                            <div className="flex items-center gap-4">
-                                                                <div className={`w-10 h-10 rounded-xl flex flex-col items-center justify-center shrink-0 border transition-colors ${session.rpe
-                                                                    ? (session.rpe <= 4 ? 'bg-emerald-500/5 border-emerald-500/10 text-emerald-400/60' : session.rpe <= 7 ? 'bg-amber-500/5 border-amber-500/10 text-amber-500/60' : 'bg-red-500/5 border-red-500/10 text-red-400/60')
-                                                                    : 'bg-glass-bg border-k-border-subtle text-k-text-quaternary'
-                                                                    }`}>
-                                                                    <span className="text-[8px] uppercase font-black tracking-widest opacity-40">PSE</span>
-                                                                    <span className="text-sm font-black leading-none">{session.rpe || '-'}</span>
-                                                                </div>
-                                                                <div>
-                                                                    <p className="text-sm font-bold text-k-text-secondary group-hover/session:text-k-text-primary transition-colors">{session.assigned_workouts?.name || 'Treino'}</p>
-                                                                    <p className="text-[10px] font-medium text-k-text-quaternary uppercase tracking-widest mt-0.5">
-                                                                        {new Date(session.completed_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                                                                <div className="min-w-0 flex-1">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <p className="text-sm font-bold text-k-text-secondary group-hover/session:text-k-text-primary transition-colors truncate">{session.assigned_workouts?.name || 'Treino'}</p>
+                                                                        {session.rpe != null && (
+                                                                            <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded shrink-0 ${
+                                                                                session.rpe >= 10 ? 'bg-red-500/10 text-red-400' :
+                                                                                session.rpe >= 8 ? 'bg-yellow-500/10 text-yellow-400' :
+                                                                                session.rpe >= 6 ? 'bg-emerald-500/10 text-emerald-400' :
+                                                                                'bg-white/5 text-k-text-tertiary'
+                                                                            }`}>
+                                                                                PSE {session.rpe}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                    <p className="text-[10px] font-medium text-k-text-quaternary mt-0.5">
+                                                                        {new Date(session.completed_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })}
                                                                     </p>
                                                                 </div>
                                                             </div>

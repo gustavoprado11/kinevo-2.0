@@ -1,10 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { AppLayout } from '@/components/layout'
-import { EmptyState } from '@/components/financial/empty-state'
 import { deleteFormTemplate } from '@/actions/forms/delete-form-template'
 import {
     Plus,
@@ -13,11 +11,61 @@ import {
     Loader2,
     Pencil,
     Send,
+    Copy,
+    MoreVertical,
+    ArrowLeft,
     ClipboardCheck,
     CheckCircle2,
     MessageSquare,
-    ArrowLeft,
+    FileText,
 } from 'lucide-react'
+
+// --- Helpers ---
+
+const TIMEZONE = 'America/Sao_Paulo'
+
+function timeAgo(dateStr: string): string {
+    const now = new Date()
+    const date = new Date(dateStr)
+    const todayStr = now.toLocaleDateString('en-CA', { timeZone: TIMEZONE })
+    const dateStr2 = date.toLocaleDateString('en-CA', { timeZone: TIMEZONE })
+    const today = new Date(todayStr)
+    const target = new Date(dateStr2)
+    const diffDays = Math.floor((today.getTime() - target.getTime()) / (1000 * 60 * 60 * 24))
+    const diffHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60))
+
+    if (diffHours < 1) return 'Agora mesmo'
+    if (diffHours < 24 && diffDays === 0) return `há ${diffHours}h`
+    if (diffDays === 0) return 'Hoje'
+    if (diffDays === 1) return 'Ontem'
+    if (diffDays < 7) return `há ${diffDays} dias`
+    const weeks = Math.floor(diffDays / 7)
+    if (diffDays < 30) return `há ${weeks} sem.`
+    const months = Math.floor(diffDays / 30)
+    if (diffDays < 365) return `há ${months} ${months === 1 ? 'mês' : 'meses'}`
+    return `há ${Math.floor(diffDays / 365)} anos`
+}
+
+function cleanTemplateName(name: string): string {
+    const parts = name.split(' - ')
+    if (parts.length === 2 && parts[1].toLowerCase().includes(parts[0].toLowerCase())) {
+        return parts[1]
+    }
+    return name
+}
+
+function getTypeLabel(type: string): string {
+    switch (type) {
+        case 'long_text': return 'Texto longo'
+        case 'short_text': return 'Texto'
+        case 'single_choice': return 'Escolha'
+        case 'scale': return 'Escala'
+        case 'photo': return 'Foto'
+        default: return 'Resposta'
+    }
+}
+
+// --- Types ---
 
 interface Trainer {
     id: string
@@ -38,6 +86,7 @@ interface FormTemplate {
     schema_json?: Record<string, unknown> | null
     created_at: string
     updated_at: string
+    responseCount: number
 }
 
 interface TemplatesClientProps {
@@ -45,15 +94,63 @@ interface TemplatesClientProps {
     templates: FormTemplate[]
 }
 
-function categoryInfo(category: string) {
-    if (category === 'anamnese') {
-        return { label: 'Anamnese', icon: ClipboardCheck, classes: 'bg-blue-500/10 text-blue-400 border-blue-500/20' }
-    }
-    if (category === 'checkin') {
-        return { label: 'Check-in', icon: CheckCircle2, classes: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' }
-    }
-    return { label: 'Pesquisa', icon: MessageSquare, classes: 'bg-amber-500/10 text-amber-400 border-amber-500/20' }
+const CATEGORY_CONFIG: Record<string, { label: string; icon: typeof FileText; color: string; bgColor: string }> = {
+    anamnese: { label: 'Anamnese', icon: ClipboardCheck, color: 'text-blue-400', bgColor: 'bg-blue-500/10' },
+    checkin: { label: 'Check-in', icon: CheckCircle2, color: 'text-emerald-400', bgColor: 'bg-emerald-500/10' },
+    survey: { label: 'Pesquisa', icon: MessageSquare, color: 'text-amber-400', bgColor: 'bg-amber-500/10' },
 }
+
+// --- Actions Menu ---
+
+function ActionsMenu({ template, onDelete }: { template: FormTemplate; onDelete: (id: string) => void }) {
+    const [open, setOpen] = useState(false)
+    const ref = useRef<HTMLDivElement>(null)
+    const router = useRouter()
+
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+        }
+        if (open) document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [open])
+
+    return (
+        <div ref={ref} className="relative">
+            <button
+                onClick={(e) => { e.stopPropagation(); setOpen(!open) }}
+                className="p-1.5 rounded-lg text-k-text-quaternary hover:text-k-text-secondary hover:bg-glass-bg transition-all opacity-0 group-hover:opacity-100"
+            >
+                <MoreVertical size={16} />
+            </button>
+            {open && (
+                <div className="absolute right-0 top-8 z-20 w-44 rounded-xl border border-k-border-primary bg-surface-card shadow-xl py-1">
+                    <button
+                        onClick={(e) => { e.stopPropagation(); setOpen(false); router.push(`/forms/templates/new?edit=${template.id}`) }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-k-text-secondary hover:bg-glass-bg transition-colors"
+                    >
+                        <Pencil size={14} /> Editar
+                    </button>
+                    <button
+                        onClick={(e) => { e.stopPropagation(); setOpen(false); router.push(`/forms?assign=${template.id}`) }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-k-text-secondary hover:bg-glass-bg transition-colors"
+                    >
+                        <Send size={14} /> Enviar para aluno
+                    </button>
+                    <div className="my-1 border-t border-k-border-subtle" />
+                    <button
+                        onClick={(e) => { e.stopPropagation(); setOpen(false); onDelete(template.id) }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-400 hover:bg-glass-bg transition-colors"
+                    >
+                        <Trash2 size={14} /> Excluir
+                    </button>
+                </div>
+            )}
+        </div>
+    )
+}
+
+// --- Component ---
 
 export function TemplatesClient({ trainer, templates: initialTemplates }: TemplatesClientProps) {
     const router = useRouter()
@@ -61,8 +158,7 @@ export function TemplatesClient({ trainer, templates: initialTemplates }: Templa
     const [searchQuery, setSearchQuery] = useState('')
     const [deleting, setDeleting] = useState<string | null>(null)
 
-    const handleDelete = async (templateId: string, e: React.MouseEvent) => {
-        e.stopPropagation()
+    const handleDelete = async (templateId: string) => {
         if (!confirm('Tem certeza que deseja excluir este template?')) return
 
         setDeleting(templateId)
@@ -88,172 +184,160 @@ export function TemplatesClient({ trainer, templates: initialTemplates }: Templa
             trainerAvatarUrl={trainer.avatar_url}
             trainerTheme={trainer.theme as 'light' | 'dark' | 'system' | null}
         >
-            <div className="min-h-screen bg-surface-primary p-8 font-sans">
-                <div className="max-w-7xl mx-auto space-y-8">
-
-                    {/* Header */}
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                        <div>
-                            <Link
-                                href="/forms"
-                                className="inline-flex items-center gap-1.5 text-xs text-k-text-secondary hover:text-violet-400 transition-colors mb-3"
-                            >
-                                <ArrowLeft size={14} />
-                                Voltar para Avaliações
-                            </Link>
-                            <h1 className="text-3xl font-bold tracking-tighter bg-gradient-to-br from-[var(--gradient-text-from)] to-[var(--gradient-text-to)] bg-clip-text text-transparent">
-                                Meus Templates
-                            </h1>
-                            <p className="mt-1 text-sm text-muted-foreground/60">
-                                Crie e gerencie seus formulários de avaliação
-                            </p>
-                        </div>
-                        <Link
-                            href="/forms/templates/new"
-                            className="bg-violet-600 hover:bg-violet-500 text-white rounded-full px-6 py-2.5 text-sm font-semibold shadow-lg shadow-violet-500/20 transition-all active:scale-95 flex items-center gap-2 w-fit"
-                        >
-                            <Plus size={18} strokeWidth={2} />
-                            Criar Template
-                        </Link>
-                    </div>
-
-                    {/* Search Bar */}
-                    <div className="relative group">
-                        <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-                            <Search className="w-[18px] h-[18px] text-k-text-quaternary group-focus-within:text-violet-500 transition-colors" strokeWidth={1.5} />
-                        </div>
-                        <input
-                            type="text"
-                            placeholder="Buscar templates..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full bg-glass-bg border border-k-border-primary rounded-2xl py-3.5 pl-11 pr-4 text-k-text-primary placeholder:text-k-text-quaternary focus:outline-none focus:ring-2 focus:ring-violet-500/10 focus:border-violet-500/50 backdrop-blur-md transition-all"
-                        />
-                    </div>
-
-                    {/* Content Grid */}
-                    {filteredTemplates.length === 0 ? (
-                        <div className="bg-surface-card rounded-2xl border border-k-border-subtle border-dashed">
-                            {searchQuery ? (
-                                <div className="flex flex-col items-center justify-center py-24 px-4">
-                                    <p className="text-muted-foreground/50 font-medium">
-                                        Nenhum template encontrado para &quot;{searchQuery}&quot;
-                                    </p>
-                                </div>
-                            ) : (
-                                <EmptyState
-                                    icon={ClipboardCheck}
-                                    title="Nenhum template criado"
-                                    description="Crie seu primeiro formulário de avaliação para começar."
-                                    action={{
-                                        label: 'Criar Template',
-                                        onClick: () => router.push('/forms/templates/new'),
-                                    }}
-                                />
-                            )}
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {filteredTemplates.map((template) => {
-                                const info = categoryInfo(template.category)
-                                const Icon = info.icon
-                                const questionsCount = (template.schema_json as any)?.questions?.length || 0
-
-                                return (
-                                    <div
-                                        key={template.id}
-                                        onClick={() => router.push(`/forms/templates/new?edit=${template.id}`)}
-                                        className="group relative bg-surface-card border border-k-border-primary rounded-2xl p-5 shadow-xl hover:border-k-border-primary hover:bg-glass-bg hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden"
-                                    >
-                                        {/* Card Header */}
-                                        <div className="flex justify-between items-start mb-3 gap-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-white/5 ${info.classes.split(' ').slice(0, 2).join(' ')}`}>
-                                                    <Icon size={20} strokeWidth={2} />
-                                                </div>
-                                                <h3 className="text-lg font-bold text-k-text-primary tracking-tight leading-snug group-hover:text-violet-200 transition-colors line-clamp-2">
-                                                    {template.title}
-                                                </h3>
-                                            </div>
-
-                                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-all">
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation()
-                                                        router.push(`/forms/templates/new?edit=${template.id}`)
-                                                    }}
-                                                    className="text-k-text-quaternary hover:text-violet-400 hover:bg-glass-bg p-2 rounded-lg transition-all"
-                                                >
-                                                    <Pencil className="w-4 h-4" strokeWidth={1.5} />
-                                                </button>
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation()
-                                                        router.push(`/forms/inbox?assign=${template.id}`)
-                                                    }}
-                                                    className="text-k-text-quaternary hover:text-emerald-400 hover:bg-glass-bg p-2 rounded-lg transition-all"
-                                                >
-                                                    <Send className="w-4 h-4" strokeWidth={1.5} />
-                                                </button>
-                                                <button
-                                                    onClick={(e) => handleDelete(template.id, e)}
-                                                    disabled={deleting === template.id}
-                                                    className="text-k-text-quaternary hover:text-red-400 hover:bg-glass-bg p-2 rounded-lg transition-all"
-                                                >
-                                                    {deleting === template.id ? (
-                                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                                    ) : (
-                                                        <Trash2 className="w-4 h-4" strokeWidth={1.5} />
-                                                    )}
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        {/* Description */}
-                                        {template.description && (
-                                            <p className="text-sm text-muted-foreground/60 mb-4 line-clamp-2">
-                                                {template.description}
-                                            </p>
-                                        )}
-
-                                        {/* Questions count */}
-                                        {questionsCount > 0 && (
-                                            <p className="text-xs text-k-text-secondary mb-4">
-                                                {questionsCount} {questionsCount === 1 ? 'pergunta' : 'perguntas'}
-                                            </p>
-                                        )}
-
-                                        {/* Badges Footer */}
-                                        <div className="flex items-center gap-2 mt-auto flex-wrap">
-                                            <span className={`px-2.5 py-1 text-[11px] font-semibold rounded-md border ${info.classes}`}>
-                                                {info.label}
-                                            </span>
-                                            <span className="px-2.5 py-1 text-[11px] font-semibold rounded-md border bg-gray-500/10 text-gray-400 border-gray-500/20">
-                                                v{template.version}
-                                            </span>
-                                            {template.created_source === 'ai_assisted' && (
-                                                <span className="px-2.5 py-1 text-[11px] font-semibold rounded-md border bg-violet-500/10 text-violet-400 border-violet-500/20">
-                                                    IA
-                                                </span>
-                                            )}
-                                            <span className={`px-2.5 py-1 text-[11px] font-semibold rounded-md border ${
-                                                template.is_active
-                                                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                                                    : 'bg-gray-500/10 text-gray-400 border-gray-500/20'
-                                            }`}>
-                                                {template.is_active ? 'Ativo' : 'Inativo'}
-                                            </span>
-                                        </div>
-
-                                        {/* Hover Glow Effect */}
-                                        <div className="absolute inset-0 rounded-2xl ring-1 ring-inset ring-k-border-subtle group-hover:ring-k-border-primary pointer-events-none" />
-                                    </div>
-                                )
-                            })}
-                        </div>
+            {/* Header */}
+            <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => router.push('/forms')}
+                        className="p-1.5 rounded-lg text-k-text-quaternary hover:text-k-text-secondary hover:bg-glass-bg transition-all"
+                    >
+                        <ArrowLeft size={18} />
+                    </button>
+                    <h1 className="text-2xl font-bold tracking-tight text-white">Templates</h1>
+                    {templates.length > 0 && (
+                        <span className="px-2 py-0.5 rounded-md bg-glass-bg text-xs font-bold text-k-text-tertiary border border-k-border-subtle">
+                            {templates.length}
+                        </span>
                     )}
                 </div>
+                <button
+                    onClick={() => router.push('/forms/templates/new')}
+                    className="flex items-center gap-2 rounded-full border border-k-border-primary bg-glass-bg hover:bg-glass-bg-active text-k-text-secondary px-4 py-2 text-sm font-medium transition-all"
+                >
+                    <Plus size={14} />
+                    Criar Template
+                </button>
             </div>
+
+            {/* Search */}
+            {templates.length > 0 && (
+                <div className="relative mb-6">
+                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-k-text-quaternary" />
+                    <input
+                        type="text"
+                        placeholder="Buscar templates..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full rounded-xl border border-k-border-subtle bg-glass-bg pl-10 pr-4 py-2.5 text-sm text-k-text-primary placeholder:text-k-text-quaternary outline-none focus:border-violet-500/50 transition-all"
+                    />
+                </div>
+            )}
+
+            {/* Content */}
+            {filteredTemplates.length === 0 ? (
+                searchQuery ? (
+                    <div className="text-center py-12">
+                        <p className="text-sm text-k-text-quaternary">
+                            Nenhum template encontrado para &quot;{searchQuery}&quot;
+                        </p>
+                    </div>
+                ) : (
+                    <div className="text-center py-16">
+                        <FileText className="w-10 h-10 text-k-text-quaternary mx-auto mb-3" strokeWidth={1} />
+                        <p className="text-sm font-semibold text-white mb-1">Nenhum template criado</p>
+                        <p className="text-xs text-k-text-quaternary max-w-sm mx-auto mb-5">
+                            Templates são formulários para coletar informações dos alunos: anamnese, check-ins semanais, avaliações físicas.
+                        </p>
+                        <button
+                            onClick={() => router.push('/forms/templates/new')}
+                            className="text-xs font-medium text-violet-400 hover:text-violet-300 transition-colors"
+                        >
+                            Criar primeiro template
+                        </button>
+                    </div>
+                )
+            ) : (
+                <div className="space-y-3">
+                    {filteredTemplates.map((template) => {
+                        const config = CATEGORY_CONFIG[template.category] || CATEGORY_CONFIG.survey
+                        const Icon = config.icon
+                        const questions = (template.schema_json as any)?.questions || []
+                        const questionsCount = questions.length
+
+                        return (
+                            <div
+                                key={template.id}
+                                onClick={() => router.push(`/forms/templates/new?edit=${template.id}`)}
+                                className="group relative bg-surface-card border border-k-border-subtle rounded-xl p-4 hover:border-k-border-primary hover:bg-glass-bg transition-all cursor-pointer"
+                            >
+                                {deleting === template.id && (
+                                    <div className="absolute inset-0 flex items-center justify-center bg-surface-card/80 rounded-xl z-10">
+                                        <Loader2 size={20} className="animate-spin text-k-text-quaternary" />
+                                    </div>
+                                )}
+
+                                {/* Top row: icon + title + badges + menu */}
+                                <div className="flex items-start justify-between gap-3 mb-2">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${config.bgColor}`}>
+                                            <Icon size={16} className={config.color} />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <h3 className="text-sm font-semibold text-k-text-primary group-hover:text-white transition-colors truncate">
+                                                {cleanTemplateName(template.title)}
+                                            </h3>
+                                            <div className="flex items-center gap-2 mt-0.5">
+                                                <span className="text-xs text-k-text-quaternary">
+                                                    {questionsCount} {questionsCount === 1 ? 'pergunta' : 'perguntas'} · {config.label}
+                                                </span>
+                                                {template.created_source === 'ai_assisted' && (
+                                                    <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-violet-500/10 text-violet-400 border border-violet-500/20">
+                                                        IA
+                                                    </span>
+                                                )}
+                                                <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded ${
+                                                    template.is_active
+                                                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                                        : 'bg-surface-elevated text-k-text-quaternary border border-k-border-subtle'
+                                                }`}>
+                                                    {template.is_active ? 'Ativo' : 'Inativo'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <ActionsMenu template={template} onDelete={handleDelete} />
+                                </div>
+
+                                {/* Question preview */}
+                                {questions.length > 0 && (
+                                    <div className="ml-11 space-y-1 mb-3">
+                                        {questions.slice(0, 3).map((q: any, i: number) => (
+                                            <div key={q.id || i} className="flex items-center gap-2 text-xs">
+                                                <span className="text-k-text-quaternary w-4 shrink-0">{i + 1}.</span>
+                                                <span className="text-k-text-tertiary truncate">{q.label || q.title}</span>
+                                                <span className="text-k-text-quaternary shrink-0 text-[10px]">({getTypeLabel(q.type)})</span>
+                                            </div>
+                                        ))}
+                                        {questions.length > 3 && (
+                                            <span className="text-[10px] text-k-text-quaternary pl-6">
+                                                +{questions.length - 3} mais...
+                                            </span>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Footer */}
+                                <div className="ml-11 flex items-center justify-between pt-2 border-t border-k-border-subtle/50 text-[11px]">
+                                    <span className="text-k-text-quaternary">
+                                        {template.responseCount} {template.responseCount === 1 ? 'resposta' : 'respostas'}
+                                        {' · '}v{template.version}
+                                        {' · '}{timeAgo(template.created_at)}
+                                    </span>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation()
+                                            router.push(`/forms?assign=${template.id}`)
+                                        }}
+                                        className="text-violet-400 hover:text-violet-300 opacity-0 group-hover:opacity-100 transition-all font-medium"
+                                    >
+                                        Enviar para aluno →
+                                    </button>
+                                </div>
+                            </div>
+                        )
+                    })}
+                </div>
+            )}
         </AppLayout>
     )
 }

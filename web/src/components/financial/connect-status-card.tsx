@@ -23,6 +23,11 @@ const formatCurrency = (value: number) => {
     }).format(value)
 }
 
+const formatBalance = (value: number) => {
+    if (value <= 0) return 'R$ 0,00'
+    return formatCurrency(value)
+}
+
 export function ConnectStatusCard({
     connected,
     chargesEnabled,
@@ -146,89 +151,42 @@ export function ConnectStatusCard({
         )
     }
 
-    // Fully connected — show balance + dashboard link
+    // Fully connected — compact inline layout with balance
     return (
-        <div className="rounded-2xl border border-emerald-500/20 bg-surface-card p-6">
-            <div className="flex items-start gap-4">
-                <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-emerald-500/10">
-                    <CheckCircle2 size={20} className="text-emerald-400" />
-                </div>
-                <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <h3 className="text-base font-semibold text-k-text-primary">
-                                Stripe Conectado
-                            </h3>
-                            <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full border border-emerald-500/20 bg-emerald-500/10 text-emerald-400">
-                                Ativo
-                            </span>
-                        </div>
-                        <button
-                            onClick={handleOpenDashboard}
-                            disabled={dashboardLoading}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-glass-bg hover:bg-violet-500/10 text-k-text-secondary hover:text-violet-400 transition-colors disabled:opacity-50"
-                        >
-                            {dashboardLoading ? (
-                                <Loader2 size={12} className="animate-spin" />
-                            ) : (
-                                <ArrowUpRight size={12} />
-                            )}
-                            Painel Stripe
-                        </button>
-                    </div>
-
-                    <div className="mt-3 flex gap-4 text-xs text-k-text-secondary">
-                        <span className="flex items-center gap-1">
-                            <CheckCircle2 size={12} className="text-emerald-400" />
-                            Pagamentos habilitados
-                        </span>
-                        {payoutsEnabled && (
-                            <span className="flex items-center gap-1">
-                                <CheckCircle2 size={12} className="text-emerald-400" />
-                                Transferências habilitadas
-                            </span>
-                        )}
-                    </div>
-
-                    {/* Balance section */}
+        <div className="rounded-2xl border border-k-border-primary bg-surface-card px-5 py-4">
+            <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                    <CheckCircle2 size={16} className="text-emerald-400 flex-shrink-0" />
+                    <span className="text-sm font-medium text-k-text-primary">Stripe conectado</span>
                     {balanceLoading ? (
-                        <div className="mt-4 flex items-center gap-2 text-xs text-k-text-secondary">
-                            <Loader2 size={12} className="animate-spin" />
-                            Carregando saldo...
-                        </div>
+                        <Loader2 size={12} className="animate-spin text-k-text-quaternary" />
                     ) : balance ? (
-                        <div className="mt-4 grid grid-cols-2 gap-3">
-                            <div className="rounded-xl bg-glass-bg p-3">
-                                <div className="flex items-center gap-1.5 mb-1">
-                                    <Wallet size={12} className="text-emerald-400" />
-                                    <span className="text-[10px] font-medium text-k-text-secondary uppercase tracking-wider">
-                                        Disponível
-                                    </span>
-                                </div>
-                                <p className="text-lg font-bold text-emerald-400">
-                                    {formatCurrency(balance.available)}
-                                </p>
-                            </div>
-                            <div className="rounded-xl bg-glass-bg p-3">
-                                <div className="flex items-center gap-1.5 mb-1">
+                        <div className="flex items-center gap-3 ml-2 text-xs text-k-text-secondary">
+                            <span className="flex items-center gap-1">
+                                <Wallet size={12} className="text-emerald-400" />
+                                {formatBalance(balance.available)}
+                            </span>
+                            {balance.pending > 0 && (
+                                <span className="flex items-center gap-1">
                                     <Clock size={12} className="text-amber-400" />
-                                    <span className="text-[10px] font-medium text-k-text-secondary uppercase tracking-wider">
-                                        Pendente
-                                    </span>
-                                </div>
-                                <p className="text-lg font-bold text-k-text-primary">
-                                    {formatCurrency(balance.pending)}
-                                </p>
-                            </div>
+                                    {formatCurrency(balance.pending)} pendente
+                                </span>
+                            )}
                         </div>
                     ) : null}
-
-                    {payoutsEnabled && (
-                        <p className="mt-3 text-[11px] text-k-text-secondary">
-                            O Stripe deposita automaticamente o saldo disponível na sua conta bancária.
-                        </p>
-                    )}
                 </div>
+                <button
+                    onClick={handleOpenDashboard}
+                    disabled={dashboardLoading}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-glass-bg hover:bg-violet-500/10 text-k-text-secondary hover:text-violet-400 transition-colors disabled:opacity-50 flex-shrink-0"
+                >
+                    {dashboardLoading ? (
+                        <Loader2 size={12} className="animate-spin" />
+                    ) : (
+                        <ArrowUpRight size={12} />
+                    )}
+                    Painel Stripe
+                </button>
             </div>
         </div>
     )

@@ -36,7 +36,6 @@ const STATUS_CONFIG: Record<CalendarDay['status'], { bg: string; ring?: string; 
     done: {
         bg: 'bg-violet-600 shadow-lg shadow-violet-600/20',
         text: 'text-white',
-        icon: 'check',
     },
     missed: {
         bg: 'bg-red-500/15 border border-red-500/30',
@@ -108,32 +107,54 @@ function WeekView({
                     <div key={day.dateKey} className="flex flex-col items-center gap-2">
                         <DayLabel text={dayLabels[idx % 7]} />
                         <div className="relative group/day">
-                            <button
-                                onClick={() => isClickable && onDayClick?.(day)}
-                                disabled={!isClickable}
-                                className={`
-                                    w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300
-                                    ${cfg.bg}
-                                    ${day.isToday ? 'ring-2 ring-white/20 ring-offset-2 ring-offset-surface-card' : ''}
-                                    ${isClickable ? 'cursor-pointer hover:opacity-80' : 'cursor-default'}
-                                `}
-                            >
-                                {cfg.icon === 'check' ? (
-                                    <CheckIcon />
-                                ) : cfg.icon === 'x' ? (
-                                    <XIcon />
-                                ) : (
-                                    <span className={`text-[10px] font-bold ${cfg.text}`}>
-                                        {day.date.getDate()}
-                                    </span>
-                                )}
-                            </button>
+                            {day.status === 'done' && day.completedSessions[0]?.rpe != null ? (
+                                <button
+                                    onClick={() => isClickable && onDayClick?.(day)}
+                                    className={`
+                                        w-9 h-9 rounded-full flex items-center justify-center transition-all duration-300
+                                        ${day.completedSessions[0].rpe! >= 10
+                                            ? 'bg-red-500/20 ring-1 ring-red-500/30 text-red-400'
+                                            : day.completedSessions[0].rpe! >= 8
+                                                ? 'bg-yellow-500/20 ring-1 ring-yellow-500/30 text-yellow-400'
+                                                : day.completedSessions[0].rpe! >= 6
+                                                    ? 'bg-emerald-500/20 ring-1 ring-emerald-500/30 text-emerald-400'
+                                                    : 'bg-white/5 ring-1 ring-white/10 text-k-text-tertiary'
+                                        }
+                                        ${day.isToday ? 'ring-2 ring-white/20 ring-offset-2 ring-offset-surface-card' : ''}
+                                        cursor-pointer hover:opacity-80
+                                        text-sm font-bold
+                                    `}
+                                >
+                                    {day.completedSessions[0].rpe}
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={() => isClickable && onDayClick?.(day)}
+                                    disabled={!isClickable}
+                                    className={`
+                                        w-9 h-9 rounded-full flex items-center justify-center transition-all duration-300
+                                        ${day.status === 'done' ? cfg.bg : cfg.bg}
+                                        ${day.isToday ? 'ring-2 ring-white/20 ring-offset-2 ring-offset-surface-card' : ''}
+                                        ${isClickable ? 'cursor-pointer hover:opacity-80' : 'cursor-default'}
+                                    `}
+                                >
+                                    {day.status === 'done' ? (
+                                        <CheckIcon />
+                                    ) : cfg.icon === 'x' ? (
+                                        <XIcon />
+                                    ) : (
+                                        <span className={`text-[10px] font-bold ${cfg.text}`}>
+                                            {day.date.getDate()}
+                                        </span>
+                                    )}
+                                </button>
+                            )}
 
                             {/* Tooltip */}
                             {isClickable && (
                                 <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-surface-card border border-k-border-primary rounded-lg text-xs font-medium text-k-text-primary opacity-0 group-hover/day:opacity-100 transition-opacity pointer-events-none z-20 whitespace-nowrap shadow-xl">
                                     {day.status === 'done' ? (
-                                        <span>Realizado</span>
+                                        <span>Realizado{day.completedSessions[0]?.rpe != null ? ` · PSE ${day.completedSessions[0].rpe}` : ''}</span>
                                     ) : day.status === 'missed' ? (
                                         <span className="text-red-400">
                                             Faltou: {day.scheduledWorkouts[0]?.name || 'Treino'}
@@ -202,12 +223,14 @@ function MonthView({
                             <span className={`text-xs font-semibold ${isCurrentMonth ? cfg.text : 'text-k-text-quaternary/30'}`}>
                                 {day.date.getDate()}
                             </span>
-                            {/* Status dot */}
+                            {/* Status dot — RPE-colored for completed days */}
                             {isCurrentMonth && day.status !== 'rest' && day.status !== 'out_of_program' && (
                                 <div
                                     className={`mt-0.5 w-1.5 h-1.5 rounded-full ${
                                         day.status === 'done'
-                                            ? 'bg-violet-500'
+                                            ? (day.completedSessions[0]?.rpe != null
+                                                ? (day.completedSessions[0].rpe! >= 10 ? 'bg-red-400' : day.completedSessions[0].rpe! >= 8 ? 'bg-yellow-400' : day.completedSessions[0].rpe! >= 6 ? 'bg-emerald-400' : 'bg-white/40')
+                                                : 'bg-violet-500')
                                             : day.status === 'missed'
                                                 ? 'bg-red-400'
                                                 : 'bg-k-text-quaternary/50'
@@ -280,14 +303,14 @@ function NavLabel({ anchorDate, viewMode }: { anchorDate: Date; viewMode: 'week'
     if (viewMode === 'month') {
         return (
             <span className="text-xs font-bold uppercase tracking-widest text-k-text-secondary min-w-[120px] text-center">
-                {anchorDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+                {anchorDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric', timeZone: 'America/Sao_Paulo' })}
             </span>
         )
     }
 
     // Week view — show range
     const { start, end } = getWeekRange(anchorDate)
-    const fmt = (d: Date) => d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '')
+    const fmt = (d: Date) => d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', timeZone: 'America/Sao_Paulo' }).replace('.', '')
     return (
         <span className="text-xs font-bold uppercase tracking-widest text-k-text-secondary min-w-[160px] text-center">
             {fmt(start)} — {fmt(end)}

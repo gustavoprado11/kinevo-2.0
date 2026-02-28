@@ -72,6 +72,7 @@ export function SubscriptionsClient({
     const router = useRouter()
     const [contracts, setContracts] = useState(initialContracts)
     const [searchQuery, setSearchQuery] = useState('')
+    const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'pending' | 'canceled'>('all')
 
     // Sync local state when server data changes (after router.refresh())
     useEffect(() => {
@@ -131,7 +132,7 @@ export function SubscriptionsClient({
         const label = labels[status] || status
 
         return (
-            <span className={`px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider rounded-full border ${style}`}>
+            <span className={`px-2.5 py-1 text-[11px] font-semibold rounded-full border ${style}`}>
                 {label}
             </span>
         )
@@ -234,12 +235,24 @@ export function SubscriptionsClient({
     }
 
     const filteredContracts = contracts.filter((contract) => {
+        // Status filter
+        if (statusFilter === 'active' && contract.status !== 'active') return false
+        if (statusFilter === 'pending' && contract.status !== 'pending' && contract.status !== 'past_due') return false
+        if (statusFilter === 'canceled' && contract.status !== 'canceled') return false
+
+        // Search filter
         const studentName = contract.students?.name?.toLowerCase() || ''
-        const studentEmail = contract.students?.email?.toLowerCase() || ''
         const planTitle = contract.trainer_plans?.title?.toLowerCase() || ''
         const query = searchQuery.toLowerCase()
-        return studentName.includes(query) || studentEmail.includes(query) || planTitle.includes(query)
+        return studentName.includes(query) || planTitle.includes(query)
     })
+
+    const statusCounts = {
+        all: contracts.length,
+        active: contracts.filter(c => c.status === 'active').length,
+        pending: contracts.filter(c => c.status === 'pending' || c.status === 'past_due').length,
+        canceled: contracts.filter(c => c.status === 'canceled').length,
+    }
 
     const modalStudents = students.map(s => ({
         id: s.id,
@@ -296,7 +309,7 @@ export function SubscriptionsClient({
                             )}
                             <button
                                 onClick={() => setModalOpen(true)}
-                                className="bg-violet-600 hover:bg-violet-500 text-white rounded-full px-6 py-2.5 text-sm font-semibold shadow-lg shadow-violet-500/20 transition-all active:scale-95 flex items-center gap-2 w-fit"
+                                className="bg-violet-600 hover:bg-violet-500 text-white rounded-full px-6 py-2.5 text-sm font-semibold transition-all active:scale-95 flex items-center gap-2 w-fit"
                             >
                                 <Plus size={18} strokeWidth={2} />
                                 Nova Assinatura
@@ -304,18 +317,48 @@ export function SubscriptionsClient({
                         </div>
                     </div>
 
-                    {/* Search Bar */}
-                    <div className="relative group">
-                        <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-                            <Search className="w-[18px] h-[18px] text-k-text-quaternary group-focus-within:text-violet-500 transition-colors" strokeWidth={1.5} />
+                    {/* Filters + Search */}
+                    <div className="space-y-4">
+                        {/* Status filter tabs */}
+                        <div className="flex items-center gap-1 bg-surface-card border border-k-border-subtle rounded-xl p-1">
+                            {([
+                                { key: 'all' as const, label: 'Todos' },
+                                { key: 'active' as const, label: 'Ativos' },
+                                { key: 'pending' as const, label: 'Pendentes' },
+                                { key: 'canceled' as const, label: 'Cancelados' },
+                            ]).map(tab => (
+                                <button
+                                    key={tab.key}
+                                    onClick={() => setStatusFilter(tab.key)}
+                                    className={`flex-1 px-3 py-2 text-xs font-medium rounded-lg transition-all ${
+                                        statusFilter === tab.key
+                                            ? 'bg-glass-bg-active text-k-text-primary shadow-sm'
+                                            : 'text-k-text-tertiary hover:text-k-text-secondary'
+                                    }`}
+                                >
+                                    {tab.label}
+                                    <span className={`ml-1.5 text-[10px] ${
+                                        statusFilter === tab.key ? 'text-violet-400' : 'text-k-text-quaternary'
+                                    }`}>
+                                        {statusCounts[tab.key]}
+                                    </span>
+                                </button>
+                            ))}
                         </div>
-                        <input
-                            type="text"
-                            placeholder="Buscar por aluno ou plano..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full bg-glass-bg border border-k-border-primary rounded-2xl py-3.5 pl-11 pr-4 text-k-text-primary placeholder:text-k-text-quaternary focus:outline-none focus:ring-2 focus:ring-violet-500/10 focus:border-violet-500/50 backdrop-blur-md transition-all"
-                        />
+
+                        {/* Search */}
+                        <div className="relative group">
+                            <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+                                <Search className="w-[18px] h-[18px] text-k-text-quaternary group-focus-within:text-violet-500 transition-colors" strokeWidth={1.5} />
+                            </div>
+                            <input
+                                type="text"
+                                placeholder="Buscar por aluno ou plano..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full bg-glass-bg border border-k-border-primary rounded-2xl py-3 pl-11 pr-4 text-k-text-primary placeholder:text-k-text-quaternary focus:outline-none focus:ring-2 focus:ring-violet-500/10 focus:border-violet-500/50 backdrop-blur-md transition-all text-sm"
+                            />
+                        </div>
                     </div>
 
                     {/* Table */}
@@ -345,25 +388,22 @@ export function SubscriptionsClient({
                                 <table className="w-full">
                                     <thead>
                                         <tr className="border-b border-k-border-subtle">
-                                            <th className="px-6 py-5 text-left text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+                                            <th className="px-6 py-4 text-left text-xs font-medium text-k-text-tertiary">
                                                 Aluno
                                             </th>
-                                            <th className="px-6 py-5 text-left text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+                                            <th className="px-6 py-4 text-left text-xs font-medium text-k-text-tertiary">
                                                 Plano
                                             </th>
-                                            <th className="px-6 py-5 text-left text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+                                            <th className="px-6 py-4 text-left text-xs font-medium text-k-text-tertiary">
                                                 Valor
                                             </th>
-                                            <th className="px-6 py-5 text-left text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">
-                                                Tipo
-                                            </th>
-                                            <th className="px-6 py-5 text-left text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+                                            <th className="px-6 py-4 text-left text-xs font-medium text-k-text-tertiary">
                                                 Status
                                             </th>
-                                            <th className="px-6 py-5 text-left text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+                                            <th className="px-6 py-4 text-left text-xs font-medium text-k-text-tertiary">
                                                 Vencimento
                                             </th>
-                                            <th className="px-6 py-5 text-right text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+                                            <th className="px-6 py-4 text-right text-xs font-medium text-k-text-tertiary">
                                                 Ações
                                             </th>
                                         </tr>
@@ -376,16 +416,16 @@ export function SubscriptionsClient({
                                                 onClick={() => handleRowClick(contract)}
                                             >
                                                 {/* Student */}
-                                                <td className="px-6 py-5 whitespace-nowrap">
+                                                <td className="px-6 py-4 whitespace-nowrap">
                                                     <div className="flex items-center gap-3">
-                                                        <div className="flex h-9 w-9 items-center justify-center rounded-full border border-k-border-primary bg-glass-bg overflow-hidden flex-shrink-0">
+                                                        <div className="flex h-8 w-8 items-center justify-center rounded-full border border-k-border-primary bg-glass-bg overflow-hidden flex-shrink-0">
                                                             {contract.students?.avatar_url ? (
                                                                 <Image
                                                                     src={contract.students.avatar_url}
                                                                     alt={contract.students.name}
-                                                                    width={36}
-                                                                    height={36}
-                                                                    className="h-9 w-9 rounded-full object-cover"
+                                                                    width={32}
+                                                                    height={32}
+                                                                    className="h-8 w-8 rounded-full object-cover"
                                                                     unoptimized
                                                                 />
                                                             ) : (
@@ -394,42 +434,37 @@ export function SubscriptionsClient({
                                                                 </span>
                                                             )}
                                                         </div>
-                                                        <div>
-                                                            <p className="text-sm font-medium text-k-text-primary">
-                                                                {contract.students?.name || 'Aluno removido'}
-                                                            </p>
-                                                            <p className="text-xs text-muted-foreground/60">
-                                                                {contract.students?.email || ''}
-                                                            </p>
-                                                        </div>
+                                                        <span className="text-sm font-medium text-k-text-primary">
+                                                            {contract.students?.name || 'Aluno removido'}
+                                                        </span>
                                                     </div>
                                                 </td>
 
                                                 {/* Plan */}
-                                                <td className="px-6 py-5 whitespace-nowrap">
+                                                <td className="px-6 py-4 whitespace-nowrap">
                                                     <span className="text-sm text-k-text-primary">
                                                         {contract.trainer_plans?.title || '—'}
                                                     </span>
                                                 </td>
 
                                                 {/* Amount */}
-                                                <td className="px-6 py-5 whitespace-nowrap">
+                                                <td className="px-6 py-4 whitespace-nowrap">
                                                     <span className="text-sm font-medium text-k-text-primary">
                                                         {contract.billing_type === 'courtesy'
-                                                            ? 'Grátis'
+                                                            ? 'Cortesia'
                                                             : formatCurrency(contract.amount)}
                                                     </span>
                                                 </td>
 
-                                                {/* Billing Type */}
-                                                <td className="px-6 py-5 whitespace-nowrap">
-                                                    <BillingTypeBadge billingType={contract.billing_type} />
-                                                </td>
-
-                                                {/* Status */}
-                                                <td className="px-6 py-5 whitespace-nowrap">
+                                                {/* Unified Status (billing type + status) */}
+                                                <td className="px-6 py-4 whitespace-nowrap">
                                                     <div className="flex items-center gap-2">
                                                         {getStatusBadge(contract.status)}
+                                                        <span className="text-[11px] text-k-text-quaternary">
+                                                            {contract.billing_type === 'stripe_auto' ? 'Stripe' :
+                                                             contract.billing_type === 'manual_recurring' ? 'Manual' :
+                                                             contract.billing_type === 'courtesy' ? 'Cortesia' : ''}
+                                                        </span>
                                                         {contract.cancel_at_period_end && contract.status !== 'canceled' && (
                                                             <span className="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
                                                                 Cancela em {formatDate(contract.current_period_end)}
@@ -439,14 +474,14 @@ export function SubscriptionsClient({
                                                 </td>
 
                                                 {/* Period End */}
-                                                <td className="px-6 py-5 whitespace-nowrap">
-                                                    <span className="text-sm text-muted-foreground/60">
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <span className="text-sm text-k-text-tertiary">
                                                         {formatDate(contract.current_period_end)}
                                                     </span>
                                                 </td>
 
                                                 {/* Actions */}
-                                                <td className="px-6 py-5 whitespace-nowrap text-right">
+                                                <td className="px-6 py-4 whitespace-nowrap text-right">
                                                     <div className="flex items-center justify-end gap-2">
                                                         {actionLoading === contract.id ? (
                                                             <Loader2 className="w-4 h-4 animate-spin text-muted-foreground/50" />

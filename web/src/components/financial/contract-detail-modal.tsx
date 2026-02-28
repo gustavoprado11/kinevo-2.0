@@ -237,7 +237,7 @@ export function ContractDetailModal({
                         <h2 className="text-xl font-bold text-white tracking-tight">
                             Detalhes da Assinatura
                         </h2>
-                        <p className="text-xs text-muted-foreground/60 uppercase tracking-widest font-semibold mt-1 truncate">
+                        <p className="text-xs text-k-text-secondary mt-1 truncate">
                             {contract.students?.name || 'Aluno'}
                         </p>
                     </div>
@@ -312,7 +312,7 @@ export function ContractDetailModal({
                         {/* Plan */}
                         {isStripe ? (
                             <div>
-                                <label className="mb-1.5 block text-[11px] font-bold text-k-text-tertiary uppercase tracking-wider">
+                                <label className="mb-1.5 block text-xs font-medium text-k-text-tertiary">
                                     Plano
                                 </label>
                                 <div className="rounded-xl border border-k-border-subtle bg-glass-bg/50 px-4 py-3 text-sm text-muted-foreground/60">
@@ -323,7 +323,7 @@ export function ContractDetailModal({
                             </div>
                         ) : (
                             <div>
-                                <label className="mb-1.5 block text-[11px] font-bold text-k-text-tertiary uppercase tracking-wider">
+                                <label className="mb-1.5 block text-xs font-medium text-k-text-tertiary">
                                     Plano {!isCourtesy && <span className="text-violet-500">*</span>}
                                 </label>
                                 <select
@@ -345,7 +345,7 @@ export function ContractDetailModal({
                         {/* Amount */}
                         {isStripe ? (
                             <div>
-                                <label className="mb-1.5 block text-[11px] font-bold text-k-text-tertiary uppercase tracking-wider">
+                                <label className="mb-1.5 block text-xs font-medium text-k-text-tertiary">
                                     Valor
                                 </label>
                                 <div className="rounded-xl border border-k-border-subtle bg-glass-bg/50 px-4 py-3 text-sm text-muted-foreground/60">
@@ -358,7 +358,7 @@ export function ContractDetailModal({
                             </div>
                         ) : (
                             <div>
-                                <label className="mb-1.5 block text-[11px] font-bold text-k-text-tertiary uppercase tracking-wider">
+                                <label className="mb-1.5 block text-xs font-medium text-k-text-tertiary">
                                     Valor (R$)
                                 </label>
                                 <input
@@ -375,7 +375,7 @@ export function ContractDetailModal({
                         {/* Period End */}
                         {isStripe ? (
                             <div>
-                                <label className="mb-1.5 block text-[11px] font-bold text-k-text-tertiary uppercase tracking-wider">
+                                <label className="mb-1.5 block text-xs font-medium text-k-text-tertiary">
                                     Vencimento
                                 </label>
                                 <div className="rounded-xl border border-k-border-subtle bg-glass-bg/50 px-4 py-3 text-sm text-muted-foreground/60 flex items-center gap-2">
@@ -385,7 +385,7 @@ export function ContractDetailModal({
                             </div>
                         ) : isManual ? (
                             <div>
-                                <label className="mb-1.5 block text-[11px] font-bold text-k-text-tertiary uppercase tracking-wider">
+                                <label className="mb-1.5 block text-xs font-medium text-k-text-tertiary">
                                     Vencimento
                                 </label>
                                 <input
@@ -512,7 +512,7 @@ export function ContractDetailModal({
                         <button
                             onClick={handleSave}
                             disabled={loading}
-                            className="flex-1 inline-flex items-center justify-center gap-2 py-3 text-sm font-bold bg-violet-600 hover:bg-violet-500 text-white rounded-xl shadow-lg shadow-violet-500/20 transition-all active:scale-95 disabled:opacity-50"
+                            className="flex-1 inline-flex items-center justify-center gap-2 py-3 text-sm font-semibold bg-violet-600 hover:bg-violet-500 text-white rounded-xl transition-all active:scale-95 disabled:opacity-50"
                         >
                             {loading ? (
                                 <>

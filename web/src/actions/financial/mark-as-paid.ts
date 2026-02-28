@@ -100,6 +100,7 @@ export async function markAsPaid({ contractId }: { contractId: string }) {
 
     revalidatePath('/financial')
     revalidatePath('/financial/subscriptions')
+    revalidatePath('/dashboard')
 
     return { success: true }
 }

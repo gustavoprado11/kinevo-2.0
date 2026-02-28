@@ -318,8 +318,10 @@ async function tryOpenAIGeneration(input: GenerateFormWithAIInput): Promise<Open
 
     const system = [
         'Você gera apenas JSON válido para formulários de fitness coaching.',
+        'IMPORTANTE: Gere TODAS as perguntas, títulos, descrições, opções de resposta, labels de escala e sugestões de revisão em PORTUGUÊS BRASILEIRO. Nunca gere conteúdo em inglês.',
         'Não inclua diagnóstico clínico ou prescrição médica.',
         'Use apenas tipos permitidos: short_text, long_text, single_choice, scale, photo.',
+        'O campo coach_review_checklist deve conter sugestões práticas de revisão em português.',
         'Retorne estritamente o contrato: template_draft, quality_report, coach_review_checklist.',
     ].join(' ')
 
@@ -483,7 +485,7 @@ export async function generateFormDraftWithAI(input: GenerateFormWithAIInput) {
         success: true,
         source: llmDraft ? 'llm' : 'heuristic',
         llmStatus: llmResult.status,
-        llmModel: llmResult.status === 'llm_used' ? llmResult.model : null,
+        llmModel: null,
         runtimeNote,
         templateDraft: {
             title: finalDraft.template_draft.title,

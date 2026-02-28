@@ -16,11 +16,16 @@ import {
     Sparkles,
     AlertTriangle,
     GripVertical,
-    Save,
     Loader2,
-    ChevronDown,
     ChevronLeft,
     Pencil,
+    Check,
+    Type,
+    AlignLeft,
+    SlidersHorizontal,
+    CircleDot,
+    Camera,
+    MessageSquarePlus,
 } from 'lucide-react'
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
 import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
@@ -75,11 +80,11 @@ type BuilderStep = 'choose' | 'ai_setup' | 'editor'
 // ─── Constants ──────────────────────────────────────────────────
 
 const QUESTION_TYPES = [
-    { value: 'short_text', label: 'Texto Curto' },
-    { value: 'long_text', label: 'Texto Longo' },
-    { value: 'single_choice', label: 'Escolha Única' },
-    { value: 'scale', label: 'Escala' },
-    { value: 'photo', label: 'Foto' },
+    { value: 'short_text', label: 'Texto curto', desc: 'Resposta em uma linha', icon: Type },
+    { value: 'long_text', label: 'Texto longo', desc: 'Resposta em parágrafo', icon: AlignLeft },
+    { value: 'single_choice', label: 'Escolha única', desc: 'Uma opção entre várias', icon: CircleDot },
+    { value: 'scale', label: 'Escala', desc: 'Nota de 1 a 5', icon: SlidersHorizontal },
+    { value: 'photo', label: 'Upload de foto', desc: 'Imagem do aluno', icon: Camera },
 ]
 
 const CATEGORY_OPTIONS = [
@@ -130,132 +135,43 @@ function questionsToSchema(questions: Question[]): Record<string, unknown> {
 
 // ─── Step Indicator ─────────────────────────────────────────────
 
+const STEP_LABELS: { key: BuilderStep; label: string }[] = [
+    { key: 'choose', label: 'Método' },
+    { key: 'ai_setup', label: 'Configurar' },
+    { key: 'editor', label: 'Editor' },
+]
+
 function StepIndicator({ step, isEditing }: { step: BuilderStep; isEditing: boolean }) {
     if (isEditing) return null
-    const steps: BuilderStep[] = ['choose', 'ai_setup', 'editor']
-    const currentIndex = steps.indexOf(step)
+    const currentIndex = STEP_LABELS.findIndex((s) => s.key === step)
 
     return (
-        <div className="flex items-center justify-center gap-2 mb-8">
-            {[0, 1, 2].map((i) => (
-                <div
-                    key={i}
-                    className={`h-1.5 rounded-full transition-all duration-300 ${
-                        i === currentIndex
-                            ? 'w-8 bg-violet-500'
-                            : i < currentIndex
-                                ? 'w-8 bg-violet-500/40'
-                                : 'w-8 bg-glass-bg'
-                    }`}
-                />
+        <div className="flex items-center justify-center gap-3 mb-8">
+            {STEP_LABELS.map((s, i) => (
+                <div key={s.key} className="flex items-center gap-2">
+                    <div
+                        className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold transition-all duration-300 ${
+                            i < currentIndex
+                                ? 'bg-emerald-500 text-white'
+                                : i === currentIndex
+                                    ? 'bg-violet-600 text-white'
+                                    : 'bg-surface-elevated text-k-text-quaternary'
+                        }`}
+                    >
+                        {i < currentIndex ? <Check size={12} /> : i + 1}
+                    </div>
+                    <span className={`text-xs font-medium transition-colors ${
+                        i <= currentIndex ? 'text-k-text-primary' : 'text-k-text-quaternary'
+                    }`}>
+                        {s.label}
+                    </span>
+                    {i < STEP_LABELS.length - 1 && (
+                        <div className={`w-8 h-px ml-1 ${i < currentIndex ? 'bg-emerald-500' : 'bg-surface-elevated'}`} />
+                    )}
+                </div>
             ))}
         </div>
     )
-}
-
-// ─── Mobile Preview ─────────────────────────────────────────────
-
-function MobilePreview({ title, description, questions }: { title: string; description: string; questions: Question[] }) {
-    return (
-        <div data-onboarding="form-mobile-preview" className="hidden xl:block">
-            <div className="sticky top-6">
-                {/* Label */}
-                <div className="mb-3 text-center">
-                    <p className="text-xs font-bold text-k-text-secondary uppercase tracking-widest">
-                        Prévia Mobile
-                    </p>
-                    <p className="text-[11px] text-k-text-quaternary mt-0.5">
-                        Assim ficará no app do aluno
-                    </p>
-                </div>
-
-                {/* Phone Frame */}
-                <div className="overflow-hidden rounded-[2.5rem] border-[8px] border-surface-elevated bg-surface-card shadow-2xl ring-1 ring-black/5"
-                     style={{ height: 'calc(100vh - 200px)' }}>
-                    {/* Status Bar */}
-                    <div className="flex items-center justify-between px-8 pt-3 pb-1 bg-surface-elevated">
-                        <span className="text-[10px] font-semibold text-k-text-tertiary">9:41</span>
-                        <div className="h-6 w-24 rounded-full bg-surface-card" />
-                        <div className="flex items-center gap-1.5">
-                            <div className="flex items-end gap-[2px]">
-                                <div className="h-[4px] w-[3px] rounded-sm bg-k-text-tertiary/50" />
-                                <div className="h-[6px] w-[3px] rounded-sm bg-k-text-tertiary/50" />
-                                <div className="h-[8px] w-[3px] rounded-sm bg-k-text-tertiary/50" />
-                                <div className="h-[10px] w-[3px] rounded-sm bg-k-text-tertiary/30" />
-                            </div>
-                            <div className="h-[10px] w-[20px] rounded-[2px] border border-k-text-tertiary/40 relative">
-                                <div className="absolute inset-[1.5px] right-[3px] rounded-[1px] bg-k-text-tertiary/50" />
-                                <div className="absolute right-[-3px] top-1/2 -translate-y-1/2 h-[4px] w-[1.5px] rounded-r-sm bg-k-text-tertiary/40" />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Content */}
-                    <div className="h-full overflow-y-auto bg-surface-elevated px-6 pb-8 pt-4">
-                        <div className="mb-6">
-                            <h3 className="text-xl font-bold text-k-text-primary">{title || 'Novo Formulário'}</h3>
-                            {description && <p className="mt-2 text-sm text-k-text-secondary">{description}</p>}
-                        </div>
-
-                        {questions.length === 0 ? (
-                            <div className="rounded-xl border border-dashed border-k-border-subtle p-8 text-center">
-                                <p className="text-sm text-k-text-secondary">Adicione perguntas ao formulário.</p>
-                            </div>
-                        ) : (
-                            <div className="space-y-5">
-                                {questions.map((question) => (
-                                    <div key={question.id} className="rounded-2xl bg-surface-card p-4 shadow-sm">
-                                        <div className="mb-3">
-                                            <p className="font-medium text-k-text-primary">{question.label || 'Pergunta sem título'}</p>
-                                            {question.required && (
-                                                <span className="mt-1 block text-[10px] text-k-text-tertiary uppercase tracking-wider">Obrigatório</span>
-                                            )}
-                                        </div>
-                                        {renderPreviewByType(question)}
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </div>
-        </div>
-    )
-}
-
-function renderPreviewByType(question: Question) {
-    if (question.type === 'single_choice') {
-        return (
-            <div className="space-y-2">
-                {(question.options || []).slice(0, 4).map((option) => (
-                    <div key={`${question.id}-${option.value}`} className="rounded-lg border border-k-border-subtle bg-surface-inset px-3 py-2 text-xs text-k-text-secondary">
-                        {option.label || 'Opção'}
-                    </div>
-                ))}
-            </div>
-        )
-    }
-    if (question.type === 'scale') {
-        const min = question.scale?.min ?? 1
-        const max = question.scale?.max ?? 5
-        const values = Array.from({ length: Math.max(1, max - min + 1) }, (_, idx) => min + idx)
-        return (
-            <div className="flex gap-1.5">
-                {values.map((value) => (
-                    <div key={`${question.id}-${value}`} className="flex h-8 w-8 items-center justify-center rounded-md border border-k-border-subtle bg-surface-inset text-xs text-k-text-secondary">
-                        {value}
-                    </div>
-                ))}
-            </div>
-        )
-    }
-    if (question.type === 'photo') {
-        return <div className="rounded-lg border border-dashed border-k-border-primary bg-surface-inset px-3 py-4 text-xs text-k-text-secondary">Upload de foto</div>
-    }
-    if (question.type === 'long_text') {
-        return <div className="h-20 rounded-lg border border-k-border-subtle bg-surface-inset" />
-    }
-    return <div className="h-10 rounded-lg border border-k-border-subtle bg-surface-inset" />
 }
 
 // ─── Main Component ─────────────────────────────────────────────
@@ -290,13 +206,22 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
     const [isGeneratingAI, setIsGeneratingAI] = useState(false)
     const [isAuditingAI, setIsAuditingAI] = useState(false)
     const [aiProviderSource, setAiProviderSource] = useState<'llm' | 'heuristic' | null>(null)
-    const [aiModelUsed, setAiModelUsed] = useState<string | null>(null)
     const [aiRuntimeNote, setAiRuntimeNote] = useState<string | null>(null)
     const [aiQualityReport, setAiQualityReport] = useState<QualityReport | null>(null)
     const [aiChecklist, setAiChecklist] = useState<string[]>([])
 
     // Add question dropdown
     const [showAddMenu, setShowAddMenu] = useState(false)
+
+    // Track unsaved changes
+    const hasUnsavedChanges = useMemo(() => {
+        if (isEditing) {
+            return title !== (existingTemplate?.title || '') ||
+                description !== (existingTemplate?.description || '') ||
+                questions.length !== parseQuestionsFromSchema(existingTemplate?.schema_json).length
+        }
+        return title.trim().length > 0 || questions.length > 0
+    }, [title, description, questions, isEditing, existingTemplate])
 
     // Scroll to top on step change
     useEffect(() => {
@@ -427,7 +352,6 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
             setQuestions(parseQuestionsFromSchema(result.templateDraft.schema as any))
             setDraftSource('ai_assisted')
             setAiProviderSource(result.source === 'llm' ? 'llm' : 'heuristic')
-            setAiModelUsed(result.llmModel || null)
             setAiRuntimeNote(result.runtimeNote || null)
             setAiQualityReport(result.qualityReport || null)
             setAiChecklist(result.reviewChecklist || [])
@@ -499,27 +423,27 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                         {step === 'choose' && (
                             <motion.div key="choose" {...stepAnimation}>
                                 <div className="max-w-2xl mx-auto">
-                                    <p className="text-center text-lg font-semibold text-k-text-primary mb-8">
+                                    <p className="text-center text-lg font-semibold text-k-text-primary mb-6">
                                         Como deseja criar seu template?
                                     </p>
 
-                                    <div data-onboarding="form-choose-method" className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                    <div data-onboarding="form-choose-method" className="grid grid-cols-2 gap-4">
                                         {/* Card: AI */}
                                         <button
                                             onClick={() => {
                                                 setDraftSource('ai_assisted')
                                                 setStep('ai_setup')
                                             }}
-                                            className="group text-left rounded-2xl border border-k-border-primary bg-surface-card p-8 hover:border-violet-500/30 hover:bg-glass-bg cursor-pointer transition-all duration-200 hover:-translate-y-1"
+                                            className="group text-left rounded-xl border border-k-border-primary bg-surface-card p-5 hover:border-violet-500/30 hover:bg-glass-bg cursor-pointer transition-all duration-200"
                                         >
-                                            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-500/10 mb-5">
-                                                <Sparkles size={24} className="text-violet-400" strokeWidth={1.5} />
+                                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-elevated group-hover:bg-violet-500/10 mb-3 transition-colors">
+                                                <Sparkles size={20} className="text-violet-400" strokeWidth={1.5} />
                                             </div>
-                                            <h3 className="text-base font-semibold text-k-text-primary mb-2 group-hover:text-violet-300 transition-colors">
+                                            <h3 className="text-sm font-semibold text-k-text-primary mb-1 group-hover:text-violet-300 transition-colors">
                                                 Criar com IA
                                             </h3>
-                                            <p className="text-sm text-k-text-secondary leading-relaxed">
-                                                Descreva o objetivo e a IA gera um draft completo com perguntas, que você pode revisar e editar.
+                                            <p className="text-xs text-k-text-quaternary leading-relaxed">
+                                                Descreva o objetivo e a IA gera as perguntas para revisar.
                                             </p>
                                         </button>
 
@@ -529,16 +453,16 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                                 setDraftSource('manual')
                                                 setStep('editor')
                                             }}
-                                            className="group text-left rounded-2xl border border-k-border-primary bg-surface-card p-8 hover:border-blue-500/30 hover:bg-glass-bg cursor-pointer transition-all duration-200 hover:-translate-y-1"
+                                            className="group text-left rounded-xl border border-k-border-primary bg-surface-card p-5 hover:border-blue-500/30 hover:bg-glass-bg cursor-pointer transition-all duration-200"
                                         >
-                                            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500/10 mb-5">
-                                                <Pencil size={24} className="text-blue-400" strokeWidth={1.5} />
+                                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-elevated group-hover:bg-blue-500/10 mb-3 transition-colors">
+                                                <Pencil size={20} className="text-blue-400" strokeWidth={1.5} />
                                             </div>
-                                            <h3 className="text-base font-semibold text-k-text-primary mb-2 group-hover:text-blue-300 transition-colors">
+                                            <h3 className="text-sm font-semibold text-k-text-primary mb-1 group-hover:text-blue-300 transition-colors">
                                                 Criar Manualmente
                                             </h3>
-                                            <p className="text-sm text-k-text-secondary leading-relaxed">
-                                                Monte o formulário do zero, escolhendo cada tipo de pergunta.
+                                            <p className="text-xs text-k-text-quaternary leading-relaxed">
+                                                Monte do zero, escolhendo cada tipo de pergunta.
                                             </p>
                                         </button>
                                     </div>
@@ -566,7 +490,7 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
 
                                         {/* Category — Segmented Control */}
                                         <div>
-                                            <label className="mb-2 block text-[11px] font-bold text-k-text-tertiary uppercase tracking-wider">
+                                            <label className="mb-2 block text-xs font-medium text-k-text-tertiary">
                                                 Categoria
                                             </label>
                                             <div className="grid grid-cols-3 gap-1 bg-surface-inset p-1 rounded-xl">
@@ -596,12 +520,12 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
 
                                         {/* Goal */}
                                         <div>
-                                            <label className="mb-1.5 block text-[11px] font-bold text-k-text-tertiary uppercase tracking-wider">
+                                            <label className="mb-1.5 block text-xs font-medium text-k-text-tertiary">
                                                 Objetivo <span className="text-red-400">*</span>
                                             </label>
                                             <input
                                                 type="text"
-                                                placeholder="Ex: anamnese completa para iniciantes em musculação"
+                                                placeholder={category === 'anamnese' ? 'Ex: coleta completa de dados do novo aluno' : category === 'checkin' ? 'Ex: acompanhamento semanal do aluno' : 'Ex: questionário de satisfação com o treino'}
                                                 value={aiGoal}
                                                 onChange={(e) => setAiGoal(e.target.value)}
                                                 className="w-full rounded-xl border border-k-border-subtle bg-glass-bg px-4 py-3 text-sm text-k-text-primary placeholder:text-k-text-quaternary outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/10 transition-all"
@@ -610,8 +534,8 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
 
                                         {/* Context */}
                                         <div>
-                                            <label className="mb-1.5 block text-[11px] font-bold text-k-text-tertiary uppercase tracking-wider">
-                                                Contexto Adicional <span className="font-medium text-k-text-quaternary ml-1">(opcional)</span>
+                                            <label className="mb-1.5 block text-xs font-medium text-k-text-tertiary">
+                                                Contexto adicional <span className="font-normal text-k-text-quaternary">(opcional)</span>
                                             </label>
                                             <textarea
                                                 placeholder="Descreva o perfil dos alunos, restrições, foco do treinamento..."
@@ -621,19 +545,6 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                             />
                                         </div>
 
-                                        {/* Duration */}
-                                        <div className="flex items-center gap-3">
-                                            <label className="text-[11px] font-bold text-k-text-tertiary uppercase tracking-wider">Duração estimada</label>
-                                            <input
-                                                type="number"
-                                                min={2}
-                                                max={20}
-                                                value={aiMaxMinutes}
-                                                onChange={(e) => setAiMaxMinutes(Number(e.target.value || 6))}
-                                                className="w-16 rounded-lg border border-k-border-subtle bg-glass-bg px-2 py-1.5 text-center text-sm text-k-text-primary outline-none focus:border-violet-500/50"
-                                            />
-                                            <span className="text-xs text-k-text-secondary">minutos</span>
-                                        </div>
                                     </div>
 
                                     {/* Navigation */}
@@ -672,68 +583,56 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                         ════════════════════════════════════════════════ */}
                         {step === 'editor' && (
                             <motion.div key="editor" {...stepAnimation}>
-                                <div className="grid grid-cols-1 xl:grid-cols-[1fr_400px] gap-8 pb-24">
+                                <div className="max-w-3xl mx-auto pb-24">
 
                                     {/* Left Column — Form */}
                                     <div className="space-y-6">
 
                                         {/* Card: Configuração */}
-                                        <div className="rounded-2xl border border-k-border-primary bg-surface-card p-6 shadow-xl space-y-4">
-                                            <div className="flex items-center justify-between">
-                                                <h2 className="text-sm font-semibold text-k-text-secondary uppercase tracking-widest">Configuração</h2>
+                                        <div className="rounded-xl border border-k-border-subtle bg-surface-card p-4 space-y-3">
+                                            <div className="flex items-start gap-4">
+                                                <input
+                                                    type="text"
+                                                    placeholder="Título do Formulário"
+                                                    value={title}
+                                                    onChange={(e) => setTitle(e.target.value)}
+                                                    className="flex-1 bg-transparent text-base font-semibold text-k-text-primary placeholder:text-k-text-quaternary outline-none border-b border-transparent focus:border-violet-500/50 pb-1 transition-all"
+                                                />
+                                                <div className="flex bg-surface-elevated rounded-lg p-0.5 shrink-0">
+                                                    {CATEGORY_OPTIONS.map((opt) => (
+                                                        <button
+                                                            key={opt.value}
+                                                            type="button"
+                                                            onClick={() => setCategory(opt.value)}
+                                                            className={`px-3 py-1 text-xs rounded-md transition-all ${
+                                                                category === opt.value
+                                                                    ? 'bg-glass-bg-active text-k-text-primary shadow-sm'
+                                                                    : 'text-k-text-quaternary hover:text-k-text-secondary'
+                                                            }`}
+                                                        >
+                                                            {opt.label}
+                                                        </button>
+                                                    ))}
+                                                </div>
                                                 {draftSource === 'ai_assisted' && (
-                                                    <span className="flex items-center gap-1.5 rounded-full bg-violet-500/10 px-2.5 py-1 text-[10px] font-bold text-violet-400 border border-violet-500/20">
+                                                    <span className="flex items-center gap-1 rounded-full bg-violet-500/10 px-2 py-0.5 text-[10px] font-bold text-violet-400 border border-violet-500/20 shrink-0">
                                                         <Sparkles size={10} strokeWidth={2} />
-                                                        Draft IA
+                                                        IA
                                                     </span>
                                                 )}
                                             </div>
-
-                                            <input
-                                                type="text"
-                                                placeholder="Título do Formulário"
-                                                value={title}
-                                                onChange={(e) => setTitle(e.target.value)}
-                                                className="w-full rounded-xl border border-k-border-subtle bg-glass-bg px-4 py-3 text-sm font-medium text-k-text-primary outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/10 transition-all"
-                                            />
-
-                                            {/* Category — Segmented Control */}
-                                            <div className="grid grid-cols-3 gap-1 bg-surface-inset p-1 rounded-xl">
-                                                {CATEGORY_OPTIONS.map((opt) => (
-                                                    <label
-                                                        key={opt.value}
-                                                        className={`
-                                                            flex items-center justify-center rounded-lg px-3 py-2.5 cursor-pointer transition-all duration-200
-                                                            ${category === opt.value
-                                                                ? 'bg-glass-bg-active text-k-text-primary shadow-sm ring-1 ring-k-border-subtle'
-                                                                : 'text-k-text-tertiary hover:text-k-text-secondary hover:bg-glass-bg'}
-                                                        `}
-                                                    >
-                                                        <input
-                                                            type="radio"
-                                                            name="editor_category"
-                                                            value={opt.value}
-                                                            checked={category === opt.value}
-                                                            onChange={() => setCategory(opt.value)}
-                                                            className="sr-only"
-                                                        />
-                                                        <span className="font-semibold text-xs tracking-wide">{opt.label}</span>
-                                                    </label>
-                                                ))}
-                                            </div>
-
                                             <textarea
                                                 placeholder="Descrição breve para o aluno (opcional)"
                                                 value={description}
                                                 onChange={(e) => setDescription(e.target.value)}
-                                                className="min-h-[80px] w-full rounded-xl border border-k-border-subtle bg-glass-bg px-4 py-3 text-sm text-k-text-primary placeholder:text-k-text-quaternary outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/10 resize-none transition-all"
+                                                className="w-full bg-transparent text-sm text-k-text-secondary placeholder:text-k-text-quaternary outline-none resize-none min-h-[40px]"
                                             />
                                         </div>
 
                                         {/* Card: Perguntas */}
                                         <div className="rounded-2xl border border-k-border-primary bg-surface-card p-6 shadow-xl space-y-4">
                                             <div className="flex items-center justify-between">
-                                                <h2 className="text-sm font-semibold text-k-text-secondary uppercase tracking-widest">
+                                                <h2 className="text-sm font-semibold text-k-text-secondary">
                                                     Perguntas ({questions.length})
                                                 </h2>
                                                 <button
@@ -797,19 +696,23 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                                 )}
                                             </AnimatePresence>
 
-                                            {/* AI runtime info */}
-                                            {(aiModelUsed || aiRuntimeNote) && (
+                                            {/* AI runtime note (no model name exposed) */}
+                                            {aiRuntimeNote && (
                                                 <div className="rounded-xl bg-surface-elevated/50 px-3 py-2 text-[11px] text-k-text-secondary">
-                                                    {aiModelUsed && <span className="block">Modelo: {aiModelUsed}</span>}
-                                                    {aiRuntimeNote && <span className="block opacity-75">{aiRuntimeNote}</span>}
+                                                    <span className="block opacity-75">{aiRuntimeNote}</span>
                                                 </div>
                                             )}
 
                                             {/* Empty state */}
                                             {questions.length === 0 && (
-                                                <div className="rounded-xl border border-dashed border-k-border-subtle p-8 text-center">
-                                                    <p className="text-sm text-k-text-secondary">Nenhuma pergunta adicionada.</p>
-                                                    <p className="text-xs text-k-text-quaternary mt-1">Use o botão abaixo para adicionar.</p>
+                                                <div className="text-center py-8">
+                                                    <div className="w-12 h-12 rounded-xl bg-surface-elevated flex items-center justify-center mx-auto mb-3">
+                                                        <MessageSquarePlus size={24} className="text-k-text-quaternary" />
+                                                    </div>
+                                                    <p className="text-sm text-k-text-secondary mb-1">Comece adicionando perguntas</p>
+                                                    <p className="text-xs text-k-text-quaternary">
+                                                        Escolha entre texto, escala, múltipla escolha ou foto
+                                                    </p>
                                                 </div>
                                             )}
 
@@ -835,7 +738,7 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                                                     className="w-full rounded-lg border border-k-border-subtle bg-glass-bg px-3 py-2 text-sm text-k-text-primary outline-none focus:border-violet-500/50 transition-all"
                                                                 />
                                                                 <div className="flex items-center gap-3">
-                                                                    <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-md border bg-blue-500/10 text-blue-400 border-blue-500/20">
+                                                                    <span className="px-2 py-0.5 text-[10px] font-medium rounded-md border bg-surface-elevated text-k-text-tertiary border-k-border-subtle">
                                                                         {typeLabel}
                                                                     </span>
                                                                     <label className="flex items-center gap-1.5 cursor-pointer">
@@ -924,28 +827,34 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                                 >
                                                     <Plus size={16} />
                                                     Adicionar Pergunta
-                                                    <ChevronDown size={14} className={`transition-transform ${showAddMenu ? 'rotate-180' : ''}`} />
                                                 </button>
 
                                                 {showAddMenu && (
-                                                    <div className="absolute top-full left-0 right-0 mt-2 rounded-xl border border-k-border-primary bg-surface-card shadow-2xl z-10 overflow-hidden">
-                                                        {QUESTION_TYPES.map((qt) => (
-                                                            <button
-                                                                key={qt.value}
-                                                                onClick={() => addQuestion(qt.value)}
-                                                                className="w-full px-4 py-3 text-left text-sm text-k-text-primary hover:bg-glass-bg transition-colors"
-                                                            >
-                                                                {qt.label}
-                                                            </button>
-                                                        ))}
+                                                    <div className="absolute top-full left-0 right-0 mt-2 rounded-xl border border-k-border-primary bg-surface-card shadow-2xl z-10 overflow-hidden p-1">
+                                                        {QUESTION_TYPES.map((qt) => {
+                                                            const Icon = qt.icon
+                                                            return (
+                                                                <button
+                                                                    key={qt.value}
+                                                                    onClick={() => addQuestion(qt.value)}
+                                                                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left hover:bg-glass-bg transition-colors"
+                                                                >
+                                                                    <div className="w-8 h-8 rounded-lg bg-surface-elevated flex items-center justify-center shrink-0">
+                                                                        <Icon size={14} className="text-k-text-tertiary" />
+                                                                    </div>
+                                                                    <div>
+                                                                        <span className="text-sm text-k-text-primary block">{qt.label}</span>
+                                                                        <span className="text-[10px] text-k-text-quaternary">{qt.desc}</span>
+                                                                    </div>
+                                                                </button>
+                                                            )
+                                                        })}
                                                     </div>
                                                 )}
                                             </div>
                                         </div>
                                     </div>
 
-                                    {/* Right Column — Mobile Preview */}
-                                    <MobilePreview title={title} description={description} questions={questions} />
                                 </div>
                             </motion.div>
                         )}
@@ -955,34 +864,46 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
 
             {/* Sticky Save Footer — only on editor step */}
             {step === 'editor' && (
-                <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-k-border-subtle bg-surface-card/80 backdrop-blur-xl">
-                    <div className="max-w-7xl mx-auto px-8 py-4 flex items-center justify-between">
-                        <div className="text-xs text-k-text-secondary flex items-center gap-3">
-                            <span>{questions.length} {questions.length === 1 ? 'pergunta' : 'perguntas'}</span>
-                            {draftSource === 'ai_assisted' && (
-                                <span className="inline-flex items-center gap-1 text-violet-400">
-                                    <Sparkles size={10} />
-                                    Draft IA
-                                </span>
+                <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-k-border-subtle bg-surface-card/95 backdrop-blur-sm">
+                    <div className="max-w-3xl mx-auto px-8 py-3 flex items-center justify-between">
+                        <div className="text-xs text-k-text-quaternary flex items-center gap-2">
+                            <span>{questions.length} pergunta{questions.length !== 1 ? 's' : ''}</span>
+                            <span className="text-k-text-quaternary/50">&middot;</span>
+                            <span>~{Math.max(1, Math.ceil(questions.length * 0.8))} min</span>
+                            {hasUnsavedChanges && (
+                                <>
+                                    <span className="text-k-text-quaternary/50">&middot;</span>
+                                    <span className="text-yellow-500">Alterações não salvas</span>
+                                </>
                             )}
                         </div>
-                        <button
-                            onClick={handleSave}
-                            disabled={isSaving}
-                            className="h-11 px-8 bg-violet-600 hover:bg-violet-500 text-white rounded-xl font-bold text-sm shadow-lg shadow-violet-600/20 transition-all disabled:opacity-50 flex items-center gap-2"
-                        >
-                            {isSaving ? (
-                                <>
-                                    <Loader2 size={16} className="animate-spin" />
-                                    Salvando...
-                                </>
-                            ) : (
-                                <>
-                                    <Save size={16} />
-                                    {isEditing ? 'Salvar Alterações' : 'Salvar Template'}
-                                </>
-                            )}
-                        </button>
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={() => {
+                                    if (hasUnsavedChanges) {
+                                        if (!confirm('Você tem alterações não salvas. Deseja descartar?')) return
+                                    }
+                                    router.push('/forms/templates')
+                                }}
+                                className="text-sm text-k-text-quaternary hover:text-k-text-primary transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleSave}
+                                disabled={isSaving || questions.length === 0 || !title.trim()}
+                                className="px-5 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                            >
+                                {isSaving ? (
+                                    <>
+                                        <Loader2 size={14} className="animate-spin" />
+                                        Salvando...
+                                    </>
+                                ) : (
+                                    isEditing ? 'Salvar Alterações' : 'Salvar Template'
+                                )}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

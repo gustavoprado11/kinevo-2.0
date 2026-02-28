@@ -14,6 +14,22 @@ export default async function PlansPage() {
         .eq('trainer_id', trainer.id)
         .order('created_at', { ascending: false })
 
+    // Count active contracts per plan
+    const { data: contractCounts } = await supabase
+        .from('contracts')
+        .select('plan_id')
+        .eq('trainer_id', trainer.id)
+        .in('status', ['active', 'past_due'])
+
+    const usageByPlan: Record<string, number> = {}
+    if (contractCounts) {
+        for (const c of contractCounts) {
+            if (c.plan_id) {
+                usageByPlan[c.plan_id] = (usageByPlan[c.plan_id] || 0) + 1
+            }
+        }
+    }
+
     // Fetch payment settings for connect status
     const { data: paymentSettings } = await supabaseAdmin
         .from('payment_settings')
@@ -28,6 +44,7 @@ export default async function PlansPage() {
             trainer={trainer}
             plans={plans ?? []}
             hasStripeConnect={hasStripeConnect}
+            usageByPlan={usageByPlan}
         />
     )
 }

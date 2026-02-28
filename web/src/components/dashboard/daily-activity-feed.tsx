@@ -17,11 +17,17 @@ interface DailyActivityItem {
     feedback: string | null
 }
 
-interface DailyActivityFeedProps {
-    activities: DailyActivityItem[]
+interface ScheduledTodayItem {
+    studentName: string
+    workoutName: string
 }
 
-export function DailyActivityFeed({ activities }: DailyActivityFeedProps) {
+interface DailyActivityFeedProps {
+    activities: DailyActivityItem[]
+    scheduledToday?: ScheduledTodayItem[]
+}
+
+export function DailyActivityFeed({ activities, scheduledToday }: DailyActivityFeedProps) {
     const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null)
     const [isSheetOpen, setIsSheetOpen] = useState(false)
 
@@ -47,25 +53,35 @@ export function DailyActivityFeed({ activities }: DailyActivityFeedProps) {
 
     return (
         <div className="flex h-full flex-col rounded-2xl border border-k-border-primary bg-surface-card shadow-xl">
-            <div className="flex items-center justify-between border-b border-k-border-subtle p-6">
-                <div>
-                    <h2 className="flex items-center gap-3 text-lg font-bold text-foreground">
-                        Treinos de Hoje
-                        <span className="px-3 py-1 rounded-full bg-violet-500/10 text-violet-400 text-xs font-semibold tracking-wide">
-                            {new Date().toLocaleDateString('pt-BR')}
+            <div className="flex items-center justify-between border-b border-k-border-subtle px-6 py-4">
+                <div className="flex items-center gap-2">
+                    <h2 className="text-sm font-semibold text-k-text-primary">Treinos de hoje</h2>
+                    {activities.length > 0 && (
+                        <span className="text-[10px] text-k-text-quaternary bg-glass-bg px-1.5 py-0.5 rounded">
+                            {activities.length}
                         </span>
-                    </h2>
-                    <p className="mt-1 text-sm text-muted-foreground">Atividades recentes dos seus alunos</p>
+                    )}
                 </div>
             </div>
 
             {activities.length === 0 ? (
-                <div className="flex-1 p-12 text-center flex flex-col items-center justify-center min-h-[300px]">
-                    <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-full bg-glass-bg">
-                        <Clock className="h-5 w-5 text-muted-foreground/40" strokeWidth={1.5} />
+                <div className="py-8 text-center">
+                    <div className="mb-4 flex h-10 w-10 mx-auto items-center justify-center rounded-full bg-glass-bg">
+                        <Clock className="h-4 w-4 text-k-text-quaternary" strokeWidth={1.5} />
                     </div>
-                    <p className="mb-2 text-lg font-medium text-foreground">Nenhum treino concluído hoje</p>
-                    <p className="text-sm text-muted-foreground/50 max-w-[250px]">Incentive seus alunos a manterem a constância nos treinos!</p>
+                    <p className="text-sm text-k-text-secondary">Nenhum treino registrado ainda hoje</p>
+                    {scheduledToday && scheduledToday.length > 0 && (
+                        <div className="mt-3 space-y-1">
+                            <span className="text-xs text-k-text-quaternary block">Agendados para hoje:</span>
+                            {scheduledToday.map((s, i) => (
+                                <div key={i} className="flex items-center justify-center gap-2 text-xs text-k-text-secondary">
+                                    <span>{s.studentName}</span>
+                                    <span className="text-k-text-quaternary">·</span>
+                                    <span>{s.workoutName}</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             ) : (
                 <div className="divide-y divide-border">

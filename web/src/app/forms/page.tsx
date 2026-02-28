@@ -7,55 +7,39 @@ export default async function FormsPage() {
     const { trainer } = await getTrainerWithSubscription()
     const supabase = await createClient()
 
-    // Templates count
-    const { count: templatesCount } = await supabase
+    // Templates
+    const { data: templates } = await supabase
         .from('form_templates')
-        .select('id', { count: 'exact', head: true })
+        .select('id, title, category, version, schema_json, created_at')
         .eq('trainer_id', trainer.id)
+        .order('created_at', { ascending: false })
 
-    // Total submissions (submitted + reviewed)
-    const { count: submissionsCount } = await supabaseAdmin
-        .from('form_submissions')
-        .select('id', { count: 'exact', head: true })
-        .eq('trainer_id', trainer.id)
-        .in('status', ['submitted', 'reviewed'])
-
-    // Pending feedback (submitted but no feedback yet)
-    const { count: pendingFeedbackCount } = await supabaseAdmin
-        .from('form_submissions')
-        .select('id', { count: 'exact', head: true })
-        .eq('trainer_id', trainer.id)
-        .eq('status', 'submitted')
-
-    // Recent submissions
+    // All submissions (submitted + reviewed)
     const { data: rawSubmissions } = await supabaseAdmin
         .from('form_submissions')
         .select('id, status, submitted_at, feedback_sent_at, created_at, student_id, form_template_id')
         .eq('trainer_id', trainer.id)
         .in('status', ['submitted', 'reviewed'])
-        .order('created_at', { ascending: false })
-        .limit(10)
+        .order('submitted_at', { ascending: false })
 
-    // Fetch students and templates for display names
+    // Students
     const { data: students } = await supabase
         .from('students')
         .select('id, name, avatar_url')
         .eq('coach_id', trainer.id)
+        .order('name')
 
-    const { data: templates } = await supabase
-        .from('form_templates')
-        .select('id, title')
-        .eq('trainer_id', trainer.id)
-
+    // Map for enrichment
     const studentsMap = new Map((students || []).map(s => [s.id, s]))
     const templatesMap = new Map((templates || []).map(t => [t.id, t]))
 
-    const recentSubmissions = (rawSubmissions || []).map(sub => {
+    // Enriched submissions
+    const submissions = (rawSubmissions || []).map(sub => {
         const student = studentsMap.get(sub.student_id)
         const template = templatesMap.get(sub.form_template_id)
         return {
             id: sub.id,
-            status: sub.status,
+            status: sub.status as 'submitted' | 'reviewed',
             submitted_at: sub.submitted_at,
             created_at: sub.created_at,
             feedback_sent_at: sub.feedback_sent_at,
@@ -65,13 +49,40 @@ export default async function FormsPage() {
         }
     })
 
+    // Count responses per template
+    const responseCounts = new Map<string, number>()
+    for (const sub of rawSubmissions || []) {
+        responseCounts.set(sub.form_template_id, (responseCounts.get(sub.form_template_id) || 0) + 1)
+    }
+
+    const enrichedTemplates = (templates || []).map(t => ({
+        id: t.id,
+        title: t.title,
+        category: t.category as string,
+        responseCount: responseCounts.get(t.id) || 0,
+        questionCount: (t.schema_json as any)?.questions?.length || 0,
+    }))
+
+    // For AssignFormModal
+    const formTemplates = (templates || []).map(t => ({
+        id: t.id,
+        title: t.title,
+        version: t.version || 1,
+    }))
+
+    const studentsList = (students || []).map(s => ({
+        id: s.id,
+        name: s.name,
+        avatar_url: s.avatar_url,
+    }))
+
     return (
         <FormsDashboardClient
             trainer={trainer}
-            templatesCount={templatesCount ?? 0}
-            submissionsCount={submissionsCount ?? 0}
-            pendingFeedbackCount={pendingFeedbackCount ?? 0}
-            recentSubmissions={recentSubmissions}
+            submissions={submissions}
+            templates={enrichedTemplates}
+            formTemplates={formTemplates}
+            students={studentsList}
         />
     )
 }

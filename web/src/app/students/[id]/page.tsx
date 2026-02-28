@@ -1,8 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { getTrainerWithSubscription } from '@/lib/auth/get-trainer'
-import { getWeekRange } from '@kinevo/shared/utils/schedule-projection'
+import { getWeekRange, generateCalendarDays } from '@kinevo/shared/utils/schedule-projection'
 import { StudentDetailClient } from './student-detail-client'
+import { getSessionsTonnage } from './actions/get-sessions-tonnage'
 
 export default async function StudentDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params
@@ -12,7 +13,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
     // Get student data
     const { data: student } = await supabase
         .from('students')
-        .select('id, name, email, phone, status, modality, avatar_url, created_at, is_trainer_profile')
+        .select('id, name, email, phone, status, modality, avatar_url, created_at, is_trainer_profile, trainer_notes')
         .eq('id', id)
         .single()
 
@@ -99,10 +100,71 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
         return d >= currentWeekRange.start && d <= currentWeekRange.end
     }).length || 0
 
+    // Calculate expected workouts per week from active program
+    let expectedPerWeek = 0
+    if (activeProgram?.assigned_workouts) {
+        const uniqueDays = new Set<number>()
+        activeProgram.assigned_workouts.forEach((w: any) => w.scheduled_days?.forEach((d: number) => uniqueDays.add(d)))
+        expectedPerWeek = uniqueDays.size
+    }
+
+    // Calculate streak + weekly adherence from calendar days
+    let streak = 0
+    let weeklyAdherence: { week: number; rate: number }[] = []
+    if (activeProgram?.started_at && activeProgram?.assigned_workouts) {
+        // Get all completed sessions for active program
+        const { data: programSessions } = await supabase
+            .from('workout_sessions')
+            .select('id, assigned_workout_id, started_at, completed_at, status')
+            .eq('assigned_program_id', activeProgram.id)
+            .eq('status', 'completed')
+            .order('started_at', { ascending: false })
+
+        if (programSessions && programSessions.length > 0) {
+            const today = new Date()
+            const programStart = new Date(activeProgram.started_at)
+            const days = generateCalendarDays(
+                programStart,
+                today,
+                activeProgram.assigned_workouts as any,
+                programSessions as any,
+                activeProgram.started_at,
+                activeProgram.duration_weeks,
+            )
+
+            // Streak: consecutive completed scheduled days going backwards
+            const scheduledPastDays = days
+                .filter(d => d.isInProgram && d.date <= today && d.scheduledWorkouts.length > 0)
+                .sort((a, b) => b.date.getTime() - a.date.getTime())
+            for (const d of scheduledPastDays) {
+                if (d.status === 'done') streak++
+                else break
+            }
+
+            // Weekly adherence: group past scheduled days by program week
+            const weekMap = new Map<number, { scheduled: number; done: number }>()
+            for (const d of days) {
+                if (!d.isInProgram || !d.programWeek || d.scheduledWorkouts.length === 0 || d.date > today) continue
+                const entry = weekMap.get(d.programWeek) ?? { scheduled: 0, done: 0 }
+                entry.scheduled++
+                if (d.status === 'done') entry.done++
+                weekMap.set(d.programWeek, entry)
+            }
+            weeklyAdherence = Array.from(weekMap.entries())
+                .sort(([a], [b]) => a - b)
+                .map(([week, data]) => ({
+                    week,
+                    rate: data.scheduled > 0 ? Math.round((data.done / data.scheduled) * 100) : 0
+                }))
+        }
+    }
+
     const historySummary = {
         totalSessions,
         lastSessionDate,
         completedThisWeek,
+        expectedPerWeek,
+        streak,
     }
 
     // Get recent sessions for the active program (if any)
@@ -126,13 +188,23 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
         recentSessions = recent || []
     }
 
+    // Calculate load progression for recent sessions
+    let tonnageMap: Record<string, { tonnage: number; previousTonnage: number | null; percentChange: number | null }> = {}
+    if (recentSessions.length > 0 && activeProgram) {
+        const sessionIds = recentSessions.map((s: any) => s.id)
+        const tonnageResult = await getSessionsTonnage(sessionIds, activeProgram.id)
+        if (tonnageResult.success && tonnageResult.data) {
+            tonnageMap = tonnageResult.data
+        }
+    }
+
     // Get sessions for the current week (Sun–Sat) for the calendar
-    let calendarInitialSessions: { id: string; assigned_workout_id: string; started_at: string; completed_at: string | null; status: string }[] = []
+    let calendarInitialSessions: { id: string; assigned_workout_id: string; started_at: string; completed_at: string | null; status: string; rpe: number | null }[] = []
     if (activeProgram) {
         const weekRange = getWeekRange(new Date())
         const { data: weekSessions } = await supabase
             .from('workout_sessions')
-            .select('id, assigned_workout_id, started_at, completed_at, status')
+            .select('id, assigned_workout_id, started_at, completed_at, status, rpe')
             .eq('assigned_program_id', activeProgram.id)
             .gte('started_at', weekRange.start.toISOString())
             .lte('started_at', weekRange.end.toISOString())
@@ -151,6 +223,8 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
             recentSessions={recentSessions}
             calendarInitialSessions={calendarInitialSessions as any}
             completedPrograms={completedPrograms}
+            weeklyAdherence={weeklyAdherence}
+            tonnageMap={tonnageMap}
         />
     )
 }

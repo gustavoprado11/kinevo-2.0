@@ -8,6 +8,7 @@ export interface RangeSession {
     started_at: string
     completed_at: string | null
     status: 'in_progress' | 'completed'
+    rpe: number | null
 }
 
 interface GetSessionsForRangeResult {
@@ -26,7 +27,7 @@ export async function getSessionsForRange(
     try {
         const { data, error } = await supabase
             .from('workout_sessions')
-            .select('id, assigned_workout_id, started_at, completed_at, status')
+            .select('id, assigned_workout_id, started_at, completed_at, status, rpe')
             .eq('assigned_program_id', programId)
             .gte('started_at', rangeStart)
             .lte('started_at', rangeEnd)

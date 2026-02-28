@@ -264,13 +264,5 @@ export const TOUR_STEPS: Record<string, TourStep[]> = {
         'Texto curto, texto longo, escolha única, escala numérica e foto. Combine para avaliações completas.',
       placement: 'right',
     },
-    {
-      id: 'fb-3',
-      targetSelector: '[data-onboarding="form-mobile-preview"]',
-      title: 'Prévia Mobile',
-      description:
-        'Veja exatamente como o formulário aparecerá no App do aluno. Atualiza em tempo real.',
-      placement: 'left',
-    },
   ],
 }

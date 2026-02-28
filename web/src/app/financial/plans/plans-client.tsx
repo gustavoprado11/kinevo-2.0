@@ -8,7 +8,7 @@ import { EmptyState } from '@/components/financial/empty-state'
 import { PlanFormModal } from '@/components/financial/plan-form-modal'
 import { togglePlan } from '@/actions/financial/toggle-plan'
 import { deletePlan } from '@/actions/financial/delete-plan'
-import { Plus, Search, Trash2, Loader2, Wallet, Pencil, ArrowLeft } from 'lucide-react'
+import { Plus, Search, Trash2, Loader2, Wallet, Pencil, ArrowLeft, Users } from 'lucide-react'
 
 interface Trainer {
     id: string
@@ -36,9 +36,10 @@ interface PlansClientProps {
     trainer: Trainer
     plans: Plan[]
     hasStripeConnect: boolean
+    usageByPlan: Record<string, number>
 }
 
-export function PlansClient({ trainer, plans: initialPlans, hasStripeConnect }: PlansClientProps) {
+export function PlansClient({ trainer, plans: initialPlans, hasStripeConnect, usageByPlan }: PlansClientProps) {
     const router = useRouter()
     const [plans, setPlans] = useState(initialPlans)
     const [searchQuery, setSearchQuery] = useState('')
@@ -141,7 +142,7 @@ export function PlansClient({ trainer, plans: initialPlans, hasStripeConnect }: 
                         </div>
                         <button
                             onClick={handleCreatePlan}
-                            className="bg-violet-600 hover:bg-violet-500 text-white rounded-full px-6 py-2.5 text-sm font-semibold shadow-lg shadow-violet-500/20 transition-all active:scale-95 flex items-center gap-2 w-fit"
+                            className="bg-violet-600 hover:bg-violet-500 text-white rounded-full px-6 py-2.5 text-sm font-semibold transition-all active:scale-95 flex items-center gap-2 w-fit"
                         >
                             <Plus size={18} strokeWidth={2} />
                             Criar Plano
@@ -220,14 +221,29 @@ export function PlansClient({ trainer, plans: initialPlans, hasStripeConnect }: 
                                             </div>
                                         </div>
 
-                                        {/* Price */}
-                                        <p className="text-2xl font-bold text-k-text-primary mb-4">
-                                            {formatCurrency(plan.price)}
-                                        </p>
+                                        {/* Price + interval */}
+                                        <div className="mb-4">
+                                            <span className="text-2xl font-bold text-k-text-primary">
+                                                {formatCurrency(plan.price)}
+                                            </span>
+                                            <span className="text-sm text-k-text-tertiary ml-1">
+                                                /{intervalInfo.label.toLowerCase()}
+                                            </span>
+                                        </div>
+
+                                        {/* Usage count */}
+                                        <div className="flex items-center gap-1.5 text-xs text-k-text-secondary mb-3">
+                                            <Users size={12} />
+                                            <span>
+                                                {(usageByPlan[plan.id] || 0) === 0
+                                                    ? 'Nenhum aluno'
+                                                    : `${usageByPlan[plan.id]} aluno${usageByPlan[plan.id] > 1 ? 's' : ''}`}
+                                            </span>
+                                        </div>
 
                                         {/* Description */}
                                         {plan.description && (
-                                            <p className="text-sm text-muted-foreground/60 mb-4 line-clamp-2">
+                                            <p className="text-xs text-k-text-tertiary mb-4 line-clamp-2">
                                                 {plan.description}
                                             </p>
                                         )}

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, FileText, DollarSign, Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react'
+import { X, FileText, Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react'
 import { createPlan } from '@/actions/financial/create-plan'
 import { updatePlan } from '@/actions/financial/update-plan'
 
@@ -144,7 +144,7 @@ export function PlanFormModal({
                         <h2 className="text-xl font-bold text-white tracking-tight">
                             {isEdit ? 'Editar Plano' : 'Novo Plano'}
                         </h2>
-                        <p className="text-xs text-muted-foreground/60 uppercase tracking-widest font-semibold mt-1">
+                        <p className="text-xs text-k-text-secondary mt-1">
                             {isEdit ? 'Atualize as informações' : 'Crie um plano de consultoria'}
                         </p>
                     </div>
@@ -168,8 +168,8 @@ export function PlanFormModal({
                     <div className="space-y-5">
                         {/* Title */}
                         <div>
-                            <label className="mb-1.5 block text-[11px] font-bold text-k-text-tertiary uppercase tracking-wider">
-                                Título do Plano <span className="text-violet-500">*</span>
+                            <label className="mb-1.5 block text-xs font-medium text-k-text-tertiary">
+                                Título do plano <span className="text-violet-500">*</span>
                             </label>
                             <div className="relative group">
                                 <FileText className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-k-text-quaternary group-focus-within:text-violet-400 transition-colors" strokeWidth={1.5} />
@@ -185,24 +185,24 @@ export function PlanFormModal({
 
                         {/* Price */}
                         <div>
-                            <label className="mb-1.5 block text-[11px] font-bold text-k-text-tertiary uppercase tracking-wider">
-                                Preço (R$) <span className="text-violet-500">*</span>
+                            <label className="mb-1.5 block text-xs font-medium text-k-text-tertiary">
+                                Preço <span className="text-violet-500">*</span>
                             </label>
                             <div className="relative group">
-                                <DollarSign className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-k-text-quaternary group-focus-within:text-violet-400 transition-colors" strokeWidth={1.5} />
+                                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-medium text-k-text-quaternary group-focus-within:text-violet-400 transition-colors">R$</span>
                                 <input
                                     type="text"
                                     value={price}
                                     onChange={(e) => setPrice(e.target.value)}
                                     placeholder="150,00"
-                                    className="w-full rounded-xl border border-k-border-subtle bg-glass-bg px-10 py-3 text-k-text-primary placeholder:text-k-text-quaternary focus:outline-none focus:border-violet-500/50 focus:ring-4 focus:ring-violet-500/20 transition-all text-sm"
+                                    className="w-full rounded-xl border border-k-border-subtle bg-glass-bg pl-10 pr-4 py-3 text-k-text-primary placeholder:text-k-text-quaternary focus:outline-none focus:border-violet-500/50 focus:ring-4 focus:ring-violet-500/20 transition-all text-sm"
                                 />
                             </div>
                         </div>
 
                         {/* Interval */}
                         <div>
-                            <label className="mb-2 block text-[11px] font-bold text-k-text-tertiary uppercase tracking-wider">
+                            <label className="mb-2 block text-xs font-medium text-k-text-tertiary">
                                 Intervalo
                             </label>
                             <div className="grid grid-cols-3 gap-1 bg-surface-inset p-1 rounded-xl">
@@ -236,8 +236,8 @@ export function PlanFormModal({
 
                         {/* Description */}
                         <div>
-                            <label className="mb-1.5 block text-[11px] font-bold text-k-text-tertiary uppercase tracking-wider">
-                                Descrição <span className="font-medium text-k-text-quaternary ml-1">(opcional)</span>
+                            <label className="mb-1.5 block text-xs font-medium text-k-text-tertiary">
+                                Descrição <span className="text-k-text-quaternary ml-1">(opcional)</span>
                             </label>
                             <textarea
                                 value={description}
@@ -250,7 +250,7 @@ export function PlanFormModal({
 
                         {/* Visibility */}
                         <div>
-                            <label className="mb-2 block text-[11px] font-bold text-k-text-tertiary uppercase tracking-wider">
+                            <label className="mb-2 block text-xs font-medium text-k-text-tertiary">
                                 Visibilidade
                             </label>
                             <div className="grid grid-cols-2 gap-1 bg-surface-inset p-1 rounded-xl">
@@ -308,7 +308,7 @@ export function PlanFormModal({
                         <button
                             type="submit"
                             disabled={loading}
-                            className="flex-1 inline-flex items-center justify-center gap-2 py-3 text-sm font-bold bg-violet-600 hover:bg-violet-500 text-white rounded-xl shadow-lg shadow-violet-500/20 transition-all active:scale-95 disabled:opacity-50"
+                            className="flex-1 inline-flex items-center justify-center gap-2 py-3 text-sm font-semibold bg-violet-600 hover:bg-violet-500 text-white rounded-xl transition-all active:scale-95 disabled:opacity-50"
                         >
                             {loading ? (
                                 <>

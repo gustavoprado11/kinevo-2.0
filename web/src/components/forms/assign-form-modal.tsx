@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Send, CheckCircle2, Loader2 } from 'lucide-react'
+import Image from 'next/image'
 import { assignFormToStudents } from '@/actions/forms/assign-form'
 import { useOnboardingStore } from '@/stores/onboarding-store'
 
@@ -26,6 +27,14 @@ interface AssignFormModalProps {
     preselectedTemplateId?: string | null
 }
 
+function cleanTemplateName(name: string): string {
+    const parts = name.split(' - ')
+    if (parts.length === 2 && parts[1].toLowerCase().includes(parts[0].toLowerCase())) {
+        return parts[1]
+    }
+    return name
+}
+
 export function AssignFormModal({
     isOpen,
     onClose,
@@ -34,7 +43,9 @@ export function AssignFormModal({
     preselectedTemplateId,
 }: AssignFormModalProps) {
     const [templateId, setTemplateId] = useState(preselectedTemplateId || '')
-    const [dueAt, setDueAt] = useState('')
+    const [deadlineDays, setDeadlineDays] = useState<number | null>(null)
+    const [customDate, setCustomDate] = useState('')
+    const [showDatePicker, setShowDatePicker] = useState(false)
     const [message, setMessage] = useState('')
     const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([])
     const [isAssigning, setIsAssigning] = useState(false)
@@ -54,6 +65,18 @@ export function AssignFormModal({
         }
     }
 
+    const computeDueAt = (): string | null => {
+        if (showDatePicker && customDate) {
+            return new Date(customDate).toISOString()
+        }
+        if (deadlineDays) {
+            const d = new Date()
+            d.setDate(d.getDate() + deadlineDays)
+            return d.toISOString()
+        }
+        return null
+    }
+
     const handleAssign = async () => {
         if (!templateId || selectedStudentIds.length === 0) return
 
@@ -63,13 +86,13 @@ export function AssignFormModal({
         const res = await assignFormToStudents({
             formTemplateId: templateId,
             studentIds: selectedStudentIds,
-            dueAt: dueAt || null,
+            dueAt: computeDueAt(),
             message: message || undefined,
         })
 
         if (res.success) {
             useOnboardingStore.getState().completeMilestone('first_form_sent')
-            setResult(`Formulário enviado para ${res.assignedCount} aluno(s)${res.skippedCount ? ` (${res.skippedCount} já tinham)` : ''}.`)
+            setResult(`Formulário enviado para ${res.assignedCount} aluno${res.assignedCount !== 1 ? 's' : ''}${res.skippedCount ? ` (${res.skippedCount} já ${res.skippedCount === 1 ? 'tinha' : 'tinham'})` : ''}.`)
             setTimeout(() => {
                 resetAndClose()
             }, 2000)
@@ -82,17 +105,27 @@ export function AssignFormModal({
 
     const resetAndClose = () => {
         setTemplateId(preselectedTemplateId || '')
-        setDueAt('')
+        setDeadlineDays(null)
+        setCustomDate('')
+        setShowDatePicker(false)
         setMessage('')
         setSelectedStudentIds([])
         setResult(null)
         onClose()
     }
 
-    const getInitials = (name?: string) => {
-        if (!name) return '?'
-        return name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
+    const selectDeadline = (days: number) => {
+        setShowDatePicker(false)
+        setCustomDate('')
+        setDeadlineDays(prev => prev === days ? null : days)
     }
+
+    const selectCustomDate = () => {
+        setDeadlineDays(null)
+        setShowDatePicker(true)
+    }
+
+    const canSubmit = !!templateId && selectedStudentIds.length > 0
 
     return (
         <AnimatePresence>
@@ -128,7 +161,7 @@ export function AssignFormModal({
                             <div className="px-6 py-5 space-y-5 max-h-[70vh] overflow-y-auto">
                                 {/* Template Select */}
                                 <div>
-                                    <label className="block text-[11px] font-semibold text-k-text-secondary uppercase tracking-widest mb-1.5">
+                                    <label className="block text-xs font-medium text-k-text-tertiary mb-1.5">
                                         Template
                                     </label>
                                     <select
@@ -139,29 +172,62 @@ export function AssignFormModal({
                                         <option value="">Selecione um template...</option>
                                         {templates.map((t) => (
                                             <option key={t.id} value={t.id}>
-                                                {t.title} (v{t.version})
+                                                {cleanTemplateName(t.title)} (v{t.version})
                                             </option>
                                         ))}
                                     </select>
                                 </div>
 
-                                {/* Due Date */}
+                                {/* Deadline Chips */}
                                 <div>
-                                    <label className="block text-[11px] font-semibold text-k-text-secondary uppercase tracking-widest mb-1.5">
-                                        Data de Vencimento (opcional)
+                                    <label className="block text-xs font-medium text-k-text-tertiary mb-1.5">
+                                        Prazo (opcional)
                                     </label>
-                                    <input
-                                        type="datetime-local"
-                                        value={dueAt}
-                                        onChange={(e) => setDueAt(e.target.value)}
-                                        className="w-full rounded-xl border border-k-border-subtle bg-glass-bg px-4 py-3 text-sm text-k-text-primary outline-none transition-all focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/10"
-                                    />
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        {[
+                                            { label: '3 dias', value: 3 },
+                                            { label: '1 semana', value: 7 },
+                                            { label: '2 semanas', value: 14 },
+                                        ].map(opt => (
+                                            <button
+                                                key={opt.value}
+                                                type="button"
+                                                onClick={() => selectDeadline(opt.value)}
+                                                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                                                    deadlineDays === opt.value && !showDatePicker
+                                                        ? 'bg-violet-500/10 text-violet-400 border border-violet-500/30'
+                                                        : 'bg-glass-bg text-k-text-quaternary border border-k-border-subtle hover:text-k-text-secondary'
+                                                }`}
+                                            >
+                                                {opt.label}
+                                            </button>
+                                        ))}
+                                        <button
+                                            type="button"
+                                            onClick={selectCustomDate}
+                                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                                                showDatePicker
+                                                    ? 'bg-violet-500/10 text-violet-400 border border-violet-500/30'
+                                                    : 'bg-glass-bg text-k-text-quaternary border border-k-border-subtle hover:text-k-text-secondary'
+                                            }`}
+                                        >
+                                            Personalizar
+                                        </button>
+                                    </div>
+                                    {showDatePicker && (
+                                        <input
+                                            type="date"
+                                            value={customDate}
+                                            onChange={(e) => setCustomDate(e.target.value)}
+                                            className="mt-2 w-full rounded-xl border border-k-border-subtle bg-glass-bg px-4 py-2.5 text-sm text-k-text-primary outline-none transition-all focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/10"
+                                        />
+                                    )}
                                 </div>
 
                                 {/* Message */}
                                 <div>
-                                    <label className="block text-[11px] font-semibold text-k-text-secondary uppercase tracking-widest mb-1.5">
-                                        Mensagem (opcional)
+                                    <label className="block text-xs font-medium text-k-text-tertiary mb-1.5">
+                                        Mensagem pessoal (opcional)
                                     </label>
                                     <textarea
                                         placeholder="Adicione uma nota pessoal para os alunos..."
@@ -174,7 +240,7 @@ export function AssignFormModal({
                                 {/* Students */}
                                 <div>
                                     <div className="flex items-center justify-between mb-1.5">
-                                        <label className="block text-[11px] font-semibold text-k-text-secondary uppercase tracking-widest">
+                                        <label className="block text-xs font-medium text-k-text-tertiary">
                                             Alunos
                                         </label>
                                         {students.length > 0 && (
@@ -192,34 +258,43 @@ export function AssignFormModal({
                                                 Nenhum aluno ativo encontrado.
                                             </p>
                                         ) : (
-                                            <div className="space-y-1">
-                                                {students.map((student) => (
-                                                    <label
-                                                        key={student.id}
-                                                        className={`flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 transition-all ${
-                                                            selectedStudentIds.includes(student.id)
-                                                                ? 'bg-violet-500/10'
-                                                                : 'hover:bg-surface-elevated'
-                                                        }`}
-                                                    >
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={selectedStudentIds.includes(student.id)}
-                                                            onChange={() => toggleStudent(student.id)}
-                                                            className="h-4 w-4 rounded border-k-border-subtle text-violet-600 focus:ring-violet-500 accent-violet-600"
-                                                        />
-                                                        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-surface-inset border border-white/5 text-[10px] font-bold text-k-text-secondary">
-                                                            {getInitials(student.name)}
-                                                        </div>
-                                                        <span className={`text-sm font-medium ${
-                                                            selectedStudentIds.includes(student.id)
-                                                                ? 'text-violet-400'
-                                                                : 'text-k-text-primary'
-                                                        }`}>
-                                                            {student.name}
-                                                        </span>
-                                                    </label>
-                                                ))}
+                                            <div className="space-y-0.5">
+                                                {students.map((student) => {
+                                                    const isSelected = selectedStudentIds.includes(student.id)
+                                                    return (
+                                                        <label
+                                                            key={student.id}
+                                                            className={`flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 transition-all ${
+                                                                isSelected
+                                                                    ? 'bg-violet-500/10'
+                                                                    : 'hover:bg-surface-elevated'
+                                                            }`}
+                                                        >
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={isSelected}
+                                                                onChange={() => toggleStudent(student.id)}
+                                                                className="h-4 w-4 rounded border-k-border-subtle text-violet-600 focus:ring-violet-500 accent-violet-600"
+                                                            />
+                                                            <div className="flex h-7 w-7 items-center justify-center rounded-full border border-k-border-primary bg-glass-bg overflow-hidden shrink-0">
+                                                                {student.avatar_url ? (
+                                                                    <Image src={student.avatar_url} alt="" width={28} height={28} className="h-7 w-7 rounded-full object-cover" unoptimized />
+                                                                ) : (
+                                                                    <span className="text-[10px] font-bold text-k-text-secondary">
+                                                                        {student.name?.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase() || '?'}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <span className={`text-sm font-medium ${
+                                                                isSelected
+                                                                    ? 'text-violet-400'
+                                                                    : 'text-k-text-primary'
+                                                            }`}>
+                                                                {student.name}
+                                                            </span>
+                                                        </label>
+                                                    )
+                                                })}
                                             </div>
                                         )}
                                     </div>
@@ -238,19 +313,25 @@ export function AssignFormModal({
                             <div className="border-t border-k-border-subtle px-6 py-4">
                                 <button
                                     onClick={handleAssign}
-                                    disabled={isAssigning || !templateId || selectedStudentIds.length === 0}
-                                    className="w-full h-11 bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-600/20 font-bold rounded-xl transition-all disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2"
+                                    disabled={isAssigning || !canSubmit}
+                                    className={`w-full h-11 font-bold rounded-xl transition-all flex items-center justify-center gap-2 ${
+                                        canSubmit
+                                            ? 'bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-600/20'
+                                            : 'bg-surface-elevated text-k-text-quaternary cursor-not-allowed'
+                                    }`}
                                 >
                                     {isAssigning ? (
                                         <>
                                             <Loader2 size={16} className="animate-spin" />
                                             Enviando...
                                         </>
-                                    ) : (
+                                    ) : canSubmit ? (
                                         <>
                                             <Send size={16} />
-                                            Enviar para {selectedStudentIds.length} aluno(s)
+                                            Enviar para {selectedStudentIds.length} aluno{selectedStudentIds.length !== 1 ? 's' : ''}
                                         </>
+                                    ) : (
+                                        'Selecione template e alunos'
                                     )}
                                 </button>
                             </div>

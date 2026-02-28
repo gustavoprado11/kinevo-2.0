@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Loader2, AlertCircle, CreditCard, HandCoins, Heart, Copy, Check, ExternalLink } from 'lucide-react'
+import { X, Loader2, AlertCircle, CreditCard, HandCoins, Heart, Copy, Check, ExternalLink, MessageCircle } from 'lucide-react'
 import { createContract } from '@/actions/financial/create-contract'
 import { generateCheckoutLink } from '@/actions/financial/generate-checkout-link'
 
@@ -176,7 +176,7 @@ export function NewSubscriptionModal({
                         <h2 className="text-xl font-bold text-white tracking-tight">
                             {step === 'type' ? 'Nova Assinatura' : typeTitle[billingType!]}
                         </h2>
-                        <p className="text-xs text-muted-foreground/60 uppercase tracking-widest font-semibold mt-1">
+                        <p className="text-xs text-k-text-secondary mt-1">
                             {step === 'type' ? 'Escolha o tipo de cobrança' : 'Configure a assinatura'}
                         </p>
                     </div>
@@ -276,7 +276,7 @@ export function NewSubscriptionModal({
                         <div className="space-y-5">
                             {/* Student Select */}
                             <div>
-                                <label className="mb-1.5 block text-[11px] font-bold text-k-text-tertiary uppercase tracking-wider">
+                                <label className="mb-1.5 block text-xs font-medium text-k-text-tertiary">
                                     Aluno <span className="text-violet-500">*</span>
                                 </label>
                                 <select
@@ -296,7 +296,7 @@ export function NewSubscriptionModal({
                             {/* Plan Select (hidden for courtesy) */}
                             {billingType !== 'courtesy' && (
                                 <div>
-                                    <label className="mb-1.5 block text-[11px] font-bold text-k-text-tertiary uppercase tracking-wider">
+                                    <label className="mb-1.5 block text-xs font-medium text-k-text-tertiary">
                                         Plano <span className="text-violet-500">*</span>
                                     </label>
                                     <select
@@ -317,6 +317,15 @@ export function NewSubscriptionModal({
                                                 </option>
                                             ))}
                                     </select>
+                                </div>
+                            )}
+
+                            {/* Courtesy explanation */}
+                            {billingType === 'courtesy' && (
+                                <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
+                                    <p className="text-xs text-emerald-400">
+                                        O aluno terá acesso completo sem nenhuma cobrança. Ideal para familiares, parceiros ou períodos de teste.
+                                    </p>
                                 </div>
                             )}
 
@@ -360,7 +369,7 @@ export function NewSubscriptionModal({
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="flex-1 inline-flex items-center justify-center gap-2 py-3 text-sm font-bold bg-violet-600 hover:bg-violet-500 text-white rounded-xl shadow-lg shadow-violet-500/20 transition-all active:scale-95 disabled:opacity-50"
+                                className="flex-1 inline-flex items-center justify-center gap-2 py-3 text-sm font-semibold bg-violet-600 hover:bg-violet-500 text-white rounded-xl transition-all active:scale-95 disabled:opacity-50"
                             >
                                 {loading ? (
                                     <>
@@ -382,37 +391,54 @@ export function NewSubscriptionModal({
 
                 {/* Checkout URL result */}
                 {step === 'details' && checkoutUrl && (
-                    <div className="p-8 space-y-6">
+                    <div className="p-8 space-y-5">
                         <div className="text-center">
-                            <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-emerald-500/10 mx-auto mb-4">
-                                <Check size={24} className="text-emerald-400" />
+                            <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-emerald-500/10 mx-auto mb-3">
+                                <Check size={22} className="text-emerald-400" />
                             </div>
-                            <h3 className="text-base font-semibold text-k-text-primary mb-2">
-                                Link gerado com sucesso!
+                            <h3 className="text-base font-semibold text-k-text-primary mb-1">
+                                Link de pagamento pronto
                             </h3>
-                            <p className="text-sm text-k-text-secondary">
-                                Compartilhe o link abaixo com seu aluno para que ele efetue o pagamento.
+                            <p className="text-xs text-k-text-secondary">
+                                Envie o link para {students.find(s => s.id === studentId)?.name || 'o aluno'} efetuar o pagamento.
                             </p>
                         </div>
 
-                        <div className="rounded-xl border border-k-border-subtle bg-glass-bg p-3">
-                            <p className="text-xs text-k-text-secondary break-all font-mono">
+                        <div className="rounded-xl border border-k-border-subtle bg-glass-bg p-3 flex items-center gap-2">
+                            <p className="text-xs text-k-text-secondary break-all font-mono flex-1 line-clamp-2">
                                 {checkoutUrl}
                             </p>
-                        </div>
-
-                        <div className="flex gap-3">
                             <button
                                 type="button"
-                                onClick={onClose}
-                                className="flex-1 py-3 text-sm font-medium text-k-text-secondary hover:text-k-text-primary hover:bg-glass-bg rounded-xl transition-all"
+                                onClick={handleCopyLink}
+                                className="flex-shrink-0 p-2 rounded-lg hover:bg-glass-bg-active transition-colors"
+                                title="Copiar link"
                             >
-                                Fechar
+                                {copied ? (
+                                    <Check size={14} className="text-emerald-400" />
+                                ) : (
+                                    <Copy size={14} className="text-k-text-quaternary" />
+                                )}
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const studentName = students.find(s => s.id === studentId)?.name || ''
+                                    const text = `Oi${studentName ? ` ${studentName}` : ''}! Segue o link para pagamento da sua consultoria:\n${checkoutUrl}`
+                                    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank')
+                                }}
+                                className="inline-flex items-center justify-center gap-2 py-3 text-sm font-medium bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl transition-all active:scale-95"
+                            >
+                                <MessageCircle size={16} />
+                                WhatsApp
                             </button>
                             <button
                                 type="button"
                                 onClick={handleCopyLink}
-                                className="flex-1 inline-flex items-center justify-center gap-2 py-3 text-sm font-bold bg-violet-600 hover:bg-violet-500 text-white rounded-xl shadow-lg shadow-violet-500/20 transition-all active:scale-95"
+                                className="inline-flex items-center justify-center gap-2 py-3 text-sm font-medium bg-violet-600 hover:bg-violet-500 text-white rounded-xl transition-all active:scale-95"
                             >
                                 {copied ? (
                                     <>
@@ -427,6 +453,14 @@ export function NewSubscriptionModal({
                                 )}
                             </button>
                         </div>
+
+                        <button
+                            type="button"
+                            onClick={() => { onSuccess(); onClose() }}
+                            className="w-full py-2.5 text-xs font-medium text-k-text-tertiary hover:text-k-text-secondary transition-colors"
+                        >
+                            Fechar
+                        </button>
                     </div>
                 )}
             </div>

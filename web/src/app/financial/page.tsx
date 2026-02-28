@@ -50,6 +50,16 @@ export default async function FinancialPage() {
         }
     }
 
+    // Fetch overdue manual contracts (pending actions)
+    const { data: overdueContracts } = await supabaseAdmin
+        .from('student_contracts')
+        .select('id, student_id, amount, current_period_end, billing_type, students!inner(name)')
+        .eq('trainer_id', trainer.id)
+        .in('status', ['past_due', 'pending'])
+        .in('billing_type', ['manual_recurring', 'manual_one_off'])
+        .order('current_period_end', { ascending: true })
+        .limit(5)
+
     const connectStatus = {
         connected: !!paymentSettings?.stripe_connect_id,
         chargesEnabled: paymentSettings?.charges_enabled ?? false,
@@ -59,6 +69,53 @@ export default async function FinancialPage() {
 
     const showOnboarding = !paymentSettings && (!plans || plans.length === 0)
 
+    // Fetch students + active plans for "Nova Assinatura" modal
+    const { data: students } = await supabaseAdmin
+        .from('students')
+        .select('id, name, email')
+        .eq('coach_id', trainer.id)
+        .in('status', ['active', 'pending'])
+        .order('name')
+
+    const { data: activePlans } = await supabaseAdmin
+        .from('trainer_plans')
+        .select('id, title, price, interval, stripe_price_id')
+        .eq('trainer_id', trainer.id)
+        .eq('is_active', true)
+        .order('title')
+
+    // Count students without active contracts
+    const { count: totalStudentsCount } = await supabaseAdmin
+        .from('students')
+        .select('id', { count: 'exact', head: true })
+        .eq('coach_id', trainer.id)
+        .in('status', ['active', 'pending'])
+
+    const { data: coveredStudentRows } = await supabaseAdmin
+        .from('student_contracts')
+        .select('student_id')
+        .eq('trainer_id', trainer.id)
+        .eq('status', 'active')
+
+    const coveredStudentIds = new Set((coveredStudentRows ?? []).map(r => r.student_id))
+    const totalStudents = totalStudentsCount ?? 0
+    const studentsWithoutContract = totalStudents - coveredStudentIds.size
+
+    // Enrich transactions with student names
+    const studentIds = [...new Set((recentTransactions ?? []).map(t => t.student_id).filter(Boolean))]
+    let studentNameMap: Record<string, string> = {}
+    if (studentIds.length > 0) {
+        const { data: txStudents } = await supabaseAdmin
+            .from('students')
+            .select('id, name')
+            .in('id', studentIds)
+        if (txStudents) {
+            for (const s of txStudents) {
+                studentNameMap[s.id] = s.name
+            }
+        }
+    }
+
     return (
         <FinancialDashboardClient
             trainer={trainer}
@@ -66,8 +123,22 @@ export default async function FinancialPage() {
             showOnboarding={showOnboarding}
             activeContractsCount={activeContractsCount ?? 0}
             mrr={mrr}
-            recentTransactions={recentTransactions ?? []}
+            recentTransactions={(recentTransactions ?? []).map(tx => ({
+                ...tx,
+                studentName: tx.student_id ? studentNameMap[tx.student_id] || null : null,
+            }))}
             plansCount={plans?.length ?? 0}
+            overdueContracts={(overdueContracts ?? []).map(c => ({
+                id: c.id,
+                studentName: (c.students as unknown as { name: string })?.name || 'Aluno',
+                amount: c.amount,
+                currentPeriodEnd: c.current_period_end,
+            }))}
+            students={(students ?? []).map(s => ({ id: s.id, name: s.name, email: s.email }))}
+            activePlans={(activePlans ?? []).map(p => ({ id: p.id, title: p.title, price: p.price, interval: p.interval, stripe_price_id: p.stripe_price_id }))}
+            hasStripeConnect={connectStatus.connected && connectStatus.chargesEnabled}
+            totalStudents={totalStudents}
+            studentsWithoutContract={studentsWithoutContract}
         />
     )
 }

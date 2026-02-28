@@ -22,6 +22,7 @@ export interface SessionRef {
   started_at: string
   completed_at?: string | null
   status: 'in_progress' | 'completed'
+  rpe?: number | null
 }
 
 export type CalendarDayStatus =

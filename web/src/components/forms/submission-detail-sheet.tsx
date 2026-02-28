@@ -1,10 +1,13 @@
+import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Send, X, FileText, CheckCircle2, BarChart3, Image as ImageIcon, Type } from 'lucide-react'
+import { Send, X, FileText, CheckCircle2, BarChart3, Image as ImageIcon, Type, MessageSquare, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import Image from 'next/image'
 
 interface Student {
     id: string
     name: string
+    avatar_url?: string | null
 }
 
 interface FormTemplate {
@@ -46,6 +49,38 @@ interface SubmissionDetailSheetProps {
 
 // ─── Helpers ──────────────────────────────────────────────────
 
+const TIMEZONE = 'America/Sao_Paulo'
+
+function timeAgo(dateStr: string): string {
+    const now = new Date()
+    const date = new Date(dateStr)
+    const todayStr = now.toLocaleDateString('en-CA', { timeZone: TIMEZONE })
+    const dateStr2 = date.toLocaleDateString('en-CA', { timeZone: TIMEZONE })
+    const today = new Date(todayStr)
+    const target = new Date(dateStr2)
+    const diffDays = Math.floor((today.getTime() - target.getTime()) / (1000 * 60 * 60 * 24))
+    const diffHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60))
+
+    if (diffHours < 1) return 'Agora mesmo'
+    if (diffHours < 24 && diffDays === 0) return `há ${diffHours}h`
+    if (diffDays === 0) return 'Hoje'
+    if (diffDays === 1) return 'Ontem'
+    if (diffDays < 7) return `há ${diffDays} dias`
+    const weeks = Math.floor(diffDays / 7)
+    if (diffDays < 30) return `há ${weeks} sem.`
+    const months = Math.floor(diffDays / 30)
+    if (diffDays < 365) return `há ${months} ${months === 1 ? 'mês' : 'meses'}`
+    return `há ${Math.floor(diffDays / 365)} anos`
+}
+
+function cleanTemplateName(name: string): string {
+    const parts = name.split(' - ')
+    if (parts.length === 2 && parts[1].toLowerCase().includes(parts[0].toLowerCase())) {
+        return parts[1]
+    }
+    return name
+}
+
 /** Extract the actual display value from an answer (which may be wrapped in { type, value }) */
 function unwrapAnswerValue(raw: any): any {
     if (raw && typeof raw === 'object' && !Array.isArray(raw) && 'value' in raw) {
@@ -56,11 +91,9 @@ function unwrapAnswerValue(raw: any): any {
 
 /** Get the answer type from wrapped answers or from schema question */
 function resolveAnswerType(raw: any, question: any): string {
-    // Check if the answer itself has a type field
     if (raw && typeof raw === 'object' && !Array.isArray(raw) && 'type' in raw) {
         return raw.type as string
     }
-    // Fall back to schema question type
     return question?.type || 'short_text'
 }
 
@@ -94,6 +127,39 @@ function getTypeLabel(type: string) {
         case 'photo': return 'Foto'
         default: return 'Resposta'
     }
+}
+
+/** Generate quick summary from first few answers */
+function generateQuickSummary(questions: any[], answers: Record<string, any>): { label: string; value: string }[] {
+    return questions
+        .filter(q => answers[q.id] != null && answers[q.id] !== '')
+        .slice(0, 4)
+        .map(q => {
+            const raw = answers[q.id]
+            const value = unwrapAnswerValue(raw)
+            const type = resolveAnswerType(raw, q)
+            const label = (q.label || q.title || '')
+                .replace(/^(Qual |Como |Você |Quantas |Quantos |Tem |Possui )/i, '')
+                .split('?')[0]
+                .trim()
+                .substring(0, 25)
+
+            let displayValue: string
+            if (type === 'scale') {
+                const numVal = typeof value === 'number' ? value : parseInt(String(value), 10)
+                const max = q?.scale?.max ?? 10
+                displayValue = isNaN(numVal) ? '-' : `${numVal}/${max}`
+            } else if (type === 'single_choice') {
+                displayValue = resolveOptionLabel(String(value), q)
+            } else if (type === 'photo') {
+                displayValue = 'Foto enviada'
+            } else {
+                displayValue = String(value).substring(0, 40)
+                if (String(value).length > 40) displayValue += '...'
+            }
+
+            return { label, value: displayValue }
+        })
 }
 
 // ─── Answer Renderers ──────────────────────────────────────────
@@ -182,7 +248,6 @@ function AnswerRenderer({
     // Single choice answer
     if (type === 'single_choice') {
         const displayValue = typeof value === 'string' ? value : String(value ?? '')
-        const label = resolveOptionLabel(displayValue, question)
         const options = question?.options as { value: string; label: string }[] | undefined
 
         if (!displayValue) {
@@ -193,14 +258,14 @@ function AnswerRenderer({
             return (
                 <div className="space-y-1.5">
                     {options.map((opt) => {
-                        const isSelected = opt.value === displayValue
+                        const isSelected = opt.value === displayValue || opt.label === displayValue
                         return (
                             <div
                                 key={opt.value}
                                 className={`flex items-center gap-3 rounded-xl px-4 py-2.5 transition-all ${
                                     isSelected
                                         ? 'bg-violet-500/10 border border-violet-500/30'
-                                        : 'bg-surface-elevated/50 border border-transparent'
+                                        : 'bg-surface-elevated/30 border border-transparent opacity-50'
                                 }`}
                             >
                                 <div className={`flex h-5 w-5 items-center justify-center rounded-full border-2 shrink-0 ${
@@ -225,6 +290,7 @@ function AnswerRenderer({
         }
 
         // Fallback: no options metadata available
+        const label = resolveOptionLabel(displayValue, question)
         return (
             <div className="flex items-center gap-2">
                 <CheckCircle2 size={16} className="text-violet-400 shrink-0" />
@@ -263,9 +329,13 @@ export function SubmissionDetailSheet({
     resolveImageUrl,
     setZoomImageUrl,
 }: SubmissionDetailSheetProps) {
+    const [editingFeedback, setEditingFeedback] = useState(false)
+
     if (!submission) return null
 
-    const status = submissionStatus(submission)
+    const feedbackAlreadySent = !!(submission.feedback_sent_at || submission.status === 'reviewed')
+    const existingFeedback = submission.trainer_feedback?.message || ''
+    const quickSummary = generateQuickSummary(questions, answers)
 
     return (
         <>
@@ -284,36 +354,57 @@ export function SubmissionDetailSheet({
                 transition={{ type: 'spring', damping: 25, stiffness: 200 }}
                 className="fixed right-0 top-0 z-50 flex h-full w-full max-w-2xl flex-col border-l border-k-border-subtle bg-surface-card shadow-2xl"
             >
-                {/* Header */}
-                <header className="flex items-center justify-between border-b border-k-border-subtle bg-surface-elevated/50 px-6 py-4 backdrop-blur-md">
-                    <div>
-                        <h3 className="text-lg font-bold text-k-text-primary">Detalhes da Resposta</h3>
-                        <p className="text-sm text-k-text-secondary">
-                            {student?.name || 'Aluno'} &middot; {template?.title || 'Template'}
-                        </p>
+                {/* Header — simplified with avatar */}
+                <header className="flex items-center justify-between border-b border-k-border-subtle px-6 py-4">
+                    <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-full border border-k-border-primary bg-glass-bg overflow-hidden shrink-0">
+                            {student?.avatar_url ? (
+                                <Image src={student.avatar_url} alt="" width={36} height={36} className="h-9 w-9 rounded-full object-cover" unoptimized />
+                            ) : (
+                                <span className="text-xs font-semibold text-k-text-primary">
+                                    {(student?.name || '?').charAt(0).toUpperCase()}
+                                </span>
+                            )}
+                        </div>
+                        <div className="min-w-0">
+                            <p className="text-sm font-semibold text-k-text-primary truncate">
+                                {student?.name || 'Aluno'}
+                            </p>
+                            <p className="text-xs text-k-text-quaternary truncate">
+                                {cleanTemplateName(template?.title || 'Template')} · {timeAgo(submission.submitted_at || submission.created_at)}
+                            </p>
+                        </div>
                     </div>
-                    <button
-                        onClick={onClose}
-                        className="rounded-full bg-surface-inset p-2 text-k-text-secondary transition hover:bg-k-border-subtle hover:text-k-text-primary"
-                    >
-                        <X size={20} />
-                    </button>
+                    <div className="flex items-center gap-2 shrink-0">
+                        {feedbackAlreadySent && (
+                            <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                Feedback enviado
+                            </span>
+                        )}
+                        <button
+                            onClick={onClose}
+                            className="rounded-full bg-surface-inset p-2 text-k-text-secondary transition hover:bg-k-border-subtle hover:text-k-text-primary"
+                        >
+                            <X size={18} />
+                        </button>
+                    </div>
                 </header>
 
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto px-6 py-6">
-                    {/* Status bar */}
-                    <div className="mb-6 flex items-center justify-between rounded-xl bg-surface-elevated p-4">
-                        <div className="space-y-1">
-                            <p className="text-[11px] uppercase tracking-widest text-k-text-tertiary font-bold">Enviado em</p>
-                            <p className="text-sm font-medium text-k-text-primary">
-                                {formatDateTime(submission.submitted_at || submission.created_at)}
-                            </p>
+                    {/* Quick summary */}
+                    {quickSummary.length > 0 && (
+                        <div className="mb-6 px-4 py-3 bg-surface-elevated/50 rounded-xl border border-k-border-subtle">
+                            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+                                {quickSummary.map(({ label, value }) => (
+                                    <span key={label} className="text-k-text-tertiary">
+                                        <span className="text-k-text-quaternary">{label}:</span>{' '}
+                                        <span className="text-k-text-secondary">{value}</span>
+                                    </span>
+                                ))}
+                            </div>
                         </div>
-                        <div className={`rounded-full px-3 py-1 text-xs font-semibold ${status.className}`}>
-                            {status.label}
-                        </div>
-                    </div>
+                    )}
 
                     {/* Answers */}
                     <div className="space-y-5">
@@ -360,30 +451,68 @@ export function SubmissionDetailSheet({
                     </div>
                 </div>
 
-                {/* Feedback Footer */}
+                {/* Feedback Footer — two states */}
                 <footer className="border-t border-k-border-subtle bg-surface-card px-6 py-4">
-                    <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-k-text-tertiary">
-                        Feedback para o Aluno
-                    </p>
-                    <div className="relative">
-                        <textarea
-                            value={feedbackMessage}
-                            onChange={(e) => setFeedbackMessage(e.target.value)}
-                            placeholder="Escreva orientações, correções ou parabéns..."
-                            className="min-h-[100px] w-full rounded-xl border border-k-border-subtle bg-surface-elevated p-4 pr-36 text-sm text-k-text-primary outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/20 resize-none transition-all"
-                        />
-                        <div className="absolute bottom-3 right-3">
-                            <Button
-                                onClick={onSendFeedback}
-                                disabled={isSendingFeedback || !feedbackMessage.trim()}
-                                className="bg-violet-600 text-white hover:bg-violet-700 shadow-lg shadow-violet-600/20"
-                                size="sm"
+                    {feedbackAlreadySent && !editingFeedback ? (
+                        /* READ-ONLY state */
+                        <div>
+                            <div className="flex items-center gap-2 mb-2">
+                                <MessageSquare size={14} className="text-emerald-400" />
+                                <span className="text-xs text-k-text-quaternary">
+                                    Seu feedback · {submission.feedback_sent_at ? timeAgo(submission.feedback_sent_at) : ''}
+                                </span>
+                            </div>
+                            <div className="bg-surface-elevated/50 rounded-xl p-3 text-sm text-k-text-secondary border-l-2 border-emerald-500/40 italic">
+                                {existingFeedback}
+                            </div>
+                            <button
+                                onClick={() => setEditingFeedback(true)}
+                                className="flex items-center gap-1.5 text-xs text-k-text-quaternary hover:text-k-text-secondary mt-2 transition"
                             >
-                                {isSendingFeedback ? 'Enviando...' : 'Enviar Feedback'}
-                                <Send size={14} className="ml-2" />
-                            </Button>
+                                <Pencil size={12} />
+                                Editar feedback
+                            </button>
                         </div>
-                    </div>
+                    ) : (
+                        /* EDITABLE state */
+                        <div>
+                            <p className="mb-2 text-xs font-medium text-k-text-tertiary">
+                                Feedback para o aluno
+                            </p>
+                            <div className="relative">
+                                <textarea
+                                    value={feedbackMessage}
+                                    onChange={(e) => setFeedbackMessage(e.target.value)}
+                                    placeholder="Escreva orientações, correções ou parabéns..."
+                                    className="min-h-[100px] w-full rounded-xl border border-k-border-subtle bg-surface-elevated p-4 pr-36 text-sm text-k-text-primary outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/20 resize-none transition-all"
+                                />
+                                <div className="absolute bottom-3 right-3">
+                                    <Button
+                                        onClick={onSendFeedback}
+                                        disabled={isSendingFeedback || !feedbackMessage.trim()}
+                                        className="bg-violet-600 text-white hover:bg-violet-700 shadow-lg shadow-violet-600/20"
+                                        size="sm"
+                                    >
+                                        {isSendingFeedback ? 'Enviando...' : 'Enviar Feedback'}
+                                        <Send size={14} className="ml-2" />
+                                    </Button>
+                                </div>
+                            </div>
+                            <div className="flex items-center justify-between mt-1.5">
+                                <span className="text-[10px] text-k-text-quaternary">
+                                    O aluno receberá este feedback no app
+                                </span>
+                                {editingFeedback && (
+                                    <button
+                                        onClick={() => setEditingFeedback(false)}
+                                        className="text-[10px] text-k-text-quaternary hover:text-k-text-secondary transition"
+                                    >
+                                        Cancelar edição
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </footer>
             </motion.aside>
         </>

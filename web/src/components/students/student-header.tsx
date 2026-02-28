@@ -21,9 +21,10 @@ interface StudentHeaderProps {
     student: Student
     onEdit: () => void
     onDelete: () => void
+    children?: React.ReactNode
 }
 
-export function StudentHeader({ student, onEdit, onDelete }: StudentHeaderProps) {
+export function StudentHeader({ student, onEdit, onDelete, children }: StudentHeaderProps) {
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
     const [showResetConfirm, setShowResetConfirm] = useState(false)
     const [isResetting, setIsResetting] = useState(false)
@@ -158,7 +159,7 @@ export function StudentHeader({ student, onEdit, onDelete }: StudentHeaderProps)
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                 </svg>
                                 <span>
-                                    Desde {new Date(student.created_at).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })}
+                                    Desde {new Date(student.created_at).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric', timeZone: 'America/Sao_Paulo' })}
                                 </span>
                             </div>
                         </div>
@@ -205,6 +206,13 @@ export function StudentHeader({ student, onEdit, onDelete }: StudentHeaderProps)
                         )}
                     </div>
                 </div>
+
+                {/* Summary line (injected via children) */}
+                {children && (
+                    <div className="mt-3 ml-[92px]">
+                        {children}
+                    </div>
+                )}
             </div>
 
             {/* Confirmation Modal — outside backdrop-blur container to avoid stacking context issues */}
