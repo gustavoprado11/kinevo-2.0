@@ -66,15 +66,13 @@ export function Sidebar() {
             {/* Header / Logo */}
             <div className="px-6 pt-8 pb-8 flex items-center">
                 <Link href="/dashboard" className="flex items-center gap-3 group">
-                    <div className="relative flex items-center justify-center w-8 h-8 rounded-lg bg-glass-bg-active group-hover:bg-glass-bg-hover transition-colors">
-                        <Image
-                            src="/logo-icon.png"
-                            alt="Kinevo Logo"
-                            width={20}
-                            height={20}
-                            className="opacity-90"
-                        />
-                    </div>
+                    <Image
+                        src="/logo-icon.png"
+                        alt="Kinevo Logo"
+                        width={32}
+                        height={32}
+                        className="rounded-lg"
+                    />
                     <span className="text-lg font-semibold text-foreground/90 tracking-tight">Kinevo</span>
                 </Link>
             </div>

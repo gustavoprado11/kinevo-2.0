@@ -1,10 +1,23 @@
 'use client'
 
-import { useState, useMemo, useRef, useEffect } from 'react'
+import { useState, useMemo } from 'react'
+import { PlayCircle, Plus, Search, X } from 'lucide-react'
 import { FloatingExercisePlayer } from '@/components/exercises/floating-exercise-player'
 import { ExerciseFormModal } from '@/components/exercises/exercise-form-modal'
 
 import type { Exercise } from '@/types/exercise'
+
+// "Barra Fixa Gráviton (Pegada Pronada)" → ["Barra Fixa Gráviton", "Pegada Pronada"]
+// "Remada Unilateral Halteres - Pegada Neutra" → ["Remada Unilateral Halteres", "Pegada Neutra"]
+function splitExerciseName(name: string): [string, string?] {
+    const dashMatch = name.match(/^(.+?)\s*[-–]\s*(.+)$/)
+    if (dashMatch) return [dashMatch[1], dashMatch[2]]
+
+    const parenMatch = name.match(/^(.+?)\s*\((.+)\)$/)
+    if (parenMatch) return [parenMatch[1], parenMatch[2]]
+
+    return [name]
+}
 
 interface ExerciseLibraryPanelProps {
     exercises: Exercise[]
@@ -22,41 +35,22 @@ export function ExerciseLibraryPanel({
     activeWorkoutId
 }: ExerciseLibraryPanelProps) {
     const [searchQuery, setSearchQuery] = useState('')
-    const [selectedMuscleGroups, setSelectedMuscleGroups] = useState<Set<string>>(new Set())
+    const [selectedGroup, setSelectedGroup] = useState<string | null>(null)
     const [previewExercise, setPreviewExercise] = useState<Exercise | null>(null)
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
-    const [showMoreFilters, setShowMoreFilters] = useState(false)
-    const dropdownRef = useRef<HTMLDivElement>(null)
 
-    // Close dropdown when clicking outside
-    useEffect(() => {
-        function handleClickOutside(event: MouseEvent) {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-                setShowMoreFilters(false)
-            }
-        }
-        document.addEventListener('mousedown', handleClickOutside)
-        return () => document.removeEventListener('mousedown', handleClickOutside)
-    }, [])
-
-    // Get unique muscle groups (from array of objects)
+    // Get unique muscle groups
     const muscleGroups = useMemo(() => {
         const groups = new Set<string>()
         exercises.forEach(e => {
             if (e.muscle_groups && e.muscle_groups.length > 0) {
                 e.muscle_groups.forEach(g => {
-                    // Safety check if it's an object
                     if (typeof g === 'object' && g.name) groups.add(g.name)
                 })
             }
         })
         return Array.from(groups).sort()
     }, [exercises])
-
-    // Split into visible chips and hidden ones
-    const visibleChipsCount = 5
-    const visibleGroups = muscleGroups.slice(0, visibleChipsCount)
-    const hiddenGroups = muscleGroups.slice(visibleChipsCount)
 
     // Identify overrides (trainer customizations of system exercises)
     const overrideSystemIds = useMemo(() => {
@@ -67,247 +61,215 @@ export function ExerciseLibraryPanel({
         )
     }, [exercises, trainerId])
 
-    // Filter exercises with multi-select OR logic
+    // Filter exercises
     const filteredExercises = useMemo(() => {
         return exercises.filter(exercise => {
-            // Deduplication: Hide system exercise if override exists
             if (!exercise.owner_id && overrideSystemIds.has(exercise.id)) {
                 return false
             }
 
             const matchesSearch = exercise.name.toLowerCase().includes(searchQuery.toLowerCase())
 
-            // Check muscle group filter (OR logic - match ANY selected group)
             const exerciseMuscles = exercise.muscle_groups && exercise.muscle_groups.length > 0
                 ? exercise.muscle_groups.map(g => g.name)
                 : []
 
-            const matchesMuscle = selectedMuscleGroups.size === 0 ||
-                exerciseMuscles.some(m => selectedMuscleGroups.has(m))
+            const matchesMuscle = !selectedGroup ||
+                exerciseMuscles.includes(selectedGroup)
 
             return matchesSearch && matchesMuscle
         })
-    }, [exercises, searchQuery, selectedMuscleGroups, overrideSystemIds])
-
-    // Toggle a muscle group filter
-    const toggleMuscleGroup = (group: string) => {
-        setSelectedMuscleGroups(prev => {
-            const newSet = new Set(prev)
-            if (newSet.has(group)) {
-                newSet.delete(group)
-            } else {
-                newSet.add(group)
-            }
-            return newSet
-        })
-    }
-
-    // Clear all filters
-    const clearFilters = () => {
-        setSelectedMuscleGroups(new Set())
-    }
-
-    // Count of selected filters in hidden groups
-    const hiddenSelectedCount = hiddenGroups.filter(g => selectedMuscleGroups.has(g)).length
+    }, [exercises, searchQuery, selectedGroup, overrideSystemIds])
 
     return (
         <>
             <div className="flex flex-col h-full bg-surface-primary">
-                {/* Header */}
-                <div className="px-4 py-4 border-b border-k-border-subtle">
-                    <h3 className="text-sm font-semibold text-k-text-primary">Biblioteca</h3>
-                    <p className="text-xs text-k-text-tertiary mt-0.5">{filteredExercises.length} exercícios</p>
-                </div>
-
-                {/* Search & Filters */}
-                <div className="px-4 py-3 border-b border-k-border-subtle space-y-3">
+                {/* Search — dominant element */}
+                <div className="px-3 pt-3 pb-2">
                     <div className="relative">
-                        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-k-text-quaternary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-k-text-quaternary" />
                         <input
                             type="text"
                             placeholder="Buscar exercício..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-9 pr-3 py-2 text-sm bg-glass-bg border border-k-border-subtle rounded-lg text-k-text-primary placeholder:text-k-text-quaternary focus:outline-none focus:ring-1 focus:ring-violet-500/50 transition-all"
+                            className="w-full pl-9 pr-8 py-2.5 text-sm bg-glass-bg border border-k-border-subtle rounded-xl text-k-text-primary placeholder:text-k-text-quaternary focus:outline-none focus:ring-1 focus:ring-violet-500/50 transition-all"
                         />
-                    </div>
-
-                    {/* Muscle group filters - Multi-select */}
-                    {muscleGroups.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5">
-                            {/* "Todos" chip - clears all filters */}
+                        {searchQuery && (
                             <button
-                                onClick={clearFilters}
-                                className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md border transition-colors ${selectedMuscleGroups.size === 0
-                                    ? 'bg-violet-500/20 text-violet-300 border-violet-500/30'
-                                    : 'text-k-text-tertiary border-k-border-subtle hover:border-k-border-primary hover:text-k-text-primary'
-                                    }`}
+                                onClick={() => setSearchQuery('')}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-k-text-quaternary hover:text-k-text-secondary transition-colors"
+                            >
+                                <X className="w-3.5 h-3.5" />
+                            </button>
+                        )}
+                    </div>
+                </div>
+
+                {/* Scrollable filter pills */}
+                {muscleGroups.length > 0 && (
+                    <div className="px-3 pb-2">
+                        <div className="flex gap-1 overflow-x-auto no-scrollbar pb-0.5">
+                            <button
+                                onClick={() => setSelectedGroup(null)}
+                                className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-colors shrink-0 ${
+                                    !selectedGroup
+                                        ? 'bg-violet-600 text-white'
+                                        : 'bg-glass-bg text-k-text-tertiary hover:text-k-text-secondary'
+                                }`}
                             >
                                 Todos
                             </button>
-
-                            {/* Visible muscle group chips */}
-                            {visibleGroups.map(group => (
+                            {muscleGroups.map(group => (
                                 <button
                                     key={group}
-                                    onClick={() => toggleMuscleGroup(group)}
-                                    className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md border transition-colors ${selectedMuscleGroups.has(group)
-                                        ? 'bg-violet-500/20 text-violet-300 border-violet-500/30'
-                                        : 'text-k-text-tertiary border-k-border-subtle hover:border-k-border-primary hover:text-k-text-primary'
-                                        }`}
+                                    onClick={() => setSelectedGroup(prev => prev === group ? null : group)}
+                                    className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-colors shrink-0 ${
+                                        selectedGroup === group
+                                            ? 'bg-violet-600 text-white'
+                                            : 'bg-glass-bg text-k-text-tertiary hover:text-k-text-secondary'
+                                    }`}
                                 >
                                     {group}
                                 </button>
                             ))}
-
-                            {/* +N button with dropdown */}
-                            {hiddenGroups.length > 0 && (
-                                <div className="relative" ref={dropdownRef}>
-                                    <button
-                                        onClick={() => setShowMoreFilters(!showMoreFilters)}
-                                        className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md border transition-colors flex items-center gap-1 ${hiddenSelectedCount > 0
-                                            ? 'bg-violet-500/20 text-violet-300 border-violet-500/30'
-                                            : 'text-k-text-tertiary border-k-border-subtle hover:border-k-border-primary hover:text-k-text-primary'
-                                            }`}
-                                    >
-                                        +{hiddenGroups.length}
-                                        {hiddenSelectedCount > 0 && (
-                                            <span className="w-4 h-4 flex items-center justify-center bg-violet-500 text-white text-[9px] rounded-full ml-1">
-                                                {hiddenSelectedCount}
-                                            </span>
-                                        )}
-                                    </button>
-
-                                    {/* Dropdown menu */}
-                                    {showMoreFilters && (
-                                        <div className="absolute z-50 top-full left-0 mt-1 w-48 bg-surface-card border border-k-border-primary rounded-lg shadow-xl py-1 max-h-64 overflow-y-auto">
-                                            {hiddenGroups.map(group => (
-                                                <button
-                                                    key={group}
-                                                    onClick={() => toggleMuscleGroup(group)}
-                                                    className="w-full px-3 py-2 text-left text-xs font-medium uppercase tracking-wide flex items-center justify-between hover:bg-glass-bg transition-colors"
-                                                >
-                                                    <span className={selectedMuscleGroups.has(group) ? 'text-violet-400' : 'text-k-text-secondary'}>
-                                                        {group}
-                                                    </span>
-                                                    {selectedMuscleGroups.has(group) && (
-                                                        <svg className="w-3 h-3 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                                        </svg>
-                                                    )}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
                         </div>
-                    )}
+                    </div>
+                )}
+
+                {/* Result count */}
+                <div className="px-4 py-1.5 border-y border-k-border-subtle">
+                    <span className="text-[10px] text-k-text-quaternary font-medium">
+                        {filteredExercises.length} exercício{filteredExercises.length !== 1 ? 's' : ''}
+                        {selectedGroup && <> em <span className="text-k-text-tertiary">{selectedGroup}</span></>}
+                    </span>
                 </div>
 
-                {/* Exercise List */}
-                <div className="flex-1 overflow-y-auto p-2 space-y-1">
+                {/* Compact exercise list */}
+                <div className="flex-1 overflow-y-auto">
                     {filteredExercises.length === 0 ? (
-                        <div className="text-center py-8">
-                            <p className="text-k-text-quaternary text-sm mb-4">Nenhum exercício encontrado</p>
+                        <div className="text-center py-8 px-4">
+                            <p className="text-k-text-quaternary text-sm mb-3">
+                                Nenhum exercício encontrado
+                                {searchQuery.trim() && <> para &ldquo;{searchQuery}&rdquo;</>}
+                            </p>
 
-                            {/* Create Exercise CTA */}
                             {searchQuery.trim() && (
                                 <button
                                     onClick={() => setIsCreateModalOpen(true)}
-                                    className="flex items-center justify-center gap-2 mx-auto px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-lg transition-all shadow-lg shadow-violet-500/20"
+                                    className="text-violet-400 hover:text-violet-300 text-sm font-medium transition-colors"
                                 >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                    </svg>
-                                    Criar "{searchQuery}"
+                                    + Criar &ldquo;{searchQuery}&rdquo;
                                 </button>
                             )}
 
-                            {selectedMuscleGroups.size > 0 && (
+                            {selectedGroup && (
                                 <button
-                                    onClick={clearFilters}
-                                    className="text-violet-400 text-xs hover:text-violet-300 mt-4 block mx-auto"
+                                    onClick={() => setSelectedGroup(null)}
+                                    className="text-violet-400 text-xs hover:text-violet-300 mt-3 block mx-auto"
                                 >
-                                    Limpar filtros
+                                    Limpar filtro
                                 </button>
                             )}
                         </div>
                     ) : (
-                        filteredExercises.map(exercise => (
-                            <div
-                                key={exercise.id}
-                                onClick={() => {
-                                    if (activeWorkoutId) {
-                                        onAddExercise(exercise)
-                                    }
-                                }}
-                                className={`group w-full text-left px-3 py-3 rounded-lg transition-all border border-transparent ${activeWorkoutId
-                                    ? 'cursor-pointer hover:bg-glass-bg active:bg-glass-bg-active'
-                                    : 'cursor-not-allowed opacity-50'
+                        filteredExercises.map(exercise => {
+                            const primaryGroup = exercise.muscle_groups?.[0]
+                            const groupName = primaryGroup ? (typeof primaryGroup === 'object' ? primaryGroup.name : primaryGroup) : null
+                            const [mainName, variant] = splitExerciseName(exercise.name)
+
+                            return (
+                                <div
+                                    key={exercise.id}
+                                    draggable={!!activeWorkoutId}
+                                    onDragStart={(e) => {
+                                        e.dataTransfer.setData('application/kinevo-exercise-id', exercise.id)
+                                        e.dataTransfer.effectAllowed = 'copy'
+                                    }}
+                                    className={`flex items-center gap-2 py-2 px-3 min-h-[56px] border-b border-k-border-subtle/50 transition-colors group/item ${
+                                        activeWorkoutId
+                                            ? 'cursor-grab hover:bg-glass-bg active:bg-glass-bg-active active:cursor-grabbing'
+                                            : 'cursor-not-allowed opacity-50'
                                     }`}
-                            >
-                                <div className="flex items-start justify-between gap-3">
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <span className={`text-sm font-medium truncate transition-colors ${activeWorkoutId ? 'text-k-text-secondary group-hover:text-k-text-primary' : 'text-k-text-tertiary'}`}>
+                                    title={exercise.name}
+                                >
+                                    {/* Name — uniform 2-line height */}
+                                    <button
+                                        onClick={() => {
+                                            if (activeWorkoutId) onAddExercise(exercise)
+                                        }}
+                                        className="flex-1 min-w-0 text-left mr-1"
+                                        disabled={!activeWorkoutId}
+                                    >
+                                        {variant ? (
+                                            <>
+                                                <span className={`text-[13px] font-medium truncate block leading-tight transition-colors ${
+                                                    activeWorkoutId ? 'text-k-text-secondary group-hover/item:text-k-text-primary' : 'text-k-text-tertiary'
+                                                }`}>
+                                                    {mainName}
+                                                </span>
+                                                <span className="text-[11px] text-k-text-quaternary truncate block leading-tight">
+                                                    {variant}
+                                                </span>
+                                            </>
+                                        ) : (
+                                            <span className={`text-[13px] font-medium leading-tight line-clamp-2 transition-colors ${
+                                                activeWorkoutId ? 'text-k-text-secondary group-hover/item:text-k-text-primary' : 'text-k-text-tertiary'
+                                            }`}>
                                                 {exercise.name}
                                             </span>
-                                        </div>
+                                        )}
+                                    </button>
 
-                                        <div className="flex flex-wrap gap-1">
-                                            {(exercise.muscle_groups || []).slice(0, 2).map(group => {
-                                                const groupName = typeof group === 'object' ? group.name : group
-                                                const groupKey = typeof group === 'object' ? group.id : group
-                                                return (
-                                                    <span key={groupKey} className="px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-k-text-quaternary bg-glass-bg rounded-md">
-                                                        {groupName}
-                                                    </span>
-                                                )
-                                            })}
-                                            {exercise.equipment && (
-                                                <span className="px-1.5 py-0.5 text-[9px] bg-glass-bg text-k-text-quaternary rounded-md">
-                                                    {exercise.equipment}
-                                                </span>
+                                    {/* Badge + actions — right-aligned, vertically centered */}
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        {groupName && (
+                                            <span className="text-[9px] text-k-text-quaternary uppercase tracking-wider font-bold">
+                                                {groupName}
+                                            </span>
+                                        )}
+
+                                        <div className="flex items-center gap-0.5 opacity-0 group-hover/item:opacity-100 transition-opacity">
+                                            {exercise.video_url && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation()
+                                                        e.preventDefault()
+                                                        setPreviewExercise(exercise)
+                                                    }}
+                                                    className="p-1 text-k-text-quaternary hover:text-violet-400 transition-colors"
+                                                    title="Ver vídeo"
+                                                >
+                                                    <PlayCircle className="w-4 h-4" />
+                                                </button>
                                             )}
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    e.preventDefault()
+                                                    if (activeWorkoutId) onAddExercise(exercise)
+                                                }}
+                                                className="p-1 text-k-text-quaternary hover:text-emerald-400 transition-colors"
+                                                title="Adicionar ao treino"
+                                                disabled={!activeWorkoutId}
+                                            >
+                                                <Plus className="w-4 h-4" />
+                                            </button>
                                         </div>
                                     </div>
-
-                                    {/* Play button - Opens video preview modal */}
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation()
-                                            e.preventDefault()
-                                            setPreviewExercise(exercise)
-                                        }}
-                                        className={`w-7 h-7 flex items-center justify-center rounded-md transition-all flex-shrink-0 ${exercise.video_url
-                                            ? 'text-k-text-quaternary hover:text-k-text-primary hover:bg-glass-bg-active'
-                                            : 'text-k-border-subtle cursor-default'
-                                            }`}
-                                        disabled={!exercise.video_url}
-                                    >
-                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                    </button>
                                 </div>
-                            </div>
-                        ))
+                            )
+                        })
                     )}
                 </div>
 
-                {/* Footer/Help */}
-                <div className="px-4 py-3 border-t border-k-border-subtle bg-glass-bg">
+                {/* Footer */}
+                <div className="px-3 py-2.5 border-t border-k-border-subtle bg-glass-bg">
                     <button
                         onClick={() => setIsCreateModalOpen(true)}
                         className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-glass-bg hover:bg-glass-bg-active text-k-text-secondary hover:text-k-text-primary text-xs font-medium rounded-lg transition-colors"
                     >
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                        </svg>
+                        <Plus className="w-3.5 h-3.5" />
                         Criar novo exercício
                     </button>
                 </div>

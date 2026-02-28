@@ -1,13 +1,16 @@
 'use client'
 
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, Check, Loader2, Calendar, ArrowRight, Edit3, AlertCircle } from 'lucide-react'
+import { ChevronLeft, Loader2, Calendar, Edit3, AlertCircle, BookmarkPlus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { AppLayout } from '@/components/layout'
 import { createClient } from '@/lib/supabase/client'
 import { WorkoutPanel } from './workout-panel'
-import { arrayMove } from '@dnd-kit/sortable'
+import { arrayMove, SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable'
+import { DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core'
+import type { DragEndEvent } from '@dnd-kit/core'
+import { SortableWorkoutTab } from './sortable-workout-tab'
 import { ExerciseLibraryPanel } from './exercise-library-panel'
 import { VolumeSummary } from './volume-summary'
 
@@ -94,9 +97,11 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
     })
     const [isEndDateFixed, setIsEndDateFixed] = useState(false)
     const [isDescriptionOpen, setIsDescriptionOpen] = useState(false)
-    const [assignmentType, setAssignmentType] = useState<'immediate' | 'scheduled'>(
-        program.scheduled_start_date ? 'scheduled' : 'immediate'
-    )
+    const [showTemplateDialog, setShowTemplateDialog] = useState(false)
+    const [templateName, setTemplateName] = useState('')
+    const [savingTemplate, setSavingTemplate] = useState(false)
+    // Preserve the program's original activation mode
+    const assignmentType = program.scheduled_start_date ? 'scheduled' : 'immediate' as const
 
     // Helper to calculate end date from weeks
     const calculateEndDate = useCallback((start: string, weeksStr: string) => {
@@ -221,6 +226,14 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [nameShake, setNameShake] = useState(false)
+    const [isCanvasScrolled, setIsCanvasScrolled] = useState(false)
+    const [isDraggingOver, setIsDraggingOver] = useState(false)
+    const canvasScrollRef = useRef<HTMLDivElement>(null)
+    // Sensors for tab drag-and-drop
+    const tabSensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+        useSensor(TouchSensor),
+    )
 
     const activeWorkout = workouts.find(w => w.id === activeWorkoutId)
 
@@ -270,18 +283,31 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
         }
     }
 
-    const moveWorkout = (id: string, direction: 'up' | 'down') => {
-        const index = workouts.findIndex(w => w.id === id)
-        if (direction === 'up' && index > 0) {
-            const newWorkouts = [...workouts]
-                ;[newWorkouts[index - 1], newWorkouts[index]] = [newWorkouts[index], newWorkouts[index - 1]]
-            setWorkouts(newWorkouts.map((w, i) => ({ ...w, order_index: i })))
+    const duplicateWorkout = (workoutId: string) => {
+        const source = workouts.find(w => w.id === workoutId)
+        if (!source) return
+        const baseName = source.name.replace(/^(Treino [A-Z]|Dia \d+)\s*[-–]\s*/, '')
+        const copy: Workout = {
+            id: tempId(),
+            name: `Treino ${String.fromCharCode(65 + workouts.length)}${baseName ? ` - ${baseName}` : ''}`,
+            order_index: workouts.length,
+            items: source.items.map(item => ({
+                ...item,
+                id: tempId(),
+                children: item.children?.map(child => ({ ...child, id: tempId() })),
+            })),
+            frequency: [],
         }
-        if (direction === 'down' && index < workouts.length - 1) {
-            const newWorkouts = [...workouts]
-                ;[newWorkouts[index], newWorkouts[index + 1]] = [newWorkouts[index + 1], newWorkouts[index]]
-            setWorkouts(newWorkouts.map((w, i) => ({ ...w, order_index: i })))
-        }
+        setWorkouts([...workouts, copy])
+    }
+
+    const handleWorkoutDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event
+        if (!over || active.id === over.id) return
+        const oldIndex = workouts.findIndex(w => w.id === active.id)
+        const newIndex = workouts.findIndex(w => w.id === over.id)
+        if (oldIndex === -1 || newIndex === -1) return
+        setWorkouts(arrayMove(workouts, oldIndex, newIndex).map((w, i) => ({ ...w, order_index: i })))
     }
 
     const handleReorderItem = useCallback((activeId: string, overId: string) => {
@@ -326,6 +352,32 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
             }
         }))
     }, [activeWorkoutId])
+
+    // Handle drag-and-drop from exercise library to workout canvas
+    const handleCanvasDragOver = useCallback((e: React.DragEvent) => {
+        if (e.dataTransfer.types.includes('application/kinevo-exercise-id')) {
+            e.preventDefault()
+            e.dataTransfer.dropEffect = 'copy'
+            setIsDraggingOver(true)
+        }
+    }, [])
+
+    const handleCanvasDragLeave = useCallback((e: React.DragEvent) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+            setIsDraggingOver(false)
+        }
+    }, [])
+
+    const handleCanvasDrop = useCallback((e: React.DragEvent) => {
+        e.preventDefault()
+        setIsDraggingOver(false)
+        const exerciseId = e.dataTransfer.getData('application/kinevo-exercise-id')
+        if (!exerciseId) return
+        const exercise = localExercises.find(ex => ex.id === exerciseId)
+        if (exercise) {
+            addExerciseFromLibrary(exercise)
+        }
+    }, [localExercises, addExerciseFromLibrary])
 
     // Create superset by combining exercise with the next one
     const createSupersetWithNext = (workoutId: string, exerciseItemId: string) => {
@@ -836,6 +888,95 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
         }
     }
 
+    // Save current program structure as a reusable template
+    const saveAsTemplate = async () => {
+        if (!templateName.trim()) return
+
+        setSavingTemplate(true)
+        setError(null)
+
+        const supabase = createClient()
+
+        try {
+            const { data: newTemplate, error: createError } = await supabase
+                .from('program_templates')
+                .insert({
+                    name: templateName.trim(),
+                    description: description.trim() || null,
+                    duration_weeks: durationWeeks ? parseInt(durationWeeks) : null,
+                    is_template: true,
+                })
+                .select('id')
+                .single()
+
+            if (createError) throw createError
+
+            for (const workout of workouts) {
+                const { data: savedWorkout, error: workoutError } = await supabase
+                    .from('workout_templates')
+                    .insert({
+                        program_template_id: newTemplate.id,
+                        name: workout.name,
+                        order_index: workout.order_index,
+                        frequency: workout.frequency,
+                    })
+                    .select('id')
+                    .single()
+
+                if (workoutError) throw workoutError
+
+                for (const item of workout.items) {
+                    const { data: savedItem, error: itemError } = await supabase
+                        .from('workout_item_templates')
+                        .insert({
+                            workout_template_id: savedWorkout.id,
+                            item_type: item.item_type,
+                            order_index: item.order_index,
+                            parent_item_id: null,
+                            exercise_id: item.exercise_id,
+                            substitute_exercise_ids: item.substitute_exercise_ids || [],
+                            sets: item.sets,
+                            reps: item.reps,
+                            rest_seconds: item.rest_seconds,
+                            notes: item.notes,
+                        })
+                        .select('id')
+                        .single()
+
+                    if (itemError) throw itemError
+
+                    if (item.children) {
+                        for (const child of item.children) {
+                            const { error: childError } = await supabase
+                                .from('workout_item_templates')
+                                .insert({
+                                    workout_template_id: savedWorkout.id,
+                                    item_type: child.item_type,
+                                    order_index: child.order_index,
+                                    parent_item_id: savedItem.id,
+                                    exercise_id: child.exercise_id,
+                                    substitute_exercise_ids: child.substitute_exercise_ids || [],
+                                    sets: child.sets,
+                                    reps: child.reps,
+                                    rest_seconds: child.rest_seconds,
+                                    notes: child.notes,
+                                })
+                            if (childError) throw childError
+                        }
+                    }
+                }
+            }
+
+            setShowTemplateDialog(false)
+            alert('Modelo salvo na biblioteca!')
+        } catch (err: any) {
+            console.error('Save template error:', err)
+            setError(err.message || 'Erro ao salvar modelo')
+        } finally {
+            setSavingTemplate(false)
+        }
+    }
+
     return (
         <AppLayout
             trainerName={trainer.name}
@@ -844,163 +985,100 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
             trainerTheme={trainer.theme ?? undefined}
         >
             <div className="flex flex-col h-[calc(100vh-64px)] overflow-hidden bg-surface-canvas">
-                {/* Scheduling Bar (Responsive Header) */}
-                <div className="flex-shrink-0 min-h-[72px] bg-surface-primary backdrop-blur-md border-b border-k-border-primary flex flex-wrap items-center gap-4 px-6 py-3 z-30">
-                    {/* Left Section: Identity */}
-                    <div className="flex items-center gap-4 flex-1 min-w-0">
+                {/* Compact Header */}
+                <div className="flex-shrink-0 bg-surface-primary backdrop-blur-md border-b border-k-border-primary flex items-center gap-4 px-6 py-3 z-30">
+                    {/* Left: Back + Name */}
+                    <div className="flex items-center gap-3 min-w-0">
                         <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => router.push(`/students/${studentId}`)}
-                            className="w-10 h-10 rounded-full hover:bg-glass-bg-active text-k-text-tertiary hover:text-k-text-primary transition-all flex-shrink-0"
+                            className="w-9 h-9 rounded-full hover:bg-glass-bg-active text-k-text-tertiary hover:text-k-text-primary transition-all flex-shrink-0"
                         >
                             <ChevronLeft className="w-5 h-5" />
                         </Button>
 
-                        <div className="flex flex-col min-w-[200px] flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-k-text-quaternary">Editando Programa</span>
-                                <div className="px-2 py-0.5 bg-amber-500/10 border border-amber-500/20 rounded-full">
-                                    <span className="text-[9px] font-bold text-amber-500 tracking-wider">EDIÇÃO DIRETA</span>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <input
-                                    type="text"
-                                    value={name}
-                                    onChange={(e) => {
-                                        setName(e.target.value)
-                                        if (error) setError(null)
-                                    }}
-                                    placeholder="Ex: Força e Hipertrofia"
-                                    className={`bg-transparent border-none text-lg font-bold text-k-text-primary placeholder:text-k-text-quaternary focus:ring-0 p-0 w-full min-w-[180px] truncate transition-all ${nameShake ? 'animate-[shake_0.5s_ease-in-out]' : ''
-                                        } ${error && !name.trim() ? 'placeholder:text-red-400/60' : ''}`}
-                                />
-                                <button
-                                    onClick={() => setIsDescriptionOpen(!isDescriptionOpen)}
-                                    className={`p-1.5 rounded-lg transition-all ${isDescriptionOpen ? 'bg-violet-500/20 text-violet-400' : 'text-k-text-quaternary hover:text-k-text-tertiary hover:bg-glass-bg'
-                                        }`}
-                                    title="Editar descrição"
-                                >
-                                    <Edit3 className="w-3.5 h-3.5" strokeWidth={2.5} />
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Center Section: Timeline & Scheduling */}
-                    <div className="flex items-center gap-8 px-8 border-x border-k-border-subtle">
-                        {/* Timeline Row */}
-                        <div className="flex flex-col gap-1.5">
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-k-text-quaternary">
-                                Cronograma do Programa
-                            </span>
-                            <div className="flex items-center gap-2">
-                                {/* Start Date */}
-                                <div className="flex items-center gap-3 bg-glass-bg border border-k-border-subtle rounded-xl px-4 py-2 group hover:border-k-border-primary transition-all">
-                                    <Calendar className="w-4 h-4 text-k-text-tertiary group-hover:text-violet-400 transition-colors" strokeWidth={1.5} />
-                                    <div className="flex flex-col">
-                                        <span className="text-[9px] font-bold text-k-text-quaternary uppercase tracking-tight -mb-0.5">Início</span>
-                                        <input
-                                            type="date"
-                                            value={startDate}
-                                            onChange={(e) => handleStartDateChange(e.target.value)}
-                                            className="bg-transparent border-none text-xs font-bold text-k-text-primary focus:ring-0 p-0 [color-scheme:dark]"
-                                        />
-                                    </div>
-                                </div>
-
-                                <ArrowRight className="w-3.5 h-3.5 text-k-border-subtle shrink-0" />
-
-                                {/* Weeks Input (Platter Style) */}
-                                <div className="flex flex-col items-center bg-glass-bg border border-k-border-subtle rounded-xl px-3 py-2 min-w-[70px]">
-                                    <span className="text-[9px] font-bold text-k-text-quaternary uppercase tracking-tight -mb-1">Semanas</span>
-                                    <input
-                                        type="number"
-                                        value={durationWeeks}
-                                        onChange={(e) => handleWeeksChange(e.target.value)}
-                                        min="0"
-                                        className="bg-transparent border-none text-sm font-black text-violet-400 focus:ring-0 p-0 w-full text-center"
-                                    />
-                                </div>
-
-                                <ArrowRight className="w-3.5 h-3.5 text-k-border-subtle shrink-0" />
-
-                                {/* End Date (Manual vs Auto Visuals) */}
-                                <div
-                                    className="relative flex items-center gap-3 bg-glass-bg border border-k-border-subtle rounded-xl px-4 py-2 group hover:border-k-border-primary transition-all cursor-help"
-                                    title="A duração em semanas será ajustada automaticamente ao alterar a data fim."
-                                >
-                                    <div className="flex flex-col">
-                                        <span className="text-[9px] font-bold text-k-text-quaternary uppercase tracking-tight -mb-0.5">Fim Previsto</span>
-                                        <div className="flex items-center gap-1.5">
-                                            <input
-                                                type="date"
-                                                value={endDate}
-                                                onChange={(e) => handleEndDateChange(e.target.value)}
-                                                className={`bg-transparent border-none text-xs font-bold focus:ring-0 p-0 [color-scheme:dark] transition-colors ${isEndDateFixed ? 'text-violet-400' : 'text-k-text-tertiary'
-                                                    }`}
-                                            />
-                                            {isEndDateFixed && <Edit3 className="w-3 h-3 text-violet-400 animate-in fade-in zoom-in duration-300" />}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Activation Control */}
-                        <div className="flex flex-col gap-1.5 min-w-[200px]">
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-k-text-quaternary">
-                                Ativação
-                            </span>
-                            <div className="bg-surface-inset p-1 rounded-xl flex items-center gap-1 border border-k-border-subtle">
-                                <button
-                                    onClick={() => setAssignmentType('immediate')}
-                                    className={`flex-1 px-3 py-1.5 text-[10px] font-bold rounded-lg transition-all ${assignmentType === 'immediate'
-                                        ? 'bg-glass-bg-active text-k-text-primary shadow-sm ring-1 ring-k-border-subtle'
-                                        : 'text-k-text-tertiary hover:text-k-text-primary'
-                                        }`}
-                                >
-                                    Imediata
-                                </button>
-                                <button
-                                    onClick={() => setAssignmentType('scheduled')}
-                                    className={`flex-1 px-3 py-1.5 text-[10px] font-bold rounded-lg transition-all ${assignmentType === 'scheduled'
-                                        ? 'bg-glass-bg-active text-k-text-primary shadow-sm ring-1 ring-k-border-subtle'
-                                        : 'text-k-text-tertiary hover:text-k-text-primary'
-                                        }`}
-                                >
-                                    Agendar Fila
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Right Section: Actions */}
-                    <div className="flex items-center gap-4 ml-auto flex-shrink-0">
-                        <div className="relative">
-                            <Button
-                                onClick={saveProgram}
-                                disabled={saving}
-                                className="bg-violet-600 hover:bg-violet-500 text-white rounded-full px-8 py-2.5 h-11 text-sm font-bold transition-all shadow-lg shadow-violet-500/20 min-w-[160px]"
+                        <div className="flex items-center gap-2 min-w-0">
+                            <input
+                                type="text"
+                                value={name}
+                                onChange={(e) => {
+                                    setName(e.target.value)
+                                    if (error) setError(null)
+                                }}
+                                placeholder="Nome do programa"
+                                className={`bg-transparent border-none text-lg font-bold text-k-text-primary placeholder:text-k-text-quaternary focus:ring-0 p-0 min-w-[140px] max-w-[280px] truncate transition-all ${nameShake ? 'animate-[shake_0.5s_ease-in-out]' : ''
+                                    } ${error && !name.trim() ? 'placeholder:text-red-400/60' : ''}`}
+                            />
+                            <button
+                                onClick={() => setIsDescriptionOpen(!isDescriptionOpen)}
+                                className={`p-1 rounded-md transition-all shrink-0 ${isDescriptionOpen ? 'bg-violet-500/20 text-violet-400' : 'text-k-text-quaternary hover:text-k-text-tertiary hover:bg-glass-bg'
+                                    }`}
+                                title="Editar descrição"
                             >
-                                {saving ? (
-                                    <div className="flex items-center gap-2">
-                                        <Loader2 className="animate-spin w-4 h-4" />
-                                        <span>Salvando...</span>
-                                    </div>
-                                ) : (
-                                    assignmentType === 'immediate' ? 'Salvar Alterações' : 'Agendar Programa'
-                                )}
-                            </Button>
-
-                            {/* Alert Note */}
-                            {assignmentType === 'immediate' && (
-                                <p className="absolute -bottom-5 right-0 text-[10px] text-amber-500 font-medium whitespace-nowrap animate-in fade-in slide-in-from-top-1">
-                                    Alterações em tempo real.
-                                </p>
-                            )}
+                                <Edit3 className="w-3.5 h-3.5" strokeWidth={2.5} />
+                            </button>
                         </div>
+                    </div>
+
+                    {/* Center: Condensed timeline */}
+                    <div className="flex items-center gap-2 text-xs text-k-text-tertiary border-x border-k-border-subtle px-6 shrink-0">
+                        <Calendar className="w-3.5 h-3.5 text-k-text-quaternary shrink-0" strokeWidth={1.5} />
+                        <span className="text-[10px] text-k-text-quaternary font-medium uppercase">Início</span>
+                        <input
+                            type="date"
+                            value={startDate}
+                            onChange={(e) => handleStartDateChange(e.target.value)}
+                            className="bg-transparent border-none text-xs font-bold text-k-text-primary focus:ring-0 p-0 [color-scheme:dark] w-[110px]"
+                        />
+                        <span className="text-k-border-subtle">→</span>
+                        <span className="text-[10px] text-k-text-quaternary font-medium uppercase">Fim</span>
+                        <input
+                            type="date"
+                            value={endDate}
+                            onChange={(e) => handleEndDateChange(e.target.value)}
+                            className={`bg-transparent border-none text-xs font-bold focus:ring-0 p-0 [color-scheme:dark] w-[110px] transition-colors ${isEndDateFixed ? 'text-violet-400' : 'text-k-text-primary'}`}
+                        />
+                        <span className="text-k-border-subtle">·</span>
+                        <div className="flex items-center gap-1">
+                            <input
+                                type="number"
+                                value={durationWeeks}
+                                onChange={(e) => handleWeeksChange(e.target.value)}
+                                min="0"
+                                className="bg-transparent border-none text-xs font-black text-violet-400 focus:ring-0 p-0 w-6 text-center"
+                            />
+                            <span className="text-k-text-quaternary font-medium">semanas</span>
+                        </div>
+                    </div>
+
+                    {/* Right: Save */}
+                    <div className="flex items-center gap-3 ml-auto flex-shrink-0">
+                        {/* Terciário: Salvar Modelo — text button com ícone */}
+                        <button
+                            onClick={() => {
+                                setTemplateName(name)
+                                setShowTemplateDialog(true)
+                            }}
+                            disabled={saving}
+                            className="flex items-center gap-1.5 px-3 py-2 h-9 text-sm text-k-text-quaternary hover:text-k-text-primary transition-colors disabled:opacity-50"
+                        >
+                            <BookmarkPlus className="w-4 h-4" />
+                            Salvar Modelo
+                        </button>
+
+                        {/* Primário: Salvar Alterações — roxo sólido */}
+                        <Button
+                            onClick={saveProgram}
+                            disabled={saving}
+                            className="bg-violet-600 hover:bg-violet-500 text-white rounded-xl px-5 py-2 h-9 text-sm font-medium transition-all min-w-[160px]"
+                        >
+                            {saving ? (
+                                <Loader2 className="animate-spin w-4 h-4" />
+                            ) : (
+                                'Salvar Alterações'
+                            )}
+                        </Button>
                     </div>
                 </div>
 
@@ -1051,26 +1129,55 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                     </div>
 
                     {/* Right Panel: Canvas */}
-                    <div className="flex-1 flex flex-col min-w-0 bg-[#09090B]">
-                        {/* Workout Tabs (Segmented Control) */}
-                        <div className="flex items-center gap-1 p-4 overflow-x-auto no-scrollbar border-b border-white/5 bg-[#09090B]">
-                            <div className="bg-[#1C1C1E] p-1 rounded-xl flex gap-1 items-center border border-white/5">
-                                {workouts.map((workout) => (
-                                    <button
-                                        key={workout.id}
-                                        onClick={() => setActiveWorkoutId(workout.id)}
-                                        className={`
-                                            px-4 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap
-                                            ${activeWorkoutId === workout.id
-                                                ? 'bg-glass-bg-active text-k-text-primary shadow-sm ring-1 ring-k-border-subtle'
-                                                : 'text-k-text-tertiary hover:text-k-text-primary hover:bg-glass-bg'
-                                            }
-                                        `}
-                                    >
-                                        {workout.name}
-                                    </button>
-                                ))}
-                            </div>
+                    <div className="flex-1 flex flex-col min-w-0 bg-surface-canvas">
+                        {/* Workout Tabs (Sortable Segmented Control) */}
+                        <div className="flex items-center gap-1 p-4 overflow-x-auto no-scrollbar border-b border-k-border-subtle bg-surface-canvas">
+                            <DndContext sensors={tabSensors} collisionDetection={closestCenter} onDragEnd={handleWorkoutDragEnd}>
+                                <SortableContext items={workouts.map(w => w.id)} strategy={horizontalListSortingStrategy}>
+                                    <div className="bg-surface-card p-1 rounded-xl flex gap-1 items-center border border-k-border-subtle">
+                                        {workouts.map((workout) => (
+                                            <SortableWorkoutTab key={workout.id} id={workout.id}>
+                                                <button
+                                                    onClick={() => setActiveWorkoutId(workout.id)}
+                                                    className={`
+                                                        px-4 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap flex items-center gap-2
+                                                        ${activeWorkoutId === workout.id
+                                                            ? 'bg-glass-bg-active text-k-text-primary shadow-sm ring-1 ring-k-border-subtle'
+                                                            : 'text-k-text-tertiary hover:text-k-text-primary hover:bg-glass-bg'
+                                                        }
+                                                    `}
+                                                >
+                                                    {workout.name}
+                                                    {activeWorkoutId === workout.id && (
+                                                        <span className="flex items-center gap-0.5 ml-1 border-l border-k-border-subtle pl-2">
+                                                            <span
+                                                                onClick={(e) => { e.stopPropagation(); duplicateWorkout(workout.id) }}
+                                                                className="p-0.5 rounded text-k-text-quaternary hover:text-violet-400 transition-colors cursor-pointer"
+                                                                title="Duplicar treino"
+                                                            >
+                                                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                                </svg>
+                                                            </span>
+                                                            {workouts.length > 1 && (
+                                                                <span
+                                                                    onClick={(e) => { e.stopPropagation(); deleteWorkout(workout.id) }}
+                                                                    className="p-0.5 rounded text-k-text-quaternary hover:text-red-400 transition-colors cursor-pointer"
+                                                                    title="Excluir treino"
+                                                                >
+                                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                                    </svg>
+                                                                </span>
+                                                            )}
+                                                        </span>
+                                                    )}
+                                                </button>
+                                            </SortableWorkoutTab>
+                                        ))}
+                                    </div>
+                                </SortableContext>
+                            </DndContext>
 
                             <button
                                 onClick={addWorkout}
@@ -1083,8 +1190,15 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                             </button>
                         </div>
 
-                        {/* Workout Canvas */}
-                        <div className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+                        {/* Workout Canvas — drop zone for exercises from library */}
+                        <div
+                            ref={canvasScrollRef}
+                            onScroll={(e) => setIsCanvasScrolled(e.currentTarget.scrollTop > 40)}
+                            onDragOver={handleCanvasDragOver}
+                            onDragLeave={handleCanvasDragLeave}
+                            onDrop={handleCanvasDrop}
+                            className={`flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent transition-colors duration-200 ${isDraggingOver ? 'bg-violet-500/5 ring-2 ring-inset ring-violet-500/20' : ''}`}
+                        >
                             <div className="max-w-3xl mx-auto pb-20">
                                 {activeWorkout ? (
                                     <WorkoutPanel
@@ -1103,6 +1217,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                                         onDissolveSuperset={(supersetId) => dissolveSuperset(activeWorkout.id, supersetId)}
                                         onUpdateFrequency={(days) => updateWorkoutFrequency(activeWorkout.id, days)}
                                         occupiedDays={occupiedDays}
+                                        isScrolled={isCanvasScrolled}
                                     />
                                 ) : (
                                     <div className="text-center py-20">
@@ -1110,23 +1225,54 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                                     </div>
                                 )}
 
-                                <div className="mt-8 flex justify-center">
-                                    <button
-                                        onClick={() => deleteWorkout(activeWorkoutId!)}
-                                        className="text-k-text-quaternary hover:text-red-400 text-xs font-semibold py-2 px-4 rounded-lg hover:bg-red-500/10 transition-all flex items-center gap-2"
-                                        disabled={workouts.length <= 1}
-                                    >
-                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                        </svg>
-                                        Excluir Treino Atual
-                                    </button>
-                                </div>
+                                {/* Delete workout is now in the tab ⋯ menu */}
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+
+            {/* Dialog — save as template */}
+            {showTemplateDialog && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center">
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowTemplateDialog(false)} />
+                    <div className="relative bg-surface-primary border border-k-border-subtle rounded-2xl shadow-2xl p-6 max-w-md w-full mx-4 animate-in zoom-in-95 fade-in duration-200">
+                        <h3 className="text-base font-semibold text-k-text-primary mb-1">Salvar como Modelo</h3>
+                        <p className="text-sm text-k-text-tertiary leading-relaxed mb-5">
+                            O programa será salvo na biblioteca de modelos para reutilizar com outros alunos.
+                        </p>
+
+                        <div>
+                            <label className="block text-[10px] font-bold text-k-text-quaternary uppercase tracking-widest mb-1.5">Nome do modelo</label>
+                            <input
+                                type="text"
+                                value={templateName}
+                                onChange={(e) => setTemplateName(e.target.value)}
+                                placeholder="Ex: Hipertrofia 5x - Superior/Inferior"
+                                className="w-full bg-white/[0.04] border border-k-border-subtle rounded-xl px-3 py-2.5 text-sm text-k-text-primary placeholder:text-k-text-quaternary outline-none focus:border-violet-500/50 transition-colors"
+                                autoFocus
+                            />
+                        </div>
+
+                        <div className="flex items-center justify-end gap-3 mt-6">
+                            <Button
+                                onClick={() => setShowTemplateDialog(false)}
+                                variant="ghost"
+                                className="rounded-full px-5 py-2 h-9 text-sm font-medium bg-white/[0.06] text-k-text-secondary hover:text-k-text-primary hover:bg-white/10 transition-all"
+                            >
+                                Cancelar
+                            </Button>
+                            <Button
+                                onClick={saveAsTemplate}
+                                disabled={!templateName.trim() || savingTemplate}
+                                className="bg-violet-600 hover:bg-violet-500 text-white rounded-full px-5 py-2 h-9 text-sm font-medium transition-all"
+                            >
+                                {savingTemplate ? <Loader2 className="animate-spin w-4 h-4" /> : 'Salvar Modelo'}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </AppLayout>
     )
 }

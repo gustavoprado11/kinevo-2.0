@@ -36,6 +36,14 @@ export default async function NewStudentProgramPage({ params, searchParams }: Pa
         redirect('/students')
     }
 
+    // Get student's current active program (for confirmation dialog)
+    const { data: activeProgram } = await supabase
+        .from('assigned_programs')
+        .select('name')
+        .eq('student_id', studentId)
+        .eq('status', 'active')
+        .maybeSingle()
+
     // Get exercises for the library
     const { data: exercises } = await supabase
         .from('exercises')
@@ -97,7 +105,8 @@ export default async function NewStudentProgramPage({ params, searchParams }: Pa
             exercises={mappedExercises}
             studentContext={{
                 id: student.id,
-                name: student.name
+                name: student.name,
+                activeProgramName: activeProgram?.name || null,
             }}
             initialAssignmentType={isScheduled ? 'scheduled' : 'immediate'}
             prescriptionGenerationId={generationId}

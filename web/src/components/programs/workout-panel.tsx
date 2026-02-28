@@ -38,6 +38,7 @@ interface WorkoutPanelProps {
     onDissolveSuperset: (supersetId: string) => void
     onUpdateFrequency?: (days: string[]) => void
     occupiedDays?: string[]
+    isScrolled?: boolean
 }
 
 // Connector button between workout items
@@ -111,6 +112,7 @@ export function WorkoutPanel({
     onDissolveSuperset,
     onUpdateFrequency,
     occupiedDays = [],
+    isScrolled = false,
 }: WorkoutPanelProps) {
     const [isEditingName, setIsEditingName] = useState(false)
     const [tempName, setTempName] = useState(workout.name)
@@ -161,84 +163,130 @@ export function WorkoutPanel({
         }
     }
 
+    const scheduledDaysCount = (workout.frequency || []).length
+    const totalSets = workout.items.reduce((sum, item) => {
+        if (item.item_type === 'exercise') return sum + (item.sets || 0)
+        if (item.item_type === 'superset' && item.children) {
+            return sum + item.children.reduce((s, c) => s + (c.sets || 0), 0)
+        }
+        return sum
+    }, 0)
+
     return (
         <div className="space-y-6">
-            {/* Workout Header */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    {isEditingName ? (
-                        <input
-                            type="text"
-                            value={tempName}
-                            onChange={(e) => setTempName(e.target.value)}
-                            onBlur={handleNameSave}
-                            onKeyDown={(e) => e.key === 'Enter' && handleNameSave()}
-                            autoFocus
-                            className="px-0 py-1 bg-transparent border-0 border-b border-violet-500 rounded-none text-k-text-primary text-xl font-bold focus:outline-none focus:ring-0 placeholder:text-k-text-quaternary w-auto min-w-[200px]"
-                        />
-                    ) : (
-                        <button
-                            onClick={() => { setTempName(workout.name); setIsEditingName(true) }}
-                            className="text-xl font-bold text-k-text-primary hover:text-violet-400 transition-colors flex items-center gap-2 group"
-                        >
-                            {workout.name}
-                            <svg className="w-4 h-4 text-k-text-quaternary group-hover:text-violet-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                        </button>
-                    )}
-                </div>
-
-                <div className="flex items-center gap-4">
-                    {/* Day Selector */}
-                    <div className="flex items-center gap-1 bg-surface-card p-1 rounded-lg border border-k-border-subtle">
-                        {[
-                            { key: 'sun', label: 'D' },
-                            { key: 'mon', label: 'S' },
-                            { key: 'tue', label: 'T' },
-                            { key: 'wed', label: 'Q' },
-                            { key: 'thu', label: 'Q' },
-                            { key: 'fri', label: 'S' },
-                            { key: 'sat', label: 'S' },
-                        ].map((day) => {
-                            const isSelected = (workout.frequency || []).includes(day.key)
-                            const isOccupied = occupiedDays.includes(day.key)
-
-                            // Determine button styling based on state
-                            let buttonClass = "w-7 h-7 flex items-center justify-center rounded-md text-xs font-bold transition-all border "
-
-                            if (isSelected) {
-                                // Active (selected for this workout)
-                                buttonClass += "bg-violet-600 text-white border-violet-500 shadow-sm"
-                            } else if (isOccupied) {
-                                // Occupied (by another workout)
-                                buttonClass += "bg-glass-bg text-k-text-quaternary border-transparent cursor-not-allowed"
-                            } else {
-                                // Free
-                                buttonClass += "text-k-text-tertiary border-transparent hover:bg-glass-bg-active hover:text-k-text-primary"
-                            }
-
-                            return (
-                                <button
-                                    key={day.key}
-                                    onClick={() => {
-                                        const currentDays = workout.frequency || []
-                                        const newDays = currentDays.includes(day.key)
-                                            ? currentDays.filter(d => d !== day.key)
-                                            : [...currentDays, day.key]
-                                        onUpdateFrequency?.(newDays)
-                                    }}
-                                    className={buttonClass}
-                                    title={isOccupied && !isSelected ? "Outro treino já está agendado para este dia" : day.label}
-                                >
-                                    {day.label}
-                                </button>
-                            )
-                        })}
+            {/* Workout Header — collapses to compact bar on scroll */}
+            <div className={`sticky -top-6 z-10 transition-all duration-300 ${isScrolled ? '-mx-6 px-6 py-2 bg-surface-canvas/95 backdrop-blur-sm border-b border-k-border-subtle' : ''}`}>
+                <div className={`flex items-center justify-between transition-all duration-300 ${isScrolled ? 'gap-4' : ''}`}>
+                    <div className="flex items-center gap-3">
+                        {isEditingName ? (
+                            <input
+                                type="text"
+                                value={tempName}
+                                onChange={(e) => setTempName(e.target.value)}
+                                onBlur={handleNameSave}
+                                onKeyDown={(e) => e.key === 'Enter' && handleNameSave()}
+                                autoFocus
+                                className={`px-0 py-1 bg-transparent border-0 border-b border-violet-500 rounded-none text-k-text-primary font-bold focus:outline-none focus:ring-0 placeholder:text-k-text-quaternary w-auto min-w-[200px] transition-all duration-300 ${isScrolled ? 'text-sm' : 'text-xl'}`}
+                            />
+                        ) : (
+                            <button
+                                onClick={() => { setTempName(workout.name); setIsEditingName(true) }}
+                                className={`font-bold text-k-text-primary hover:text-violet-400 transition-all duration-300 flex items-center gap-2 group ${isScrolled ? 'text-sm' : 'text-xl'}`}
+                            >
+                                {workout.name}
+                                <svg className={`text-k-text-quaternary group-hover:text-violet-400 transition-colors ${isScrolled ? 'w-3 h-3' : 'w-4 h-4'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                            </button>
+                        )}
                     </div>
 
-                    <div className="flex items-center gap-2 text-sm text-k-text-quaternary border-l border-k-border-primary pl-4 h-8">
-                        <span>{workout.items.length} itens</span>
+                    <div className="flex items-center gap-4">
+                        {/* Day Selector — compact summary when scrolled */}
+                        {isScrolled ? (
+                            <div className="flex items-center gap-2 text-xs text-k-text-tertiary">
+                                <span className="font-medium">{scheduledDaysCount > 0 ? `${scheduledDaysCount}x/sem` : 'Sem dias'}</span>
+                                {totalSets > 0 && (
+                                    <>
+                                        <span className="text-k-border-subtle">·</span>
+                                        <span className="font-medium">{totalSets} séries</span>
+                                    </>
+                                )}
+                            </div>
+                        ) : (
+                            <>
+                                <div className="flex flex-col gap-1.5">
+                                    <div className="flex items-center gap-1 bg-surface-card p-1 rounded-lg border border-k-border-subtle">
+                                        {[
+                                            { key: 'sun', label: 'D', name: 'Domingo' },
+                                            { key: 'mon', label: 'S', name: 'Segunda' },
+                                            { key: 'tue', label: 'T', name: 'Terça' },
+                                            { key: 'wed', label: 'Q', name: 'Quarta' },
+                                            { key: 'thu', label: 'Q', name: 'Quinta' },
+                                            { key: 'fri', label: 'S', name: 'Sexta' },
+                                            { key: 'sat', label: 'S', name: 'Sábado' },
+                                        ].map((day) => {
+                                            const isSelected = (workout.frequency || []).includes(day.key)
+                                            const isOccupied = occupiedDays.includes(day.key)
+
+                                            let buttonClass = "w-7 h-7 flex items-center justify-center rounded-md text-xs font-bold transition-all border "
+
+                                            if (isSelected) {
+                                                buttonClass += "bg-violet-600 text-white border-violet-500 shadow-sm"
+                                            } else if (isOccupied) {
+                                                buttonClass += "bg-glass-bg text-k-text-quaternary border-transparent cursor-not-allowed"
+                                            } else {
+                                                buttonClass += "text-k-text-tertiary border-transparent hover:bg-glass-bg-active hover:text-k-text-primary"
+                                            }
+
+                                            return (
+                                                <button
+                                                    key={day.key}
+                                                    onClick={() => {
+                                                        const currentDays = workout.frequency || []
+                                                        const newDays = currentDays.includes(day.key)
+                                                            ? currentDays.filter(d => d !== day.key)
+                                                            : [...currentDays, day.key]
+                                                        onUpdateFrequency?.(newDays)
+                                                    }}
+                                                    className={buttonClass}
+                                                    title={isOccupied && !isSelected ? "Outro treino já está agendado para este dia" : day.name}
+                                                >
+                                                    {day.label}
+                                                </button>
+                                            )
+                                        })}
+                                    </div>
+                                    {(() => {
+                                        const dayMap = [
+                                            { key: 'sun', name: 'Domingo' },
+                                            { key: 'mon', name: 'Segunda' },
+                                            { key: 'tue', name: 'Terça' },
+                                            { key: 'wed', name: 'Quarta' },
+                                            { key: 'thu', name: 'Quinta' },
+                                            { key: 'fri', name: 'Sexta' },
+                                            { key: 'sat', name: 'Sábado' },
+                                        ]
+                                        const selected = dayMap.filter(d => (workout.frequency || []).includes(d.key))
+                                        return selected.length > 0 ? (
+                                            <p className="text-[10px] text-k-text-tertiary">
+                                                No app do aluno em: <span className="text-k-text-secondary">{selected.map(d => d.name).join(', ')}</span>
+                                            </p>
+                                        ) : (
+                                            <p className="text-[10px] text-k-text-tertiary">
+                                                Selecione os dias de treino do aluno
+                                            </p>
+                                        )
+                                    })()}
+                                </div>
+
+                                {totalSets > 0 && (
+                                    <div className="flex items-center gap-2 text-sm text-k-text-tertiary border-l border-k-border-primary pl-4 h-8">
+                                        <span className="font-medium">{totalSets} séries</span>
+                                    </div>
+                                )}
+                            </>
+                        )}
                     </div>
                 </div>
             </div>

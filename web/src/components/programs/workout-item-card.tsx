@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import type { WorkoutItem } from './program-builder-client'
 import type { Exercise } from '@/types/exercise'
 
@@ -24,9 +24,8 @@ interface WorkoutItemCardProps {
     dragHandleProps?: any // Passed from Sortable wrapper
 }
 
-import { GripVertical, Trash2, MessageSquare, Repeat, Check } from 'lucide-react'
-
-// ... existing imports ...
+import { GripVertical, Trash2, MessageSquare, Repeat, Check, PlayCircle, ArrowLeftRight, Search, X, Pencil } from 'lucide-react'
+import { FloatingExercisePlayer } from '@/components/exercises/floating-exercise-player'
 
 export function WorkoutItemCard({
     item,
@@ -53,7 +52,7 @@ export function WorkoutItemCard({
                 {/* Drag Handle */}
                 <div
                     {...dragHandleProps}
-                    className="mt-1 text-k-border-subtle hover:text-k-text-tertiary cursor-grab active:cursor-grabbing touch-none transition-colors"
+                    className="mt-1 text-k-text-quaternary hover:text-k-text-secondary cursor-grab active:cursor-grabbing touch-none transition-colors"
                 >
                     <GripVertical className="w-4 h-4" />
                 </div>
@@ -87,7 +86,7 @@ export function WorkoutItemCard({
                 {/* Header */}
                 <div className="flex items-center justify-between mb-4 pl-3">
                     <div className="flex items-center gap-3">
-                        <div {...dragHandleProps} className="text-k-border-subtle hover:text-k-text-tertiary cursor-grab active:cursor-grabbing touch-none">
+                        <div {...dragHandleProps} className="text-k-text-quaternary hover:text-k-text-secondary cursor-grab active:cursor-grabbing touch-none">
                             <GripVertical className="w-4 h-4" />
                         </div>
                         <div className="flex items-center gap-2">
@@ -100,7 +99,7 @@ export function WorkoutItemCard({
 
                     <div className="flex items-center gap-4">
                         <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-bold text-k-text-quaternary uppercase tracking-wider">Descanso</span>
+                            <span className="text-[10px] font-bold text-k-text-tertiary uppercase tracking-wider">Descanso</span>
                             <input
                                 type="number"
                                 value={item.rest_seconds || ''}
@@ -108,7 +107,7 @@ export function WorkoutItemCard({
                                 placeholder="0"
                                 className="w-8 bg-transparent text-k-text-primary text-xs font-medium text-center focus:outline-none focus:text-violet-400 transition-colors placeholder:text-k-border-subtle"
                             />
-                            <span className="text-[10px] text-k-text-quaternary">s</span>
+                            <span className="text-[10px] text-k-text-tertiary">s</span>
                         </div>
 
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -166,15 +165,132 @@ function ExerciseItemCard({
     onDelete: () => void
     dragHandleProps?: any
 }) {
-    const [showNotes, setShowNotes] = useState(!!item.notes)
+    const [showVideo, setShowVideo] = useState(false)
+    const [videoExercise, setVideoExercise] = useState<Exercise | null>(null)
+    const [isSwapping, setIsSwapping] = useState(false)
+    const [swapQuery, setSwapQuery] = useState('')
+    const swapInputRef = useRef<HTMLInputElement>(null)
+
+    // Swap: filter exercises by query, prioritize same muscle group
+    const currentGroups = new Set((item.exercise?.muscle_groups || []).map(g => g.name.toLowerCase()))
+    const swapCandidates = exercises
+        .filter(ex => ex.id !== item.exercise_id)
+        .filter(ex => {
+            if (!swapQuery.trim()) return true
+            const q = swapQuery.toLowerCase()
+            return ex.name.toLowerCase().includes(q) ||
+                (ex.muscle_groups || []).some(g => g.name.toLowerCase().includes(q))
+        })
+        .sort((a, b) => {
+            const aOverlap = (a.muscle_groups || []).some(g => currentGroups.has(g.name.toLowerCase())) ? 1 : 0
+            const bOverlap = (b.muscle_groups || []).some(g => currentGroups.has(g.name.toLowerCase())) ? 1 : 0
+            if (aOverlap !== bOverlap) return bOverlap - aOverlap
+            return a.name.localeCompare(b.name)
+        })
+        .slice(0, 8)
+
+    const confirmSwap = (newExercise: Exercise) => {
+        onUpdate({
+            exercise_id: newExercise.id,
+            exercise: newExercise,
+        })
+        setIsSwapping(false)
+        setSwapQuery('')
+    }
+
+    const startSwap = () => {
+        setIsSwapping(true)
+        setSwapQuery('')
+        setTimeout(() => swapInputRef.current?.focus(), 50)
+    }
+
+    if (isSwapping) {
+        return (
+            <>
+            <div className="bg-surface-card rounded-xl border border-violet-500/30 p-4 relative transition-all">
+                <div className="flex items-center gap-3 mb-3">
+                    <Search className="w-4 h-4 text-k-text-quaternary shrink-0" />
+                    <input
+                        ref={swapInputRef}
+                        type="text"
+                        value={swapQuery}
+                        onChange={(e) => setSwapQuery(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Escape' && setIsSwapping(false)}
+                        placeholder="Buscar exercício para substituir..."
+                        className="flex-1 bg-transparent text-sm text-k-text-primary placeholder:text-k-text-quaternary focus:outline-none"
+                    />
+                    <button
+                        onClick={() => setIsSwapping(false)}
+                        className="text-k-text-quaternary hover:text-k-text-primary transition-colors shrink-0"
+                    >
+                        <X className="w-4 h-4" />
+                    </button>
+                </div>
+
+                <div className="max-h-52 overflow-y-auto space-y-1 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+                    {swapCandidates.length === 0 ? (
+                        <p className="text-center text-xs text-k-text-quaternary py-4">Nenhum exercício encontrado</p>
+                    ) : (
+                        swapCandidates.map(ex => (
+                            <div
+                                key={ex.id}
+                                className="flex items-center gap-1 rounded-lg hover:bg-violet-500/10 transition-colors group/swap"
+                            >
+                                <button
+                                    onClick={() => confirmSwap(ex)}
+                                    className="flex-1 flex items-center justify-between px-3 py-2 text-left min-w-0"
+                                >
+                                    <span className="text-xs font-medium text-k-text-secondary group-hover/swap:text-k-text-primary truncate">
+                                        {ex.name}
+                                    </span>
+                                    <div className="flex gap-1 shrink-0 ml-2">
+                                        {(ex.muscle_groups || []).slice(0, 2).map(g => (
+                                            <span key={g.id || g.name} className="text-[9px] text-k-text-quaternary bg-glass-bg px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">
+                                                {g.name}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </button>
+                                {ex.video_url && (
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation()
+                                            setVideoExercise(ex)
+                                            setShowVideo(true)
+                                        }}
+                                        className="p-1.5 text-k-text-quaternary hover:text-violet-400 transition-colors shrink-0 mr-1"
+                                        title="Ver vídeo demonstrativo"
+                                    >
+                                        <PlayCircle className="w-3.5 h-3.5" />
+                                    </button>
+                                )}
+                            </div>
+                        ))
+                    )}
+                </div>
+
+                <div className="mt-3 pt-2 border-t border-k-border-subtle text-[10px] text-k-text-quaternary">
+                    Mantendo: {item.sets || 0} séries × {item.reps || '0'} reps, {item.rest_seconds || 0}s descanso
+                </div>
+            </div>
+            <FloatingExercisePlayer
+                isOpen={showVideo}
+                onClose={() => { setShowVideo(false); setVideoExercise(null) }}
+                videoUrl={videoExercise?.video_url || null}
+                title={videoExercise?.name || ''}
+            />
+            </>
+        )
+    }
 
     return (
+        <>
         <div className="bg-surface-card rounded-xl border border-k-border-subtle p-4 group relative transition-all hover:border-k-border-primary">
             <div className="flex items-start gap-3">
                 {/* Drag Handle */}
                 <div
                     {...dragHandleProps}
-                    className="mt-1 text-k-border-subtle hover:text-k-text-tertiary cursor-grab active:cursor-grabbing touch-none transition-colors"
+                    className="mt-1 text-k-text-quaternary hover:text-k-text-secondary cursor-grab active:cursor-grabbing touch-none transition-colors"
                 >
                     <GripVertical className="w-4 h-4" />
                 </div>
@@ -187,20 +303,30 @@ function ExerciseItemCard({
                             <span className="text-sm font-bold text-k-text-primary truncate">
                                 {item.exercise?.name || 'Exercício sem nome'}
                             </span>
-                            {item.exercise?.muscle_groups?.[0] && (
-                                <span className="text-[9px] font-bold uppercase tracking-wider text-k-text-quaternary bg-glass-bg px-1.5 py-0.5 rounded border border-k-border-subtle whitespace-nowrap">
-                                    {item.exercise.muscle_groups[0].name}
-                                </span>
+                            {item.exercise?.video_url && (
+                                <button
+                                    onClick={() => { setVideoExercise(item.exercise!); setShowVideo(true) }}
+                                    className="text-k-text-quaternary hover:text-violet-400 transition-colors shrink-0"
+                                    title="Ver vídeo demonstrativo"
+                                >
+                                    <PlayCircle className="w-4 h-4" />
+                                </button>
                             )}
+                            {item.exercise?.muscle_groups?.map(g => (
+                                <span key={g.id || g.name} className="text-[9px] font-bold uppercase tracking-wider text-k-text-tertiary bg-glass-bg px-1.5 py-0.5 rounded border border-k-border-subtle whitespace-nowrap">
+                                    {g.name}
+                                </span>
+                            ))}
                         </div>
 
                         {/* Hover Actions */}
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button
-                                onClick={() => setShowNotes(!showNotes)}
-                                className={`p-1.5 rounded-md transition-colors ${showNotes ? 'text-violet-400 bg-violet-400/10' : 'text-k-text-quaternary hover:text-k-text-primary hover:bg-glass-bg'}`}
+                                onClick={startSwap}
+                                className="p-1.5 rounded-md text-k-text-quaternary hover:text-violet-400 hover:bg-violet-400/10 transition-colors"
+                                title="Trocar exercício"
                             >
-                                <MessageSquare className="w-3.5 h-3.5" />
+                                <ArrowLeftRight className="w-3.5 h-3.5" />
                             </button>
                             <button
                                 onClick={onDelete}
@@ -215,11 +341,14 @@ function ExerciseItemCard({
                     <div className="flex items-center gap-6">
                         {/* Sets */}
                         <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-bold text-k-text-quaternary uppercase tracking-wider">Séries</span>
+                            <span className="text-[10px] font-bold text-k-text-tertiary uppercase tracking-wider">Séries</span>
                             <input
                                 type="number"
+                                min={1}
+                                step={1}
                                 value={item.sets || ''}
                                 onChange={(e) => onUpdate({ sets: parseInt(e.target.value) || null })}
+                                onFocus={(e) => e.target.select()}
                                 placeholder="0"
                                 className="w-8 bg-transparent text-k-text-primary text-sm font-medium text-center focus:outline-none focus:text-violet-400 transition-colors placeholder:text-k-border-subtle border-b border-transparent focus:border-violet-500/50 p-0"
                             />
@@ -227,11 +356,12 @@ function ExerciseItemCard({
 
                         {/* Reps */}
                         <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-bold text-k-text-quaternary uppercase tracking-wider">Reps</span>
+                            <span className="text-[10px] font-bold text-k-text-tertiary uppercase tracking-wider">Reps</span>
                             <input
                                 type="text"
                                 value={item.reps || ''}
                                 onChange={(e) => onUpdate({ reps: e.target.value || null })}
+                                onFocus={(e) => e.target.select()}
                                 placeholder="0"
                                 className="w-12 bg-transparent text-k-text-primary text-sm font-medium text-center focus:outline-none focus:text-violet-400 transition-colors placeholder:text-k-border-subtle border-b border-transparent focus:border-violet-500/50 p-0"
                             />
@@ -239,32 +369,28 @@ function ExerciseItemCard({
 
                         {/* Rest */}
                         <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-bold text-k-text-quaternary uppercase tracking-wider">Descanso</span>
+                            <span className="text-[10px] font-bold text-k-text-tertiary uppercase tracking-wider">Descanso</span>
                             <div className="relative">
                                 <input
                                     type="number"
+                                    min={0}
+                                    step={15}
                                     value={item.rest_seconds || ''}
                                     onChange={(e) => onUpdate({ rest_seconds: parseInt(e.target.value) || null })}
+                                    onFocus={(e) => e.target.select()}
                                     placeholder="0"
                                     className="w-10 bg-transparent text-k-text-primary text-sm font-medium text-center focus:outline-none focus:text-violet-400 transition-colors placeholder:text-k-border-subtle border-b border-transparent focus:border-violet-500/50 p-0"
                                 />
-                                <span className="absolute -right-2 top-0.5 text-[9px] text-k-text-quaternary pointer-events-none">s</span>
+                                <span className="absolute -right-2 top-0.5 text-[9px] text-k-text-tertiary pointer-events-none">s</span>
                             </div>
                         </div>
                     </div>
 
-                    {/* Notes (Conditional) */}
-                    {showNotes && (
-                        <div className="mt-3 pt-2 border-t border-k-border-subtle animate-in fade-in slide-in-from-top-1">
-                            <textarea
-                                value={item.notes || ''}
-                                onChange={(e) => onUpdate({ notes: e.target.value })}
-                                placeholder="Nota técnica..."
-                                rows={1}
-                                className="w-full bg-transparent text-xs text-k-text-secondary placeholder:text-k-border-subtle focus:outline-none focus:text-k-text-primary resize-none"
-                            />
-                        </div>
-                    )}
+                    {/* Technical Note */}
+                    <TechnicalNote
+                        value={item.notes || ''}
+                        onChange={(v) => onUpdate({ notes: v })}
+                    />
 
                     <SubstituteSelector
                         item={item}
@@ -274,6 +400,14 @@ function ExerciseItemCard({
                 </div>
             </div>
         </div>
+
+        <FloatingExercisePlayer
+            isOpen={showVideo}
+            onClose={() => { setShowVideo(false); setVideoExercise(null) }}
+            videoUrl={videoExercise?.video_url || null}
+            title={videoExercise?.name || ''}
+        />
+        </>
     )
 }
 
@@ -312,21 +446,25 @@ function SupersetChildCard({
 
                     <div className="flex items-center gap-4">
                         <div className="flex items-center gap-2">
-                            <span className="text-[9px] font-bold text-k-text-quaternary uppercase">Sets</span>
+                            <span className="text-[9px] font-bold text-k-text-tertiary uppercase">Sets</span>
                             <input
                                 type="number"
+                                min={1}
+                                step={1}
                                 value={item.sets || ''}
                                 onChange={(e) => onUpdate({ sets: parseInt(e.target.value) || null })}
+                                onFocus={(e) => e.target.select()}
                                 placeholder="0"
                                 className="w-6 bg-transparent text-k-text-primary text-xs font-medium text-center focus:outline-none focus:text-violet-400 border-b border-transparent focus:border-violet-500/50 p-0"
                             />
                         </div>
                         <div className="flex items-center gap-2">
-                            <span className="text-[9px] font-bold text-k-text-quaternary uppercase">Reps</span>
+                            <span className="text-[9px] font-bold text-k-text-tertiary uppercase">Reps</span>
                             <input
                                 type="text"
                                 value={item.reps || ''}
                                 onChange={(e) => onUpdate({ reps: e.target.value || null })}
+                                onFocus={(e) => e.target.select()}
                                 placeholder="0"
                                 className="w-8 bg-transparent text-k-text-primary text-xs font-medium text-center focus:outline-none focus:text-violet-400 border-b border-transparent focus:border-violet-500/50 p-0"
                             />
@@ -334,6 +472,69 @@ function SupersetChildCard({
                     </div>
                 </div>
             </div>
+        </div>
+    )
+}
+
+function TechnicalNote({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+    const [editing, setEditing] = useState(false)
+    const [local, setLocal] = useState(value)
+    const inputRef = useRef<HTMLInputElement>(null)
+
+    const commit = () => {
+        setEditing(false)
+        onChange(local)
+    }
+
+    const startEditing = () => {
+        setLocal(value)
+        setEditing(true)
+        setTimeout(() => {
+            inputRef.current?.focus()
+            inputRef.current?.select()
+        }, 30)
+    }
+
+    if (editing) {
+        return (
+            <div className="mt-2 flex items-center gap-2 py-1.5">
+                <MessageSquare size={14} className="text-violet-400 shrink-0" />
+                <input
+                    ref={inputRef}
+                    value={local}
+                    onChange={e => setLocal(e.target.value)}
+                    onBlur={commit}
+                    onKeyDown={e => {
+                        if (e.key === 'Enter') commit()
+                        if (e.key === 'Escape') { setLocal(value); setEditing(false) }
+                    }}
+                    placeholder="Ex: Manter lombar neutra, descer até 90°..."
+                    className="bg-transparent text-k-text-secondary text-xs outline-none flex-1 border-b border-violet-400 placeholder:text-k-text-quaternary pb-0.5"
+                />
+            </div>
+        )
+    }
+
+    if (value) {
+        return (
+            <div
+                onClick={startEditing}
+                className="mt-2 flex items-center gap-2 py-1.5 px-2 -mx-2 rounded-lg bg-violet-500/5 border-l-2 border-violet-500/40 cursor-pointer hover:bg-violet-500/10 transition-colors group/note"
+            >
+                <MessageSquare size={14} className="text-violet-400/70 shrink-0" />
+                <span className="text-k-text-secondary text-xs flex-1">{value}</span>
+                <Pencil size={12} className="text-k-text-quaternary opacity-0 group-hover/note:opacity-100 transition-opacity shrink-0" />
+            </div>
+        )
+    }
+
+    return (
+        <div
+            onClick={startEditing}
+            className="mt-2 flex items-center gap-2 py-1.5 cursor-pointer text-k-text-quaternary hover:text-k-text-tertiary transition-colors group/note"
+        >
+            <MessageSquare size={14} className="shrink-0 group-hover/note:text-violet-400/50" />
+            <span className="text-xs">Adicionar nota técnica...</span>
         </div>
     )
 }
@@ -397,8 +598,8 @@ function SubstituteSelector({
                 onClick={() => setIsOpen(!isOpen)}
                 className="flex items-center gap-2 text-[10px] font-semibold transition-colors group select-none"
             >
-                <Repeat className={`w-3 h-3 ${isOpen ? 'text-violet-400' : 'text-k-text-quaternary group-hover:text-k-text-primary'}`} />
-                <span className={isOpen || selectedCount > 0 ? 'text-violet-400' : 'text-k-text-quaternary group-hover:text-k-text-secondary'}>
+                <Repeat className={`w-3 h-3 ${isOpen ? 'text-violet-400' : 'text-k-text-tertiary group-hover:text-k-text-primary'}`} />
+                <span className={isOpen || selectedCount > 0 ? 'text-violet-400' : 'text-k-text-tertiary group-hover:text-k-text-secondary'}>
                     {selectedCount > 0 ? `Substituições (${selectedCount})` : 'Substituições (nenhuma)'}
                 </span>
             </button>
