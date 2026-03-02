@@ -58,6 +58,12 @@ function startOfDay(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate())
 }
 
+/** Strip time from a Date in a specific timezone, returning midnight for that calendar day. */
+function startOfDayTz(d: Date, timeZone: string): Date {
+  const dateKey = d.toLocaleDateString('en-CA', { timeZone }) // YYYY-MM-DD
+  return new Date(dateKey + 'T00:00:00')
+}
+
 /** Format date as YYYY-MM-DD (local time). */
 export function toDateKey(d: Date): string {
   const y = d.getFullYear()
@@ -158,9 +164,11 @@ export function generateCalendarDays(
   const end = startOfDay(rangeEnd)
 
   // Index sessions by date key for O(1) lookup
+  // Use completed_at when available (canonical "when workout happened"), fallback to started_at
   const sessionsByDate = new Map<string, SessionRef[]>()
   for (const s of sessions) {
-    const key = toDateKey(new Date(s.started_at))
+    const dateSource = s.completed_at ?? s.started_at
+    const key = toDateKey(new Date(dateSource))
     const arr = sessionsByDate.get(key) || []
     arr.push(s)
     sessionsByDate.set(key, arr)
@@ -224,9 +232,9 @@ export function generateCalendarDays(
 // Week / Month Navigation
 // ---------------------------------------------------------------------------
 
-/** Get the Sunday–Saturday range containing `date`. */
-export function getWeekRange(date: Date): DateRange {
-  const d = startOfDay(date)
+/** Get the Sunday–Saturday range containing `date`. Optionally timezone-aware. */
+export function getWeekRange(date: Date, timeZone?: string): DateRange {
+  const d = timeZone ? startOfDayTz(date, timeZone) : startOfDay(date)
   const start = addDays(d, -d.getDay()) // Sunday
   const end = addDays(start, 6) // Saturday
   return { start, end }

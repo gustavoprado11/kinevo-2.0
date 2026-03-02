@@ -173,13 +173,14 @@ export async function finishWorkoutFromWatch(
 
   console.log(`[finishWorkoutFromWatch] Step 4: Workout "${workout.name}"`);
 
-  // 5. Parse timestamps
+  // 5. Parse timestamps — use Watch's actual startedAt when available
   const now = new Date();
-  const parsedStartedAt = startedAt ? new Date(startedAt) : now;
-  const durationSeconds = Math.max(
-    0,
-    Math.floor((now.getTime() - parsedStartedAt.getTime()) / 1000)
-  );
+  const parsedStartedAt = startedAt ? new Date(startedAt) : null;
+  const rawDuration = parsedStartedAt
+    ? Math.max(0, Math.floor((now.getTime() - parsedStartedAt.getTime()) / 1000))
+    : null;
+  // Safety cap: >6h (21600s) = likely stale timestamp, discard
+  const safeDuration = (rawDuration !== null && rawDuration <= 21600) ? rawDuration : null;
 
   // 6. Find existing session OR reuse recently completed OR create new
   let sessionId: string;
@@ -204,8 +205,10 @@ export async function finishWorkoutFromWatch(
       .from('workout_sessions' as any)
       .update({
         status: 'completed',
+        // Correct started_at with Watch's actual start time (fixes stale pre-created timestamp)
+        ...(parsedStartedAt ? { started_at: parsedStartedAt.toISOString() } : {}),
         completed_at: now.toISOString(),
-        duration_seconds: durationSeconds > 0 ? durationSeconds : null,
+        duration_seconds: safeDuration,
         rpe: rpe || null,
       })
       .eq('id', sessionId);
@@ -244,9 +247,9 @@ export async function finishWorkoutFromWatch(
             assigned_workout_id: workoutId,
             assigned_program_id: workout.assigned_program_id,
             status: 'completed',
-            started_at: parsedStartedAt.toISOString(),
+            started_at: (parsedStartedAt ?? now).toISOString(),
             completed_at: now.toISOString(),
-            duration_seconds: durationSeconds > 0 ? durationSeconds : null,
+            duration_seconds: safeDuration,
             sync_status: 'synced',
             rpe: rpe || null,
             feedback: null,

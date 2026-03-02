@@ -81,22 +81,22 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
         })
     )
 
-    // Get workout sessions summary
+    // Get workout sessions summary — use completed_at as canonical timestamp
     const { data: sessions } = await supabase
         .from('workout_sessions')
-        .select('id, started_at, status')
+        .select('id, completed_at, status')
         .eq('student_id', id)
         .eq('status', 'completed')
-        .order('started_at', { ascending: false })
+        .order('completed_at', { ascending: false })
 
     // Calculate summary
     const totalSessions = sessions?.length || 0
-    const lastSessionDate = sessions?.[0]?.started_at || null
+    const lastSessionDate = sessions?.[0]?.completed_at || null
 
-    // Calculate sessions this week (Sunday–Saturday)
-    const currentWeekRange = getWeekRange(new Date())
+    // Calculate sessions this week (Sunday–Saturday) in São Paulo timezone
+    const currentWeekRange = getWeekRange(new Date(), 'America/Sao_Paulo')
     const completedThisWeek = sessions?.filter(s => {
-        const d = new Date(s.started_at)
+        const d = new Date(s.completed_at)
         return d >= currentWeekRange.start && d <= currentWeekRange.end
     }).length || 0
 
@@ -118,7 +118,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
             .select('id, assigned_workout_id, started_at, completed_at, status')
             .eq('assigned_program_id', activeProgram.id)
             .eq('status', 'completed')
-            .order('started_at', { ascending: false })
+            .order('completed_at', { ascending: false })
 
         if (programSessions && programSessions.length > 0) {
             const today = new Date()
@@ -201,14 +201,14 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
     // Get sessions for the current week (Sun–Sat) for the calendar
     let calendarInitialSessions: { id: string; assigned_workout_id: string; started_at: string; completed_at: string | null; status: string; rpe: number | null }[] = []
     if (activeProgram) {
-        const weekRange = getWeekRange(new Date())
+        const weekRange = getWeekRange(new Date(), 'America/Sao_Paulo')
         const { data: weekSessions } = await supabase
             .from('workout_sessions')
             .select('id, assigned_workout_id, started_at, completed_at, status, rpe')
             .eq('assigned_program_id', activeProgram.id)
-            .gte('started_at', weekRange.start.toISOString())
-            .lte('started_at', weekRange.end.toISOString())
-            .order('started_at', { ascending: false })
+            .gte('completed_at', weekRange.start.toISOString())
+            .lte('completed_at', weekRange.end.toISOString())
+            .order('completed_at', { ascending: false })
 
         calendarInitialSessions = (weekSessions || []) as any
     }

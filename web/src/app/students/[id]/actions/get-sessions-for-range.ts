@@ -29,9 +29,9 @@ export async function getSessionsForRange(
             .from('workout_sessions')
             .select('id, assigned_workout_id, started_at, completed_at, status, rpe')
             .eq('assigned_program_id', programId)
-            .gte('started_at', rangeStart)
-            .lte('started_at', rangeEnd)
-            .order('started_at', { ascending: false })
+            .gte('completed_at', rangeStart)
+            .lte('completed_at', rangeEnd)
+            .order('completed_at', { ascending: false })
 
         if (error) throw error
 

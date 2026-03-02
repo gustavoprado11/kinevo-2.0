@@ -29,23 +29,24 @@ export default async function StudentsPage() {
         .eq('status', 'active')
 
     // All completed sessions for these students (for last session + this week count)
+    // Use completed_at as canonical "when workout happened" timestamp
     const { data: allSessions } = await supabase
         .from('workout_sessions')
-        .select('student_id, started_at')
+        .select('student_id, completed_at')
         .in('student_id', studentIds)
         .eq('status', 'completed')
-        .order('started_at', { ascending: false })
+        .order('completed_at', { ascending: false })
 
     // Build session stats per student
-    const weekRange = getWeekRange(new Date())
+    const weekRange = getWeekRange(new Date(), 'America/Sao_Paulo')
     const sessionStats = new Map<string, { lastSession: string | null; thisWeekCount: number }>()
 
     for (const session of allSessions || []) {
         const existing = sessionStats.get(session.student_id)
-        const inThisWeek = new Date(session.started_at) >= weekRange.start && new Date(session.started_at) <= weekRange.end
+        const inThisWeek = new Date(session.completed_at) >= weekRange.start && new Date(session.completed_at) <= weekRange.end
         if (!existing) {
             sessionStats.set(session.student_id, {
-                lastSession: session.started_at,
+                lastSession: session.completed_at,
                 thisWeekCount: inThisWeek ? 1 : 0
             })
         } else {

@@ -634,6 +634,7 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                     .from('workout_sessions' as any)
                     .update({
                         status: 'completed',
+                        started_at: new Date(startTime).toISOString(), // Correct to actual workout start
                         completed_at: now,
                         duration_seconds: durationSeconds,
                         rpe: rpe || null,

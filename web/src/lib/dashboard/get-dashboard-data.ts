@@ -100,7 +100,7 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
     const supabase = await createClient()
     const today = new Date()
     const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-    const weekRange = getWeekRange(today)
+    const weekRange = getWeekRange(today, 'America/Sao_Paulo')
 
     // 8 parallel queries
     const [
@@ -156,14 +156,14 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
             .eq('trainer_id', trainerId)
             .eq('status', 'active'),
 
-        // 6. Completed sessions this week
+        // 6. Completed sessions this week — use completed_at as canonical timestamp
         supabaseAdmin
             .from('workout_sessions')
-            .select('id, student_id, started_at')
+            .select('id, student_id, completed_at')
             .eq('trainer_id', trainerId)
             .eq('status', 'completed')
-            .gte('started_at', weekRange.start.toISOString())
-            .lte('started_at', weekRange.end.toISOString()),
+            .gte('completed_at', weekRange.start.toISOString())
+            .lte('completed_at', weekRange.end.toISOString()),
 
         // 7. Today's completed sessions (daily activity)
         supabase
@@ -178,13 +178,13 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
             .eq('trainer_id', trainerId)
             .order('completed_at', { ascending: false }),
 
-        // 8. All completed sessions (for inactivity detection)
+        // 8. All completed sessions (for inactivity detection) — use completed_at
         supabaseAdmin
             .from('workout_sessions')
-            .select('student_id, started_at')
+            .select('student_id, completed_at')
             .eq('trainer_id', trainerId)
             .eq('status', 'completed')
-            .order('started_at', { ascending: false }),
+            .order('completed_at', { ascending: false }),
     ])
 
     const students = studentsResult.data ?? []
@@ -202,7 +202,7 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
     // Sessions per day of week (sparkline data: [Sun, Mon, ..., Sat])
     const sessionsPerDay = [0, 0, 0, 0, 0, 0, 0]
     for (const s of weekSessions) {
-        const day = new Date(s.started_at).getDay()
+        const day = new Date(s.completed_at).getDay()
         sessionsPerDay[day]++
     }
 
@@ -228,7 +228,7 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
     const lastSessionByStudent = new Map<string, Date>()
     for (const s of allSessions) {
         if (!lastSessionByStudent.has(s.student_id)) {
-            lastSessionByStudent.set(s.student_id, new Date(s.started_at))
+            lastSessionByStudent.set(s.student_id, new Date(s.completed_at))
         }
     }
 

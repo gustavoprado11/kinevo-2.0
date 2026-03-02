@@ -188,6 +188,36 @@ function WatchBridge() {
         return () => console.log('[WatchBridge] 💀 UNMOUNTED');
     }, []);
 
+    // Cleanup stale in_progress sessions (>24h old → abandoned)
+    React.useEffect(() => {
+        async function cleanupStaleSessions() {
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) return;
+                const { data: student }: { data: any } = await supabase
+                    .from('students')
+                    .select('id')
+                    .eq('auth_user_id', user.id)
+                    .maybeSingle();
+                if (!student) return;
+                const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+                const { data: stale } = await supabase
+                    .from('workout_sessions')
+                    .update({ status: 'abandoned' })
+                    .eq('student_id', student.id)
+                    .eq('status', 'in_progress')
+                    .lt('started_at', cutoff)
+                    .select('id');
+                if (stale && stale.length > 0) {
+                    console.log(`[WatchBridge] Cleaned up ${stale.length} stale in_progress session(s)`);
+                }
+            } catch (e: any) {
+                console.warn(`[WatchBridge] Stale session cleanup failed: ${e?.message}`);
+            }
+        }
+        cleanupStaleSessions();
+    }, []);
+
     // Process any workouts queued in SecureStore (from previous failed auth attempts).
     // Immediate attempt + delayed retry (auth may still be loading on cold start).
     React.useEffect(() => {
