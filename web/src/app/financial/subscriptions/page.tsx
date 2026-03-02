@@ -10,6 +10,12 @@ export default async function SubscriptionsPage() {
     // Sync lazy: mark manual contracts overdue past grace period
     await syncManualOverdue(trainer.id)
 
+    // Mark financial attention as seen (clears sidebar badge)
+    await supabaseAdmin
+        .from('trainers')
+        .update({ financial_attention_seen_at: new Date().toISOString() })
+        .eq('id', trainer.id)
+
     // Load students via RPC (student-centered model)
     const { data: financialStudents, error: rpcError } = await supabaseAdmin
         .rpc('get_financial_students', { p_trainer_id: trainer.id })

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { CheckCircle2, AlertCircle, ExternalLink, Loader2, Wallet, Clock, ArrowUpRight } from 'lucide-react'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 
 interface ConnectStatusCardProps {
     connected: boolean
@@ -72,14 +73,21 @@ export function ConnectStatusCard({
 
     const handleOpenDashboard = async () => {
         setDashboardLoading(true)
+        // Open blank window synchronously (user gesture) to avoid popup blocker
+        const win = window.open('about:blank', '_blank')
         try {
             const res = await fetch('/api/stripe/connect/dashboard', { method: 'POST' })
             const data = await res.json()
-            if (data.url) {
-                window.open(data.url, '_blank')
+            if (data.url && win) {
+                win.location.href = data.url
+            } else if (data.url) {
+                // Fallback if popup was still blocked
+                window.location.href = data.url
+            } else {
+                win?.close()
             }
         } catch {
-            // silently fail
+            win?.close()
         } finally {
             setDashboardLoading(false)
         }
@@ -165,11 +173,13 @@ export function ConnectStatusCard({
                             <span className="flex items-center gap-1">
                                 <Wallet size={12} className="text-emerald-400" />
                                 {formatBalance(balance.available)}
+                                <InfoTooltip content="Saldo disponível para transferência na sua conta Stripe." />
                             </span>
                             {balance.pending > 0 && (
                                 <span className="flex items-center gap-1">
                                     <Clock size={12} className="text-amber-400" />
                                     {formatCurrency(balance.pending)} pendente
+                                    <InfoTooltip content="Valor em processamento pelo Stripe. Ficará disponível para transferência em alguns dias." />
                                 </span>
                             )}
                         </div>

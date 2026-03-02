@@ -12,6 +12,12 @@ export default async function FinancialPage() {
     // Sync lazy: mark manual contracts overdue past grace period
     await syncManualOverdue(trainer.id)
 
+    // Mark financial attention as seen (clears sidebar badge)
+    await supabaseAdmin
+        .from('trainers')
+        .update({ financial_attention_seen_at: new Date().toISOString() })
+        .eq('id', trainer.id)
+
     // Fetch payment settings (Connect status)
     const { data: paymentSettings } = await supabaseAdmin
         .from('payment_settings')

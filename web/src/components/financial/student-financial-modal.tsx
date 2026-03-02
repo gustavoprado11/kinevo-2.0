@@ -356,6 +356,7 @@ export function StudentFinancialModal({
                                     {s.current_period_end && s.display_status !== 'canceling' && (
                                         <p className="text-xs text-k-text-quaternary mt-1">
                                             Vencimento: {formatDate(s.current_period_end)}
+                                            {s.billing_type === 'stripe_auto' && ' · Cobrança automática'}
                                         </p>
                                     )}
                                 </div>
@@ -491,6 +492,9 @@ export function StudentFinancialModal({
                                     <p className="text-xs text-k-text-secondary">
                                         O acesso permanecerá ativo até {formatDate(s.current_period_end)}.
                                     </p>
+                                    <p className="text-[11px] text-k-text-quaternary mt-2 leading-relaxed">
+                                        Isso é normal — o acesso continua até a data acima. Após essa data, o aluno volta para cortesia e você pode reconfigurar se quiser.
+                                    </p>
                                 </div>
                             )}
 
@@ -566,6 +570,9 @@ export function StudentFinancialModal({
                                             </p>
                                             <p className="text-xs text-k-text-secondary mt-0.5">
                                                 Bloquear acesso se inadimplente
+                                            </p>
+                                            <p className="text-[11px] text-k-text-quaternary mt-1 leading-relaxed">
+                                                Se ativado, o aluno perde acesso aos treinos no app após 3 dias de atraso. Você pode desativar a qualquer momento.
                                             </p>
                                         </div>
                                         <button

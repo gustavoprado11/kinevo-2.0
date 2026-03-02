@@ -12,8 +12,10 @@ import Link from 'next/link'
 import { AppLayout } from '@/components/layout'
 import { ConnectStatusCard } from '@/components/financial/connect-status-card'
 import { FinancialOnboarding } from '@/components/financial/financial-onboarding'
+import { FinancialOnboardingModal } from '@/components/financial/financial-onboarding-modal'
 import { EmptyState } from '@/components/financial/empty-state'
 import { NewSubscriptionModal } from '@/components/financial/new-subscription-modal'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 import type { FinancialStudent, DisplayStatus } from '@/types/financial'
 
 interface Trainer {
@@ -245,6 +247,7 @@ export function FinancialDashboardClient({
                     <div className="flex items-center gap-2 mb-3">
                         <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse" />
                         <span className="text-sm font-semibold text-k-text-primary">Atenção necessária</span>
+                        <InfoTooltip content="Alunos que precisam da sua ação. Resolva marcando como pago, contatando o aluno ou verificando os detalhes." />
                         <span className="text-[10px] text-k-text-quaternary bg-glass-bg px-1.5 py-0.5 rounded">
                             {attentionStudents.length}
                         </span>
@@ -320,6 +323,7 @@ export function FinancialDashboardClient({
                         </div>
                         <span className="text-xs font-medium text-k-text-secondary">
                             Receita do mês
+                            <InfoTooltip content="Soma dos pagamentos recebidos neste mês (Stripe + manuais marcados como pago)." />
                         </span>
                     </div>
                     <p className="text-2xl font-bold text-k-text-primary">{formatCurrency(monthlyRevenue)}</p>
@@ -332,6 +336,7 @@ export function FinancialDashboardClient({
                         </div>
                         <span className="text-xs font-medium text-k-text-secondary">
                             Alunos pagantes
+                            <InfoTooltip content="Alunos com cobrança ativa via Stripe ou controle manual. Não inclui cortesia." />
                         </span>
                     </div>
                     <p className="text-2xl font-bold text-k-text-primary">{payingCount}</p>
@@ -344,6 +349,7 @@ export function FinancialDashboardClient({
                         </div>
                         <span className="text-xs font-medium text-k-text-secondary">
                             Em cortesia
+                            <InfoTooltip content="Alunos com acesso gratuito — sem cobrança configurada. Você pode configurar cobrança a qualquer momento." />
                         </span>
                     </div>
                     <p className="text-2xl font-bold text-k-text-primary">{courtesyCount}</p>
@@ -367,6 +373,7 @@ export function FinancialDashboardClient({
                         </div>
                         <span className="text-xs font-medium text-k-text-secondary">
                             Atenção
+                            <InfoTooltip content="Alunos com pagamento atrasado, vencido ou cancelamento em andamento. Clique em 'Ver detalhes' para resolver." />
                         </span>
                     </div>
                     <p className="text-2xl font-bold text-k-text-primary">{attentionStudents.length}</p>
@@ -380,6 +387,7 @@ export function FinancialDashboardClient({
                         <div className="flex items-center gap-2">
                             <Wallet size={16} className="text-k-text-tertiary" />
                             <h3 className="text-sm font-semibold text-k-text-primary">Planos</h3>
+                            <InfoTooltip content="Planos de cobrança que você criou. Cada plano define valor e recorrência. Você vincula planos aos alunos na página de Assinaturas." />
                         </div>
                         <Link
                             href="/financial/plans"
@@ -406,6 +414,7 @@ export function FinancialDashboardClient({
                         <div className="flex items-center gap-2">
                             <Users size={16} className="text-k-text-tertiary" />
                             <h3 className="text-sm font-semibold text-k-text-primary">Assinaturas</h3>
+                            <InfoTooltip content="Resumo dos alunos com cobrança configurada. Clique em 'Gerenciar assinaturas' para ver a lista completa." />
                         </div>
                         <Link
                             href="/financial/subscriptions"
@@ -431,7 +440,10 @@ export function FinancialDashboardClient({
             {/* Recent Transactions */}
             <div className="rounded-2xl border border-k-border-primary bg-surface-card">
                 <div className="px-6 py-4 border-b border-k-border-subtle">
-                    <h2 className="text-sm font-semibold text-k-text-primary">Últimas transações</h2>
+                    <h2 className="text-sm font-semibold text-k-text-primary">
+                        Últimas transações
+                        <InfoTooltip content="Pagamentos recentes dos seus alunos (Stripe automático e manuais marcados como pago)." />
+                    </h2>
                 </div>
                 {recentTransactions.length === 0 ? (
                     <EmptyState
@@ -469,6 +481,9 @@ export function FinancialDashboardClient({
                 )}
             </div>
         </div>
+
+        {/* Financial Onboarding Modal (first visit) */}
+        <FinancialOnboardingModal />
 
         {/* New Subscription Modal */}
         <NewSubscriptionModal

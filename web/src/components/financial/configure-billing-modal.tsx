@@ -250,7 +250,7 @@ export function ConfigureBillingModal({
         || allStudents?.find(s => s.id === studentId)?.name
         || ''
 
-    const showCourtesyOption = mode === 'migrate'
+    const showCourtesyOption = !(student && student.display_status === 'courtesy')
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -461,7 +461,9 @@ export function ConfigureBillingModal({
                                 {billingType === 'courtesy' && (
                                     <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
                                         <p className="text-xs text-emerald-400">
-                                            A cobrança será encerrada e {studentName || 'o aluno'} terá acesso gratuito.
+                                            {mode === 'migrate'
+                                                ? `A cobrança será encerrada e ${studentName || 'o aluno'} terá acesso gratuito.`
+                                                : `${studentName || 'O aluno'} terá acesso completo aos treinos sem nenhuma cobrança.`}
                                         </p>
                                     </div>
                                 )}
@@ -486,12 +488,19 @@ export function ConfigureBillingModal({
                                                     </option>
                                                 ))}
                                         </select>
+                                        <p className="text-[11px] text-k-text-quaternary mt-2 leading-relaxed">
+                                            O aluno receberá um link de pagamento por cartão. As renovações são automáticas — você não precisa fazer nada todo mês.
+                                        </p>
                                     </div>
                                 )}
 
                                 {/* Manual — plan select + custom amount + recurrence + due date + block toggle */}
                                 {billingType === 'manual_recurring' && (
                                     <>
+                                        <p className="text-[11px] text-k-text-quaternary leading-relaxed">
+                                            Você registra os pagamentos manualmente. O Kinevo avisa quando o vencimento estiver próximo.
+                                        </p>
+
                                         {/* Plan or custom amount */}
                                         <div>
                                             <label className="mb-1.5 block text-xs font-medium text-k-text-tertiary">
@@ -595,7 +604,7 @@ export function ConfigureBillingModal({
                                                     Bloquear se não pagar
                                                 </p>
                                                 <p className="text-xs text-k-text-secondary mt-0.5">
-                                                    O aluno perde acesso se o pagamento atrasar
+                                                    Se ativado, o aluno perde acesso aos treinos após 3 dias de atraso
                                                 </p>
                                             </div>
                                             <button
@@ -663,6 +672,9 @@ export function ConfigureBillingModal({
                                 <p className="text-xs text-k-text-secondary">
                                     Copie e envie para {studentName || 'o aluno'} via WhatsApp ou e-mail.
                                     O acesso é liberado automaticamente após o pagamento.
+                                </p>
+                                <p className="text-[11px] text-k-text-quaternary mt-1">
+                                    O link expira em 24 horas. Se o aluno não pagar, gere um novo link a qualquer momento.
                                 </p>
                             </div>
 

@@ -9,14 +9,16 @@ import { EmptyState } from '@/components/financial/empty-state'
 import { BillingTypeBadge } from '@/components/financial/billing-type-badge'
 import { ConfigureBillingModal } from '@/components/financial/configure-billing-modal'
 import { StudentFinancialModal } from '@/components/financial/student-financial-modal'
-import { FinancialOnboardingBanner } from '@/components/financial/financial-onboarding-banner'
+import { FinancialOnboardingModal } from '@/components/financial/financial-onboarding-modal'
 import { markAsPaid } from '@/actions/financial/mark-as-paid'
 import { toggleBlockOnFail } from '@/actions/financial/toggle-block-on-fail'
 import { generateCheckoutLink } from '@/actions/financial/generate-checkout-link'
 import type { FinancialStudent, DisplayStatus } from '@/types/financial'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 import {
     Plus, Search, Users, Loader2, CheckCircle, ArrowLeft, Copy,
-    RefreshCw, MessageCircle, Settings2
+    RefreshCw, MessageCircle, Settings2, ChevronDown,
+    Heart, DollarSign, CheckCircle2, FolderArchive
 } from 'lucide-react'
 
 interface Trainer {
@@ -90,6 +92,14 @@ const statusConfig: Record<DisplayStatus, { label: string; className: string }> 
     canceled: { label: 'Encerrado', className: 'bg-gray-500/10 text-gray-400' },
 }
 
+const statusTooltips: Partial<Record<DisplayStatus, string>> = {
+    courtesy: 'Acesso gratuito. O aluno treina normalmente sem cobrança configurada.',
+    awaiting_payment: 'Link de pagamento Stripe enviado. Aguardando o aluno completar o pagamento.',
+    grace_period: 'O pagamento manual venceu, mas está dentro do período de graça de 3 dias. Após esse período, o status muda para Inadimplente.',
+    canceling: 'O aluno cancelou a assinatura pelo app. O acesso continua garantido até a data indicada. Após, volta para cortesia.',
+    overdue: 'Pagamento atrasado há mais de 3 dias. Se o bloqueio de acesso estiver ativado, o aluno não consegue ver os treinos no app.',
+}
+
 const formatCurrency = (value: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
 
@@ -122,7 +132,7 @@ export function SubscriptionsClient({
     const router = useRouter()
     const [financialStudents, setFinancialStudents] = useState(initialStudents)
     const [searchQuery, setSearchQuery] = useState('')
-    const [activeTab, setActiveTab] = useState<TabKey>('pagantes')
+    const [activeTab, setActiveTab] = useState<TabKey>('todos')
     const [configModalState, setConfigModalState] = useState<{
         isOpen: boolean
         mode: 'new' | 'migrate'
@@ -133,17 +143,12 @@ export function SubscriptionsClient({
     const [actionLoading, setActionLoading] = useState<string | null>(null)
     const [syncing, setSyncing] = useState(false)
     const [blockConfirmId, setBlockConfirmId] = useState<string | null>(null)
-    const [onboardingDismissed, setOnboardingDismissed] = useState(true) // default true to avoid flash
+    const [howToOpen, setHowToOpen] = useState(false)
 
     // Sync local state with server data
     useEffect(() => {
         setFinancialStudents(initialStudents)
     }, [initialStudents])
-
-    // Check onboarding dismissal from localStorage
-    useEffect(() => {
-        setOnboardingDismissed(localStorage.getItem('kinevo_financial_onboarding_dismissed') === 'true')
-    }, [])
 
     // Auto-sync pending Stripe contracts
     useEffect(() => {
@@ -246,11 +251,6 @@ export function SubscriptionsClient({
         })
     }
 
-    // Check if trainer has any real contracts (for onboarding banner)
-    const hasContracts = financialStudents.some(s =>
-        s.display_status !== 'courtesy' && s.display_status !== 'canceled'
-    )
-
     // Compute tab counts
     const tabCounts: Record<TabKey, number> = {
         pagantes: 0,
@@ -330,15 +330,18 @@ export function SubscriptionsClient({
                         </div>
                         <div className="flex items-center gap-3">
                             {hasStripeConnect && (
-                                <button
-                                    onClick={handleSyncContracts}
-                                    disabled={syncing}
-                                    title="Sincronizar assinaturas com o Stripe"
-                                    className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-full border border-k-border-primary bg-glass-bg hover:bg-violet-500/10 text-k-text-secondary hover:text-violet-400 transition-all disabled:opacity-50"
-                                >
-                                    <RefreshCw size={16} className={syncing ? 'animate-spin' : ''} />
-                                    {syncing ? 'Sincronizando...' : 'Sincronizar'}
-                                </button>
+                                <span className="inline-flex items-center">
+                                    <button
+                                        onClick={handleSyncContracts}
+                                        disabled={syncing}
+                                        title="Sincronizar assinaturas com o Stripe"
+                                        className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-full border border-k-border-primary bg-glass-bg hover:bg-violet-500/10 text-k-text-secondary hover:text-violet-400 transition-all disabled:opacity-50"
+                                    >
+                                        <RefreshCw size={16} className={syncing ? 'animate-spin' : ''} />
+                                        {syncing ? 'Sincronizando...' : 'Sincronizar'}
+                                    </button>
+                                    <InfoTooltip content="Atualiza o status dos pagamentos Stripe. Use após enviar um link de pagamento para verificar se o aluno já pagou." />
+                                </span>
                             )}
                             <button
                                 onClick={() => handleOpenConfigModal('new')}
@@ -349,17 +352,6 @@ export function SubscriptionsClient({
                             </button>
                         </div>
                     </div>
-
-                    {/* Onboarding Banner */}
-                    {!hasContracts && !onboardingDismissed && (
-                        <FinancialOnboardingBanner
-                            courtesyCount={financialStudents.filter(s => s.display_status === 'courtesy').length}
-                            hasStripeConnect={hasStripeConnect}
-                            onConfigureStripe={() => {
-                                window.location.href = '/api/stripe/connect/onboard'
-                            }}
-                        />
-                    )}
 
                     {/* Tabs + Search */}
                     <div className="space-y-4" data-student-list>
@@ -391,6 +383,58 @@ export function SubscriptionsClient({
                             })}
                         </div>
 
+                        {/* Collapsible "Como funciona" */}
+                        <button
+                            onClick={() => setHowToOpen(!howToOpen)}
+                            className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl border border-k-border-subtle bg-glass-bg text-k-text-tertiary hover:text-k-text-secondary transition-colors"
+                        >
+                            <span className="text-xs font-medium">Como funciona a cobrança</span>
+                            <ChevronDown
+                                size={14}
+                                className={`transition-transform duration-200 ${howToOpen ? 'rotate-180' : ''}`}
+                            />
+                        </button>
+                        {howToOpen && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 px-1">
+                                <div className="rounded-xl border border-k-border-subtle bg-glass-bg p-4">
+                                    <div className="flex items-center gap-2 mb-1.5">
+                                        <Heart size={13} className="text-emerald-400" />
+                                        <span className="text-xs font-semibold text-k-text-primary">Cortesia por padrão</span>
+                                    </div>
+                                    <p className="text-[11px] text-k-text-secondary leading-relaxed">
+                                        Todo aluno começa com acesso gratuito. Você decide individualmente quem cobrar.
+                                    </p>
+                                </div>
+                                <div className="rounded-xl border border-k-border-subtle bg-glass-bg p-4">
+                                    <div className="flex items-center gap-2 mb-1.5">
+                                        <DollarSign size={13} className="text-violet-400" />
+                                        <span className="text-xs font-semibold text-k-text-primary">Stripe (automático)</span>
+                                    </div>
+                                    <p className="text-[11px] text-k-text-secondary leading-relaxed">
+                                        Gere um link, envie ao aluno, renovação automática. O aluno pode cancelar pelo app.
+                                    </p>
+                                </div>
+                                <div className="rounded-xl border border-k-border-subtle bg-glass-bg p-4">
+                                    <div className="flex items-center gap-2 mb-1.5">
+                                        <Copy size={13} className="text-blue-400" />
+                                        <span className="text-xs font-semibold text-k-text-primary">Manual</span>
+                                    </div>
+                                    <p className="text-[11px] text-k-text-secondary leading-relaxed">
+                                        Registre pagamentos (Pix, dinheiro) no seu ritmo. O Kinevo avisa 3 dias após o vencimento.
+                                    </p>
+                                </div>
+                                <div className="rounded-xl border border-k-border-subtle bg-glass-bg p-4">
+                                    <div className="flex items-center gap-2 mb-1.5">
+                                        <Settings2 size={13} className="text-amber-400" />
+                                        <span className="text-xs font-semibold text-k-text-primary">Bloqueio de acesso</span>
+                                    </div>
+                                    <p className="text-[11px] text-k-text-secondary leading-relaxed">
+                                        Opcional por aluno. Se ativado, o aluno perde acesso aos treinos após 3 dias de atraso.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
                         <div className="relative group">
                             <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
                                 <Search className="w-[18px] h-[18px] text-k-text-quaternary group-focus-within:text-violet-500 transition-colors" strokeWidth={1.5} />
@@ -414,17 +458,35 @@ export function SubscriptionsClient({
                                         Nenhum aluno encontrado para &quot;{searchQuery}&quot;
                                     </p>
                                 </div>
+                            ) : activeTab === 'pagantes' ? (
+                                <EmptyState
+                                    icon={DollarSign}
+                                    title="Nenhum aluno pagante"
+                                    description={'Para configurar cobrança, vá à aba Cortesia e clique em "Configurar" no aluno desejado. Você pode cobrar via Stripe (automático) ou controle manual.'}
+                                />
+                            ) : activeTab === 'cortesia' ? (
+                                <EmptyState
+                                    icon={Heart}
+                                    title="Todos os alunos têm cobrança configurada"
+                                    description="Quando você cancelar a cobrança de um aluno ou cadastrar um novo, ele aparece aqui automaticamente como cortesia."
+                                />
+                            ) : activeTab === 'atencao' ? (
+                                <EmptyState
+                                    icon={CheckCircle2}
+                                    title="Tudo em dia"
+                                    description="Nenhum aluno com pagamento pendente, vencido ou cancelamento em andamento."
+                                />
+                            ) : activeTab === 'encerrados' ? (
+                                <EmptyState
+                                    icon={FolderArchive}
+                                    title="Nenhum contrato encerrado"
+                                    description={'Quando você cancelar a cobrança de um aluno, o contrato aparece aqui. Você pode reconfigurar a cobrança a qualquer momento clicando em "Configurar".'}
+                                />
                             ) : (
                                 <EmptyState
                                     icon={Users}
-                                    title="Nenhum aluno nesta categoria"
-                                    description={activeTab === 'pagantes'
-                                        ? 'Configure cobranças para seus alunos na aba Cortesia.'
-                                        : 'Os alunos aparecerão aqui conforme o status muda.'}
-                                    action={activeTab === 'cortesia' ? {
-                                        label: 'Nova Cobrança',
-                                        onClick: () => handleOpenConfigModal('new'),
-                                    } : undefined}
+                                    title="Nenhum aluno cadastrado"
+                                    description="Cadastre alunos no módulo Alunos. Eles aparecem aqui automaticamente como cortesia."
                                 />
                             )}
                         </div>
@@ -437,9 +499,15 @@ export function SubscriptionsClient({
                                             <th className="px-6 py-4 text-left text-xs font-medium text-k-text-tertiary">Aluno</th>
                                             <th className="px-4 py-4 text-left text-xs font-medium text-k-text-tertiary">Tipo</th>
                                             <th className="px-4 py-4 text-left text-xs font-medium text-k-text-tertiary">Valor</th>
-                                            <th className="px-4 py-4 text-left text-xs font-medium text-k-text-tertiary">Status</th>
+                                            <th className="px-4 py-4 text-left text-xs font-medium text-k-text-tertiary">
+                                                Status
+                                                <InfoTooltip content="Status financeiro do aluno. Atualizado automaticamente para Stripe. Para cobranças manuais, marque como pago quando receber." />
+                                            </th>
                                             <th className="px-4 py-4 text-left text-xs font-medium text-k-text-tertiary">Vencimento</th>
-                                            <th className="px-4 py-4 text-center text-xs font-medium text-k-text-tertiary">Acesso</th>
+                                            <th className="px-4 py-4 text-center text-xs font-medium text-k-text-tertiary">
+                                                Acesso
+                                                <InfoTooltip content="Controla se o aluno perde acesso aos treinos em caso de atraso. Desativado por padrão — o aluno mantém acesso mesmo com pagamento pendente." />
+                                            </th>
                                             <th className="px-4 py-4 text-right text-xs font-medium text-k-text-tertiary">Ações</th>
                                         </tr>
                                     </thead>
@@ -505,6 +573,9 @@ export function SubscriptionsClient({
                                                     <span className={`px-2.5 py-1 text-[11px] font-semibold rounded-full ${statusConfig[s.display_status].className}`}>
                                                         {getStatusBadgeText(s)}
                                                     </span>
+                                                    {statusTooltips[s.display_status] && (
+                                                        <InfoTooltip content={statusTooltips[s.display_status]!} side="bottom" />
+                                                    )}
                                                 </td>
 
                                                 {/* Vencimento */}
@@ -650,6 +721,9 @@ export function SubscriptionsClient({
                 hasStripeConnect={hasStripeConnect}
                 mode={configModalState.mode}
             />
+
+            {/* Financial Onboarding Modal (first visit) */}
+            <FinancialOnboardingModal />
 
             {/* Student Financial Modal */}
             <StudentFinancialModal
