@@ -3,16 +3,21 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { AppLayout } from '@/components/layout'
 import { EmptyState } from '@/components/financial/empty-state'
 import { BillingTypeBadge } from '@/components/financial/billing-type-badge'
-import { NewSubscriptionModal } from '@/components/financial/new-subscription-modal'
-import { ContractDetailModal } from '@/components/financial/contract-detail-modal'
+import { ConfigureBillingModal } from '@/components/financial/configure-billing-modal'
+import { StudentFinancialModal } from '@/components/financial/student-financial-modal'
+import { FinancialOnboardingBanner } from '@/components/financial/financial-onboarding-banner'
 import { markAsPaid } from '@/actions/financial/mark-as-paid'
-import { cancelContract } from '@/actions/financial/cancel-contract'
+import { toggleBlockOnFail } from '@/actions/financial/toggle-block-on-fail'
 import { generateCheckoutLink } from '@/actions/financial/generate-checkout-link'
-import Image from 'next/image'
-import { Plus, Search, Users, Loader2, CheckCircle, XCircle, ArrowLeft, Copy, RefreshCw } from 'lucide-react'
+import type { FinancialStudent, DisplayStatus } from '@/types/financial'
+import {
+    Plus, Search, Users, Loader2, CheckCircle, ArrowLeft, Copy,
+    RefreshCw, MessageCircle, Settings2
+} from 'lucide-react'
 
 interface Trainer {
     id: string
@@ -26,7 +31,6 @@ interface Student {
     id: string
     name: string
     email: string
-    avatar_url?: string | null
 }
 
 interface Plan {
@@ -37,52 +41,114 @@ interface Plan {
     stripe_price_id: string | null
 }
 
-interface Contract {
-    id: string
-    student_id: string
-    trainer_id: string
-    plan_id: string | null
-    amount: number
-    status: string
-    billing_type: string
-    block_on_fail: boolean
-    stripe_subscription_id: string | null
-    current_period_end: string | null
-    cancel_at_period_end: boolean | null
-    created_at: string
-    students: Student | null
-    trainer_plans: Plan | null
-}
-
 interface SubscriptionsClientProps {
     trainer: Trainer
-    contracts: Contract[]
+    financialStudents: FinancialStudent[]
     students: Student[]
     plans: Plan[]
     hasStripeConnect: boolean
 }
 
+type TabKey = 'pagantes' | 'cortesia' | 'atencao' | 'encerrados' | 'todos'
+
+const tabs: { key: TabKey; label: string; filter: (s: FinancialStudent) => boolean; badge?: boolean }[] = [
+    {
+        key: 'pagantes',
+        label: 'Pagantes',
+        filter: (s) => ['active', 'awaiting_payment'].includes(s.display_status),
+    },
+    {
+        key: 'cortesia',
+        label: 'Cortesia',
+        filter: (s) => s.display_status === 'courtesy',
+    },
+    {
+        key: 'atencao',
+        label: 'Atenção',
+        filter: (s) => ['overdue', 'grace_period', 'canceling'].includes(s.display_status),
+        badge: true,
+    },
+    {
+        key: 'encerrados',
+        label: 'Encerrados',
+        filter: (s) => s.display_status === 'canceled',
+    },
+    {
+        key: 'todos',
+        label: 'Todos',
+        filter: () => true,
+    },
+]
+
+const statusConfig: Record<DisplayStatus, { label: string; className: string }> = {
+    courtesy: { label: 'Cortesia', className: 'bg-blue-500/10 text-blue-400' },
+    awaiting_payment: { label: 'Aguardando', className: 'bg-sky-500/10 text-sky-400' },
+    active: { label: 'Ativo', className: 'bg-emerald-500/10 text-emerald-400' },
+    grace_period: { label: 'Vence hoje', className: 'bg-orange-500/10 text-orange-400' },
+    canceling: { label: 'Cancelando', className: 'bg-amber-500/10 text-amber-400' },
+    overdue: { label: 'Inadimplente', className: 'bg-red-500/10 text-red-400' },
+    canceled: { label: 'Encerrado', className: 'bg-gray-500/10 text-gray-400' },
+}
+
+const formatCurrency = (value: number) =>
+    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
+
+const formatDate = (dateStr: string | null) => {
+    if (!dateStr) return '—'
+    return new Date(dateStr).toLocaleDateString('pt-BR')
+}
+
+const intervalLabels: Record<string, string> = {
+    month: '/mês',
+    quarter: '/tri',
+    year: '/ano',
+}
+
+function billingTypeLabel(bt: string | null): string {
+    if (!bt) return 'Cortesia'
+    if (bt === 'stripe_auto') return 'Stripe'
+    if (bt.startsWith('manual')) return 'Manual'
+    if (bt === 'courtesy') return 'Cortesia'
+    return bt
+}
+
 export function SubscriptionsClient({
     trainer,
-    contracts: initialContracts,
+    financialStudents: initialStudents,
     students,
     plans,
     hasStripeConnect,
 }: SubscriptionsClientProps) {
     const router = useRouter()
-    const [contracts, setContracts] = useState(initialContracts)
+    const [financialStudents, setFinancialStudents] = useState(initialStudents)
     const [searchQuery, setSearchQuery] = useState('')
-    const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'pending' | 'canceled'>('all')
+    const [activeTab, setActiveTab] = useState<TabKey>('pagantes')
+    const [configModalState, setConfigModalState] = useState<{
+        isOpen: boolean
+        mode: 'new' | 'migrate'
+        student: FinancialStudent | null
+    }>({ isOpen: false, mode: 'new', student: null })
+    const [detailModalOpen, setDetailModalOpen] = useState(false)
+    const [selectedStudent, setSelectedStudent] = useState<FinancialStudent | null>(null)
+    const [actionLoading, setActionLoading] = useState<string | null>(null)
+    const [syncing, setSyncing] = useState(false)
+    const [blockConfirmId, setBlockConfirmId] = useState<string | null>(null)
+    const [onboardingDismissed, setOnboardingDismissed] = useState(true) // default true to avoid flash
 
-    // Sync local state when server data changes (after router.refresh())
+    // Sync local state with server data
     useEffect(() => {
-        setContracts(initialContracts)
-    }, [initialContracts])
+        setFinancialStudents(initialStudents)
+    }, [initialStudents])
 
-    // Auto-sync pending Stripe contracts on page load
+    // Check onboarding dismissal from localStorage
     useEffect(() => {
-        const hasPendingStripe = initialContracts.some(
-            c => c.billing_type === 'stripe_auto' && c.status === 'pending'
+        setOnboardingDismissed(localStorage.getItem('kinevo_financial_onboarding_dismissed') === 'true')
+    }, [])
+
+    // Auto-sync pending Stripe contracts
+    useEffect(() => {
+        const hasPendingStripe = initialStudents.some(
+            s => s.billing_type === 'stripe_auto' && s.contract_status === 'pending'
         )
         if (!hasPendingStripe || !hasStripeConnect) return
 
@@ -96,123 +162,8 @@ export function SubscriptionsClient({
             .catch(() => {})
     }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-    const [modalOpen, setModalOpen] = useState(false)
-    const [detailModalOpen, setDetailModalOpen] = useState(false)
-    const [selectedContract, setSelectedContract] = useState<Contract | null>(null)
-    const [actionLoading, setActionLoading] = useState<string | null>(null)
-    const [syncing, setSyncing] = useState(false)
-
-    const formatCurrency = (value: number) => {
-        return new Intl.NumberFormat('pt-BR', {
-            style: 'currency',
-            currency: 'BRL',
-        }).format(value)
-    }
-
-    const formatDate = (dateStr: string | null) => {
-        if (!dateStr) return '—'
-        return new Date(dateStr).toLocaleDateString('pt-BR')
-    }
-
-    const getStatusBadge = (status: string) => {
-        const styles: Record<string, string> = {
-            active: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-            past_due: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-            pending: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-            canceled: 'bg-gray-500/10 text-gray-400 border-gray-500/20',
-        }
-        const labels: Record<string, string> = {
-            active: 'Ativo',
-            past_due: 'Pendente',
-            pending: 'Pendente',
-            canceled: 'Cancelado',
-        }
-
-        const style = styles[status] || styles.canceled
-        const label = labels[status] || status
-
-        return (
-            <span className={`px-2.5 py-1 text-[11px] font-semibold rounded-full border ${style}`}>
-                {label}
-            </span>
-        )
-    }
-
-    const handleMarkAsPaid = async (contractId: string, e: React.MouseEvent) => {
-        e.stopPropagation()
-        setActionLoading(contractId)
-
-        const result = await markAsPaid({ contractId })
-        if (result.success) {
-            router.refresh()
-            setContracts(contracts.map(c =>
-                c.id === contractId ? { ...c, status: 'active' } : c
-            ))
-        }
-
-        setActionLoading(null)
-    }
-
-    const handleCancel = async (contractId: string, e: React.MouseEvent) => {
-        e.stopPropagation()
-        if (!confirm('Tem certeza que deseja cancelar esta assinatura? Esta ação não pode ser desfeita.')) return
-
-        setActionLoading(contractId)
-
-        const result = await cancelContract({ contractId })
-        if (result.success) {
-            router.refresh()
-            setContracts(contracts.map(c =>
-                c.id === contractId ? { ...c, status: 'canceled' } : c
-            ))
-        }
-
-        setActionLoading(null)
-    }
-
-    const handleCancelAtPeriodEnd = async (contractId: string, e: React.MouseEvent) => {
-        e.stopPropagation()
-        if (!confirm('Agendar cancelamento? A assinatura continuará ativa até o final do período atual.')) return
-
-        setActionLoading(contractId)
-
-        const result = await cancelContract({ contractId, cancelAtPeriodEnd: true })
-        if (result.success) {
-            router.refresh()
-        }
-
-        setActionLoading(null)
-    }
-
-    const handleRowClick = (contract: Contract) => {
-        setSelectedContract(contract)
-        setDetailModalOpen(true)
-    }
-
-    const handleCopyLink = async (contract: Contract, e: React.MouseEvent) => {
-        e.stopPropagation()
-        if (!contract.plan_id) return
-
-        setActionLoading(contract.id)
-
-        try {
-            const result = await generateCheckoutLink({
-                studentId: contract.student_id,
-                planId: contract.plan_id
-            })
-
-            if (result.error) {
-                alert(result.error)
-            } else if (result.url) {
-                await navigator.clipboard.writeText(result.url)
-                alert('Link de pagamento copiado com sucesso!')
-            }
-        } catch (error) {
-            console.error('Failed to copy link:', error)
-            alert('Erro ao gerar link de pagamento')
-        } finally {
-            setActionLoading(null)
-        }
+    const handleSuccess = () => {
+        router.refresh()
     }
 
     const handleSyncContracts = async () => {
@@ -230,28 +181,110 @@ export function SubscriptionsClient({
         }
     }
 
-    const handleSuccess = () => {
+    const handleRowClick = (student: FinancialStudent) => {
+        setSelectedStudent(student)
+        setDetailModalOpen(true)
+    }
+
+    const handleMarkAsPaid = async (contractId: string, e: React.MouseEvent) => {
+        e.stopPropagation()
+        setActionLoading(contractId)
+        const result = await markAsPaid({ contractId })
+        if (result.success) {
+            router.refresh()
+        }
+        setActionLoading(null)
+    }
+
+    const handleToggleBlock = async (student: FinancialStudent, value: boolean, e: React.MouseEvent) => {
+        e.stopPropagation()
+        if (!student.contract_id) return
+
+        // Require confirm when enabling block
+        if (value && blockConfirmId !== student.student_id) {
+            setBlockConfirmId(student.student_id)
+            return
+        }
+
+        setBlockConfirmId(null)
+        setActionLoading(student.contract_id)
+        await toggleBlockOnFail(student.contract_id, value)
+        setActionLoading(null)
         router.refresh()
     }
 
-    const filteredContracts = contracts.filter((contract) => {
-        // Status filter
-        if (statusFilter === 'active' && contract.status !== 'active') return false
-        if (statusFilter === 'pending' && contract.status !== 'pending' && contract.status !== 'past_due') return false
-        if (statusFilter === 'canceled' && contract.status !== 'canceled') return false
+    const handleCopyLink = async (student: FinancialStudent, e: React.MouseEvent) => {
+        e.stopPropagation()
 
-        // Search filter
-        const studentName = contract.students?.name?.toLowerCase() || ''
-        const planTitle = contract.trainer_plans?.title?.toLowerCase() || ''
-        const query = searchQuery.toLowerCase()
-        return studentName.includes(query) || planTitle.includes(query)
+        const plan = plans.find(p => p.title === student.plan_title)
+        if (!plan) return
+
+        setActionLoading(student.student_id)
+        try {
+            const result = await generateCheckoutLink({
+                studentId: student.student_id,
+                planId: plan.id,
+            })
+            if (result.url) {
+                await navigator.clipboard.writeText(result.url)
+                alert('Link de pagamento copiado!')
+            } else if (result.error) {
+                alert(result.error)
+            }
+        } catch {
+            alert('Erro ao gerar link')
+        } finally {
+            setActionLoading(null)
+        }
+    }
+
+    const handleOpenConfigModal = (mode: 'new' | 'migrate', targetStudent?: FinancialStudent | null) => {
+        setConfigModalState({
+            isOpen: true,
+            mode,
+            student: targetStudent ?? null,
+        })
+    }
+
+    // Check if trainer has any real contracts (for onboarding banner)
+    const hasContracts = financialStudents.some(s =>
+        s.display_status !== 'courtesy' && s.display_status !== 'canceled'
+    )
+
+    // Compute tab counts
+    const tabCounts: Record<TabKey, number> = {
+        pagantes: 0,
+        cortesia: 0,
+        atencao: 0,
+        encerrados: 0,
+        todos: financialStudents.length,
+    }
+    for (const s of financialStudents) {
+        for (const tab of tabs) {
+            if (tab.key !== 'todos' && tab.filter(s)) {
+                tabCounts[tab.key]++
+            }
+        }
+    }
+
+    // Filter by tab + search
+    const currentTab = tabs.find(t => t.key === activeTab) || tabs[0]
+    const filteredStudents = financialStudents.filter(s => {
+        if (!currentTab.filter(s)) return false
+        if (searchQuery) {
+            return s.student_name.toLowerCase().includes(searchQuery.toLowerCase())
+        }
+        return true
     })
 
-    const statusCounts = {
-        all: contracts.length,
-        active: contracts.filter(c => c.status === 'active').length,
-        pending: contracts.filter(c => c.status === 'pending' || c.status === 'past_due').length,
-        canceled: contracts.filter(c => c.status === 'canceled').length,
+    const getStatusBadgeText = (s: FinancialStudent): string => {
+        if (s.display_status === 'canceling' && s.current_period_end) {
+            return `Cancela em ${formatDate(s.current_period_end)}`
+        }
+        if (s.display_status === 'active') {
+            return `Ativo — ${billingTypeLabel(s.billing_type)}`
+        }
+        return statusConfig[s.display_status].label
     }
 
     const modalStudents = students.map(s => ({
@@ -292,7 +325,7 @@ export function SubscriptionsClient({
                                 Assinaturas
                             </h1>
                             <p className="mt-1 text-sm text-muted-foreground/60">
-                                Gerencie as assinaturas dos seus alunos
+                                Gerencie as cobranças dos seus alunos
                             </p>
                         </div>
                         <div className="flex items-center gap-3">
@@ -308,52 +341,63 @@ export function SubscriptionsClient({
                                 </button>
                             )}
                             <button
-                                onClick={() => setModalOpen(true)}
+                                onClick={() => handleOpenConfigModal('new')}
                                 className="bg-violet-600 hover:bg-violet-500 text-white rounded-full px-6 py-2.5 text-sm font-semibold transition-all active:scale-95 flex items-center gap-2 w-fit"
                             >
                                 <Plus size={18} strokeWidth={2} />
-                                Nova Assinatura
+                                Nova Cobrança
                             </button>
                         </div>
                     </div>
 
-                    {/* Filters + Search */}
-                    <div className="space-y-4">
-                        {/* Status filter tabs */}
+                    {/* Onboarding Banner */}
+                    {!hasContracts && !onboardingDismissed && (
+                        <FinancialOnboardingBanner
+                            courtesyCount={financialStudents.filter(s => s.display_status === 'courtesy').length}
+                            hasStripeConnect={hasStripeConnect}
+                            onConfigureStripe={() => {
+                                window.location.href = '/api/stripe/connect/onboard'
+                            }}
+                        />
+                    )}
+
+                    {/* Tabs + Search */}
+                    <div className="space-y-4" data-student-list>
                         <div className="flex items-center gap-1 bg-surface-card border border-k-border-subtle rounded-xl p-1">
-                            {([
-                                { key: 'all' as const, label: 'Todos' },
-                                { key: 'active' as const, label: 'Ativos' },
-                                { key: 'pending' as const, label: 'Pendentes' },
-                                { key: 'canceled' as const, label: 'Cancelados' },
-                            ]).map(tab => (
-                                <button
-                                    key={tab.key}
-                                    onClick={() => setStatusFilter(tab.key)}
-                                    className={`flex-1 px-3 py-2 text-xs font-medium rounded-lg transition-all ${
-                                        statusFilter === tab.key
-                                            ? 'bg-glass-bg-active text-k-text-primary shadow-sm'
-                                            : 'text-k-text-tertiary hover:text-k-text-secondary'
-                                    }`}
-                                >
-                                    {tab.label}
-                                    <span className={`ml-1.5 text-[10px] ${
-                                        statusFilter === tab.key ? 'text-violet-400' : 'text-k-text-quaternary'
-                                    }`}>
-                                        {statusCounts[tab.key]}
-                                    </span>
-                                </button>
-                            ))}
+                            {tabs.map(tab => {
+                                const count = tabCounts[tab.key]
+                                const isActive = activeTab === tab.key
+                                return (
+                                    <button
+                                        key={tab.key}
+                                        onClick={() => setActiveTab(tab.key)}
+                                        className={`flex-1 px-3 py-2 text-xs font-medium rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                                            isActive
+                                                ? 'bg-glass-bg-active text-k-text-primary shadow-sm'
+                                                : 'text-k-text-tertiary hover:text-k-text-secondary'
+                                        }`}
+                                    >
+                                        {tab.label}
+                                        <span className={`text-[10px] ${
+                                            isActive ? 'text-violet-400' : 'text-k-text-quaternary'
+                                        }`}>
+                                            {count}
+                                        </span>
+                                        {tab.badge && count > 0 && (
+                                            <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                                        )}
+                                    </button>
+                                )
+                            })}
                         </div>
 
-                        {/* Search */}
                         <div className="relative group">
                             <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
                                 <Search className="w-[18px] h-[18px] text-k-text-quaternary group-focus-within:text-violet-500 transition-colors" strokeWidth={1.5} />
                             </div>
                             <input
                                 type="text"
-                                placeholder="Buscar por aluno ou plano..."
+                                placeholder="Buscar por nome do aluno..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="w-full bg-glass-bg border border-k-border-primary rounded-2xl py-3 pl-11 pr-4 text-k-text-primary placeholder:text-k-text-quaternary focus:outline-none focus:ring-2 focus:ring-violet-500/10 focus:border-violet-500/50 backdrop-blur-md transition-all text-sm"
@@ -362,23 +406,25 @@ export function SubscriptionsClient({
                     </div>
 
                     {/* Table */}
-                    {filteredContracts.length === 0 ? (
+                    {filteredStudents.length === 0 ? (
                         <div className="bg-surface-card rounded-2xl border border-k-border-subtle border-dashed">
                             {searchQuery ? (
                                 <div className="flex flex-col items-center justify-center py-24 px-4">
                                     <p className="text-muted-foreground/50 font-medium">
-                                        Nenhuma assinatura encontrada para &quot;{searchQuery}&quot;
+                                        Nenhum aluno encontrado para &quot;{searchQuery}&quot;
                                     </p>
                                 </div>
                             ) : (
                                 <EmptyState
                                     icon={Users}
-                                    title="Nenhuma assinatura"
-                                    description="Crie sua primeira assinatura para começar a gerenciar os pagamentos dos seus alunos."
-                                    action={{
-                                        label: 'Nova Assinatura',
-                                        onClick: () => setModalOpen(true),
-                                    }}
+                                    title="Nenhum aluno nesta categoria"
+                                    description={activeTab === 'pagantes'
+                                        ? 'Configure cobranças para seus alunos na aba Cortesia.'
+                                        : 'Os alunos aparecerão aqui conforme o status muda.'}
+                                    action={activeTab === 'cortesia' ? {
+                                        label: 'Nova Cobrança',
+                                        onClick: () => handleOpenConfigModal('new'),
+                                    } : undefined}
                                 />
                             )}
                         </div>
@@ -388,41 +434,30 @@ export function SubscriptionsClient({
                                 <table className="w-full">
                                     <thead>
                                         <tr className="border-b border-k-border-subtle">
-                                            <th className="px-6 py-4 text-left text-xs font-medium text-k-text-tertiary">
-                                                Aluno
-                                            </th>
-                                            <th className="px-6 py-4 text-left text-xs font-medium text-k-text-tertiary">
-                                                Plano
-                                            </th>
-                                            <th className="px-6 py-4 text-left text-xs font-medium text-k-text-tertiary">
-                                                Valor
-                                            </th>
-                                            <th className="px-6 py-4 text-left text-xs font-medium text-k-text-tertiary">
-                                                Status
-                                            </th>
-                                            <th className="px-6 py-4 text-left text-xs font-medium text-k-text-tertiary">
-                                                Vencimento
-                                            </th>
-                                            <th className="px-6 py-4 text-right text-xs font-medium text-k-text-tertiary">
-                                                Ações
-                                            </th>
+                                            <th className="px-6 py-4 text-left text-xs font-medium text-k-text-tertiary">Aluno</th>
+                                            <th className="px-4 py-4 text-left text-xs font-medium text-k-text-tertiary">Tipo</th>
+                                            <th className="px-4 py-4 text-left text-xs font-medium text-k-text-tertiary">Valor</th>
+                                            <th className="px-4 py-4 text-left text-xs font-medium text-k-text-tertiary">Status</th>
+                                            <th className="px-4 py-4 text-left text-xs font-medium text-k-text-tertiary">Vencimento</th>
+                                            <th className="px-4 py-4 text-center text-xs font-medium text-k-text-tertiary">Acesso</th>
+                                            <th className="px-4 py-4 text-right text-xs font-medium text-k-text-tertiary">Ações</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-k-border-subtle">
-                                        {filteredContracts.map((contract) => (
+                                        {filteredStudents.map((s) => (
                                             <tr
-                                                key={contract.id}
+                                                key={s.student_id}
                                                 className="group transition-colors hover:bg-glass-bg cursor-pointer"
-                                                onClick={() => handleRowClick(contract)}
+                                                onClick={() => handleRowClick(s)}
                                             >
-                                                {/* Student */}
+                                                {/* Aluno */}
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <div className="flex items-center gap-3">
                                                         <div className="flex h-8 w-8 items-center justify-center rounded-full border border-k-border-primary bg-glass-bg overflow-hidden flex-shrink-0">
-                                                            {contract.students?.avatar_url ? (
+                                                            {s.avatar_url ? (
                                                                 <Image
-                                                                    src={contract.students.avatar_url}
-                                                                    alt={contract.students.name}
+                                                                    src={s.avatar_url}
+                                                                    alt={s.student_name}
                                                                     width={32}
                                                                     height={32}
                                                                     className="h-8 w-8 rounded-full object-cover"
@@ -430,104 +465,165 @@ export function SubscriptionsClient({
                                                                 />
                                                             ) : (
                                                                 <span className="text-xs font-semibold text-k-text-primary">
-                                                                    {contract.students?.name?.charAt(0).toUpperCase() || '?'}
+                                                                    {s.student_name?.charAt(0).toUpperCase() || '?'}
                                                                 </span>
                                                             )}
                                                         </div>
                                                         <span className="text-sm font-medium text-k-text-primary">
-                                                            {contract.students?.name || 'Aluno removido'}
+                                                            {s.student_name}
                                                         </span>
                                                     </div>
                                                 </td>
 
-                                                {/* Plan */}
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <span className="text-sm text-k-text-primary">
-                                                        {contract.trainer_plans?.title || '—'}
-                                                    </span>
+                                                {/* Tipo */}
+                                                <td className="px-4 py-4 whitespace-nowrap">
+                                                    {s.billing_type ? (
+                                                        <BillingTypeBadge billingType={s.billing_type} />
+                                                    ) : (
+                                                        <span className="text-xs text-k-text-quaternary">Cortesia</span>
+                                                    )}
                                                 </td>
 
-                                                {/* Amount */}
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <span className="text-sm font-medium text-k-text-primary">
-                                                        {contract.billing_type === 'courtesy'
-                                                            ? 'Cortesia'
-                                                            : formatCurrency(contract.amount)}
-                                                    </span>
-                                                </td>
-
-                                                {/* Unified Status (billing type + status) */}
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <div className="flex items-center gap-2">
-                                                        {getStatusBadge(contract.status)}
-                                                        <span className="text-[11px] text-k-text-quaternary">
-                                                            {contract.billing_type === 'stripe_auto' ? 'Stripe' :
-                                                             contract.billing_type === 'manual_recurring' ? 'Manual' :
-                                                             contract.billing_type === 'courtesy' ? 'Cortesia' : ''}
+                                                {/* Valor */}
+                                                <td className="px-4 py-4 whitespace-nowrap">
+                                                    {s.display_status === 'courtesy' ? (
+                                                        <span className="text-xs text-k-text-quaternary">—</span>
+                                                    ) : (
+                                                        <span className="text-sm font-medium text-k-text-primary">
+                                                            {s.amount ? formatCurrency(s.amount) : '—'}
+                                                            {s.plan_interval && (
+                                                                <span className="text-xs text-k-text-quaternary">
+                                                                    {intervalLabels[s.plan_interval] || ''}
+                                                                </span>
+                                                            )}
                                                         </span>
-                                                        {contract.cancel_at_period_end && contract.status !== 'canceled' && (
-                                                            <span className="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                                                                Cancela em {formatDate(contract.current_period_end)}
-                                                            </span>
-                                                        )}
-                                                    </div>
+                                                    )}
                                                 </td>
 
-                                                {/* Period End */}
-                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                {/* Status */}
+                                                <td className="px-4 py-4 whitespace-nowrap">
+                                                    <span className={`px-2.5 py-1 text-[11px] font-semibold rounded-full ${statusConfig[s.display_status].className}`}>
+                                                        {getStatusBadgeText(s)}
+                                                    </span>
+                                                </td>
+
+                                                {/* Vencimento */}
+                                                <td className="px-4 py-4 whitespace-nowrap">
                                                     <span className="text-sm text-k-text-tertiary">
-                                                        {formatDate(contract.current_period_end)}
+                                                        {s.display_status === 'courtesy' ? '—' : formatDate(s.current_period_end)}
                                                     </span>
                                                 </td>
 
-                                                {/* Actions */}
-                                                <td className="px-6 py-4 whitespace-nowrap text-right">
+                                                {/* Acesso toggle */}
+                                                <td className="px-4 py-4 whitespace-nowrap text-center" onClick={(e) => e.stopPropagation()}>
+                                                    {s.display_status !== 'courtesy' && s.display_status !== 'canceled' && s.contract_id ? (
+                                                        <div className="relative inline-block">
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => handleToggleBlock(s, !s.block_on_fail, e)}
+                                                                disabled={actionLoading === s.contract_id}
+                                                                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors disabled:opacity-50 ${
+                                                                    s.block_on_fail ? 'bg-violet-600' : 'bg-gray-600'
+                                                                }`}
+                                                                title={s.block_on_fail ? 'Bloqueio ativo' : 'Acesso livre'}
+                                                            >
+                                                                <span
+                                                                    className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                                                                        s.block_on_fail ? 'translate-x-[18px]' : 'translate-x-[3px]'
+                                                                    }`}
+                                                                />
+                                                            </button>
+                                                            {blockConfirmId === s.student_id && (
+                                                                <div className="absolute z-20 top-full mt-1 right-0 w-56 p-3 rounded-xl border border-amber-500/20 bg-surface-card shadow-lg">
+                                                                    <p className="text-[11px] text-amber-400 mb-2">
+                                                                        Bloquear acesso de {s.student_name} se inadimplente?
+                                                                    </p>
+                                                                    <div className="flex gap-2">
+                                                                        <button
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation()
+                                                                                setBlockConfirmId(null)
+                                                                                handleToggleBlock(s, true, e)
+                                                                            }}
+                                                                            className="px-2.5 py-1 text-[10px] font-semibold rounded-lg bg-violet-600 text-white hover:bg-violet-500 transition-colors"
+                                                                        >
+                                                                            Confirmar
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation()
+                                                                                setBlockConfirmId(null)
+                                                                            }}
+                                                                            className="px-2.5 py-1 text-[10px] font-medium text-k-text-secondary hover:text-k-text-primary transition-colors"
+                                                                        >
+                                                                            Cancelar
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-xs text-k-text-quaternary">—</span>
+                                                    )}
+                                                </td>
+
+                                                {/* Ações */}
+                                                <td className="px-4 py-4 whitespace-nowrap text-right" onClick={(e) => e.stopPropagation()}>
                                                     <div className="flex items-center justify-end gap-2">
-                                                        {actionLoading === contract.id ? (
+                                                        {actionLoading === s.contract_id || actionLoading === s.student_id ? (
                                                             <Loader2 className="w-4 h-4 animate-spin text-muted-foreground/50" />
                                                         ) : (
                                                             <>
-                                                                {/* Mark as Paid — only for manual/past_due */}
-                                                                {contract.status === 'past_due' &&
-                                                                    contract.billing_type !== 'stripe_auto' &&
-                                                                    contract.billing_type !== 'courtesy' && (
-                                                                        <button
-                                                                            onClick={(e) => handleMarkAsPaid(contract.id, e)}
-                                                                            title="Marcar como pago"
-                                                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors"
-                                                                        >
-                                                                            <CheckCircle size={13} strokeWidth={2} />
-                                                                            Baixar
-                                                                        </button>
-                                                                    )}
-
-                                                                {/* Cancel — for active/past_due (not already canceled or scheduled) */}
-                                                                {(contract.status === 'active' || contract.status === 'past_due') && !contract.cancel_at_period_end && (
+                                                                {/* Courtesy + Canceled: Configure */}
+                                                                {(s.display_status === 'courtesy' || s.display_status === 'canceled') && (
                                                                     <button
-                                                                        onClick={(e) => contract.billing_type === 'stripe_auto'
-                                                                            ? handleCancelAtPeriodEnd(contract.id, e)
-                                                                            : handleCancel(contract.id, e)
-                                                                        }
-                                                                        title={contract.billing_type === 'stripe_auto'
-                                                                            ? 'Agendar cancelamento'
-                                                                            : 'Cancelar assinatura'}
-                                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-gray-500/10 text-gray-400 border border-gray-500/20 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20 transition-colors"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation()
+                                                                            handleOpenConfigModal('new', s)
+                                                                        }}
+                                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-violet-500/10 text-violet-400 border border-violet-500/20 hover:bg-violet-500/20 transition-colors"
                                                                     >
-                                                                        <XCircle size={13} strokeWidth={2} />
-                                                                        {contract.billing_type === 'stripe_auto' ? 'Agendar' : 'Cancelar'}
+                                                                        <Settings2 size={12} strokeWidth={2} />
+                                                                        Configurar
                                                                     </button>
                                                                 )}
 
-                                                                {/* Copy Payment Link — for pending stripe_auto */}
-                                                                {contract.status === 'pending' && contract.billing_type === 'stripe_auto' && (
+                                                                {/* Awaiting payment: Copy link */}
+                                                                {s.display_status === 'awaiting_payment' && (
                                                                     <button
-                                                                        onClick={(e) => handleCopyLink(contract, e)}
-                                                                        title="Copiar link de pagamento"
+                                                                        onClick={(e) => handleCopyLink(s, e)}
                                                                         className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-violet-500/10 text-violet-400 border border-violet-500/20 hover:bg-violet-500/20 transition-colors"
                                                                     >
-                                                                        <Copy size={13} strokeWidth={2} />
+                                                                        <Copy size={12} strokeWidth={2} />
                                                                         Copiar Link
                                                                     </button>
+                                                                )}
+
+                                                                {/* Active manual / grace_period / overdue manual: Mark paid */}
+                                                                {s.contract_id && s.billing_type !== 'stripe_auto' &&
+                                                                    s.billing_type !== 'courtesy' &&
+                                                                    ['active', 'grace_period', 'overdue'].includes(s.display_status) && (
+                                                                    <button
+                                                                        onClick={(e) => handleMarkAsPaid(s.contract_id!, e)}
+                                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors"
+                                                                    >
+                                                                        <CheckCircle size={12} strokeWidth={2} />
+                                                                        Marcar pago
+                                                                    </button>
+                                                                )}
+
+                                                                {/* WhatsApp for grace_period / overdue */}
+                                                                {['grace_period', 'overdue'].includes(s.display_status) && s.phone && (
+                                                                    <a
+                                                                        href={`https://wa.me/55${s.phone.replace(/\D/g, '')}`}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        onClick={(e) => e.stopPropagation()}
+                                                                        title="Contatar via WhatsApp"
+                                                                        className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-emerald-600/10 text-emerald-400 hover:bg-emerald-600/20 transition-colors"
+                                                                    >
+                                                                        <MessageCircle size={13} strokeWidth={2} />
+                                                                    </a>
                                                                 )}
                                                             </>
                                                         )}
@@ -543,26 +639,40 @@ export function SubscriptionsClient({
                 </div>
             </div>
 
-            {/* New Subscription Modal */}
-            <NewSubscriptionModal
-                isOpen={modalOpen}
-                onClose={() => setModalOpen(false)}
+            {/* Configure Billing Modal */}
+            <ConfigureBillingModal
+                isOpen={configModalState.isOpen}
+                onClose={() => setConfigModalState({ isOpen: false, mode: 'new', student: null })}
                 onSuccess={handleSuccess}
-                students={modalStudents}
+                student={configModalState.student}
+                allStudents={modalStudents}
                 plans={modalPlans}
                 hasStripeConnect={hasStripeConnect}
+                mode={configModalState.mode}
             />
 
-            {/* Contract Detail/Edit Modal */}
-            <ContractDetailModal
+            {/* Student Financial Modal */}
+            <StudentFinancialModal
                 isOpen={detailModalOpen}
                 onClose={() => {
                     setDetailModalOpen(false)
-                    setSelectedContract(null)
+                    setSelectedStudent(null)
                 }}
                 onSuccess={handleSuccess}
-                contract={selectedContract}
+                student={selectedStudent}
                 plans={modalPlans}
+                hasStripeConnect={hasStripeConnect}
+                onOpenNewSubscription={(studentId) => {
+                    setDetailModalOpen(false)
+                    setSelectedStudent(null)
+                    const target = financialStudents.find(s => s.student_id === studentId)
+                    handleOpenConfigModal('new', target)
+                }}
+                onMigrate={(student) => {
+                    setDetailModalOpen(false)
+                    setSelectedStudent(null)
+                    handleOpenConfigModal('migrate', student)
+                }}
             />
         </AppLayout>
     )

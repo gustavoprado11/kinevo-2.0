@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { stripe } from '@/lib/stripe'
+import { generateCheckoutCore } from '@/lib/stripe/generate-checkout'
 import { revalidatePath } from 'next/cache'
 
 export async function generateCheckoutLink({ studentId, planId }: { studentId: string; planId: string }) {
@@ -35,24 +35,20 @@ export async function generateCheckoutLink({ studentId, planId }: { studentId: s
     }
 
     // Validate student belongs to trainer
-    const { data: student, error: studentError } = await supabaseAdmin
+    const { data: student } = await supabaseAdmin
         .from('students')
-        .select('id, coach_id, name, email, stripe_customer_id')
+        .select('id, coach_id')
         .eq('id', studentId)
         .single()
-
-    if (studentError) {
-        console.error('[generate-checkout-link] Erro ao buscar aluno:', studentError)
-    }
 
     if (!student || student.coach_id !== trainer.id) {
         return { error: 'Aluno não encontrado' }
     }
 
-    // Validate plan belongs to trainer and has Stripe price
+    // Validate plan belongs to trainer
     const { data: plan } = await supabaseAdmin
         .from('trainer_plans')
-        .select('id, title, trainer_id, stripe_price_id, stripe_product_id, price')
+        .select('id, trainer_id')
         .eq('id', planId)
         .single()
 
@@ -60,114 +56,18 @@ export async function generateCheckoutLink({ studentId, planId }: { studentId: s
         return { error: 'Plano não encontrado' }
     }
 
-    if (!plan.stripe_price_id) {
-        return { error: 'Este plano não tem preço configurado no Stripe. Recrie o plano com o Stripe conectado.' }
-    }
-
     try {
-        // Find or create Stripe Customer on the connected account
-        let stripeCustomerId = student.stripe_customer_id
-
-        if (!stripeCustomerId) {
-            const customer = await stripe.customers.create(
-                {
-                    email: student.email,
-                    name: student.name,
-                    metadata: {
-                        student_id: student.id,
-                        trainer_id: trainer.id,
-                    },
-                },
-                { stripeAccount: settings.stripe_connect_id }
-            )
-            stripeCustomerId = customer.id
-
-            // Save customer ID to student record
-            await supabaseAdmin
-                .from('students')
-                .update({ stripe_customer_id: stripeCustomerId })
-                .eq('id', studentId)
-        }
-
-        // Create Checkout Session on the connected account
-        const origin = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL
-            ? `https://${process.env.VERCEL_URL}`
-            : 'http://localhost:3000'
-
-        const session = await stripe.checkout.sessions.create(
-            {
-                customer: stripeCustomerId,
-                mode: 'subscription',
-                payment_method_types: ['card'],
-                line_items: [{
-                    price: plan.stripe_price_id,
-                    quantity: 1,
-                }],
-                subscription_data: {
-                    metadata: {
-                        trainer_id: trainer.id,
-                        student_id: studentId,
-                        plan_id: planId,
-                    },
-                },
-                metadata: {
-                    trainer_id: trainer.id,
-                    student_id: studentId,
-                    plan_id: planId,
-                },
-                success_url: `${origin}/financial/subscriptions?checkout=success`,
-                cancel_url: `${origin}/financial/subscriptions?checkout=canceled`,
-            },
-            { stripeAccount: settings.stripe_connect_id }
-        )
-
-        // Update student pending plan
-        await supabaseAdmin
-            .from('students')
-            .update({
-                pending_plan_id: planId,
-                plan_status: 'pending',
-            })
-            .eq('id', studentId)
-
-        // Insert or Update the pending contract
-        const { data: existingContract } = await supabaseAdmin
-            .from('student_contracts')
-            .select('id')
-            .eq('student_id', studentId)
-            .eq('plan_id', planId)
-            .eq('status', 'pending')
-            .single()
-
-        if (existingContract) {
-            await supabaseAdmin
-                .from('student_contracts')
-                .update({ updated_at: new Date().toISOString() })
-                .eq('id', existingContract.id)
-        } else {
-            const { error: insertError } = await supabaseAdmin
-                .from('student_contracts')
-                .insert({
-                    student_id: studentId,
-                    trainer_id: trainer.id,
-                    plan_id: planId,
-                    amount: plan.price,
-                    status: 'pending',
-                    billing_type: 'stripe_auto',
-                    block_on_fail: true,
-                    stripe_customer_id: stripeCustomerId,
-                })
-
-            if (insertError) {
-                console.error('[generate-checkout-link] Erro ao criar contrato pendente:', insertError)
-                return { error: 'Ocorreu um erro no banco de dados ao salvar a assinatura. Contate o suporte.' }
-            }
-        }
+        const result = await generateCheckoutCore({
+            studentId,
+            planId,
+            trainerId: trainer.id,
+            stripeConnectId: settings.stripe_connect_id,
+        })
 
         revalidatePath('/financial/subscriptions')
-        return { success: true, url: session.url }
+        return { success: true, url: result.url }
     } catch (err) {
         console.error('[generate-checkout-link] Error:', err)
-        return { error: 'Erro ao gerar link de pagamento' }
+        return { error: err instanceof Error ? err.message : 'Erro ao gerar link de pagamento' }
     }
 }

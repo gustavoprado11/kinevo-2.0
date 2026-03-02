@@ -1,5 +1,6 @@
 import { Sidebar } from './sidebar'
 import { Header } from './header'
+import { FinancialBadge } from './financial-badge'
 import { ThemeSync } from '@/components/theme-sync'
 import { OnboardingProvider } from '@/components/onboarding/onboarding-provider'
 import { OnboardingChecklist } from '@/components/onboarding/widgets/onboarding-checklist'
@@ -21,7 +22,9 @@ export function AppLayout({ children, trainerName, trainerEmail, trainerAvatarUr
         <div className="min-h-screen bg-background text-foreground">
             <ThemeSync trainerTheme={trainerTheme} />
             {/* Sidebar */}
-            <Sidebar />
+            <Sidebar
+                financialBadge={<FinancialBadge />}
+            />
 
             {/* Main content area */}
             <div className="pl-64 bg-surface-primary min-h-screen">

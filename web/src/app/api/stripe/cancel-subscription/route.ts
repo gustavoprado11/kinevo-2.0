@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { stripe } from '@/lib/stripe'
+import { logContractEvent } from '@/lib/contract-events'
+import { insertTrainerNotification } from '@/lib/trainer-notifications'
 
 /**
  * POST /api/stripe/cancel-subscription
@@ -98,13 +100,25 @@ export async function POST(request: NextRequest) {
         // --- Update contract in DB ---
         const { error: updateError } = await supabaseAdmin
             .from('student_contracts')
-            .update({ cancel_at_period_end: true })
+            .update({
+                cancel_at_period_end: true,
+                canceled_by: 'student',
+                canceled_at: new Date().toISOString(),
+            })
             .eq('id', contract_id)
 
         if (updateError) {
             console.error('[cancel-subscription] DB update error:', updateError)
             return NextResponse.json({ error: 'Erro ao atualizar contrato' }, { status: 500 })
         }
+
+        await logContractEvent({
+            studentId: contract.student_id,
+            trainerId: contract.trainer_id,
+            contractId: contract.id,
+            eventType: 'contract_canceled',
+            metadata: { canceled_by: 'student', reason: 'app_cancellation' },
+        })
 
         // --- Notify the trainer ---
         const planTitle = (contract as any).plan?.title || 'Plano'
@@ -116,21 +130,19 @@ export async function POST(request: NextRequest) {
             })
             : 'fim do ciclo atual'
 
-        await supabaseAdmin
-            .from('trainer_notifications')
-            .insert({
-                trainer_id: contract.trainer_id,
-                type: 'subscription_canceled',
-                title: 'Assinatura cancelada',
-                message: `O aluno ${student.name} cancelou a assinatura "${planTitle}". O acesso permanecerá ativo até ${periodEnd}.`,
-                metadata: {
-                    contract_id: contract.id,
-                    student_id: student.id,
-                    student_name: student.name,
-                    plan_title: planTitle,
-                    period_end: contract.current_period_end,
-                },
-            })
+        await insertTrainerNotification({
+            trainerId: contract.trainer_id,
+            type: 'subscription_canceled',
+            title: 'Assinatura cancelada',
+            message: `O aluno ${student.name} cancelou a assinatura "${planTitle}". O acesso permanecerá ativo até ${periodEnd}.`,
+            metadata: {
+                contract_id: contract.id,
+                student_id: student.id,
+                student_name: student.name,
+                plan_title: planTitle,
+                period_end: contract.current_period_end,
+            },
+        })
 
         return NextResponse.json({
             success: true,

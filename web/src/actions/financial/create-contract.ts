@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { logContractEvent } from '@/lib/contract-events'
 import { revalidatePath } from 'next/cache'
 
 interface CreateContractInput {
@@ -138,14 +139,28 @@ export async function createContract(input: CreateContractInput) {
         }
     }
 
-    const { error: insertError } = await supabaseAdmin
+    const { data: newContract, error: insertError } = await supabaseAdmin
         .from('student_contracts')
         .insert(contractData)
+        .select('id')
+        .single()
 
-    if (insertError) {
+    if (insertError || !newContract) {
         console.error('[create-contract] DB error:', insertError)
         return { error: 'Erro ao criar contrato' }
     }
+
+    await logContractEvent({
+        studentId: input.studentId,
+        trainerId: trainer.id,
+        contractId: newContract.id,
+        eventType: 'contract_created',
+        metadata: {
+            billing_type: input.billingType,
+            amount: plan?.price ?? 0,
+            plan_title: plan?.title ?? 'Acesso Gratuito',
+        },
+    })
 
     // Update student plan_status
     await supabaseAdmin

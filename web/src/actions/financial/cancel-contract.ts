@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { stripe } from '@/lib/stripe'
+import { logContractEvent } from '@/lib/contract-events'
 import { revalidatePath } from 'next/cache'
 
 export async function cancelContract({ contractId, cancelAtPeriodEnd }: { contractId: string; cancelAtPeriodEnd?: boolean }) {
@@ -58,8 +59,20 @@ export async function cancelContract({ contractId, cancelAtPeriodEnd }: { contra
 
                     await supabaseAdmin
                         .from('student_contracts')
-                        .update({ cancel_at_period_end: true })
+                        .update({
+                            cancel_at_period_end: true,
+                            canceled_by: 'trainer',
+                            canceled_at: new Date().toISOString(),
+                        })
                         .eq('id', contractId)
+
+                    await logContractEvent({
+                        studentId: contract.student_id,
+                        trainerId: trainer.id,
+                        contractId,
+                        eventType: 'contract_canceled',
+                        metadata: { canceled_by: 'trainer', scheduled: true },
+                    })
 
                     revalidatePath('/financial')
                     revalidatePath('/financial/subscriptions')
@@ -78,13 +91,26 @@ export async function cancelContract({ contractId, cancelAtPeriodEnd }: { contra
         // Update contract status in DB (immediate cancel)
         const { error: updateError } = await supabaseAdmin
             .from('student_contracts')
-            .update({ status: 'canceled', cancel_at_period_end: false })
+            .update({
+                status: 'canceled',
+                cancel_at_period_end: false,
+                canceled_by: 'trainer',
+                canceled_at: new Date().toISOString(),
+            })
             .eq('id', contractId)
 
         if (updateError) {
             console.error('[cancel-contract] DB error:', updateError)
             return { error: 'Erro ao cancelar contrato' }
         }
+
+        await logContractEvent({
+            studentId: contract.student_id,
+            trainerId: trainer.id,
+            contractId,
+            eventType: 'contract_canceled',
+            metadata: { canceled_by: 'trainer' },
+        })
 
         // Update student plan status
         await supabaseAdmin

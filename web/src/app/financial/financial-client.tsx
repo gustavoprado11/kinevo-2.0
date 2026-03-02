@@ -2,7 +2,11 @@
 
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { Users, TrendingUp, Receipt, ArrowRight, Wallet, AlertTriangle, UserX, Plus, CheckCircle, Check } from 'lucide-react'
+import Image from 'next/image'
+import {
+    Users, TrendingUp, Receipt, ArrowRight, Wallet, AlertTriangle,
+    Heart, Plus, Check, DollarSign
+} from 'lucide-react'
 import { useOnboardingStore } from '@/stores/onboarding-store'
 import Link from 'next/link'
 import { AppLayout } from '@/components/layout'
@@ -10,7 +14,7 @@ import { ConnectStatusCard } from '@/components/financial/connect-status-card'
 import { FinancialOnboarding } from '@/components/financial/financial-onboarding'
 import { EmptyState } from '@/components/financial/empty-state'
 import { NewSubscriptionModal } from '@/components/financial/new-subscription-modal'
-import { markAsPaid } from '@/actions/financial/mark-as-paid'
+import type { FinancialStudent, DisplayStatus } from '@/types/financial'
 
 interface Trainer {
     id: string
@@ -31,13 +35,6 @@ interface Transaction {
     created_at: string
     student_id: string | null
     studentName: string | null
-}
-
-interface OverdueContract {
-    id: string
-    studentName: string
-    amount: number
-    currentPeriodEnd: string | null
 }
 
 interface ModalStudent {
@@ -63,40 +60,56 @@ interface FinancialDashboardClientProps {
         payoutsEnabled: boolean
     }
     showOnboarding: boolean
-    activeContractsCount: number
-    mrr: number
+    monthlyRevenue: number
+    payingCount: number
+    courtesyCount: number
+    attentionStudents: FinancialStudent[]
     recentTransactions: Transaction[]
     plansCount: number
-    overdueContracts: OverdueContract[]
     students: ModalStudent[]
     activePlans: ModalPlan[]
     hasStripeConnect: boolean
-    totalStudents: number
-    studentsWithoutContract: number
+}
+
+const statusLabels: Record<DisplayStatus, string> = {
+    courtesy: 'Cortesia',
+    awaiting_payment: 'Aguardando',
+    active: 'Ativo',
+    grace_period: 'Vence hoje',
+    canceling: 'Cancelando',
+    overdue: 'Inadimplente',
+    canceled: 'Encerrado',
+}
+
+const statusColors: Record<DisplayStatus, string> = {
+    courtesy: 'text-blue-400',
+    awaiting_payment: 'text-sky-400',
+    active: 'text-emerald-400',
+    grace_period: 'text-orange-400',
+    canceling: 'text-amber-400',
+    overdue: 'text-red-400',
+    canceled: 'text-gray-400',
 }
 
 export function FinancialDashboardClient({
     trainer,
     connectStatus,
     showOnboarding: initialShowOnboarding,
-    activeContractsCount,
-    mrr,
+    monthlyRevenue,
+    payingCount,
+    courtesyCount,
+    attentionStudents,
     recentTransactions,
     plansCount,
-    overdueContracts: initialOverdueContracts,
     students,
     activePlans,
     hasStripeConnect,
-    totalStudents,
-    studentsWithoutContract,
 }: FinancialDashboardClientProps) {
     const router = useRouter()
     const searchParams = useSearchParams()
     const [showOnboarding, setShowOnboarding] = useState(initialShowOnboarding)
     const [connectSyncing, setConnectSyncing] = useState(false)
     const [modalOpen, setModalOpen] = useState(false)
-    const [overdueContracts, setOverdueContracts] = useState(initialOverdueContracts)
-    const [markingPaid, setMarkingPaid] = useState<string | null>(null)
 
     // Sync connect status on return from Stripe
     useEffect(() => {
@@ -145,6 +158,11 @@ export function FinancialDashboardClient({
         }).format(value)
     }
 
+    const formatDate = (dateStr: string | null) => {
+        if (!dateStr) return '—'
+        return new Date(dateStr).toLocaleDateString('pt-BR')
+    }
+
     const timeAgo = (dateStr: string) => {
         const now = new Date()
         const date = new Date(dateStr)
@@ -161,16 +179,13 @@ export function FinancialDashboardClient({
         return new Date(dateStr).toLocaleDateString('pt-BR')
     }
 
-    // Fix 4: Clean Stripe description to something human-readable
     const cleanDescription = (tx: Transaction): string => {
         if (tx.studentName) {
-            // Extract plan name from Stripe description: "Pagamento automático — 1 × PlanName (at R$ X.XX / month)"
             const match = tx.description?.match(/× (.+?) \(/)
             const planName = match ? match[1] : null
             return planName ? `${tx.studentName} — ${planName}` : tx.studentName
         }
         if (tx.description) {
-            // Fallback: clean raw Stripe text
             const match = tx.description.match(/× (.+?) \(/)
             if (match) return `Plano ${match[1]}`
             return tx.description.replace(/\s*\(at R\$.*?\)/, '').replace(/1 × /, '')
@@ -185,14 +200,10 @@ export function FinancialDashboardClient({
         return typeMap[tx.type] || tx.type
     }
 
-    const handleMarkAsPaid = async (contractId: string) => {
-        setMarkingPaid(contractId)
-        const result = await markAsPaid({ contractId })
-        if (result.success) {
-            setOverdueContracts(prev => prev.filter(c => c.id !== contractId))
-            router.refresh()
-        }
-        setMarkingPaid(null)
+    function daysOverdue(dateStr: string | null): number {
+        if (!dateStr) return 0
+        const diff = Date.now() - new Date(dateStr).getTime()
+        return Math.max(0, Math.floor(diff / 86400000))
     }
 
     return (
@@ -203,7 +214,7 @@ export function FinancialDashboardClient({
             trainerTheme={trainer.theme as 'light' | 'dark' | 'system' | null}
         >
         <div>
-            {/* Fix 1 + Fix 2: Header without subtitle, with "+ Nova Assinatura" button */}
+            {/* Header */}
             <div className="flex items-center justify-between mb-8">
                 <h1 className="text-2xl font-bold text-k-text-primary">Financeiro</h1>
                 <button
@@ -211,7 +222,7 @@ export function FinancialDashboardClient({
                     className="bg-violet-600 hover:bg-violet-500 text-white rounded-xl px-4 py-2 text-sm font-medium transition-all active:scale-95 flex items-center gap-1.5"
                 >
                     <Plus size={16} />
-                    Nova Assinatura
+                    Nova Cobrança
                 </button>
             </div>
 
@@ -228,103 +239,137 @@ export function FinancialDashboardClient({
                 )}
             </div>
 
-            {/* Fix 6: Enhanced Pending Actions */}
-            {overdueContracts.length > 0 ? (
+            {/* Attention section */}
+            {attentionStudents.length > 0 ? (
                 <div className="mb-8">
                     <div className="flex items-center gap-2 mb-3">
-                        <div className="w-2 h-2 bg-amber-400 rounded-full animate-pulse" />
-                        <span className="text-sm font-semibold text-k-text-primary">Ações pendentes</span>
+                        <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse" />
+                        <span className="text-sm font-semibold text-k-text-primary">Atenção necessária</span>
                         <span className="text-[10px] text-k-text-quaternary bg-glass-bg px-1.5 py-0.5 rounded">
-                            {overdueContracts.length}
+                            {attentionStudents.length}
                         </span>
                     </div>
                     <div className="space-y-2">
-                        {overdueContracts.map(c => {
-                            const isPastDue = c.currentPeriodEnd && new Date(c.currentPeriodEnd) < new Date()
-                            return (
-                                <div
-                                    key={c.id}
-                                    className={`flex items-center justify-between px-4 py-3 rounded-xl border transition-colors ${
-                                        isPastDue
-                                            ? 'bg-red-500/5 border-red-500/15'
-                                            : 'bg-amber-500/5 border-amber-500/15'
-                                    }`}
-                                >
+                        {attentionStudents.map(s => (
+                            <Link
+                                key={s.student_id}
+                                href="/financial/subscriptions"
+                                className={`flex items-center justify-between px-4 py-3 rounded-xl border transition-colors ${
+                                    s.display_status === 'overdue'
+                                        ? 'bg-red-500/5 border-red-500/15 hover:border-red-500/30'
+                                        : s.display_status === 'grace_period'
+                                        ? 'bg-orange-500/5 border-orange-500/15 hover:border-orange-500/30'
+                                        : 'bg-amber-500/5 border-amber-500/15 hover:border-amber-500/30'
+                                }`}
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className="flex h-8 w-8 items-center justify-center rounded-full border border-k-border-primary bg-glass-bg overflow-hidden flex-shrink-0">
+                                        {s.avatar_url ? (
+                                            <Image
+                                                src={s.avatar_url}
+                                                alt={s.student_name}
+                                                width={32}
+                                                height={32}
+                                                className="h-8 w-8 rounded-full object-cover"
+                                                unoptimized
+                                            />
+                                        ) : (
+                                            <span className="text-xs font-semibold text-k-text-primary">
+                                                {s.student_name?.charAt(0).toUpperCase() || '?'}
+                                            </span>
+                                        )}
+                                    </div>
                                     <div>
-                                        <span className="text-sm text-k-text-primary">{c.studentName}</span>
-                                        <span className="text-xs text-k-text-quaternary block mt-0.5">
-                                            {formatCurrency(c.amount)}
-                                            {c.currentPeriodEnd && ` · ${isPastDue ? 'venceu' : 'vence'} ${new Date(c.currentPeriodEnd).toLocaleDateString('pt-BR')}`}
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm font-medium text-k-text-primary">{s.student_name}</span>
+                                            <span className={`text-[10px] font-semibold ${statusColors[s.display_status]}`}>
+                                                {s.display_status === 'canceling' && s.current_period_end
+                                                    ? `Cancela em ${formatDate(s.current_period_end)}`
+                                                    : statusLabels[s.display_status]}
+                                            </span>
+                                        </div>
+                                        <span className="text-xs text-k-text-quaternary">
+                                            {s.amount ? formatCurrency(s.amount) : ''}
+                                            {s.display_status === 'overdue' && s.current_period_end
+                                                ? ` · Vencido há ${daysOverdue(s.current_period_end)} dia${daysOverdue(s.current_period_end) !== 1 ? 's' : ''}`
+                                                : s.billing_type === 'stripe_auto' ? ' · Stripe' : ''}
                                         </span>
                                     </div>
-                                    <button
-                                        onClick={() => handleMarkAsPaid(c.id)}
-                                        disabled={markingPaid === c.id}
-                                        className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors disabled:opacity-50 flex items-center gap-1.5 ${
-                                            isPastDue
-                                                ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20'
-                                                : 'bg-amber-500/10 text-amber-400 hover:bg-amber-500/20'
-                                        }`}
-                                    >
-                                        <CheckCircle size={13} />
-                                        {markingPaid === c.id ? 'Registrando...' : 'Registrar pagamento'}
-                                    </button>
                                 </div>
-                            )
-                        })}
+                                <span className="text-xs text-k-text-tertiary flex items-center gap-1">
+                                    Ver detalhes
+                                    <ArrowRight size={12} />
+                                </span>
+                            </Link>
+                        ))}
                     </div>
                 </div>
-            ) : activeContractsCount > 0 ? (
+            ) : payingCount > 0 || courtesyCount > 0 ? (
                 <div className="flex items-center gap-2 px-3 py-2 bg-emerald-500/5 border border-emerald-500/10 rounded-xl mb-8 w-fit">
                     <Check size={14} className="text-emerald-400" />
-                    <span className="text-xs text-emerald-400">Todas as cobranças em dia</span>
+                    <span className="text-xs text-emerald-400">Tudo em dia</span>
                 </div>
             ) : null}
 
-            {/* Stats Cards — Fix 5: Replace "Planos Criados" with "Sem assinatura" */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                <div className="rounded-2xl border border-k-border-primary bg-surface-card p-5">
+                    <div className="flex items-center gap-3 mb-3">
+                        <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-emerald-500/10">
+                            <DollarSign size={18} className="text-emerald-400" />
+                        </div>
+                        <span className="text-xs font-medium text-k-text-secondary">
+                            Receita do mês
+                        </span>
+                    </div>
+                    <p className="text-2xl font-bold text-k-text-primary">{formatCurrency(monthlyRevenue)}</p>
+                </div>
+
                 <div className="rounded-2xl border border-k-border-primary bg-surface-card p-5">
                     <div className="flex items-center gap-3 mb-3">
                         <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-violet-500/10">
                             <Users size={18} className="text-violet-400" />
                         </div>
                         <span className="text-xs font-medium text-k-text-secondary">
-                            Assinaturas ativas
+                            Alunos pagantes
                         </span>
                     </div>
-                    <p className="text-2xl font-bold text-k-text-primary">{activeContractsCount}</p>
+                    <p className="text-2xl font-bold text-k-text-primary">{payingCount}</p>
                 </div>
 
                 <div className="rounded-2xl border border-k-border-primary bg-surface-card p-5">
                     <div className="flex items-center gap-3 mb-3">
-                        <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-emerald-500/10">
-                            <TrendingUp size={18} className="text-emerald-400" />
+                        <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-blue-500/10">
+                            <Heart size={18} className="text-blue-400" />
                         </div>
                         <span className="text-xs font-medium text-k-text-secondary">
-                            Receita mensal
+                            Em cortesia
                         </span>
                     </div>
-                    <p className="text-2xl font-bold text-k-text-primary">{formatCurrency(mrr)}</p>
+                    <p className="text-2xl font-bold text-k-text-primary">{courtesyCount}</p>
                 </div>
 
                 <Link
                     href="/financial/subscriptions"
-                    className="rounded-2xl border border-k-border-primary bg-surface-card p-5 hover:border-amber-500/30 transition-colors group"
+                    className={`rounded-2xl border p-5 transition-colors group ${
+                        attentionStudents.length > 0
+                            ? 'border-red-500/20 bg-surface-card hover:border-red-500/30'
+                            : 'border-k-border-primary bg-surface-card hover:border-emerald-500/30'
+                    }`}
                 >
                     <div className="flex items-center gap-3 mb-3">
-                        <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-amber-500/10">
-                            <UserX size={18} className="text-amber-400" />
+                        <div className={`flex items-center justify-center w-9 h-9 rounded-xl ${
+                            attentionStudents.length > 0 ? 'bg-red-500/10' : 'bg-emerald-500/10'
+                        }`}>
+                            <AlertTriangle size={18} className={
+                                attentionStudents.length > 0 ? 'text-red-400' : 'text-emerald-400'
+                            } />
                         </div>
                         <span className="text-xs font-medium text-k-text-secondary">
-                            Sem assinatura
+                            Atenção
                         </span>
                     </div>
-                    <p className="text-2xl font-bold text-k-text-primary">{studentsWithoutContract}</p>
-                    {totalStudents > 0 && (
-                        <p className="text-[10px] text-k-text-quaternary mt-1">
-                            de {totalStudents} aluno{totalStudents > 1 ? 's' : ''}
-                        </p>
-                    )}
+                    <p className="text-2xl font-bold text-k-text-primary">{attentionStudents.length}</p>
                 </Link>
             </div>
 
@@ -371,7 +416,7 @@ export function FinancialDashboardClient({
                         </Link>
                     </div>
                     <p className="text-xs text-k-text-secondary mb-3">
-                        {activeContractsCount === 0 ? 'Nenhuma assinatura ativa' : `${activeContractsCount} assinatura${activeContractsCount > 1 ? 's' : ''} ativa${activeContractsCount > 1 ? 's' : ''}`}
+                        {payingCount === 0 ? 'Nenhum aluno pagante' : `${payingCount} aluno${payingCount > 1 ? 's' : ''} pagante${payingCount > 1 ? 's' : ''}`}
                     </p>
                     <Link
                         href="/financial/subscriptions"
@@ -383,7 +428,7 @@ export function FinancialDashboardClient({
                 </div>
             </div>
 
-            {/* Recent Transactions — Fix 4: Humanized descriptions */}
+            {/* Recent Transactions */}
             <div className="rounded-2xl border border-k-border-primary bg-surface-card">
                 <div className="px-6 py-4 border-b border-k-border-subtle">
                     <h2 className="text-sm font-semibold text-k-text-primary">Últimas transações</h2>

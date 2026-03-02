@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { logContractEvent } from '@/lib/contract-events'
 import { revalidatePath } from 'next/cache'
 
 function addInterval(date: Date, interval: string): Date {
@@ -55,7 +56,53 @@ export async function markAsPaid({ contractId }: { contractId: string }) {
         return { error: 'Sem permissão' }
     }
 
-    // Calculate new period end
+    // manual_one_off: only mark as paid, do NOT renew period
+    if (contract.billing_type === 'manual_one_off') {
+        const { error: updateError } = await supabaseAdmin
+            .from('student_contracts')
+            .update({ status: 'active' })
+            .eq('id', contractId)
+
+        if (updateError) {
+            console.error('[mark-as-paid] DB error:', updateError)
+            return { error: 'Erro ao atualizar contrato' }
+        }
+
+        await supabaseAdmin
+            .from('financial_transactions')
+            .insert({
+                coach_id: trainer.id,
+                student_id: contract.student_id,
+                amount_gross: contract.amount,
+                amount_net: contract.amount,
+                currency: 'brl',
+                type: 'subscription',
+                status: 'succeeded',
+                stripe_payment_id: `manual_${contractId}_${Date.now()}`,
+                description: 'Pagamento avulso registrado',
+            })
+
+        await logContractEvent({
+            studentId: contract.student_id,
+            trainerId: trainer.id,
+            contractId,
+            eventType: 'payment_received',
+            metadata: { amount: contract.amount, method: 'manual', billing_type: 'manual_one_off' },
+        })
+
+        await supabaseAdmin
+            .from('students')
+            .update({ plan_status: 'active' })
+            .eq('id', contract.student_id)
+
+        revalidatePath('/financial')
+        revalidatePath('/financial/subscriptions')
+        revalidatePath('/dashboard')
+
+        return { success: true }
+    }
+
+    // manual_recurring: renew period from previous due date (not from today)
     const currentEnd = contract.current_period_end
         ? new Date(contract.current_period_end)
         : new Date()
@@ -91,6 +138,14 @@ export async function markAsPaid({ contractId }: { contractId: string }) {
             stripe_payment_id: `manual_${contractId}_${Date.now()}`,
             description: 'Pagamento manual registrado',
         })
+
+    await logContractEvent({
+        studentId: contract.student_id,
+        trainerId: trainer.id,
+        contractId,
+        eventType: 'payment_received',
+        metadata: { amount: contract.amount, method: 'manual', billing_type: 'manual_recurring' },
+    })
 
     // Update student plan status
     await supabaseAdmin

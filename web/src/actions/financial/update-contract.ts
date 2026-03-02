@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { stripe } from '@/lib/stripe'
+import { logContractEvent } from '@/lib/contract-events'
 import { revalidatePath } from 'next/cache'
 
 interface UpdateContractInput {
@@ -154,6 +155,32 @@ export async function updateContract(input: UpdateContractInput) {
         if (updateError) {
             console.error('[update-contract] DB error:', updateError)
             return { error: 'Erro ao atualizar contrato' }
+        }
+
+        // Log contract events for significant changes
+        if (payload.plan_id !== undefined || payload.amount !== undefined) {
+            await logContractEvent({
+                studentId: contract.student_id,
+                trainerId: trainer.id,
+                contractId: contract.id,
+                eventType: 'plan_changed',
+                metadata: {
+                    from_amount: contract.amount,
+                    to_amount: payload.amount ?? contract.amount,
+                    from_plan: contract.plan_id,
+                    to_plan: payload.plan_id ?? contract.plan_id,
+                    to_plan_title: newPlanTitle,
+                },
+            })
+        }
+
+        if (payload.block_on_fail !== undefined) {
+            await logContractEvent({
+                studentId: contract.student_id,
+                trainerId: trainer.id,
+                contractId: contract.id,
+                eventType: payload.block_on_fail ? 'access_blocked' : 'access_unblocked',
+            })
         }
 
         // Update student plan name if plan changed

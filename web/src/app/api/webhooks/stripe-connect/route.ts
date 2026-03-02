@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { logContractEvent } from '@/lib/contract-events'
+import { insertTrainerNotification } from '@/lib/trainer-notifications'
 import Stripe from 'stripe'
 
 // In Stripe v20+, current_period_end moved from Subscription to SubscriptionItem
@@ -255,6 +257,18 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session, connect
         })
         .eq('id', studentId)
 
+    await logContractEvent({
+        studentId,
+        trainerId,
+        contractId: pendingContract?.id ?? null,
+        eventType: 'contract_created',
+        metadata: {
+            billing_type: 'stripe_auto',
+            amount: session.amount_total ? session.amount_total / 100 : plan?.price ?? 0,
+            plan_title: plan?.title ?? null,
+        },
+    })
+
     console.log(`[connect-webhook:checkout] Contract activated for student ${studentId}`)
 }
 
@@ -320,6 +334,41 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice, connectedAccountI
         .update({ plan_status: 'active' })
         .eq('id', contract.student_id)
 
+    await logContractEvent({
+        studentId: contract.student_id,
+        trainerId: contract.trainer_id,
+        contractId: contract.id,
+        eventType: 'payment_received',
+        metadata: {
+            amount: amountPaid,
+            method: 'stripe',
+            stripe_invoice_id: invoice.id,
+        },
+    })
+
+    // Notify trainer of successful payment
+    const { data: paidStudent } = await supabaseAdmin
+        .from('students')
+        .select('name')
+        .eq('id', contract.student_id)
+        .single()
+
+    const amountFormatted = new Intl.NumberFormat('pt-BR', {
+        style: 'currency', currency: 'BRL'
+    }).format(amountPaid)
+
+    await insertTrainerNotification({
+        trainerId: contract.trainer_id,
+        type: 'payment_received',
+        title: 'Pagamento confirmado',
+        message: `${paidStudent?.name ?? 'Aluno'} pagou ${amountFormatted}.`,
+        metadata: {
+            student_id: contract.student_id,
+            contract_id: contract.id,
+            amount: amountPaid,
+        },
+    })
+
     console.log(`[connect-webhook:payment_succeeded] Recorded for contract ${contract.id}, amount=${amountPaid}`)
 }
 
@@ -369,10 +418,46 @@ async function handlePaymentFailed(invoice: Stripe.Invoice, connectedAccountId?:
         .update({ plan_status: 'past_due' })
         .eq('id', contract.student_id)
 
+    await logContractEvent({
+        studentId: contract.student_id,
+        trainerId: contract.trainer_id,
+        contractId: contract.id,
+        eventType: 'payment_failed',
+        metadata: {
+            amount: contract.amount,
+            stripe_invoice_id: invoice.id,
+        },
+    })
+
+    // Notify trainer of failed payment
+    const { data: failedStudent } = await supabaseAdmin
+        .from('students')
+        .select('name')
+        .eq('id', contract.student_id)
+        .single()
+
+    await insertTrainerNotification({
+        trainerId: contract.trainer_id,
+        type: 'payment_failed',
+        title: 'Pagamento falhou',
+        message: `Pagamento de ${failedStudent?.name ?? 'Aluno'} falhou.`,
+        metadata: {
+            student_id: contract.student_id,
+            contract_id: contract.id,
+        },
+    })
+
     console.log(`[connect-webhook:payment_failed] Contract ${contract.id} marked past_due`)
 }
 
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
+    // Fetch current contract state before update (to detect cancel_at_period_end change)
+    const { data: contract } = await supabaseAdmin
+        .from('student_contracts')
+        .select('id, student_id, trainer_id, cancel_at_period_end, canceled_by')
+        .eq('stripe_subscription_id', subscription.id)
+        .single()
+
     await supabaseAdmin
         .from('student_contracts')
         .update({
@@ -382,19 +467,73 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
         })
         .eq('stripe_subscription_id', subscription.id)
 
+    // Notify trainer if cancel_at_period_end changed to true and wasn't already set by app/trainer
+    // This catches cancellations via Stripe Dashboard or other non-app channels
+    if (
+        subscription.cancel_at_period_end &&
+        contract &&
+        !contract.cancel_at_period_end &&
+        contract.canceled_by !== 'student' &&
+        contract.canceled_by !== 'trainer'
+    ) {
+        const { data: cancelStudent } = await supabaseAdmin
+            .from('students')
+            .select('name')
+            .eq('id', contract.student_id)
+            .single()
+
+        const periodEnd = getPeriodEnd(subscription)
+        const endDateStr = periodEnd
+            ? new Date(periodEnd).toLocaleDateString('pt-BR')
+            : 'fim do período'
+
+        // Mark canceled_by as 'system' for non-app cancellations
+        await supabaseAdmin
+            .from('student_contracts')
+            .update({
+                canceled_by: 'system',
+                canceled_at: new Date().toISOString(),
+            })
+            .eq('id', contract.id)
+
+        await logContractEvent({
+            studentId: contract.student_id,
+            trainerId: contract.trainer_id,
+            contractId: contract.id,
+            eventType: 'contract_canceled',
+            metadata: { canceled_by: 'system', source: 'stripe_dashboard' },
+        })
+
+        await insertTrainerNotification({
+            trainerId: contract.trainer_id,
+            type: 'cancellation_alert',
+            title: 'Assinatura cancelada',
+            message: `A assinatura de ${cancelStudent?.name ?? 'Aluno'} foi cancelada. Acesso até ${endDateStr}.`,
+            metadata: {
+                student_id: contract.student_id,
+                contract_id: contract.id,
+                access_until: periodEnd,
+            },
+        })
+    }
+
     console.log(`[connect-webhook:subscription.updated] ${subscription.id} → ${subscription.status}`)
 }
 
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
     const { data: contract } = await supabaseAdmin
         .from('student_contracts')
-        .select('id, student_id')
+        .select('id, student_id, trainer_id')
         .eq('stripe_subscription_id', subscription.id)
         .single()
 
     await supabaseAdmin
         .from('student_contracts')
-        .update({ status: 'canceled' })
+        .update({
+            status: 'canceled',
+            canceled_by: 'system',
+            canceled_at: new Date().toISOString(),
+        })
         .eq('stripe_subscription_id', subscription.id)
 
     if (contract) {
@@ -406,6 +545,14 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
                 stripe_subscription_id: null,
             })
             .eq('id', contract.student_id)
+
+        await logContractEvent({
+            studentId: contract.student_id,
+            trainerId: contract.trainer_id,
+            contractId: contract.id,
+            eventType: 'contract_canceled',
+            metadata: { canceled_by: 'system' },
+        })
     }
 
     console.log(`[connect-webhook:subscription.deleted] ${subscription.id} canceled`)

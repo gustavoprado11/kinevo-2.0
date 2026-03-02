@@ -13,6 +13,10 @@ interface NavItem {
     onboardingId?: string
 }
 
+interface SidebarProps {
+    financialBadge?: React.ReactNode
+}
+
 const navigation: NavItem[] = [
     {
         name: 'Dashboard',
@@ -58,7 +62,7 @@ const navigation: NavItem[] = [
     },
 ]
 
-export function Sidebar() {
+export function Sidebar({ financialBadge }: SidebarProps = {}) {
     const pathname = usePathname()
 
     return (
@@ -103,7 +107,8 @@ export function Sidebar() {
                                 strokeWidth={1.5}
                                 className={`transition-colors duration-200 ${isActive ? 'text-violet-400' : 'text-muted-foreground/60 group-hover:text-foreground'}`}
                             />
-                            {item.name}
+                            <span className="flex-1">{item.name}</span>
+                            {item.name === 'Financeiro' && financialBadge}
                         </Link>
                     )
                 })}
