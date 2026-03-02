@@ -15,6 +15,6 @@ export const config = {
          * - public folder
          * - api/webhooks (Stripe webhooks — must not run auth middleware)
          */
-        '/((?!_next/static|_next/image|favicon.ico|api/webhooks|api/stripe/webhook|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+        '/((?!_next/static|_next/image|favicon.ico|api/webhooks|api/stripe/webhook|api/stripe/cancel-subscription|api/cron|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
     ],
 }
