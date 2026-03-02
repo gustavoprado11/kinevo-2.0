@@ -77,9 +77,9 @@ export function useActiveProgram() {
 
             setSessionsMap((prev) => {
                 const next = new Map(prev);
-                // Index new sessions by date key
+                // Index new sessions by date key (use completed_at when available)
                 for (const s of sessions) {
-                    const key = toDateKey(new Date(s.started_at));
+                    const key = toDateKey(new Date(s.completed_at ?? s.started_at));
                     const existing = next.get(key) || [];
                     // Avoid duplicates by id
                     const ids = new Set(existing.map(e => e.id));
@@ -173,7 +173,7 @@ export function useActiveProgram() {
                 // Populate sessions cache
                 const newMap = new Map<string, WorkoutSession[]>();
                 for (const s of sessions) {
-                    const key = toDateKey(new Date(s.started_at));
+                    const key = toDateKey(new Date(s.completed_at ?? s.started_at));
                     const arr = newMap.get(key) || [];
                     arr.push(s);
                     newMap.set(key, arr);

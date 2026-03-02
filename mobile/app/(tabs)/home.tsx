@@ -26,13 +26,6 @@ export default function HomeScreen() {
     const { profile, refreshProfile } = useStudentProfile();
     const { allowed, reason, isLoading: accessLoading, refresh: refreshAccess } = useStudentAccess();
 
-    useFocusEffect(
-        useCallback(() => {
-            refreshProfile();
-            refreshAccess();
-        }, [refreshProfile, refreshAccess])
-    );
-
     const {
         programName,
         workouts,
@@ -47,6 +40,14 @@ export default function HomeScreen() {
         refetch,
         fetchRange,
     } = useActiveProgram();
+
+    useFocusEffect(
+        useCallback(() => {
+            refreshProfile();
+            refreshAccess();
+            refetch();
+        }, [refreshProfile, refreshAccess, refetch])
+    );
 
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [refreshing, setRefreshing] = useState(false);
