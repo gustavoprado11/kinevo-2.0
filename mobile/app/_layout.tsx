@@ -28,6 +28,7 @@ function WatchBridge() {
     const { useWatchConnectivity } = require("../hooks/useWatchConnectivity");
     const { finishWorkoutFromWatch, watchFinishState, processPendingWatchWorkouts } = require("../lib/finishWorkoutFromWatch");
     const { sendAckToWatch, syncWorkoutToWatch } = require("../modules/watch-connectivity");
+    const { appEvents, WORKOUT_COMPLETED } = require("../lib/events");
     const { supabase } = require("../lib/supabase");
     const { getNextWorkoutForWatch } = require("../lib/getNextWorkoutForWatch");
     const router = useRouter();
@@ -142,6 +143,9 @@ function WatchBridge() {
 
                 if (sessionId) {
                     console.log(`[Layout] Workout saved from watch: session ${sessionId}. Sending ACK.`);
+
+                    // Notify useActiveProgram to refresh (works even if user is already on Home tab)
+                    appEvents.emit(WORKOUT_COMPLETED);
 
                     // Send SYNC_SUCCESS ACK to Watch so it clears the pending finish entry.
                     try {

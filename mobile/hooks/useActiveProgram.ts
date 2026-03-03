@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
 import { getWeekRange, toDateKey } from "@kinevo/shared/utils/schedule-projection";
+import { appEvents, WORKOUT_COMPLETED } from "../lib/events";
 
 interface AssignedWorkout {
     id: string;
@@ -60,12 +61,15 @@ export function useActiveProgram() {
         if (!pid) return;
 
         try {
+            // Fetch sessions where started_at OR completed_at falls within the range
+            // This catches sessions started in a previous period but completed in this one
+            const rangeStart = start.toISOString();
+            const rangeEnd = end.toISOString();
             const { data: sessionsData, error: sessionsError }: { data: any; error: any } = await supabase
                 .from("workout_sessions" as any)
                 .select("id, assigned_workout_id, started_at, completed_at, status")
                 .eq("assigned_program_id", pid)
-                .gte("started_at", start.toISOString())
-                .lte("started_at", end.toISOString())
+                .or(`and(started_at.gte.${rangeStart},started_at.lte.${rangeEnd}),and(completed_at.gte.${rangeStart},completed_at.lte.${rangeEnd})`)
                 .order("started_at", { ascending: false });
 
             if (sessionsError) {
@@ -113,7 +117,6 @@ export function useActiveProgram() {
                 setStudentName(student.name || "");
                 setStudentId(student.id);
             } else {
-                console.log('[useActiveProgram] Student not found for user:', user.id);
                 setIsLoading(false);
                 return;
             }
@@ -156,12 +159,16 @@ export function useActiveProgram() {
                 // 3. Fetch sessions for the current week
                 const weekRange = getWeekRange(new Date());
 
+                // Fetch sessions where started_at OR completed_at falls within the week
+                // This catches sessions started in a previous week but completed in this one
+                const wkStart = weekRange.start.toISOString();
+                const wkEnd = weekRange.end.toISOString();
+
                 const { data: sessionsData, error: sessionsError }: { data: any; error: any } = await supabase
                     .from("workout_sessions" as any)
                     .select("id, assigned_workout_id, started_at, completed_at, status")
                     .eq("assigned_program_id", programData.id)
-                    .gte("started_at", weekRange.start.toISOString())
-                    .lte("started_at", weekRange.end.toISOString())
+                    .or(`and(started_at.gte.${wkStart},started_at.lte.${wkEnd}),and(completed_at.gte.${wkStart},completed_at.lte.${wkEnd})`)
                     .order("started_at", { ascending: false });
 
                 if (sessionsError) {
@@ -219,14 +226,21 @@ export function useActiveProgram() {
         }
     }, [user]);
 
+    // Listen for workout-completed events (fired by Watch finish handler in _layout.tsx)
+    useEffect(() => {
+        const handler = () => fetchActiveProgram();
+        appEvents.on(WORKOUT_COMPLETED, handler);
+        return () => { appEvents.off(WORKOUT_COMPLETED, handler); };
+    }, [fetchActiveProgram]);
+
     useEffect(() => {
         fetchActiveProgram();
 
         if (!user || !studentId) return;
 
-        // Realtime Subscription
+        // Realtime Subscription — listen to both program changes AND session changes
         const channel = supabase
-            .channel('active-program-setup')
+            .channel('active-program-and-sessions')
             .on(
                 'postgres_changes',
                 {
@@ -235,10 +249,17 @@ export function useActiveProgram() {
                     table: 'assigned_programs',
                     filter: `student_id=eq.${studentId}`,
                 },
-                (payload) => {
-                    console.log('Realtime change detected in assigned_programs:', payload);
-                    fetchActiveProgram();
-                }
+                () => fetchActiveProgram()
+            )
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'workout_sessions',
+                    filter: `student_id=eq.${studentId}`,
+                },
+                () => fetchActiveProgram()
             )
             .subscribe();
 

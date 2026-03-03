@@ -322,7 +322,9 @@ function HistoryCard({ session }: { session: HistorySession }) {
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                         <Clock size={14} color="#64748b" />
                         <Text style={{ fontSize: 14, fontWeight: '500', color: '#64748b' }}>
-                            {Math.floor(session.duration_seconds / 60)} <Text>min</Text>
+                            {session.duration_seconds != null
+                                ? `${Math.floor(session.duration_seconds / 60)} min`
+                                : '—'}
                         </Text>
                     </View>
                     <View style={{ width: 1, height: 12, backgroundColor: '#e2e8f0' }} />

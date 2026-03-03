@@ -32,12 +32,18 @@ export async function POST() {
     }
 
     try {
-        // Create a login link for the connected account's Express Dashboard
-        const loginLink = await stripe.accounts.createLoginLink(
-            settings.stripe_connect_id
-        )
+        const account = await stripe.accounts.retrieve(settings.stripe_connect_id)
 
-        return NextResponse.json({ url: loginLink.url })
+        if (account.type === 'express' || account.type === 'custom') {
+            // Express/Custom accounts: generate a login link to the hosted dashboard
+            const loginLink = await stripe.accounts.createLoginLink(
+                settings.stripe_connect_id
+            )
+            return NextResponse.json({ url: loginLink.url })
+        }
+
+        // Standard accounts manage their own Stripe Dashboard directly
+        return NextResponse.json({ url: 'https://dashboard.stripe.com' })
     } catch (err) {
         console.error('[stripe/connect/dashboard] Error:', err)
         return NextResponse.json({ error: 'Failed to create dashboard link' }, { status: 500 })

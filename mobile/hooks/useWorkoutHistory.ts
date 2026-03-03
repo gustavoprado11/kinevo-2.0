@@ -6,7 +6,7 @@ export interface HistorySession {
     id: string;
     started_at: string;
     completed_at: string;
-    duration_seconds: number;
+    duration_seconds: number | null;
     workout_name: string;
     volume_load: number;
     is_intense: boolean;
@@ -153,13 +153,13 @@ export function useWorkoutHistory() {
                 });
 
                 totalVol += sessionVol;
-                totalSecs += session.duration_seconds || 0;
+                totalSecs += session.duration_seconds ?? 0;
 
                 sessions.push({
                     id: session.id,
                     started_at: session.started_at,
                     completed_at: session.completed_at,
-                    duration_seconds: session.duration_seconds || 0,
+                    duration_seconds: session.duration_seconds ?? null,
                     workout_name: session.assigned_workout?.name || 'Treino Sem Nome',
                     volume_load: sessionVol,
                     is_intense: sessionVol > 8000,
