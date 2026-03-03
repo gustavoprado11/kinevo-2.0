@@ -641,7 +641,7 @@ export function SubscriptionsClient({
                                                 {/* Ações */}
                                                 <td className="px-4 py-4 whitespace-nowrap text-right" onClick={(e) => e.stopPropagation()}>
                                                     <div className="flex items-center justify-end gap-2">
-                                                        {actionLoading === s.contract_id || actionLoading === s.student_id ? (
+                                                        {actionLoading != null && (actionLoading === s.contract_id || actionLoading === s.student_id) ? (
                                                             <Loader2 className="w-4 h-4 animate-spin text-muted-foreground/50" />
                                                         ) : (
                                                             <>
