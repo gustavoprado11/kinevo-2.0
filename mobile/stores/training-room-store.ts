@@ -100,9 +100,11 @@ interface TrainingRoomStore {
     activeStudentId: string | null;
 
     // Session management
+    sessionOrder: string[];
     addStudent: (studentId: string, data: SessionSetupData) => void;
     removeStudent: (studentId: string) => void;
     setActiveStudent: (studentId: string | null) => void;
+    reorderStudents: (orderedIds: string[]) => void;
 
     // Workout lifecycle
     startWorkout: (studentId: string) => void;
@@ -162,12 +164,13 @@ export const useTrainingRoomStore = create<TrainingRoomStore>()(
         (set, get) => ({
             sessions: {},
             activeStudentId: null,
+            sessionOrder: [],
 
-            addStudent(studentId, data) {
+            addStudent(studentId: string, data: SessionSetupData) {
                 const count = Object.keys(get().sessions).length;
                 if (count >= MAX_SIMULTANEOUS_STUDENTS) return;
 
-                set((state) => ({
+                set((state: TrainingRoomStore) => ({
                     sessions: {
                         ...state.sessions,
                         [studentId]: {
@@ -187,29 +190,37 @@ export const useTrainingRoomStore = create<TrainingRoomStore>()(
                         },
                     },
                     activeStudentId: studentId,
+                    sessionOrder: state.sessionOrder.includes(studentId)
+                        ? state.sessionOrder
+                        : [...state.sessionOrder, studentId],
                 }));
             },
 
-            removeStudent(studentId) {
-                set((state) => {
+            removeStudent(studentId: string) {
+                set((state: TrainingRoomStore) => {
                     const { [studentId]: _, ...rest } = state.sessions;
-                    const remainingIds = Object.keys(rest);
+                    const remainingOrder = state.sessionOrder.filter((id: string) => id !== studentId);
                     return {
                         sessions: rest,
+                        sessionOrder: remainingOrder,
                         activeStudentId:
                             state.activeStudentId === studentId
-                                ? remainingIds[0] ?? null
+                                ? remainingOrder[0] ?? null
                                 : state.activeStudentId,
                     };
                 });
             },
 
-            setActiveStudent(studentId) {
+            setActiveStudent(studentId: string | null) {
                 set({ activeStudentId: studentId });
             },
 
-            startWorkout(studentId) {
-                set((state) => {
+            reorderStudents(orderedIds: string[]) {
+                set({ sessionOrder: orderedIds });
+            },
+
+            startWorkout(studentId: string) {
+                set((state: TrainingRoomStore) => {
                     const session = state.sessions[studentId];
                     if (!session) return state;
                     return {
@@ -225,8 +236,8 @@ export const useTrainingRoomStore = create<TrainingRoomStore>()(
                 });
             },
 
-            setFinishing(studentId) {
-                set((state) => {
+            setFinishing(studentId: string) {
+                set((state: TrainingRoomStore) => {
                     const session = state.sessions[studentId];
                     if (!session) return state;
                     return {
@@ -238,12 +249,12 @@ export const useTrainingRoomStore = create<TrainingRoomStore>()(
                 });
             },
 
-            updateSet(studentId, exerciseIdx, setIdx, field, value) {
-                set((state) => {
+            updateSet(studentId: string, exerciseIdx: number, setIdx: number, field: 'weight' | 'reps', value: string) {
+                set((state: TrainingRoomStore) => {
                     const session = state.sessions[studentId];
                     if (!session) return state;
 
-                    const exercises = session.exercises.map((ex, ei) => {
+                    const exercises = session.exercises.map((ex: ExerciseData, ei: number) => {
                         if (ei !== exerciseIdx) return ex;
 
                         const setsData = [...ex.setsData];
@@ -272,15 +283,15 @@ export const useTrainingRoomStore = create<TrainingRoomStore>()(
                 });
             },
 
-            toggleSetComplete(studentId, exerciseIdx, setIdx) {
-                set((state) => {
+            toggleSetComplete(studentId: string, exerciseIdx: number, setIdx: number) {
+                set((state: TrainingRoomStore) => {
                     const session = state.sessions[studentId];
                     if (!session) return state;
 
-                    const exercises = session.exercises.map((ex, ei) => {
+                    const exercises = session.exercises.map((ex: ExerciseData, ei: number) => {
                         if (ei !== exerciseIdx) return ex;
 
-                        const setsData = ex.setsData.map((s, si) =>
+                        const setsData = ex.setsData.map((s: WorkoutSetData, si: number) =>
                             si === setIdx ? { ...s, completed: !s.completed } : s,
                         );
 
@@ -296,12 +307,12 @@ export const useTrainingRoomStore = create<TrainingRoomStore>()(
                 });
             },
 
-            swapExercise(studentId, exerciseIdx, newExercise, previousLoad) {
-                set((state) => {
+            swapExercise(studentId: string, exerciseIdx: number, newExercise: { id: string; name: string; source: 'manual' | 'auto' }, previousLoad?: string) {
+                set((state: TrainingRoomStore) => {
                     const session = state.sessions[studentId];
                     if (!session) return state;
 
-                    const exercises = session.exercises.map((ex, ei) => {
+                    const exercises = session.exercises.map((ex: ExerciseData, ei: number) => {
                         if (ei !== exerciseIdx) return ex;
                         return {
                             ...ex,
@@ -323,8 +334,8 @@ export const useTrainingRoomStore = create<TrainingRoomStore>()(
                 });
             },
 
-            startRestTimer(studentId, durationSeconds) {
-                set((state) => {
+            startRestTimer(studentId: string, durationSeconds: number) {
+                set((state: TrainingRoomStore) => {
                     const session = state.sessions[studentId];
                     if (!session) return state;
                     return {
@@ -340,8 +351,8 @@ export const useTrainingRoomStore = create<TrainingRoomStore>()(
                 });
             },
 
-            clearRestTimer(studentId) {
-                set((state) => {
+            clearRestTimer(studentId: string) {
+                set((state: TrainingRoomStore) => {
                     const session = state.sessions[studentId];
                     if (!session) return state;
                     return {
@@ -357,34 +368,37 @@ export const useTrainingRoomStore = create<TrainingRoomStore>()(
                 });
             },
 
-            finishSession(studentId) {
+            finishSession(studentId: string) {
                 get().removeStudent(studentId);
             },
 
             clearExpiredSessions() {
                 const MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24 hours
                 const now = Date.now();
-                set((state) => {
+                set((state: TrainingRoomStore) => {
                     const sessions: Record<string, ActiveSession> = {};
                     let activeId = state.activeStudentId;
+                    const keptIds = new Set<string>();
 
-                    for (const [id, session] of Object.entries(state.sessions)) {
+                    for (const [id, session] of Object.entries(state.sessions) as [string, ActiveSession][]) {
                         const age = session.startedAt
                             ? now - session.startedAt
                             : 0;
                         if (age < MAX_AGE_MS) {
                             sessions[id] = session;
+                            keptIds.add(id);
                         } else if (activeId === id) {
                             activeId = null;
                         }
                     }
 
-                    const remainingIds = Object.keys(sessions);
+                    const sessionOrder = state.sessionOrder.filter((id: string) => keptIds.has(id));
+
                     if (activeId && !sessions[activeId]) {
-                        activeId = remainingIds[0] ?? null;
+                        activeId = sessionOrder[0] ?? null;
                     }
 
-                    return { sessions, activeStudentId: activeId };
+                    return { sessions, sessionOrder, activeStudentId: activeId };
                 });
             },
 
@@ -392,7 +406,7 @@ export const useTrainingRoomStore = create<TrainingRoomStore>()(
                 return Object.keys(get().sessions).length;
             },
 
-            getCompletedSets(studentId) {
+            getCompletedSets(studentId: string) {
                 const session = get().sessions[studentId];
                 if (!session) return { completed: 0, total: 0 };
                 let completed = 0;
@@ -409,6 +423,18 @@ export const useTrainingRoomStore = create<TrainingRoomStore>()(
         {
             name: 'kinevo-training-room',
             storage: createJSONStorage(() => storageBackend),
+            merge: (persisted: any, current: any) => {
+                const merged = { ...current, ...persisted };
+                // Rebuild sessionOrder from sessions if missing (MMKV migration)
+                if (
+                    (!merged.sessionOrder || merged.sessionOrder.length === 0) &&
+                    merged.sessions &&
+                    Object.keys(merged.sessions).length > 0
+                ) {
+                    merged.sessionOrder = Object.keys(merged.sessions);
+                }
+                return merged;
+            },
         },
     ),
 );

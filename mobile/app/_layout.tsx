@@ -1,6 +1,7 @@
 import React from "react";
 import { Stack, usePathname, useRouter } from "expo-router";
 import { Alert, Platform } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AuthProvider } from "../contexts/AuthContext";
 import { RoleModeProvider } from "../contexts/RoleModeContext";
@@ -261,7 +262,7 @@ function WatchBridge() {
     // Re-sync Watch when account changes (sign in / sign out).
     // signOut already clears Watch via AuthContext; this handles the new account sync.
     React.useEffect(() => {
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: string, session: any) => {
             if (event === 'SIGNED_IN' && session?.user) {
                 console.log(`[WatchBridge] Auth SIGNED_IN detected — syncing Watch for new user`);
                 try {
@@ -282,7 +283,7 @@ function WatchBridge() {
 export default function RootLayout() {
     console.log("[Layout] Renderizando Provider Wrapper");
     return (
-        <>
+        <GestureHandlerRootView style={{ flex: 1 }}>
             {/* WatchBridge MUST be outside AuthProvider so it mounts immediately,
                 even while auth is still loading. It doesn't use useAuth() — all
                 auth checks are done via supabase.auth.getUser() internally. */}
@@ -297,15 +298,11 @@ export default function RootLayout() {
                                 gestureEnabled: true,
                                 gestureDirection: 'horizontal',
                                 animation: 'slide_from_right',
-                                transitionSpec: {
-                                    open: PREMIUM_SPRING,
-                                    close: PREMIUM_SPRING,
-                                },
                             }}
                         />
                     </SafeAreaProvider>
                 </RoleModeProvider>
             </AuthProvider>
-        </>
+        </GestureHandlerRootView>
     );
 }
