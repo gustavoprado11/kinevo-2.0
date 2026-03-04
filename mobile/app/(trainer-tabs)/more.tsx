@@ -4,9 +4,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import {
     ArrowLeftRight,
+    Bell,
     ChevronRight,
     Crown,
     DollarSign,
+    Dumbbell,
     ExternalLink,
     LogOut,
     MessageCircle,
@@ -34,6 +36,79 @@ function subscriptionLabel(status: string | null): { text: string; color: string
             return { text: "Sem assinatura", color: "#64748b", bg: "#f1f5f9" };
     }
 }
+
+/** Section header — iOS Settings style */
+function SectionHeader({ title, delay }: { title: string; delay: number }) {
+    return (
+        <Animated.Text
+            entering={FadeInUp.delay(delay).duration(300).easing(Easing.out(Easing.cubic))}
+            style={{
+                fontSize: 11,
+                fontWeight: "700",
+                color: "#94a3b8",
+                textTransform: "uppercase",
+                letterSpacing: 1.5,
+                marginBottom: 8,
+                marginTop: 24,
+                paddingLeft: 4,
+            }}
+        >
+            {title}
+        </Animated.Text>
+    );
+}
+
+/** Reusable row inside a section card */
+function MenuRow({
+    icon,
+    label,
+    onPress,
+    trailing,
+}: {
+    icon: React.ReactNode;
+    label: string;
+    onPress: () => void;
+    trailing?: React.ReactNode | null;
+}) {
+    return (
+        <PressableScale
+            onPress={onPress}
+            pressScale={0.98}
+            style={{ flexDirection: "row", alignItems: "center", paddingVertical: 16, paddingHorizontal: 20 }}
+        >
+            {icon}
+            <Text style={{ fontSize: 14, fontWeight: "500", color: "#0f172a", flex: 1 }}>
+                {label}
+            </Text>
+            {trailing !== null && (trailing ?? <ChevronRight size={16} color="#94a3b8" />)}
+        </PressableScale>
+    );
+}
+
+function Divider() {
+    return <View style={{ height: 1, backgroundColor: "#f1f5f9", marginHorizontal: 20 }} />;
+}
+
+function IconBox({ bg, children }: { bg: string; children: React.ReactNode }) {
+    return (
+        <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: bg, alignItems: "center", justifyContent: "center", marginRight: 14 }}>
+            {children}
+        </View>
+    );
+}
+
+const CARD_STYLE = {
+    backgroundColor: "#ffffff",
+    borderRadius: 20,
+    overflow: "hidden" as const,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.04)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+};
 
 export default function MoreScreen() {
     const { trainerProfile, subscriptionStatus, switchToStudent } = useRoleMode();
@@ -78,19 +153,7 @@ export default function MoreScreen() {
                 {/* Trainer Profile Card */}
                 <Animated.View
                     entering={FadeInUp.delay(60).duration(300).easing(Easing.out(Easing.cubic))}
-                    style={{
-                        backgroundColor: "#ffffff",
-                        borderRadius: 20,
-                        padding: 20,
-                        marginTop: 20,
-                        borderWidth: 1,
-                        borderColor: "rgba(0,0,0,0.04)",
-                        shadowColor: "#000",
-                        shadowOffset: { width: 0, height: 2 },
-                        shadowOpacity: 0.04,
-                        shadowRadius: 8,
-                        elevation: 2,
-                    }}
+                    style={{ ...CARD_STYLE, padding: 20, marginTop: 20 }}
                 >
                     <View style={{ flexDirection: "row", alignItems: "center" }}>
                         {trainerProfile?.avatar_url ? (
@@ -124,71 +187,53 @@ export default function MoreScreen() {
                     </View>
                 </Animated.View>
 
-                {/* Actions */}
+                {/* ── Ferramentas ── */}
+                <SectionHeader title="Ferramentas" delay={100} />
                 <Animated.View
                     entering={FadeInUp.delay(120).duration(300).easing(Easing.out(Easing.cubic))}
-                    style={{
-                        backgroundColor: "#ffffff",
-                        borderRadius: 20,
-                        overflow: "hidden",
-                        marginTop: 20,
-                        borderWidth: 1,
-                        borderColor: "rgba(0,0,0,0.04)",
-                        shadowColor: "#000",
-                        shadowOffset: { width: 0, height: 2 },
-                        shadowOpacity: 0.04,
-                        shadowRadius: 8,
-                        elevation: 2,
-                    }}
+                    style={CARD_STYLE}
                 >
-                    {/* Switch to Student Mode */}
-                    <PressableScale
-                        onPress={handleSwitchToStudent}
-                        pressScale={0.98}
-                        style={{ flexDirection: "row", alignItems: "center", paddingVertical: 16, paddingHorizontal: 20 }}
-                    >
-                        <View
-                            style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: "#f0fdf4", alignItems: "center", justifyContent: "center", marginRight: 14 }}
-                        >
-                            <ArrowLeftRight size={18} color="#16a34a" />
-                        </View>
-                        <Text style={{ fontSize: 14, fontWeight: "500", color: "#0f172a", flex: 1 }}>
-                            Alternar para modo aluno
-                        </Text>
-                    </PressableScale>
-
-                    <View style={{ height: 1, backgroundColor: "#f1f5f9", marginHorizontal: 20 }} />
-
-                    {/* Financeiro */}
-                    <PressableScale
+                    <MenuRow
+                        icon={<IconBox bg="#f5f3ff"><DollarSign size={18} color="#7c3aed" /></IconBox>}
+                        label="Financeiro"
                         onPress={() => router.push("/financial" as any)}
-                        pressScale={0.98}
-                        style={{ flexDirection: "row", alignItems: "center", paddingVertical: 16, paddingHorizontal: 20 }}
-                    >
-                        <View
-                            style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: "#f5f3ff", alignItems: "center", justifyContent: "center", marginRight: 14 }}
-                        >
-                            <DollarSign size={18} color="#7c3aed" />
-                        </View>
-                        <Text style={{ fontSize: 14, fontWeight: "500", color: "#0f172a", flex: 1 }}>
-                            Financeiro
-                        </Text>
-                        <ChevronRight size={16} color="#94a3b8" />
-                    </PressableScale>
+                    />
+                    <Divider />
+                    <MenuRow
+                        icon={<IconBox bg="#fef3c7"><Dumbbell size={18} color="#d97706" /></IconBox>}
+                        label="Exercícios"
+                        onPress={() => router.push("/exercises" as any)}
+                    />
+                </Animated.View>
 
-                    <View style={{ height: 1, backgroundColor: "#f1f5f9", marginHorizontal: 20 }} />
+                {/* ── Comunicação ── */}
+                <SectionHeader title="Comunicação" delay={160} />
+                <Animated.View
+                    entering={FadeInUp.delay(180).duration(300).easing(Easing.out(Easing.cubic))}
+                    style={CARD_STYLE}
+                >
+                    <MenuRow
+                        icon={<IconBox bg="#ede9fe"><Bell size={18} color="#7c3aed" /></IconBox>}
+                        label="Notificações"
+                        onPress={() => router.push("/notification-settings" as any)}
+                    />
+                </Animated.View>
 
+                {/* ── Conta ── */}
+                <SectionHeader title="Conta" delay={220} />
+                <Animated.View
+                    entering={FadeInUp.delay(240).duration(300).easing(Easing.out(Easing.cubic))}
+                    style={CARD_STYLE}
+                >
                     {/* Subscription */}
                     <PressableScale
                         onPress={() => Linking.openURL(MANAGE_SUBSCRIPTION_URL)}
                         pressScale={0.98}
                         style={{ flexDirection: "row", alignItems: "center", paddingVertical: 16, paddingHorizontal: 20 }}
                     >
-                        <View
-                            style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: "#fffbeb", alignItems: "center", justifyContent: "center", marginRight: 14 }}
-                        >
+                        <IconBox bg="#fffbeb">
                             <Crown size={18} color="#f59e0b" />
-                        </View>
+                        </IconBox>
                         <View style={{ flex: 1 }}>
                             <Text style={{ fontSize: 14, fontWeight: "500", color: "#0f172a" }}>
                                 Assinatura Kinevo
@@ -202,48 +247,39 @@ export default function MoreScreen() {
                         <ExternalLink size={16} color="#94a3b8" />
                     </PressableScale>
 
-                    <View style={{ height: 1, backgroundColor: "#f1f5f9", marginHorizontal: 20 }} />
+                    <Divider />
 
-                    {/* Support */}
-                    <PressableScale
-                        onPress={() => Linking.openURL(SUPPORT_WHATSAPP_URL)}
-                        pressScale={0.98}
-                        style={{ flexDirection: "row", alignItems: "center", paddingVertical: 16, paddingHorizontal: 20 }}
-                    >
-                        <View
-                            style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: "#f0fdf4", alignItems: "center", justifyContent: "center", marginRight: 14 }}
-                        >
-                            <MessageCircle size={18} color="#16a34a" />
-                        </View>
-                        <Text style={{ fontSize: 14, fontWeight: "500", color: "#0f172a", flex: 1 }}>
-                            Suporte via WhatsApp
-                        </Text>
-                        <ExternalLink size={16} color="#94a3b8" />
-                    </PressableScale>
+                    {/* Switch to Student */}
+                    <MenuRow
+                        icon={<IconBox bg="#f0fdf4"><ArrowLeftRight size={18} color="#16a34a" /></IconBox>}
+                        label="Alternar para modo aluno"
+                        onPress={handleSwitchToStudent}
+                        trailing={null}
+                    />
                 </Animated.View>
 
-                {/* Sign Out */}
+                {/* ── Suporte ── */}
+                <SectionHeader title="Suporte" delay={280} />
                 <Animated.View
-                    entering={FadeInUp.delay(180).duration(300).easing(Easing.out(Easing.cubic))}
-                    style={{ marginTop: 20 }}
+                    entering={FadeInUp.delay(300).duration(300).easing(Easing.out(Easing.cubic))}
+                    style={CARD_STYLE}
                 >
+                    <MenuRow
+                        icon={<IconBox bg="#f0fdf4"><MessageCircle size={18} color="#16a34a" /></IconBox>}
+                        label="Ajuda via WhatsApp"
+                        onPress={() => Linking.openURL(SUPPORT_WHATSAPP_URL)}
+                        trailing={<ExternalLink size={16} color="#94a3b8" />}
+                    />
+                    <Divider />
                     <PressableScale
                         onPress={handleSignOut}
                         pressScale={0.98}
-                        style={{
-                            backgroundColor: "#ffffff",
-                            borderRadius: 20,
-                            paddingVertical: 16,
-                            flexDirection: "row",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            gap: 8,
-                            borderWidth: 1,
-                            borderColor: "rgba(0,0,0,0.04)",
-                        }}
+                        style={{ flexDirection: "row", alignItems: "center", paddingVertical: 16, paddingHorizontal: 20 }}
                     >
-                        <LogOut size={18} color="#ef4444" />
-                        <Text style={{ fontSize: 14, fontWeight: "600", color: "#ef4444" }}>
+                        <IconBox bg="#fef2f2">
+                            <LogOut size={18} color="#ef4444" />
+                        </IconBox>
+                        <Text style={{ fontSize: 14, fontWeight: "500", color: "#ef4444", flex: 1 }}>
                             Sair da conta
                         </Text>
                     </PressableScale>
