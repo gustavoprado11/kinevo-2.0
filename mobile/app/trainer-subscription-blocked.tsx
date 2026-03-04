@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { View, Text, Linking, StatusBar } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
 import { Lock, ExternalLink, ArrowLeft } from "lucide-react-native";
 import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
 import { useRoleMode } from "../contexts/RoleModeContext";
@@ -10,10 +11,16 @@ const SUBSCRIBE_URL = "https://app.kinevo.com.br/subscription";
 
 export default function TrainerSubscriptionBlockedScreen() {
     const { switchToStudent } = useRoleMode();
+    const router = useRouter();
 
     const handleSubscribe = () => {
         Linking.openURL(SUBSCRIBE_URL);
     };
+
+    const handleBackToStudent = useCallback(() => {
+        switchToStudent();
+        router.replace("/(tabs)/home");
+    }, [switchToStudent, router]);
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: "#F2F2F7" }}>
@@ -80,7 +87,7 @@ export default function TrainerSubscriptionBlockedScreen() {
                 {/* Back to Student */}
                 <Animated.View entering={FadeInUp.delay(300).duration(400)} style={{ width: "100%", marginTop: 12 }}>
                     <PressableScale
-                        onPress={switchToStudent}
+                        onPress={handleBackToStudent}
                         pressScale={0.97}
                         style={{
                             backgroundColor: "#ffffff",

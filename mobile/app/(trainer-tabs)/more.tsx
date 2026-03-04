@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { View, Text, ScrollView, Image, Linking, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
 import {
     ArrowLeftRight,
     Crown,
@@ -35,6 +36,7 @@ function subscriptionLabel(status: string | null): { text: string; color: string
 export default function MoreScreen() {
     const { trainerProfile, subscriptionStatus, switchToStudent } = useRoleMode();
     const { signOut } = useAuth();
+    const router = useRouter();
     const appVersion = Constants.expoConfig?.version ?? "1.0.0";
     const subBadge = subscriptionLabel(subscriptionStatus);
 
@@ -44,6 +46,11 @@ export default function MoreScreen() {
         .map((w) => w[0])
         .join("")
         .toUpperCase() || "?";
+
+    const handleSwitchToStudent = useCallback(() => {
+        switchToStudent();
+        router.replace("/(tabs)/home");
+    }, [switchToStudent, router]);
 
     const handleSignOut = () => {
         Alert.alert("Sair", "Deseja sair da sua conta?", [
@@ -134,7 +141,7 @@ export default function MoreScreen() {
                 >
                     {/* Switch to Student Mode */}
                     <PressableScale
-                        onPress={switchToStudent}
+                        onPress={handleSwitchToStudent}
                         pressScale={0.98}
                         style={{ flexDirection: "row", alignItems: "center", paddingVertical: 16, paddingHorizontal: 20 }}
                     >

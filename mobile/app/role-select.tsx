@@ -1,13 +1,29 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { View, Text, StatusBar } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
 import { Dumbbell, Users } from "lucide-react-native";
 import Animated, { FadeInUp, FadeIn } from "react-native-reanimated";
 import { useRoleMode } from "../contexts/RoleModeContext";
 import { PressableScale } from "../components/shared/PressableScale";
 
 export default function RoleSelectScreen() {
-    const { switchToStudent, switchToTrainer } = useRoleMode();
+    const { switchToStudent, switchToTrainer, subscriptionStatus } = useRoleMode();
+    const router = useRouter();
+
+    const handleStudent = useCallback(() => {
+        switchToStudent();
+        router.replace("/(tabs)/home");
+    }, [switchToStudent, router]);
+
+    const handleTrainer = useCallback(() => {
+        switchToTrainer();
+        if (subscriptionStatus !== "active" && subscriptionStatus !== "trialing") {
+            router.replace("/trainer-subscription-blocked");
+        } else {
+            router.replace("/(trainer-tabs)/dashboard");
+        }
+    }, [switchToTrainer, subscriptionStatus, router]);
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: "#F2F2F7" }}>
@@ -26,7 +42,7 @@ export default function RoleSelectScreen() {
                 {/* Student Card */}
                 <Animated.View entering={FadeInUp.delay(100).duration(400)}>
                     <PressableScale
-                        onPress={switchToStudent}
+                        onPress={handleStudent}
                         pressScale={0.97}
                         style={{
                             backgroundColor: "#ffffff",
@@ -71,7 +87,7 @@ export default function RoleSelectScreen() {
                 {/* Trainer Card */}
                 <Animated.View entering={FadeInUp.delay(200).duration(400)}>
                     <PressableScale
-                        onPress={switchToTrainer}
+                        onPress={handleTrainer}
                         pressScale={0.97}
                         style={{
                             backgroundColor: "#ffffff",

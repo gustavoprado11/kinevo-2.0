@@ -1,6 +1,6 @@
 import { View, Text, Alert, Switch, Linking, ScrollView } from "react-native";
-import { Stack } from "expo-router";
-import { useState } from "react";
+import { Stack, useRouter } from "expo-router";
+import { useState, useCallback } from "react";
 import { Bell, KeyRound, Info, Heart, ExternalLink, Users, ChevronRight } from "lucide-react-native";
 import Constants from "expo-constants";
 import { supabase } from "../../lib/supabase";
@@ -10,9 +10,19 @@ import { TouchableOpacity } from "react-native";
 
 export default function SettingsScreen() {
     const { user } = useAuth();
-    const { isTrainer, switchToTrainer } = useRoleMode();
+    const { isTrainer, switchToTrainer, subscriptionStatus } = useRoleMode();
+    const router = useRouter();
     const [notificationsEnabled, setNotificationsEnabled] = useState(false);
     const appVersion = Constants.expoConfig?.version ?? "1.0.0";
+
+    const handleSwitchToTrainer = useCallback(() => {
+        switchToTrainer();
+        if (subscriptionStatus !== "active" && subscriptionStatus !== "trialing") {
+            router.replace("/trainer-subscription-blocked");
+        } else {
+            router.replace("/(trainer-tabs)/dashboard");
+        }
+    }, [switchToTrainer, subscriptionStatus, router]);
 
     const handleResetPassword = () => {
         if (!user?.email) return;
@@ -129,7 +139,7 @@ export default function SettingsScreen() {
                         <>
                             <View style={{ height: 1, backgroundColor: "#f1f5f9", marginHorizontal: 20 }} />
                             <TouchableOpacity
-                                onPress={switchToTrainer}
+                                onPress={handleSwitchToTrainer}
                                 activeOpacity={0.6}
                                 style={{
                                     flexDirection: "row",
