@@ -1,24 +1,29 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage, type StateStorage } from 'zustand/middleware';
-import { createMMKV, type MMKV } from 'react-native-mmkv';
 
 // ---------------------------------------------------------------------------
-// MMKV Storage Adapter
+// Storage Adapter — MMKV with in-memory fallback for Expo Go
 // ---------------------------------------------------------------------------
 
-let mmkv: MMKV | null = null;
-function getMMKV(): MMKV {
-    if (!mmkv) {
-        mmkv = createMMKV({ id: 'kinevo-training-room' });
-    }
-    return mmkv;
+let storageBackend: StateStorage;
+
+try {
+    const { createMMKV } = require('react-native-mmkv');
+    const mmkv = createMMKV({ id: 'kinevo-training-room' });
+    storageBackend = {
+        getItem: (name: string) => mmkv.getString(name) ?? null,
+        setItem: (name: string, value: string) => mmkv.set(name, value),
+        removeItem: (name: string) => { mmkv.remove(name); },
+    };
+} catch {
+    // In-memory fallback when native MMKV is unavailable (e.g. Expo Go)
+    const memoryStore = new Map<string, string>();
+    storageBackend = {
+        getItem: (name: string) => memoryStore.get(name) ?? null,
+        setItem: (name: string, value: string) => { memoryStore.set(name, value); },
+        removeItem: (name: string) => { memoryStore.delete(name); },
+    };
 }
-
-const mmkvStorage: StateStorage = {
-    getItem: (name) => getMMKV().getString(name) ?? null,
-    setItem: (name, value) => getMMKV().set(name, value),
-    removeItem: (name) => { getMMKV().remove(name); },
-};
 
 // ---------------------------------------------------------------------------
 // Types — exact parity with web/src/stores/training-room-store.ts
@@ -403,7 +408,7 @@ export const useTrainingRoomStore = create<TrainingRoomStore>()(
         }),
         {
             name: 'kinevo-training-room',
-            storage: createJSONStorage(() => mmkvStorage),
+            storage: createJSONStorage(() => storageBackend),
         },
     ),
 );

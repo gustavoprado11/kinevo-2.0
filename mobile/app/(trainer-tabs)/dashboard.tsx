@@ -67,7 +67,7 @@ export default function DashboardScreen() {
                 {/* Training Room CTA */}
                 <Animated.View entering={FadeInUp.delay(30).duration(300).easing(Easing.out(Easing.cubic))} style={{ marginTop: 16 }}>
                     <TouchableOpacity
-                        onPress={() => router.push("/training-room")}
+                        onPress={() => router.push("/training-room" as any)}
                         activeOpacity={0.7}
                         style={{
                             backgroundColor: "#7c3aed",
