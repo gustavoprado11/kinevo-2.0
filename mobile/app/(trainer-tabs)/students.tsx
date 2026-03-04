@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, FlatList, RefreshControl, TextInput, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Search } from "lucide-react-native";
+import { useRouter } from "expo-router";
 import Animated, { FadeIn, FadeInUp, Easing } from "react-native-reanimated";
 import { useTrainerStudentsList, type TrainerStudent } from "../../hooks/useTrainerStudentsList";
 import { StudentCard } from "../../components/trainer/StudentCard";
@@ -20,9 +21,10 @@ export default function StudentsScreen() {
         refresh,
     } = useTrainerStudentsList();
 
+    const router = useRouter();
+
     const handleStudentPress = (student: TrainerStudent) => {
-        // Phase 2: Navigate to student profile detail screen
-        console.log("[Students] Tapped student:", student.id);
+        router.push({ pathname: "/student/[id]", params: { id: student.id } } as any);
     };
 
     const renderItem = ({ item, index }: { item: TrainerStudent; index: number }) => (

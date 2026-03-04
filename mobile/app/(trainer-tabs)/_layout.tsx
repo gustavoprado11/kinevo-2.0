@@ -1,8 +1,8 @@
 import React, { useRef, useEffect } from "react";
 import { Tabs } from "expo-router";
-import { LayoutDashboard, Users, MoreHorizontal } from "lucide-react-native";
+import { LayoutDashboard, Users, Dumbbell, ClipboardList, MoreHorizontal } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { StyleSheet, View, Platform } from "react-native";
+import { StyleSheet, View, Text, Platform } from "react-native";
 import { BlurView } from "expo-blur";
 import Animated, {
     useSharedValue,
@@ -11,16 +11,19 @@ import Animated, {
     withSequence,
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
+import { usePendingSubmissionsCount } from "../../hooks/usePendingSubmissionsCount";
 
 // ─── Animated Tab Icon with Bounce (same pattern as student tabs) ───
 function AnimatedTabIcon({
     IconComponent,
     color,
     focused,
+    badge,
 }: {
     IconComponent: typeof LayoutDashboard;
     color: string;
     focused: boolean;
+    badge?: number;
 }) {
     const scale = useSharedValue(1);
     const prevFocused = useRef(focused);
@@ -42,11 +45,33 @@ function AnimatedTabIcon({
 
     return (
         <Animated.View style={[animatedStyle, { alignItems: "center", justifyContent: "center" }]}>
-            <IconComponent
-                size={22}
-                color={color}
-                strokeWidth={focused ? 2.5 : 1.5}
-            />
+            <View>
+                <IconComponent
+                    size={22}
+                    color={color}
+                    strokeWidth={focused ? 2.5 : 1.5}
+                />
+                {!!badge && badge > 0 && (
+                    <View
+                        style={{
+                            position: "absolute",
+                            top: -6,
+                            right: -10,
+                            minWidth: 16,
+                            height: 16,
+                            borderRadius: 8,
+                            backgroundColor: "#ef4444",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            paddingHorizontal: 4,
+                        }}
+                    >
+                        <Text style={{ fontSize: 10, fontWeight: "700", color: "#ffffff" }}>
+                            {badge > 99 ? "99+" : badge}
+                        </Text>
+                    </View>
+                )}
+            </View>
             {focused && (
                 <View
                     style={{
@@ -64,6 +89,7 @@ function AnimatedTabIcon({
 
 export default function TrainerTabsLayout() {
     const insets = useSafeAreaInsets();
+    const pendingFormsCount = usePendingSubmissionsCount();
 
     return (
         <Tabs
@@ -117,6 +143,24 @@ export default function TrainerTabsLayout() {
                     title: "Alunos",
                     tabBarIcon: ({ color, focused }) => (
                         <AnimatedTabIcon IconComponent={Users} color={color} focused={focused} />
+                    ),
+                }}
+            />
+            <Tabs.Screen
+                name="training-room"
+                options={{
+                    title: "Sala de Treino",
+                    tabBarIcon: ({ color, focused }) => (
+                        <AnimatedTabIcon IconComponent={Dumbbell} color={color} focused={focused} />
+                    ),
+                }}
+            />
+            <Tabs.Screen
+                name="forms"
+                options={{
+                    title: "Formulários",
+                    tabBarIcon: ({ color, focused }) => (
+                        <AnimatedTabIcon IconComponent={ClipboardList} color={color} focused={focused} badge={pendingFormsCount} />
                     ),
                 }}
             />
