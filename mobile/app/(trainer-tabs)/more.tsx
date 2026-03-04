@@ -4,7 +4,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import {
     ArrowLeftRight,
+    ChevronRight,
     Crown,
+    DollarSign,
     ExternalLink,
     LogOut,
     MessageCircle,
@@ -153,6 +155,25 @@ export default function MoreScreen() {
                         <Text style={{ fontSize: 14, fontWeight: "500", color: "#0f172a", flex: 1 }}>
                             Alternar para modo aluno
                         </Text>
+                    </PressableScale>
+
+                    <View style={{ height: 1, backgroundColor: "#f1f5f9", marginHorizontal: 20 }} />
+
+                    {/* Financeiro */}
+                    <PressableScale
+                        onPress={() => router.push("/financial" as any)}
+                        pressScale={0.98}
+                        style={{ flexDirection: "row", alignItems: "center", paddingVertical: 16, paddingHorizontal: 20 }}
+                    >
+                        <View
+                            style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: "#f5f3ff", alignItems: "center", justifyContent: "center", marginRight: 14 }}
+                        >
+                            <DollarSign size={18} color="#7c3aed" />
+                        </View>
+                        <Text style={{ fontSize: 14, fontWeight: "500", color: "#0f172a", flex: 1 }}>
+                            Financeiro
+                        </Text>
+                        <ChevronRight size={16} color="#94a3b8" />
                     </PressableScale>
 
                     <View style={{ height: 1, backgroundColor: "#f1f5f9", marginHorizontal: 20 }} />
