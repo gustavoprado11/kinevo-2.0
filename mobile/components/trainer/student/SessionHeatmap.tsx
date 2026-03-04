@@ -147,13 +147,13 @@ export function SessionHeatmap({ studentId }: { studentId: string }) {
             <View style={{ backgroundColor: "#ffffff", borderRadius: 14, padding: 16 }}>
                 {/* Month navigation */}
                 <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                    <TouchableOpacity onPress={() => navigateMonth(-1)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <TouchableOpacity onPress={() => navigateMonth(-1)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} accessibilityLabel="Mês anterior" accessibilityRole="button">
                         <ChevronLeft size={18} color="#64748b" />
                     </TouchableOpacity>
                     <Text style={{ fontSize: 14, fontWeight: "600", color: "#0f172a", textTransform: "capitalize" }}>
                         {formatMonthYear(currentMonth)}
                     </Text>
-                    <TouchableOpacity onPress={() => navigateMonth(1)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <TouchableOpacity onPress={() => navigateMonth(1)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} accessibilityLabel="Próximo mês" accessibilityRole="button">
                         <ChevronRight size={18} color="#64748b" />
                     </TouchableOpacity>
                 </View>

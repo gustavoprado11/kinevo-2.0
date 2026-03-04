@@ -3,6 +3,7 @@ import { View, Text, FlatList, TextInput, ScrollView, TouchableOpacity, Activity
 import { Stack, useRouter } from "expo-router";
 import { Search, Dumbbell } from "lucide-react-native";
 import Animated, { FadeInUp, Easing } from "react-native-reanimated";
+import { EmptyState } from "../../components/shared/EmptyState";
 import { useExerciseLibrary, type Exercise } from "../../hooks/useExerciseLibrary";
 import { PressableScale } from "../../components/shared/PressableScale";
 
@@ -145,15 +146,11 @@ export default function ExercisesListScreen() {
                         <ActivityIndicator size="large" color="#7c3aed" />
                     </View>
                 ) : exercises.length === 0 ? (
-                    <View style={{ flex: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: 40 }}>
-                        <Dumbbell size={40} color="#cbd5e1" />
-                        <Text style={{ fontSize: 16, fontWeight: "600", color: "#64748b", marginTop: 12, textAlign: "center" }}>
-                            Nenhum exercício encontrado
-                        </Text>
-                        <Text style={{ fontSize: 13, color: "#94a3b8", marginTop: 4, textAlign: "center" }}>
-                            Tente ajustar os filtros ou o termo de busca
-                        </Text>
-                    </View>
+                    <EmptyState
+                        icon={<Dumbbell size={40} color="#cbd5e1" />}
+                        title="Nenhum exercício encontrado"
+                        description="Tente ajustar os filtros ou o termo de busca"
+                    />
                 ) : (
                     <FlatList
                         data={exercises}

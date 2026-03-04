@@ -7,6 +7,8 @@ import Animated, { FadeIn, FadeInUp, Easing } from "react-native-reanimated";
 import { useTrainerStudentsList, type TrainerStudent } from "../../hooks/useTrainerStudentsList";
 import { StudentCard } from "../../components/trainer/StudentCard";
 import { StudentFilterChips } from "../../components/trainer/StudentFilterChips";
+import { EmptyState } from "../../components/shared/EmptyState";
+import { Users } from "lucide-react-native";
 
 export default function StudentsScreen() {
     const {
@@ -110,11 +112,11 @@ export default function StudentsScreen() {
                     <RefreshControl refreshing={isRefreshing} onRefresh={refresh} tintColor="#7c3aed" />
                 }
                 ListEmptyComponent={
-                    <View style={{ alignItems: "center", paddingVertical: 40 }}>
-                        <Text style={{ fontSize: 13, color: "#94a3b8", fontWeight: "500" }}>
-                            {search ? "Nenhum aluno encontrado" : "Nenhum aluno cadastrado"}
-                        </Text>
-                    </View>
+                    <EmptyState
+                        icon={<Users size={40} color="#cbd5e1" />}
+                        title={search ? "Nenhum aluno encontrado" : "Nenhum aluno cadastrado"}
+                        description={search ? "Tente ajustar o termo de busca" : "Adicione alunos na versão web"}
+                    />
                 }
             />
         </SafeAreaView>

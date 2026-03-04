@@ -13,6 +13,7 @@ import {
 } from "lucide-react-native";
 import { useFinancialDashboard } from "../../hooks/useFinancialDashboard";
 import { useStripeStatus } from "../../hooks/useStripeStatus";
+import { EmptyState } from "../../components/shared/EmptyState";
 import { StatCard } from "../../components/trainer/StatCard";
 import { StripeStatusCard } from "../../components/financial/StripeStatusCard";
 import { TransactionRow } from "../../components/financial/TransactionRow";
@@ -36,7 +37,7 @@ export default function FinancialDashboardScreen() {
                     headerStyle: { backgroundColor: "#F2F2F7" },
                     headerTitleStyle: { fontSize: 17, fontWeight: "600", color: "#0f172a" },
                     headerLeft: () => (
-                        <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+                        <TouchableOpacity onPress={() => router.back()} hitSlop={8} accessibilityLabel="Voltar" accessibilityRole="button">
                             <ArrowLeft size={22} color="#0f172a" />
                         </TouchableOpacity>
                     ),
@@ -125,8 +126,12 @@ export default function FinancialDashboardScreen() {
                                 ))
                             ) : (
                                 <View style={{ padding: 24, alignItems: "center" }}>
-                                    <Text style={{ fontSize: 13, color: "#94a3b8" }}>
+                                    <DollarSign size={32} color="#cbd5e1" style={{ marginBottom: 8 }} />
+                                    <Text style={{ fontSize: 14, fontWeight: "600", color: "#94a3b8" }}>
                                         Nenhuma transação recente
+                                    </Text>
+                                    <Text style={{ fontSize: 12, color: "#cbd5e1", marginTop: 4 }}>
+                                        Transações aparecerão aqui automaticamente
                                     </Text>
                                 </View>
                             )}

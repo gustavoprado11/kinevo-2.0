@@ -133,7 +133,7 @@ export function AssignFormModal({ visible, template, onClose, onSuccess }: Props
                         backgroundColor: "#ffffff",
                     }}
                 >
-                    <TouchableOpacity onPress={handleClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                    <TouchableOpacity onPress={handleClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityLabel="Fechar" accessibilityRole="button">
                         <X size={24} color="#64748b" />
                     </TouchableOpacity>
                     <Text style={{ fontSize: 17, fontWeight: "700", color: "#1a1a2e" }}>

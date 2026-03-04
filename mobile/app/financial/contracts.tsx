@@ -11,7 +11,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, Stack } from "expo-router";
-import { ArrowLeft, Search } from "lucide-react-native";
+import { ArrowLeft, Search, FileText } from "lucide-react-native";
+import { EmptyState } from "../../components/shared/EmptyState";
 import { useTrainerContracts, ContractFilter } from "../../hooks/useTrainerContracts";
 import { ContractCard } from "../../components/financial/ContractCard";
 import type { FinancialStudent } from "../../types/financial";
@@ -59,7 +60,7 @@ export default function ContractsScreen() {
                     headerStyle: { backgroundColor: "#F2F2F7" },
                     headerTitleStyle: { fontSize: 17, fontWeight: "600", color: "#0f172a" },
                     headerLeft: () => (
-                        <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+                        <TouchableOpacity onPress={() => router.back()} hitSlop={8} accessibilityLabel="Voltar" accessibilityRole="button">
                             <ArrowLeft size={22} color="#0f172a" />
                         </TouchableOpacity>
                     ),
@@ -153,11 +154,11 @@ export default function ContractsScreen() {
                             <RefreshControl refreshing={isRefreshing} onRefresh={refresh} tintColor="#7c3aed" />
                         }
                         ListEmptyComponent={
-                            <View style={{ paddingTop: 60, alignItems: "center" }}>
-                                <Text style={{ fontSize: 15, color: "#94a3b8" }}>
-                                    Nenhum contrato encontrado
-                                </Text>
-                            </View>
+                            <EmptyState
+                                icon={<FileText size={40} color="#cbd5e1" />}
+                                title={search ? "Nenhum contrato encontrado" : "Nenhum contrato"}
+                                description={search ? "Tente ajustar o termo de busca" : "Contratos aparecerão aqui quando criados"}
+                            />
                         }
                     />
                 )}

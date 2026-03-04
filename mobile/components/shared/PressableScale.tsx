@@ -20,6 +20,10 @@ interface PressableScaleProps {
     haptic?: boolean;
     /** Type of haptic feedback. Default: Light */
     hapticStyle?: Haptics.ImpactFeedbackStyle;
+    /** Accessibility label for screen readers */
+    accessibilityLabel?: string;
+    /** Accessibility role. Default: "button" */
+    accessibilityRole?: 'button' | 'link' | 'tab' | 'none';
 }
 
 /**
@@ -38,6 +42,8 @@ export function PressableScale({
     pressScale = 0.97,
     haptic = true,
     hapticStyle = Haptics.ImpactFeedbackStyle.Light,
+    accessibilityLabel,
+    accessibilityRole = 'button',
 }: PressableScaleProps) {
     const scale = useSharedValue(1);
 
@@ -71,6 +77,8 @@ export function PressableScale({
             onPressOut={handlePressOut}
             disabled={disabled}
             style={[style, animatedStyle]}
+            accessibilityLabel={accessibilityLabel}
+            accessibilityRole={accessibilityRole}
         >
             {children}
         </AnimatedPressable>

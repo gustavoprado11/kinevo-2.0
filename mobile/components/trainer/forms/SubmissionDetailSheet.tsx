@@ -95,7 +95,7 @@ export function SubmissionDetailSheet({ visible, submissionId, onClose, onFeedba
                         borderBottomColor: "rgba(0,0,0,0.08)",
                     }}
                 >
-                    <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                    <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityLabel="Fechar" accessibilityRole="button">
                         <X size={24} color="#64748b" />
                     </TouchableOpacity>
                     <Text style={{ fontSize: 17, fontWeight: "700", color: "#1a1a2e" }}>

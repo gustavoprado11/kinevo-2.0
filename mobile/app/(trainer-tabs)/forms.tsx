@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ClipboardList, FileText } from "lucide-react-native";
+import { EmptyState } from "../../components/shared/EmptyState";
 import { useTrainerFormTemplates, FormTemplate } from "../../hooks/useTrainerFormTemplates";
 import {
     useTrainerFormSubmissions,
@@ -166,15 +167,11 @@ export default function FormsScreen() {
                         <SubmissionCard submission={item} onPress={handleSubmissionPress} />
                     )}
                     ListEmptyComponent={
-                        <View style={{ alignItems: "center", marginTop: 60 }}>
-                            <ClipboardList size={48} color="#d1d5db" />
-                            <Text style={{ fontSize: 16, fontWeight: "600", color: "#94a3b8", marginTop: 16 }}>
-                                Nenhuma resposta
-                            </Text>
-                            <Text style={{ fontSize: 13, color: "#94a3b8", marginTop: 4, textAlign: "center" }}>
-                                Envie formulários para seus alunos{"\n"}para ver as respostas aqui
-                            </Text>
-                        </View>
+                        <EmptyState
+                            icon={<ClipboardList size={40} color="#cbd5e1" />}
+                            title="Nenhuma resposta recebida"
+                            description="Envie formulários para seus alunos para ver as respostas aqui"
+                        />
                     }
                 />
             ) : (
@@ -193,15 +190,11 @@ export default function FormsScreen() {
                         <FormTemplateCard template={item} onAssign={handleAssign} />
                     )}
                     ListEmptyComponent={
-                        <View style={{ alignItems: "center", marginTop: 60 }}>
-                            <FileText size={48} color="#d1d5db" />
-                            <Text style={{ fontSize: 16, fontWeight: "600", color: "#94a3b8", marginTop: 16 }}>
-                                Nenhum template
-                            </Text>
-                            <Text style={{ fontSize: 13, color: "#94a3b8", marginTop: 4, textAlign: "center" }}>
-                                Crie templates de formulário{"\n"}pelo site para usá-los aqui
-                            </Text>
-                        </View>
+                        <EmptyState
+                            icon={<FileText size={40} color="#cbd5e1" />}
+                            title="Nenhum template"
+                            description="Crie templates de formulário pelo site para usá-los aqui"
+                        />
                     }
                 />
             )}
