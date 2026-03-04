@@ -3,6 +3,7 @@ import { Stack, usePathname, useRouter } from "expo-router";
 import { Alert, Platform } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AuthProvider } from "../contexts/AuthContext";
+import { RoleModeProvider } from "../contexts/RoleModeContext";
 import "../global.css";
 
 console.log("[Layout] Iniciando RootLayout");
@@ -287,21 +288,23 @@ export default function RootLayout() {
                 auth checks are done via supabase.auth.getUser() internally. */}
             {Platform.OS === 'ios' && <WatchBridge />}
             <AuthProvider>
-                <SafeAreaProvider>
-                    <Stack
-                        screenOptions={{
-                            headerShown: false,
-                            contentStyle: { backgroundColor: '#F2F2F7' },
-                            gestureEnabled: true,
-                            gestureDirection: 'horizontal',
-                            animation: 'slide_from_right',
-                            transitionSpec: {
-                                open: PREMIUM_SPRING,
-                                close: PREMIUM_SPRING,
-                            },
-                        }}
-                    />
-                </SafeAreaProvider>
+                <RoleModeProvider>
+                    <SafeAreaProvider>
+                        <Stack
+                            screenOptions={{
+                                headerShown: false,
+                                contentStyle: { backgroundColor: '#F2F2F7' },
+                                gestureEnabled: true,
+                                gestureDirection: 'horizontal',
+                                animation: 'slide_from_right',
+                                transitionSpec: {
+                                    open: PREMIUM_SPRING,
+                                    close: PREMIUM_SPRING,
+                                },
+                            }}
+                        />
+                    </SafeAreaProvider>
+                </RoleModeProvider>
             </AuthProvider>
         </>
     );
