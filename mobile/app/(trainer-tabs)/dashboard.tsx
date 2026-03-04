@@ -1,8 +1,9 @@
 import React from "react";
-import { View, Text, ScrollView, RefreshControl, ActivityIndicator } from "react-native";
+import { View, Text, ScrollView, RefreshControl, ActivityIndicator, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Users, Dumbbell, DollarSign, TrendingUp } from "lucide-react-native";
+import { Users, Dumbbell, DollarSign, TrendingUp, Play } from "lucide-react-native";
 import Animated, { FadeInUp, FadeIn, Easing } from "react-native-reanimated";
+import { useRouter } from "expo-router";
 import { useRoleMode } from "../../contexts/RoleModeContext";
 import { useTrainerDashboard } from "../../hooks/useTrainerDashboard";
 import { StatCard } from "../../components/trainer/StatCard";
@@ -31,6 +32,7 @@ function formatDate(): string {
 export default function DashboardScreen() {
     const { trainerProfile } = useRoleMode();
     const { stats, pendingActions, dailyActivity, isLoading, isRefreshing, refresh } = useTrainerDashboard();
+    const router = useRouter();
 
     const firstName = trainerProfile?.name?.split(" ")[0] || "Treinador";
 
@@ -60,6 +62,29 @@ export default function DashboardScreen() {
                     <Text style={{ fontSize: 13, color: "#64748b", marginTop: 4, textTransform: "capitalize" }}>
                         {formatDate()}
                     </Text>
+                </Animated.View>
+
+                {/* Training Room CTA */}
+                <Animated.View entering={FadeInUp.delay(30).duration(300).easing(Easing.out(Easing.cubic))} style={{ marginTop: 16 }}>
+                    <TouchableOpacity
+                        onPress={() => router.push("/training-room")}
+                        activeOpacity={0.7}
+                        style={{
+                            backgroundColor: "#7c3aed",
+                            borderRadius: 16,
+                            paddingVertical: 14,
+                            paddingHorizontal: 20,
+                            flexDirection: "row",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: 8,
+                        }}
+                    >
+                        <Play size={18} color="#fff" fill="#fff" />
+                        <Text style={{ fontSize: 15, fontWeight: "700", color: "#fff" }}>
+                            Sala de Treino
+                        </Text>
+                    </TouchableOpacity>
                 </Animated.View>
 
                 {/* Pending Actions */}
