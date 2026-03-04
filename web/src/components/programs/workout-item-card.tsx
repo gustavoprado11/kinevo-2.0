@@ -386,6 +386,12 @@ function ExerciseItemCard({
                         </div>
                     </div>
 
+                    {/* Exercise Function */}
+                    <ExerciseFunctionSelect
+                        value={item.exercise_function}
+                        onChange={(v) => onUpdate({ exercise_function: v })}
+                    />
+
                     {/* Technical Note */}
                     <TechnicalNote
                         value={item.notes || ''}
@@ -470,8 +476,46 @@ function SupersetChildCard({
                             />
                         </div>
                     </div>
+
+                    {/* Exercise Function */}
+                    <ExerciseFunctionSelect
+                        value={item.exercise_function}
+                        onChange={(v) => onUpdate({ exercise_function: v })}
+                    />
                 </div>
             </div>
+        </div>
+    )
+}
+
+const EXERCISE_FUNCTION_OPTIONS = [
+    { value: 'warmup', label: 'Aquecimento' },
+    { value: 'activation', label: 'Ativação' },
+    { value: 'main', label: 'Principal' },
+    { value: 'accessory', label: 'Acessório' },
+    { value: 'conditioning', label: 'Condicionamento' },
+] as const
+
+function ExerciseFunctionSelect({
+    value,
+    onChange,
+}: {
+    value?: string | null
+    onChange: (v: string | null) => void
+}) {
+    return (
+        <div className="flex items-center gap-2 mt-2">
+            <span className="text-[10px] font-bold text-k-text-tertiary uppercase tracking-wider">Função</span>
+            <select
+                value={value || ''}
+                onChange={(e) => onChange(e.target.value || null)}
+                className="bg-transparent text-k-text-primary text-xs font-medium focus:outline-none focus:text-violet-400 transition-colors border-b border-transparent focus:border-violet-500/50 cursor-pointer appearance-none pr-4"
+            >
+                <option value="">—</option>
+                {EXERCISE_FUNCTION_OPTIONS.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+            </select>
         </div>
     )
 }

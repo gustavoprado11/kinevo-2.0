@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { router } from 'expo-router';
@@ -8,6 +8,12 @@ export interface WorkoutSetData {
     weight: string;
     reps: string;
     completed: boolean;
+}
+
+export interface PreviousSetData {
+    set_number: number;
+    weight: number;
+    reps: number;
 }
 
 export interface ExerciseData {
@@ -23,6 +29,18 @@ export interface ExerciseData {
     swap_source: 'none' | 'manual' | 'auto';
     setsData: WorkoutSetData[];
     previousLoad?: string;
+    previousSets?: PreviousSetData[];
+    notes?: string | null;
+    supersetId?: string | null;
+    supersetRestSeconds?: number;
+    order_index: number;
+    exerciseFunction?: string | null;
+}
+
+export interface WorkoutNote {
+    id: string;
+    notes: string;
+    order_index: number;
 }
 
 export interface ExerciseSubstituteOption {
@@ -42,12 +60,18 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
     const { user } = useAuth();
     const [isLoading, setIsLoading] = useState(true);
     const [exercises, setExercises] = useState<ExerciseData[]>([]);
+    const [workoutNotes, setWorkoutNotes] = useState<WorkoutNote[]>([]);
     const [studentId, setStudentId] = useState<string | null>(null);
     const [sessionId, setSessionId] = useState<string | null>(null);
     const [startTime] = useState(() => Date.now());
     const [elapsed, setElapsed] = useState(0);
     const [workoutName, setWorkoutName] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Guard: prevent re-fetching workout data when auth session refreshes.
+    // Supabase onAuthStateChange fires on TOKEN_REFRESHED, creating a new `user`
+    // reference which would re-trigger the fetchWorkout effect and wipe exercise state.
+    const hasLoadedRef = useRef(false);
 
     const mapExerciseToSubstituteOption = (
         exercise: any,
@@ -79,9 +103,30 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
         return `${normalized}kg`;
     };
 
-    const fetchLastExerciseLoad = async (targetStudentId: string, exerciseId: string): Promise<string | undefined> => {
-        if (!targetStudentId || !exerciseId) return undefined;
+    const fetchPreviousSets = async (
+        targetStudentId: string,
+        exerciseId: string
+    ): Promise<{ previousSets: PreviousSetData[]; previousLoad?: string }> => {
+        if (!targetStudentId || !exerciseId) return { previousSets: [] };
 
+        // Try per-set RPC first
+        const { data: sets, error: setsError }: { data: any; error: any } = await supabase
+            .rpc('get_previous_exercise_sets' as any, {
+                p_student_id: targetStudentId,
+                p_exercise_id: exerciseId,
+            });
+
+        if (!setsError && Array.isArray(sets) && sets.length > 0) {
+            const previousSets: PreviousSetData[] = sets.map((s: any) => ({
+                set_number: s.set_number,
+                weight: Number(s.weight) || 0,
+                reps: Number(s.reps) || 0,
+            }));
+            const maxWeight = Math.max(...previousSets.map(s => s.weight));
+            return { previousSets, previousLoad: formatLoadLabel(maxWeight) };
+        }
+
+        // Fallback: aggregated RPC
         const { data: metrics, error: rpcError }: { data: any; error: any } = await supabase
             .rpc('get_last_exercise_metrics' as any, {
                 p_student_id: targetStudentId,
@@ -89,10 +134,10 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
             });
 
         if (!rpcError && Array.isArray(metrics) && metrics.length > 0) {
-            return formatLoadLabel(metrics[0]?.max_weight);
+            return { previousSets: [], previousLoad: formatLoadLabel(metrics[0]?.max_weight) };
         }
 
-        // Fallback for environments where RPC has not been applied yet.
+        // Final fallback: direct query
         const { data: legacyHistory }: { data: any; error: any } = await supabase
             .from('set_logs' as any)
             .select('weight, weight_unit')
@@ -102,10 +147,10 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
             .maybeSingle();
 
         if (legacyHistory?.weight !== undefined && legacyHistory?.weight !== null) {
-            return `${legacyHistory.weight}${legacyHistory.weight_unit || 'kg'}`;
+            return { previousSets: [], previousLoad: `${legacyHistory.weight}${legacyHistory.weight_unit || 'kg'}` };
         }
 
-        return undefined;
+        return { previousSets: [] };
     };
 
     const fetchExerciseIdsBySharedMuscleGroups = async (exerciseId: string): Promise<string[]> => {
@@ -225,6 +270,8 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
 
     // Fetch Workout Data
     useEffect(() => {
+        if (hasLoadedRef.current) return;
+
         let mounted = true;
 
         async function fetchWorkout() {
@@ -296,33 +343,53 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                     }
                 }
 
-                // 2. Get Workout Items (Exercises)
+                // 2. Get ALL Workout Items (exercises, supersets, notes)
                 const { data: items, error: itemsError }: { data: any; error: any } = await supabase
                     .from('assigned_workout_items' as any)
                     .select(`
-                        id, 
-                        exercise_id, 
-                        exercise_name, 
-                        sets, 
-                        reps, 
-                        rest_seconds, 
+                        id,
+                        exercise_id,
+                        exercise_name,
+                        sets,
+                        reps,
+                        rest_seconds,
                         substitute_exercise_ids,
-                        item_type, 
+                        item_type,
                         order_index,
+                        parent_item_id,
+                        notes,
+                        exercise_function,
                         exercises ( id, video_url )
                     `)
                     .eq('assigned_workout_id', workoutId)
-                    .eq('item_type', 'exercise') // Only exercises
                     .order('order_index');
 
                 if (itemsError) throw itemsError;
 
-                // 3. Initialize State and Fetch History
-                const exercisesData: ExerciseData[] = await Promise.all(items.map(async (item: any) => {
-                    let previousLoad = undefined;
-                    if (item.exercise_id && currentStudentId) {
-                        previousLoad = await fetchLastExerciseLoad(currentStudentId, item.exercise_id);
+                // 3. Build superset map and extract notes
+                const supersetMap = new Map<string, { rest_seconds: number; order_index: number }>();
+                const noteItems: WorkoutNote[] = [];
+
+                for (const item of items) {
+                    if (item.item_type === 'superset') {
+                        supersetMap.set(item.id, { rest_seconds: item.rest_seconds || 60, order_index: item.order_index });
+                    } else if (item.item_type === 'note' && item.notes?.trim()) {
+                        noteItems.push({ id: item.id, notes: item.notes, order_index: item.order_index });
                     }
+                }
+
+                // 4. Initialize exercise state and fetch history
+                const exerciseItems = items.filter((item: any) => item.item_type === 'exercise');
+                const exercisesData: ExerciseData[] = await Promise.all(exerciseItems.map(async (item: any) => {
+                    let previousLoad: string | undefined = undefined;
+                    let previousSets: PreviousSetData[] | undefined = undefined;
+                    if (item.exercise_id && currentStudentId) {
+                        const result = await fetchPreviousSets(currentStudentId, item.exercise_id);
+                        previousLoad = result.previousLoad;
+                        previousSets = result.previousSets.length > 0 ? result.previousSets : undefined;
+                    }
+
+                    const parentSuperset = item.parent_item_id ? supersetMap.get(item.parent_item_id) : null;
 
                     return {
                         id: item.id,
@@ -336,11 +403,21 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                         substitute_exercise_ids: item.substitute_exercise_ids || [],
                         swap_source: 'none',
                         setsData: createInitialSets(item.sets || 3),
-                        previousLoad
+                        previousLoad,
+                        previousSets,
+                        notes: item.notes || null,
+                        supersetId: item.parent_item_id || null,
+                        supersetRestSeconds: parentSuperset?.rest_seconds,
+                        order_index: item.order_index,
+                        exerciseFunction: item.exercise_function || null,
                     };
                 }));
 
-                if (mounted) setExercises(exercisesData);
+                if (mounted) {
+                    setExercises(exercisesData);
+                    setWorkoutNotes(noteItems);
+                    hasLoadedRef.current = true;
+                }
 
             } catch (error) {
                 console.error("Error fetching workout:", error);
@@ -558,8 +635,11 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
         }
 
         let nextPreviousLoad: string | undefined = undefined;
+        let nextPreviousSets: PreviousSetData[] | undefined = undefined;
         if (studentId) {
-            nextPreviousLoad = await fetchLastExerciseLoad(studentId, substitute.id);
+            const result = await fetchPreviousSets(studentId, substitute.id);
+            nextPreviousLoad = result.previousLoad;
+            nextPreviousSets = result.previousSets.length > 0 ? result.previousSets : undefined;
         }
 
         setExercises((prev) => prev.map((exercise, index) => {
@@ -571,6 +651,7 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                 name: substitute.name,
                 video_url: substitute.video_url ?? exercise.video_url ?? undefined,
                 previousLoad: nextPreviousLoad,
+                previousSets: nextPreviousSets,
                 swap_source: substitute.source === 'search' ? 'manual' : substitute.source,
                 setsData: createInitialSets(exercise.sets),
             };
@@ -702,6 +783,7 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
         isLoading,
         workoutName,
         exercises,
+        workoutNotes,
         duration: formatTime(elapsed),
         handleSetChange,
         handleToggleSetComplete,

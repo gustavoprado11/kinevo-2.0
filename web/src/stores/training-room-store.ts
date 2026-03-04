@@ -24,6 +24,17 @@ export interface ExerciseData {
     swap_source: 'none' | 'manual' | 'auto'
     setsData: WorkoutSetData[]
     previousLoad?: string                // e.g. "80kg"
+    notes?: string | null                // trainer note on exercise
+    supersetId?: string | null           // parent_item_id (groups into superset)
+    supersetRestSeconds?: number         // rest_seconds from superset parent
+    order_index: number                  // global position in workout
+    exercise_function?: string | null    // warmup, activation, main, accessory, conditioning
+}
+
+export interface WorkoutNote {
+    id: string
+    notes: string
+    order_index: number
 }
 
 export interface ActiveSession {
@@ -35,6 +46,7 @@ export interface ActiveSession {
     trainerId: string
     workoutName: string
     exercises: ExerciseData[]
+    workoutNotes: WorkoutNote[]
     status: 'ready' | 'in_progress' | 'finishing'
     startedAt: number | null             // Date.now() absolute timestamp
     restTimerEnd: number | null
@@ -49,6 +61,7 @@ export interface SessionSetupData {
     trainerId: string
     workoutName: string
     exercises: ExerciseData[]
+    workoutNotes: WorkoutNote[]
 }
 
 interface TrainingRoomStore {
@@ -127,6 +140,7 @@ export const useTrainingRoomStore = create<TrainingRoomStore>()(
                             trainerId: data.trainerId,
                             workoutName: data.workoutName,
                             exercises: data.exercises,
+                            workoutNotes: data.workoutNotes || [],
                             status: 'ready',
                             startedAt: null,
                             restTimerEnd: null,

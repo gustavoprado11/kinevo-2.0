@@ -123,6 +123,13 @@ export function StudentPickerModal({ visible, onClose }: StudentPickerModalProps
     const handleConfirm = async () => {
         if (!selectedStudent || !selectedWorkoutId || !trainerId) return;
 
+        // Guard: reject empty/invalid UUIDs
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(selectedStudent.id) || !uuidRegex.test(selectedWorkoutId)) {
+            setError('IDs inválidos. Feche e tente novamente.');
+            return;
+        }
+
         if (sessionCount >= MAX_SIMULTANEOUS_STUDENTS) {
             Alert.alert(
                 'Limite atingido',

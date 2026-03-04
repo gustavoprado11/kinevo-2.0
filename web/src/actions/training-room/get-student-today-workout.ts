@@ -1,13 +1,14 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import type { ExerciseData, WorkoutSetData } from '@/stores/training-room-store'
+import type { ExerciseData, WorkoutSetData, WorkoutNote } from '@/stores/training-room-store'
 
 interface GetStudentWorkoutResult {
     data: {
         assignedProgramId: string
         workoutName: string
         exercises: ExerciseData[]
+        workoutNotes: WorkoutNote[]
     } | null
     error: string | null
 }
@@ -54,7 +55,7 @@ export async function getStudentTodayWorkout(
 
     if (!workout) return { data: null, error: 'Treino não encontrado' }
 
-    // Fetch assigned workout items (exercises only, ordered)
+    // Fetch ALL workout items (exercises, supersets, notes)
     const { data: items, error: itemsError } = await supabase
         .from('assigned_workout_items')
         .select(`
@@ -66,28 +67,45 @@ export async function getStudentTodayWorkout(
             rest_seconds,
             order_index,
             substitute_exercise_ids,
+            item_type,
+            parent_item_id,
+            notes,
+            exercise_function,
             exercises:exercise_id (id, name, video_url)
         `)
         .eq('assigned_workout_id', assignedWorkoutId)
-        .eq('item_type', 'exercise')
         .order('order_index')
 
     if (itemsError) return { data: null, error: itemsError.message }
     if (!items?.length) return { data: null, error: 'Nenhum exercício encontrado neste treino' }
 
-    // Fetch previous loads for all exercises in parallel
-    const exerciseIds = items
+    // Build superset map and extract workout notes
+    const supersetMap = new Map<string, { rest_seconds: number; order_index: number }>()
+    const workoutNotes: WorkoutNote[] = []
+
+    for (const item of items) {
+        if (item.item_type === 'superset') {
+            supersetMap.set(item.id, { rest_seconds: item.rest_seconds || 60, order_index: item.order_index })
+        } else if (item.item_type === 'note' && item.notes?.trim()) {
+            workoutNotes.push({ id: item.id, notes: item.notes, order_index: item.order_index })
+        }
+    }
+
+    // Fetch previous loads for exercise items
+    const exerciseItems = items.filter((item) => item.item_type === 'exercise')
+    const exerciseIds = exerciseItems
         .map((item) => item.exercise_id)
         .filter(Boolean) as string[]
 
     const previousLoads = await fetchPreviousLoads(supabase, studentId, exerciseIds)
 
     // Build ExerciseData array — same structure as mobile
-    const exercises: ExerciseData[] = items.map((item) => {
+    const exercises: ExerciseData[] = exerciseItems.map((item) => {
         const exerciseRef = item.exercises as any
         const exerciseId = item.exercise_id || ''
         const setsCount = item.sets || 3
         const prevLoad = previousLoads.get(exerciseId)
+        const parentSuperset = item.parent_item_id ? supersetMap.get(item.parent_item_id) : null
 
         return {
             id: item.id,
@@ -102,6 +120,11 @@ export async function getStudentTodayWorkout(
             swap_source: 'none' as const,
             setsData: createInitialSets(setsCount),
             previousLoad: prevLoad,
+            notes: item.notes || null,
+            supersetId: item.parent_item_id || null,
+            supersetRestSeconds: parentSuperset?.rest_seconds,
+            order_index: item.order_index,
+            exercise_function: item.exercise_function || null,
         }
     })
 
@@ -110,6 +133,7 @@ export async function getStudentTodayWorkout(
             assignedProgramId: workout.assigned_program_id,
             workoutName: workout.name,
             exercises,
+            workoutNotes,
         },
         error: null,
     }

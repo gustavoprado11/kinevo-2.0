@@ -28,6 +28,29 @@ export type PrescriptionStatus = 'pending_review' | 'approved' | 'rejected' | 'e
 /** assigned_programs.status (extended in migration 036 to include 'draft') */
 export type AssignedProgramStatus = 'draft' | 'active' | 'scheduled' | 'completed' | 'paused'
 
+/** workout_item_templates.exercise_function / assigned_workout_items.exercise_function */
+export type ExerciseFunction = 'warmup' | 'activation' | 'main' | 'accessory' | 'conditioning'
+
+export const EXERCISE_FUNCTION_OPTIONS: readonly ExerciseFunction[] = [
+    'warmup', 'activation', 'main', 'accessory', 'conditioning',
+] as const
+
+export const EXERCISE_FUNCTION_LABELS: Record<ExerciseFunction, string> = {
+    warmup: 'Aquecimento',
+    activation: 'Ativação',
+    main: 'Principal',
+    accessory: 'Acessório',
+    conditioning: 'Condicionamento',
+}
+
+export const EXERCISE_FUNCTION_ORDER: Record<ExerciseFunction, number> = {
+    warmup: 0,
+    activation: 1,
+    main: 2,
+    accessory: 3,
+    conditioning: 4,
+}
+
 // ============================================================================
 // JSONB COLUMN INTERFACES
 // ============================================================================
@@ -160,6 +183,8 @@ export interface GeneratedWorkoutItem {
     substitute_exercise_ids: string[]
     /** 0-based order within the workout */
     order_index: number
+    /** Functional category of the exercise in the workout */
+    exercise_function?: ExerciseFunction | null
 }
 
 /** AI reasoning attached to the generated program */

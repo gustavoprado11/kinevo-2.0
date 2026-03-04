@@ -4,6 +4,15 @@ import { Dumbbell, Clock, ChevronDown, ChevronUp } from 'lucide-react'
 import { useState } from 'react'
 import type { ExerciseData } from '@/stores/training-room-store'
 import { SetRow } from './set-row'
+import { TrainerNote } from './trainer-note'
+
+const FUNCTION_LABELS: Record<string, string> = {
+    warmup: 'Aquecimento',
+    activation: 'Ativação',
+    main: 'Principal',
+    accessory: 'Acessório',
+    conditioning: 'Condicionamento',
+}
 
 interface ExerciseCardProps {
     exercise: ExerciseData
@@ -12,6 +21,7 @@ interface ExerciseCardProps {
     onWeightChange: (setIdx: number, value: string) => void
     onRepsChange: (setIdx: number, value: string) => void
     onToggleComplete: (setIdx: number) => void
+    supersetBadge?: string
 }
 
 export function ExerciseCard({
@@ -21,6 +31,7 @@ export function ExerciseCard({
     onWeightChange,
     onRepsChange,
     onToggleComplete,
+    supersetBadge,
 }: ExerciseCardProps) {
     const [isCollapsed, setIsCollapsed] = useState(false)
 
@@ -57,6 +68,11 @@ export function ExerciseCard({
                         <p className="text-sm font-semibold text-foreground truncate">
                             {exercise.name}
                         </p>
+                        {exercise.exercise_function && (
+                            <span className="shrink-0 rounded-md bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-violet-400 uppercase tracking-wider">
+                                {FUNCTION_LABELS[exercise.exercise_function] || exercise.exercise_function}
+                            </span>
+                        )}
                         {exercise.swap_source !== 'none' && (
                             <span className="shrink-0 rounded-md bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-amber-400">
                                 TROCA
@@ -74,6 +90,11 @@ export function ExerciseCard({
                         {exercise.previousLoad && (
                             <span className="text-xs text-violet-400/80">
                                 Ant: {exercise.previousLoad}
+                            </span>
+                        )}
+                        {supersetBadge && (
+                            <span className="text-xs text-violet-400 font-medium">
+                                {supersetBadge}
                             </span>
                         )}
                     </div>
@@ -95,6 +116,13 @@ export function ExerciseCard({
                     )}
                 </div>
             </button>
+
+            {/* Trainer note */}
+            {exercise.notes && (
+                <div className="px-4 pb-2">
+                    <TrainerNote note={exercise.notes} isTrainerView />
+                </div>
+            )}
 
             {/* Sets */}
             {!isCollapsed && (

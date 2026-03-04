@@ -82,6 +82,7 @@ export async function duplicateProgram(templateId: string) {
                         reps: item.reps,
                         rest_seconds: item.rest_seconds,
                         notes: item.notes,
+                        exercise_function: item.exercise_function || null,
                     })
                     .select('id')
                     .single()
@@ -106,6 +107,7 @@ export async function duplicateProgram(templateId: string) {
                         reps: item.reps,
                         rest_seconds: item.rest_seconds,
                         notes: item.notes,
+                        exercise_function: item.exercise_function || null,
                     })
             }
         }

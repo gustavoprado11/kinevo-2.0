@@ -31,7 +31,8 @@ export default async function EditProgramPage({ params }: { params: Promise<{ id
                     sets,
                     reps,
                     rest_seconds,
-                    notes
+                    notes,
+                    exercise_function
                 )
             )
         `)

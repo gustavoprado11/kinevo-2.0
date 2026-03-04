@@ -28,7 +28,9 @@ export function useSessionStats(sessionId: string | null) {
                         reps_completed,
                         is_completed,
                         exercise_id,
-                        exercises:exercises!set_logs_exercise_id_fkey (name)
+                        assigned_workout_item_id,
+                        exercises:exercises!set_logs_exercise_id_fkey (name),
+                        assigned_workout_items:assigned_workout_item_id (exercise_function)
                     `)
                     .eq('workout_session_id', sessionId)
                     .eq('is_completed', true);
@@ -42,13 +44,20 @@ export function useSessionStats(sessionId: string | null) {
                     const exerciseAgg: Record<string, { name: string, sets: number, maxWeight: number, maxReps: number, order: number }> = {};
                     let exerciseOrder = 0;
 
+                    // Check if any log has exercise_function set
+                    const hasAnyFunction = logs.some((log: any) => log.assigned_workout_items?.exercise_function);
+
                     logs.forEach((log: any) => {
                         const weight = Number(log.weight) || 0;
                         const reps = Number(log.reps_completed) || 0;
                         const name = log.exercises?.name || 'Exercício';
+                        const exerciseFunction = log.assigned_workout_items?.exercise_function;
 
-                        // Volume
-                        totalVolume += weight * reps;
+                        // Volume: only count 'main' exercises (or all if no functions defined)
+                        const countsForVolume = !hasAnyFunction || exerciseFunction === 'main';
+                        if (countsForVolume) {
+                            totalVolume += weight * reps;
+                        }
 
                         // Max Load per Exercise
                         if (!exerciseMaxes[name] || weight > exerciseMaxes[name].weight) {

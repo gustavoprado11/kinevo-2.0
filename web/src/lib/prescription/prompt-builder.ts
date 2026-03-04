@@ -126,7 +126,16 @@ function buildSection3_Constraints(): string {
 - Descanso mínimo de ${PRESCRIPTION_CONSTRAINTS.min_rest_seconds_compound}s para exercícios compostos.
 - JAMAIS incluir exercícios listados nas restrições médicas do aluno.
 - JAMAIS incluir exercícios que o aluno marcou como "não gosto".
-- Priorizar exercícios marcados como favoritos pelo aluno.`
+- Priorizar exercícios marcados como favoritos pelo aluno.
+
+# FUNÇÃO DO EXERCÍCIO (exercise_function)
+Cada item deve ter um exercise_function baseado em sua característica:
+- "main": exercícios compostos pesados, movimentos primários do treino
+- "accessory": isolamentos e exercícios complementares
+- "warmup": SOMENTE se for um exercício de mobilidade ou ativação muscular leve (NÃO atribua apenas pela posição)
+- "activation": exercícios leves de ativação do grupo muscular alvo (bandas, isométricos)
+- "conditioning": SOMENTE para exercícios cardiovasculares ou circuitos (esteira, bike, etc.)
+Se não houver certeza, use "main" para compostos e "accessory" para isolamentos.`
 }
 
 /**
@@ -157,7 +166,8 @@ Retorne exatamente este JSON (sem campos extras, sem texto fora do JSON):
           "rest_seconds": number,
           "notes": "string | null",
           "substitute_exercise_ids": ["UUID"],
-          "order_index": number
+          "order_index": number,
+          "exercise_function": "string | null — um de: warmup, activation, main, accessory, conditioning"
         }
       ]
     }
@@ -290,6 +300,9 @@ export function parseAiResponse(rawJson: string): PrescriptionOutputSnapshot | n
                 notes: item.notes ?? null,
                 substitute_exercise_ids: Array.isArray(item.substitute_exercise_ids) ? item.substitute_exercise_ids : [],
                 order_index: item.order_index ?? ii,
+                exercise_function: ['warmup', 'activation', 'main', 'accessory', 'conditioning'].includes(item.exercise_function)
+                    ? item.exercise_function
+                    : null,
             })),
         })),
         reasoning: {

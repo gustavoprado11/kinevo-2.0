@@ -1,11 +1,14 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
-import { Plus, ArrowLeft, Play, Square, Trash2 } from 'lucide-react'
+import { Plus, ArrowLeft, Play, Square, Trash2, X } from 'lucide-react'
 import { useTrainingRoomStore } from '@/stores/training-room-store'
+import type { ExerciseData, WorkoutNote } from '@/stores/training-room-store'
 import { StudentPickerModal } from '@/components/training-room/student-picker-modal'
 import { ExerciseCard } from '@/components/training-room/exercise-card'
+import { SupersetGroup } from '@/components/training-room/superset-group'
+import { WorkoutNoteCard } from '@/components/training-room/workout-note-card'
 import { WorkoutTimer } from '@/components/training-room/workout-timer'
 import { WorkoutFeedbackModal } from '@/components/training-room/workout-feedback-modal'
 import { finishTrainingRoomWorkout } from '@/actions/training-room/finish-training-room-workout'
@@ -152,12 +155,12 @@ export function TrainingRoomClient({ trainerId }: TrainingRoomClientProps) {
                     {/* Student tabs */}
                     <div className="flex gap-2 border-b border-k-border-subtle pb-3 overflow-x-auto">
                         {Object.values(sessions).map((session) => (
-                            <button
+                            <div
                                 key={session.studentId}
                                 onClick={() =>
                                     useTrainingRoomStore.getState().setActiveStudent(session.studentId)
                                 }
-                                className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors shrink-0 ${
+                                className={`group flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors shrink-0 cursor-pointer ${
                                     session.studentId === activeStudentId
                                         ? 'bg-violet-600/20 text-violet-400'
                                         : 'text-muted-foreground hover:text-foreground hover:bg-glass-bg'
@@ -178,7 +181,19 @@ export function TrainingRoomClient({ trainerId }: TrainingRoomClientProps) {
                                 {session.status === 'in_progress' && (
                                     <span className="h-2 w-2 rounded-full bg-emerald-400" />
                                 )}
-                            </button>
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation()
+                                        if (session.status === 'in_progress') {
+                                            if (!window.confirm(`Remover ${session.studentName}? Os dados do treino em andamento serão perdidos.`)) return
+                                        }
+                                        removeStudent(session.studentId)
+                                    }}
+                                    className="ml-1 rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white/10"
+                                >
+                                    <X size={12} />
+                                </button>
+                            </div>
                         ))}
                     </div>
 
@@ -245,25 +260,137 @@ export function TrainingRoomClient({ trainerId }: TrainingRoomClientProps) {
                                 </div>
                             </div>
 
-                            {/* Exercise cards */}
+                            {/* Unified workout items: exercises, supersets, and notes ordered by order_index */}
                             <div className="space-y-3">
-                                {activeSession.exercises.map((exercise, ei) => (
-                                    <ExerciseCard
-                                        key={exercise.id}
-                                        exercise={exercise}
-                                        exerciseIndex={ei}
-                                        disabled={activeSession.status === 'ready'}
-                                        onWeightChange={(si, v) =>
-                                            updateSet(activeStudentId!, ei, si, 'weight', v)
+                                {(() => {
+                                    const exercises = activeSession.exercises
+                                    const notes = activeSession.workoutNotes || []
+                                    const disabled = activeSession.status === 'ready'
+                                    const processedSupersets = new Set<string>()
+
+                                    type RenderItem =
+                                        | { type: 'exercise'; orderIndex: number; node: React.ReactNode; exerciseFunction?: string | null }
+                                        | { type: 'superset'; orderIndex: number; node: React.ReactNode; exerciseFunction?: string | null }
+                                        | { type: 'note'; orderIndex: number; node: React.ReactNode }
+
+                                    const items: RenderItem[] = []
+
+                                    exercises.forEach((exercise, ei) => {
+                                        if (exercise.supersetId) {
+                                            if (processedSupersets.has(exercise.supersetId)) return
+                                            processedSupersets.add(exercise.supersetId)
+
+                                            const group = exercises
+                                                .map((e, i) => ({ ...e, _gi: i }))
+                                                .filter((e) => e.supersetId === exercise.supersetId)
+
+                                            // Use first child's order_index - 0.5 to approximate parent superset position
+                                            const groupOrderIndex = Math.min(...group.map((e) => e.order_index)) - 0.5
+
+                                            items.push({
+                                                type: 'superset',
+                                                orderIndex: groupOrderIndex,
+                                                exerciseFunction: group[0]?.exercise_function || null,
+                                                node: (
+                                                    <SupersetGroup
+                                                        key={exercise.supersetId}
+                                                        exercises={group}
+                                                        supersetRestSeconds={exercise.supersetRestSeconds || 60}
+                                                        disabled={disabled}
+                                                        onWeightChange={(gi, si, v) =>
+                                                            updateSet(activeStudentId!, gi, si, 'weight', v)
+                                                        }
+                                                        onRepsChange={(gi, si, v) =>
+                                                            updateSet(activeStudentId!, gi, si, 'reps', v)
+                                                        }
+                                                        onToggleComplete={(gi, si) =>
+                                                            toggleSetComplete(activeStudentId!, gi, si)
+                                                        }
+                                                        globalIndexOffset={group[0]._gi}
+                                                    />
+                                                ),
+                                            })
+                                        } else {
+                                            items.push({
+                                                type: 'exercise',
+                                                orderIndex: exercise.order_index,
+                                                exerciseFunction: exercise.exercise_function || null,
+                                                node: (
+                                                    <ExerciseCard
+                                                        key={exercise.id}
+                                                        exercise={exercise}
+                                                        exerciseIndex={ei}
+                                                        disabled={disabled}
+                                                        onWeightChange={(si, v) =>
+                                                            updateSet(activeStudentId!, ei, si, 'weight', v)
+                                                        }
+                                                        onRepsChange={(si, v) =>
+                                                            updateSet(activeStudentId!, ei, si, 'reps', v)
+                                                        }
+                                                        onToggleComplete={(si) =>
+                                                            toggleSetComplete(activeStudentId!, ei, si)
+                                                        }
+                                                    />
+                                                ),
+                                            })
                                         }
-                                        onRepsChange={(si, v) =>
-                                            updateSet(activeStudentId!, ei, si, 'reps', v)
-                                        }
-                                        onToggleComplete={(si) =>
-                                            toggleSetComplete(activeStudentId!, ei, si)
-                                        }
-                                    />
-                                ))}
+                                    })
+
+                                    // Add notes into unified list
+                                    notes.forEach((note) => {
+                                        items.push({
+                                            type: 'note',
+                                            orderIndex: note.order_index,
+                                            node: (
+                                                <WorkoutNoteCard
+                                                    key={note.id}
+                                                    note={note.notes}
+                                                    isTrainerView
+                                                />
+                                            ),
+                                        })
+                                    })
+
+                                    // Sort by order_index so items appear in trainer-defined order
+                                    items.sort((a, b) => a.orderIndex - b.orderIndex)
+
+                                    // Insert section headers when exercise_function changes
+                                    const FUNCTION_LABELS: Record<string, string> = {
+                                        warmup: 'AQUECIMENTO',
+                                        activation: 'ATIVAÇÃO',
+                                        main: 'PRINCIPAL',
+                                        accessory: 'ACESSÓRIO',
+                                        conditioning: 'CONDICIONAMENTO',
+                                    }
+
+                                    const hasAnyFunction = exercises.some(e => e.exercise_function)
+                                    const finalNodes: React.ReactNode[] = []
+
+                                    if (hasAnyFunction) {
+                                        let lastFunction: string | null | undefined = undefined
+                                        items.forEach((item, idx) => {
+                                            const itemFunction = item.type !== 'note' ? (item as any).exerciseFunction : null
+
+                                            if (item.type !== 'note' && itemFunction && itemFunction !== lastFunction) {
+                                                finalNodes.push(
+                                                    <div key={`section-${itemFunction}-${idx}`} className="flex items-center gap-3 pt-4 pb-1">
+                                                        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
+                                                            {FUNCTION_LABELS[itemFunction] || itemFunction}
+                                                        </span>
+                                                        <div className="flex-1 h-px bg-k-border-subtle" />
+                                                    </div>
+                                                )
+                                                lastFunction = itemFunction
+                                            }
+
+                                            finalNodes.push(item.node)
+                                        })
+                                    } else {
+                                        items.forEach((item) => finalNodes.push(item.node))
+                                    }
+
+                                    return finalNodes
+                                })()}
                             </div>
 
                             {/* Bottom actions (visible when in_progress) */}

@@ -59,6 +59,20 @@ export default function InboxItemDetailScreen() {
     const [submission, setSubmission] = useState<Submission | null>(null);
     const [answers, setAnswers] = useState<Record<string, any>>({});
     const [draftReady, setDraftReady] = useState(false);
+    const [studentId, setStudentId] = useState<string | null>(null);
+
+    // Resolve student table ID from auth UID
+    useEffect(() => {
+        if (!user) return;
+        (async () => {
+            const { data }: { data: any; error: any } = await supabase
+                .from("students" as any)
+                .select("id")
+                .eq("auth_user_id", user.id)
+                .single();
+            if (data?.id) setStudentId(data.id);
+        })();
+    }, [user]);
 
     const draftKey = useMemo(() => {
         if (!id) return null;
@@ -90,7 +104,7 @@ export default function InboxItemDetailScreen() {
     }, [draftKey]);
 
     const fetchData = useCallback(async () => {
-        if (!id) return;
+        if (!id || !studentId) return;
         setIsLoading(true);
         setDraftReady(false);
 
@@ -99,6 +113,7 @@ export default function InboxItemDetailScreen() {
                 .from("student_inbox_items" as any)
                 .select("id, type, status, title, subtitle, payload")
                 .eq("id", id)
+                .eq("student_id", studentId)
                 .single();
 
             if (inboxError || !inboxData) {
@@ -115,7 +130,8 @@ export default function InboxItemDetailScreen() {
 
                 let submissionQuery = supabase
                     .from("form_submissions" as any)
-                    .select("id, status, schema_snapshot_json, answers_json, submitted_at, trainer_feedback");
+                    .select("id, status, schema_snapshot_json, answers_json, submitted_at, trainer_feedback")
+                    .eq("student_id", studentId);
 
                 if (submissionId) {
                     submissionQuery = submissionQuery.eq("id", submissionId);
@@ -204,11 +220,11 @@ export default function InboxItemDetailScreen() {
             setIsLoading(false);
             setDraftReady(true);
         }
-    }, [draftKey, id, router]);
+    }, [draftKey, id, router, studentId]);
 
     useEffect(() => {
-        fetchData();
-    }, [fetchData]);
+        if (studentId) fetchData();
+    }, [fetchData, studentId]);
 
     const questions = useMemo(
         () => submission?.schema_snapshot_json?.questions || [],

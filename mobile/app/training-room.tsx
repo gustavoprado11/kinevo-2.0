@@ -7,6 +7,9 @@ import {
     Image,
     Alert,
     StatusBar,
+    LayoutAnimation,
+    Animated,
+    Easing,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useRouter } from 'expo-router';
@@ -20,7 +23,14 @@ import {
     Timer,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
-
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import RNReanimated, {
+    type SharedValue,
+    useSharedValue,
+    useAnimatedStyle,
+    withSpring,
+    runOnJS,
+} from 'react-native-reanimated';
 import { useTrainingRoomStore } from '../stores/training-room-store';
 import type { ExerciseData, WorkoutNote, ActiveSession } from '../stores/training-room-store';
 import { useFinishTrainerWorkout } from '../hooks/useTrainerWorkoutSession';
@@ -66,80 +76,261 @@ function ElapsedTimer({ startedAt }: { startedAt: number }) {
 }
 
 // ---------------------------------------------------------------------------
+// Draggable Chip Wrapper (gesture + animated view for drag-to-reorder)
+// ---------------------------------------------------------------------------
+
+const CHIP_GAP = 6;
+
+function DraggableChipSlot({
+    chipId,
+    dragTranslateX,
+    draggingChipIdSV,
+    dragOffsetX,
+    onDragStart,
+    onDragUpdate,
+    onDragEnd,
+    onMeasure,
+    children,
+}: {
+    chipId: string;
+    dragTranslateX: SharedValue<number>;
+    draggingChipIdSV: SharedValue<string | null>;
+    dragOffsetX: SharedValue<number>;
+    onDragStart: () => void;
+    onDragUpdate: (totalTranslation: number) => void;
+    onDragEnd: () => void;
+    onMeasure: (width: number) => void;
+    children: React.ReactNode;
+}) {
+    const chipScale = useSharedValue(1);
+
+    const animatedStyle = useAnimatedStyle(() => {
+        const isDragging = draggingChipIdSV.value === chipId;
+        return {
+            transform: [
+                { translateX: isDragging ? dragTranslateX.value : 0 },
+                { scale: chipScale.value },
+            ],
+            zIndex: isDragging ? 100 : 0,
+        };
+    });
+
+    const gesture = Gesture.Pan()
+        .activateAfterLongPress(400)
+        .onStart(() => {
+            draggingChipIdSV.value = chipId;
+            dragTranslateX.value = 0;
+            dragOffsetX.value = 0;
+            chipScale.value = withSpring(1.08, { damping: 15 });
+            runOnJS(onDragStart)();
+        })
+        .onUpdate((e) => {
+            dragTranslateX.value = e.translationX + dragOffsetX.value;
+            runOnJS(onDragUpdate)(dragTranslateX.value);
+        })
+        .onEnd(() => {
+            chipScale.value = withSpring(1, { damping: 15 });
+            dragTranslateX.value = withSpring(0, { damping: 20, stiffness: 200 }, (finished) => {
+                if (finished) {
+                    draggingChipIdSV.value = null;
+                }
+            });
+            runOnJS(onDragEnd)();
+        });
+
+    return (
+        <GestureDetector gesture={gesture}>
+            <RNReanimated.View
+                style={animatedStyle}
+                onLayout={(e) => onMeasure(e.nativeEvent.layout.width)}
+            >
+                {children}
+            </RNReanimated.View>
+        </GestureDetector>
+    );
+}
+
+// ---------------------------------------------------------------------------
 // Student Tab Pill
 // ---------------------------------------------------------------------------
 
-function StudentTabPill({
+function StudentChip({
     session,
     isActive,
+    isDragging,
     onPress,
     onRemove,
 }: {
     session: ActiveSession;
     isActive: boolean;
+    isDragging?: boolean;
     onPress: () => void;
     onRemove: () => void;
 }) {
     const { completed, total } = useTrainingRoomStore.getState().getCompletedSets(session.studentId);
+    const hasProgress = session.status === 'in_progress' && total > 0;
+
+    // --- Animated border overlay (fades in during long press) ---
+    const pressOpacity = useRef(new Animated.Value(0)).current;
+    const isDraggingRef = useRef(false);
+    const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const CHIP_HEIGHT = 36;
+    const R = 18;
+
+    useEffect(() => {
+        isDraggingRef.current = !!isDragging;
+        if (isDragging) {
+            pressOpacity.setValue(1);
+        } else {
+            Animated.timing(pressOpacity, {
+                toValue: 0,
+                duration: 200,
+                useNativeDriver: true,
+            }).start();
+        }
+    }, [isDragging]);
+
+    const handlePressIn = () => {
+        Animated.timing(pressOpacity, {
+            toValue: 1,
+            duration: 400,
+            easing: Easing.linear,
+            useNativeDriver: true,
+        }).start();
+        // Pre-set flag before RNGH gesture activates at 400ms
+        longPressTimerRef.current = setTimeout(() => {
+            isDraggingRef.current = true;
+        }, 380);
+    };
+
+    const handlePressOut = () => {
+        if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+        if (isDraggingRef.current) return;
+        pressOpacity.stopAnimation();
+        Animated.timing(pressOpacity, {
+            toValue: 0,
+            duration: 100,
+            useNativeDriver: true,
+        }).start();
+    };
 
     return (
-        <TouchableOpacity
-            onPress={onPress}
-            activeOpacity={0.6}
-            style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 6,
-                paddingVertical: 6,
-                paddingLeft: 6,
-                paddingRight: 10,
-                borderRadius: 20,
-                backgroundColor: isActive ? 'rgba(124, 58, 237, 0.1)' : '#fff',
-                borderWidth: 1,
-                borderColor: isActive ? 'rgba(124, 58, 237, 0.25)' : '#e2e8f0',
-            }}
-        >
-            {session.studentAvatarUrl ? (
-                <Image
-                    source={{ uri: session.studentAvatarUrl }}
-                    style={{ width: 28, height: 28, borderRadius: 14 }}
-                />
-            ) : (
-                <View
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={{ overflow: 'visible' }}>
+                <TouchableOpacity
+                    onPress={onPress}
+                    onPressIn={handlePressIn}
+                    onPressOut={handlePressOut}
+                    activeOpacity={0.7}
                     style={{
-                        width: 28,
-                        height: 28,
-                        borderRadius: 14,
-                        backgroundColor: isActive ? 'rgba(124, 58, 237, 0.15)' : '#f1f5f9',
+                        flexDirection: 'row',
                         alignItems: 'center',
-                        justifyContent: 'center',
+                        gap: 6,
+                        height: CHIP_HEIGHT,
+                        paddingLeft: 4,
+                        paddingRight: hasProgress ? 8 : 10,
+                        borderRadius: R,
+                        backgroundColor: isDragging
+                            ? 'rgba(124, 58, 237, 0.15)'
+                            : isActive ? 'rgba(124, 58, 237, 0.1)' : '#fff',
+                        borderWidth: 1,
+                        borderColor: isActive ? 'rgba(124, 58, 237, 0.3)' : '#e2e8f0',
+                        shadowColor: isDragging ? '#000' : 'transparent',
+                        shadowOffset: { width: 0, height: isDragging ? 4 : 0 },
+                        shadowOpacity: isDragging ? 0.15 : 0,
+                        shadowRadius: isDragging ? 8 : 0,
+                        elevation: isDragging ? 8 : 0,
                     }}
                 >
-                    <Text style={{ fontSize: 11, fontWeight: '700', color: isActive ? '#7c3aed' : '#64748b' }}>
-                        {session.studentName.charAt(0).toUpperCase()}
+                    {session.studentAvatarUrl ? (
+                        <Image
+                            source={{ uri: session.studentAvatarUrl }}
+                            style={{ width: 28, height: 28, borderRadius: 14 }}
+                        />
+                    ) : (
+                        <View
+                            style={{
+                                width: 28,
+                                height: 28,
+                                borderRadius: 14,
+                                backgroundColor: isActive ? 'rgba(124, 58, 237, 0.15)' : '#f1f5f9',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                            }}
+                        >
+                            <Text style={{ fontSize: 11, fontWeight: '700', color: isActive ? '#7c3aed' : '#64748b' }}>
+                                {session.studentName.charAt(0).toUpperCase()}
+                            </Text>
+                        </View>
+                    )}
+                    <Text
+                        style={{
+                            fontSize: 13,
+                            fontWeight: '600',
+                            color: isActive ? '#7c3aed' : '#334155',
+                            maxWidth: 72,
+                        }}
+                        numberOfLines={1}
+                    >
+                        {session.studentName.split(' ')[0]}
                     </Text>
-                </View>
-            )}
-            <Text
+                    {hasProgress && (
+                        <View
+                            style={{
+                                backgroundColor: isActive ? 'rgba(124, 58, 237, 0.15)' : '#f1f5f9',
+                                borderRadius: 8,
+                                paddingHorizontal: 5,
+                                paddingVertical: 1,
+                            }}
+                        >
+                            <Text
+                                style={{
+                                    fontSize: 10,
+                                    fontWeight: '700',
+                                    color: isActive ? '#7c3aed' : '#64748b',
+                                    fontVariant: ['tabular-nums'],
+                                }}
+                            >
+                                {completed}/{total}
+                            </Text>
+                        </View>
+                    )}
+                </TouchableOpacity>
+                {/* Animated border — fades in during long press, stays for drag */}
+                <Animated.View
+                    pointerEvents="none"
+                    style={{
+                        position: 'absolute',
+                        top: -1.5,
+                        left: -1.5,
+                        right: -1.5,
+                        bottom: -1.5,
+                        borderRadius: R + 1,
+                        borderWidth: 2.5,
+                        borderColor: '#7c3aed',
+                        opacity: pressOpacity,
+                    }}
+                />
+            </View>
+            {/* X remove button — overlaps top-right corner of chip */}
+            <TouchableOpacity
+                onPress={onRemove}
+                hitSlop={{ top: 8, bottom: 8, left: 4, right: 8 }}
                 style={{
-                    fontSize: 13,
-                    fontWeight: '600',
-                    color: isActive ? '#7c3aed' : '#0f172a',
-                    maxWidth: 80,
+                    width: 18,
+                    height: 18,
+                    borderRadius: 9,
+                    backgroundColor: '#e2e8f0',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginLeft: -10,
+                    marginTop: -18,
                 }}
-                numberOfLines={1}
             >
-                {session.studentName.split(' ')[0]}
-            </Text>
-            {session.status === 'in_progress' && (
-                <Text style={{ fontSize: 10, color: '#64748b', fontWeight: '500' }}>
-                    {completed}/{total}
-                </Text>
-            )}
-            {session.status === 'in_progress' && (
-                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#10b981' }} />
-            )}
-        </TouchableOpacity>
+                <X size={10} color="#64748b" strokeWidth={3} />
+            </TouchableOpacity>
+        </View>
     );
 }
 
@@ -151,12 +342,14 @@ export default function TrainingRoomScreen() {
     const router = useRouter();
     const sessions = useTrainingRoomStore((s) => s.sessions);
     const activeStudentId = useTrainingRoomStore((s) => s.activeStudentId);
+    const sessionOrder = useTrainingRoomStore((s) => s.sessionOrder);
     const setActiveStudent = useTrainingRoomStore((s) => s.setActiveStudent);
     const startWorkout = useTrainingRoomStore((s) => s.startWorkout);
     const setFinishing = useTrainingRoomStore((s) => s.setFinishing);
     const updateSet = useTrainingRoomStore((s) => s.updateSet);
     const toggleSetComplete = useTrainingRoomStore((s) => s.toggleSetComplete);
     const removeStudent = useTrainingRoomStore((s) => s.removeStudent);
+    const reorderStudents = useTrainingRoomStore((s) => s.reorderStudents);
     const clearExpiredSessions = useTrainingRoomStore((s) => s.clearExpiredSessions);
     const startRestTimer = useTrainingRoomStore((s) => s.startRestTimer);
     const clearRestTimer = useTrainingRoomStore((s) => s.clearRestTimer);
@@ -165,8 +358,102 @@ export default function TrainingRoomScreen() {
 
     const [isPickerOpen, setIsPickerOpen] = useState(false);
     const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
+    const [draggingChipState, setDraggingChipState] = useState<string | null>(null);
+    const [chipScrollEnabled, setChipScrollEnabled] = useState(true);
 
     const sessionCount = Object.keys(sessions).length;
+
+    // Derive display order (fallback for stores without sessionOrder)
+    const displayOrder = useMemo(() => {
+        if (sessionOrder.length > 0) return sessionOrder;
+        return Object.keys(sessions);
+    }, [sessionOrder, sessions]);
+
+    // --- Drag-to-reorder shared values and refs ---
+    const dragTranslateX = useSharedValue(0);
+    const draggingChipIdSV = useSharedValue<string | null>(null);
+    const dragOffsetX = useSharedValue(0);
+    const chipWidthsRef = useRef<Map<string, number>>(new Map());
+    const displayOrderRef = useRef<string[]>([]);
+    displayOrderRef.current = displayOrder;
+    const lastSwapTimeRef = useRef(0);
+
+    const handleChipPress = useCallback((id: string) => {
+        setActiveStudent(id);
+        Haptics.selectionAsync();
+    }, [setActiveStudent]);
+
+    const handleDragStart = useCallback((chipId: string) => {
+        setDraggingChipState(chipId);
+        setChipScrollEnabled(false);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    }, []);
+
+    const handleDragUpdate = useCallback((chipId: string, totalTranslation: number) => {
+        const now = Date.now();
+        if (now - lastSwapTimeRef.current < 200) return;
+
+        const order = displayOrderRef.current;
+        const idx = order.indexOf(chipId);
+        if (idx === -1) return;
+
+        const widths = chipWidthsRef.current;
+        let x = 0;
+        const centers: { id: string; center: number; width: number }[] = [];
+        for (const id of order) {
+            const w = widths.get(id) || 80;
+            centers.push({ id, center: x + w / 2, width: w });
+            x += w + CHIP_GAP;
+        }
+
+        const myEntry = centers[idx];
+        if (!myEntry) return;
+        const myCurrentCenter = myEntry.center + totalTranslation;
+
+        // Check right neighbor
+        if (idx < order.length - 1) {
+            const right = centers[idx + 1];
+            if (myCurrentCenter > right.center) {
+                const positionDelta = right.width + CHIP_GAP;
+                dragOffsetX.value -= positionDelta;
+                lastSwapTimeRef.current = now;
+                const newOrder = [...order];
+                [newOrder[idx], newOrder[idx + 1]] = [newOrder[idx + 1], newOrder[idx]];
+                LayoutAnimation.configureNext({
+                    duration: 200,
+                    update: { type: LayoutAnimation.Types.easeInEaseOut },
+                });
+                reorderStudents(newOrder);
+                Haptics.selectionAsync();
+                return;
+            }
+        }
+
+        // Check left neighbor
+        if (idx > 0) {
+            const left = centers[idx - 1];
+            if (myCurrentCenter < left.center) {
+                const positionDelta = left.width + CHIP_GAP;
+                dragOffsetX.value += positionDelta;
+                lastSwapTimeRef.current = now;
+                const newOrder = [...order];
+                [newOrder[idx], newOrder[idx - 1]] = [newOrder[idx - 1], newOrder[idx]];
+                LayoutAnimation.configureNext({
+                    duration: 200,
+                    update: { type: LayoutAnimation.Types.easeInEaseOut },
+                });
+                reorderStudents(newOrder);
+                Haptics.selectionAsync();
+                return;
+            }
+        }
+    }, [reorderStudents, dragOffsetX]);
+
+    const handleDragEnd = useCallback(() => {
+        setDraggingChipState(null);
+        setChipScrollEnabled(true);
+    }, []);
+
     const activeSession = activeStudentId ? sessions[activeStudentId] : null;
 
     // Clear expired sessions on mount and offer restoration
@@ -279,10 +566,25 @@ export default function TrainingRoomScreen() {
     const handleRemoveStudent = (studentId: string) => {
         const session = sessions[studentId];
         if (!session) return;
-        if (session.status === 'in_progress') {
+
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+        const { completed } = useTrainingRoomStore.getState().getCompletedSets(studentId);
+        const firstName = session.studentName.split(' ')[0];
+
+        if (session.status === 'in_progress' && completed > 0) {
             Alert.alert(
-                'Remover aluno?',
-                `O treino em andamento de ${session.studentName} será perdido.`,
+                'Remover da sessão?',
+                `${firstName} tem ${completed} série(s) registrada(s) que não foram salvas. Deseja remover mesmo assim?`,
+                [
+                    { text: 'Cancelar', style: 'cancel' },
+                    { text: 'Remover', style: 'destructive', onPress: () => removeStudent(studentId) },
+                ],
+            );
+        } else if (session.status === 'in_progress') {
+            Alert.alert(
+                'Remover da sessão?',
+                `Remover ${firstName} da Sala de Treino?`,
                 [
                     { text: 'Cancelar', style: 'cancel' },
                     { text: 'Remover', style: 'destructive', onPress: () => removeStudent(studentId) },
@@ -451,9 +753,9 @@ export default function TrainingRoomScreen() {
                     style={{
                         flexDirection: 'row',
                         alignItems: 'center',
-                        justifyContent: 'space-between',
                         paddingHorizontal: 20,
-                        paddingVertical: 12,
+                        paddingTop: 8,
+                        paddingBottom: sessionCount > 0 ? 6 : 12,
                     }}
                 >
                     <TouchableOpacity
@@ -463,26 +765,6 @@ export default function TrainingRoomScreen() {
                         <ArrowLeft size={20} color="#0f172a" />
                         <Text style={{ fontSize: 17, fontWeight: '700', color: '#0f172a' }}>
                             Sala de Treino
-                        </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        onPress={() => setIsPickerOpen(true)}
-                        activeOpacity={0.6}
-                        style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            gap: 4,
-                            backgroundColor: '#fff',
-                            paddingVertical: 6,
-                            paddingHorizontal: 12,
-                            borderRadius: 20,
-                            borderWidth: 1,
-                            borderColor: '#e2e8f0',
-                        }}
-                    >
-                        <Plus size={16} color="#7c3aed" />
-                        <Text style={{ fontSize: 13, fontWeight: '600', color: '#7c3aed' }}>
-                            Aluno
                         </Text>
                     </TouchableOpacity>
                 </View>
@@ -531,28 +813,67 @@ export default function TrainingRoomScreen() {
                 ) : (
                     /* Active sessions */
                     <>
-                        {/* Student tabs */}
+                        {/* Compact student chip strip — long press + drag to reorder */}
                         <ScrollView
                             horizontal
+                            scrollEnabled={chipScrollEnabled}
                             showsHorizontalScrollIndicator={false}
                             contentContainerStyle={{
                                 paddingHorizontal: 20,
-                                paddingBottom: 12,
-                                gap: 8,
+                                paddingTop: 4,
+                                paddingBottom: 8,
+                                gap: CHIP_GAP,
+                                alignItems: 'center',
                             }}
+                            style={{ flexGrow: 0, overflow: 'visible' }}
                         >
-                            {Object.values(sessions).map((session) => (
-                                <StudentTabPill
-                                    key={session.studentId}
-                                    session={session}
-                                    isActive={session.studentId === activeStudentId}
-                                    onPress={() => {
-                                        setActiveStudent(session.studentId);
-                                        Haptics.selectionAsync();
-                                    }}
-                                    onRemove={() => handleRemoveStudent(session.studentId)}
-                                />
-                            ))}
+                            {displayOrder.map((id) => {
+                                const session = sessions[id];
+                                if (!session) return null;
+                                return (
+                                    <DraggableChipSlot
+                                        key={id}
+                                        chipId={id}
+                                        dragTranslateX={dragTranslateX}
+                                        draggingChipIdSV={draggingChipIdSV}
+                                        dragOffsetX={dragOffsetX}
+                                        onDragStart={() => handleDragStart(id)}
+                                        onDragUpdate={(tx) => handleDragUpdate(id, tx)}
+                                        onDragEnd={handleDragEnd}
+                                        onMeasure={(w) => chipWidthsRef.current.set(id, w)}
+                                    >
+                                        <StudentChip
+                                            session={session}
+                                            isActive={id === activeStudentId}
+                                            isDragging={id === draggingChipState}
+                                            onPress={() => handleChipPress(id)}
+                                            onRemove={() => handleRemoveStudent(id)}
+                                        />
+                                    </DraggableChipSlot>
+                                );
+                            })}
+                            {/* "+ Aluno" chip */}
+                            <TouchableOpacity
+                                onPress={() => setIsPickerOpen(true)}
+                                activeOpacity={0.7}
+                                style={{
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    gap: 4,
+                                    height: 36,
+                                    paddingHorizontal: 12,
+                                    borderRadius: 18,
+                                    backgroundColor: '#fff',
+                                    borderWidth: 1,
+                                    borderColor: '#e2e8f0',
+                                    borderStyle: 'dashed',
+                                }}
+                            >
+                                <Plus size={14} color="#7c3aed" />
+                                <Text style={{ fontSize: 12, fontWeight: '600', color: '#7c3aed' }}>
+                                    Aluno
+                                </Text>
+                            </TouchableOpacity>
                         </ScrollView>
 
                         {/* Active session content */}

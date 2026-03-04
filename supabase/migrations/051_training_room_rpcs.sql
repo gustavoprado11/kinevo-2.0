@@ -153,8 +153,8 @@ BEGIN
 
             v_exercises := v_exercises || jsonb_build_object(
                 'id', v_item.id,
-                'planned_exercise_id', COALESCE(v_item.exercise_id, ''),
-                'exercise_id', COALESCE(v_item.exercise_id, ''),
+                'planned_exercise_id', v_item.exercise_id,
+                'exercise_id', v_item.exercise_id,
                 'name', COALESCE(v_item.exercise_ref_name, v_item.exercise_name, 'Exercício'),
                 'sets', COALESCE(v_item.sets, 3),
                 'reps', COALESCE(v_item.reps, '12'),

@@ -17,6 +17,7 @@ import type {
     GeneratedWorkout,
     GeneratedWorkoutItem,
     PrescriptionReasoning,
+    ExerciseFunction,
 } from '@kinevo/shared/types/prescription'
 
 // ============================================================================
@@ -316,6 +317,17 @@ function buildWorkout(
     // Update order_index to reflect the new ordering
     items.forEach((item, idx) => { item.order_index = idx })
 
+    // Assign exercise_function based on exercise characteristics (not just position)
+    items.forEach((item) => {
+        const ex = exerciseLookup.get(item.exercise_id)
+        if (!ex) return
+        if (ex.is_compound) {
+            item.exercise_function = 'main'
+        } else {
+            item.exercise_function = 'accessory'
+        }
+    })
+
     const workoutName = `Treino ${String.fromCharCode(65 + orderIndex)} — ${label}`
 
     return {
@@ -431,6 +443,7 @@ function buildItem(
         notes: null,
         substitute_exercise_ids: [],
         order_index: orderIndex,
+        exercise_function: null,
     }
 }
 

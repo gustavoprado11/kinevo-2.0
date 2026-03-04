@@ -87,6 +87,7 @@ export function StudentPickerModal({ isOpen, onClose, trainerId }: StudentPicker
             trainerId,
             workoutName: result.data.workoutName,
             exercises: result.data.exercises,
+            workoutNotes: result.data.workoutNotes,
         }
 
         addStudent(selectedStudent.id, setupData)

@@ -85,6 +85,17 @@ export function useFetchStudentWorkout() {
             } | null;
             error: string | null;
         }> => {
+            // Guard: reject empty/invalid UUIDs before hitting the RPC
+            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+            if (!studentId || !uuidRegex.test(studentId)) {
+                console.error('[useFetchStudentWorkout] invalid studentId:', JSON.stringify(studentId));
+                return { data: null, error: 'ID do aluno inválido' };
+            }
+            if (!assignedWorkoutId || !uuidRegex.test(assignedWorkoutId)) {
+                console.error('[useFetchStudentWorkout] invalid assignedWorkoutId:', JSON.stringify(assignedWorkoutId));
+                return { data: null, error: 'ID do treino inválido' };
+            }
+
             setIsLoading(true);
             try {
                 const { data, error: rpcError } = await (supabase.rpc as any)(
@@ -257,8 +268,8 @@ export function useFinishTrainerWorkout() {
                         if (s.completed) {
                             sets.push({
                                 assignedWorkoutItemId: exercise.id,
-                                plannedExerciseId: exercise.planned_exercise_id || exercise.exercise_id,
-                                executedExerciseId: exercise.exercise_id,
+                                plannedExerciseId: exercise.planned_exercise_id || exercise.exercise_id || null,
+                                executedExerciseId: exercise.exercise_id || null,
                                 swapSource: exercise.swap_source || 'none',
                                 setNumber: i + 1,
                                 weight: parseFloat(s.weight) || 0,

@@ -32,6 +32,7 @@ export interface WorkoutItem {
     reps: string | null
     rest_seconds: number | null
     notes: string | null
+    exercise_function?: string | null
     children?: WorkoutItem[]
 }
 
@@ -64,6 +65,7 @@ interface ProgramData {
             reps: string | null
             rest_seconds: number | null
             notes: string | null
+            exercise_function?: string | null
         }>
     }>
 }
@@ -211,6 +213,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                 reps: c.reps,
                                 rest_seconds: c.rest_seconds,
                                 notes: c.notes,
+                                exercise_function: c.exercise_function || null,
                             }))
 
                         return {
@@ -225,6 +228,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                             reps: p.reps,
                             rest_seconds: p.rest_seconds,
                             notes: p.notes,
+                            exercise_function: p.exercise_function || null,
                             children: itemChildren
                         }
                     })
@@ -712,6 +716,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                             reps: item.reps,
                             rest_seconds: item.rest_seconds,
                             notes: item.notes,
+                            exercise_function: item.exercise_function || null,
                         })
                         .select('id')
                         .single()
@@ -734,6 +739,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                     reps: child.reps,
                                     rest_seconds: child.rest_seconds,
                                     notes: child.notes,
+                                    exercise_function: child.exercise_function || null,
                                 })
 
                             if (childError) throw childError
@@ -850,6 +856,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                             reps: item.reps,
                             rest_seconds: item.rest_seconds,
                             notes: item.notes,
+                            exercise_function: item.exercise_function || null,
                         })
                         .select('id')
                         .single()
@@ -871,6 +878,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                     reps: child.reps,
                                     rest_seconds: child.rest_seconds,
                                     notes: child.notes,
+                                    exercise_function: child.exercise_function || null,
                                 })
                             if (childError) throw childError
                         }

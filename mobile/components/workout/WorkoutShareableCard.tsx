@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Clock, CheckCircle2, TrendingUp, Dumbbell } from 'lucide-react-native';
 
 interface WorkoutShareableCardProps {
     workoutName: string;
@@ -11,92 +10,130 @@ interface WorkoutShareableCardProps {
     date: string;
     studentName: string;
     coach: { name: string; avatar_url: string | null } | null;
+    completedSets?: number;
+    totalSets?: number;
+    rpe?: number;
 }
 
-export const WorkoutShareableCard = (
-    { workoutName, duration, exerciseCount, volume, date, coach }: WorkoutShareableCardProps
-) => {
-    const coachHandle = coach ? `@${coach.name.replace(/\s+/g, '').toLowerCase()}` : '';
+function formatDurationLabel(duration: string): string {
+    // Convert "00:41" → "41min", "01:15" → "1h15m"
+    const parts = duration.split(':');
+    if (parts.length === 2) {
+        const mins = parseInt(parts[0]) * 60 + parseInt(parts[1]);
+        if (mins < 60) return `${mins}min`;
+        const h = Math.floor(mins / 60);
+        const m = mins % 60;
+        return m > 0 ? `${h}h${m}m` : `${h}h`;
+    }
+    return duration;
+}
+
+function formatVolume(kg: number): string {
+    if (kg >= 1000) {
+        return `${(kg / 1000).toFixed(1).replace(/\.0$/, '')}t`;
+    }
+    return `${Math.round(kg)}kg`;
+}
+
+function formatDate(dateStr: string): string {
+    // Input: "04/03/2026" (pt-BR format dd/mm/yyyy)
+    const parts = dateStr.split('/');
+    if (parts.length !== 3) return dateStr;
+
+    const day = parseInt(parts[0]);
+    const monthIndex = parseInt(parts[1]) - 1;
+    const year = parts[2];
+
+    const months = [
+        'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+        'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro',
+    ];
+
+    return `${day} de ${months[monthIndex]}, ${year}`;
+}
+
+function CardStat({ value, label }: { value: string; label: string }) {
+    return (
+        <View style={styles.statBox}>
+            <Text style={styles.statValue}>{value}</Text>
+            <Text style={styles.statLabel}>{label}</Text>
+        </View>
+    );
+}
+
+export const WorkoutShareableCard = ({
+    workoutName,
+    duration,
+    exerciseCount,
+    volume,
+    date,
+    coach,
+    completedSets,
+    totalSets,
+    rpe,
+}: WorkoutShareableCardProps) => {
+    const setsDisplay = completedSets != null && totalSets != null
+        ? `${completedSets}/${totalSets}`
+        : String(exerciseCount);
+    const setsLabel = completedSets != null ? 'Séries' : 'Exercícios';
+
+    const intensityDisplay = rpe != null ? `${rpe}/10` : '—';
 
     return (
         <View style={[styles.container, { width: 320, height: 568 }]}>
             <LinearGradient
-                colors={['#0F172A', '#1E1B4B', '#020617']}
-                locations={[0, 0.6, 1]}
+                colors={['#1e1b4b', '#1a1a2e', '#0f172a']}
+                locations={[0, 0.5, 1]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
                 style={styles.gradient}
             />
 
             <View style={styles.content}>
                 {/* Header */}
                 <View style={styles.header}>
-                    <Text style={styles.mainTitle}>Treino{'\n'}Concluído</Text>
-                    <Text style={styles.subTitle}>{workoutName}</Text>
-                    <Text style={styles.date}>{date}</Text>
+                    <Text style={styles.workoutName}>{workoutName}</Text>
+                    <Text style={styles.date}>{formatDate(date)}</Text>
                 </View>
 
-                {/* Stats Grid */}
+                {/* Stats Grid 2×2 */}
                 <View style={styles.statsContainer}>
                     <View style={styles.gridRow}>
-                        <View style={styles.statBox}>
-                            <Clock size={20} color="#A78BFA" />
-                            <Text style={styles.statValue}>{duration}</Text>
-                            <Text style={styles.statLabel}>Duração</Text>
-                        </View>
-                        <View style={styles.statBox}>
-                            <CheckCircle2 size={20} color="#34D399" />
-                            <Text style={styles.statValue}>{exerciseCount}</Text>
-                            <Text style={styles.statLabel}>Exercícios</Text>
-                        </View>
+                        <CardStat value={formatDurationLabel(duration)} label="Duração" />
+                        <CardStat value={setsDisplay} label={setsLabel} />
                     </View>
-
                     <View style={styles.gridRow}>
-                        <View style={styles.statBox}>
-                            <TrendingUp size={20} color="#F472B6" />
-                            <Text style={styles.statValue}>{(volume / 1000).toFixed(1)}t</Text>
-                            <Text style={styles.statLabel}>Volume Total</Text>
-                        </View>
-                        <View style={styles.statBox}>
-                            <Dumbbell size={20} color="#60A5FA" />
-                            <Text style={styles.statValue}>100%</Text>
-                            <Text style={styles.statLabel}>Foco</Text>
-                        </View>
+                        <CardStat value={formatVolume(volume)} label="Volume" />
+                        <CardStat value={intensityDisplay} label="Intensidade" />
                     </View>
                 </View>
 
-                {/* Footer: Coach Promotion */}
+                {/* Footer */}
                 <View style={styles.footer}>
                     {coach ? (
                         <View style={styles.coachSection}>
                             {coach.avatar_url ? (
-                                <View style={styles.coachAvatarContainer}>
-                                    <Image
-                                        source={{ uri: coach.avatar_url }}
-                                        style={styles.coachAvatar}
-                                    />
-                                </View>
+                                <Image source={{ uri: coach.avatar_url }} style={styles.coachAvatar} />
                             ) : (
-                                <View style={[styles.coachAvatarContainer, { backgroundColor: '#334155', alignItems: 'center', justifyContent: 'center' }]}>
-                                    <Text style={{ color: '#94A3B8', fontWeight: 'bold', fontSize: 16 }}>{coach.name.charAt(0)}</Text>
+                                <View style={[styles.coachAvatar, styles.coachAvatarFallback]}>
+                                    <Text style={styles.coachAvatarInitial}>
+                                        {coach.name.charAt(0)}
+                                    </Text>
                                 </View>
                             )}
                             <View style={styles.coachInfo}>
-                                <Text style={styles.coachLabel}>TREINADO POR</Text>
                                 <Text style={styles.coachName}>{coach.name}</Text>
-                                <Text style={styles.coachRole}>{coachHandle}</Text>
+                                <Text style={styles.brandText}>kinevo.app</Text>
                             </View>
                         </View>
                     ) : (
                         <View style={styles.coachSection}>
                             <View style={styles.coachInfo}>
-                                <Text style={styles.coachLabel}>POWERED BY</Text>
                                 <Text style={styles.coachName}>Kinevo</Text>
+                                <Text style={styles.brandText}>kinevo.app</Text>
                             </View>
                         </View>
                     )}
-
-                    <View style={styles.logoSection}>
-                        <Text style={styles.logoText}>kinevo.app</Text>
-                    </View>
                 </View>
             </View>
         </View>
@@ -105,7 +142,7 @@ export const WorkoutShareableCard = (
 
 const styles = StyleSheet.create({
     container: {
-        backgroundColor: '#0F172A',
+        backgroundColor: '#0f172a',
         overflow: 'hidden',
     },
     gradient: {
@@ -113,121 +150,100 @@ const styles = StyleSheet.create({
     },
     content: {
         flex: 1,
-        padding: 32,
-        justifyContent: 'space-between',
-        paddingVertical: 48,
+        padding: 28,
+        paddingTop: 36,
+        paddingBottom: 28,
     },
+
+    // Header
     header: {
-        marginBottom: 24,
+        marginBottom: 28,
     },
-    mainTitle: {
-        color: 'white',
-        fontSize: 32,
-        fontWeight: '900',
-        textTransform: 'uppercase',
-        letterSpacing: 1,
-        marginBottom: 8,
-        lineHeight: 36,
-    },
-    subTitle: {
-        color: '#A78BFA',
-        fontSize: 18,
-        fontWeight: '600',
-        marginBottom: 4,
+    workoutName: {
+        color: '#fff',
+        fontSize: 26,
+        fontWeight: '700',
+        letterSpacing: -0.3,
+        marginBottom: 6,
     },
     date: {
-        color: '#94A3B8',
+        color: 'rgba(255, 255, 255, 0.45)',
         fontSize: 14,
-        letterSpacing: 0.5,
+        fontWeight: '500',
     },
+
+    // Stats
     statsContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        paddingVertical: 20,
+        gap: 12,
+        marginBottom: 28,
     },
     gridRow: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: 24,
+        gap: 12,
     },
     statBox: {
-        width: '46%',
-        backgroundColor: 'rgba(255, 255, 255, 0.05)',
-        borderRadius: 20,
-        padding: 20,
+        flex: 1,
+        backgroundColor: 'rgba(255, 255, 255, 0.06)',
+        borderRadius: 16,
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.08)',
+        borderColor: 'rgba(255, 255, 255, 0.06)',
+        padding: 16,
     },
     statValue: {
-        color: 'white',
-        fontSize: 28,
-        fontWeight: '800',
-        marginTop: 12,
-        marginBottom: 2,
+        color: '#fff',
+        fontSize: 24,
+        fontWeight: '700',
+        fontVariant: ['tabular-nums'],
+        marginBottom: 4,
     },
     statLabel: {
-        color: '#94A3B8',
-        fontSize: 13,
+        color: 'rgba(255, 255, 255, 0.45)',
+        fontSize: 12,
         fontWeight: '500',
     },
+
+    // Footer
     footer: {
-        borderTopWidth: 1,
+        marginTop: 'auto',
+        borderTopWidth: StyleSheet.hairlineWidth,
         borderTopColor: 'rgba(255, 255, 255, 0.08)',
-        paddingTop: 24,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
+        paddingTop: 20,
     },
     coachSection: {
         flexDirection: 'row',
         alignItems: 'center',
-        flex: 1,
-    },
-    coachAvatarContainer: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        backgroundColor: '#1E293B',
-        marginRight: 12,
-        overflow: 'hidden',
-        borderWidth: 1.5,
-        borderColor: '#7C3AED',
     },
     coachAvatar: {
-        width: '100%',
-        height: '100%',
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        borderWidth: 1.5,
+        borderColor: 'rgba(124, 58, 237, 0.35)',
+        marginRight: 10,
+        overflow: 'hidden',
+    },
+    coachAvatarFallback: {
+        backgroundColor: '#334155',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    coachAvatarInitial: {
+        color: '#94a3b8',
+        fontWeight: '700',
+        fontSize: 15,
     },
     coachInfo: {
         justifyContent: 'center',
-        flex: 1,
-    },
-    coachLabel: {
-        color: 'rgba(255,255,255,0.45)',
-        fontSize: 9,
-        textTransform: 'uppercase',
-        letterSpacing: 2,
-        marginBottom: 3,
-        fontWeight: '700',
     },
     coachName: {
-        color: 'white',
-        fontSize: 16,
-        fontWeight: '700',
+        color: '#fff',
+        fontSize: 15,
+        fontWeight: '600',
         marginBottom: 1,
     },
-    coachRole: {
-        color: '#A78BFA',
+    brandText: {
+        color: 'rgba(124, 58, 237, 0.7)',
         fontSize: 12,
         fontWeight: '500',
     },
-    logoSection: {
-        alignItems: 'flex-end',
-        opacity: 0.5,
-    },
-    logoText: {
-        color: 'white',
-        fontWeight: '700',
-        fontSize: 11,
-        letterSpacing: 1,
-    }
 });

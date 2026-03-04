@@ -191,6 +191,7 @@ export async function assignProgram({ studentId, templateId, startDate, isSchedu
                                 reps: item.reps,
                                 rest_seconds: item.rest_seconds,
                                 notes: item.notes,
+                                exercise_function: item.exercise_function || null,
                                 parent_item_id: null
                             })
                             .select('id')
@@ -234,6 +235,7 @@ export async function assignProgram({ studentId, templateId, startDate, isSchedu
                                 reps: item.reps,
                                 rest_seconds: item.rest_seconds,
                                 notes: item.notes,
+                                exercise_function: item.exercise_function || null,
                                 parent_item_id: parentAssignedId
                             })
                     }

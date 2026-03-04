@@ -1,9 +1,9 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, Modal, TouchableOpacity, Share, Platform, Alert, Dimensions } from 'react-native';
-import { Trophy, Share2, X } from 'lucide-react-native';
-import { BlurView } from 'expo-blur';
-import { LinearGradient } from 'expo-linear-gradient';
+import React, { useEffect, useState } from 'react';
+import { View, Text, Modal, TouchableOpacity, Dimensions, StyleSheet } from 'react-native';
+import { X, Share2 } from 'lucide-react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withSequence } from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ShareWorkoutModal } from './ShareWorkoutModal';
 import { WorkoutShareableCard } from './WorkoutShareableCard';
 
@@ -18,38 +18,48 @@ interface WorkoutSuccessModalProps {
         date: string;
         studentName: string;
         coach: { name: string; avatar_url: string | null } | null;
+        completedSets?: number;
+        totalSets?: number;
+        rpe?: number;
     };
 }
 
 const { width } = Dimensions.get('window');
+const CARD_PREVIEW_WIDTH = width * 0.7;
+const CARD_ASPECT_RATIO = 568 / 320; // Original card proportions
+
+function formatRelativeDate(dateStr: string): string {
+    const today = new Date().toLocaleDateString('pt-BR');
+    if (dateStr === today) return 'Hoje';
+    return dateStr;
+}
 
 export function WorkoutSuccessModal({ visible, onClose, data }: WorkoutSuccessModalProps) {
     const scale = useSharedValue(0);
     const [shareModalVisible, setShareModalVisible] = useState(false);
+    const insets = useSafeAreaInsets();
 
     useEffect(() => {
         if (visible) {
             scale.value = withSequence(
-                withSpring(1.05),
-                withSpring(1)
+                withSpring(1.02, { damping: 16, stiffness: 200 }),
+                withSpring(1, { damping: 20, stiffness: 200 })
             );
         } else {
             scale.value = 0;
         }
     }, [visible]);
 
-    const animatedStyle = useAnimatedStyle(() => {
-        return {
-            transform: [{ scale: scale.value }],
-        };
-    });
+    const animatedStyle = useAnimatedStyle(() => ({
+        transform: [{ scale: scale.value }],
+    }));
 
-    // Removed handleShare logic in favor of opening ShareWorkoutModal
     const handleOpenShare = () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         setShareModalVisible(true);
     };
 
-    if (!data) return null; // Should not happen given logic in parent
+    if (!data) return null;
 
     return (
         <Modal
@@ -58,77 +68,140 @@ export function WorkoutSuccessModal({ visible, onClose, data }: WorkoutSuccessMo
             transparent={true}
             onRequestClose={onClose}
         >
-            <View className="flex-1 bg-black/95 justify-center items-center p-4">
+            <View style={[styles.container, { paddingTop: insets.top }]}>
+                {/* Header */}
+                <View style={styles.header}>
+                    <View style={{ width: 32 }} />
+                    <View style={styles.headerCenter}>
+                        <Text style={styles.headerTitle}>Treino concluído</Text>
+                        <Text style={styles.headerSubtitle}>
+                            {data.workoutName} {'\u00B7'} {formatRelativeDate(data.date)}
+                        </Text>
+                    </View>
+                    <TouchableOpacity
+                        onPress={onClose}
+                        hitSlop={12}
+                        style={styles.closeButton}
+                        activeOpacity={0.7}
+                    >
+                        <X size={18} color="#8e8e93" strokeWidth={2.5} />
+                    </TouchableOpacity>
+                </View>
 
-                {/* Close Button */}
-                <TouchableOpacity
-                    onPress={onClose}
-                    className="absolute top-12 right-6 z-50 bg-slate-800/50 p-2 rounded-full"
-                >
-                    <X size={24} color="white" />
-                </TouchableOpacity>
-
-                <Animated.View style={[animatedStyle, { width: '100%', alignItems: 'center' }]}>
-
-                    <Text className="text-white text-2xl font-bold mb-6 text-center">
-                        Treino Finalizado! 🔥
-                    </Text>
-
-                    {/* Preview Container */}
+                {/* Card Preview */}
+                <Animated.View style={[styles.previewContainer, animatedStyle]}>
                     <View
                         style={{
-                            width: width * 0.75,
-                            height: (width * 0.75) * (16 / 9),
+                            width: CARD_PREVIEW_WIDTH,
+                            height: CARD_PREVIEW_WIDTH * CARD_ASPECT_RATIO,
+                            borderRadius: 20,
                             overflow: 'hidden',
-                            borderRadius: 24,
-                            marginBottom: 24,
-                            backgroundColor: '#0F172A',
-                            alignItems: 'center',
-                            justifyContent: 'center'
+                            shadowColor: '#7c3aed',
+                            shadowOffset: { width: 0, height: 12 },
+                            shadowOpacity: 0.2,
+                            shadowRadius: 32,
+                            elevation: 16,
                         }}
                     >
                         <WorkoutShareableCard {...data} />
                     </View>
-
-
-                    {/* Action Buttons */}
-                    <View className="w-full px-4 mb-4">
-                        <TouchableOpacity
-                            onPress={handleOpenShare}
-                            activeOpacity={0.8}
-                            className="w-full rounded-2xl overflow-hidden shadow-lg shadow-violet-500/40"
-                        >
-                            <BlurView intensity={80} tint="light" className="bg-violet-600/85">
-                                <View className="border border-white/20 rounded-2xl overflow-hidden">
-                                    <LinearGradient
-                                        colors={['rgba(139, 92, 246, 0.5)', 'rgba(109, 40, 217, 0.5)']}
-                                        className="h-14 flex-row items-center justify-center gap-2"
-                                    >
-                                        <Share2 size={20} color="white" />
-                                        <Text className="text-white font-bold text-lg">Compartilhar Resultado</Text>
-                                    </LinearGradient>
-                                </View>
-                            </BlurView>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            onPress={onClose}
-                            activeOpacity={0.7}
-                            className="w-full h-14 bg-slate-800 rounded-2xl items-center justify-center mt-3 border border-white/10"
-                        >
-                            <Text className="text-white font-bold text-lg">Voltar ao Início</Text>
-                        </TouchableOpacity>
-                    </View>
-
                 </Animated.View>
+
+                {/* Actions */}
+                <View style={[styles.actions, { paddingBottom: insets.bottom + 16 }]}>
+                    <TouchableOpacity
+                        onPress={handleOpenShare}
+                        style={styles.shareButton}
+                        activeOpacity={0.8}
+                    >
+                        <Share2 size={18} color="#fff" strokeWidth={2.5} />
+                        <Text style={styles.shareButtonText}>Compartilhar</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        onPress={onClose}
+                        style={styles.skipButton}
+                        activeOpacity={0.7}
+                    >
+                        <Text style={styles.skipText}>Voltar ao início</Text>
+                    </TouchableOpacity>
+                </View>
             </View>
+
             <ShareWorkoutModal
                 visible={shareModalVisible}
                 onClose={() => setShareModalVisible(false)}
                 data={data}
-                sessionId={(data as any).sessionId} // Passing sessionId we added in workout/[id]
+                sessionId={(data as any).sessionId}
             />
         </Modal>
     );
 }
 
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: '#000',
+    },
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+    },
+    headerCenter: {
+        alignItems: 'center',
+    },
+    headerTitle: {
+        fontSize: 17,
+        fontWeight: '600',
+        color: '#fff',
+    },
+    headerSubtitle: {
+        fontSize: 13,
+        color: '#8e8e93',
+        marginTop: 2,
+    },
+    closeButton: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    previewContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    actions: {
+        paddingHorizontal: 24,
+        gap: 12,
+    },
+    shareButton: {
+        height: 52,
+        borderRadius: 14,
+        backgroundColor: '#7c3aed',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+    },
+    shareButtonText: {
+        fontSize: 17,
+        fontWeight: '600',
+        color: '#fff',
+    },
+    skipButton: {
+        height: 44,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    skipText: {
+        fontSize: 15,
+        fontWeight: '500',
+        color: '#8e8e93',
+    },
+});
