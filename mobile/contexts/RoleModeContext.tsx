@@ -41,7 +41,7 @@ interface RoleModeContextType {
 // Constants
 // ─────────────────────────────────────────────────────────────────────────────
 
-const ROLE_KEY = "kinevo:last-role";
+const ROLE_KEY = "kinevo-last-role";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Context
