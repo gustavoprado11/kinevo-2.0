@@ -169,10 +169,35 @@ export default function TrainingRoomScreen() {
     const sessionCount = Object.keys(sessions).length;
     const activeSession = activeStudentId ? sessions[activeStudentId] : null;
 
-    // Clear expired sessions on mount
+    // Clear expired sessions on mount and offer restoration
+    const hasShownRestorationRef = useRef(false);
     useEffect(() => {
         clearExpiredSessions();
-    }, [clearExpiredSessions]);
+
+        // Check for sessions restored from MMKV
+        const restored = Object.values(useTrainingRoomStore.getState().sessions);
+        if (restored.length > 0 && !hasShownRestorationRef.current) {
+            hasShownRestorationRef.current = true;
+            const inProgress = restored.filter((s) => s.status === 'in_progress');
+            if (inProgress.length > 0) {
+                const names = inProgress.map((s) => s.studentName).join(', ');
+                Alert.alert(
+                    'Sessões restauradas',
+                    `${inProgress.length} sessão(ões) em andamento foram restauradas: ${names}`,
+                    [
+                        {
+                            text: 'Descartar todas',
+                            style: 'destructive',
+                            onPress: () => {
+                                for (const s of inProgress) removeStudent(s.studentId);
+                            },
+                        },
+                        { text: 'Continuar', style: 'default' },
+                    ],
+                );
+            }
+        }
+    }, [clearExpiredSessions, removeStudent]);
 
     // Computed set counts
     const completedSetsTotal = useMemo(() => {

@@ -1,17 +1,23 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage, type StateStorage } from 'zustand/middleware';
-import { MMKV } from 'react-native-mmkv';
+import { createMMKV, type MMKV } from 'react-native-mmkv';
 
 // ---------------------------------------------------------------------------
 // MMKV Storage Adapter
 // ---------------------------------------------------------------------------
 
-const mmkv = new MMKV({ id: 'kinevo-training-room' });
+let mmkv: MMKV | null = null;
+function getMMKV(): MMKV {
+    if (!mmkv) {
+        mmkv = createMMKV({ id: 'kinevo-training-room' });
+    }
+    return mmkv;
+}
 
 const mmkvStorage: StateStorage = {
-    getItem: (name) => mmkv.getString(name) ?? null,
-    setItem: (name, value) => mmkv.set(name, value),
-    removeItem: (name) => mmkv.delete(name),
+    getItem: (name) => getMMKV().getString(name) ?? null,
+    setItem: (name, value) => getMMKV().set(name, value),
+    removeItem: (name) => { getMMKV().remove(name); },
 };
 
 // ---------------------------------------------------------------------------
