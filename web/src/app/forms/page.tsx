@@ -22,6 +22,14 @@ export default async function FormsPage() {
         .in('status', ['submitted', 'reviewed'])
         .order('submitted_at', { ascending: false })
 
+    // Pending sent forms (draft — assigned but not yet answered by student)
+    const { data: rawPendingSent } = await supabaseAdmin
+        .from('form_submissions')
+        .select('id, status, created_at, student_id, form_template_id')
+        .eq('trainer_id', trainer.id)
+        .eq('status', 'draft')
+        .order('created_at', { ascending: false })
+
     // Students
     const { data: students } = await supabase
         .from('students')
@@ -43,6 +51,19 @@ export default async function FormsPage() {
             submitted_at: sub.submitted_at,
             created_at: sub.created_at,
             feedback_sent_at: sub.feedback_sent_at,
+            student_name: student?.name || null,
+            student_avatar: student?.avatar_url || null,
+            template_title: template?.title || null,
+        }
+    })
+
+    // Enriched pending sent
+    const pendingSent = (rawPendingSent || []).map(sub => {
+        const student = studentsMap.get(sub.student_id)
+        const template = templatesMap.get(sub.form_template_id)
+        return {
+            id: sub.id,
+            created_at: sub.created_at,
             student_name: student?.name || null,
             student_avatar: student?.avatar_url || null,
             template_title: template?.title || null,
@@ -80,6 +101,7 @@ export default async function FormsPage() {
         <FormsDashboardClient
             trainer={trainer}
             submissions={submissions}
+            pendingSent={pendingSent}
             templates={enrichedTemplates}
             formTemplates={formTemplates}
             students={studentsList}

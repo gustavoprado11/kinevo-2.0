@@ -147,9 +147,18 @@ interface Student {
 
 type FilterType = 'all' | 'pending' | 'completed'
 
+interface PendingSent {
+    id: string
+    created_at: string
+    student_name: string | null
+    student_avatar: string | null
+    template_title: string | null
+}
+
 interface FormsDashboardClientProps {
     trainer: Trainer
     submissions: Submission[]
+    pendingSent: PendingSent[]
     templates: TemplateInfo[]
     formTemplates: FormTemplate[]
     students: Student[]
@@ -159,6 +168,7 @@ interface FormsDashboardClientProps {
 export function FormsDashboardClient({
     trainer,
     submissions,
+    pendingSent,
     templates,
     formTemplates,
     students,
@@ -373,6 +383,48 @@ export function FormsDashboardClient({
                     </div>
                 )}
             </div>
+
+            {/* Pending Sent — forms assigned but not yet answered */}
+            {pendingSent.length > 0 && (
+                <div className="mb-6">
+                    <div className="flex items-center gap-2 mb-3">
+                        <Send size={14} className="text-violet-400" />
+                        <h2 className="text-sm font-semibold text-white">Enviados pendentes</h2>
+                        <span className="px-1.5 py-0.5 rounded bg-violet-500/10 text-[10px] font-bold text-violet-400 border border-violet-500/20">
+                            {pendingSent.length}
+                        </span>
+                    </div>
+                    <div className="space-y-2">
+                        {pendingSent.map(item => (
+                            <div
+                                key={item.id}
+                                className="flex items-center justify-between p-4 bg-violet-500/5 border border-violet-500/10 rounded-xl"
+                            >
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <div className="flex h-8 w-8 items-center justify-center rounded-full border border-k-border-primary bg-glass-bg overflow-hidden shrink-0">
+                                        {item.student_avatar ? (
+                                            <Image src={item.student_avatar} alt="" width={32} height={32} className="h-8 w-8 rounded-full object-cover" unoptimized />
+                                        ) : (
+                                            <span className="text-[10px] font-semibold text-k-text-primary">
+                                                {(item.student_name || '?').charAt(0).toUpperCase()}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-medium text-white truncate">{item.student_name || 'Aluno'}</p>
+                                        <p className="text-xs text-k-text-quaternary">
+                                            {cleanTemplateName(item.template_title || 'Template')} · Enviado {timeAgo(item.created_at)}
+                                        </p>
+                                    </div>
+                                </div>
+                                <span className="text-[11px] px-2.5 py-1 rounded-full bg-violet-500/10 text-violet-400 font-medium shrink-0">
+                                    Aguardando resposta
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* All Submissions */}
             {submissions.length > 0 && (

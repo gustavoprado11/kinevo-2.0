@@ -38,15 +38,29 @@ export async function assignFormToStudents(input: AssignFormInput) {
 
     if (error) {
         console.error('[assignFormToStudents] error:', error)
-        return { success: false, error: error.message || 'Erro ao enviar formulário' }
+        return { success: false, error: error.message || 'Erro ao enviar formulário', assignedCount: 0, skippedCount: 0 }
     }
+
+    const assignedCount = data?.assigned_count ?? 0
+    const skippedCount = data?.skipped_count ?? 0
 
     revalidatePath('/forms')
 
+    if (assignedCount === 0) {
+        return {
+            success: false,
+            error: skippedCount > 0
+                ? `Nenhum formulário enviado — ${skippedCount === 1 ? 'o aluno selecionado já possui' : 'os alunos selecionados já possuem'} este formulário pendente.`
+                : 'Nenhum formulário enviado. Verifique se os alunos selecionados estão vinculados à sua conta.',
+            assignedCount: 0,
+            skippedCount,
+        }
+    }
+
     return {
         success: true,
-        assignedCount: data?.assigned_count ?? 0,
-        skippedCount: data?.skipped_count ?? 0,
+        assignedCount,
+        skippedCount,
     }
 }
 

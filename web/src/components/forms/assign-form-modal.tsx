@@ -49,7 +49,7 @@ export function AssignFormModal({
     const [message, setMessage] = useState('')
     const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([])
     const [isAssigning, setIsAssigning] = useState(false)
-    const [result, setResult] = useState<string | null>(null)
+    const [result, setResult] = useState<{ message: string; isError: boolean } | null>(null)
 
     const toggleStudent = (id: string) => {
         setSelectedStudentIds((prev) =>
@@ -92,12 +92,15 @@ export function AssignFormModal({
 
         if (res.success) {
             useOnboardingStore.getState().completeMilestone('first_form_sent')
-            setResult(`Formulário enviado para ${res.assignedCount} aluno${res.assignedCount !== 1 ? 's' : ''}${res.skippedCount ? ` (${res.skippedCount} já ${res.skippedCount === 1 ? 'tinha' : 'tinham'})` : ''}.`)
+            setResult({
+                message: `Formulário enviado para ${res.assignedCount} aluno${res.assignedCount !== 1 ? 's' : ''}${res.skippedCount ? ` (${res.skippedCount} já ${res.skippedCount === 1 ? 'tinha' : 'tinham'})` : ''}.`,
+                isError: false,
+            })
             setTimeout(() => {
                 resetAndClose()
             }, 2000)
         } else {
-            setResult(res.error || 'Erro ao enviar formulário.')
+            setResult({ message: res.error || 'Erro ao enviar formulário.', isError: true })
         }
 
         setIsAssigning(false)
@@ -302,9 +305,13 @@ export function AssignFormModal({
 
                                 {/* Result */}
                                 {result && (
-                                    <div className="flex items-start gap-2 rounded-xl bg-emerald-500/10 p-3 text-xs font-medium text-emerald-400 border border-emerald-500/20">
+                                    <div className={`flex items-start gap-2 rounded-xl p-3 text-xs font-medium border ${
+                                        result.isError
+                                            ? 'bg-red-500/10 text-red-400 border-red-500/20'
+                                            : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                    }`}>
                                         <CheckCircle2 size={14} className="mt-0.5 shrink-0" />
-                                        <p>{result}</p>
+                                        <p>{result.message}</p>
                                     </div>
                                 )}
                             </div>
