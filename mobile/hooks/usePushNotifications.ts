@@ -1,0 +1,126 @@
+import { useEffect, useRef } from "react";
+import { Platform } from "react-native";
+import * as Notifications from "expo-notifications";
+import type { EventSubscription } from "expo-modules-core";
+import { useRouter } from "expo-router";
+import { supabase } from "../lib/supabase";
+
+const API_URL = process.env.EXPO_PUBLIC_WEB_URL || "https://app.kinevo.com.br";
+
+/**
+ * Registers for push notifications and sends the token to the backend.
+ * Called every time the app opens in trainer mode (upsert = idempotent).
+ */
+async function registerForPushNotificationsAsync(): Promise<string | null> {
+    if (Platform.OS === "web") return null;
+
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+
+    if (existingStatus !== "granted") {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+    }
+
+    if (finalStatus !== "granted") {
+        console.log("[push] Permission not granted");
+        return null;
+    }
+
+    const tokenData = await Notifications.getExpoPushTokenAsync({
+        projectId: process.env.EXPO_PUBLIC_EAS_PROJECT_ID,
+    });
+
+    return tokenData.data;
+}
+
+async function registerTokenOnBackend(expoPushToken: string, role: "trainer" | "student") {
+    try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) return;
+
+        const res = await fetch(`${API_URL}/api/notifications/register-token`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({
+                expoPushToken,
+                role,
+                platform: Platform.OS,
+            }),
+        });
+
+        if (!res.ok) {
+            console.error("[push] Failed to register token:", res.status);
+        } else {
+            console.log("[push] Token registered successfully");
+        }
+    } catch (err) {
+        console.error("[push] Error registering token:", err);
+    }
+}
+
+/**
+ * Hook: manages push notification lifecycle for trainer mode.
+ * - Requests permission + registers token on mount
+ * - Sets up foreground notification handler
+ * - Listens for notification taps and navigates via deep link
+ */
+export function usePushNotifications(enabled: boolean) {
+    const router = useRouter();
+    const notificationListener = useRef<EventSubscription>(null);
+    const responseListener = useRef<EventSubscription>(null);
+
+    useEffect(() => {
+        if (!enabled) return;
+
+        // Register token
+        registerForPushNotificationsAsync().then((token) => {
+            if (token) {
+                registerTokenOnBackend(token, "trainer");
+            }
+        });
+
+        // Foreground: show notification as banner + list
+        Notifications.setNotificationHandler({
+            handleNotification: async () => ({
+                shouldShowAlert: true,
+                shouldShowBanner: true,
+                shouldShowList: true,
+                shouldPlaySound: true,
+                shouldSetBadge: false,
+            }),
+        });
+
+        // Listen for incoming notifications (foreground)
+        notificationListener.current = Notifications.addNotificationReceivedListener((notification) => {
+            console.log("[push] Notification received:", notification.request.content.title);
+        });
+
+        // Listen for notification taps
+        responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
+            const data = response.notification.request.content.data;
+            console.log("[push] Notification tapped, data:", data);
+
+            // Deep link routing based on notification data
+            if (data?.student_id) {
+                router.push({
+                    pathname: "/students/[id]",
+                    params: { id: data.student_id as string },
+                });
+            } else if (data?.contract_id) {
+                router.push({
+                    pathname: "/financial/contract/[id]",
+                    params: { id: data.contract_id as string },
+                });
+            }
+        });
+
+        return () => {
+            notificationListener.current?.remove();
+            responseListener.current?.remove();
+        };
+    }, [enabled, router]);
+}

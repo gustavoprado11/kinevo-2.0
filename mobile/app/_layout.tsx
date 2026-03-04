@@ -4,7 +4,8 @@ import { Alert, Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AuthProvider } from "../contexts/AuthContext";
-import { RoleModeProvider } from "../contexts/RoleModeContext";
+import { RoleModeProvider, useRoleMode } from "../contexts/RoleModeContext";
+import { usePushNotifications } from "../hooks/usePushNotifications";
 import "../global.css";
 
 console.log("[Layout] Iniciando RootLayout");
@@ -280,6 +281,13 @@ function WatchBridge() {
     return null;
 }
 
+/** Activates push notifications when in trainer mode. Must be inside RoleModeProvider. */
+function PushNotificationBridge() {
+    const { role } = useRoleMode();
+    usePushNotifications(role === 'trainer');
+    return null;
+}
+
 export default function RootLayout() {
     console.log("[Layout] Renderizando Provider Wrapper");
     return (
@@ -290,6 +298,7 @@ export default function RootLayout() {
             {Platform.OS === 'ios' && <WatchBridge />}
             <AuthProvider>
                 <RoleModeProvider>
+                    <PushNotificationBridge />
                     <SafeAreaProvider>
                         <Stack
                             screenOptions={{
