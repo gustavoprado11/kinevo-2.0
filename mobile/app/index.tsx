@@ -10,9 +10,11 @@ import Animated, {
     Easing,
 } from "react-native-reanimated";
 import { useAuth } from "../contexts/AuthContext";
+import { useRoleMode } from "../contexts/RoleModeContext";
 
 export default function IndexScreen() {
     const { session, isLoading, isEmailVerified } = useAuth();
+    const { role, isTrainer, isLoadingRole, subscriptionStatus } = useRoleMode();
     const insets = useSafeAreaInsets();
 
     // Entrance animations
@@ -36,7 +38,7 @@ export default function IndexScreen() {
     }));
 
     // 1. Loading state — premium splash
-    if (isLoading) {
+    if (isLoading || isLoadingRole) {
         return (
             <View style={styles.container}>
                 <StatusBar barStyle="light-content" backgroundColor="#111019" />
@@ -59,7 +61,20 @@ export default function IndexScreen() {
         return <Redirect href="/(auth)/verify-email" />;
     }
 
-    // 4. Success — go to home
+    // 4. Dual-role user with no role selected → role picker
+    if (role === null && isTrainer) {
+        return <Redirect href="/role-select" />;
+    }
+
+    // 5. Trainer mode — check subscription gate
+    if (role === "trainer") {
+        if (subscriptionStatus !== "active" && subscriptionStatus !== "trialing") {
+            return <Redirect href="/trainer-subscription-blocked" />;
+        }
+        return <Redirect href="/(trainer-tabs)/dashboard" />;
+    }
+
+    // 6. Student mode (default)
     return <Redirect href="/(tabs)/home" />;
 }
 
