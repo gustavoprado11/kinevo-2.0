@@ -3,6 +3,7 @@ import { stripe } from '@/lib/stripe'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { logContractEvent } from '@/lib/contract-events'
 import { insertTrainerNotification } from '@/lib/trainer-notifications'
+import { sendTrainerPush } from '@/lib/push-notifications'
 import Stripe from 'stripe'
 
 // In Stripe v20+, current_period_end moved from Subscription to SubscriptionItem
@@ -369,6 +370,14 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice, connectedAccountI
         },
     })
 
+    sendTrainerPush({
+        trainerId: contract.trainer_id,
+        type: 'payment_received',
+        title: 'Pagamento confirmado',
+        body: `${paidStudent?.name ?? 'Aluno'} pagou ${amountFormatted}.`,
+        data: { student_id: contract.student_id, contract_id: contract.id },
+    })
+
     console.log(`[connect-webhook:payment_succeeded] Recorded for contract ${contract.id}, amount=${amountPaid}`)
 }
 
@@ -447,6 +456,14 @@ async function handlePaymentFailed(invoice: Stripe.Invoice, connectedAccountId?:
         },
     })
 
+    sendTrainerPush({
+        trainerId: contract.trainer_id,
+        type: 'payment_failed',
+        title: 'Pagamento falhou',
+        body: `Pagamento de ${failedStudent?.name ?? 'Aluno'} falhou.`,
+        data: { student_id: contract.student_id, contract_id: contract.id },
+    })
+
     console.log(`[connect-webhook:payment_failed] Contract ${contract.id} marked past_due`)
 }
 
@@ -514,6 +531,14 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
                 contract_id: contract.id,
                 access_until: periodEnd,
             },
+        })
+
+        sendTrainerPush({
+            trainerId: contract.trainer_id,
+            type: 'payment_overdue',
+            title: 'Assinatura cancelada',
+            body: `A assinatura de ${cancelStudent?.name ?? 'Aluno'} foi cancelada. Acesso até ${endDateStr}.`,
+            data: { student_id: contract.student_id, contract_id: contract.id },
         })
     }
 

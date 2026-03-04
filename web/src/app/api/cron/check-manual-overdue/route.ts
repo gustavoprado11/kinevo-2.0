@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { logContractEvent } from '@/lib/contract-events'
 import { insertTrainerNotification } from '@/lib/trainer-notifications'
+import { sendTrainerPush } from '@/lib/push-notifications'
 
 export async function GET(request: NextRequest) {
     // Verify CRON_SECRET to prevent external calls
@@ -79,6 +80,14 @@ export async function GET(request: NextRequest) {
                     contract_id: contract.id,
                     days_overdue: daysOverdue,
                 },
+            })
+
+            sendTrainerPush({
+                trainerId: contract.trainer_id,
+                type: 'payment_overdue',
+                title: 'Pagamento manual vencido',
+                body: `${studentName} tem pagamento manual vencido há ${daysOverdue} dia${daysOverdue !== 1 ? 's' : ''}.`,
+                data: { student_id: contract.student_id, contract_id: contract.id },
             })
             notifiedCount++
         }

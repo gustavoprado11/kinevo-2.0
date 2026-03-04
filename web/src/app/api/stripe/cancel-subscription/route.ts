@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { stripe } from '@/lib/stripe'
 import { logContractEvent } from '@/lib/contract-events'
 import { insertTrainerNotification } from '@/lib/trainer-notifications'
+import { sendTrainerPush } from '@/lib/push-notifications'
 
 /**
  * POST /api/stripe/cancel-subscription
@@ -142,6 +143,14 @@ export async function POST(request: NextRequest) {
                 plan_title: planTitle,
                 period_end: contract.current_period_end,
             },
+        })
+
+        sendTrainerPush({
+            trainerId: contract.trainer_id,
+            type: 'payment_overdue',
+            title: 'Assinatura cancelada',
+            body: `O aluno ${student.name} cancelou a assinatura "${planTitle}". Acesso até ${periodEnd}.`,
+            data: { student_id: student.id, contract_id: contract.id },
         })
 
         return NextResponse.json({
