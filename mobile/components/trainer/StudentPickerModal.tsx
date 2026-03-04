@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import * as Haptics from 'expo-haptics';
 import {
     View,
     Text,
@@ -111,6 +112,7 @@ export function StudentPickerModal({ visible, onClose }: StudentPickerModalProps
     }, [enrichedStudents, search]);
 
     const handleSelectStudent = (student: StudentWithWorkouts) => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         setSelectedStudent(student);
         setError(null);
         if (student.todayWorkouts.length === 1) {

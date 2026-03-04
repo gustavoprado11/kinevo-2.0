@@ -1,4 +1,5 @@
 import React from "react";
+import * as Haptics from "expo-haptics";
 import {
     View,
     Text,
@@ -110,7 +111,7 @@ export default function ContractsScreen() {
                             const count = counts[f.key];
                             return (
                                 <TouchableOpacity
-                                    onPress={() => setFilter(f.key)}
+                                    onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setFilter(f.key); }}
                                     activeOpacity={0.7}
                                     style={{
                                         paddingHorizontal: 14,

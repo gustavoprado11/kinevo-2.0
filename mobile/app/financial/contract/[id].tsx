@@ -1,4 +1,5 @@
 import React, { useCallback, useState } from "react";
+import * as Haptics from "expo-haptics";
 import {
     View,
     Text,
@@ -80,6 +81,7 @@ export default function ContractDetailScreen() {
             {
                 text: "Confirmar",
                 onPress: async () => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                     setActionLoading("mark-paid");
                     try {
                         const token = await getToken();

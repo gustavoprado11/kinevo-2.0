@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import * as Haptics from "expo-haptics";
 import {
     View,
     Text,
@@ -49,6 +50,7 @@ export function SubmissionDetailSheet({ visible, submissionId, onClose, onFeedba
     const handleSendFeedback = async () => {
         if (!submission || !feedbackText.trim()) return;
 
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         setIsSending(true);
         try {
             const { error } = await supabase.rpc("send_submission_feedback" as any, {

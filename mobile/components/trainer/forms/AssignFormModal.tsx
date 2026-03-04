@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import * as Haptics from "expo-haptics";
 import {
     View,
     Text,
@@ -69,6 +70,7 @@ export function AssignFormModal({ visible, template, onClose, onSuccess }: Props
     const handleSend = async () => {
         if (!template || selectedIds.size === 0) return;
 
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         setIsSending(true);
         try {
             const dueAt =

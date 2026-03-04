@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from "react";
+import * as Haptics from "expo-haptics";
 import {
     View,
     Text,
@@ -58,6 +59,7 @@ export function AssignProgramWizard({
     const handleConfirm = useCallback(async () => {
         if (!selectedTemplate) return;
 
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         setIsAssigning(true);
         try {
             // Get current session token for API route

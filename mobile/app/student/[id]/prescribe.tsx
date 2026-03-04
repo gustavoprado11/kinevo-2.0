@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
+import * as Haptics from "expo-haptics";
 import { View, Text, TouchableOpacity, Alert } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -138,6 +139,7 @@ export default function PrescribeScreen() {
     const handleApprove = useCallback(async () => {
         if (!generationResult?.outputSnapshot || !id) return;
 
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         setIsApproving(true);
         try {
             const { data: sessionData } = await supabase.auth.getSession();
