@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, ScrollView } from "react-native";
 import { TrendingUp, Calendar, Clock, Dumbbell } from "lucide-react-native";
 import type { StudentDetailData } from "../../../hooks/useStudentDetail";
+import { SessionHeatmap } from "./SessionHeatmap";
 
 function timeAgo(dateStr: string | null): string {
     if (!dateStr) return "Nunca";
@@ -61,6 +62,9 @@ export function StudentOverviewTab({ data }: Props) {
                     value={timeAgo(data.lastSessionDate)}
                 />
             </View>
+
+            {/* Heatmap */}
+            <SessionHeatmap studentId={data.student.id} />
 
             {/* Active Program */}
             {data.activeProgram && (
