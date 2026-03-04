@@ -233,9 +233,7 @@ BEGIN
                s.avatar_url AS student_avatar,
                ap.name AS program_name,
                ap.duration_weeks,
-               EXTRACT(DAY FROM (
-                   (ap.started_at::date + (ap.duration_weeks * 7)) - CURRENT_DATE
-               ))::int AS ends_in_days
+               ((ap.started_at::date + (ap.duration_weeks * 7)) - CURRENT_DATE) AS ends_in_days
         FROM assigned_programs ap
         JOIN students s ON s.id = ap.student_id
         WHERE ap.trainer_id = v_trainer_id
