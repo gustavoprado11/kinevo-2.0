@@ -1,11 +1,28 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
-import Image from 'next/image'
-import { ArrowLeft, Sparkles } from 'lucide-react'
+import { Sparkles } from 'lucide-react'
 import { translateAuthError } from '@/lib/translate-auth-error'
+import { AuthLayout } from '@/components/auth/auth-layout'
+
+function getPasswordStrength(password: string): { level: number; label: string } {
+    if (password.length === 0) return { level: 0, label: '' }
+    if (password.length < 6) return { level: 1, label: 'Fraca' }
+
+    const hasUppercase = /[A-Z]/.test(password)
+    const hasNumber = /[0-9]/.test(password)
+    const hasSymbol = /[^A-Za-z0-9]/.test(password)
+    const mixCount = [hasUppercase, hasNumber, hasSymbol].filter(Boolean).length
+
+    if (password.length >= 10 && mixCount >= 2) return { level: 4, label: 'Forte' }
+    if (password.length >= 8 && mixCount >= 1) return { level: 3, label: 'Boa' }
+    return { level: 2, label: 'Razoável' }
+}
+
+const strengthColors = ['', 'bg-red-500', 'bg-amber-500', 'bg-emerald-500', 'bg-emerald-600']
+const strengthTextColors = ['', 'text-red-600', 'text-amber-600', 'text-emerald-600', 'text-emerald-700']
 
 export default function SignupPage() {
     const [name, setName] = useState('')
@@ -14,6 +31,8 @@ export default function SignupPage() {
     const [confirmPassword, setConfirmPassword] = useState('')
     const [error, setError] = useState<string | null>(null)
     const [loading, setLoading] = useState(false)
+
+    const strength = useMemo(() => getPasswordStrength(password), [password])
 
     const handleSignup = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -85,170 +104,129 @@ export default function SignupPage() {
     }
 
     return (
-        <div className="min-h-screen flex bg-white">
-            {/* Left Panel — Branding (Desktop only) */}
-            <div className="hidden lg:flex lg:w-[45%] relative bg-[#F9F9FB] flex-col justify-between p-12 overflow-hidden">
-                {/* Subtle background accents */}
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_40%,rgba(124,58,237,0.04),transparent_60%)]" />
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_80%,rgba(124,58,237,0.03),transparent_50%)]" />
-
-                {/* Logo */}
-                <div className="relative z-10 flex items-center gap-3">
-                    <Image
-                        src="/logo-icon.png"
-                        alt="Kinevo"
-                        width={36}
-                        height={36}
-                        className="rounded-lg"
-                    />
-                    <span className="text-xl font-bold text-slate-900 tracking-tight">Kinevo</span>
-                </div>
-
-                {/* Tagline */}
-                <div className="relative z-10 max-w-md">
-                    <h2 className="text-4xl font-extrabold text-slate-900 leading-tight tracking-tighter">
-                        Junte-se à elite
-                        <span className="block text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-violet-400">
-                            dos treinadores.
-                        </span>
-                    </h2>
-                    <p className="mt-4 text-slate-500 text-lg leading-relaxed">
-                        Comece com 7 dias grátis. Sem compromisso, cancele quando quiser.
-                    </p>
-                </div>
-
-                {/* Bottom decorative element */}
-                <div className="relative z-10 flex items-center gap-2 text-slate-400 text-sm">
-                    <Sparkles size={14} />
-                    <span>Mais de 1.000 treinadores já transformaram suas consultorias</span>
-                </div>
-            </div>
-
-            {/* Right Panel — Form */}
-            <div className="flex-1 flex flex-col min-h-screen">
-                {/* Back button */}
-                <div className="p-6">
-                    <Link
-                        href="/"
-                        className="inline-flex items-center gap-2 text-slate-400 hover:text-slate-600 transition-colors text-sm"
-                    >
-                        <ArrowLeft size={16} />
-                        <span>Voltar</span>
+        <AuthLayout
+            tagline="Junte-se à elite"
+            taglineAccent="dos treinadores."
+            subtitle="Comece com 7 dias grátis. Sem compromisso, cancele quando quiser."
+            bottomIcon={Sparkles}
+            bottomText="Mais de 1.000 treinadores já transformaram suas consultorias"
+            backHref="/"
+            backLabel="Voltar"
+            footer={
+                <p className="text-center text-sm text-slate-500 mt-6">
+                    Já tem uma conta?{' '}
+                    <Link href="/login" className="text-violet-600 hover:text-violet-500 font-medium transition-colors">
+                        Entrar
                     </Link>
+                </p>
+            }
+        >
+            <div className="bg-white border border-black/[0.06] rounded-2xl p-8 shadow-apple-elevated">
+                <div className="mb-8">
+                    <h1 className="text-2xl font-bold text-slate-900">Crie sua conta</h1>
+                    <p className="text-slate-500 mt-1.5">Comece a transformar sua consultoria hoje</p>
                 </div>
 
-                {/* Form container */}
-                <div className="flex-1 flex items-center justify-center px-6 pb-12">
-                    <div className="w-full max-w-md">
-                        {/* Mobile logo */}
-                        <div className="lg:hidden flex items-center justify-center gap-3 mb-10">
-                            <Image
-                                src="/logo-icon.png"
-                                alt="Kinevo"
-                                width={32}
-                                height={32}
-                                className="rounded-lg"
-                            />
-                            <span className="text-xl font-bold text-slate-900 tracking-tight">Kinevo</span>
+                <form onSubmit={handleSignup} className="space-y-5">
+                    {error && (
+                        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl text-sm">
+                            {error}
                         </div>
+                    )}
 
-                        {/* Card */}
-                        <div className="bg-white border border-black/[0.06] rounded-2xl p-8 shadow-apple-card">
-                            <div className="mb-8">
-                                <h1 className="text-2xl font-bold text-slate-900">Crie sua conta</h1>
-                                <p className="text-slate-500 mt-1.5">Comece a transformar sua consultoria hoje</p>
-                            </div>
-
-                            <form onSubmit={handleSignup} className="space-y-5">
-                                {error && (
-                                    <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl text-sm">
-                                        {error}
-                                    </div>
-                                )}
-
-                                <div>
-                                    <label htmlFor="name" className="block text-sm font-medium text-slate-700 mb-2">
-                                        Nome completo
-                                    </label>
-                                    <input
-                                        id="name"
-                                        type="text"
-                                        value={name}
-                                        onChange={(e) => setName(e.target.value)}
-                                        required
-                                        className="w-full px-4 py-3 bg-[#F9F9FB] border border-black/[0.08] rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/30 transition-all"
-                                        placeholder="Seu nome"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-2">
-                                        Email
-                                    </label>
-                                    <input
-                                        id="email"
-                                        type="email"
-                                        value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
-                                        required
-                                        className="w-full px-4 py-3 bg-[#F9F9FB] border border-black/[0.08] rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/30 transition-all"
-                                        placeholder="seu@email.com"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-2">
-                                        Senha
-                                    </label>
-                                    <input
-                                        id="password"
-                                        type="password"
-                                        value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
-                                        required
-                                        className="w-full px-4 py-3 bg-[#F9F9FB] border border-black/[0.08] rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/30 transition-all"
-                                        placeholder="••••••••"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label htmlFor="confirmPassword" className="block text-sm font-medium text-slate-700 mb-2">
-                                        Confirmar senha
-                                    </label>
-                                    <input
-                                        id="confirmPassword"
-                                        type="password"
-                                        value={confirmPassword}
-                                        onChange={(e) => setConfirmPassword(e.target.value)}
-                                        required
-                                        className="w-full px-4 py-3 bg-[#F9F9FB] border border-black/[0.08] rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/30 transition-all"
-                                        placeholder="••••••••"
-                                    />
-                                </div>
-
-                                <button
-                                    type="submit"
-                                    disabled={loading}
-                                    className="w-full py-3 px-4 bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-500 hover:to-violet-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all shadow-lg shadow-violet-500/15"
-                                >
-                                    {loading ? 'Criando conta...' : 'Criar conta e começar trial'}
-                                </button>
-
-                                <p className="text-center text-sm text-slate-400">
-                                    7 dias grátis, depois R$ 39,90/mês
-                                </p>
-                            </form>
-                        </div>
-
-                        <p className="text-center text-sm text-slate-500 mt-6">
-                            Já tem uma conta?{' '}
-                            <Link href="/login" className="text-violet-600 hover:text-violet-500 font-medium transition-colors">
-                                Entrar
-                            </Link>
-                        </p>
+                    <div>
+                        <label htmlFor="name" className="block text-sm font-medium text-slate-700 mb-2">
+                            Nome completo
+                        </label>
+                        <input
+                            id="name"
+                            type="text"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            required
+                            className="w-full px-4 py-3 bg-[#F9F9FB] border border-black/[0.08] rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/30 transition-all duration-200"
+                            placeholder="Seu nome"
+                        />
                     </div>
-                </div>
+
+                    <div>
+                        <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-2">
+                            Email
+                        </label>
+                        <input
+                            id="email"
+                            type="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            required
+                            className="w-full px-4 py-3 bg-[#F9F9FB] border border-black/[0.08] rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/30 transition-all duration-200"
+                            placeholder="seu@email.com"
+                        />
+                    </div>
+
+                    <div>
+                        <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-2">
+                            Senha
+                        </label>
+                        <input
+                            id="password"
+                            type="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required
+                            className="w-full px-4 py-3 bg-[#F9F9FB] border border-black/[0.08] rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/30 transition-all duration-200"
+                            placeholder="••••••••"
+                        />
+                        {/* Password strength indicator */}
+                        {password.length > 0 && (
+                            <div className="mt-2.5">
+                                <div className="flex gap-1">
+                                    {[1, 2, 3, 4].map((i) => (
+                                        <div
+                                            key={i}
+                                            className={`h-1 flex-1 rounded-full transition-all duration-300 ${
+                                                i <= strength.level
+                                                    ? strengthColors[strength.level]
+                                                    : 'bg-slate-200'
+                                            }`}
+                                        />
+                                    ))}
+                                </div>
+                                <p className={`text-xs mt-1 font-medium ${strengthTextColors[strength.level]}`}>
+                                    {strength.label}
+                                </p>
+                            </div>
+                        )}
+                    </div>
+
+                    <div>
+                        <label htmlFor="confirmPassword" className="block text-sm font-medium text-slate-700 mb-2">
+                            Confirmar senha
+                        </label>
+                        <input
+                            id="confirmPassword"
+                            type="password"
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            required
+                            className="w-full px-4 py-3 bg-[#F9F9FB] border border-black/[0.08] rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/30 transition-all duration-200"
+                            placeholder="••••••••"
+                        />
+                    </div>
+
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full py-3 px-4 bg-violet-600 hover:bg-violet-700 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-violet-500/15"
+                    >
+                        {loading ? 'Criando conta...' : 'Criar conta e começar trial'}
+                    </button>
+
+                    <p className="text-center text-sm text-slate-400">
+                        7 dias grátis, depois R$ 39,90/mês
+                    </p>
+                </form>
             </div>
-        </div>
+        </AuthLayout>
     )
 }
