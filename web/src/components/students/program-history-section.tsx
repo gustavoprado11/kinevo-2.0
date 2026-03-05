@@ -67,7 +67,7 @@ export function ProgramHistorySection({ programs }: ProgramHistorySectionProps) 
             <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-semibold text-white flex items-center gap-2">
                     Histórico
-                    <span className="px-2 py-0.5 rounded bg-glass-bg text-[10px] text-k-text-tertiary font-bold uppercase tracking-widest border border-k-border-subtle">
+                    <span className="px-2 py-0.5 rounded bg-glass-bg text-[10px] text-k-text-tertiary font-bold border border-k-border-subtle">
                         Concluídos
                     </span>
                 </h3>
@@ -100,14 +100,14 @@ export function ProgramHistorySection({ programs }: ProgramHistorySectionProps) 
                                         </h4>
                                         <div className="flex items-center gap-3">
                                             {program.sessions_count === 0 ? (
-                                                <span className="text-[10px] font-bold uppercase tracking-widest text-k-text-quaternary bg-glass-bg px-2 py-0.5 rounded border border-k-border-subtle" title={program.started_at && program.completed_at ? `Ativo por ${Math.max(1, Math.ceil((new Date(program.completed_at).getTime() - new Date(program.started_at).getTime()) / (1000 * 60 * 60 * 24)))} dia(s)` : undefined}>
+                                                <span className="text-[10px] font-bold text-k-text-quaternary bg-glass-bg px-2 py-0.5 rounded border border-k-border-subtle" title={program.started_at && program.completed_at ? `Ativo por ${Math.max(1, Math.ceil((new Date(program.completed_at).getTime() - new Date(program.started_at).getTime()) / (1000 * 60 * 60 * 24)))} dia(s)` : undefined}>
                                                     Substituído{program.started_at && program.completed_at && (() => {
                                                         const days = Math.max(1, Math.ceil((new Date(program.completed_at).getTime() - new Date(program.started_at).getTime()) / (1000 * 60 * 60 * 24)))
                                                         return ` · ${days}d`
                                                     })()}
                                                 </span>
                                             ) : (
-                                                <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                                                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
                                                     Concluído
                                                 </span>
                                             )}
@@ -122,7 +122,7 @@ export function ProgramHistorySection({ programs }: ProgramHistorySectionProps) 
                                         </div>
                                     </div>
 
-                                    <div className="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-k-text-quaternary">
+                                    <div className="flex items-center gap-4 text-[10px] font-bold text-k-text-quaternary">
                                         <div className="flex items-center gap-1.5">
                                             <svg className="w-3.5 h-3.5 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -145,21 +145,21 @@ export function ProgramHistorySection({ programs }: ProgramHistorySectionProps) 
                                         <div className="grid grid-cols-3 gap-4">
                                             <div className="bg-glass-bg rounded-xl p-4 text-center border border-k-border-subtle">
                                                 <p className="text-2xl font-black text-white tracking-tighter">{program.workouts_count}</p>
-                                                <p className="text-[10px] font-bold uppercase tracking-widest text-k-text-quaternary">Treinos</p>
+                                                <p className="text-[10px] font-bold text-k-text-quaternary">Treinos</p>
                                             </div>
                                             <div className="bg-glass-bg rounded-xl p-4 text-center border border-k-border-subtle">
                                                 <p className="text-2xl font-black text-white tracking-tighter">{program.sessions_count}</p>
-                                                <p className="text-[10px] font-bold uppercase tracking-widest text-k-text-quaternary">Sessões</p>
+                                                <p className="text-[10px] font-bold text-k-text-quaternary">Sessões</p>
                                             </div>
                                             <div className="bg-glass-bg rounded-xl p-4 text-center border border-k-border-subtle">
                                                 <p className="text-2xl font-black text-white tracking-tighter">{program.duration_weeks || '-'}</p>
-                                                <p className="text-[10px] font-bold uppercase tracking-widest text-k-text-quaternary">Semanas</p>
+                                                <p className="text-[10px] font-bold text-k-text-quaternary">Semanas</p>
                                             </div>
                                         </div>
 
                                         {/* Sessions List */}
                                         <div>
-                                            <h4 className="text-[10px] font-black text-k-text-tertiary uppercase tracking-[0.2em] mb-4">Sessões Realizadas</h4>
+                                            <h4 className="text-[10px] font-black text-k-text-tertiary mb-4">Sessões Realizadas</h4>
                                             {loadingSessions[program.id] ? (
                                                 <div className="text-center py-6 text-k-text-quaternary text-xs font-medium animate-pulse">Carregando sessões...</div>
                                             ) : programSessions[program.id]?.length > 0 ? (

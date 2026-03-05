@@ -87,9 +87,9 @@ function submissionStatusForSheet(submission: FullSubmission) {
 }
 
 const CATEGORY_CONFIG: Record<string, { label: string; icon: typeof FileText; color: string }> = {
-    anamnese: { label: 'Anamnese', icon: ClipboardList, color: 'text-blue-400' },
-    checkin: { label: 'Check-in', icon: CheckCircle2, color: 'text-emerald-400' },
-    survey: { label: 'Pesquisa', icon: MessageSquare, color: 'text-amber-400' },
+    anamnese: { label: 'Anamnese', icon: ClipboardList, color: 'text-blue-600 dark:text-blue-400' },
+    checkin: { label: 'Check-in', icon: CheckCircle2, color: 'text-emerald-600 dark:text-emerald-400' },
+    survey: { label: 'Pesquisa', icon: MessageSquare, color: 'text-amber-600 dark:text-amber-400' },
 }
 
 // --- Types ---
@@ -302,7 +302,7 @@ export function FormsDashboardClient({
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
-                    <h1 className="text-2xl font-bold tracking-tight text-white">Avaliações</h1>
+                    <h1 className="text-2xl font-bold tracking-tight text-k-text-primary">Avaliações</h1>
                     {submissions.length > 0 && (
                         <span className="px-2 py-0.5 rounded-md bg-glass-bg text-xs font-bold text-k-text-tertiary border border-k-border-subtle">
                             {submissions.length}
@@ -334,8 +334,8 @@ export function FormsDashboardClient({
                     <>
                         <div className="flex items-center gap-2 mb-3">
                             <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse" />
-                            <h2 className="text-sm font-semibold text-white">Aguardando Feedback</h2>
-                            <span className="px-1.5 py-0.5 rounded bg-yellow-500/10 text-[10px] font-bold text-yellow-400 border border-yellow-500/20">
+                            <h2 className="text-sm font-semibold text-k-text-primary">Aguardando Feedback</h2>
+                            <span className="px-1.5 py-0.5 rounded bg-yellow-500/10 text-[10px] font-bold text-yellow-600 dark:text-yellow-400 border border-yellow-500/20">
                                 {pending.length}
                             </span>
                         </div>
@@ -357,7 +357,7 @@ export function FormsDashboardClient({
                                             )}
                                         </div>
                                         <div className="min-w-0">
-                                            <p className="text-sm font-medium text-white truncate">{sub.student_name || 'Aluno'}</p>
+                                            <p className="text-sm font-medium text-k-text-primary truncate">{sub.student_name || 'Aluno'}</p>
                                             <p className="text-xs text-k-text-quaternary">
                                                 {cleanTemplateName(sub.template_title || 'Template')} · Recebido {timeAgo(sub.submitted_at || sub.created_at)}
                                             </p>
@@ -367,7 +367,7 @@ export function FormsDashboardClient({
                                         {loadingSubmissionId === sub.id ? (
                                             <Loader2 size={14} className="animate-spin text-yellow-400" />
                                         ) : (
-                                            <span className="text-xs px-3 py-1.5 bg-yellow-500/15 text-yellow-400 hover:bg-yellow-500/25 rounded-lg transition-colors font-medium">
+                                            <span className="text-xs px-3 py-1.5 bg-yellow-500/15 text-yellow-600 dark:text-yellow-400 hover:bg-yellow-500/25 rounded-lg transition-colors font-medium">
                                                 Dar Feedback →
                                             </span>
                                         )}
@@ -378,8 +378,8 @@ export function FormsDashboardClient({
                     </>
                 ) : (
                     <div className="flex items-center gap-2 px-3 py-2 bg-emerald-500/5 border border-emerald-500/10 rounded-lg w-fit">
-                        <Check size={14} className="text-emerald-400" />
-                        <span className="text-sm text-emerald-400 font-medium">Todos os feedbacks em dia</span>
+                        <Check size={14} className="text-emerald-600 dark:text-emerald-400" />
+                        <span className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">Todos os feedbacks em dia</span>
                     </div>
                 )}
             </div>
@@ -388,9 +388,9 @@ export function FormsDashboardClient({
             {pendingSent.length > 0 && (
                 <div className="mb-6">
                     <div className="flex items-center gap-2 mb-3">
-                        <Send size={14} className="text-violet-400" />
-                        <h2 className="text-sm font-semibold text-white">Enviados pendentes</h2>
-                        <span className="px-1.5 py-0.5 rounded bg-violet-500/10 text-[10px] font-bold text-violet-400 border border-violet-500/20">
+                        <Send size={14} className="text-violet-600 dark:text-violet-400" />
+                        <h2 className="text-sm font-semibold text-k-text-primary">Enviados pendentes</h2>
+                        <span className="px-1.5 py-0.5 rounded bg-violet-500/10 text-[10px] font-bold text-violet-600 dark:text-violet-400 border border-violet-500/20">
                             {pendingSent.length}
                         </span>
                     </div>
@@ -411,13 +411,13 @@ export function FormsDashboardClient({
                                         )}
                                     </div>
                                     <div className="min-w-0">
-                                        <p className="text-sm font-medium text-white truncate">{item.student_name || 'Aluno'}</p>
+                                        <p className="text-sm font-medium text-k-text-primary truncate">{item.student_name || 'Aluno'}</p>
                                         <p className="text-xs text-k-text-quaternary">
                                             {cleanTemplateName(item.template_title || 'Template')} · Enviado {timeAgo(item.created_at)}
                                         </p>
                                     </div>
                                 </div>
-                                <span className="text-[11px] px-2.5 py-1 rounded-full bg-violet-500/10 text-violet-400 font-medium shrink-0">
+                                <span className="text-[11px] px-2.5 py-1 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400 font-medium shrink-0">
                                     Aguardando resposta
                                 </span>
                             </div>
@@ -430,7 +430,7 @@ export function FormsDashboardClient({
             {submissions.length > 0 && (
                 <div>
                     <div className="flex items-center gap-2 mb-3">
-                        <h2 className="text-sm font-semibold text-white">Todas as Respostas</h2>
+                        <h2 className="text-sm font-semibold text-k-text-primary">Todas as Respostas</h2>
                     </div>
 
                     {/* Filter Chips */}
@@ -445,7 +445,7 @@ export function FormsDashboardClient({
                                 onClick={() => setFilter(f.key)}
                                 className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
                                     filter === f.key
-                                        ? 'bg-violet-500/10 text-violet-400 border border-violet-500/30'
+                                        ? 'bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/30'
                                         : 'bg-glass-bg text-k-text-quaternary border border-k-border-subtle hover:text-k-text-secondary'
                                 }`}
                             >
@@ -477,7 +477,7 @@ export function FormsDashboardClient({
                                         </div>
                                         <div className="min-w-0">
                                             <div className="flex items-center gap-2">
-                                                <span className="text-sm font-medium text-k-text-secondary group-hover:text-white transition-colors truncate">
+                                                <span className="text-sm font-medium text-k-text-secondary group-hover:text-k-text-primary transition-colors truncate">
                                                     {sub.student_name || 'Aluno'}
                                                 </span>
                                                 <span className="text-xs text-k-text-quaternary truncate hidden sm:inline">
@@ -494,11 +494,11 @@ export function FormsDashboardClient({
                                         {isLoading ? (
                                             <Loader2 size={14} className="animate-spin text-k-text-quaternary" />
                                         ) : isPending ? (
-                                            <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
+                                            <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border border-yellow-500/20">
                                                 Aguardando
                                             </span>
                                         ) : (
-                                            <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                            <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                                                 Concluído
                                             </span>
                                         )}
@@ -515,7 +515,7 @@ export function FormsDashboardClient({
             <div className="mt-8 pt-6 border-t border-k-border-subtle">
                 <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
-                        <h2 className="text-sm font-semibold text-white">Templates de Avaliação</h2>
+                        <h2 className="text-sm font-semibold text-k-text-primary">Templates de Avaliação</h2>
                         {templates.length > 0 && (
                             <span className="px-1.5 py-0.5 rounded bg-glass-bg text-[10px] font-bold text-k-text-quaternary border border-k-border-subtle">
                                 {templates.length}
@@ -554,7 +554,7 @@ export function FormsDashboardClient({
                                 >
                                     <div className="flex items-center gap-2.5 min-w-0">
                                         <Icon size={14} className={config.color} />
-                                        <span className="text-sm text-k-text-secondary group-hover:text-white transition-colors truncate">
+                                        <span className="text-sm text-k-text-secondary group-hover:text-k-text-primary transition-colors truncate">
                                             {cleanTemplateName(t.title)}
                                         </span>
                                     </div>
@@ -566,7 +566,7 @@ export function FormsDashboardClient({
                                         <span>{t.responseCount} {t.responseCount === 1 ? 'resposta' : 'respostas'}</span>
                                         <button
                                             onClick={(e) => { e.stopPropagation(); setPreselectedTemplateId(t.id); setIsAssignOpen(true) }}
-                                            className="text-violet-400 hover:text-violet-300 opacity-0 group-hover:opacity-100 transition-all font-medium"
+                                            className="text-violet-600 hover:text-violet-500 dark:text-violet-400 dark:hover:text-violet-300 opacity-0 group-hover:opacity-100 transition-all font-medium"
                                         >
                                             Enviar →
                                         </button>
@@ -583,7 +583,7 @@ export function FormsDashboardClient({
             {submissions.length === 0 && templates.length === 0 && (
                 <div className="text-center py-16 mt-4">
                     <ClipboardList className="w-10 h-10 text-k-text-quaternary mx-auto mb-3" strokeWidth={1} />
-                    <p className="text-sm font-semibold text-white mb-1">Comece criando um template</p>
+                    <p className="text-sm font-semibold text-k-text-primary mb-1">Comece criando um template</p>
                     <p className="text-xs text-k-text-quaternary max-w-sm mx-auto">
                         Templates são formulários que você envia para seus alunos. Crie anamneses, check-ins semanais ou pesquisas personalizadas.
                     </p>

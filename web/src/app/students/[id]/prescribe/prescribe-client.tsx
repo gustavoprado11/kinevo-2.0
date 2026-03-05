@@ -104,7 +104,7 @@ export function PrescribeClient({ trainer, student, prescriptionData }: Prescrib
                         </p>
                     </div>
                     {!prescriptionData.aiEnabled && (
-                        <span className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-full border border-amber-500/20 bg-amber-500/10 text-amber-400">
+                        <span className="px-3 py-1.5 text-[10px] font-bold rounded-full border border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400">
                             IA desabilitada
                         </span>
                     )}

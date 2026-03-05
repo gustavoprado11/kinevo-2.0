@@ -91,7 +91,7 @@ export function HistorySummaryCard({ summary, recentSessions = [] }: HistorySumm
                     {/* Recent Sessions List */}
                     {recentSessions.length > 0 && (
                         <div>
-                            <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-3">Últimas Sessões</h3>
+                            <h3 className="text-sm font-medium text-muted-foreground mb-3">Últimas Sessões</h3>
                             <div className="space-y-2">
                                 {recentSessions.map((session) => (
                                     <button

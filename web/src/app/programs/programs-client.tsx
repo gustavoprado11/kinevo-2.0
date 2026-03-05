@@ -112,7 +112,7 @@ function ActionsMenu({
         <div ref={ref} className="relative">
             <button
                 onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen) }}
-                className="p-1.5 rounded-lg text-k-text-quaternary hover:text-white hover:bg-glass-bg-active transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
+                className="p-1.5 rounded-lg text-k-text-quaternary hover:text-k-text-primary hover:bg-glass-bg-active transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
             >
                 <MoreVertical className="w-4 h-4" />
             </button>
@@ -222,10 +222,10 @@ function ApplyToStudentDialog({
                 {/* Header */}
                 <div className="flex items-center justify-between p-5 border-b border-k-border-subtle">
                     <div className="min-w-0">
-                        <h2 className="text-sm font-semibold text-white">Aplicar programa</h2>
+                        <h2 className="text-sm font-semibold text-k-text-primary">Aplicar programa</h2>
                         <p className="text-xs text-k-text-quaternary mt-0.5 truncate">{templateName}</p>
                     </div>
-                    <button onClick={onClose} className="p-1.5 text-k-text-quaternary hover:text-white transition-colors shrink-0">
+                    <button onClick={onClose} className="p-1.5 text-k-text-quaternary hover:text-k-text-primary transition-colors shrink-0">
                         <X className="w-4 h-4" />
                     </button>
                 </div>
@@ -239,7 +239,7 @@ function ApplyToStudentDialog({
                             placeholder="Buscar aluno..."
                             value={search}
                             onChange={e => setSearch(e.target.value)}
-                            className="w-full bg-glass-bg border border-k-border-primary rounded-lg py-2 pl-9 pr-3 text-sm text-white placeholder:text-k-text-quaternary focus:outline-none focus:ring-1 focus:ring-violet-500/30"
+                            className="w-full bg-glass-bg border border-k-border-primary rounded-lg py-2 pl-9 pr-3 text-sm text-k-text-primary placeholder:text-k-text-quaternary focus:outline-none focus:ring-1 focus:ring-violet-500/30"
                             autoFocus
                         />
                     </div>
@@ -271,7 +271,7 @@ function ApplyToStudentDialog({
                                 </div>
                                 <span className="text-sm text-k-text-secondary flex-1 truncate">{student.name}</span>
                                 {student.modality && (
-                                    <span className="text-[10px] text-k-text-quaternary uppercase font-bold tracking-wider shrink-0">
+                                    <span className="text-[10px] text-k-text-quaternary font-bold shrink-0">
                                         {student.modality === 'online' ? 'Online' : 'Presencial'}
                                     </span>
                                 )}
@@ -297,7 +297,7 @@ function ApplyToStudentDialog({
 
                 {/* Mode Selection */}
                 <div className="p-4 border-t border-k-border-subtle space-y-2">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-k-text-quaternary mb-2">Como aplicar?</p>
+                    <p className="text-[10px] font-bold text-k-text-quaternary mb-2">Como aplicar?</p>
                     {([
                         { value: 'active' as const, label: 'Ativar como programa atual' },
                         { value: 'scheduled' as const, label: 'Agendar na fila' },
@@ -317,7 +317,7 @@ function ApplyToStudentDialog({
                 <div className="flex items-center justify-end gap-3 p-4 border-t border-k-border-subtle">
                     <button
                         onClick={onClose}
-                        className="px-4 py-2 text-sm font-medium text-k-text-secondary hover:text-white transition-colors"
+                        className="px-4 py-2 text-sm font-medium text-k-text-secondary hover:text-k-text-primary transition-colors"
                     >
                         Cancelar
                     </button>
@@ -400,7 +400,7 @@ export function ProgramsClient({ trainer, programs: initialPrograms }: ProgramsC
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
-                    <h1 className="text-2xl font-bold tracking-tight text-white">Programas</h1>
+                    <h1 className="text-2xl font-bold tracking-tight text-k-text-primary">Programas</h1>
                     <span className="px-2 py-0.5 rounded-md bg-glass-bg text-xs font-bold text-k-text-tertiary border border-k-border-subtle">
                         {programs.length}
                     </span>
@@ -434,18 +434,18 @@ export function ProgramsClient({ trainer, programs: initialPrograms }: ProgramsC
                         <FolderPlus className="w-8 h-8 text-k-text-quaternary mx-auto mb-3" strokeWidth={1} />
                         {searchQuery ? (
                             <>
-                                <p className="text-sm font-semibold text-white">Nenhum programa encontrado</p>
+                                <p className="text-sm font-semibold text-k-text-primary">Nenhum programa encontrado</p>
                                 <p className="text-xs text-k-text-quaternary mt-1">Tente outro termo de busca</p>
                                 <button
                                     onClick={() => setSearchQuery('')}
-                                    className="mt-4 text-xs font-medium text-violet-400 hover:text-violet-300 transition-colors"
+                                    className="mt-4 text-xs font-medium text-violet-600 hover:text-violet-500 dark:text-violet-400 dark:hover:text-violet-300 transition-colors"
                                 >
                                     Limpar busca
                                 </button>
                             </>
                         ) : (
                             <>
-                                <p className="text-sm font-semibold text-white mb-1">Nenhum modelo salvo</p>
+                                <p className="text-sm font-semibold text-k-text-primary mb-1">Nenhum modelo salvo</p>
                                 <p className="text-xs text-k-text-quaternary max-w-sm mx-auto">
                                     Salve programas como modelo para reutilizar com diferentes alunos
                                 </p>
@@ -475,7 +475,7 @@ export function ProgramsClient({ trainer, programs: initialPrograms }: ProgramsC
                                     <div className="p-4">
                                         {/* Header */}
                                         <div className="flex items-start justify-between gap-3 mb-2">
-                                            <h3 className="text-base font-bold text-white tracking-tight leading-snug group-hover:text-violet-300 transition-colors line-clamp-2">
+                                            <h3 className="text-base font-bold text-k-text-primary tracking-tight leading-snug group-hover:text-violet-600 dark:group-hover:text-violet-300 transition-colors line-clamp-2">
                                                 {program.name}
                                             </h3>
                                             <ActionsMenu
@@ -498,7 +498,7 @@ export function ProgramsClient({ trainer, programs: initialPrograms }: ProgramsC
                                         {missingDaysCount > 0 && (
                                             <div className="flex items-center gap-1.5 mb-3 text-amber-400">
                                                 <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
-                                                <span className="text-[10px] font-bold uppercase tracking-wider">
+                                                <span className="text-[10px] font-bold">
                                                     {missingDaysCount} treino{missingDaysCount > 1 ? 's' : ''} sem dia
                                                 </span>
                                             </div>
@@ -508,7 +508,7 @@ export function ProgramsClient({ trainer, programs: initialPrograms }: ProgramsC
                                         {program.muscle_groups.length > 0 && (
                                             <div className="flex flex-wrap gap-1 mb-1">
                                                 {shownGroups.map(group => (
-                                                    <span key={group} className="text-[10px] font-bold uppercase tracking-wider text-k-text-quaternary bg-glass-bg px-1.5 py-0.5 rounded border border-k-border-subtle">
+                                                    <span key={group} className="text-[10px] font-bold text-k-text-quaternary bg-glass-bg px-1.5 py-0.5 rounded border border-k-border-subtle">
                                                         {group}
                                                     </span>
                                                 ))}
@@ -521,7 +521,7 @@ export function ProgramsClient({ trainer, programs: initialPrograms }: ProgramsC
                                         {/* Expanded: Workouts Preview */}
                                         {isExpanded && program.workouts.length > 0 && (
                                             <div className="mt-3 pt-3 border-t border-k-border-subtle space-y-1.5">
-                                                <p className="text-[10px] font-bold uppercase tracking-widest text-k-text-quaternary mb-2">Treinos</p>
+                                                <p className="text-[10px] font-bold text-k-text-quaternary mb-2">Treinos</p>
                                                 {program.workouts.map(workout => {
                                                     const freq = formatFrequency(workout.frequency)
                                                     return (

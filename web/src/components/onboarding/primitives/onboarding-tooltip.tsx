@@ -193,7 +193,7 @@ export function OnboardingTooltip({
       <div style={getArrowStyles(actualPlacement)} />
 
       {/* Step counter */}
-      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/40 mb-2">
+      <p className="text-[10px] font-bold text-muted-foreground/40 mb-2">
         {stepIndex + 1} de {totalSteps}
       </p>
 

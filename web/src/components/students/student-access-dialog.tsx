@@ -63,11 +63,11 @@ export function StudentAccessDialog({ isOpen, onClose, studentData }: StudentAcc
                     {/* Credentials Card */}
                     <div className="bg-card border border-border rounded-2xl p-5 space-y-4 mb-8">
                         <div>
-                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">E-mail / Login</span>
+                            <span className="text-[10px] font-bold text-muted-foreground block mb-1">E-mail / Login</span>
                             <p className="text-foreground font-medium select-all">{studentData.email}</p>
                         </div>
                         <div className="pt-4 border-t border-border">
-                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">Senha Provisória</span>
+                            <span className="text-[10px] font-bold text-muted-foreground block mb-1">Senha Provisória</span>
                             <p className="text-2xl font-mono font-bold text-emerald-400 tracking-widest">{studentData.password}</p>
                         </div>
                     </div>

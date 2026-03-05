@@ -83,13 +83,13 @@ const tabs: { key: TabKey; label: string; filter: (s: FinancialStudent) => boole
 ]
 
 const statusConfig: Record<DisplayStatus, { label: string; className: string }> = {
-    courtesy: { label: 'Cortesia', className: 'bg-blue-500/10 text-blue-400' },
-    awaiting_payment: { label: 'Aguardando', className: 'bg-sky-500/10 text-sky-400' },
-    active: { label: 'Ativo', className: 'bg-emerald-500/10 text-emerald-400' },
-    grace_period: { label: 'Vence hoje', className: 'bg-orange-500/10 text-orange-400' },
-    canceling: { label: 'Cancelando', className: 'bg-amber-500/10 text-amber-400' },
-    overdue: { label: 'Inadimplente', className: 'bg-red-500/10 text-red-400' },
-    canceled: { label: 'Encerrado', className: 'bg-gray-500/10 text-gray-400' },
+    courtesy: { label: 'Cortesia', className: 'bg-blue-500/10 text-blue-600 dark:text-blue-400' },
+    awaiting_payment: { label: 'Aguardando', className: 'bg-sky-500/10 text-sky-600 dark:text-sky-400' },
+    active: { label: 'Ativo', className: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
+    grace_period: { label: 'Vence hoje', className: 'bg-orange-500/10 text-orange-600 dark:text-orange-400' },
+    canceling: { label: 'Cancelando', className: 'bg-amber-500/10 text-amber-600 dark:text-amber-400' },
+    overdue: { label: 'Inadimplente', className: 'bg-red-500/10 text-red-600 dark:text-red-400' },
+    canceled: { label: 'Encerrado', className: 'bg-gray-500/10 text-gray-600 dark:text-gray-400' },
 }
 
 const statusTooltips: Partial<Record<DisplayStatus, string>> = {
@@ -316,7 +316,7 @@ export function SubscriptionsClient({
                         <div>
                             <Link
                                 href="/financial"
-                                className="inline-flex items-center gap-1.5 text-xs text-k-text-secondary hover:text-violet-400 transition-colors mb-3"
+                                className="inline-flex items-center gap-1.5 text-xs text-k-text-secondary hover:text-violet-600 dark:hover:text-violet-400 transition-colors mb-3"
                             >
                                 <ArrowLeft size={14} />
                                 Voltar para Financeiro
@@ -335,7 +335,7 @@ export function SubscriptionsClient({
                                         onClick={handleSyncContracts}
                                         disabled={syncing}
                                         title="Sincronizar assinaturas com o Stripe"
-                                        className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-full border border-k-border-primary bg-glass-bg hover:bg-violet-500/10 text-k-text-secondary hover:text-violet-400 transition-all disabled:opacity-50"
+                                        className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-full border border-k-border-primary bg-glass-bg hover:bg-violet-500/10 text-k-text-secondary hover:text-violet-600 dark:hover:text-violet-400 transition-all disabled:opacity-50"
                                     >
                                         <RefreshCw size={16} className={syncing ? 'animate-spin' : ''} />
                                         {syncing ? 'Sincronizando...' : 'Sincronizar'}
@@ -371,7 +371,7 @@ export function SubscriptionsClient({
                                     >
                                         {tab.label}
                                         <span className={`text-[10px] ${
-                                            isActive ? 'text-violet-400' : 'text-k-text-quaternary'
+                                            isActive ? 'text-violet-600 dark:text-violet-400' : 'text-k-text-quaternary'
                                         }`}>
                                             {count}
                                         </span>
@@ -398,7 +398,7 @@ export function SubscriptionsClient({
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 px-1">
                                 <div className="rounded-xl border border-k-border-subtle bg-glass-bg p-4">
                                     <div className="flex items-center gap-2 mb-1.5">
-                                        <Heart size={13} className="text-emerald-400" />
+                                        <Heart size={13} className="text-emerald-600 dark:text-emerald-400" />
                                         <span className="text-xs font-semibold text-k-text-primary">Cortesia por padrão</span>
                                     </div>
                                     <p className="text-[11px] text-k-text-secondary leading-relaxed">
@@ -407,7 +407,7 @@ export function SubscriptionsClient({
                                 </div>
                                 <div className="rounded-xl border border-k-border-subtle bg-glass-bg p-4">
                                     <div className="flex items-center gap-2 mb-1.5">
-                                        <DollarSign size={13} className="text-violet-400" />
+                                        <DollarSign size={13} className="text-violet-600 dark:text-violet-400" />
                                         <span className="text-xs font-semibold text-k-text-primary">Stripe (automático)</span>
                                     </div>
                                     <p className="text-[11px] text-k-text-secondary leading-relaxed">
@@ -416,7 +416,7 @@ export function SubscriptionsClient({
                                 </div>
                                 <div className="rounded-xl border border-k-border-subtle bg-glass-bg p-4">
                                     <div className="flex items-center gap-2 mb-1.5">
-                                        <Copy size={13} className="text-blue-400" />
+                                        <Copy size={13} className="text-blue-600 dark:text-blue-400" />
                                         <span className="text-xs font-semibold text-k-text-primary">Manual</span>
                                     </div>
                                     <p className="text-[11px] text-k-text-secondary leading-relaxed">
@@ -425,7 +425,7 @@ export function SubscriptionsClient({
                                 </div>
                                 <div className="rounded-xl border border-k-border-subtle bg-glass-bg p-4">
                                     <div className="flex items-center gap-2 mb-1.5">
-                                        <Settings2 size={13} className="text-amber-400" />
+                                        <Settings2 size={13} className="text-amber-600 dark:text-amber-400" />
                                         <span className="text-xs font-semibold text-k-text-primary">Bloqueio de acesso</span>
                                     </div>
                                     <p className="text-[11px] text-k-text-secondary leading-relaxed">
@@ -606,7 +606,7 @@ export function SubscriptionsClient({
                                                             </button>
                                                             {blockConfirmId === s.student_id && (
                                                                 <div className="absolute z-20 top-full mt-1 right-0 w-56 p-3 rounded-xl border border-amber-500/20 bg-surface-card shadow-lg">
-                                                                    <p className="text-[11px] text-amber-400 mb-2">
+                                                                    <p className="text-[11px] text-amber-600 dark:text-amber-400 mb-2">
                                                                         Bloquear acesso de {s.student_name} se inadimplente?
                                                                     </p>
                                                                     <div className="flex gap-2">
@@ -652,7 +652,7 @@ export function SubscriptionsClient({
                                                                             e.stopPropagation()
                                                                             handleOpenConfigModal('new', s)
                                                                         }}
-                                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-violet-500/10 text-violet-400 border border-violet-500/20 hover:bg-violet-500/20 transition-colors"
+                                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20 hover:bg-violet-500/20 transition-colors"
                                                                     >
                                                                         <Settings2 size={12} strokeWidth={2} />
                                                                         Configurar
@@ -663,7 +663,7 @@ export function SubscriptionsClient({
                                                                 {s.display_status === 'awaiting_payment' && (
                                                                     <button
                                                                         onClick={(e) => handleCopyLink(s, e)}
-                                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-violet-500/10 text-violet-400 border border-violet-500/20 hover:bg-violet-500/20 transition-colors"
+                                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20 hover:bg-violet-500/20 transition-colors"
                                                                     >
                                                                         <Copy size={12} strokeWidth={2} />
                                                                         Copiar Link
@@ -676,7 +676,7 @@ export function SubscriptionsClient({
                                                                     ['active', 'grace_period', 'overdue'].includes(s.display_status) && (
                                                                     <button
                                                                         onClick={(e) => handleMarkAsPaid(s.contract_id!, e)}
-                                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors"
+                                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors"
                                                                     >
                                                                         <CheckCircle size={12} strokeWidth={2} />
                                                                         Marcar pago
@@ -691,7 +691,7 @@ export function SubscriptionsClient({
                                                                         rel="noopener noreferrer"
                                                                         onClick={(e) => e.stopPropagation()}
                                                                         title="Contatar via WhatsApp"
-                                                                        className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-emerald-600/10 text-emerald-400 hover:bg-emerald-600/20 transition-colors"
+                                                                        className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-emerald-600/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-600/20 transition-colors"
                                                                     >
                                                                         <MessageCircle size={13} strokeWidth={2} />
                                                                     </a>

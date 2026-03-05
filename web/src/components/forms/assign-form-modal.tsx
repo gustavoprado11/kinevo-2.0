@@ -198,7 +198,7 @@ export function AssignFormModal({
                                                 onClick={() => selectDeadline(opt.value)}
                                                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                                                     deadlineDays === opt.value && !showDatePicker
-                                                        ? 'bg-violet-500/10 text-violet-400 border border-violet-500/30'
+                                                        ? 'bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/30'
                                                         : 'bg-glass-bg text-k-text-quaternary border border-k-border-subtle hover:text-k-text-secondary'
                                                 }`}
                                             >
@@ -210,7 +210,7 @@ export function AssignFormModal({
                                             onClick={selectCustomDate}
                                             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                                                 showDatePicker
-                                                    ? 'bg-violet-500/10 text-violet-400 border border-violet-500/30'
+                                                    ? 'bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/30'
                                                     : 'bg-glass-bg text-k-text-quaternary border border-k-border-subtle hover:text-k-text-secondary'
                                             }`}
                                         >
@@ -249,7 +249,7 @@ export function AssignFormModal({
                                         {students.length > 0 && (
                                             <button
                                                 onClick={toggleAll}
-                                                className="text-[11px] font-semibold text-violet-400 hover:text-violet-300 transition-colors"
+                                                className="text-[11px] font-semibold text-violet-600 dark:text-violet-400 hover:text-violet-500 dark:hover:text-violet-300 transition-colors"
                                             >
                                                 {selectedStudentIds.length === students.length ? 'Desmarcar todos' : 'Selecionar todos'}
                                             </button>
@@ -290,7 +290,7 @@ export function AssignFormModal({
                                                             </div>
                                                             <span className={`text-sm font-medium ${
                                                                 isSelected
-                                                                    ? 'text-violet-400'
+                                                                    ? 'text-violet-600 dark:text-violet-400'
                                                                     : 'text-k-text-primary'
                                                             }`}>
                                                                 {student.name}
@@ -307,8 +307,8 @@ export function AssignFormModal({
                                 {result && (
                                     <div className={`flex items-start gap-2 rounded-xl p-3 text-xs font-medium border ${
                                         result.isError
-                                            ? 'bg-red-500/10 text-red-400 border-red-500/20'
-                                            : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                            ? 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20'
+                                            : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
                                     }`}>
                                         <CheckCircle2 size={14} className="mt-0.5 shrink-0" />
                                         <p>{result.message}</p>

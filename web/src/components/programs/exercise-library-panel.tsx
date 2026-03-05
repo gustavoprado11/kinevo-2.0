@@ -112,7 +112,7 @@ export function ExerciseLibraryPanel({
                         <div className="flex gap-1 overflow-x-auto no-scrollbar pb-0.5">
                             <button
                                 onClick={() => setSelectedGroup(null)}
-                                className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-colors shrink-0 ${
+                                className={`px-3 py-1 rounded-full text-[10px] font-bold whitespace-nowrap transition-colors shrink-0 ${
                                     !selectedGroup
                                         ? 'bg-violet-600 text-white'
                                         : 'bg-glass-bg text-k-text-tertiary hover:text-k-text-secondary'
@@ -124,7 +124,7 @@ export function ExerciseLibraryPanel({
                                 <button
                                     key={group}
                                     onClick={() => setSelectedGroup(prev => prev === group ? null : group)}
-                                    className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-colors shrink-0 ${
+                                    className={`px-3 py-1 rounded-full text-[10px] font-bold whitespace-nowrap transition-colors shrink-0 ${
                                         selectedGroup === group
                                             ? 'bg-violet-600 text-white'
                                             : 'bg-glass-bg text-k-text-tertiary hover:text-k-text-secondary'
@@ -157,7 +157,7 @@ export function ExerciseLibraryPanel({
                             {searchQuery.trim() && (
                                 <button
                                     onClick={() => setIsCreateModalOpen(true)}
-                                    className="text-violet-400 hover:text-violet-300 text-sm font-medium transition-colors"
+                                    className="text-violet-600 dark:text-violet-400 hover:text-violet-300 text-sm font-medium transition-colors"
                                 >
                                     + Criar &ldquo;{searchQuery}&rdquo;
                                 </button>
@@ -166,7 +166,7 @@ export function ExerciseLibraryPanel({
                             {selectedGroup && (
                                 <button
                                     onClick={() => setSelectedGroup(null)}
-                                    className="text-violet-400 text-xs hover:text-violet-300 mt-3 block mx-auto"
+                                    className="text-violet-600 dark:text-violet-400 text-xs hover:text-violet-300 mt-3 block mx-auto"
                                 >
                                     Limpar filtro
                                 </button>
@@ -224,7 +224,7 @@ export function ExerciseLibraryPanel({
                                     {/* Badge + actions — right-aligned, vertically centered */}
                                     <div className="flex items-center gap-2 shrink-0">
                                         {groupName && (
-                                            <span className="text-[9px] text-k-text-quaternary uppercase tracking-wider font-bold">
+                                            <span className="text-[9px] text-k-text-quaternary font-bold">
                                                 {groupName}
                                             </span>
                                         )}

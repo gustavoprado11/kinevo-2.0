@@ -293,7 +293,7 @@ function AnswerRenderer({
         const label = resolveOptionLabel(displayValue, question)
         return (
             <div className="flex items-center gap-2">
-                <CheckCircle2 size={16} className="text-violet-400 shrink-0" />
+                <CheckCircle2 size={16} className="text-violet-600 dark:text-violet-400 shrink-0" />
                 <span className="text-sm text-k-text-primary font-medium">{label}</span>
             </div>
         )
@@ -377,7 +377,7 @@ export function SubmissionDetailSheet({
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                         {feedbackAlreadySent && (
-                            <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                            <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                                 Feedback enviado
                             </span>
                         )}
@@ -423,13 +423,13 @@ export function SubmissionDetailSheet({
                                         {/* Question header */}
                                         <div className="px-5 pt-4 pb-3 flex items-start gap-3">
                                             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-500/10 shrink-0 mt-0.5">
-                                                <TypeIcon size={14} className="text-violet-400" />
+                                                <TypeIcon size={14} className="text-violet-600 dark:text-violet-400" />
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-sm font-semibold text-k-text-primary leading-snug">
                                                     {question.label}
                                                 </p>
-                                                <p className="text-[10px] text-k-text-quaternary uppercase tracking-wider mt-0.5 font-bold">
+                                                <p className="text-[10px] text-k-text-quaternary mt-0.5 font-bold">
                                                     Pergunta {index + 1} &middot; {getTypeLabel(type)}
                                                 </p>
                                             </div>
@@ -457,7 +457,7 @@ export function SubmissionDetailSheet({
                         /* READ-ONLY state */
                         <div>
                             <div className="flex items-center gap-2 mb-2">
-                                <MessageSquare size={14} className="text-emerald-400" />
+                                <MessageSquare size={14} className="text-emerald-600 dark:text-emerald-400" />
                                 <span className="text-xs text-k-text-quaternary">
                                     Seu feedback · {submission.feedback_sent_at ? timeAgo(submission.feedback_sent_at) : ''}
                                 </span>

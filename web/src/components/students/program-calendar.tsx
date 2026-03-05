@@ -62,7 +62,7 @@ const STATUS_CONFIG: Record<CalendarDay['status'], { bg: string; ring?: string; 
 
 function DayLabel({ text }: { text: string }) {
     return (
-        <span className="text-[10px] font-bold uppercase tracking-widest text-k-text-quaternary">
+        <span className="text-[10px] font-bold text-k-text-quaternary">
             {text}
         </span>
     )
@@ -275,7 +275,7 @@ function MetricsPanel({ days }: { days: CalendarDay[] }) {
     return (
         <div className="flex items-center gap-10">
             <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-k-text-quaternary mb-1">
+                <p className="text-[10px] font-bold text-k-text-quaternary mb-1">
                     Taxa de Adesão
                 </p>
                 <div className="flex items-baseline gap-1">
@@ -283,12 +283,12 @@ function MetricsPanel({ days }: { days: CalendarDay[] }) {
                 </div>
             </div>
             <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-k-text-quaternary mb-1">
+                <p className="text-[10px] font-bold text-k-text-quaternary mb-1">
                     Sequência
                 </p>
                 <div className="flex items-baseline gap-1">
                     <span className="text-2xl font-black text-violet-400">{metrics.streak}</span>
-                    <span className="text-[10px] font-bold text-k-text-tertiary uppercase tracking-widest">treinos</span>
+                    <span className="text-[10px] font-bold text-k-text-tertiary">treinos</span>
                 </div>
             </div>
         </div>
@@ -302,7 +302,7 @@ function MetricsPanel({ days }: { days: CalendarDay[] }) {
 function NavLabel({ anchorDate, viewMode }: { anchorDate: Date; viewMode: 'week' | 'month' }) {
     if (viewMode === 'month') {
         return (
-            <span className="text-xs font-bold uppercase tracking-widest text-k-text-secondary min-w-[120px] text-center">
+            <span className="text-xs font-bold text-k-text-secondary min-w-[120px] text-center">
                 {anchorDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric', timeZone: 'America/Sao_Paulo' })}
             </span>
         )
@@ -312,7 +312,7 @@ function NavLabel({ anchorDate, viewMode }: { anchorDate: Date; viewMode: 'week'
     const { start, end } = getWeekRange(anchorDate)
     const fmt = (d: Date) => d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', timeZone: 'America/Sao_Paulo' }).replace('.', '')
     return (
-        <span className="text-xs font-bold uppercase tracking-widest text-k-text-secondary min-w-[160px] text-center">
+        <span className="text-xs font-bold text-k-text-secondary min-w-[160px] text-center">
             {fmt(start)} — {fmt(end)}
         </span>
     )
@@ -441,7 +441,7 @@ export function ProgramCalendar({
                     {!viewIncludesToday && (
                         <button
                             onClick={goToToday}
-                            className="ml-2 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-violet-400 border border-violet-500/30 rounded-md hover:bg-violet-500/10 transition-colors"
+                            className="ml-2 px-2 py-0.5 text-[9px] font-bold text-violet-600 dark:text-violet-400 border border-violet-500/30 rounded-md hover:bg-violet-500/10 transition-colors"
                         >
                             Hoje
                         </button>

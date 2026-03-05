@@ -53,7 +53,7 @@ export function SupersetGroup({
             <div className="flex items-center justify-between mb-3 pr-2">
                 <div className="flex items-center gap-2">
                     <Link2 size={14} className="text-violet-400" />
-                    <span className="text-[10px] font-bold text-violet-400 uppercase tracking-wider">
+                    <span className="text-[10px] font-bold text-violet-600 dark:text-violet-400">
                         Superset
                     </span>
                 </div>

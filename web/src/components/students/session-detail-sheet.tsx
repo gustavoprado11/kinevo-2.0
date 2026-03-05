@@ -44,7 +44,7 @@ interface IntensityGaugeProps {
 function IntensityGauge({ value }: IntensityGaugeProps) {
     if (!value) return (
         <div className="w-20 h-20 rounded-full bg-glass-bg border border-k-border-primary flex items-center justify-center">
-            <span className="text-k-text-quaternary text-xs font-bold uppercase tracking-widest leading-none">N/A</span>
+            <span className="text-k-text-quaternary text-xs font-bold leading-none">N/A</span>
         </div>
     )
 
@@ -61,7 +61,7 @@ function IntensityGauge({ value }: IntensityGaugeProps) {
             <div className="absolute inset-1 rounded-full bg-surface-card border border-k-border-primary" />
 
             <div className="relative z-10 flex flex-col items-center justify-center">
-                <span className="text-[10px] font-black text-violet-400 uppercase tracking-[0.2em] mb-0.5">PSE</span>
+                <span className="text-[10px] font-black text-violet-600 dark:text-violet-400 mb-0.5">PSE</span>
                 <span className="text-4xl font-black text-white tracking-tighter leading-none">{value}</span>
             </div>
         </div>
@@ -73,7 +73,7 @@ function StatItem({ icon: Icon, label, value }: { icon: any, label: string, valu
         <div className="flex flex-col gap-1">
             <div className="flex items-center gap-1.5 text-k-text-quaternary">
                 <Icon size={14} strokeWidth={1.5} />
-                <span className="text-[10px] font-bold uppercase tracking-widest">{label}</span>
+                <span className="text-[10px] font-bold">{label}</span>
             </div>
             <span className="text-sm font-semibold text-k-text-secondary">{value}</span>
         </div>
@@ -172,7 +172,7 @@ export function SessionDetailSheet({ isOpen, onClose, sessionId }: SessionDetail
                             <p className="text-sm text-k-text-tertiary mb-6">{error}</p>
                             <button
                                 onClick={onClose}
-                                className="px-6 py-2 bg-glass-bg hover:bg-glass-bg-active text-k-text-primary text-xs font-bold uppercase tracking-widest rounded-xl border border-k-border-primary transition-all"
+                                className="px-6 py-2 bg-glass-bg hover:bg-glass-bg-active text-k-text-primary text-xs font-bold rounded-xl border border-k-border-primary transition-all"
                             >
                                 Fechar
                             </button>
@@ -182,11 +182,11 @@ export function SessionDetailSheet({ isOpen, onClose, sessionId }: SessionDetail
                             {/* Header & Intensity Summary */}
                             <header className="flex items-start justify-between gap-6">
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-[10px] font-black text-violet-400 uppercase tracking-[0.2em] mb-2">Treino Executado</p>
+                                    <p className="text-[10px] font-black text-violet-600 dark:text-violet-400 mb-2">Treino Executado</p>
                                     <h2 className="text-3xl font-black text-white tracking-tighter truncate leading-none mb-4">
                                         {details.assigned_workouts?.name || 'Treino'}
                                     </h2>
-                                    <p className="text-xs text-k-text-quaternary uppercase tracking-[0.15em] font-bold">
+                                    <p className="text-xs text-k-text-quaternary font-bold">
                                         {new Date(details.completed_at).toLocaleDateString('pt-BR', {
                                             day: '2-digit',
                                             month: 'short',
@@ -222,7 +222,7 @@ export function SessionDetailSheet({ isOpen, onClose, sessionId }: SessionDetail
                             {/* Feedback do Aluno */}
                             {details.feedback && (
                                 <div className="space-y-4">
-                                    <h3 className="text-[10px] font-black text-k-text-quaternary uppercase tracking-[0.2em]">Feedback do Aluno</h3>
+                                    <h3 className="text-[10px] font-black text-k-text-quaternary ">Feedback do Aluno</h3>
                                     <div className="bg-glass-bg backdrop-blur-md rounded-2xl p-5 border border-k-border-subtle italic text-k-text-secondary text-sm leading-relaxed">
                                         "{details.feedback}"
                                     </div>
@@ -231,7 +231,7 @@ export function SessionDetailSheet({ isOpen, onClose, sessionId }: SessionDetail
 
                             {/* Exercises List (The Log Table) */}
                             <div className="space-y-10">
-                                <h3 className="text-[10px] font-black text-k-text-quaternary uppercase tracking-[0.2em]">Log de Exercícios</h3>
+                                <h3 className="text-[10px] font-black text-k-text-quaternary ">Log de Exercícios</h3>
 
                                 {details.exercises.map((exercise) => (
                                     <div key={exercise.exercise_id} className="group">
@@ -240,14 +240,14 @@ export function SessionDetailSheet({ isOpen, onClose, sessionId }: SessionDetail
                                                 <h4 className="text-lg font-black text-white tracking-tight leading-none mb-1 group-hover:text-violet-400 transition-colors">
                                                     {exercise.name}
                                                 </h4>
-                                                <p className="text-[10px] font-bold text-k-text-quaternary uppercase tracking-widest">
+                                                <p className="text-[10px] font-bold text-k-text-quaternary">
                                                     {exercise.muscle_group || 'Geral'}
                                                 </p>
                                             </div>
                                         </div>
 
                                         <div className="bg-surface-inset rounded-2xl border border-k-border-subtle overflow-hidden">
-                                            <div className="grid grid-cols-4 bg-glass-bg py-2 px-5 text-[10px] uppercase tracking-widest font-black text-k-text-quaternary">
+                                            <div className="grid grid-cols-4 bg-glass-bg py-2 px-5 text-[10px] font-black text-k-text-quaternary">
                                                 <div>Série</div>
                                                 <div className="text-center">Carga</div>
                                                 <div className="text-center">Reps</div>

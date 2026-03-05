@@ -37,7 +37,7 @@ export function ExerciseItem({ exercise, currentTrainerId, onEdit, onDelete, vie
             <>
                 <div className="group flex items-center gap-4 px-4 py-3 rounded-xl border border-transparent hover:border-k-border-subtle hover:bg-glass-bg transition-all">
                     <div className="flex-1 min-w-0">
-                        <span className="text-sm font-medium text-k-text-secondary group-hover:text-white transition-colors truncate block">
+                        <span className="text-sm font-medium text-k-text-secondary group-hover:text-k-text-primary transition-colors truncate block">
                             {exercise.name}
                         </span>
                     </div>
@@ -45,7 +45,7 @@ export function ExerciseItem({ exercise, currentTrainerId, onEdit, onDelete, vie
                     {muscleGroups.length > 0 && (
                         <div className="hidden md:flex items-center gap-1.5 shrink-0">
                             {muscleGroups.slice(0, 2).map(g => (
-                                <span key={g.id} className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-glass-bg text-k-text-quaternary border border-k-border-subtle">
+                                <span key={g.id} className="px-2 py-0.5 rounded text-[10px] font-bold bg-glass-bg text-k-text-quaternary border border-k-border-subtle">
                                     {g.name}
                                 </span>
                             ))}
@@ -94,11 +94,11 @@ export function ExerciseItem({ exercise, currentTrainerId, onEdit, onDelete, vie
             <div className="group rounded-2xl border border-k-border-primary bg-surface-card transition-all duration-200 hover:border-violet-500/30 overflow-hidden flex flex-col h-full">
                 <div className="p-4 flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
-                        <h3 className="truncate text-sm font-semibold text-white tracking-tight group-hover:text-violet-400 transition-colors">
+                        <h3 className="truncate text-sm font-semibold text-k-text-primary tracking-tight group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">
                             {exercise.name}
                         </h3>
                         {isOwner && (
-                            <span className="inline-flex items-center mt-1.5 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-violet-500/10 text-violet-400 border border-violet-500/20">
+                            <span className="inline-flex items-center mt-1.5 px-2 py-0.5 rounded text-[10px] font-bold bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20">
                                 Meu exercício
                             </span>
                         )}
@@ -116,7 +116,7 @@ export function ExerciseItem({ exercise, currentTrainerId, onEdit, onDelete, vie
                     {exercise.video_url ? (
                         <button
                             onClick={handleVideoClick}
-                            className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium text-violet-300 hover:text-k-text-primary hover:bg-glass-bg transition-colors"
+                            className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium text-violet-600 dark:text-violet-300 hover:text-k-text-primary hover:bg-glass-bg transition-colors"
                         >
                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />

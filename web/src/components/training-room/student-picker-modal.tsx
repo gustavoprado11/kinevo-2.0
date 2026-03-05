@@ -237,7 +237,7 @@ export function StudentPickerModal({ isOpen, onClose, trainerId }: StudentPicker
                                     {/* Today section */}
                                     {selectedStudent.todayWorkouts.length > 0 && (
                                         <div className="mb-4">
-                                            <p className="text-[11px] uppercase tracking-widest font-semibold text-emerald-400/80 mb-2">
+                                            <p className="text-[11px] font-semibold text-emerald-600/80 dark:text-emerald-400/80 mb-2">
                                                 Treino do dia
                                             </p>
                                             <div className="space-y-1">
@@ -256,7 +256,7 @@ export function StudentPickerModal({ isOpen, onClose, trainerId }: StudentPicker
                                     {/* All workouts section */}
                                     {selectedStudent.workoutOptions.filter((w) => !w.isToday).length > 0 && (
                                         <div>
-                                            <p className="text-[11px] uppercase tracking-widest font-semibold text-muted-foreground/60 mb-2">
+                                            <p className="text-[11px] font-semibold text-muted-foreground/60 mb-2">
                                                 {selectedStudent.todayWorkouts.length > 0 ? 'Outros treinos' : 'Escolher treino'}
                                             </p>
                                             <div className="space-y-1">

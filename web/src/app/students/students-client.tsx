@@ -197,7 +197,7 @@ export function StudentsClient({ trainer, initialStudents }: StudentsClientProps
         }
         const labels = { active: 'Ativo', inactive: 'Inativo', pending: 'Pendente' }
         return (
-            <span className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full border ${styles[status]}`}>
+            <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full border ${styles[status]}`}>
                 {labels[status]}
             </span>
         )
@@ -216,7 +216,7 @@ export function StudentsClient({ trainer, initialStudents }: StudentsClientProps
         return (
             <th
                 onClick={() => handleSort(sortKeyValue)}
-                className={`px-6 py-4 text-left text-[10px] font-bold uppercase tracking-widest text-k-text-quaternary cursor-pointer select-none hover:text-k-text-tertiary transition-colors ${className}`}
+                className={`px-6 py-4 text-left text-[10px] font-bold text-k-text-quaternary cursor-pointer select-none hover:text-k-text-tertiary transition-colors ${className}`}
             >
                 <div className="flex items-center gap-1">
                     {label}
@@ -248,7 +248,7 @@ export function StudentsClient({ trainer, initialStudents }: StudentsClientProps
                 <Button
                     data-onboarding="students-add-btn"
                     onClick={() => setIsModalOpen(true)}
-                    className="gap-2 bg-violet-600 hover:bg-violet-500 rounded-xl px-4 py-2 text-xs font-bold uppercase tracking-wider shadow-lg shadow-violet-500/20 transition-all"
+                    className="gap-2 bg-violet-600 hover:bg-violet-500 rounded-xl px-4 py-2 text-xs font-bold shadow-lg shadow-violet-500/20 transition-all"
                 >
                     <Plus size={14} strokeWidth={2.5} />
                     Novo Aluno
@@ -316,7 +316,7 @@ export function StudentsClient({ trainer, initialStudents }: StudentsClientProps
                                 </p>
                                 <Button
                                     onClick={() => setIsModalOpen(true)}
-                                    className="bg-violet-600 hover:bg-violet-500 rounded-xl px-5 py-2 text-xs font-bold uppercase tracking-wider"
+                                    className="bg-violet-600 hover:bg-violet-500 rounded-xl px-5 py-2 text-xs font-bold"
                                 >
                                     Cadastrar primeiro aluno
                                 </Button>
@@ -329,15 +329,15 @@ export function StudentsClient({ trainer, initialStudents }: StudentsClientProps
                             <thead>
                                 <tr className="border-b border-k-border-subtle">
                                     <SortHeader label="Aluno" sortKeyValue="name" />
-                                    <th className="px-6 py-4 text-left text-[10px] font-bold uppercase tracking-widest text-k-text-quaternary">
+                                    <th className="px-6 py-4 text-left text-[10px] font-bold text-k-text-quaternary">
                                         Modalidade
                                     </th>
-                                    <th className="px-6 py-4 text-left text-[10px] font-bold uppercase tracking-widest text-k-text-quaternary">
+                                    <th className="px-6 py-4 text-left text-[10px] font-bold text-k-text-quaternary">
                                         Programa
                                     </th>
                                     <SortHeader label="Semana" sortKeyValue="weekProgress" />
                                     <SortHeader label="Último Treino" sortKeyValue="lastWorkout" />
-                                    <th className="px-6 py-4 text-left text-[10px] font-bold uppercase tracking-widest text-k-text-quaternary">
+                                    <th className="px-6 py-4 text-left text-[10px] font-bold text-k-text-quaternary">
                                         Status
                                     </th>
                                     <th className="px-6 py-4 w-10"></th>
@@ -380,7 +380,7 @@ export function StudentsClient({ trainer, initialStudents }: StudentsClientProps
                                                     <div>
                                                         <span className="text-sm font-semibold text-k-text-primary">{student.name}</span>
                                                         {student.is_trainer_profile && (
-                                                            <span className="ml-2 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded bg-violet-500/10 text-violet-300 border border-violet-500/20">
+                                                            <span className="ml-2 px-1.5 py-0.5 text-[9px] font-bold rounded bg-violet-500/10 text-violet-600 dark:text-violet-300 border border-violet-500/20">
                                                                 Eu
                                                             </span>
                                                         )}
@@ -390,7 +390,7 @@ export function StudentsClient({ trainer, initialStudents }: StudentsClientProps
 
                                             {/* MODALIDADE */}
                                             <td className="px-6 py-4 whitespace-nowrap">
-                                                <span className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full border ${
+                                                <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full border ${
                                                     student.modality === 'presential'
                                                         ? 'bg-violet-500/10 text-violet-300 border-violet-500/20'
                                                         : 'bg-glass-bg text-k-text-quaternary border-k-border-subtle'

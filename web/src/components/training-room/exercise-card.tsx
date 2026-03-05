@@ -69,7 +69,7 @@ export function ExerciseCard({
                             {exercise.name}
                         </p>
                         {exercise.exercise_function && (
-                            <span className="shrink-0 rounded-md bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-violet-400 uppercase tracking-wider">
+                            <span className="shrink-0 rounded-md bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-violet-600 dark:text-violet-400">
                                 {FUNCTION_LABELS[exercise.exercise_function] || exercise.exercise_function}
                             </span>
                         )}
@@ -129,13 +129,13 @@ export function ExerciseCard({
                 <div className="px-4 pb-4">
                     {/* Column headers */}
                     <div className="flex items-center gap-3 px-3 pb-1.5">
-                        <span className="w-8 text-center text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/50">
+                        <span className="w-8 text-center text-[10px] font-semibold text-muted-foreground/50">
                             Série
                         </span>
-                        <span className="flex-1 text-center text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/50">
+                        <span className="flex-1 text-center text-[10px] font-semibold text-muted-foreground/50">
                             Peso (kg)
                         </span>
-                        <span className="flex-1 text-center text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/50">
+                        <span className="flex-1 text-center text-[10px] font-semibold text-muted-foreground/50">
                             Reps
                         </span>
                         <span className="w-8" />

@@ -51,7 +51,7 @@ function FilterDropdown({
                 onClick={() => setIsOpen(!isOpen)}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all ${
                     selected.length > 0
-                        ? 'bg-violet-500/10 border-violet-500/30 text-violet-300'
+                        ? 'bg-violet-500/10 border-violet-500/30 text-violet-600 dark:text-violet-300'
                         : 'bg-glass-bg border-k-border-primary text-k-text-secondary hover:bg-glass-bg-active'
                 }`}
             >
@@ -82,7 +82,7 @@ function FilterDropdown({
                                 key={option}
                                 onClick={() => onToggle(option)}
                                 className={`w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors ${
-                                    isSelected ? 'text-violet-300 bg-violet-500/5' : 'text-k-text-secondary hover:bg-glass-bg-active'
+                                    isSelected ? 'text-violet-600 dark:text-violet-300 bg-violet-500/5' : 'text-k-text-secondary hover:bg-glass-bg-active'
                                 }`}
                             >
                                 <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
@@ -241,7 +241,7 @@ export function ExercisesClient({
             {/* Header — simplified */}
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
-                    <h1 className="text-2xl font-bold tracking-tight text-white">Exercícios</h1>
+                    <h1 className="text-2xl font-bold tracking-tight text-k-text-primary">Exercícios</h1>
                     <span className="px-2 py-0.5 rounded-md bg-glass-bg text-xs font-bold text-k-text-tertiary border border-k-border-subtle">
                         {deduplicatedExercises.length}
                     </span>
@@ -297,14 +297,14 @@ export function ExercisesClient({
                         <div className="flex rounded-xl border border-k-border-primary overflow-hidden">
                             <button
                                 onClick={() => setViewMode('grid')}
-                                className={`p-2.5 transition-all ${viewMode === 'grid' ? 'bg-violet-500/10 text-violet-400' : 'bg-glass-bg text-k-text-quaternary hover:text-k-text-secondary'}`}
+                                className={`p-2.5 transition-all ${viewMode === 'grid' ? 'bg-violet-500/10 text-violet-600 dark:text-violet-400' : 'bg-glass-bg text-k-text-quaternary hover:text-k-text-secondary'}`}
                                 title="Grade"
                             >
                                 <LayoutGrid className="w-4 h-4" />
                             </button>
                             <button
                                 onClick={() => setViewMode('list')}
-                                className={`p-2.5 transition-all ${viewMode === 'list' ? 'bg-violet-500/10 text-violet-400' : 'bg-glass-bg text-k-text-quaternary hover:text-k-text-secondary'}`}
+                                className={`p-2.5 transition-all ${viewMode === 'list' ? 'bg-violet-500/10 text-violet-600 dark:text-violet-400' : 'bg-glass-bg text-k-text-quaternary hover:text-k-text-secondary'}`}
                                 title="Lista"
                             >
                                 <List className="w-4 h-4" />
@@ -314,7 +314,7 @@ export function ExercisesClient({
                 </div>
 
                 {/* Results Count */}
-                <div className="text-[11px] font-bold uppercase tracking-wider text-k-text-quaternary pl-1">
+                <div className="text-[11px] font-bold text-k-text-quaternary pl-1">
                     {filteredExercises.length} exercícios
                     {(searchQuery || selectedMuscleGroups.length > 0) && ` de ${deduplicatedExercises.length}`}
                 </div>
@@ -351,12 +351,12 @@ export function ExercisesClient({
                 ) : (
                     <div className="text-center py-20 rounded-2xl border border-dashed border-k-border-primary">
                         <Search className="w-6 h-6 text-k-text-quaternary mx-auto mb-3" strokeWidth={1.5} />
-                        <p className="text-sm font-semibold text-white">Nenhum exercício encontrado</p>
+                        <p className="text-sm font-semibold text-k-text-primary">Nenhum exercício encontrado</p>
                         <p className="text-xs text-k-text-quaternary mt-1">Tente outro termo ou limpe os filtros</p>
                         {(searchQuery || selectedMuscleGroups.length > 0) && (
                             <button
                                 onClick={() => { setSearchQuery(''); setSelectedMuscleGroups([]) }}
-                                className="mt-4 text-xs font-medium text-violet-400 hover:text-violet-300 transition-colors"
+                                className="mt-4 text-xs font-medium text-violet-600 hover:text-violet-500 dark:text-violet-400 dark:hover:text-violet-300 transition-colors"
                             >
                                 Limpar busca
                             </button>

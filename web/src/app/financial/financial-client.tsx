@@ -84,13 +84,13 @@ const statusLabels: Record<DisplayStatus, string> = {
 }
 
 const statusColors: Record<DisplayStatus, string> = {
-    courtesy: 'text-blue-400',
-    awaiting_payment: 'text-sky-400',
-    active: 'text-emerald-400',
-    grace_period: 'text-orange-400',
-    canceling: 'text-amber-400',
-    overdue: 'text-red-400',
-    canceled: 'text-gray-400',
+    courtesy: 'text-blue-600 dark:text-blue-400',
+    awaiting_payment: 'text-sky-600 dark:text-sky-400',
+    active: 'text-emerald-600 dark:text-emerald-400',
+    grace_period: 'text-orange-600 dark:text-orange-400',
+    canceling: 'text-amber-600 dark:text-amber-400',
+    overdue: 'text-red-600 dark:text-red-400',
+    canceled: 'text-gray-600 dark:text-gray-400',
 }
 
 export function FinancialDashboardClient({
@@ -309,8 +309,8 @@ export function FinancialDashboardClient({
                 </div>
             ) : payingCount > 0 || courtesyCount > 0 ? (
                 <div className="flex items-center gap-2 px-3 py-2 bg-emerald-500/5 border border-emerald-500/10 rounded-xl mb-8 w-fit">
-                    <Check size={14} className="text-emerald-400" />
-                    <span className="text-xs text-emerald-400">Tudo em dia</span>
+                    <Check size={14} className="text-emerald-600 dark:text-emerald-400" />
+                    <span className="text-xs text-emerald-600 dark:text-emerald-400">Tudo em dia</span>
                 </div>
             ) : null}
 
@@ -319,7 +319,7 @@ export function FinancialDashboardClient({
                 <div className="rounded-2xl border border-k-border-primary bg-surface-card p-5">
                     <div className="flex items-center gap-3 mb-3">
                         <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-emerald-500/10">
-                            <DollarSign size={18} className="text-emerald-400" />
+                            <DollarSign size={18} className="text-emerald-600 dark:text-emerald-400" />
                         </div>
                         <span className="text-xs font-medium text-k-text-secondary">
                             Receita do mês
@@ -332,7 +332,7 @@ export function FinancialDashboardClient({
                 <div className="rounded-2xl border border-k-border-primary bg-surface-card p-5">
                     <div className="flex items-center gap-3 mb-3">
                         <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-violet-500/10">
-                            <Users size={18} className="text-violet-400" />
+                            <Users size={18} className="text-violet-600 dark:text-violet-400" />
                         </div>
                         <span className="text-xs font-medium text-k-text-secondary">
                             Alunos pagantes
@@ -345,7 +345,7 @@ export function FinancialDashboardClient({
                 <div className="rounded-2xl border border-k-border-primary bg-surface-card p-5">
                     <div className="flex items-center gap-3 mb-3">
                         <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-blue-500/10">
-                            <Heart size={18} className="text-blue-400" />
+                            <Heart size={18} className="text-blue-600 dark:text-blue-400" />
                         </div>
                         <span className="text-xs font-medium text-k-text-secondary">
                             Em cortesia
@@ -368,7 +368,7 @@ export function FinancialDashboardClient({
                             attentionStudents.length > 0 ? 'bg-red-500/10' : 'bg-emerald-500/10'
                         }`}>
                             <AlertTriangle size={18} className={
-                                attentionStudents.length > 0 ? 'text-red-400' : 'text-emerald-400'
+                                attentionStudents.length > 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'
                             } />
                         </div>
                         <span className="text-xs font-medium text-k-text-secondary">
@@ -391,7 +391,7 @@ export function FinancialDashboardClient({
                         </div>
                         <Link
                             href="/financial/plans"
-                            className="text-xs text-k-text-tertiary hover:text-violet-400 transition-colors flex items-center gap-1"
+                            className="text-xs text-k-text-tertiary hover:text-violet-600 dark:hover:text-violet-400 transition-colors flex items-center gap-1"
                         >
                             Ver todos
                             <ArrowRight size={12} />
@@ -402,7 +402,7 @@ export function FinancialDashboardClient({
                     </p>
                     <Link
                         href="/financial/plans"
-                        className="inline-flex items-center gap-1.5 text-xs font-medium text-violet-400 hover:text-violet-300 transition-colors"
+                        className="inline-flex items-center gap-1.5 text-xs font-medium text-violet-600 hover:text-violet-500 dark:text-violet-400 dark:hover:text-violet-300 transition-colors"
                     >
                         Gerenciar planos
                         <ArrowRight size={12} />
@@ -418,7 +418,7 @@ export function FinancialDashboardClient({
                         </div>
                         <Link
                             href="/financial/subscriptions"
-                            className="text-xs text-k-text-tertiary hover:text-violet-400 transition-colors flex items-center gap-1"
+                            className="text-xs text-k-text-tertiary hover:text-violet-600 dark:hover:text-violet-400 transition-colors flex items-center gap-1"
                         >
                             Ver todas
                             <ArrowRight size={12} />
@@ -429,7 +429,7 @@ export function FinancialDashboardClient({
                     </p>
                     <Link
                         href="/financial/subscriptions"
-                        className="inline-flex items-center gap-1.5 text-xs font-medium text-violet-400 hover:text-violet-300 transition-colors"
+                        className="inline-flex items-center gap-1.5 text-xs font-medium text-violet-600 hover:text-violet-500 dark:text-violet-400 dark:hover:text-violet-300 transition-colors"
                     >
                         Gerenciar assinaturas
                         <ArrowRight size={12} />
@@ -471,7 +471,7 @@ export function FinancialDashboardClient({
                                     </div>
                                 </div>
                                 <span className={`text-sm font-semibold ${
-                                    tx.status === 'succeeded' ? 'text-emerald-400' : 'text-k-text-primary'
+                                    tx.status === 'succeeded' ? 'text-emerald-600 dark:text-emerald-400' : 'text-k-text-primary'
                                 }`}>
                                     {tx.type === 'payout' ? '−' : '+'}{formatCurrency(tx.amount_gross)}
                                 </span>

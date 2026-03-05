@@ -93,7 +93,7 @@ export function MuscleGroupManagerModal({ isOpen, onClose, trainerId, manager }:
                 <div className="p-6 pb-2 flex items-center justify-between">
                     <div>
                         <h2 className="text-xl font-bold text-white tracking-tight">Gerenciar Grupos</h2>
-                        <p className="text-xs text-muted-foreground/60 uppercase tracking-widest font-semibold mt-1">Adicione ou remova grupos</p>
+                        <p className="text-xs text-muted-foreground/60 font-semibold mt-1">Adicione ou remova grupos</p>
                     </div>
                     <button
                         onClick={onClose}
@@ -179,7 +179,7 @@ export function MuscleGroupManagerModal({ isOpen, onClose, trainerId, manager }:
                                             )}
 
                                             {isSystem && (
-                                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
                                                     Sistema
                                                 </span>
                                             )}

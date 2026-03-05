@@ -1060,7 +1060,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                     {/* Center: Condensed timeline */}
                     <div className="flex items-center gap-2 text-xs text-k-text-tertiary border-x border-k-border-subtle px-6 shrink-0">
                         <Calendar className="w-3.5 h-3.5 text-k-text-quaternary shrink-0" strokeWidth={1.5} />
-                        <span className="text-[10px] text-k-text-quaternary font-medium uppercase">Início</span>
+                        <span className="text-[10px] text-k-text-quaternary font-medium">Início</span>
                         <input
                             type="date"
                             value={startDate}
@@ -1068,7 +1068,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                             className="bg-transparent border-none text-xs font-bold text-k-text-primary focus:ring-0 p-0 [color-scheme:dark] w-[110px]"
                         />
                         <span className="text-k-border-subtle">→</span>
-                        <span className="text-[10px] text-k-text-quaternary font-medium uppercase">Fim</span>
+                        <span className="text-[10px] text-k-text-quaternary font-medium">Fim</span>
                         <input
                             type="date"
                             value={endDate}
@@ -1122,7 +1122,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                 {isDescriptionOpen && (
                     <div className="flex-shrink-0 bg-surface-primary border-b border-k-border-subtle px-8 py-4 animate-in slide-in-from-top-4 duration-300">
                         <div className="max-w-3xl">
-                            <label className="block text-[10px] font-bold text-k-text-quaternary uppercase tracking-widest mb-2">Descrição do Programa</label>
+                            <label className="block text-[10px] font-bold text-k-text-quaternary mb-2">Descrição do Programa</label>
                             <textarea
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
@@ -1309,13 +1309,13 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                                     const firstMissing = workouts.find(w => !w.frequency || w.frequency.length === 0)
                                     if (firstMissing) setActiveWorkoutId(firstMissing.id)
                                 }}
-                                className="flex-1 py-3 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-xs font-bold uppercase tracking-wider rounded-xl transition-colors border border-amber-500/20"
+                                className="flex-1 py-3 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-bold rounded-xl transition-colors border border-amber-500/20"
                             >
                                 Corrigir agora
                             </button>
                             <button
                                 onClick={frequencyWarning.onConfirm}
-                                className="flex-1 py-3 bg-glass-bg hover:bg-glass-bg-active text-k-text-secondary text-xs font-bold uppercase tracking-wider rounded-xl transition-colors border border-k-border-subtle"
+                                className="flex-1 py-3 bg-glass-bg hover:bg-glass-bg-active text-k-text-secondary text-xs font-bold rounded-xl transition-colors border border-k-border-subtle"
                             >
                                 Salvar assim mesmo
                             </button>
@@ -1335,7 +1335,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                         </p>
 
                         <div>
-                            <label className="block text-[10px] font-bold text-k-text-quaternary uppercase tracking-widest mb-1.5">Nome do modelo</label>
+                            <label className="block text-[10px] font-bold text-k-text-quaternary mb-1.5">Nome do modelo</label>
                             <input
                                 type="text"
                                 value={templateName}

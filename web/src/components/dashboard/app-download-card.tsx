@@ -32,7 +32,7 @@ export function AppDownloadCard() {
             <div className="space-y-2.5">
                 <div className="flex items-center gap-2 p-3 rounded-xl bg-glass-bg border border-k-border-subtle">
                     <div className="flex-1 min-w-0">
-                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60 mb-1">
+                        <p className="text-[11px] font-semibold text-muted-foreground/60 mb-1">
                             iOS (App Store)
                         </p>
                         <p className="text-xs text-foreground/80 truncate">{IOS_LINK}</p>
@@ -60,7 +60,7 @@ export function AppDownloadCard() {
                 {/* Android */}
                 <div className="flex items-center gap-2 p-3 rounded-xl bg-glass-bg border border-k-border-subtle opacity-60">
                     <div className="flex-1 min-w-0">
-                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60 mb-1">
+                        <p className="text-[11px] font-semibold text-muted-foreground/60 mb-1">
                             Android (Play Store)
                         </p>
                         <p className="text-xs text-muted-foreground italic">Em breve</p>

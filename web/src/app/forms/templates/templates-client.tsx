@@ -95,9 +95,9 @@ interface TemplatesClientProps {
 }
 
 const CATEGORY_CONFIG: Record<string, { label: string; icon: typeof FileText; color: string; bgColor: string }> = {
-    anamnese: { label: 'Anamnese', icon: ClipboardCheck, color: 'text-blue-400', bgColor: 'bg-blue-500/10' },
-    checkin: { label: 'Check-in', icon: CheckCircle2, color: 'text-emerald-400', bgColor: 'bg-emerald-500/10' },
-    survey: { label: 'Pesquisa', icon: MessageSquare, color: 'text-amber-400', bgColor: 'bg-amber-500/10' },
+    anamnese: { label: 'Anamnese', icon: ClipboardCheck, color: 'text-blue-600 dark:text-blue-400', bgColor: 'bg-blue-500/10' },
+    checkin: { label: 'Check-in', icon: CheckCircle2, color: 'text-emerald-600 dark:text-emerald-400', bgColor: 'bg-emerald-500/10' },
+    survey: { label: 'Pesquisa', icon: MessageSquare, color: 'text-amber-600 dark:text-amber-400', bgColor: 'bg-amber-500/10' },
 }
 
 // --- Actions Menu ---
@@ -140,7 +140,7 @@ function ActionsMenu({ template, onDelete }: { template: FormTemplate; onDelete:
                     <div className="my-1 border-t border-k-border-subtle" />
                     <button
                         onClick={(e) => { e.stopPropagation(); setOpen(false); onDelete(template.id) }}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-400 hover:bg-glass-bg transition-colors"
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-glass-bg transition-colors"
                     >
                         <Trash2 size={14} /> Excluir
                     </button>
@@ -193,7 +193,7 @@ export function TemplatesClient({ trainer, templates: initialTemplates }: Templa
                     >
                         <ArrowLeft size={18} />
                     </button>
-                    <h1 className="text-2xl font-bold tracking-tight text-white">Templates</h1>
+                    <h1 className="text-2xl font-bold tracking-tight text-k-text-primary">Templates</h1>
                     {templates.length > 0 && (
                         <span className="px-2 py-0.5 rounded-md bg-glass-bg text-xs font-bold text-k-text-tertiary border border-k-border-subtle">
                             {templates.length}
@@ -234,13 +234,13 @@ export function TemplatesClient({ trainer, templates: initialTemplates }: Templa
                 ) : (
                     <div className="text-center py-16">
                         <FileText className="w-10 h-10 text-k-text-quaternary mx-auto mb-3" strokeWidth={1} />
-                        <p className="text-sm font-semibold text-white mb-1">Nenhum template criado</p>
+                        <p className="text-sm font-semibold text-k-text-primary mb-1">Nenhum template criado</p>
                         <p className="text-xs text-k-text-quaternary max-w-sm mx-auto mb-5">
                             Templates são formulários para coletar informações dos alunos: anamnese, check-ins semanais, avaliações físicas.
                         </p>
                         <button
                             onClick={() => router.push('/forms/templates/new')}
-                            className="text-xs font-medium text-violet-400 hover:text-violet-300 transition-colors"
+                            className="text-xs font-medium text-violet-600 hover:text-violet-500 dark:text-violet-400 dark:hover:text-violet-300 transition-colors"
                         >
                             Criar primeiro template
                         </button>
@@ -273,7 +273,7 @@ export function TemplatesClient({ trainer, templates: initialTemplates }: Templa
                                             <Icon size={16} className={config.color} />
                                         </div>
                                         <div className="min-w-0">
-                                            <h3 className="text-sm font-semibold text-k-text-primary group-hover:text-white transition-colors truncate">
+                                            <h3 className="text-sm font-semibold text-k-text-primary group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors truncate">
                                                 {cleanTemplateName(template.title)}
                                             </h3>
                                             <div className="flex items-center gap-2 mt-0.5">
@@ -281,13 +281,13 @@ export function TemplatesClient({ trainer, templates: initialTemplates }: Templa
                                                     {questionsCount} {questionsCount === 1 ? 'pergunta' : 'perguntas'} · {config.label}
                                                 </span>
                                                 {template.created_source === 'ai_assisted' && (
-                                                    <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-violet-500/10 text-violet-400 border border-violet-500/20">
+                                                    <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20">
                                                         IA
                                                     </span>
                                                 )}
                                                 <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded ${
                                                     template.is_active
-                                                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
                                                         : 'bg-surface-elevated text-k-text-quaternary border border-k-border-subtle'
                                                 }`}>
                                                     {template.is_active ? 'Ativo' : 'Inativo'}
@@ -328,7 +328,7 @@ export function TemplatesClient({ trainer, templates: initialTemplates }: Templa
                                             e.stopPropagation()
                                             router.push(`/forms?assign=${template.id}`)
                                         }}
-                                        className="text-violet-400 hover:text-violet-300 opacity-0 group-hover:opacity-100 transition-all font-medium"
+                                        className="text-violet-600 hover:text-violet-500 dark:text-violet-400 dark:hover:text-violet-300 opacity-0 group-hover:opacity-100 transition-all font-medium"
                                     >
                                         Enviar para aluno →
                                     </button>

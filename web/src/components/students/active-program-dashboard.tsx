@@ -187,7 +187,7 @@ export function ActiveProgramDashboard({
                     <div className="flex items-center justify-center gap-4">
                         <button
                             onClick={onCreateProgram}
-                            className="px-6 py-3 bg-violet-600 hover:bg-violet-500 text-white text-[11px] font-black uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-violet-600/20 flex items-center gap-2"
+                            className="px-6 py-3 bg-violet-600 hover:bg-violet-500 text-white text-[11px] font-black rounded-xl transition-all shadow-lg shadow-violet-600/20 flex items-center gap-2"
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -196,7 +196,7 @@ export function ActiveProgramDashboard({
                         </button>
                         <button
                             onClick={onAssignProgram}
-                            className="px-6 py-3 bg-transparent hover:bg-glass-bg text-k-text-secondary hover:text-k-text-primary text-[11px] font-black uppercase tracking-widest rounded-xl transition-all border border-k-border-primary flex items-center gap-2"
+                            className="px-6 py-3 bg-transparent hover:bg-glass-bg text-k-text-secondary hover:text-k-text-primary text-[11px] font-black rounded-xl transition-all border border-k-border-primary flex items-center gap-2"
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
@@ -206,7 +206,7 @@ export function ActiveProgramDashboard({
                         {onPrescribeAI && (
                             <button
                                 onClick={onPrescribeAI}
-                                className="px-6 py-3 bg-gradient-to-r from-violet-600 to-indigo-500 hover:from-violet-500 hover:to-indigo-400 text-white text-[11px] font-black uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-indigo-600/20 flex items-center gap-2"
+                                className="px-6 py-3 bg-gradient-to-r from-violet-600 to-indigo-500 hover:from-violet-500 hover:to-indigo-400 text-white text-[11px] font-black rounded-xl transition-all shadow-lg shadow-indigo-600/20 flex items-center gap-2"
                             >
                                 Prescrever com IA
                             </button>
@@ -236,7 +236,7 @@ export function ActiveProgramDashboard({
                 <div className="mb-6">
                     <div className="flex items-center gap-3 mb-1">
                         <h2 className="text-2xl font-black text-white tracking-tight">{program.name}</h2>
-                        <span className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded border ${statusConfig.classes}`}>
+                        <span className={`px-2 py-0.5 text-[10px] font-bold rounded border ${statusConfig.classes}`}>
                             {statusConfig.label}
                         </span>
                     </div>
@@ -247,28 +247,28 @@ export function ActiveProgramDashboard({
                     <div className="flex items-center gap-2 mt-3">
                         <button
                             onClick={onEditProgram}
-                            className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-k-text-tertiary hover:text-k-text-primary hover:bg-glass-bg-active rounded-lg transition-all border border-k-border-subtle"
+                            className="px-3 py-1.5 text-[10px] font-bold text-k-text-tertiary hover:text-k-text-primary hover:bg-glass-bg-active rounded-lg transition-all border border-k-border-subtle"
                         >
                             Editar
                         </button>
                         {program.status === 'active' && (
                             <button
                                 onClick={onCompleteProgram}
-                                className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-k-text-tertiary hover:text-k-text-primary hover:bg-glass-bg-active rounded-lg transition-all border border-k-border-subtle"
+                                className="px-3 py-1.5 text-[10px] font-bold text-k-text-tertiary hover:text-k-text-primary hover:bg-glass-bg-active rounded-lg transition-all border border-k-border-subtle"
                             >
                                 Concluir
                             </button>
                         )}
                         <button
                             onClick={onAssignProgram}
-                            className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-k-text-tertiary hover:text-k-text-primary hover:bg-glass-bg-active rounded-lg transition-all border border-k-border-subtle"
+                            className="px-3 py-1.5 text-[10px] font-bold text-k-text-tertiary hover:text-k-text-primary hover:bg-glass-bg-active rounded-lg transition-all border border-k-border-subtle"
                         >
                             Trocar
                         </button>
                         {onPrescribeAI && (
                             <button
                                 onClick={onPrescribeAI}
-                                className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-indigo-300 hover:text-white hover:bg-gradient-to-r hover:from-violet-600 hover:to-indigo-500 rounded-lg transition-all border border-indigo-500/20"
+                                className="px-3 py-1.5 text-[10px] font-bold text-indigo-600 dark:text-indigo-300 hover:text-white hover:bg-gradient-to-r hover:from-violet-600 hover:to-indigo-500 rounded-lg transition-all border border-indigo-500/20"
                             >
                                 Novo com IA
                             </button>
@@ -310,7 +310,7 @@ export function ActiveProgramDashboard({
                 <div data-onboarding="student-history-summary" className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10">
                     {/* Total Sessions */}
                     <div className="relative group">
-                        <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-k-text-quaternary">
+                        <div className="mb-2 flex items-center gap-2 text-[10px] font-bold text-k-text-quaternary">
                             <svg className="w-3.5 h-3.5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                             </svg>
@@ -331,7 +331,7 @@ export function ActiveProgramDashboard({
                         const remaining = Math.max(0, expected - completed)
                         return (
                             <div className="relative group">
-                                <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-k-text-quaternary">
+                                <div className="mb-2 flex items-center gap-2 text-[10px] font-bold text-k-text-quaternary">
                                     <svg className="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
@@ -361,7 +361,7 @@ export function ActiveProgramDashboard({
 
                     {/* Last Session */}
                     <div className="relative group">
-                        <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-k-text-quaternary">
+                        <div className="mb-2 flex items-center gap-2 text-[10px] font-bold text-k-text-quaternary">
                             <svg className="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
@@ -382,7 +382,7 @@ export function ActiveProgramDashboard({
                 {weeklyAdherence.length > 1 && (
                     <div className="mb-8 bg-glass-bg rounded-xl p-4 border border-k-border-subtle">
                         <div className="flex items-center justify-between mb-3">
-                            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-k-text-quaternary">
+                            <p className="text-[10px] font-bold text-k-text-quaternary">
                                 Adesão por semana
                             </p>
                             <p className="text-[10px] font-bold text-k-text-quaternary">
@@ -432,7 +432,7 @@ export function ActiveProgramDashboard({
                 <div>
                     <h3 className="text-sm font-semibold text-white mb-6 flex items-center gap-2">
                         Últimas Sessões
-                        <span className="px-2 py-0.5 rounded bg-glass-bg text-[10px] text-k-text-tertiary font-bold uppercase tracking-widest border border-k-border-subtle">
+                        <span className="px-2 py-0.5 rounded bg-glass-bg text-[10px] text-k-text-tertiary font-bold border border-k-border-subtle">
                             Recentes
                         </span>
                     </h3>
@@ -514,7 +514,7 @@ export function ActiveProgramDashboard({
                                                 ) : details?.exercises?.length > 0 ? (
                                                     <>
                                                         {/* Summary stats */}
-                                                        <div className="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-k-text-quaternary pb-2 border-b border-k-border-subtle">
+                                                        <div className="flex items-center gap-4 text-[10px] font-bold text-k-text-quaternary pb-2 border-b border-k-border-subtle">
                                                             {details.duration_seconds > 0 && (
                                                                 <span>
                                                                     {Math.floor(details.duration_seconds / 3600) > 0

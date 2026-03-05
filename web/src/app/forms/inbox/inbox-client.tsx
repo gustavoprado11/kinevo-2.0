@@ -100,12 +100,12 @@ function resolveImageUrl(value: unknown): string | null {
 
 function submissionStatusBadge(status: string, feedbackSentAt: string | null) {
     if (status === 'reviewed' || feedbackSentAt) {
-        return { label: 'Feedback Enviado', classes: 'bg-violet-500/10 text-violet-400 border-violet-500/20' }
+        return { label: 'Feedback Enviado', classes: 'bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20' }
     }
     if (status === 'submitted') {
-        return { label: 'Aguardando', classes: 'bg-amber-500/10 text-amber-400 border-amber-500/20' }
+        return { label: 'Aguardando', classes: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20' }
     }
-    return { label: 'Pendente', classes: 'bg-gray-500/10 text-gray-400 border-gray-500/20' }
+    return { label: 'Pendente', classes: 'bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-500/20' }
 }
 
 function submissionStatusForSheet(submission: Submission) {
@@ -279,7 +279,7 @@ export function InboxClient({ trainer, submissions: initialSubmissions, students
                         <div>
                             <Link
                                 href="/forms"
-                                className="inline-flex items-center gap-1.5 text-xs text-k-text-secondary hover:text-violet-400 transition-colors mb-3"
+                                className="inline-flex items-center gap-1.5 text-xs text-k-text-secondary hover:text-violet-600 dark:hover:text-violet-400 transition-colors mb-3"
                             >
                                 <ArrowLeft size={14} />
                                 Voltar para Avaliações
@@ -322,10 +322,10 @@ export function InboxClient({ trainer, submissions: initialSubmissions, students
                         {/* Table Header */}
                         <div className="border-b border-k-border-subtle bg-surface-elevated/30 px-6 py-3">
                             <div className="grid grid-cols-[1.5fr_1.2fr_1fr_1fr_24px] gap-4">
-                                <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">Aluno</span>
-                                <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">Template</span>
-                                <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">Data</span>
-                                <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">Status</span>
+                                <span className="text-[11px] font-semibold text-muted-foreground/50">Aluno</span>
+                                <span className="text-[11px] font-semibold text-muted-foreground/50">Template</span>
+                                <span className="text-[11px] font-semibold text-muted-foreground/50">Data</span>
+                                <span className="text-[11px] font-semibold text-muted-foreground/50">Status</span>
                                 <span />
                             </div>
                         </div>
@@ -373,7 +373,7 @@ export function InboxClient({ trainer, submissions: initialSubmissions, students
                                                         </span>
                                                     )}
                                                 </div>
-                                                <span className={`truncate text-sm font-medium ${isActive ? 'text-violet-400' : 'text-k-text-primary'}`}>
+                                                <span className={`truncate text-sm font-medium ${isActive ? 'text-violet-600 dark:text-violet-400' : 'text-k-text-primary'}`}>
                                                     {student?.name || 'Aluno'}
                                                 </span>
                                             </div>
@@ -387,7 +387,7 @@ export function InboxClient({ trainer, submissions: initialSubmissions, students
                                             </span>
 
                                             <div>
-                                                <span className={`inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full border ${badge.classes}`}>
+                                                <span className={`inline-flex items-center px-2 py-0.5 text-[10px] font-bold rounded-full border ${badge.classes}`}>
                                                     {badge.label}
                                                 </span>
                                             </div>

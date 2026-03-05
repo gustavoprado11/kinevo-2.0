@@ -657,7 +657,7 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                                         <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 mb-2">
                                                             <div className="mb-2 flex items-center gap-2 text-amber-500">
                                                                 <AlertTriangle size={14} strokeWidth={2} />
-                                                                <p className="text-[11px] font-bold uppercase tracking-widest">Atenção</p>
+                                                                <p className="text-[11px] font-bold">Atenção</p>
                                                             </div>
                                                             <ul className="space-y-1 pl-1">
                                                                 {aiQualityReport.risk_flags.map((risk) => (
@@ -682,7 +682,7 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                                         className="overflow-hidden"
                                                     >
                                                         <div className="rounded-xl border border-k-border-subtle bg-surface-elevated/50 p-4 mb-2">
-                                                            <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-k-text-secondary">Sugestões de Revisão</p>
+                                                            <p className="mb-2 text-[11px] font-bold text-k-text-secondary">Sugestões de Revisão</p>
                                                             <ul className="space-y-1">
                                                                 {aiChecklist.map((item) => (
                                                                     <li key={item} className="flex items-start gap-2 text-xs text-k-text-secondary">

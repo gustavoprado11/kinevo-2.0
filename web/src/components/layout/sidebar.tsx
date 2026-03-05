@@ -116,7 +116,7 @@ export function Sidebar({ financialBadge }: SidebarProps = {}) {
 
             {/* Footer */}
             <div className="px-6 py-6 border-t border-k-border-subtle">
-                <div className="px-2 py-1 text-xs font-medium text-muted-foreground/40 tracking-wider uppercase">
+                <div className="px-2 py-1 text-xs font-medium text-muted-foreground/40">
                     Kinevo 2.0
                 </div>
             </div>

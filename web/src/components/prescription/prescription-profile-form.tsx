@@ -192,7 +192,7 @@ export function PrescriptionProfileForm({
 
                 {/* ── Training Level ── */}
                 <div>
-                    <label className="mb-1.5 block text-[11px] font-bold text-k-text-tertiary uppercase tracking-widest">
+                    <label className="mb-1.5 block text-[11px] font-bold text-k-text-tertiary">
                         <Target className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />
                         Nível de Treino <span className="text-violet-500">*</span>
                     </label>
@@ -216,7 +216,7 @@ export function PrescriptionProfileForm({
 
                 {/* ── Goal ── */}
                 <div>
-                    <label className="mb-1.5 block text-[11px] font-bold text-k-text-tertiary uppercase tracking-widest">
+                    <label className="mb-1.5 block text-[11px] font-bold text-k-text-tertiary">
                         <Target className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />
                         Objetivo <span className="text-violet-500">*</span>
                     </label>
@@ -240,7 +240,7 @@ export function PrescriptionProfileForm({
 
                 {/* ── Available Days ── */}
                 <div>
-                    <label className="mb-1.5 block text-[11px] font-bold text-k-text-tertiary uppercase tracking-widest">
+                    <label className="mb-1.5 block text-[11px] font-bold text-k-text-tertiary">
                         <Calendar className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />
                         Dias Disponíveis <span className="text-violet-500">*</span>
                     </label>
@@ -267,7 +267,7 @@ export function PrescriptionProfileForm({
 
                 {/* ── Session Duration ── */}
                 <div>
-                    <label className="mb-1.5 block text-[11px] font-bold text-k-text-tertiary uppercase tracking-widest">
+                    <label className="mb-1.5 block text-[11px] font-bold text-k-text-tertiary">
                         <Clock className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />
                         Duração da Sessão (minutos)
                     </label>
@@ -289,7 +289,7 @@ export function PrescriptionProfileForm({
 
                 {/* ── Equipment ── */}
                 <div>
-                    <label className="mb-1.5 block text-[11px] font-bold text-k-text-tertiary uppercase tracking-widest">
+                    <label className="mb-1.5 block text-[11px] font-bold text-k-text-tertiary">
                         <Dumbbell className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />
                         Equipamentos Disponíveis
                     </label>
@@ -313,7 +313,7 @@ export function PrescriptionProfileForm({
 
                 {/* ── Medical Restrictions ── */}
                 <div>
-                    <label className="mb-1.5 block text-[11px] font-bold text-k-text-tertiary uppercase tracking-widest">
+                    <label className="mb-1.5 block text-[11px] font-bold text-k-text-tertiary">
                         <ShieldAlert className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />
                         Restrições Médicas
                     </label>
@@ -333,7 +333,7 @@ export function PrescriptionProfileForm({
                                     }`}
                                 >
                                     <span className="flex-1">{r.description}</span>
-                                    <span className="text-[10px] font-bold uppercase tracking-wider opacity-70">
+                                    <span className="text-[10px] font-bold opacity-70">
                                         {r.severity === 'severe' ? 'Grave' : r.severity === 'moderate' ? 'Moderada' : 'Leve'}
                                     </span>
                                     <button
@@ -381,7 +381,7 @@ export function PrescriptionProfileForm({
 
                 {/* ── AI Mode ── */}
                 <div>
-                    <label className="mb-1.5 block text-[11px] font-bold text-k-text-tertiary uppercase tracking-widest">
+                    <label className="mb-1.5 block text-[11px] font-bold text-k-text-tertiary">
                         <Brain className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />
                         Modo da IA
                     </label>

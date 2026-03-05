@@ -111,10 +111,10 @@ export function ContractDetailModal({
 
     const getStatusBadge = (status: string) => {
         const styles: Record<string, string> = {
-            active: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-            past_due: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-            pending: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-            canceled: 'bg-gray-500/10 text-gray-400 border-gray-500/20',
+            active: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+            past_due: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
+            pending: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
+            canceled: 'bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-500/20',
         }
         const labels: Record<string, string> = {
             active: 'Ativo',
@@ -126,7 +126,7 @@ export function ContractDetailModal({
         const label = labels[status] || status
 
         return (
-            <span className={`px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider rounded-full border ${style}`}>
+            <span className={`px-2.5 py-1 text-[11px] font-semibold rounded-full border ${style}`}>
                 {label}
             </span>
         )
@@ -234,7 +234,7 @@ export function ContractDetailModal({
                 {/* Header */}
                 <div className="flex items-center justify-between border-b border-k-border-subtle bg-surface-inset px-8 py-6 flex-shrink-0">
                     <div className="min-w-0">
-                        <h2 className="text-xl font-bold text-white tracking-tight">
+                        <h2 className="text-xl font-bold text-k-text-primary tracking-tight">
                             Detalhes da Assinatura
                         </h2>
                         <p className="text-xs text-k-text-secondary mt-1 truncate">
@@ -252,7 +252,7 @@ export function ContractDetailModal({
                 {/* Content */}
                 <div className="overflow-y-auto flex-1 p-8 space-y-6">
                     {error && (
-                        <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl text-sm flex items-start gap-3">
+                        <div className="bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl text-sm flex items-start gap-3">
                             <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
                             {error}
                         </div>
@@ -354,7 +354,7 @@ export function ContractDetailModal({
                             </div>
                         ) : isCourtesy ? (
                             <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
-                                <p className="text-sm text-emerald-400 font-medium">Acesso gratuito — sem cobrança</p>
+                                <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">Acesso gratuito — sem cobrança</p>
                             </div>
                         ) : (
                             <div>
@@ -402,7 +402,7 @@ export function ContractDetailModal({
                             <div className="flex items-center justify-between rounded-xl border border-k-border-subtle bg-glass-bg px-4 py-3">
                                 <div className="flex items-center gap-2">
                                     {editBlockOnFail ? (
-                                        <Shield size={16} className="text-violet-400" />
+                                        <Shield size={16} className="text-violet-600 dark:text-violet-400" />
                                     ) : (
                                         <ShieldOff size={16} className="text-muted-foreground/40" />
                                     )}
@@ -440,12 +440,12 @@ export function ContractDetailModal({
                             {contract.cancel_at_period_end ? (
                                 <div className="space-y-3">
                                     <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 flex items-start gap-3">
-                                        <AlertTriangle size={16} className="text-amber-400 mt-0.5 flex-shrink-0" />
+                                        <AlertTriangle size={16} className="text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
                                         <div>
-                                            <p className="text-sm font-medium text-amber-400">
+                                            <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
                                                 Cancelamento agendado
                                             </p>
-                                            <p className="text-xs text-amber-400/70 mt-0.5">
+                                            <p className="text-xs text-amber-600/70 dark:text-amber-400/70 mt-0.5">
                                                 A assinatura será cancelada em {formatDate(contract.current_period_end)}
                                             </p>
                                         </div>
@@ -453,7 +453,7 @@ export function ContractDetailModal({
                                     <button
                                         onClick={handleKeepSubscription}
                                         disabled={cancelLoading}
-                                        className="w-full py-2.5 text-sm font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-xl hover:bg-emerald-500/20 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                                        className="w-full py-2.5 text-sm font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-xl hover:bg-emerald-500/20 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                                     >
                                         {cancelLoading ? (
                                             <Loader2 className="w-4 h-4 animate-spin" />
@@ -466,7 +466,7 @@ export function ContractDetailModal({
                                     <button
                                         onClick={handleScheduleCancel}
                                         disabled={cancelLoading}
-                                        className="w-full py-2.5 text-sm font-semibold text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-xl hover:bg-amber-500/20 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                                        className="w-full py-2.5 text-sm font-semibold text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-xl hover:bg-amber-500/20 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                                     >
                                         {cancelLoading ? (
                                             <Loader2 className="w-4 h-4 animate-spin" />
@@ -488,7 +488,7 @@ export function ContractDetailModal({
                             <button
                                 onClick={handleScheduleCancel}
                                 disabled={cancelLoading}
-                                className="w-full py-2.5 text-sm font-semibold text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl hover:bg-red-500/20 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                                className="w-full py-2.5 text-sm font-semibold text-red-600 dark:text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl hover:bg-red-500/20 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                             >
                                 {cancelLoading ? (
                                     <Loader2 className="w-4 h-4 animate-spin" />

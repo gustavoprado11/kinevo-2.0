@@ -24,7 +24,7 @@ export function FloatingExercisePlayer({ isOpen, onClose, videoUrl, title }: Flo
                 >
                     {/* Header */}
                     <div className="h-8 flex items-center justify-between px-4 bg-glass-bg border-b border-k-border-subtle">
-                        <span className="text-[11px] font-bold uppercase tracking-widest text-k-text-tertiary truncate pr-4">
+                        <span className="text-[11px] font-bold text-k-text-tertiary truncate pr-4">
                             {title}
                         </span>
                         <button

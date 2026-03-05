@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation'
 import { ThemeProvider as NextThemesProvider } from 'next-themes'
 import type { ComponentType, ReactNode } from 'react'
 
-const LOGGED_AREA_PREFIXES = ['/dashboard', '/students', '/programs', '/exercises', '/settings']
+const LOGGED_AREA_PREFIXES = ['/dashboard', '/students', '/programs', '/exercises', '/settings', '/forms', '/financial']
 const FORCE_LIGHT_ROUTES = ['/', '/login', '/signup']
 const FORCE_DARK_ROUTES = ['/terms', '/privacy', '/subscription']
 
@@ -27,7 +27,7 @@ export function ThemeProvider({ children }: AppThemeProviderProps) {
     return (
         <Provider
             attribute="class"
-            defaultTheme="system"
+            defaultTheme="light"
             enableSystem
             disableTransitionOnChange
             storageKey="kinevo-theme"

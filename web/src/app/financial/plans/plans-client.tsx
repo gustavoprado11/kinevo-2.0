@@ -56,9 +56,9 @@ export function PlansClient({ trainer, plans: initialPlans, hasStripeConnect, us
     }
 
     const intervalLabels: Record<string, { label: string; classes: string }> = {
-        month: { label: 'Mensal', classes: 'bg-violet-500/10 text-violet-400 border-violet-500/20' },
-        quarter: { label: 'Trimestral', classes: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
-        year: { label: 'Anual', classes: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
+        month: { label: 'Mensal', classes: 'bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20' },
+        quarter: { label: 'Trimestral', classes: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20' },
+        year: { label: 'Anual', classes: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20' },
     }
 
     const handleEditPlan = (plan: Plan) => {
@@ -128,7 +128,7 @@ export function PlansClient({ trainer, plans: initialPlans, hasStripeConnect, us
                         <div>
                             <Link
                                 href="/financial"
-                                className="inline-flex items-center gap-1.5 text-xs text-k-text-secondary hover:text-violet-400 transition-colors mb-3"
+                                className="inline-flex items-center gap-1.5 text-xs text-k-text-secondary hover:text-violet-600 dark:hover:text-violet-400 transition-colors mb-3"
                             >
                                 <ArrowLeft size={14} />
                                 Voltar para Financeiro
@@ -203,14 +203,14 @@ export function PlansClient({ trainer, plans: initialPlans, hasStripeConnect, us
                                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-all">
                                                 <button
                                                     onClick={(e) => handleEditPlan(plan)}
-                                                    className="text-k-text-quaternary hover:text-violet-400 hover:bg-glass-bg p-2 rounded-lg transition-all"
+                                                    className="text-k-text-quaternary hover:text-violet-600 dark:hover:text-violet-400 hover:bg-glass-bg p-2 rounded-lg transition-all"
                                                 >
                                                     <Pencil className="w-4 h-4" strokeWidth={1.5} />
                                                 </button>
                                                 <button
                                                     onClick={(e) => handleDeletePlan(plan.id, e)}
                                                     disabled={deleting === plan.id}
-                                                    className="text-k-text-quaternary hover:text-red-400 hover:bg-glass-bg p-2 rounded-lg transition-all"
+                                                    className="text-k-text-quaternary hover:text-red-600 dark:hover:text-red-400 hover:bg-glass-bg p-2 rounded-lg transition-all"
                                                 >
                                                     {deleting === plan.id ? (
                                                         <Loader2 className="w-4 h-4 animate-spin" />
@@ -260,8 +260,8 @@ export function PlansClient({ trainer, plans: initialPlans, hasStripeConnect, us
                                                 onClick={(e) => handleTogglePlan(plan.id, e)}
                                                 disabled={toggling === plan.id}
                                                 className={`px-2.5 py-1 text-[11px] font-semibold rounded-md border transition-colors ${plan.is_active
-                                                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20'
-                                                        : 'bg-gray-500/10 text-gray-400 border-gray-500/20 hover:bg-gray-500/20'
+                                                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20'
+                                                        : 'bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-500/20 hover:bg-gray-500/20'
                                                     }`}
                                             >
                                                 {toggling === plan.id ? (
@@ -273,7 +273,7 @@ export function PlansClient({ trainer, plans: initialPlans, hasStripeConnect, us
 
                                             {/* Visibility badge */}
                                             {plan.visibility === 'hidden' && (
-                                                <span className="px-2.5 py-1 text-[11px] font-semibold rounded-md border bg-gray-500/10 text-gray-400 border-gray-500/20">
+                                                <span className="px-2.5 py-1 text-[11px] font-semibold rounded-md border bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-500/20">
                                                     Oculto
                                                 </span>
                                             )}

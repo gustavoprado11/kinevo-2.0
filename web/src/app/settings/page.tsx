@@ -5,6 +5,7 @@ import { stripe } from '@/lib/stripe'
 import { AppLayout } from '@/components/layout'
 import { BillingSection } from '@/components/settings/billing-section'
 import { ProfileForm } from '@/components/settings/profile-form'
+import { ThemeSelector } from '@/components/settings/theme-selector'
 
 import { ChevronRight } from 'lucide-react'
 
@@ -124,7 +125,7 @@ export default async function SettingsPage() {
             trainerTheme={trainer.theme ?? undefined}
         >
             <div className="mb-8">
-                <div className="mb-2 flex items-center gap-2 text-[10px] uppercase tracking-widest text-k-text-quaternary font-bold">
+                <div className="mb-2 flex items-center gap-2 text-[10px] text-k-text-quaternary font-bold">
                     <span>Painel</span>
                     <ChevronRight size={10} strokeWidth={3} />
                     <span>Minha Conta</span>
@@ -138,8 +139,9 @@ export default async function SettingsPage() {
 
 
             <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
-                <div className="lg:col-span-1">
+                <div className="lg:col-span-1 space-y-6">
                     <ProfileForm trainer={trainer} />
+                    <ThemeSelector initialTheme={trainer.theme as 'light' | 'dark' | 'system' | null} />
                 </div>
                 <div className="lg:col-span-2">
                     <BillingSection

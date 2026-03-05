@@ -90,7 +90,7 @@ export function WorkoutItemCard({
                             <GripVertical className="w-4 h-4" />
                         </div>
                         <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-violet-400 uppercase tracking-widest">Superset</span>
+                            <span className="text-xs font-bold text-violet-600 dark:text-violet-400">Superset</span>
                             <span className="flex items-center justify-center bg-violet-500/10 text-violet-300 text-[10px] font-bold px-1.5 py-0.5 rounded border border-violet-500/20">
                                 {item.children?.length || 0}
                             </span>
@@ -99,7 +99,7 @@ export function WorkoutItemCard({
 
                     <div className="flex items-center gap-4">
                         <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-bold text-k-text-tertiary uppercase tracking-wider">Descanso</span>
+                            <span className="text-[10px] font-bold text-k-text-tertiary">Descanso</span>
                             <input
                                 type="number"
                                 value={item.rest_seconds || ''}
@@ -245,7 +245,7 @@ function ExerciseItemCard({
                                     </span>
                                     <div className="flex gap-1 shrink-0 ml-2">
                                         {(ex.muscle_groups || []).slice(0, 2).map(g => (
-                                            <span key={g.id || g.name} className="text-[9px] text-k-text-quaternary bg-glass-bg px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">
+                                            <span key={g.id || g.name} className="text-[9px] text-k-text-quaternary bg-glass-bg px-1.5 py-0.5 rounded font-bold">
                                                 {g.name}
                                             </span>
                                         ))}
@@ -313,7 +313,7 @@ function ExerciseItemCard({
                                 </button>
                             )}
                             {item.exercise?.muscle_groups?.map(g => (
-                                <span key={g.id || g.name} className="text-[9px] font-bold uppercase tracking-wider text-k-text-tertiary bg-glass-bg px-1.5 py-0.5 rounded border border-k-border-subtle whitespace-nowrap">
+                                <span key={g.id || g.name} className="text-[9px] font-bold text-k-text-tertiary bg-glass-bg px-1.5 py-0.5 rounded border border-k-border-subtle whitespace-nowrap">
                                     {g.name}
                                 </span>
                             ))}
@@ -341,7 +341,7 @@ function ExerciseItemCard({
                     <div className="flex items-center gap-6">
                         {/* Sets */}
                         <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-bold text-k-text-tertiary uppercase tracking-wider">Séries</span>
+                            <span className="text-[10px] font-bold text-k-text-tertiary">Séries</span>
                             <input
                                 type="number"
                                 min={1}
@@ -356,7 +356,7 @@ function ExerciseItemCard({
 
                         {/* Reps */}
                         <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-bold text-k-text-tertiary uppercase tracking-wider">Reps</span>
+                            <span className="text-[10px] font-bold text-k-text-tertiary">Reps</span>
                             <input
                                 type="text"
                                 value={item.reps || ''}
@@ -369,7 +369,7 @@ function ExerciseItemCard({
 
                         {/* Rest */}
                         <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-bold text-k-text-tertiary uppercase tracking-wider">Descanso</span>
+                            <span className="text-[10px] font-bold text-k-text-tertiary">Descanso</span>
                             <div className="relative">
                                 <input
                                     type="number"
@@ -452,7 +452,7 @@ function SupersetChildCard({
 
                     <div className="flex items-center gap-4">
                         <div className="flex items-center gap-2">
-                            <span className="text-[9px] font-bold text-k-text-tertiary uppercase">Sets</span>
+                            <span className="text-[9px] font-bold text-k-text-tertiary">Sets</span>
                             <input
                                 type="number"
                                 min={1}
@@ -465,7 +465,7 @@ function SupersetChildCard({
                             />
                         </div>
                         <div className="flex items-center gap-2">
-                            <span className="text-[9px] font-bold text-k-text-tertiary uppercase">Reps</span>
+                            <span className="text-[9px] font-bold text-k-text-tertiary">Reps</span>
                             <input
                                 type="text"
                                 value={item.reps || ''}
@@ -505,7 +505,7 @@ function ExerciseFunctionSelect({
 }) {
     return (
         <div className="flex items-center gap-2 mt-2">
-            <span className="text-[10px] font-bold text-k-text-tertiary uppercase tracking-wider">Função</span>
+            <span className="text-[10px] font-bold text-k-text-tertiary">Função</span>
             <select
                 value={value || ''}
                 onChange={(e) => onChange(e.target.value || null)}
@@ -687,7 +687,7 @@ function SubstituteSelector({
                                                 <div className={`text-xs font-medium truncate transition-colors ${isSelected ? 'text-violet-300' : 'text-k-text-secondary group-hover/item:text-k-text-primary'}`}>
                                                     {exercise.name}
                                                 </div>
-                                                <div className="text-[9px] text-k-text-quaternary uppercase tracking-wider truncate mt-0.5">
+                                                <div className="text-[9px] text-k-text-quaternary truncate mt-0.5">
                                                     {(exercise.muscle_groups || []).map(g => g.name).join(', ') || 'Sem grupo'}
                                                 </div>
                                             </div>

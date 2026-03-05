@@ -127,19 +127,19 @@ export function StudentHeader({ student, onEdit, onDelete, children }: StudentHe
                             <h1 className="text-2xl font-black text-white tracking-tight truncate">{student.name}</h1>
                             <div className="flex items-center gap-2">
                                 {student.is_trainer_profile && (
-                                    <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded bg-violet-500/10 text-violet-300 border border-violet-500/20">
+                                    <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-violet-500/10 text-violet-600 dark:text-violet-300 border border-violet-500/20">
                                         Meu Perfil
                                     </span>
                                 )}
-                                <span className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded border ${statusConfig.classes}`}>
+                                <span className={`px-2 py-0.5 text-[10px] font-bold rounded border ${statusConfig.classes}`}>
                                     {statusConfig.label}
                                 </span>
                                 {student.modality === 'presential' ? (
-                                    <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded bg-violet-500/10 text-violet-300 border border-violet-500/30 flex items-center gap-1">
+                                    <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-violet-500/10 text-violet-600 dark:text-violet-300 border border-violet-500/30 flex items-center gap-1">
                                         Presencial
                                     </span>
                                 ) : (
-                                    <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded bg-glass-bg text-k-text-tertiary border border-k-border-primary flex items-center gap-1">
+                                    <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-glass-bg text-k-text-tertiary border border-k-border-primary flex items-center gap-1">
                                         Online
                                     </span>
                                 )}
@@ -169,7 +169,7 @@ export function StudentHeader({ student, onEdit, onDelete, children }: StudentHe
                     <div data-onboarding="student-header-actions" className="flex items-center gap-2 flex-shrink-0">
                         <button
                             onClick={onEdit}
-                            className="px-4 py-2 text-[11px] font-bold uppercase tracking-widest text-k-text-tertiary hover:text-k-text-primary hover:bg-glass-bg rounded-xl transition-all flex items-center gap-2 border border-k-border-subtle"
+                            className="px-4 py-2 text-[11px] font-bold text-k-text-tertiary hover:text-k-text-primary hover:bg-glass-bg rounded-xl transition-all flex items-center gap-2 border border-k-border-subtle"
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -185,7 +185,7 @@ export function StudentHeader({ student, onEdit, onDelete, children }: StudentHe
                                         setResetError(null)
                                         setShowResetConfirm(true)
                                     }}
-                                    className="px-4 py-2 text-[11px] font-bold uppercase tracking-widest text-k-text-tertiary hover:text-violet-400 hover:bg-violet-400/10 rounded-xl transition-all flex items-center gap-2 border border-k-border-subtle hover:border-violet-400/20"
+                                    className="px-4 py-2 text-[11px] font-bold text-k-text-tertiary hover:text-violet-600 dark:hover:text-violet-400 hover:bg-violet-400/10 rounded-xl transition-all flex items-center gap-2 border border-k-border-subtle hover:border-violet-400/20"
                                     title="Gerar Nova Senha"
                                 >
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -140,7 +140,7 @@ export function ActiveProgramCard({ program, onAssignProgram, onEditProgram, onC
                             <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md">{program.description}</p>
                         )}
                     </div>
-                    <span className={`px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider rounded-full border flex items-center gap-1.5 ${statusConfig.classes}`}>
+                    <span className={`px-2.5 py-1 text-[11px] font-bold rounded-full border flex items-center gap-1.5 ${statusConfig.classes}`}>
                         {statusConfig.icon}
                         {statusConfig.label}
                     </span>

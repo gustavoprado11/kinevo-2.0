@@ -361,12 +361,12 @@ export function StudentDetailClient({
                             <div className="flex items-center justify-between mb-3">
                                 <h3 className="text-sm font-semibold text-white flex items-center gap-2">
                                     Observações
-                                    <span className="px-2 py-0.5 rounded bg-glass-bg text-[10px] text-k-text-tertiary font-bold uppercase tracking-widest border border-k-border-subtle">
+                                    <span className="px-2 py-0.5 rounded bg-glass-bg text-[10px] text-k-text-tertiary font-bold border border-k-border-subtle">
                                         Notas
                                     </span>
                                 </h3>
                                 {notesSaving && (
-                                    <span className="text-[10px] font-bold uppercase tracking-widest text-k-text-quaternary animate-pulse">
+                                    <span className="text-[10px] font-bold text-k-text-quaternary animate-pulse">
                                         Salvando...
                                     </span>
                                 )}
@@ -384,7 +384,7 @@ export function StudentDetailClient({
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="text-sm font-semibold text-white flex items-center gap-2">
                                     Próximos Programas
-                                    <span className="px-2 py-0.5 rounded bg-glass-bg text-[10px] text-k-text-tertiary font-bold uppercase tracking-widest border border-k-border-subtle">
+                                    <span className="px-2 py-0.5 rounded bg-glass-bg text-[10px] text-k-text-tertiary font-bold border border-k-border-subtle">
                                         Fila
                                     </span>
                                 </h3>
@@ -455,7 +455,7 @@ export function StudentDetailClient({
                                             <div className="flex justify-between items-start">
                                                 <div className="relative z-10">
                                                     <h4 className="font-bold text-white text-sm group-hover:text-violet-300 transition-colors">{program.name}</h4>
-                                                    <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-widest text-k-text-quaternary mt-1">
+                                                    <div className="flex items-center gap-3 text-[10px] font-bold text-k-text-quaternary mt-1">
                                                         {program.duration_weeks && <span>{program.duration_weeks} sem</span>}
                                                         {program.scheduled_start_date && (
                                                             <span className="text-violet-400">

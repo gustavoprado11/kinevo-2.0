@@ -90,7 +90,7 @@ export function WeeklyPerformanceTracker({
                 <div className="flex items-center justify-between flex-1 max-w-md">
                     {days.map((day, idx) => (
                         <div key={idx} className="flex flex-col items-center gap-2">
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-k-text-quaternary">
+                            <span className="text-[10px] font-bold text-k-text-quaternary">
                                 {day.dayLabel}
                             </span>
 
@@ -147,16 +147,16 @@ export function WeeklyPerformanceTracker({
                 {/* Metrics Panel */}
                 <div className="flex items-center gap-10">
                     <div>
-                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-k-text-quaternary mb-1">Taxa de Adesão</p>
+                        <p className="text-[10px] font-bold text-k-text-quaternary mb-1">Taxa de Adesão</p>
                         <div className="flex items-baseline gap-1">
                             <span className="text-2xl font-black text-white">{metrics.rate}%</span>
                         </div>
                     </div>
                     <div>
-                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-k-text-quaternary mb-1">Streak</p>
+                        <p className="text-[10px] font-bold text-k-text-quaternary mb-1">Streak</p>
                         <div className="flex items-baseline gap-1">
                             <span className="text-2xl font-black text-violet-400">{metrics.streak}</span>
-                            <span className="text-[10px] font-bold text-k-text-tertiary uppercase tracking-widest">semanas</span>
+                            <span className="text-[10px] font-bold text-k-text-tertiary">semanas</span>
                         </div>
                     </div>
                 </div>

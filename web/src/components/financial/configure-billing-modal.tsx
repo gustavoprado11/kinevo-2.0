@@ -263,7 +263,7 @@ export function ConfigureBillingModal({
                 {/* Header */}
                 <div className="flex items-center justify-between border-b border-k-border-subtle bg-surface-inset px-8 py-6">
                     <div>
-                        <h2 className="text-xl font-bold text-white tracking-tight">
+                        <h2 className="text-xl font-bold text-k-text-primary tracking-tight">
                             {step === 'migration_alert' ? 'Alterar Cobrança' :
                              step === 'type' ? (mode === 'migrate' ? 'Novo tipo de cobrança' : 'Nova Cobrança') :
                              billingType === 'stripe_auto' ? 'Cobrar via Stripe' :
@@ -289,9 +289,9 @@ export function ConfigureBillingModal({
                         <div className="p-8 space-y-5">
                             <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-5">
                                 <div className="flex items-start gap-3">
-                                    <AlertTriangle size={20} className="text-amber-400 flex-shrink-0 mt-0.5" />
+                                    <AlertTriangle size={20} className="text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
                                     <div>
-                                        <h3 className="text-sm font-semibold text-amber-400 mb-2">
+                                        <h3 className="text-sm font-semibold text-amber-600 dark:text-amber-400 mb-2">
                                             Migração de cobrança
                                         </h3>
                                         <p className="text-xs text-k-text-secondary leading-relaxed">
@@ -335,7 +335,7 @@ export function ConfigureBillingModal({
                             >
                                 <div className="flex items-start gap-3">
                                     <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-violet-500/10">
-                                        <CreditCard size={20} className="text-violet-400" />
+                                        <CreditCard size={20} className="text-violet-600 dark:text-violet-400" />
                                     </div>
                                     <div className="flex-1">
                                         <h3 className="text-sm font-semibold text-k-text-primary">
@@ -346,7 +346,7 @@ export function ConfigureBillingModal({
                                         </p>
                                         {!hasStripeConnect && (
                                             <div className="mt-2">
-                                                <p className="text-xs text-amber-400 mb-2">
+                                                <p className="text-xs text-amber-600 dark:text-amber-400 mb-2">
                                                     Para cobrar via Stripe, você precisa conectar sua conta. Leva menos de 5 minutos.
                                                 </p>
                                                 <a
@@ -370,7 +370,7 @@ export function ConfigureBillingModal({
                             >
                                 <div className="flex items-start gap-3">
                                     <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-500/10">
-                                        <HandCoins size={20} className="text-blue-400" />
+                                        <HandCoins size={20} className="text-blue-600 dark:text-blue-400" />
                                     </div>
                                     <div className="flex-1">
                                         <h3 className="text-sm font-semibold text-k-text-primary">
@@ -391,7 +391,7 @@ export function ConfigureBillingModal({
                                 >
                                     <div className="flex items-start gap-3">
                                         <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-emerald-500/10">
-                                            <Heart size={20} className="text-emerald-400" />
+                                            <Heart size={20} className="text-emerald-600 dark:text-emerald-400" />
                                         </div>
                                         <div className="flex-1">
                                             <h3 className="text-sm font-semibold text-k-text-primary">
@@ -421,7 +421,7 @@ export function ConfigureBillingModal({
                     {step === 'details' && !checkoutUrl && (
                         <form onSubmit={handleSubmit} className="p-8 space-y-6">
                             {error && (
-                                <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl text-sm flex items-start gap-3">
+                                <div className="bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl text-sm flex items-start gap-3">
                                     <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
                                     <span>{error}</span>
                                 </div>
@@ -460,7 +460,7 @@ export function ConfigureBillingModal({
                                 {/* Courtesy — no extra form */}
                                 {billingType === 'courtesy' && (
                                     <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
-                                        <p className="text-xs text-emerald-400">
+                                        <p className="text-xs text-emerald-600 dark:text-emerald-400">
                                             {mode === 'migrate'
                                                 ? `A cobrança será encerrada e ${studentName || 'o aluno'} terá acesso gratuito.`
                                                 : `${studentName || 'O aluno'} terá acesso completo aos treinos sem nenhuma cobrança.`}
@@ -523,7 +523,7 @@ export function ConfigureBillingModal({
                                                     <button
                                                         type="button"
                                                         onClick={() => { setUseCustomAmount(true); setPlanId('') }}
-                                                        className="mt-2 text-xs text-violet-400 hover:text-violet-300 transition-colors"
+                                                        className="mt-2 text-xs text-violet-600 dark:text-violet-400 hover:text-violet-500 dark:hover:text-violet-300 transition-colors"
                                                     >
                                                         + Valor personalizado
                                                     </button>
@@ -545,7 +545,7 @@ export function ConfigureBillingModal({
                                                     <button
                                                         type="button"
                                                         onClick={() => { setUseCustomAmount(false); setCustomAmount('') }}
-                                                        className="mt-2 text-xs text-violet-400 hover:text-violet-300 transition-colors"
+                                                        className="mt-2 text-xs text-violet-600 dark:text-violet-400 hover:text-violet-500 dark:hover:text-violet-300 transition-colors"
                                                     >
                                                         Usar plano existente
                                                     </button>
@@ -571,7 +571,7 @@ export function ConfigureBillingModal({
                                                         onClick={() => setRecurrence(opt.key)}
                                                         className={`py-2 text-xs font-medium rounded-lg border transition-all ${
                                                             recurrence === opt.key
-                                                                ? 'border-violet-500/50 bg-violet-500/10 text-violet-400'
+                                                                ? 'border-violet-500/50 bg-violet-500/10 text-violet-600 dark:text-violet-400'
                                                                 : 'border-k-border-subtle bg-glass-bg text-k-text-secondary hover:border-k-border-primary'
                                                         }`}
                                                     >
@@ -664,7 +664,7 @@ export function ConfigureBillingModal({
                         <div className="p-8 space-y-5">
                             <div className="text-center">
                                 <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-emerald-500/10 mx-auto mb-3">
-                                    <Check size={22} className="text-emerald-400" />
+                                    <Check size={22} className="text-emerald-600 dark:text-emerald-400" />
                                 </div>
                                 <h3 className="text-base font-semibold text-k-text-primary mb-1">
                                     Link de pagamento pronto
@@ -689,7 +689,7 @@ export function ConfigureBillingModal({
                                     title="Copiar link"
                                 >
                                     {copied ? (
-                                        <Check size={14} className="text-emerald-400" />
+                                        <Check size={14} className="text-emerald-600 dark:text-emerald-400" />
                                     ) : (
                                         <Copy size={14} className="text-k-text-quaternary" />
                                     )}

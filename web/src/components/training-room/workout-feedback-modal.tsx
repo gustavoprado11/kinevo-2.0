@@ -67,7 +67,7 @@ export function WorkoutFeedbackModal({
                 <div className="p-5 space-y-5">
                     {/* RPE */}
                     <div>
-                        <p className="text-[11px] uppercase tracking-widest font-semibold text-muted-foreground/60 mb-3">
+                        <p className="text-[11px] font-semibold text-muted-foreground/60 mb-3">
                             Percepção de Esforço (PSE)
                         </p>
                         <div className="grid grid-cols-5 gap-1.5">
@@ -99,7 +99,7 @@ export function WorkoutFeedbackModal({
 
                     {/* Feedback text */}
                     <div>
-                        <p className="text-[11px] uppercase tracking-widest font-semibold text-muted-foreground/60 mb-2">
+                        <p className="text-[11px] font-semibold text-muted-foreground/60 mb-2">
                             Observações (opcional)
                         </p>
                         <textarea

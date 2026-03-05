@@ -166,7 +166,7 @@ export function StudentModal({
                                 <h2 className="text-xl font-bold text-white tracking-tight">
                                     {isEdit ? 'Editar Aluno' : 'Novo Aluno'}
                                 </h2>
-                                <p className="text-xs text-muted-foreground/60 uppercase tracking-widest font-semibold mt-1">
+                                <p className="text-xs text-muted-foreground/60 font-semibold mt-1">
                                     {isEdit ? 'Atualize as informações' : 'Adicione um novo aluno'}
                                 </p>
                             </div>
@@ -191,7 +191,7 @@ export function StudentModal({
 
                             <div className="space-y-5">
                                 <div>
-                                    <label htmlFor="name" className="mb-1.5 block text-[11px] font-bold text-k-text-tertiary uppercase tracking-wider">
+                                    <label htmlFor="name" className="mb-1.5 block text-[11px] font-bold text-k-text-tertiary">
                                         Nome completo <span className="text-violet-500">*</span>
                                     </label>
                                     <div className="relative group">
@@ -209,7 +209,7 @@ export function StudentModal({
                                 </div>
 
                                 <div>
-                                    <label htmlFor="email" className="mb-1.5 block text-[11px] font-bold text-k-text-quaternary dark:text-white/40 uppercase tracking-wider">
+                                    <label htmlFor="email" className="mb-1.5 block text-[11px] font-bold text-k-text-quaternary">
                                         Email <span className="text-violet-500">*</span>
                                     </label>
                                     <div className="relative group">
@@ -227,7 +227,7 @@ export function StudentModal({
                                 </div>
 
                                 <div>
-                                    <label htmlFor="phone" className="mb-1.5 block text-[11px] font-bold text-k-text-quaternary dark:text-white/40 uppercase tracking-wider">
+                                    <label htmlFor="phone" className="mb-1.5 block text-[11px] font-bold text-k-text-quaternary">
                                         Telefone <span className="font-medium text-k-text-quaternary ml-1">(WhatsApp)</span>
                                     </label>
                                     <div className="relative group">
@@ -244,7 +244,7 @@ export function StudentModal({
                                 </div>
 
                                 <div>
-                                    <label className="mb-2 block text-[11px] font-bold text-k-text-quaternary dark:text-white/40 uppercase tracking-wider">
+                                    <label className="mb-2 block text-[11px] font-bold text-k-text-quaternary">
                                         Modalidade
                                     </label>
                                     <div className="grid grid-cols-2 gap-1 bg-surface-inset p-1 rounded-xl">

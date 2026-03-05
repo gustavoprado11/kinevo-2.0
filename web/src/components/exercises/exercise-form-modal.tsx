@@ -189,7 +189,7 @@ export function ExerciseFormModal({ isOpen, onClose, onSuccess, exercise, traine
                         <h2 className="text-xl font-bold text-white tracking-tight">
                             {isEditing ? 'Editar Exercício' : 'Novo Exercício'}
                         </h2>
-                        <p className="text-xs text-muted-foreground/60 uppercase tracking-widest font-semibold mt-1">
+                        <p className="text-xs text-muted-foreground/60 font-semibold mt-1">
                             {isEditing ? 'Atualize os detalhes do exercício' : 'Adicione um novo exercício à biblioteca'}
                         </p>
                     </div>
@@ -204,7 +204,7 @@ export function ExerciseFormModal({ isOpen, onClose, onSuccess, exercise, traine
                 <div className="p-6 pt-2 space-y-6 overflow-y-auto scrollbar-hide">
                     {/* Name */}
                     <div>
-                        <label className="block text-[11px] font-bold text-k-text-tertiary uppercase tracking-widest mb-1.5">
+                        <label className="block text-[11px] font-bold text-k-text-tertiary mb-1.5">
                             Nome do Exercício
                         </label>
                         <input
@@ -218,7 +218,7 @@ export function ExerciseFormModal({ isOpen, onClose, onSuccess, exercise, traine
 
                     {/* Muscle Groups - Creatable MultiSelect */}
                     <div>
-                        <label className="block text-[11px] font-bold text-k-text-tertiary uppercase tracking-widest mb-1.5">
+                        <label className="block text-[11px] font-bold text-k-text-tertiary mb-1.5">
                             Grupos Musculares
                         </label>
                         <CreatableMultiSelect
@@ -238,7 +238,7 @@ export function ExerciseFormModal({ isOpen, onClose, onSuccess, exercise, traine
 
                     {/* Equipment */}
                     <div>
-                        <label className="block text-[11px] font-bold text-k-text-tertiary uppercase tracking-widest mb-1.5">
+                        <label className="block text-[11px] font-bold text-k-text-tertiary mb-1.5">
                             Equipamento (Opcional)
                         </label>
                         <input
@@ -252,7 +252,7 @@ export function ExerciseFormModal({ isOpen, onClose, onSuccess, exercise, traine
 
                     {/* Video URL */}
                     <div>
-                        <label className="block text-[11px] font-bold text-k-text-tertiary uppercase tracking-widest mb-1.5">
+                        <label className="block text-[11px] font-bold text-k-text-tertiary mb-1.5">
                             Link do Vídeo (YouTube/Vimeo)
                         </label>
                         <input
@@ -271,7 +271,7 @@ export function ExerciseFormModal({ isOpen, onClose, onSuccess, exercise, traine
 
                     {/* Instructions */}
                     <div>
-                        <label className="block text-[11px] font-bold text-k-text-tertiary uppercase tracking-widest mb-1.5">
+                        <label className="block text-[11px] font-bold text-k-text-tertiary mb-1.5">
                             Instruções (Opcional)
                         </label>
                         <textarea
@@ -394,7 +394,7 @@ function CreatableMultiSelect({ availableGroups, selectedGroups, onChange, onCre
                 }}
             >
                 {selectedGroups.map(group => (
-                    <span key={group.id} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-violet-500/10 text-violet-300 text-[11px] font-bold uppercase tracking-wider border border-violet-500/20">
+                    <span key={group.id} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-300 text-[11px] font-bold border border-violet-500/20">
                         {group.name}
                         <button
                             type="button"
@@ -456,7 +456,7 @@ function CreatableMultiSelect({ availableGroups, selectedGroups, onChange, onCre
                                 <button
                                     onClick={handleCreate}
                                     disabled={isCreating}
-                                    className="w-full px-4 py-3 text-left text-sm text-violet-300 hover:bg-violet-500/10 flex items-center gap-2 border-t border-k-border-subtle transition-colors"
+                                    className="w-full px-4 py-3 text-left text-sm text-violet-600 dark:text-violet-300 hover:bg-violet-500/10 flex items-center gap-2 border-t border-k-border-subtle transition-colors"
                                 >
                                     {isCreating ? (
                                         <Loader2 className="w-4 h-4 animate-spin" />

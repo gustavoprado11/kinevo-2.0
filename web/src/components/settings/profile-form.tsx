@@ -133,17 +133,17 @@ export function ProfileForm({ trainer }: ProfileFormProps) {
                         <button
                             type="button"
                             onClick={handleChooseAvatar}
-                            className="mt-4 inline-flex items-center gap-2 rounded-xl border border-k-border-primary bg-glass-bg px-4 py-2 text-xs font-bold text-k-text-primary uppercase tracking-wider hover:bg-glass-bg-active transition-all"
+                            className="mt-4 inline-flex items-center gap-2 rounded-xl border border-k-border-primary bg-glass-bg px-4 py-2 text-xs font-bold text-k-text-primary hover:bg-glass-bg-active transition-all"
                         >
                             <Camera size={14} />
                             Alterar foto
                         </button>
-                        <p className="mt-2 text-[10px] uppercase tracking-widest font-bold text-k-text-quaternary">PNG, JPG ou WEBP.</p>
+                        <p className="mt-2 text-[10px] font-bold text-k-text-quaternary">PNG, JPG ou WEBP.</p>
                     </div>
 
                     <div className="space-y-4 pt-1">
                         <div>
-                            <label htmlFor="name" className="mb-1.5 block text-[11px] font-bold text-k-text-tertiary uppercase tracking-widest">
+                            <label htmlFor="name" className="mb-1.5 block text-[11px] font-bold text-k-text-tertiary">
                                 Nome
                             </label>
                             <input
@@ -160,7 +160,7 @@ export function ProfileForm({ trainer }: ProfileFormProps) {
                         </div>
 
                         <div>
-                            <label htmlFor="email" className="mb-1.5 block text-[11px] font-bold text-k-text-tertiary uppercase tracking-widest">
+                            <label htmlFor="email" className="mb-1.5 block text-[11px] font-bold text-k-text-tertiary">
                                 Email
                             </label>
                             <input

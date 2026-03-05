@@ -113,7 +113,7 @@ export function BlockedClient({ trainerName, state }: BlockedClientProps) {
                     <button
                         onClick={handleAction}
                         disabled={loading}
-                        className="w-full py-3 px-4 bg-violet-600 hover:bg-violet-500 disabled:bg-violet-600/50 disabled:cursor-not-allowed text-white text-[11px] font-black uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-violet-600/20 hover:shadow-violet-500/30"
+                        className="w-full py-3 px-4 bg-violet-600 hover:bg-violet-500 disabled:bg-violet-600/50 disabled:cursor-not-allowed text-white text-[11px] font-black rounded-xl transition-all shadow-lg shadow-violet-600/20 hover:shadow-violet-500/30"
                     >
                         {loading ? 'Processando...' : config.buttonText}
                     </button>

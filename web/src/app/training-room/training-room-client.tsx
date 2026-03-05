@@ -374,7 +374,7 @@ export function TrainingRoomClient({ trainerId }: TrainingRoomClientProps) {
                                             if (item.type !== 'note' && itemFunction && itemFunction !== lastFunction) {
                                                 finalNodes.push(
                                                     <div key={`section-${itemFunction}-${idx}`} className="flex items-center gap-3 pt-4 pb-1">
-                                                        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
+                                                        <span className="text-[10px] font-bold text-muted-foreground/50">
                                                             {FUNCTION_LABELS[itemFunction] || itemFunction}
                                                         </span>
                                                         <div className="flex-1 h-px bg-k-border-subtle" />
