@@ -18,8 +18,10 @@ export function StudentAccessDialog({ isOpen, onClose, studentData }: StudentAcc
 
     if (!isOpen || !studentData) return null
 
+    const iosLink = 'https://apps.apple.com/br/app/kinevo/id6759053587'
+
     const handleCopy = () => {
-        const text = `Olá ${studentData.name}, aqui estão seus dados de acesso ao Kinevo:\n\n📧 Login: ${studentData.email}\n🔑 Senha: ${studentData.password}\n\nBaixe o app e comece seus treinos!`
+        const text = `Olá ${studentData.name}, aqui estão seus dados de acesso ao Kinevo:\n\n📧 Login: ${studentData.email}\n🔑 Senha: ${studentData.password}\n\nBaixe o app e comece seus treinos!\n\n📱 iPhone (App Store): ${iosLink}\n🤖 Android (Play Store): Em breve!`
         navigator.clipboard.writeText(text)
         setCopied(true)
         setTimeout(() => setCopied(false), 2000)
@@ -27,7 +29,7 @@ export function StudentAccessDialog({ isOpen, onClose, studentData }: StudentAcc
 
     const handleWhatsApp = () => {
         const message = encodeURIComponent(
-            `Olá ${studentData.name}, aqui estão seus dados de acesso ao Kinevo:\n\n📧 *Login*: ${studentData.email}\n🔑 *Senha*: ${studentData.password}\n\nBaixe o app e comece seus treinos! 🚀`
+            `Ola ${studentData.name}, aqui estao seus dados de acesso ao Kinevo:\n\n*Login:* ${studentData.email}\n*Senha:* ${studentData.password}\n\nBaixe o app e comece seus treinos!\n\n*iPhone (App Store):* ${iosLink}\n*Android (Play Store):* Em breve!`
         )
         const phone = studentData.whatsapp?.replace(/\D/g, '') || ''
         window.open(`https://wa.me/55${phone}?text=${message}`, '_blank')
