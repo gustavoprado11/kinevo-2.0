@@ -3,10 +3,11 @@ import { View, Text, Alert, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../contexts/AuthContext";
 import { useStudentProfile } from "../../hooks/useStudentProfile";
+import { useRoleMode } from "../../contexts/RoleModeContext";
 import { AvatarPicker } from "../../components/profile/AvatarPicker";
 import { useRouter } from "expo-router";
 import Animated, { FadeInUp, FadeIn, Easing } from "react-native-reanimated";
-import { LogOut, Settings, HelpCircle, Shield, ChevronRight, CreditCard } from "lucide-react-native";
+import { LogOut, Settings, HelpCircle, Shield, ChevronRight, CreditCard, Users } from "lucide-react-native";
 import { PressableScale } from "../../components/shared/PressableScale";
 
 // ── Menu item config with semantic colors ──
@@ -49,6 +50,7 @@ export default function ProfileScreen() {
     const router = useRouter();
     const { user, signOut } = useAuth();
     const { profile, isUploading, updateAvatar } = useStudentProfile();
+    const { isTrainer, switchToTrainer, subscriptionStatus } = useRoleMode();
 
     const handleSignOut = async () => {
         Alert.alert(
@@ -198,6 +200,71 @@ export default function ProfileScreen() {
                         ))}
                     </View>
                 </Animated.View>
+
+                {/* ── Trainer Mode CTA ── */}
+                {isTrainer && (
+                    <Animated.View entering={FadeInUp.delay(150).duration(400).easing(Easing.out(Easing.cubic))}>
+                        <PressableScale
+                            onPress={() => {
+                                switchToTrainer();
+                                if (subscriptionStatus !== "active" && subscriptionStatus !== "trialing") {
+                                    router.replace("/trainer-subscription-blocked");
+                                } else {
+                                    router.replace("/(trainer-tabs)/dashboard");
+                                }
+                            }}
+                            pressScale={0.97}
+                            style={{
+                                marginBottom: 24,
+                                borderRadius: 20,
+                                overflow: 'hidden',
+                                shadowColor: '#7c3aed',
+                                shadowOffset: { width: 0, height: 4 },
+                                shadowOpacity: 0.12,
+                                shadowRadius: 12,
+                                elevation: 4,
+                            }}
+                        >
+                            <View
+                                style={{
+                                    backgroundColor: '#f5f3ff',
+                                    flexDirection: "row",
+                                    alignItems: "center",
+                                    paddingVertical: 16,
+                                    paddingHorizontal: 20,
+                                    borderRadius: 20,
+                                    borderWidth: 1,
+                                    borderColor: 'rgba(124, 58, 237, 0.12)',
+                                }}
+                            >
+                                <View
+                                    style={{
+                                        height: 32,
+                                        width: 32,
+                                        borderRadius: 8,
+                                        backgroundColor: "rgba(124, 58, 237, 0.12)",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        marginRight: 14,
+                                    }}
+                                >
+                                    <Users size={16} color="#7c3aed" strokeWidth={2} />
+                                </View>
+                                <Text
+                                    style={{
+                                        fontSize: 16,
+                                        fontWeight: "600",
+                                        color: "#7c3aed",
+                                        flex: 1,
+                                    }}
+                                >
+                                    Modo Treinador
+                                </Text>
+                                <ChevronRight size={16} color="#a78bfa" strokeWidth={1.5} />
+                            </View>
+                        </PressableScale>
+                    </Animated.View>
+                )}
 
                 {/* ── Logout (Destructive Action) ── */}
                 <Animated.View entering={FadeInUp.delay(200).duration(400).easing(Easing.out(Easing.cubic))}>

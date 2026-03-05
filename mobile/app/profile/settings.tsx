@@ -1,28 +1,17 @@
 import { View, Text, Alert, Switch, Linking, ScrollView } from "react-native";
 import { Stack, useRouter } from "expo-router";
-import { useState, useCallback } from "react";
-import { Bell, KeyRound, Info, Heart, ExternalLink, Users, ChevronRight } from "lucide-react-native";
+import { useState } from "react";
+import { Bell, KeyRound, Info, Heart, ExternalLink } from "lucide-react-native";
 import Constants from "expo-constants";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../contexts/AuthContext";
-import { useRoleMode } from "../../contexts/RoleModeContext";
 import { TouchableOpacity } from "react-native";
 
 export default function SettingsScreen() {
     const { user } = useAuth();
-    const { isTrainer, switchToTrainer, subscriptionStatus } = useRoleMode();
     const router = useRouter();
     const [notificationsEnabled, setNotificationsEnabled] = useState(false);
     const appVersion = Constants.expoConfig?.version ?? "1.0.0";
-
-    const handleSwitchToTrainer = useCallback(() => {
-        switchToTrainer();
-        if (subscriptionStatus !== "active" && subscriptionStatus !== "trialing") {
-            router.replace("/trainer-subscription-blocked");
-        } else {
-            router.replace("/(trainer-tabs)/dashboard");
-        }
-    }, [switchToTrainer, subscriptionStatus, router]);
 
     const handleResetPassword = () => {
         if (!user?.email) return;
@@ -134,40 +123,6 @@ export default function SettingsScreen() {
                         </Text>
                     </TouchableOpacity>
 
-                    {/* Trainer Mode Toggle — only visible for trainers */}
-                    {isTrainer && (
-                        <>
-                            <View style={{ height: 1, backgroundColor: "#f1f5f9", marginHorizontal: 20 }} />
-                            <TouchableOpacity
-                                onPress={handleSwitchToTrainer}
-                                activeOpacity={0.6}
-                                style={{
-                                    flexDirection: "row",
-                                    alignItems: "center",
-                                    paddingVertical: 16,
-                                    paddingHorizontal: 20,
-                                }}
-                            >
-                                <View
-                                    style={{
-                                        height: 40,
-                                        width: 40,
-                                        borderRadius: 12,
-                                        backgroundColor: "#f5f3ff",
-                                        alignItems: "center",
-                                        justifyContent: "center",
-                                        marginRight: 14,
-                                    }}
-                                >
-                                    <Users size={20} color="#7c3aed" strokeWidth={1.5} />
-                                </View>
-                                <Text style={{ fontSize: 14, fontWeight: "500", color: "#0f172a", flex: 1 }}>
-                                    Modo Treinador
-                                </Text>
-                                <ChevronRight size={18} color="#94a3b8" />
-                            </TouchableOpacity>
-                        </>
-                    )}
                 </View>
 
                 {/* Apple Health Integration */}
