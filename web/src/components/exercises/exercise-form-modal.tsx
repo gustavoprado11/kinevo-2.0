@@ -146,7 +146,23 @@ export function ExerciseFormModal({ isOpen, onClose, onSuccess, exercise, traine
                 if (linkError) throw linkError
             }
 
-            onSuccess()
+            // Build the full Exercise object for the callback
+            const savedExercise = {
+                id: savedExerciseId,
+                name: name.trim(),
+                muscle_groups: selectedMuscleGroups,
+                equipment: equipment.trim() || null,
+                video_url: videoUrl.trim() || null,
+                thumbnail_url: null,
+                instructions: instructions.trim() || null,
+                owner_id: isEditing ? (exercise?.owner_id ?? null) : trainerId,
+                original_system_id: null,
+                is_archived: false,
+                created_at: exercise?.created_at || new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+            }
+
+            onSuccess(savedExercise)
             onClose()
         } catch (err: any) {
             console.error('Error saving exercise:', err)

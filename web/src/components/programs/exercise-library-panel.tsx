@@ -290,8 +290,10 @@ export function ExerciseLibraryPanel({
                 onSuccess={(newExercise) => {
                     if (onExerciseCreated && newExercise) {
                         onExerciseCreated(newExercise)
+                        setSearchQuery(newExercise.name)
+                    } else {
+                        setSearchQuery('')
                     }
-                    setSearchQuery('')
                 }}
                 trainerId={trainerId}
                 defaultName={searchQuery}
