@@ -5,12 +5,19 @@ import { assignProgram } from '@/app/students/[id]/actions/assign-program'
 import { getTrainerPrograms } from '@/app/students/[id]/actions/get-trainer-programs'
 import { useOnboardingStore } from '@/stores/onboarding-store'
 
+interface WorkoutTemplateInfo {
+    id: string
+    name: string
+    frequency: string[] | null
+}
+
 interface ProgramTemplate {
     id: string
     name: string
     description: string | null
     duration_weeks: number | null
     workout_count: number
+    workouts: WorkoutTemplateInfo[]
 }
 
 interface AssignProgramModalProps {
@@ -257,6 +264,26 @@ export function AssignProgramModal({
                                     </div>
                                 </div>
                             </div>
+
+                            {/* Missing frequency warning */}
+                            {selectedTemplate.workouts.some(w => !w.frequency || w.frequency.length === 0) && (
+                                <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 flex gap-3">
+                                    <AlertCircle className="text-amber-400 shrink-0 mt-0.5" size={18} strokeWidth={1.5} />
+                                    <div>
+                                        <p className="text-sm font-bold text-amber-300 mb-1">Treino sem dia agendado</p>
+                                        <p className="text-xs text-amber-200/60 leading-relaxed font-medium">
+                                            {(() => {
+                                                const missing = selectedTemplate.workouts.filter(w => !w.frequency || w.frequency.length === 0)
+                                                const total = selectedTemplate.workouts.length
+                                                const visible = total - missing.length
+                                                return missing.length === 1
+                                                    ? `O treino "${missing[0].name}" não tem dia da semana. ${studentName} verá ${visible} de ${total} treinos no calendário.`
+                                                    : `${missing.length} treinos sem dia da semana. ${studentName} verá ${visible} de ${total} treinos no calendário.`
+                                            })()}
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Apple-style Info Alert */}
                             <div className="bg-amber-500/5 border border-amber-500/10 rounded-2xl p-4 flex gap-4">

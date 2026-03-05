@@ -1,3 +1,5 @@
+// TODO: Fase 5+ — replicar validação de frequency no wizard mobile de atribuição (AssignProgramWizard.tsx)
+// Verificar se workouts do template têm scheduled_days vazio e alertar o treinador antes de atribuir.
 import React, { useState, useCallback } from "react";
 import * as Haptics from "expo-haptics";
 import {

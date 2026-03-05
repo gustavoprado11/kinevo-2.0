@@ -163,11 +163,13 @@ function ActionsMenu({
 function ApplyToStudentDialog({
     templateId,
     templateName,
+    templateWorkouts,
     onClose,
     onSuccess,
 }: {
     templateId: string
     templateName: string
+    templateWorkouts?: WorkoutInfo[]
     onClose: () => void
     onSuccess: () => void
 }) {
@@ -278,6 +280,21 @@ function ApplyToStudentDialog({
                     )}
                 </div>
 
+                {/* Missing frequency warning */}
+                {templateWorkouts && templateWorkouts.some(w => !w.frequency || w.frequency.length === 0) && (
+                    <div className="mx-4 mt-3 flex items-start gap-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl p-3">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0 mt-1.5" />
+                        <p className="text-xs text-amber-400 font-medium">
+                            {(() => {
+                                const missing = templateWorkouts.filter(w => !w.frequency || w.frequency.length === 0)
+                                return missing.length === 1
+                                    ? `O treino "${missing[0].name}" não tem dia da semana — o aluno não o verá no calendário.`
+                                    : `${missing.length} treinos sem dia da semana — o aluno não os verá no calendário.`
+                            })()}
+                        </p>
+                    </div>
+                )}
+
                 {/* Mode Selection */}
                 <div className="p-4 border-t border-k-border-subtle space-y-2">
                     <p className="text-[10px] font-bold uppercase tracking-widest text-k-text-quaternary mb-2">Como aplicar?</p>
@@ -331,7 +348,7 @@ export function ProgramsClient({ trainer, programs: initialPrograms }: ProgramsC
     const [expandedId, setExpandedId] = useState<string | null>(null)
     const [deleting, setDeleting] = useState<string | null>(null)
     const [duplicating, setDuplicating] = useState<string | null>(null)
-    const [applyingTemplate, setApplyingTemplate] = useState<{ id: string; name: string } | null>(null)
+    const [applyingTemplate, setApplyingTemplate] = useState<{ id: string; name: string; workouts: WorkoutInfo[] } | null>(null)
 
     useEffect(() => {
         setPrograms(initialPrograms)
@@ -447,6 +464,7 @@ export function ProgramsClient({ trainer, programs: initialPrograms }: ProgramsC
                             const isExpanded = expandedId === program.id
                             const shownGroups = program.muscle_groups.slice(0, 4)
                             const hiddenCount = program.muscle_groups.length - shownGroups.length
+                            const missingDaysCount = program.workouts.filter(w => !w.frequency || w.frequency.length === 0).length
 
                             return (
                                 <div
@@ -463,7 +481,7 @@ export function ProgramsClient({ trainer, programs: initialPrograms }: ProgramsC
                                             <ActionsMenu
                                                 onEdit={() => handleEdit(program.id)}
                                                 onDuplicate={() => handleDuplicate(program.id)}
-                                                onApply={() => setApplyingTemplate({ id: program.id, name: program.name })}
+                                                onApply={() => setApplyingTemplate({ id: program.id, name: program.name, workouts: program.workouts })}
                                                 onDelete={() => handleDelete(program.id)}
                                                 isDeleting={deleting === program.id}
                                                 isDuplicating={duplicating === program.id}
@@ -475,6 +493,16 @@ export function ProgramsClient({ trainer, programs: initialPrograms }: ProgramsC
                                             {program.duration_weeks && `${program.duration_weeks} semanas · `}
                                             {program.workout_count} treinos · {program.exercise_count} exercícios
                                         </p>
+
+                                        {/* Missing days warning */}
+                                        {missingDaysCount > 0 && (
+                                            <div className="flex items-center gap-1.5 mb-3 text-amber-400">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+                                                <span className="text-[10px] font-bold uppercase tracking-wider">
+                                                    {missingDaysCount} treino{missingDaysCount > 1 ? 's' : ''} sem dia
+                                                </span>
+                                            </div>
+                                        )}
 
                                         {/* Muscle Groups */}
                                         {program.muscle_groups.length > 0 && (
@@ -501,7 +529,7 @@ export function ProgramsClient({ trainer, programs: initialPrograms }: ProgramsC
                                                             <span className="text-sm text-k-text-secondary font-medium truncate">{workout.name}</span>
                                                             <div className="flex items-center gap-3 text-[11px] text-k-text-quaternary shrink-0 ml-3">
                                                                 <span>{workout.exerciseCount} ex.</span>
-                                                                {freq && <span>{freq}</span>}
+                                                                {freq ? <span>{freq}</span> : <span className="text-amber-400 font-medium">Sem dia</span>}
                                                             </div>
                                                         </div>
                                                     )
@@ -531,6 +559,7 @@ export function ProgramsClient({ trainer, programs: initialPrograms }: ProgramsC
                 <ApplyToStudentDialog
                     templateId={applyingTemplate.id}
                     templateName={applyingTemplate.name}
+                    templateWorkouts={applyingTemplate.workouts}
                     onClose={() => setApplyingTemplate(null)}
                     onSuccess={() => router.refresh()}
                 />

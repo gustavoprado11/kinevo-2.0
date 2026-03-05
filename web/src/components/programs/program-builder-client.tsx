@@ -118,6 +118,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
     const [templateName, setTemplateName] = useState('')
     const [alsoActivate, setAlsoActivate] = useState(false)
     const [savingTemplate, setSavingTemplate] = useState(false)
+    const [frequencyWarning, setFrequencyWarning] = useState<{ workoutNames: string[], onConfirm: () => void } | null>(null)
 
     // Helper to calculate end date from weeks
     const calculateEndDate = useCallback((start: string, weeksStr: string) => {
@@ -263,6 +264,11 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
     const activeWorkout = useMemo(() =>
         workouts.find(w => w.id === activeWorkoutId) || null
         , [workouts, activeWorkoutId])
+
+    const workoutsWithoutDays = useMemo(() =>
+        workouts.filter(w => !w.frequency || w.frequency.length === 0),
+        [workouts]
+    )
 
     const occupiedDays = useMemo(() => {
         const days = new Set<string>()
@@ -629,13 +635,28 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
 
 
     // Save program — overrideType allows buttons to pass the assignment type directly
-    const saveProgram = async (overrideType?: 'immediate' | 'scheduled') => {
+    const saveProgram = async (overrideType?: 'immediate' | 'scheduled', skipFrequencyCheck = false) => {
         const effectiveAssignmentType = overrideType ?? assignmentType
         if (!name.trim()) {
             setError('Por favor, preencha o nome do programa.')
             setNameShake(true)
             setTimeout(() => setNameShake(false), 600)
             return
+        }
+
+        // Check for workouts without scheduled days
+        if (!skipFrequencyCheck) {
+            const missing = workouts.filter(w => !w.frequency || w.frequency.length === 0)
+            if (missing.length > 0) {
+                setFrequencyWarning({
+                    workoutNames: missing.map(w => w.name),
+                    onConfirm: () => {
+                        setFrequencyWarning(null)
+                        saveProgram(overrideType, true)
+                    }
+                })
+                return
+            }
         }
 
         setSaving(true)
@@ -804,8 +825,23 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
     }
 
     // Save current program structure as a reusable template
-    const saveAsTemplate = async () => {
+    const saveAsTemplate = async (skipFrequencyCheck = false) => {
         if (!templateName.trim()) return
+
+        // Check for workouts without scheduled days
+        if (!skipFrequencyCheck) {
+            const missing = workouts.filter(w => !w.frequency || w.frequency.length === 0)
+            if (missing.length > 0) {
+                setFrequencyWarning({
+                    workoutNames: missing.map(w => w.name),
+                    onConfirm: () => {
+                        setFrequencyWarning(null)
+                        saveAsTemplate(true)
+                    }
+                })
+                return
+            }
+        }
 
         setSavingTemplate(true)
         setError(null)
@@ -1105,6 +1141,19 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
 
                     {/* Right Panel: Canvas */}
                     <div className="flex-1 flex flex-col min-w-0 bg-surface-canvas">
+                        {/* Missing days warning banner */}
+                        {workoutsWithoutDays.length > 0 && (
+                            <button
+                                onClick={() => setActiveWorkoutId(workoutsWithoutDays[0].id)}
+                                className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border-b border-amber-500/20 text-amber-400 text-xs font-medium hover:bg-amber-500/15 transition-colors"
+                            >
+                                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                                {workoutsWithoutDays.length === 1
+                                    ? `${workoutsWithoutDays[0].name} não tem dia da semana agendado`
+                                    : `${workoutsWithoutDays.length} treinos sem dia da semana agendado`
+                                }
+                            </button>
+                        )}
                         {/* Workout Tabs (Sortable Segmented Control) */}
                         <div data-onboarding="program-workouts" className="flex items-center gap-1 p-4 overflow-x-auto no-scrollbar border-b border-k-border-subtle bg-surface-canvas">
                             <DndContext sensors={tabSensors} collisionDetection={closestCenter} onDragEnd={handleWorkoutDragEnd}>
@@ -1123,6 +1172,9 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                                     `}
                                                 >
                                                     {workout.name}
+                                                    {(!workout.frequency || workout.frequency.length === 0) && (
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" title="Sem dia da semana selecionado" />
+                                                    )}
                                                     {activeWorkoutId === workout.id && (
                                                         <span className="flex items-center gap-0.5 ml-1 border-l border-k-border-subtle pl-2">
                                                             <span
@@ -1206,6 +1258,52 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                     </div>
                 </div>
             </div>
+
+            {/* Frequency warning modal */}
+            {frequencyWarning && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setFrequencyWarning(null)} />
+                    <div className="relative bg-surface-card border border-k-border-primary rounded-2xl shadow-2xl p-6 max-w-md w-full animate-in zoom-in-95 fade-in duration-200">
+                        <div className="w-12 h-12 bg-amber-500/10 rounded-xl flex items-center justify-center mb-4 mx-auto">
+                            <AlertCircle className="w-6 h-6 text-amber-400" />
+                        </div>
+                        <h3 className="text-lg font-bold text-white text-center mb-2">Treino sem dia agendado</h3>
+                        <p className="text-sm text-k-text-tertiary text-center mb-1">
+                            {frequencyWarning.workoutNames.length === 1
+                                ? `O treino "${frequencyWarning.workoutNames[0]}" não tem dia da semana selecionado.`
+                                : `Os treinos ${frequencyWarning.workoutNames.map(n => `"${n}"`).join(' e ')} não têm dia da semana selecionado.`
+                            }
+                        </p>
+                        {isStudentContext && (
+                            <p className="text-xs text-amber-400/80 text-center mb-4">
+                                O aluno não verá {frequencyWarning.workoutNames.length === 1 ? 'esse treino' : 'esses treinos'} no calendário.
+                            </p>
+                        )}
+                        {!isStudentContext && <div className="mb-4" />}
+                        <p className="text-xs text-k-text-quaternary text-center mb-6">
+                            Alunos que receberem este programa não verão {frequencyWarning.workoutNames.length === 1 ? 'esse treino' : 'esses treinos'} no calendário.
+                        </p>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => {
+                                    setFrequencyWarning(null)
+                                    const firstMissing = workouts.find(w => !w.frequency || w.frequency.length === 0)
+                                    if (firstMissing) setActiveWorkoutId(firstMissing.id)
+                                }}
+                                className="flex-1 py-3 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-xs font-bold uppercase tracking-wider rounded-xl transition-colors border border-amber-500/20"
+                            >
+                                Corrigir agora
+                            </button>
+                            <button
+                                onClick={frequencyWarning.onConfirm}
+                                className="flex-1 py-3 bg-glass-bg hover:bg-glass-bg-active text-k-text-secondary text-xs font-bold uppercase tracking-wider rounded-xl transition-colors border border-k-border-subtle"
+                            >
+                                Salvar assim mesmo
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Tour: Program Builder (auto-start on first visit) */}
             <TourRunner tourId="program_builder" steps={TOUR_STEPS.program_builder} autoStart />
@@ -1291,7 +1389,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                 Cancelar
                             </Button>
                             <Button
-                                onClick={saveAsTemplate}
+                                onClick={() => saveAsTemplate()}
                                 disabled={!templateName.trim() || savingTemplate}
                                 className="bg-violet-600 hover:bg-violet-500 text-white rounded-full px-5 py-2 h-9 text-sm font-medium transition-all"
                             >
