@@ -35,17 +35,17 @@ export function DashboardHeader({ trainerName }: DashboardHeaderProps) {
     return (
         <div className="flex items-center justify-between mb-6">
             <div>
-                <h1 className="text-2xl font-bold text-k-text-primary">
+                <h1 className="text-2xl font-bold tracking-tight text-k-text-primary">
                     {getGreeting()}, {firstName}
                 </h1>
-                <span className="text-sm text-k-text-secondary">{formatDate()}</span>
+                <span className="text-sm text-k-text-tertiary">{formatDate()}</span>
             </div>
             <button
                 data-onboarding="dashboard-training-room"
                 onClick={() => router.push('/training-room')}
-                className="flex items-center gap-2 px-4 py-2 border border-k-border-primary text-k-text-secondary hover:text-k-text-primary text-sm rounded-xl transition-colors hover:border-k-border-primary/80 hover:bg-glass-bg"
+                className="flex items-center gap-2 px-5 py-2 bg-[#007AFF] dark:bg-transparent border-0 dark:border dark:border-k-border-primary text-white dark:text-k-text-secondary hover:bg-[#0066D6] dark:hover:bg-glass-bg dark:hover:text-k-text-primary text-sm font-medium rounded-full dark:rounded-xl transition-colors"
             >
-                <Monitor size={16} className="text-emerald-400" />
+                <Monitor size={16} className="text-white dark:text-emerald-400" />
                 Sala de Treino
             </button>
         </div>

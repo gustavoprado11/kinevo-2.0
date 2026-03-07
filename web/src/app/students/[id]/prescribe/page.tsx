@@ -1,3 +1,5 @@
+export const maxDuration = 120
+
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getTrainerWithSubscription } from '@/lib/auth/get-trainer'
@@ -35,6 +37,10 @@ export default async function PrescribePage({ params }: { params: Promise<{ id: 
             recentSessions: [],
             activeProgram: null,
             aiEnabled: false,
+            previousProgramCount: 0,
+            lastFormSubmissionDate: null,
+            questionnaireSubmission: null,
+            questionnaireTemplateId: null,
         }
     }
 

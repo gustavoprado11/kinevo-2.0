@@ -12,7 +12,7 @@ import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../contexts/AuthContext";
 import { PressableScale } from "../../components/shared/PressableScale";
 
-type QuestionType = "short_text" | "long_text" | "single_choice" | "scale" | "photo";
+type QuestionType = "short_text" | "long_text" | "single_choice" | "multi_choice" | "scale" | "photo";
 
 interface Question {
     id: string;
@@ -391,6 +391,54 @@ export default function InboxItemDetailScreen() {
                                 }}
                             >
                                 <Text style={{ color: "#0f172a", fontSize: 14 }}>{opt.label}</Text>
+                            </Pressable>
+                        );
+                    })}
+                </View>
+            );
+        }
+
+        if (question.type === "multi_choice") {
+            const selectedValues: string[] = answer?.values || [];
+            return (
+                <View style={{ marginTop: 8, gap: 8 }}>
+                    {(question.options || []).map((opt) => {
+                        const isSelected = selectedValues.includes(opt.value);
+                        return (
+                            <Pressable
+                                key={opt.value}
+                                onPress={() => {
+                                    const updated = isSelected
+                                        ? selectedValues.filter((v: string) => v !== opt.value)
+                                        : [...selectedValues, opt.value];
+                                    setAnswer(question.id, { type: "multi_choice", values: updated });
+                                }}
+                                style={{
+                                    borderWidth: 1,
+                                    borderColor: isSelected ? "#7c3aed" : "#e2e8f0",
+                                    backgroundColor: isSelected ? "#f5f3ff" : "#f8fafc",
+                                    borderRadius: 10,
+                                    padding: 10,
+                                    flexDirection: "row",
+                                    alignItems: "center",
+                                    gap: 8,
+                                }}
+                            >
+                                <View
+                                    style={{
+                                        width: 20,
+                                        height: 20,
+                                        borderRadius: 4,
+                                        borderWidth: 1.5,
+                                        borderColor: isSelected ? "#7c3aed" : "#cbd5e1",
+                                        backgroundColor: isSelected ? "#7c3aed" : "transparent",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                    }}
+                                >
+                                    {isSelected && <Text style={{ color: "#fff", fontSize: 12, fontWeight: "700" }}>✓</Text>}
+                                </View>
+                                <Text style={{ color: "#0f172a", fontSize: 14, flex: 1 }}>{opt.label}</Text>
                             </Pressable>
                         );
                     })}

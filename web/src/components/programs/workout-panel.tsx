@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import type { Workout, WorkoutItem } from './program-builder-client'
 import type { Exercise } from '@/types/exercise'
 import { SortableWorkoutItem } from './sortable-workout-item'
@@ -73,16 +73,16 @@ function SupersetConnector({
     return (
         <div className="relative flex items-center justify-center py-1 group">
             {/* Connector line */}
-            <div className="absolute inset-x-4 h-px bg-muted/50 group-hover:bg-violet-500/30 transition-colors" />
+            <div className="absolute inset-x-4 h-px bg-[#E8E8ED] dark:bg-muted/50 group-hover:bg-[#007AFF]/30 dark:group-hover:bg-violet-500/30 transition-colors" />
 
             {/* Connect button */}
             <button
                 onClick={onConnect}
-                className="relative z-10 flex items-center gap-1.5 px-2 py-1 rounded-full 
-                           bg-muted dark:bg-slate-900 border border-border dark:border-slate-800
-                           hover:bg-violet-600 hover:border-violet-500 
-                           text-muted-foreground dark:text-slate-400 hover:text-foreground
-                           transition-all duration-200 
+                className="relative z-10 flex items-center gap-1.5 px-2 py-1 rounded-full
+                           bg-white dark:bg-slate-900 border border-[#D2D2D7] dark:border-slate-800
+                           hover:bg-[#007AFF] dark:hover:bg-violet-600 hover:border-[#007AFF] dark:hover:border-violet-500
+                           text-[#6E6E73] dark:text-slate-400 hover:text-white dark:hover:text-foreground
+                           transition-all duration-200
                            opacity-0 group-hover:opacity-100
                            text-xs font-medium"
             >
@@ -114,6 +114,7 @@ export function WorkoutPanel({
     occupiedDays = [],
     isScrolled = false,
 }: WorkoutPanelProps) {
+    const dndId = useId()
     const [isEditingName, setIsEditingName] = useState(false)
     const [tempName, setTempName] = useState(workout.name)
 
@@ -186,15 +187,15 @@ export function WorkoutPanel({
                                 onBlur={handleNameSave}
                                 onKeyDown={(e) => e.key === 'Enter' && handleNameSave()}
                                 autoFocus
-                                className={`px-0 py-1 bg-transparent border-0 border-b border-violet-500 rounded-none text-k-text-primary font-bold focus:outline-none focus:ring-0 placeholder:text-k-text-quaternary w-auto min-w-[200px] transition-all duration-300 ${isScrolled ? 'text-sm' : 'text-xl'}`}
+                                className={`px-0 py-1 bg-transparent border-0 border-b border-[#007AFF] dark:border-violet-500 rounded-none text-[#1D1D1F] dark:text-k-text-primary font-bold focus:outline-none focus:ring-0 placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary w-auto min-w-[200px] transition-all duration-300 ${isScrolled ? 'text-sm' : 'text-xl'}`}
                             />
                         ) : (
                             <button
                                 onClick={() => { setTempName(workout.name); setIsEditingName(true) }}
-                                className={`font-bold text-k-text-primary hover:text-violet-400 transition-all duration-300 flex items-center gap-2 group ${isScrolled ? 'text-sm' : 'text-xl'}`}
+                                className={`font-bold text-[#1D1D1F] dark:text-k-text-primary hover:text-[#007AFF] dark:hover:text-violet-400 transition-all duration-300 flex items-center gap-2 group ${isScrolled ? 'text-sm' : 'text-xl'}`}
                             >
                                 {workout.name}
-                                <svg className={`text-k-text-quaternary group-hover:text-violet-400 transition-colors ${isScrolled ? 'w-3 h-3' : 'w-4 h-4'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className={`text-[#AEAEB2] dark:text-k-text-quaternary group-hover:text-[#007AFF] dark:group-hover:text-violet-400 transition-colors ${isScrolled ? 'w-3 h-3' : 'w-4 h-4'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                 </svg>
                             </button>
@@ -216,7 +217,7 @@ export function WorkoutPanel({
                         ) : (
                             <>
                                 <div className="flex flex-col gap-1.5">
-                                    <div className="flex items-center gap-1 bg-surface-card p-1 rounded-lg border border-k-border-subtle">
+                                    <div className="flex items-center gap-1 bg-white dark:bg-surface-card p-1 rounded-lg border border-[#E8E8ED] dark:border-k-border-subtle">
                                         {[
                                             { key: 'sun', label: 'D', name: 'Domingo' },
                                             { key: 'mon', label: 'S', name: 'Segunda' },
@@ -232,11 +233,11 @@ export function WorkoutPanel({
                                             let buttonClass = "w-7 h-7 flex items-center justify-center rounded-md text-xs font-bold transition-all border "
 
                                             if (isSelected) {
-                                                buttonClass += "bg-violet-600 text-white border-violet-500 shadow-sm"
+                                                buttonClass += "bg-[#007AFF] dark:bg-violet-600 text-white border-[#007AFF] dark:border-violet-500 shadow-sm"
                                             } else if (isOccupied) {
-                                                buttonClass += "bg-glass-bg text-k-text-quaternary border-transparent cursor-not-allowed"
+                                                buttonClass += "bg-[#E5E5EA] dark:bg-glass-bg text-[#8E8E93] dark:text-k-text-quaternary border-transparent cursor-not-allowed"
                                             } else {
-                                                buttonClass += "text-k-text-tertiary border-transparent hover:bg-glass-bg-active hover:text-k-text-primary"
+                                                buttonClass += "bg-[#E5E5EA] dark:bg-transparent text-[#8E8E93] dark:text-k-text-tertiary border-transparent hover:bg-[#007AFF]/10 hover:text-[#007AFF] dark:hover:bg-glass-bg-active dark:hover:text-k-text-primary"
                                             }
 
                                             return (
@@ -294,12 +295,12 @@ export function WorkoutPanel({
             {/* Items with connectors */}
             <div className="">
                 {workout.items.length === 0 ? (
-                    <div className="text-center py-12 border border-dashed border-k-border-primary rounded-2xl bg-glass-bg">
-                        <p className="text-k-text-tertiary mb-4">Arraste exercícios da biblioteca ou adicione uma nota</p>
+                    <div className="text-center py-12 border border-dashed border-[#D2D2D7] dark:border-k-border-primary rounded-2xl bg-[#F9F9FB] dark:bg-glass-bg">
+                        <p className="text-[#86868B] dark:text-k-text-tertiary mb-4">Arraste exercícios da biblioteca ou adicione uma nota</p>
                         <div className="flex items-center justify-center gap-2">
                             <button
                                 onClick={onAddNote}
-                                className="px-4 py-2 bg-glass-bg hover:bg-glass-bg-active border border-k-border-subtle text-k-text-primary text-sm font-medium rounded-lg transition-colors"
+                                className="px-4 py-2 bg-white dark:bg-glass-bg hover:bg-[#F5F5F7] dark:hover:bg-glass-bg-active border border-[#D2D2D7] dark:border-k-border-subtle text-[#1D1D1F] dark:text-k-text-primary text-sm font-medium rounded-lg transition-colors"
                             >
                                 + Adicionar Nota
                             </button>
@@ -307,6 +308,7 @@ export function WorkoutPanel({
                     </div>
                 ) : (
                     <DndContext
+                        id={dndId}
                         sensors={sensors}
                         collisionDetection={closestCenter}
                         onDragEnd={handleDragEnd}
@@ -355,7 +357,7 @@ export function WorkoutPanel({
                                 <div className="flex justify-center pt-6">
                                     <button
                                         onClick={onAddNote}
-                                        className="px-4 py-2 text-sm text-k-text-tertiary hover:text-k-text-primary hover:bg-glass-bg rounded-full transition-colors flex items-center gap-2 border border-transparent hover:border-k-border-primary"
+                                        className="px-4 py-2 text-sm text-[#6E6E73] dark:text-k-text-tertiary hover:text-[#1D1D1F] dark:hover:text-k-text-primary hover:bg-[#F5F5F7] dark:hover:bg-glass-bg rounded-full transition-colors flex items-center gap-2 border border-transparent hover:border-[#D2D2D7] dark:hover:border-k-border-primary"
                                     >
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />

@@ -52,6 +52,22 @@ export const SMALL_GROUP_EXERCISE_LIMITS: Record<TrainingLevel, number> = {
     advanced: 4,
 }
 
+/**
+ * Volume reduction factors for secondary (small) muscle groups.
+ * Applied to VOLUME_RANGES to compute the secondary group budget.
+ * Differentiated by group size and recovery characteristics.
+ */
+export const SECONDARY_VOLUME_FACTORS: Record<string, number> = {
+    'Bíceps': 0.65,
+    'Tríceps': 0.65,
+    'Panturrilha': 0.45,
+    'Abdominais': 0.45,
+    'Oblíquos': 0.30,
+    'Adutores': 0.35,
+    'Trapézio': 0.35,
+    'Antebraço': 0.20,
+}
+
 // ============================================================================
 // Dynamic Exercise Limits per Workout
 // ============================================================================
@@ -144,23 +160,23 @@ export const SPLIT_TEMPLATES = {
     ],
     upper_lower: [
         { label: 'Upper A', groups: ['Peito', 'Costas', 'Ombros', 'Bíceps', 'Tríceps'] },
-        { label: 'Lower A', groups: ['Quadríceps', 'Glúteo', 'Posterior de Coxa', 'Panturrilha', 'Abdominais'] },
+        { label: 'Lower A', groups: ['Quadríceps', 'Posterior de Coxa', 'Glúteo', 'Panturrilha'] },
         { label: 'Upper B', groups: ['Peito', 'Costas', 'Ombros', 'Bíceps', 'Tríceps'] },
-        { label: 'Lower B', groups: ['Quadríceps', 'Glúteo', 'Posterior de Coxa', 'Panturrilha', 'Abdominais'] },
+        { label: 'Lower B', groups: ['Quadríceps', 'Posterior de Coxa', 'Glúteo', 'Panturrilha'] },
     ],
     ppl_plus: [
         { label: 'Push', groups: ['Peito', 'Ombros', 'Tríceps'] },
         { label: 'Pull', groups: ['Costas', 'Bíceps', 'Trapézio'] },
-        { label: 'Legs A', groups: ['Quadríceps', 'Glúteo', 'Panturrilha'] },
+        { label: 'Legs A', groups: ['Quadríceps', 'Posterior de Coxa', 'Glúteo'] },
         { label: 'Upper', groups: ['Peito', 'Costas', 'Ombros'] },
-        { label: 'Legs B', groups: ['Posterior de Coxa', 'Glúteo', 'Abdominais'] },
+        { label: 'Legs B', groups: ['Quadríceps', 'Posterior de Coxa', 'Glúteo', 'Panturrilha'] },
     ],
     ppl_complete: [
         { label: 'Push A', groups: ['Peito', 'Ombros', 'Tríceps'] },
         { label: 'Pull A', groups: ['Costas', 'Bíceps', 'Trapézio'] },
-        { label: 'Legs A', groups: ['Quadríceps', 'Glúteo', 'Panturrilha'] },
+        { label: 'Legs A', groups: ['Quadríceps', 'Posterior de Coxa', 'Glúteo'] },
         { label: 'Push B', groups: ['Peito', 'Ombros', 'Tríceps'] },
         { label: 'Pull B', groups: ['Costas', 'Bíceps'] },
-        { label: 'Legs B', groups: ['Posterior de Coxa', 'Glúteo', 'Abdominais'] },
+        { label: 'Legs B', groups: ['Quadríceps', 'Posterior de Coxa', 'Glúteo', 'Panturrilha'] },
     ],
 } as const

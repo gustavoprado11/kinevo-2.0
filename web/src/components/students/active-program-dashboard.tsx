@@ -171,7 +171,7 @@ export function ActiveProgramDashboard({
             <div className="bg-glass-bg backdrop-blur-md rounded-2xl border border-k-border-primary p-8 h-full flex flex-col">
                 <div className="flex items-center justify-between mb-8">
                     <div>
-                        <h3 className="text-xl font-black text-white tracking-tight">Programa Atual</h3>
+                        <h3 className="text-xl font-black text-[#1C1C1E] dark:text-white tracking-tight">Programa Atual</h3>
                         <p className="text-sm text-k-text-tertiary mt-1">Nenhum programa ativo no momento</p>
                     </div>
                 </div>
@@ -235,7 +235,7 @@ export function ActiveProgramDashboard({
                 {/* Header */}
                 <div className="mb-6">
                     <div className="flex items-center gap-3 mb-1">
-                        <h2 className="text-2xl font-black text-white tracking-tight">{program.name}</h2>
+                        <h2 className="text-2xl font-black text-[#1C1C1E] dark:text-white tracking-tight">{program.name}</h2>
                         <span className={`px-2 py-0.5 text-[10px] font-bold rounded border ${statusConfig.classes}`}>
                             {statusConfig.label}
                         </span>
@@ -310,13 +310,13 @@ export function ActiveProgramDashboard({
                 <div data-onboarding="student-history-summary" className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10">
                     {/* Total Sessions */}
                     <div className="relative group">
-                        <div className="mb-2 flex items-center gap-2 text-[10px] font-bold text-k-text-quaternary">
+                        <div className="mb-2 flex items-center gap-2 text-[10px] font-bold text-[#8E8E93] dark:text-k-text-quaternary">
                             <svg className="w-3.5 h-3.5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                             </svg>
                             Treinos totais
                         </div>
-                        <p className="text-4xl font-black text-white tracking-tighter">{summary.totalSessions}</p>
+                        <p className="text-4xl font-black text-[#1C1C1E] dark:text-white tracking-tighter">{summary.totalSessions}</p>
                         {summary.completedThisWeek > 0 && (
                             <p className="text-[11px] font-semibold text-k-text-quaternary mt-1">
                                 +{summary.completedThisWeek} esta semana
@@ -331,13 +331,13 @@ export function ActiveProgramDashboard({
                         const remaining = Math.max(0, expected - completed)
                         return (
                             <div className="relative group">
-                                <div className="mb-2 flex items-center gap-2 text-[10px] font-bold text-k-text-quaternary">
+                                <div className="mb-2 flex items-center gap-2 text-[10px] font-bold text-[#8E8E93] dark:text-k-text-quaternary">
                                     <svg className="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
                                     Esta semana
                                 </div>
-                                <p className="text-4xl font-black text-white tracking-tighter">
+                                <p className="text-4xl font-black text-[#1C1C1E] dark:text-white tracking-tighter">
                                     {expected > 0 ? `${completed}/${expected}` : completed}
                                 </p>
                                 {expected > 0 && (
@@ -361,13 +361,13 @@ export function ActiveProgramDashboard({
 
                     {/* Last Session */}
                     <div className="relative group">
-                        <div className="mb-2 flex items-center gap-2 text-[10px] font-bold text-k-text-quaternary">
+                        <div className="mb-2 flex items-center gap-2 text-[10px] font-bold text-[#8E8E93] dark:text-k-text-quaternary">
                             <svg className="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                             Último treino
                         </div>
-                        <p className="text-4xl font-black text-white tracking-tighter leading-none">
+                        <p className="text-4xl font-black text-[#1C1C1E] dark:text-white tracking-tighter leading-none">
                             {summary.lastSessionDate ? timeAgo(summary.lastSessionDate) : '-'}
                         </p>
                         {summary.lastSessionDate && (
@@ -430,7 +430,7 @@ export function ActiveProgramDashboard({
 
                 {/* Recent Sessions List - Compact Feed */}
                 <div>
-                    <h3 className="text-sm font-semibold text-white mb-6 flex items-center gap-2">
+                    <h3 className="text-sm font-semibold text-[#1C1C1E] dark:text-white mb-6 flex items-center gap-2">
                         Últimas Sessões
                         <span className="px-2 py-0.5 rounded bg-glass-bg text-[10px] text-k-text-tertiary font-bold border border-k-border-subtle">
                             Recentes

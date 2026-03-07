@@ -112,19 +112,19 @@ function ActionsMenu({
         <div ref={ref} className="relative">
             <button
                 onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen) }}
-                className="p-1.5 rounded-lg text-k-text-quaternary hover:text-k-text-primary hover:bg-glass-bg-active transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
+                className="p-1.5 rounded-full text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#6E6E73] dark:hover:text-k-text-primary hover:bg-[#F5F5F7] dark:hover:bg-glass-bg-active transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
             >
                 <MoreVertical className="w-4 h-4" />
             </button>
 
             {isOpen && (
                 <div
-                    className="absolute right-0 top-full mt-1 w-48 bg-surface-card border border-k-border-primary rounded-xl shadow-2xl z-40 py-1"
+                    className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-surface-card border border-[#D2D2D7] dark:border-k-border-primary rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-2xl z-40 py-1"
                     onClick={(e) => e.stopPropagation()}
                 >
                     <button
                         onClick={() => { onEdit(); setIsOpen(false) }}
-                        className="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-k-text-secondary hover:bg-glass-bg-active transition-colors"
+                        className="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-[#1D1D1F] dark:text-k-text-secondary hover:bg-[#F5F5F7] dark:hover:bg-glass-bg-active transition-colors"
                     >
                         <Pencil className="w-3.5 h-3.5" />
                         Editar
@@ -132,23 +132,23 @@ function ActionsMenu({
                     <button
                         onClick={() => { onDuplicate(); setIsOpen(false) }}
                         disabled={isDuplicating}
-                        className="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-k-text-secondary hover:bg-glass-bg-active transition-colors disabled:opacity-40"
+                        className="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-[#1D1D1F] dark:text-k-text-secondary hover:bg-[#F5F5F7] dark:hover:bg-glass-bg-active transition-colors disabled:opacity-40"
                     >
                         {isDuplicating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Copy className="w-3.5 h-3.5" />}
                         Duplicar
                     </button>
                     <button
                         onClick={() => { onApply(); setIsOpen(false) }}
-                        className="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-k-text-secondary hover:bg-glass-bg-active transition-colors"
+                        className="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-[#1D1D1F] dark:text-k-text-secondary hover:bg-[#F5F5F7] dark:hover:bg-glass-bg-active transition-colors"
                     >
                         <UserPlus className="w-3.5 h-3.5" />
                         Aplicar a aluno
                     </button>
-                    <div className="my-1 border-t border-k-border-subtle" />
+                    <div className="my-1 border-t border-[#E8E8ED] dark:border-k-border-subtle" />
                     <button
                         onClick={() => { onDelete(); setIsOpen(false) }}
                         disabled={isDeleting}
-                        className="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-red-400 hover:bg-red-500/5 transition-colors disabled:opacity-40"
+                        className="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-[#FF3B30] dark:text-red-400 hover:bg-[#FF3B30]/5 dark:hover:bg-red-500/5 transition-colors disabled:opacity-40"
                     >
                         {isDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                         Excluir
@@ -217,29 +217,29 @@ function ApplyToStudentDialog({
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-            <div className="relative bg-surface-card border border-k-border-primary rounded-2xl w-full max-w-md shadow-2xl">
+            <div className="absolute inset-0 bg-black/30 dark:bg-black/60 backdrop-blur-sm" onClick={onClose} />
+            <div className="relative bg-white dark:bg-surface-card border border-[#D2D2D7] dark:border-k-border-primary rounded-2xl w-full max-w-md shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-2xl">
                 {/* Header */}
-                <div className="flex items-center justify-between p-5 border-b border-k-border-subtle">
+                <div className="flex items-center justify-between p-5 border-b border-[#E8E8ED] dark:border-k-border-subtle">
                     <div className="min-w-0">
-                        <h2 className="text-sm font-semibold text-k-text-primary">Aplicar programa</h2>
-                        <p className="text-xs text-k-text-quaternary mt-0.5 truncate">{templateName}</p>
+                        <h2 className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary">Aplicar programa</h2>
+                        <p className="text-xs text-[#86868B] dark:text-k-text-quaternary mt-0.5 truncate">{templateName}</p>
                     </div>
-                    <button onClick={onClose} className="p-1.5 text-k-text-quaternary hover:text-k-text-primary transition-colors shrink-0">
+                    <button onClick={onClose} className="p-1.5 text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#1D1D1F] dark:hover:text-k-text-primary transition-colors shrink-0">
                         <X className="w-4 h-4" />
                     </button>
                 </div>
 
                 {/* Search */}
-                <div className="p-4 border-b border-k-border-subtle">
+                <div className="p-4 border-b border-[#E8E8ED] dark:border-k-border-subtle">
                     <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-k-text-quaternary" />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#AEAEB2] dark:text-k-text-quaternary" />
                         <input
                             type="text"
                             placeholder="Buscar aluno..."
                             value={search}
                             onChange={e => setSearch(e.target.value)}
-                            className="w-full bg-glass-bg border border-k-border-primary rounded-lg py-2 pl-9 pr-3 text-sm text-k-text-primary placeholder:text-k-text-quaternary focus:outline-none focus:ring-1 focus:ring-violet-500/30"
+                            className="w-full bg-white dark:bg-glass-bg border border-[#D2D2D7] dark:border-k-border-primary rounded-lg py-2 pl-9 pr-3 text-sm text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:outline-none focus:ring-1 focus:ring-[#007AFF]/30 dark:focus:ring-violet-500/30 focus:border-[#007AFF] dark:focus:border-violet-500/50"
                             autoFocus
                         />
                     </div>
@@ -252,7 +252,7 @@ function ApplyToStudentDialog({
                             <Loader2 className="w-5 h-5 text-k-text-quaternary animate-spin" />
                         </div>
                     ) : filtered.length === 0 ? (
-                        <p className="text-center py-8 text-xs text-k-text-quaternary">Nenhum aluno encontrado</p>
+                        <p className="text-center py-8 text-xs text-[#86868B] dark:text-k-text-quaternary">Nenhum aluno encontrado</p>
                     ) : (
                         filtered.map(student => (
                             <button
@@ -260,18 +260,18 @@ function ApplyToStudentDialog({
                                 onClick={() => setSelectedId(student.id)}
                                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all ${
                                     selectedId === student.id
-                                        ? 'bg-violet-500/10 ring-1 ring-violet-500/30'
-                                        : 'hover:bg-glass-bg-active'
+                                        ? 'bg-[#007AFF]/10 dark:bg-violet-500/10 ring-1 ring-[#007AFF]/30 dark:ring-violet-500/30'
+                                        : 'hover:bg-[#F5F5F7] dark:hover:bg-glass-bg-active'
                                 }`}
                             >
                                 <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                                    selectedId === student.id ? 'border-violet-500 bg-violet-500' : 'border-k-border-primary'
+                                    selectedId === student.id ? 'border-[#007AFF] dark:border-violet-500 bg-[#007AFF] dark:bg-violet-500' : 'border-[#D2D2D7] dark:border-k-border-primary'
                                 }`}>
                                     {selectedId === student.id && <Check className="w-2.5 h-2.5 text-white" />}
                                 </div>
-                                <span className="text-sm text-k-text-secondary flex-1 truncate">{student.name}</span>
+                                <span className="text-sm text-[#1D1D1F] dark:text-k-text-secondary flex-1 truncate">{student.name}</span>
                                 {student.modality && (
-                                    <span className="text-[10px] text-k-text-quaternary font-bold shrink-0">
+                                    <span className="text-[10px] text-[#86868B] dark:text-k-text-quaternary font-bold shrink-0">
                                         {student.modality === 'online' ? 'Online' : 'Presencial'}
                                     </span>
                                 )}
@@ -296,35 +296,35 @@ function ApplyToStudentDialog({
                 )}
 
                 {/* Mode Selection */}
-                <div className="p-4 border-t border-k-border-subtle space-y-2">
-                    <p className="text-[10px] font-bold text-k-text-quaternary mb-2">Como aplicar?</p>
+                <div className="p-4 border-t border-[#E8E8ED] dark:border-k-border-subtle space-y-2">
+                    <p className="text-[10px] font-bold text-[#86868B] dark:text-k-text-quaternary mb-2">Como aplicar?</p>
                     {([
                         { value: 'active' as const, label: 'Ativar como programa atual' },
                         { value: 'scheduled' as const, label: 'Agendar na fila' },
                     ]).map(opt => (
                         <label key={opt.value} className="flex items-center gap-2.5 cursor-pointer">
                             <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                                mode === opt.value ? 'border-violet-500' : 'border-k-border-primary'
+                                mode === opt.value ? 'border-[#007AFF] dark:border-violet-500' : 'border-[#D2D2D7] dark:border-k-border-primary'
                             }`}>
-                                {mode === opt.value && <div className="w-2 h-2 rounded-full bg-violet-500" />}
+                                {mode === opt.value && <div className="w-2 h-2 rounded-full bg-[#007AFF] dark:bg-violet-500" />}
                             </div>
-                            <span className="text-sm text-k-text-secondary">{opt.label}</span>
+                            <span className="text-sm text-[#1D1D1F] dark:text-k-text-secondary">{opt.label}</span>
                         </label>
                     ))}
                 </div>
 
                 {/* Footer Actions */}
-                <div className="flex items-center justify-end gap-3 p-4 border-t border-k-border-subtle">
+                <div className="flex items-center justify-end gap-3 p-4 border-t border-[#E8E8ED] dark:border-k-border-subtle">
                     <button
                         onClick={onClose}
-                        className="px-4 py-2 text-sm font-medium text-k-text-secondary hover:text-k-text-primary transition-colors"
+                        className="px-4 py-2 text-sm font-medium text-[#007AFF] dark:text-k-text-secondary hover:text-[#0056B3] dark:hover:text-k-text-primary transition-colors"
                     >
                         Cancelar
                     </button>
                     <button
                         onClick={handleApply}
                         disabled={!selectedId || isAssigning}
-                        className="px-4 py-2 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg transition-all flex items-center gap-2"
+                        className="px-5 py-2 bg-[#007AFF] dark:bg-violet-600 hover:bg-[#0056B3] dark:hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-full transition-all flex items-center gap-2"
                     >
                         {isAssigning && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                         Aplicar
@@ -400,15 +400,15 @@ export function ProgramsClient({ trainer, programs: initialPrograms }: ProgramsC
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
-                    <h1 className="text-2xl font-bold tracking-tight text-k-text-primary">Programas</h1>
-                    <span className="px-2 py-0.5 rounded-md bg-glass-bg text-xs font-bold text-k-text-tertiary border border-k-border-subtle">
+                    <h1 className="text-2xl font-bold tracking-tight text-[#1D1D1F] dark:text-k-text-primary">Programas</h1>
+                    <span className="px-2.5 py-0.5 rounded-full bg-[#F5F5F7] dark:bg-glass-bg text-xs font-bold text-[#6E6E73] dark:text-k-text-tertiary border border-transparent dark:border-k-border-subtle">
                         {programs.length}
                     </span>
                 </div>
                 <button
                     data-onboarding="programs-create-btn"
                     onClick={() => router.push('/programs/new')}
-                    className="flex items-center gap-2 rounded-full border border-k-border-primary bg-glass-bg hover:bg-glass-bg-active text-k-text-secondary px-5 py-2 text-sm font-semibold transition-all"
+                    className="flex items-center gap-2 rounded-full bg-[#007AFF] dark:bg-glass-bg hover:bg-[#0056B3] dark:hover:bg-glass-bg-active text-white dark:text-k-text-secondary border border-transparent dark:border-k-border-primary px-5 py-2 text-sm font-semibold transition-all shadow-sm dark:shadow-none"
                 >
                     <Plus size={16} strokeWidth={2} />
                     Novo Programa
@@ -418,40 +418,40 @@ export function ProgramsClient({ trainer, programs: initialPrograms }: ProgramsC
             <div className="space-y-4">
                 {/* Search */}
                 <div className="relative group">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-k-text-quaternary group-focus-within:text-violet-500 transition-colors" strokeWidth={1.5} />
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#AEAEB2] dark:text-k-text-quaternary group-focus-within:text-[#007AFF] dark:group-focus-within:text-violet-500 transition-colors" strokeWidth={1.5} />
                     <input
                         type="text"
                         placeholder="Buscar programas..."
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
-                        className="w-full bg-glass-bg border border-k-border-primary rounded-xl py-2.5 pl-11 pr-4 text-sm text-k-text-primary placeholder:text-k-text-quaternary focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500/50 transition-all"
+                        className="w-full bg-white dark:bg-glass-bg border border-[#D2D2D7] dark:border-k-border-primary rounded-xl py-2.5 pl-11 pr-4 text-sm text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 dark:focus:ring-violet-500/20 focus:border-[#007AFF] dark:focus:border-violet-500/50 transition-all"
                     />
                 </div>
 
                 {/* Content */}
                 {filteredPrograms.length === 0 ? (
-                    <div className="text-center py-20 rounded-2xl border border-dashed border-k-border-primary">
-                        <FolderPlus className="w-8 h-8 text-k-text-quaternary mx-auto mb-3" strokeWidth={1} />
+                    <div className="text-center py-20 rounded-2xl border border-dashed border-[#D2D2D7] dark:border-k-border-primary">
+                        <FolderPlus className="w-8 h-8 text-[#AEAEB2] dark:text-k-text-quaternary mx-auto mb-3" strokeWidth={1} />
                         {searchQuery ? (
                             <>
-                                <p className="text-sm font-semibold text-k-text-primary">Nenhum programa encontrado</p>
-                                <p className="text-xs text-k-text-quaternary mt-1">Tente outro termo de busca</p>
+                                <p className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary">Nenhum programa encontrado</p>
+                                <p className="text-xs text-[#86868B] dark:text-k-text-quaternary mt-1">Tente outro termo de busca</p>
                                 <button
                                     onClick={() => setSearchQuery('')}
-                                    className="mt-4 text-xs font-medium text-violet-600 hover:text-violet-500 dark:text-violet-400 dark:hover:text-violet-300 transition-colors"
+                                    className="mt-4 text-xs font-medium text-[#007AFF] hover:text-[#0056B3] dark:text-violet-400 dark:hover:text-violet-300 transition-colors"
                                 >
                                     Limpar busca
                                 </button>
                             </>
                         ) : (
                             <>
-                                <p className="text-sm font-semibold text-k-text-primary mb-1">Nenhum modelo salvo</p>
-                                <p className="text-xs text-k-text-quaternary max-w-sm mx-auto">
+                                <p className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary mb-1">Nenhum modelo salvo</p>
+                                <p className="text-xs text-[#86868B] dark:text-k-text-quaternary max-w-sm mx-auto">
                                     Salve programas como modelo para reutilizar com diferentes alunos
                                 </p>
                                 <button
                                     onClick={() => router.push('/programs/new')}
-                                    className="mt-5 text-xs font-medium text-violet-400 hover:text-violet-300 transition-colors"
+                                    className="mt-5 text-xs font-medium text-[#007AFF] dark:text-violet-400 hover:text-[#0056B3] dark:hover:text-violet-300 transition-colors"
                                 >
                                     Criar primeiro programa
                                 </button>
@@ -470,12 +470,12 @@ export function ProgramsClient({ trainer, programs: initialPrograms }: ProgramsC
                                 <div
                                     key={program.id}
                                     onClick={() => handleExpand(program.id)}
-                                    className="group bg-surface-card border border-k-border-primary rounded-2xl overflow-hidden transition-all duration-200 hover:border-violet-500/30 cursor-pointer"
+                                    className="group bg-white dark:bg-surface-card border border-[#E8E8ED] dark:border-k-border-primary rounded-2xl overflow-hidden transition-all duration-200 hover:shadow-[0_2px_8px_rgba(0,0,0,0.08)] dark:hover:border-violet-500/30 cursor-pointer shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:shadow-none"
                                 >
                                     <div className="p-4">
                                         {/* Header */}
                                         <div className="flex items-start justify-between gap-3 mb-2">
-                                            <h3 className="text-base font-bold text-k-text-primary tracking-tight leading-snug group-hover:text-violet-600 dark:group-hover:text-violet-300 transition-colors line-clamp-2">
+                                            <h3 className="text-base font-bold text-[#1D1D1F] dark:text-k-text-primary tracking-tight leading-snug dark:group-hover:text-violet-300 transition-colors line-clamp-2">
                                                 {program.name}
                                             </h3>
                                             <ActionsMenu
@@ -489,15 +489,15 @@ export function ProgramsClient({ trainer, programs: initialPrograms }: ProgramsC
                                         </div>
 
                                         {/* Metadata */}
-                                        <p className="text-xs text-k-text-quaternary mb-3">
+                                        <p className="text-xs text-[#86868B] dark:text-k-text-quaternary mb-3">
                                             {program.duration_weeks && `${program.duration_weeks} semanas · `}
                                             {program.workout_count} treinos · {program.exercise_count} exercícios
                                         </p>
 
                                         {/* Missing days warning */}
                                         {missingDaysCount > 0 && (
-                                            <div className="flex items-center gap-1.5 mb-3 text-amber-400">
-                                                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+                                            <div className="flex items-center gap-1.5 mb-3 text-[#FF9500] dark:text-amber-400">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-[#FF9500] dark:bg-amber-400 shrink-0" />
                                                 <span className="text-[10px] font-bold">
                                                     {missingDaysCount} treino{missingDaysCount > 1 ? 's' : ''} sem dia
                                                 </span>
@@ -508,28 +508,28 @@ export function ProgramsClient({ trainer, programs: initialPrograms }: ProgramsC
                                         {program.muscle_groups.length > 0 && (
                                             <div className="flex flex-wrap gap-1 mb-1">
                                                 {shownGroups.map(group => (
-                                                    <span key={group} className="text-[10px] font-bold text-k-text-quaternary bg-glass-bg px-1.5 py-0.5 rounded border border-k-border-subtle">
+                                                    <span key={group} className="text-[10px] font-bold text-[#6E6E73] dark:text-k-text-quaternary bg-[#F5F5F7] dark:bg-glass-bg px-1.5 py-0.5 rounded border border-transparent dark:border-k-border-subtle">
                                                         {group}
                                                     </span>
                                                 ))}
                                                 {hiddenCount > 0 && (
-                                                    <span className="text-[10px] text-k-text-quaternary font-medium self-center">+{hiddenCount}</span>
+                                                    <span className="text-[10px] text-[#86868B] dark:text-k-text-quaternary font-medium self-center">+{hiddenCount}</span>
                                                 )}
                                             </div>
                                         )}
 
                                         {/* Expanded: Workouts Preview */}
                                         {isExpanded && program.workouts.length > 0 && (
-                                            <div className="mt-3 pt-3 border-t border-k-border-subtle space-y-1.5">
-                                                <p className="text-[10px] font-bold text-k-text-quaternary mb-2">Treinos</p>
+                                            <div className="mt-3 pt-3 border-t border-[#E8E8ED] dark:border-k-border-subtle space-y-1.5">
+                                                <p className="text-[10px] font-bold text-[#86868B] dark:text-k-text-quaternary mb-2">Treinos</p>
                                                 {program.workouts.map(workout => {
                                                     const freq = formatFrequency(workout.frequency)
                                                     return (
                                                         <div key={workout.id} className="flex items-center justify-between">
-                                                            <span className="text-sm text-k-text-secondary font-medium truncate">{workout.name}</span>
-                                                            <div className="flex items-center gap-3 text-[11px] text-k-text-quaternary shrink-0 ml-3">
+                                                            <span className="text-sm text-[#1D1D1F] dark:text-k-text-secondary font-medium truncate">{workout.name}</span>
+                                                            <div className="flex items-center gap-3 text-[11px] text-[#86868B] dark:text-k-text-quaternary shrink-0 ml-3">
                                                                 <span>{workout.exerciseCount} ex.</span>
-                                                                {freq ? <span>{freq}</span> : <span className="text-amber-400 font-medium">Sem dia</span>}
+                                                                {freq ? <span>{freq}</span> : <span className="text-[#FF9500] dark:text-amber-400 font-medium">Sem dia</span>}
                                                             </div>
                                                         </div>
                                                     )
@@ -539,7 +539,7 @@ export function ProgramsClient({ trainer, programs: initialPrograms }: ProgramsC
                                     </div>
 
                                     {/* Footer */}
-                                    <div className="flex items-center justify-between px-4 py-3 border-t border-k-border-subtle bg-surface-inset text-[11px] text-k-text-quaternary">
+                                    <div className="flex items-center justify-between px-4 py-3 border-t border-[#E8E8ED] dark:border-k-border-subtle bg-[#F9F9FB] dark:bg-surface-inset text-[11px] text-[#86868B] dark:text-k-text-quaternary">
                                         <span>
                                             {program.usage_count > 0
                                                 ? `Usado ${program.usage_count}x`

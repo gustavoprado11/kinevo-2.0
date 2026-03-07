@@ -26,6 +26,7 @@ interface SavePrescriptionProfileInput {
     disliked_exercise_ids: string[]
     medical_restrictions: MedicalRestriction[]
     ai_mode: AiMode
+    cycle_observation?: string
 }
 
 // ============================================================================
@@ -112,6 +113,7 @@ export async function savePrescriptionProfile(
                 disliked_exercise_ids: input.disliked_exercise_ids,
                 medical_restrictions: input.medical_restrictions,
                 ai_mode: input.ai_mode,
+                cycle_observation: input.cycle_observation || null,
             },
             { onConflict: 'student_id' },
         )

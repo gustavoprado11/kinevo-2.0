@@ -308,7 +308,7 @@ export function SubscriptionsClient({
             trainerAvatarUrl={trainer.avatar_url}
             trainerTheme={trainer.theme as 'light' | 'dark' | 'system' | null}
         >
-            <div className="min-h-screen bg-surface-primary p-8 font-sans">
+            <div className="min-h-screen bg-[#F5F5F7] dark:bg-surface-primary p-8 font-sans">
                 <div className="max-w-7xl mx-auto space-y-8">
 
                     {/* Header */}
@@ -316,15 +316,15 @@ export function SubscriptionsClient({
                         <div>
                             <Link
                                 href="/financial"
-                                className="inline-flex items-center gap-1.5 text-xs text-k-text-secondary hover:text-violet-600 dark:hover:text-violet-400 transition-colors mb-3"
+                                className="inline-flex items-center gap-1.5 text-xs text-[#6E6E73] dark:text-k-text-secondary hover:text-[#007AFF] dark:hover:text-violet-400 transition-colors mb-3"
                             >
                                 <ArrowLeft size={14} />
                                 Voltar para Financeiro
                             </Link>
-                            <h1 className="text-3xl font-bold tracking-tighter bg-gradient-to-br from-[var(--gradient-text-from)] to-[var(--gradient-text-to)] bg-clip-text text-transparent">
+                            <h1 className="text-3xl font-bold tracking-tighter text-[#1D1D1F] dark:bg-gradient-to-br dark:from-[var(--gradient-text-from)] dark:to-[var(--gradient-text-to)] dark:bg-clip-text dark:text-transparent">
                                 Assinaturas
                             </h1>
-                            <p className="mt-1 text-sm text-muted-foreground/60">
+                            <p className="mt-1 text-sm text-[#86868B] dark:text-muted-foreground/60">
                                 Gerencie as cobranças dos seus alunos
                             </p>
                         </div>
@@ -335,7 +335,7 @@ export function SubscriptionsClient({
                                         onClick={handleSyncContracts}
                                         disabled={syncing}
                                         title="Sincronizar assinaturas com o Stripe"
-                                        className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-full border border-k-border-primary bg-glass-bg hover:bg-violet-500/10 text-k-text-secondary hover:text-violet-600 dark:hover:text-violet-400 transition-all disabled:opacity-50"
+                                        className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-full border border-[#D2D2D7] dark:border-k-border-primary bg-white dark:bg-glass-bg hover:bg-[#007AFF]/10 dark:hover:bg-violet-500/10 text-[#6E6E73] dark:text-k-text-secondary hover:text-[#007AFF] dark:hover:text-violet-400 transition-all disabled:opacity-50"
                                     >
                                         <RefreshCw size={16} className={syncing ? 'animate-spin' : ''} />
                                         {syncing ? 'Sincronizando...' : 'Sincronizar'}
@@ -345,7 +345,7 @@ export function SubscriptionsClient({
                             )}
                             <button
                                 onClick={() => handleOpenConfigModal('new')}
-                                className="bg-violet-600 hover:bg-violet-500 text-white rounded-full px-6 py-2.5 text-sm font-semibold transition-all active:scale-95 flex items-center gap-2 w-fit"
+                                className="bg-[#007AFF] hover:bg-[#0056B3] dark:bg-violet-600 dark:hover:bg-violet-500 text-white rounded-full px-6 py-2.5 text-sm font-semibold transition-all active:scale-95 flex items-center gap-2 w-fit"
                             >
                                 <Plus size={18} strokeWidth={2} />
                                 Nova Cobrança
@@ -355,7 +355,7 @@ export function SubscriptionsClient({
 
                     {/* Tabs + Search */}
                     <div className="space-y-4" data-student-list>
-                        <div className="flex items-center gap-1 bg-surface-card border border-k-border-subtle rounded-xl p-1">
+                        <div className="flex items-center gap-1 bg-white dark:bg-surface-card border border-[#E8E8ED] dark:border-k-border-subtle rounded-xl p-1">
                             {tabs.map(tab => {
                                 const count = tabCounts[tab.key]
                                 const isActive = activeTab === tab.key
@@ -365,18 +365,18 @@ export function SubscriptionsClient({
                                         onClick={() => setActiveTab(tab.key)}
                                         className={`flex-1 px-3 py-2 text-xs font-medium rounded-lg transition-all flex items-center justify-center gap-1.5 ${
                                             isActive
-                                                ? 'bg-glass-bg-active text-k-text-primary shadow-sm'
-                                                : 'text-k-text-tertiary hover:text-k-text-secondary'
+                                                ? 'bg-[#F5F5F7] dark:bg-glass-bg-active text-[#1D1D1F] dark:text-k-text-primary shadow-sm'
+                                                : 'text-[#86868B] dark:text-k-text-tertiary hover:text-[#6E6E73] dark:hover:text-k-text-secondary'
                                         }`}
                                     >
                                         {tab.label}
                                         <span className={`text-[10px] ${
-                                            isActive ? 'text-violet-600 dark:text-violet-400' : 'text-k-text-quaternary'
+                                            isActive ? 'text-[#007AFF] dark:text-violet-400' : 'text-[#AEAEB2] dark:text-k-text-quaternary'
                                         }`}>
                                             {count}
                                         </span>
                                         {tab.badge && count > 0 && (
-                                            <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                                            <span className="w-1.5 h-1.5 rounded-full bg-[#FF3B30] dark:bg-red-500" />
                                         )}
                                     </button>
                                 )
@@ -386,7 +386,7 @@ export function SubscriptionsClient({
                         {/* Collapsible "Como funciona" */}
                         <button
                             onClick={() => setHowToOpen(!howToOpen)}
-                            className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl border border-k-border-subtle bg-glass-bg text-k-text-tertiary hover:text-k-text-secondary transition-colors"
+                            className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl border border-[#E8E8ED] dark:border-k-border-subtle bg-white dark:bg-glass-bg text-[#86868B] dark:text-k-text-tertiary hover:text-[#6E6E73] dark:hover:text-k-text-secondary transition-colors"
                         >
                             <span className="text-xs font-medium">Como funciona a cobrança</span>
                             <ChevronDown
@@ -396,39 +396,39 @@ export function SubscriptionsClient({
                         </button>
                         {howToOpen && (
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 px-1">
-                                <div className="rounded-xl border border-k-border-subtle bg-glass-bg p-4">
+                                <div className="rounded-xl border border-[#E8E8ED] dark:border-k-border-subtle bg-white dark:bg-glass-bg p-4">
                                     <div className="flex items-center gap-2 mb-1.5">
-                                        <Heart size={13} className="text-emerald-600 dark:text-emerald-400" />
-                                        <span className="text-xs font-semibold text-k-text-primary">Cortesia por padrão</span>
+                                        <Heart size={13} className="text-[#34C759] dark:text-emerald-400" />
+                                        <span className="text-xs font-semibold text-[#1D1D1F] dark:text-k-text-primary">Cortesia por padrão</span>
                                     </div>
-                                    <p className="text-[11px] text-k-text-secondary leading-relaxed">
+                                    <p className="text-[11px] text-[#6E6E73] dark:text-k-text-secondary leading-relaxed">
                                         Todo aluno começa com acesso gratuito. Você decide individualmente quem cobrar.
                                     </p>
                                 </div>
-                                <div className="rounded-xl border border-k-border-subtle bg-glass-bg p-4">
+                                <div className="rounded-xl border border-[#E8E8ED] dark:border-k-border-subtle bg-white dark:bg-glass-bg p-4">
                                     <div className="flex items-center gap-2 mb-1.5">
-                                        <DollarSign size={13} className="text-violet-600 dark:text-violet-400" />
-                                        <span className="text-xs font-semibold text-k-text-primary">Stripe (automático)</span>
+                                        <DollarSign size={13} className="text-[#007AFF] dark:text-violet-400" />
+                                        <span className="text-xs font-semibold text-[#1D1D1F] dark:text-k-text-primary">Stripe (automático)</span>
                                     </div>
-                                    <p className="text-[11px] text-k-text-secondary leading-relaxed">
+                                    <p className="text-[11px] text-[#6E6E73] dark:text-k-text-secondary leading-relaxed">
                                         Gere um link, envie ao aluno, renovação automática. O aluno pode cancelar pelo app.
                                     </p>
                                 </div>
-                                <div className="rounded-xl border border-k-border-subtle bg-glass-bg p-4">
+                                <div className="rounded-xl border border-[#E8E8ED] dark:border-k-border-subtle bg-white dark:bg-glass-bg p-4">
                                     <div className="flex items-center gap-2 mb-1.5">
-                                        <Copy size={13} className="text-blue-600 dark:text-blue-400" />
-                                        <span className="text-xs font-semibold text-k-text-primary">Manual</span>
+                                        <Copy size={13} className="text-[#007AFF] dark:text-blue-400" />
+                                        <span className="text-xs font-semibold text-[#1D1D1F] dark:text-k-text-primary">Manual</span>
                                     </div>
-                                    <p className="text-[11px] text-k-text-secondary leading-relaxed">
+                                    <p className="text-[11px] text-[#6E6E73] dark:text-k-text-secondary leading-relaxed">
                                         Registre pagamentos (Pix, dinheiro) no seu ritmo. O Kinevo avisa 3 dias após o vencimento.
                                     </p>
                                 </div>
-                                <div className="rounded-xl border border-k-border-subtle bg-glass-bg p-4">
+                                <div className="rounded-xl border border-[#E8E8ED] dark:border-k-border-subtle bg-white dark:bg-glass-bg p-4">
                                     <div className="flex items-center gap-2 mb-1.5">
-                                        <Settings2 size={13} className="text-amber-600 dark:text-amber-400" />
-                                        <span className="text-xs font-semibold text-k-text-primary">Bloqueio de acesso</span>
+                                        <Settings2 size={13} className="text-[#FF9500] dark:text-amber-400" />
+                                        <span className="text-xs font-semibold text-[#1D1D1F] dark:text-k-text-primary">Bloqueio de acesso</span>
                                     </div>
-                                    <p className="text-[11px] text-k-text-secondary leading-relaxed">
+                                    <p className="text-[11px] text-[#6E6E73] dark:text-k-text-secondary leading-relaxed">
                                         Opcional por aluno. Se ativado, o aluno perde acesso aos treinos após 3 dias de atraso.
                                     </p>
                                 </div>
@@ -437,21 +437,21 @@ export function SubscriptionsClient({
 
                         <div className="relative group">
                             <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-                                <Search className="w-[18px] h-[18px] text-k-text-quaternary group-focus-within:text-violet-500 transition-colors" strokeWidth={1.5} />
+                                <Search className="w-[18px] h-[18px] text-[#AEAEB2] dark:text-k-text-quaternary group-focus-within:text-[#007AFF] dark:group-focus-within:text-violet-500 transition-colors" strokeWidth={1.5} />
                             </div>
                             <input
                                 type="text"
                                 placeholder="Buscar por nome do aluno..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full bg-glass-bg border border-k-border-primary rounded-2xl py-3 pl-11 pr-4 text-k-text-primary placeholder:text-k-text-quaternary focus:outline-none focus:ring-2 focus:ring-violet-500/10 focus:border-violet-500/50 backdrop-blur-md transition-all text-sm"
+                                className="w-full bg-white dark:bg-glass-bg border border-[#D2D2D7] dark:border-k-border-primary rounded-2xl py-3 pl-11 pr-4 text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:outline-none focus:ring-2 focus:ring-[#007AFF]/10 dark:focus:ring-violet-500/10 focus:border-[#007AFF]/50 dark:focus:border-violet-500/50 transition-all text-sm"
                             />
                         </div>
                     </div>
 
                     {/* Table */}
                     {filteredStudents.length === 0 ? (
-                        <div className="bg-surface-card rounded-2xl border border-k-border-subtle border-dashed">
+                        <div className="bg-white dark:bg-surface-card rounded-2xl border border-[#D2D2D7] dark:border-k-border-subtle border-dashed">
                             {searchQuery ? (
                                 <div className="flex flex-col items-center justify-center py-24 px-4">
                                     <p className="text-muted-foreground/50 font-medium">
@@ -491,37 +491,37 @@ export function SubscriptionsClient({
                             )}
                         </div>
                     ) : (
-                        <div className="rounded-2xl border border-k-border-subtle bg-surface-card shadow-xl overflow-hidden">
+                        <div className="rounded-2xl border border-[#E8E8ED] dark:border-k-border-subtle bg-white dark:bg-surface-card shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:shadow-xl overflow-hidden">
                             <div className="overflow-x-auto">
                                 <table className="w-full">
                                     <thead>
-                                        <tr className="border-b border-k-border-subtle">
-                                            <th className="px-6 py-4 text-left text-xs font-medium text-k-text-tertiary">Aluno</th>
-                                            <th className="px-4 py-4 text-left text-xs font-medium text-k-text-tertiary">Tipo</th>
-                                            <th className="px-4 py-4 text-left text-xs font-medium text-k-text-tertiary">Valor</th>
-                                            <th className="px-4 py-4 text-left text-xs font-medium text-k-text-tertiary">
+                                        <tr className="border-b border-[#E8E8ED] dark:border-k-border-subtle">
+                                            <th className="px-6 py-4 text-left text-xs font-medium text-[#86868B] dark:text-k-text-tertiary">Aluno</th>
+                                            <th className="px-4 py-4 text-left text-xs font-medium text-[#86868B] dark:text-k-text-tertiary">Tipo</th>
+                                            <th className="px-4 py-4 text-left text-xs font-medium text-[#86868B] dark:text-k-text-tertiary">Valor</th>
+                                            <th className="px-4 py-4 text-left text-xs font-medium text-[#86868B] dark:text-k-text-tertiary">
                                                 Status
                                                 <InfoTooltip content="Status financeiro do aluno. Atualizado automaticamente para Stripe. Para cobranças manuais, marque como pago quando receber." />
                                             </th>
-                                            <th className="px-4 py-4 text-left text-xs font-medium text-k-text-tertiary">Vencimento</th>
-                                            <th className="px-4 py-4 text-center text-xs font-medium text-k-text-tertiary">
+                                            <th className="px-4 py-4 text-left text-xs font-medium text-[#86868B] dark:text-k-text-tertiary">Vencimento</th>
+                                            <th className="px-4 py-4 text-center text-xs font-medium text-[#86868B] dark:text-k-text-tertiary">
                                                 Acesso
                                                 <InfoTooltip content="Controla se o aluno perde acesso aos treinos em caso de atraso. Desativado por padrão — o aluno mantém acesso mesmo com pagamento pendente." />
                                             </th>
-                                            <th className="px-4 py-4 text-right text-xs font-medium text-k-text-tertiary">Ações</th>
+                                            <th className="px-4 py-4 text-right text-xs font-medium text-[#86868B] dark:text-k-text-tertiary">Ações</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-k-border-subtle">
+                                    <tbody className="divide-y divide-[#E8E8ED] dark:divide-k-border-subtle">
                                         {filteredStudents.map((s) => (
                                             <tr
                                                 key={s.student_id}
-                                                className="group transition-colors hover:bg-glass-bg cursor-pointer"
+                                                className="group transition-colors hover:bg-[#F5F5F7] dark:hover:bg-glass-bg cursor-pointer"
                                                 onClick={() => handleRowClick(s)}
                                             >
                                                 {/* Aluno */}
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <div className="flex items-center gap-3">
-                                                        <div className="flex h-8 w-8 items-center justify-center rounded-full border border-k-border-primary bg-glass-bg overflow-hidden flex-shrink-0">
+                                                        <div className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E8E8ED] dark:border-k-border-primary bg-[#F5F5F7] dark:bg-glass-bg overflow-hidden flex-shrink-0">
                                                             {s.avatar_url ? (
                                                                 <Image
                                                                     src={s.avatar_url}
@@ -532,12 +532,12 @@ export function SubscriptionsClient({
                                                                     unoptimized
                                                                 />
                                                             ) : (
-                                                                <span className="text-xs font-semibold text-k-text-primary">
+                                                                <span className="text-xs font-semibold text-[#1D1D1F] dark:text-k-text-primary">
                                                                     {s.student_name?.charAt(0).toUpperCase() || '?'}
                                                                 </span>
                                                             )}
                                                         </div>
-                                                        <span className="text-sm font-medium text-k-text-primary">
+                                                        <span className="text-sm font-medium text-[#1D1D1F] dark:text-k-text-primary">
                                                             {s.student_name}
                                                         </span>
                                                     </div>
@@ -548,19 +548,19 @@ export function SubscriptionsClient({
                                                     {s.billing_type ? (
                                                         <BillingTypeBadge billingType={s.billing_type} />
                                                     ) : (
-                                                        <span className="text-xs text-k-text-quaternary">Cortesia</span>
+                                                        <span className="text-xs text-[#AEAEB2] dark:text-k-text-quaternary">Cortesia</span>
                                                     )}
                                                 </td>
 
                                                 {/* Valor */}
                                                 <td className="px-4 py-4 whitespace-nowrap">
                                                     {s.display_status === 'courtesy' ? (
-                                                        <span className="text-xs text-k-text-quaternary">—</span>
+                                                        <span className="text-xs text-[#AEAEB2] dark:text-k-text-quaternary">—</span>
                                                     ) : (
-                                                        <span className="text-sm font-medium text-k-text-primary">
+                                                        <span className="text-sm font-medium text-[#1D1D1F] dark:text-k-text-primary">
                                                             {s.amount ? formatCurrency(s.amount) : '—'}
                                                             {s.plan_interval && (
-                                                                <span className="text-xs text-k-text-quaternary">
+                                                                <span className="text-xs text-[#AEAEB2] dark:text-k-text-quaternary">
                                                                     {intervalLabels[s.plan_interval] || ''}
                                                                 </span>
                                                             )}
@@ -580,7 +580,7 @@ export function SubscriptionsClient({
 
                                                 {/* Vencimento */}
                                                 <td className="px-4 py-4 whitespace-nowrap">
-                                                    <span className="text-sm text-k-text-tertiary">
+                                                    <span className="text-sm text-[#86868B] dark:text-k-text-tertiary">
                                                         {s.display_status === 'courtesy' ? '—' : formatDate(s.current_period_end)}
                                                     </span>
                                                 </td>
@@ -594,7 +594,7 @@ export function SubscriptionsClient({
                                                                 onClick={(e) => handleToggleBlock(s, !s.block_on_fail, e)}
                                                                 disabled={actionLoading === s.contract_id}
                                                                 className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors disabled:opacity-50 ${
-                                                                    s.block_on_fail ? 'bg-violet-600' : 'bg-gray-600'
+                                                                    s.block_on_fail ? 'bg-[#007AFF] dark:bg-violet-600' : 'bg-[#8E8E93] dark:bg-gray-600'
                                                                 }`}
                                                                 title={s.block_on_fail ? 'Bloqueio ativo' : 'Acesso livre'}
                                                             >
@@ -605,8 +605,8 @@ export function SubscriptionsClient({
                                                                 />
                                                             </button>
                                                             {blockConfirmId === s.student_id && (
-                                                                <div className="absolute z-20 top-full mt-1 right-0 w-56 p-3 rounded-xl border border-amber-500/20 bg-surface-card shadow-lg">
-                                                                    <p className="text-[11px] text-amber-600 dark:text-amber-400 mb-2">
+                                                                <div className="absolute z-20 top-full mt-1 right-0 w-56 p-3 rounded-xl border border-[#FF9500]/20 dark:border-amber-500/20 bg-white dark:bg-surface-card shadow-lg">
+                                                                    <p className="text-[11px] text-[#FF9500] dark:text-amber-400 mb-2">
                                                                         Bloquear acesso de {s.student_name} se inadimplente?
                                                                     </p>
                                                                     <div className="flex gap-2">
@@ -616,7 +616,7 @@ export function SubscriptionsClient({
                                                                                 setBlockConfirmId(null)
                                                                                 handleToggleBlock(s, true, e)
                                                                             }}
-                                                                            className="px-2.5 py-1 text-[10px] font-semibold rounded-lg bg-violet-600 text-white hover:bg-violet-500 transition-colors"
+                                                                            className="px-2.5 py-1 text-[10px] font-semibold rounded-lg bg-[#007AFF] dark:bg-violet-600 text-white hover:bg-[#0056B3] dark:hover:bg-violet-500 transition-colors"
                                                                         >
                                                                             Confirmar
                                                                         </button>
@@ -625,7 +625,7 @@ export function SubscriptionsClient({
                                                                                 e.stopPropagation()
                                                                                 setBlockConfirmId(null)
                                                                             }}
-                                                                            className="px-2.5 py-1 text-[10px] font-medium text-k-text-secondary hover:text-k-text-primary transition-colors"
+                                                                            className="px-2.5 py-1 text-[10px] font-medium text-[#6E6E73] dark:text-k-text-secondary hover:text-[#1D1D1F] dark:hover:text-k-text-primary transition-colors"
                                                                         >
                                                                             Cancelar
                                                                         </button>
@@ -634,7 +634,7 @@ export function SubscriptionsClient({
                                                             )}
                                                         </div>
                                                     ) : (
-                                                        <span className="text-xs text-k-text-quaternary">—</span>
+                                                        <span className="text-xs text-[#AEAEB2] dark:text-k-text-quaternary">—</span>
                                                     )}
                                                 </td>
 
@@ -652,7 +652,7 @@ export function SubscriptionsClient({
                                                                             e.stopPropagation()
                                                                             handleOpenConfigModal('new', s)
                                                                         }}
-                                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20 hover:bg-violet-500/20 transition-colors"
+                                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-[#007AFF]/10 dark:bg-violet-500/10 text-[#007AFF] dark:text-violet-400 border border-[#007AFF]/20 dark:border-violet-500/20 hover:bg-[#007AFF]/20 dark:hover:bg-violet-500/20 transition-colors"
                                                                     >
                                                                         <Settings2 size={12} strokeWidth={2} />
                                                                         Configurar
@@ -663,7 +663,7 @@ export function SubscriptionsClient({
                                                                 {s.display_status === 'awaiting_payment' && (
                                                                     <button
                                                                         onClick={(e) => handleCopyLink(s, e)}
-                                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20 hover:bg-violet-500/20 transition-colors"
+                                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-[#007AFF]/10 dark:bg-violet-500/10 text-[#007AFF] dark:text-violet-400 border border-[#007AFF]/20 dark:border-violet-500/20 hover:bg-[#007AFF]/20 dark:hover:bg-violet-500/20 transition-colors"
                                                                     >
                                                                         <Copy size={12} strokeWidth={2} />
                                                                         Copiar Link
@@ -676,7 +676,7 @@ export function SubscriptionsClient({
                                                                     ['active', 'grace_period', 'overdue'].includes(s.display_status) && (
                                                                     <button
                                                                         onClick={(e) => handleMarkAsPaid(s.contract_id!, e)}
-                                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors"
+                                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-[#34C759]/10 dark:bg-emerald-500/10 text-[#34C759] dark:text-emerald-400 border border-[#34C759]/20 dark:border-emerald-500/20 hover:bg-[#34C759]/20 dark:hover:bg-emerald-500/20 transition-colors"
                                                                     >
                                                                         <CheckCircle size={12} strokeWidth={2} />
                                                                         Marcar pago
@@ -691,7 +691,7 @@ export function SubscriptionsClient({
                                                                         rel="noopener noreferrer"
                                                                         onClick={(e) => e.stopPropagation()}
                                                                         title="Contatar via WhatsApp"
-                                                                        className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-emerald-600/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-600/20 transition-colors"
+                                                                        className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-[#34C759]/10 dark:bg-emerald-600/10 text-[#34C759] dark:text-emerald-400 hover:bg-[#34C759]/20 dark:hover:bg-emerald-600/20 transition-colors"
                                                                     >
                                                                         <MessageCircle size={13} strokeWidth={2} />
                                                                     </a>

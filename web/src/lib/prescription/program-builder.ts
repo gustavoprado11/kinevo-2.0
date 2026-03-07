@@ -20,6 +20,8 @@ import type {
     ExerciseFunction,
 } from '@kinevo/shared/types/prescription'
 
+import { computeWeeklyVolumePerMuscle } from './rules-engine'
+
 // ============================================================================
 // Difficulty Preference — maps student level to exercise difficulty preference
 // ============================================================================
@@ -100,6 +102,10 @@ export function buildHeuristicProgram(
     // 6. Track small group exercises per week (enforces SMALL_GROUP_EXERCISE_LIMITS)
     const weeklySmallGroupCount: Record<string, number> = {}
 
+    // 6.5 Track accumulated weekly volume INCLUDING secondary contributions
+    // This prevents secondary overflow (e.g. Glúteo from Quad/Post compounds)
+    const weeklyGroupVolume: Record<string, number> = {}
+
     // 7. Build workouts
     const workouts: GeneratedWorkout[] = []
 
@@ -120,11 +126,15 @@ export function buildHeuristicProgram(
             groupFrequency,
             profile,
             weeklySmallGroupCount,
+            weeklyGroupVolume,
         )
         workouts.push(workout)
     }
 
-    // 8. Build reasoning
+    // 8. Post-process: cap any remaining overflow (safety net)
+    capSecondaryVolumeOverflow(workouts, available, level)
+
+    // 9. Build reasoning
     const reasoning = buildReasoning(level, goal, frequency, structureKey, workouts)
 
     return {
@@ -220,11 +230,14 @@ function buildWorkout(
     groupFrequency: Record<string, number>,
     profile: StudentPrescriptionProfile,
     weeklySmallGroupCount: Record<string, number>,
+    weeklyGroupVolume: Record<string, number>,
 ): GeneratedWorkout {
     const items: GeneratedWorkoutItem[] = []
     const usedExerciseIds = new Set<string>()
     const favoriteIds = new Set(profile.favorite_exercise_ids)
     let itemIndex = 0
+    const freq = Math.max(1, scheduledDays.length)
+    const maxVolume = VOLUME_RANGES[level].max
 
     // Calculate dynamic exercise limits for this workout
     const { max } = calcExercisesPerWorkout(
@@ -239,26 +252,89 @@ function buildWorkout(
     const primaryGroups = muscleGroups.filter(g => PRIMARY_MUSCLE_GROUPS.includes(g))
     const smallGroups = muscleGroups.filter(g => SMALL_MUSCLE_GROUPS.includes(g))
 
+    // Helper: track volume for an added exercise (direct + secondary)
+    function trackVolume(pick: PrescriptionExerciseRef, sets: number, targetGroup: string) {
+        const weeklySets = sets * freq
+        weeklyGroupVolume[targetGroup] = (weeklyGroupVolume[targetGroup] || 0) + weeklySets
+        if (pick.is_compound) {
+            const secondaries = BUILDER_SECONDARY_MAP[targetGroup] || []
+            for (const { group: secGroup, weight } of secondaries) {
+                weeklyGroupVolume[secGroup] = (weeklyGroupVolume[secGroup] || 0) + Math.round(weeklySets * weight)
+            }
+        }
+    }
+
+    // Helper: check if adding a compound (at minimum 2 sets) would push any secondary target over max
+    function wouldOverflowSecondary(pick: PrescriptionExerciseRef, targetGroup: string): boolean {
+        if (!pick.is_compound) return false
+        for (const { group: secGroup, weight } of BUILDER_SECONDARY_MAP[targetGroup] || []) {
+            const current = weeklyGroupVolume[secGroup] || 0
+            const minAdd = Math.round(2 * freq * weight) // minimum 2 sets × frequency × weight
+            if (current + minAdd > maxVolume) return true
+        }
+        return false
+    }
+
+    // Helper: max sets allowed before a group (or its secondary targets) hits maxVolume
+    function maxSetsWithinBudget(pick: PrescriptionExerciseRef, targetGroup: string, baseSets: number): number {
+        let allowed = baseSets
+        // Check direct group
+        const currentDirect = weeklyGroupVolume[targetGroup] || 0
+        const directRoom = Math.max(0, maxVolume - currentDirect)
+        allowed = Math.min(allowed, Math.ceil(directRoom / freq))
+        // Check secondary targets
+        if (pick.is_compound) {
+            for (const { group: secGroup, weight } of BUILDER_SECONDARY_MAP[targetGroup] || []) {
+                const currentSec = weeklyGroupVolume[secGroup] || 0
+                const secRoom = Math.max(0, maxVolume - currentSec)
+                if (weight > 0) {
+                    allowed = Math.min(allowed, Math.ceil(secRoom / (freq * weight)))
+                }
+            }
+        }
+        return Math.max(2, allowed) // minimum 2 sets per exercise
+    }
+
     // ── Phase 1: One compound per primary group ──
+    // Guarantee: at least 1 compound per workout. The first compound is always
+    // allowed even if it would overflow secondary targets (volume cap handles it later).
+    let hasCompoundInWorkout = false
+
     for (const group of primaryGroups) {
         if (items.length >= max) break
 
-        const candidates = (byMuscleGroup.get(group) || [])
+        // Skip if this group already at/over volume max from secondary contributions
+        if ((weeklyGroupVolume[group] || 0) >= maxVolume) continue
+
+        // Try compound first; fall back to isolation if compound would overflow secondary
+        const compoundCandidates = (byMuscleGroup.get(group) || [])
             .filter(e => e.is_compound && !usedExerciseIds.has(e.id))
 
-        // Prefer exercises where this group is the PRIMARY (first) muscle group.
-        // This avoids e.g. picking Agachamento (Quadríceps first) for Glúteo
-        // when Hip Thrust (Glúteo first) is available.
-        // Also prefers is_primary_movement and difficulty_level matching student level.
-        const sorted = sortByPrimaryGroupMatch(candidates, group, favoriteIds, level)
+        const sortedCompounds = sortByPrimaryGroupMatch(compoundCandidates, group, favoriteIds, level)
+        const compoundPick = sortedCompounds[0] || null
 
-        const pick = sorted[0] || null
+        // First compound is always allowed (even with secondary overflow) to
+        // guarantee every workout has at least 1 compound movement.
+        const overflows = compoundPick && wouldOverflowSecondary(compoundPick, group)
+        const useIsolation = overflows && hasCompoundInWorkout
+        let pick: PrescriptionExerciseRef | null
+
+        if (useIsolation || !compoundPick) {
+            const isolationCandidates = (byMuscleGroup.get(group) || [])
+                .filter(e => !e.is_compound && !usedExerciseIds.has(e.id))
+            pick = pickExercise(isolationCandidates, favoriteIds, level) || compoundPick
+        } else {
+            pick = compoundPick
+        }
+
         if (pick) {
             const occurrences = groupFrequency[group] || 1
             const budget = Math.max(2, Math.round(targetSetsPerGroup / occurrences))
-            const sets = Math.max(2, Math.min(4, budget))
-            items.push(buildItem(pick, sets, goal, true, itemIndex++, group))
+            const sets = Math.min(4, maxSetsWithinBudget(pick, group, budget))
+            items.push(buildItem(pick, sets, goal, pick.is_compound, itemIndex++, group))
             usedExerciseIds.add(pick.id)
+            trackVolume(pick, sets, group)
+            if (pick.is_compound) hasCompoundInWorkout = true
         }
     }
 
@@ -277,6 +353,7 @@ function buildWorkout(
             items.push(buildItem(pick, 3, goal, pick.is_compound, itemIndex++, group))
             usedExerciseIds.add(pick.id)
             weeklySmallGroupCount[group] = (weeklySmallGroupCount[group] || 0) + 1
+            trackVolume(pick, 3, group)
         }
     }
 
@@ -284,8 +361,14 @@ function buildWorkout(
     for (const group of primaryGroups) {
         if (items.length >= max) break
 
-        const candidates = (byMuscleGroup.get(group) || [])
+        // Skip if this group already at/over volume max
+        if ((weeklyGroupVolume[group] || 0) >= maxVolume) continue
+
+        let candidates = (byMuscleGroup.get(group) || [])
             .filter(e => !usedExerciseIds.has(e.id))
+
+        // Filter out compounds that would overflow secondary targets
+        candidates = candidates.filter(e => !wouldOverflowSecondary(e, group))
 
         // Prefer exercises whose primary group matches + difficulty preference
         const sorted = sortByPrimaryGroupMatch(candidates, group, favoriteIds, level)
@@ -298,10 +381,11 @@ function buildWorkout(
                 .filter(i => i.exercise_muscle_group === group)
                 .reduce((s, i) => s + i.sets, 0)
             const setsRemaining = Math.max(2, budget - setsUsedForGroup)
-            const sets = Math.min(3, setsRemaining)
+            const sets = Math.min(3, maxSetsWithinBudget(pick, group, setsRemaining))
 
             items.push(buildItem(pick, sets, goal, pick.is_compound, itemIndex++, group))
             usedExerciseIds.add(pick.id)
+            trackVolume(pick, sets, group)
         }
     }
 
@@ -507,5 +591,128 @@ function buildReasoning(
         ),
         attention_flags: [],
         confidence_score: 0.85,
+    }
+}
+
+// ============================================================================
+// Post-Processing: Cap Volume for Secondary Contributions
+// ============================================================================
+// After building all workouts, compounds may cause secondary muscle groups
+// (e.g. Glúteo from Agachamento, Ombros from Supino) to exceed the volume max.
+// This pass reduces sets in priority order:
+//   1. Direct isolations for the overflowing group
+//   2. Compounds contributing via secondary activation (if their primary group has headroom)
+//   3. Direct compounds for the overflowing group (last resort)
+
+const BUILDER_SECONDARY_MAP: Record<string, Array<{ group: string; weight: number }>> = {
+    'Quadríceps':        [{ group: 'Glúteo', weight: 1.0 }],
+    'Posterior de Coxa': [{ group: 'Glúteo', weight: 1.0 }],
+    'Peito':             [{ group: 'Ombros', weight: 0.5 }, { group: 'Tríceps', weight: 0.5 }],
+    'Costas':            [{ group: 'Bíceps', weight: 0.5 }],
+    'Ombros':            [{ group: 'Tríceps', weight: 0.5 }],
+}
+
+function capSecondaryVolumeOverflow(
+    workouts: GeneratedWorkout[],
+    available: PrescriptionExerciseRef[],
+    level: TrainingLevel,
+): void {
+    const exerciseMap = new Map(available.map(e => [e.id, e]))
+    const maxSets = VOLUME_RANGES[level].max
+    const minSets = VOLUME_RANGES[level].min
+
+    // Iterate: reducing one group may affect others via shared compounds
+    for (let pass = 0; pass < 3; pass++) {
+        const weeklyVolume = computeWeeklyVolumePerMuscle(workouts, exerciseMap)
+        let anyChanged = false
+
+        for (const group of PRIMARY_MUSCLE_GROUPS) {
+            const totalSets = weeklyVolume[group] || 0
+            if (totalSets <= maxSets) continue
+
+            let excess = totalSets - maxSets
+
+            // Collect ALL items contributing to this group (direct + secondary)
+            type Contribution = {
+                workout: GeneratedWorkout
+                item: GeneratedWorkoutItem
+                frequency: number
+                isDirect: boolean
+                weight: number // 1.0 for direct, secondary weight otherwise
+                isCompound: boolean
+            }
+            const contributions: Contribution[] = []
+
+            for (const workout of workouts) {
+                const freq = Math.max(1, workout.scheduled_days.length)
+                for (const item of workout.items) {
+                    const ref = exerciseMap.get(item.exercise_id)
+                    const isCompound = ref?.is_compound ?? false
+
+                    if (item.exercise_muscle_group === group) {
+                        contributions.push({ workout, item, frequency: freq, isDirect: true, weight: 1.0, isCompound })
+                    } else if (isCompound) {
+                        const secondaries = BUILDER_SECONDARY_MAP[item.exercise_muscle_group] || []
+                        const sec = secondaries.find(s => s.group === group)
+                        if (sec) {
+                            contributions.push({ workout, item, frequency: freq, isDirect: false, weight: sec.weight, isCompound: true })
+                        }
+                    }
+                }
+            }
+
+            // Sort priority: direct isolations → direct compounds → secondary compounds
+            contributions.sort((a, b) => {
+                const aPriority = a.isDirect ? (a.isCompound ? 2 : 0) : 3
+                const bPriority = b.isDirect ? (b.isCompound ? 2 : 0) : 3
+                if (aPriority !== bPriority) return aPriority - bPriority
+                return b.item.sets - a.item.sets
+            })
+
+            for (const c of contributions) {
+                if (excess <= 0) break
+                const canReduce = c.item.sets - 2
+                if (canReduce <= 0) continue
+
+                // For secondary contributors, check primary group headroom
+                if (!c.isDirect) {
+                    const primaryGroup = c.item.exercise_muscle_group
+                    const primaryVol = weeklyVolume[primaryGroup] || 0
+                    const primaryHeadroom = primaryVol - minSets
+                    if (primaryHeadroom <= 0) continue
+                    const maxByHeadroom = Math.floor(primaryHeadroom / c.frequency)
+                    if (maxByHeadroom <= 0) continue
+                    const reduction = Math.min(canReduce, maxByHeadroom, Math.ceil(excess / (c.frequency * c.weight)))
+                    if (reduction > 0) {
+                        c.item.sets -= reduction
+                        excess -= Math.round(reduction * c.frequency * c.weight)
+                        weeklyVolume[primaryGroup] -= reduction * c.frequency
+                        anyChanged = true
+                    }
+                } else {
+                    const reduction = Math.min(canReduce, Math.ceil(excess / c.frequency))
+                    c.item.sets -= reduction
+                    excess -= reduction * c.frequency
+                    anyChanged = true
+                }
+            }
+
+            // If still over, remove direct isolations entirely
+            if (excess > 0) {
+                for (const c of contributions) {
+                    if (excess <= 0) break
+                    if (!c.isDirect || c.isCompound) continue
+                    const idx = c.workout.items.indexOf(c.item)
+                    if (idx >= 0) {
+                        c.workout.items.splice(idx, 1)
+                        c.workout.items.forEach((it, i) => { it.order_index = i })
+                        excess -= c.item.sets * c.frequency
+                        anyChanged = true
+                    }
+                }
+            }
+        }
+
+        if (!anyChanged) break
     }
 }

@@ -357,9 +357,9 @@ export function StudentDetailClient({
                     {/* Right Column: Notes → Queue → History */}
                     <div className="space-y-6 lg:col-span-1">
                         {/* Trainer Notes — First (most frequently used) */}
-                        <div className="bg-glass-bg backdrop-blur-md rounded-2xl border border-k-border-primary p-6">
+                        <div className="bg-white dark:bg-glass-bg backdrop-blur-md rounded-2xl border border-[#E5E5EA] dark:border-k-border-primary p-6">
                             <div className="flex items-center justify-between mb-3">
-                                <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                                <h3 className="text-sm font-semibold text-[#1C1C1E] dark:text-white flex items-center gap-2">
                                     Observações
                                     <span className="px-2 py-0.5 rounded bg-glass-bg text-[10px] text-k-text-tertiary font-bold border border-k-border-subtle">
                                         Notas
@@ -380,9 +380,9 @@ export function StudentDetailClient({
                         </div>
 
                         {/* Scheduled Programs — Compact */}
-                        <div className="bg-glass-bg backdrop-blur-md rounded-2xl border border-k-border-primary p-6">
+                        <div className="bg-white dark:bg-glass-bg backdrop-blur-md rounded-2xl border border-[#E5E5EA] dark:border-k-border-primary p-6">
                             <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                                <h3 className="text-sm font-semibold text-[#1C1C1E] dark:text-white flex items-center gap-2">
                                     Próximos Programas
                                     <span className="px-2 py-0.5 rounded bg-glass-bg text-[10px] text-k-text-tertiary font-bold border border-k-border-subtle">
                                         Fila
@@ -454,7 +454,7 @@ export function StudentDetailClient({
                                         <div key={program.id} className="bg-glass-bg rounded-xl p-4 border border-k-border-subtle hover:border-violet-500/30 transition-all group relative overflow-hidden">
                                             <div className="flex justify-between items-start">
                                                 <div className="relative z-10">
-                                                    <h4 className="font-bold text-white text-sm group-hover:text-violet-300 transition-colors">{program.name}</h4>
+                                                    <h4 className="font-bold text-[#1C1C1E] dark:text-white text-sm group-hover:text-violet-300 transition-colors">{program.name}</h4>
                                                     <div className="flex items-center gap-3 text-[10px] font-bold text-k-text-quaternary mt-1">
                                                         {program.duration_weeks && <span>{program.duration_weeks} sem</span>}
                                                         {program.scheduled_start_date && (

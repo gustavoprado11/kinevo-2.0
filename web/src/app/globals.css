@@ -12,52 +12,52 @@
    ═══════════════════════════════════════════════════════════════════ */
 
 :root {
-  /* ── Existing shadcn/ui variables (Light) ── */
-  --background: #F2F2F7;
-  --foreground: #0f172a;
+  /* ── Existing shadcn/ui variables (Light — Apple HIG palette) ── */
+  --background: #F5F5F7;
+  --foreground: #1D1D1F;
   --card: #ffffff;
-  --card-foreground: #0f172a;
+  --card-foreground: #1D1D1F;
   --popover: #ffffff;
-  --popover-foreground: #0f172a;
-  --primary: #7C3AED;
+  --popover-foreground: #1D1D1F;
+  --primary: #007AFF;
   --primary-foreground: #ffffff;
-  --muted: #f1f5f9;
-  --muted-foreground: #64748b;
-  --accent: #f1f5f9;
-  --accent-foreground: #7C3AED;
-  --border: #e2e8f0;
-  --input: #e2e8f0;
-  --ring: #7C3AED;
-  --destructive: #dc2626;
+  --muted: #F5F5F7;
+  --muted-foreground: #6E6E73;
+  --accent: #F5F5F7;
+  --accent-foreground: #007AFF;
+  --border: #D2D2D7;
+  --input: #D2D2D7;
+  --ring: #007AFF;
+  --destructive: #FF3B30;
   --destructive-foreground: #ffffff;
   color-scheme: light;
 
-  /* ── Kinevo Semantic Surfaces (Light) ── */
-  --surface-primary: #F2F2F7;
-  --surface-canvas: #F2F2F7;
+  /* ── Kinevo Semantic Surfaces (Light — Apple HIG) ── */
+  --surface-primary: #F5F5F7;
+  --surface-canvas: #F5F5F7;
   --surface-card: #FFFFFF;
   --surface-sidebar: #FFFFFF;
   --surface-elevated: #FFFFFF;
-  --surface-inset: rgba(0, 0, 0, 0.03);
+  --surface-inset: #F5F5F7;
 
-  /* ── Kinevo Semantic Text (Light) ── */
-  --text-primary: #09090B;
-  --text-secondary: rgba(15, 23, 42, 0.7);
-  --text-tertiary: rgba(15, 23, 42, 0.5);
-  --text-quaternary: rgba(15, 23, 42, 0.25);
+  /* ── Kinevo Semantic Text (Light — Apple HIG) ── */
+  --text-primary: #1D1D1F;
+  --text-secondary: #6E6E73;
+  --text-tertiary: #86868B;
+  --text-quaternary: #AEAEB2;
 
-  /* ── Kinevo Semantic Borders (Light) ── */
-  --border-primary: rgba(0, 0, 0, 0.1);
-  --border-subtle: rgba(0, 0, 0, 0.06);
+  /* ── Kinevo Semantic Borders (Light — Apple HIG) ── */
+  --border-primary: #D2D2D7;
+  --border-subtle: #E8E8ED;
 
   /* ── Kinevo Glass / Overlay (Light) ── */
-  --glass-bg: rgba(0, 0, 0, 0.03);
-  --glass-bg-active: rgba(0, 0, 0, 0.06);
-  --glass-bg-hover: rgba(0, 0, 0, 0.04);
+  --glass-bg: #F5F5F7;
+  --glass-bg-active: #ECECF0;
+  --glass-bg-hover: #F0F0F4;
 
   /* ── Kinevo Gradient Text (Light) ── */
-  --gradient-text-from: #0F172A;
-  --gradient-text-to: #64748b;
+  --gradient-text-from: #1D1D1F;
+  --gradient-text-to: #86868B;
 }
 
 .dark {
@@ -170,9 +170,12 @@ body {
 
   /* Apple-style soft shadow for Light Mode cards */
   .shadow-apple-card {
-    box-shadow:
-      0 1px 3px rgba(0, 0, 0, 0.05),
-      0 1px 2px rgba(0, 0, 0, 0.03);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  }
+
+  /* Apple-style hover shadow for interactive cards */
+  .shadow-apple-hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
   }
 
   /* Apple-style elevated shadow for modals/sheets */

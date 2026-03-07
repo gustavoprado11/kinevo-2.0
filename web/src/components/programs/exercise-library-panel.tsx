@@ -83,17 +83,17 @@ export function ExerciseLibraryPanel({
 
     return (
         <>
-            <div className="flex flex-col h-full bg-surface-primary">
+            <div className="flex flex-col h-full bg-white dark:bg-surface-primary">
                 {/* Search — dominant element */}
                 <div className="px-3 pt-3 pb-2">
                     <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-k-text-quaternary" />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#AEAEB2] dark:text-k-text-quaternary" />
                         <input
                             type="text"
                             placeholder="Buscar exercício..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-9 pr-8 py-2.5 text-sm bg-glass-bg border border-k-border-subtle rounded-xl text-k-text-primary placeholder:text-k-text-quaternary focus:outline-none focus:ring-1 focus:ring-violet-500/50 transition-all"
+                            className="w-full pl-9 pr-8 py-2.5 text-sm bg-[#F5F5F7] dark:bg-glass-bg border border-[#E8E8ED] dark:border-k-border-subtle rounded-xl text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:outline-none focus:ring-1 focus:ring-[#007AFF]/30 dark:focus:ring-violet-500/50 focus:border-[#007AFF] dark:focus:border-violet-500/50 transition-all"
                         />
                         {searchQuery && (
                             <button
@@ -114,8 +114,8 @@ export function ExerciseLibraryPanel({
                                 onClick={() => setSelectedGroup(null)}
                                 className={`px-3 py-1 rounded-full text-[10px] font-bold whitespace-nowrap transition-colors shrink-0 ${
                                     !selectedGroup
-                                        ? 'bg-violet-600 text-white'
-                                        : 'bg-glass-bg text-k-text-tertiary hover:text-k-text-secondary'
+                                        ? 'bg-[#007AFF] dark:bg-violet-600 text-white'
+                                        : 'bg-[#F5F5F7] dark:bg-glass-bg text-[#6E6E73] dark:text-k-text-tertiary hover:text-[#1D1D1F] dark:hover:text-k-text-secondary'
                                 }`}
                             >
                                 Todos
@@ -126,8 +126,8 @@ export function ExerciseLibraryPanel({
                                     onClick={() => setSelectedGroup(prev => prev === group ? null : group)}
                                     className={`px-3 py-1 rounded-full text-[10px] font-bold whitespace-nowrap transition-colors shrink-0 ${
                                         selectedGroup === group
-                                            ? 'bg-violet-600 text-white'
-                                            : 'bg-glass-bg text-k-text-tertiary hover:text-k-text-secondary'
+                                            ? 'bg-[#007AFF] dark:bg-violet-600 text-white'
+                                            : 'bg-[#F5F5F7] dark:bg-glass-bg text-[#6E6E73] dark:text-k-text-tertiary hover:text-[#1D1D1F] dark:hover:text-k-text-secondary'
                                     }`}
                                 >
                                     {group}
@@ -138,10 +138,10 @@ export function ExerciseLibraryPanel({
                 )}
 
                 {/* Result count */}
-                <div className="px-4 py-1.5 border-y border-k-border-subtle">
-                    <span className="text-[10px] text-k-text-quaternary font-medium">
+                <div className="px-4 py-1.5 border-y border-[#E8E8ED] dark:border-k-border-subtle">
+                    <span className="text-[10px] text-[#8E8E93] dark:text-k-text-quaternary font-medium">
                         {filteredExercises.length} exercício{filteredExercises.length !== 1 ? 's' : ''}
-                        {selectedGroup && <> em <span className="text-k-text-tertiary">{selectedGroup}</span></>}
+                        {selectedGroup && <> em <span className="text-[#6E6E73] dark:text-k-text-tertiary">{selectedGroup}</span></>}
                     </span>
                 </div>
 
@@ -157,7 +157,7 @@ export function ExerciseLibraryPanel({
                             {searchQuery.trim() && (
                                 <button
                                     onClick={() => setIsCreateModalOpen(true)}
-                                    className="text-violet-600 dark:text-violet-400 hover:text-violet-300 text-sm font-medium transition-colors"
+                                    className="text-[#007AFF] dark:text-violet-400 hover:text-[#0056B3] dark:hover:text-violet-300 text-sm font-medium transition-colors"
                                 >
                                     + Criar &ldquo;{searchQuery}&rdquo;
                                 </button>
@@ -166,7 +166,7 @@ export function ExerciseLibraryPanel({
                             {selectedGroup && (
                                 <button
                                     onClick={() => setSelectedGroup(null)}
-                                    className="text-violet-600 dark:text-violet-400 text-xs hover:text-violet-300 mt-3 block mx-auto"
+                                    className="text-[#007AFF] dark:text-violet-400 text-xs hover:text-[#0056B3] dark:hover:text-violet-300 mt-3 block mx-auto"
                                 >
                                     Limpar filtro
                                 </button>
@@ -186,9 +186,9 @@ export function ExerciseLibraryPanel({
                                         e.dataTransfer.setData('application/kinevo-exercise-id', exercise.id)
                                         e.dataTransfer.effectAllowed = 'copy'
                                     }}
-                                    className={`flex items-center gap-2 py-2 px-3 min-h-[56px] border-b border-k-border-subtle/50 transition-colors group/item ${
+                                    className={`flex items-center gap-2 py-2 px-3 min-h-[56px] border-b border-[#E8E8ED]/50 dark:border-k-border-subtle/50 transition-colors group/item ${
                                         activeWorkoutId
-                                            ? 'cursor-grab hover:bg-glass-bg active:bg-glass-bg-active active:cursor-grabbing'
+                                            ? 'cursor-grab hover:bg-[#F5F5F7] dark:hover:bg-glass-bg active:bg-[#ECECF0] dark:active:bg-glass-bg-active active:cursor-grabbing'
                                             : 'cursor-not-allowed opacity-50'
                                     }`}
                                     title={exercise.name}
@@ -224,7 +224,7 @@ export function ExerciseLibraryPanel({
                                     {/* Badge + actions — right-aligned, vertically centered */}
                                     <div className="flex items-center gap-2 shrink-0">
                                         {groupName && (
-                                            <span className="text-[9px] text-k-text-quaternary font-bold">
+                                            <span className="text-[9px] text-[#8E8E93] dark:text-k-text-quaternary font-bold">
                                                 {groupName}
                                             </span>
                                         )}
@@ -237,7 +237,7 @@ export function ExerciseLibraryPanel({
                                                         e.preventDefault()
                                                         setPreviewExercise(exercise)
                                                     }}
-                                                    className="p-1 text-k-text-quaternary hover:text-violet-400 transition-colors"
+                                                    className="p-1 text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#007AFF] dark:hover:text-violet-400 transition-colors"
                                                     title="Ver vídeo"
                                                 >
                                                     <PlayCircle className="w-4 h-4" />
@@ -264,10 +264,10 @@ export function ExerciseLibraryPanel({
                 </div>
 
                 {/* Footer */}
-                <div className="px-3 py-2.5 border-t border-k-border-subtle bg-glass-bg">
+                <div className="px-3 py-2.5 border-t border-[#E8E8ED] dark:border-k-border-subtle bg-[#F9F9FB] dark:bg-glass-bg">
                     <button
                         onClick={() => setIsCreateModalOpen(true)}
-                        className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-glass-bg hover:bg-glass-bg-active text-k-text-secondary hover:text-k-text-primary text-xs font-medium rounded-lg transition-colors"
+                        className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-white dark:bg-glass-bg hover:bg-[#F5F5F7] dark:hover:bg-glass-bg-active text-[#007AFF] dark:text-k-text-secondary hover:text-[#0056B3] dark:hover:text-k-text-primary text-xs font-medium rounded-lg transition-colors border border-[#E8E8ED] dark:border-transparent"
                     >
                         <Plus className="w-3.5 h-3.5" />
                         Criar novo exercício

@@ -177,34 +177,34 @@ export function ExerciseFormModal({ isOpen, onClose, onSuccess, exercise, traine
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div
-                className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300"
+                className="absolute inset-0 bg-black/30 dark:bg-black/60 backdrop-blur-sm transition-opacity duration-300"
                 onClick={onClose}
             />
 
-            <div className="relative w-full max-w-2xl bg-surface-card backdrop-blur-2xl rounded-3xl shadow-2xl ring-1 ring-inset ring-k-border-primary max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-200">
+            <div className="relative w-full max-w-2xl bg-white dark:bg-surface-card dark:backdrop-blur-2xl rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-2xl dark:ring-1 dark:ring-inset dark:ring-k-border-primary max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-200">
 
                 {/* Header */}
-                <div className="p-6 pb-4 flex items-center justify-between z-10">
+                <div className="p-6 pb-4 flex items-center justify-between z-10 border-b border-[#E8E8ED] dark:border-transparent">
                     <div>
-                        <h2 className="text-xl font-bold text-white tracking-tight">
+                        <h2 className="text-xl font-semibold text-[#1D1D1F] dark:text-white tracking-tight">
                             {isEditing ? 'Editar Exercício' : 'Novo Exercício'}
                         </h2>
-                        <p className="text-xs text-muted-foreground/60 font-semibold mt-1">
+                        <p className="text-xs text-[#86868B] dark:text-muted-foreground/60 font-medium mt-1">
                             {isEditing ? 'Atualize os detalhes do exercício' : 'Adicione um novo exercício à biblioteca'}
                         </p>
                     </div>
                     <button
                         onClick={onClose}
-                        className="p-2 text-k-text-quaternary hover:text-k-text-primary transition-colors rounded-full hover:bg-glass-bg-active"
+                        className="p-2 text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#6E6E73] dark:hover:text-k-text-primary hover:bg-[#F5F5F7] dark:hover:bg-glass-bg-active transition-colors rounded-full"
                     >
                         <X className="w-5 h-5" strokeWidth={1.5} />
                     </button>
                 </div>
 
-                <div className="p-6 pt-2 space-y-6 overflow-y-auto scrollbar-hide">
+                <div className="p-6 pt-4 space-y-6 overflow-y-auto scrollbar-hide">
                     {/* Name */}
                     <div>
-                        <label className="block text-[11px] font-bold text-k-text-tertiary mb-1.5">
+                        <label className="block text-sm font-medium text-[#1D1D1F] dark:text-k-text-tertiary mb-1.5">
                             Nome do Exercício
                         </label>
                         <input
@@ -212,13 +212,13 @@ export function ExerciseFormModal({ isOpen, onClose, onSuccess, exercise, traine
                             value={name}
                             onChange={e => setName(e.target.value)}
                             placeholder="Ex: Supino Reto"
-                            className="w-full px-4 py-3 bg-glass-bg border border-k-border-subtle rounded-xl text-k-text-primary placeholder:text-k-text-quaternary focus:outline-none focus:ring-2 focus:ring-violet-500/10 focus:border-violet-500/50 transition-all text-sm"
+                            className="w-full px-4 py-3 bg-white dark:bg-glass-bg border border-[#D2D2D7] dark:border-k-border-subtle rounded-lg text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:outline-none focus:ring-1 focus:ring-[#007AFF]/20 dark:focus:ring-2 dark:focus:ring-violet-500/10 focus:border-[#007AFF] dark:focus:border-violet-500/50 transition-all text-sm"
                         />
                     </div>
 
                     {/* Muscle Groups - Creatable MultiSelect */}
                     <div>
-                        <label className="block text-[11px] font-bold text-k-text-tertiary mb-1.5">
+                        <label className="block text-sm font-medium text-[#1D1D1F] dark:text-k-text-tertiary mb-1.5">
                             Grupos Musculares
                         </label>
                         <CreatableMultiSelect
@@ -231,39 +231,39 @@ export function ExerciseFormModal({ isOpen, onClose, onSuccess, exercise, traine
                             }}
                             isLoading={loadingMuscles}
                         />
-                        <p className="text-[10px] text-k-text-quaternary mt-1.5 font-medium tracking-wide">
+                        <p className="text-xs text-[#86868B] dark:text-k-text-quaternary mt-1.5 font-medium">
                             Selecione um ou mais grupos. Digite para buscar ou criar.
                         </p>
                     </div>
 
                     {/* Equipment */}
                     <div>
-                        <label className="block text-[11px] font-bold text-k-text-tertiary mb-1.5">
-                            Equipamento (Opcional)
+                        <label className="block text-sm font-medium text-[#1D1D1F] dark:text-k-text-tertiary mb-1.5">
+                            Equipamento <span className="text-[#86868B] dark:text-k-text-quaternary font-normal">(Opcional)</span>
                         </label>
                         <input
                             type="text"
                             value={equipment}
                             onChange={e => setEquipment(e.target.value)}
                             placeholder="Ex: Barra, Halteres, Máquina..."
-                            className="w-full px-4 py-3 bg-glass-bg border border-k-border-subtle rounded-xl text-k-text-primary placeholder:text-k-text-quaternary focus:outline-none focus:ring-2 focus:ring-violet-500/10 focus:border-violet-500/50 transition-all text-sm"
+                            className="w-full px-4 py-3 bg-white dark:bg-glass-bg border border-[#D2D2D7] dark:border-k-border-subtle rounded-lg text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:outline-none focus:ring-1 focus:ring-[#007AFF]/20 dark:focus:ring-2 dark:focus:ring-violet-500/10 focus:border-[#007AFF] dark:focus:border-violet-500/50 transition-all text-sm"
                         />
                     </div>
 
                     {/* Video URL */}
                     <div>
-                        <label className="block text-[11px] font-bold text-k-text-tertiary mb-1.5">
-                            Link do Vídeo (YouTube/Vimeo)
+                        <label className="block text-sm font-medium text-[#1D1D1F] dark:text-k-text-tertiary mb-1.5">
+                            Link do Vídeo <span className="text-[#86868B] dark:text-k-text-quaternary font-normal">(Opcional)</span>
                         </label>
                         <input
                             type="url"
                             value={videoUrl}
                             onChange={e => setVideoUrl(e.target.value)}
                             placeholder="https://..."
-                            className="w-full px-4 py-3 bg-glass-bg border border-k-border-subtle rounded-xl text-k-text-primary placeholder:text-k-text-quaternary focus:outline-none focus:ring-2 focus:ring-violet-500/10 focus:border-violet-500/50 transition-all text-sm"
+                            className="w-full px-4 py-3 bg-white dark:bg-glass-bg border border-[#D2D2D7] dark:border-k-border-subtle rounded-lg text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:outline-none focus:ring-1 focus:ring-[#007AFF]/20 dark:focus:ring-2 dark:focus:ring-violet-500/10 focus:border-[#007AFF] dark:focus:border-violet-500/50 transition-all text-sm"
                         />
                         {videoUrl && (
-                            <div className="mt-3 aspect-video rounded-xl overflow-hidden bg-surface-inset border border-k-border-subtle ring-1 ring-k-border-subtle">
+                            <div className="mt-3 aspect-video rounded-xl overflow-hidden bg-[#F5F5F7] dark:bg-surface-inset border border-[#E8E8ED] dark:border-k-border-subtle dark:ring-1 dark:ring-k-border-subtle">
                                 <VideoPlayer url={videoUrl} title={name} />
                             </div>
                         )}
@@ -271,38 +271,38 @@ export function ExerciseFormModal({ isOpen, onClose, onSuccess, exercise, traine
 
                     {/* Instructions */}
                     <div>
-                        <label className="block text-[11px] font-bold text-k-text-tertiary mb-1.5">
-                            Instruções (Opcional)
+                        <label className="block text-sm font-medium text-[#1D1D1F] dark:text-k-text-tertiary mb-1.5">
+                            Instruções <span className="text-[#86868B] dark:text-k-text-quaternary font-normal">(Opcional)</span>
                         </label>
                         <textarea
                             value={instructions}
                             onChange={e => setInstructions(e.target.value)}
                             rows={3}
                             placeholder="Dicas de execução..."
-                            className="w-full px-4 py-3 bg-glass-bg border border-k-border-subtle rounded-xl text-k-text-primary placeholder:text-k-text-quaternary focus:outline-none focus:ring-2 focus:ring-violet-500/10 focus:border-violet-500/50 transition-all resize-none text-sm"
+                            className="w-full px-4 py-3 bg-white dark:bg-glass-bg border border-[#D2D2D7] dark:border-k-border-subtle rounded-lg text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:outline-none focus:ring-1 focus:ring-[#007AFF]/20 dark:focus:ring-2 dark:focus:ring-violet-500/10 focus:border-[#007AFF] dark:focus:border-violet-500/50 transition-all resize-none text-sm"
                         />
                     </div>
 
                     {/* Errors */}
                     {error && (
-                        <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-xs font-medium flex items-center gap-2">
-                            <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                        <div className="p-3 bg-[#FF3B30]/10 dark:bg-red-500/10 border border-[#FF3B30]/20 dark:border-red-500/20 rounded-xl text-[#FF3B30] dark:text-red-400 text-xs font-medium flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 rounded-full bg-[#FF3B30] dark:bg-red-500 animate-pulse" />
                             {error}
                         </div>
                     )}
                 </div>
 
-                <div className="p-6 pt-4 border-t border-k-border-subtle flex justify-end gap-3 rounded-b-3xl">
+                <div className="p-6 pt-4 border-t border-[#E8E8ED] dark:border-k-border-subtle flex justify-end gap-3 rounded-b-2xl">
                     <button
                         onClick={onClose}
-                        className="px-6 py-2.5 text-k-text-secondary hover:text-k-text-primary hover:bg-glass-bg rounded-xl transition-all text-sm font-medium"
+                        className="px-6 py-2.5 text-[#007AFF] dark:text-k-text-secondary hover:text-[#0056B3] dark:hover:text-k-text-primary hover:bg-[#F5F5F7] dark:hover:bg-glass-bg rounded-full transition-all text-sm font-medium"
                     >
                         Cancelar
                     </button>
                     <button
                         onClick={handleSave}
                         disabled={saving}
-                        className="px-6 py-2.5 bg-violet-600 hover:bg-violet-500 text-white rounded-xl font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg shadow-violet-500/20 active:scale-95 text-sm"
+                        className="px-6 py-2.5 bg-[#007AFF] dark:bg-violet-600 hover:bg-[#0066D6] dark:hover:bg-violet-500 text-white rounded-full font-medium transition-all disabled:bg-[#D2D2D7] dark:disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-sm dark:shadow-lg dark:shadow-violet-500/20 active:scale-95 text-sm"
                     >
                         {saving && <Loader2 className="w-4 h-4 animate-spin" />}
                         Salvar Exercício
@@ -385,16 +385,15 @@ function CreatableMultiSelect({ availableGroups, selectedGroups, onChange, onCre
     return (
         <div className="relative" ref={containerRef}>
             <div
-                className={`w-full bg-glass-bg border border-k-border-subtle rounded-xl min-h-[46px] p-1.5 flex flex-wrap gap-1.5 transition-all ${isOpen ? 'ring-2 ring-violet-500/10 border-violet-500/50' : ''}`}
+                className={`w-full bg-white dark:bg-glass-bg border border-[#D2D2D7] dark:border-k-border-subtle rounded-lg min-h-[46px] p-1.5 flex flex-wrap gap-1.5 transition-all ${isOpen ? 'ring-1 ring-[#007AFF]/20 dark:ring-2 dark:ring-violet-500/10 border-[#007AFF] dark:border-violet-500/50' : ''}`}
                 onClick={() => {
-                    // Focus input when clicking container
                     const input = containerRef.current?.querySelector('input')
                     input?.focus()
                     setIsOpen(true)
                 }}
             >
                 {selectedGroups.map(group => (
-                    <span key={group.id} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-300 text-[11px] font-bold border border-violet-500/20">
+                    <span key={group.id} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#007AFF]/10 dark:bg-violet-500/10 text-[#007AFF] dark:text-violet-300 text-[11px] font-medium border border-[#007AFF]/20 dark:border-violet-500/20">
                         {group.name}
                         <button
                             type="button"
@@ -402,7 +401,7 @@ function CreatableMultiSelect({ availableGroups, selectedGroups, onChange, onCre
                                 e.stopPropagation()
                                 handleRemove(group.id)
                             }}
-                            className="hover:text-white transition-colors ml-0.5"
+                            className="hover:text-[#0056B3] dark:hover:text-white transition-colors ml-0.5"
                         >
                             <X className="w-3 h-3" strokeWidth={2.5} />
                         </button>
@@ -419,15 +418,15 @@ function CreatableMultiSelect({ availableGroups, selectedGroups, onChange, onCre
                     onFocus={() => setIsOpen(true)}
                     onKeyDown={handleKeyDown}
                     placeholder={selectedGroups.length === 0 ? "Selecione ou crie..." : ""}
-                    className="bg-transparent border-none outline-none text-k-text-primary text-sm flex-1 min-w-[120px] placeholder:text-k-text-quaternary h-8 px-1"
+                    className="bg-transparent border-none outline-none text-[#1D1D1F] dark:text-k-text-primary text-sm flex-1 min-w-[120px] placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary h-8 px-1"
                     disabled={isCreating}
                 />
             </div>
 
             {isOpen && (inputValue || filteredGroups.length > 0 || isLoading) && (
-                <div className="absolute z-50 left-0 right-0 top-full mt-2 bg-surface-card border border-k-border-primary rounded-xl shadow-2xl max-h-60 overflow-y-auto ring-1 ring-k-border-subtle animate-in fade-in zoom-in-95 duration-150">
+                <div className="absolute z-50 left-0 right-0 top-full mt-2 bg-white dark:bg-surface-card border border-[#D2D2D7] dark:border-k-border-primary rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-2xl max-h-60 overflow-y-auto dark:ring-1 dark:ring-k-border-subtle animate-in fade-in zoom-in-95 duration-150">
                     {isLoading ? (
-                        <div className="p-4 text-center text-muted-foreground text-xs font-medium flex items-center justify-center gap-2">
+                        <div className="p-4 text-center text-[#86868B] dark:text-muted-foreground text-xs font-medium flex items-center justify-center gap-2">
                             <Loader2 className="w-4 h-4 animate-spin" />
                             Carregando...
                         </div>
@@ -437,16 +436,16 @@ function CreatableMultiSelect({ availableGroups, selectedGroups, onChange, onCre
                                 <button
                                     key={group.id}
                                     onClick={() => handleSelect(group)}
-                                    className="w-full px-4 py-2.5 text-left text-sm text-k-text-secondary hover:bg-glass-bg hover:text-k-text-primary flex items-center justify-between group transition-colors"
+                                    className="w-full px-4 py-2.5 text-left text-sm text-[#1D1D1F] dark:text-k-text-secondary hover:bg-[#F5F5F7] dark:hover:bg-glass-bg dark:hover:text-k-text-primary flex items-center justify-between group transition-colors"
                                 >
                                     <span>{group.name}</span>
                                     <div className="flex items-center gap-2">
                                         {group.owner_id && (
-                                            <span className="text-[10px] font-bold text-violet-400 bg-violet-500/10 px-1.5 py-0.5 rounded border border-violet-500/20">
+                                            <span className="text-[10px] font-bold text-[#6E6E73] dark:text-violet-400 bg-[#F5F5F7] dark:bg-violet-500/10 px-1.5 py-0.5 rounded border border-[#E8E8ED] dark:border-violet-500/20">
                                                 CUSTOM
                                             </span>
                                         )}
-                                        {selectedGroups.some(g => g.id === group.id) && <Check className="w-4 h-4 text-violet-400" />}
+                                        {selectedGroups.some(g => g.id === group.id) && <Check className="w-4 h-4 text-[#007AFF] dark:text-violet-400" />}
                                     </div>
 
                                 </button>
@@ -456,19 +455,19 @@ function CreatableMultiSelect({ availableGroups, selectedGroups, onChange, onCre
                                 <button
                                     onClick={handleCreate}
                                     disabled={isCreating}
-                                    className="w-full px-4 py-3 text-left text-sm text-violet-600 dark:text-violet-300 hover:bg-violet-500/10 flex items-center gap-2 border-t border-k-border-subtle transition-colors"
+                                    className="w-full px-4 py-3 text-left text-sm text-[#007AFF] dark:text-violet-300 hover:bg-[#007AFF]/5 dark:hover:bg-violet-500/10 flex items-center gap-2 border-t border-[#E8E8ED] dark:border-k-border-subtle transition-colors"
                                 >
                                     {isCreating ? (
                                         <Loader2 className="w-4 h-4 animate-spin" />
                                     ) : (
                                         <Plus className="w-4 h-4" />
                                     )}
-                                    <span className="font-semibold">Criar "{inputValue}"</span>
+                                    <span className="font-semibold">Criar &quot;{inputValue}&quot;</span>
                                 </button>
                             )}
 
                             {filteredGroups.length === 0 && !showCreateOption && !isLoading && (
-                                <div className="p-4 text-center text-k-text-quaternary text-xs font-medium">
+                                <div className="p-4 text-center text-[#AEAEB2] dark:text-k-text-quaternary text-xs font-medium">
                                     Nenhum resultado encontrado
                                 </div>
                             )}

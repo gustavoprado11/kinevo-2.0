@@ -90,7 +90,7 @@ export function StudentHeader({ student, onEdit, onDelete, children }: StudentHe
 
     return (
         <>
-            <div className="bg-glass-bg backdrop-blur-md rounded-2xl border border-k-border-primary p-5">
+            <div className="bg-white dark:bg-glass-bg backdrop-blur-md rounded-2xl border border-[#E5E5EA] dark:border-k-border-primary p-5">
                 <div className="flex items-center gap-5">
                     {/* Back button */}
                     <Link
@@ -124,7 +124,7 @@ export function StudentHeader({ student, onEdit, onDelete, children }: StudentHe
                     {/* Info */}
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3 mb-1">
-                            <h1 className="text-2xl font-black text-white tracking-tight truncate">{student.name}</h1>
+                            <h1 className="text-2xl font-black text-[#1C1C1E] dark:text-white tracking-tight truncate">{student.name}</h1>
                             <div className="flex items-center gap-2">
                                 {student.is_trainer_profile && (
                                     <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-violet-500/10 text-violet-600 dark:text-violet-300 border border-violet-500/20">
@@ -147,14 +147,14 @@ export function StudentHeader({ student, onEdit, onDelete, children }: StudentHe
                         </div>
 
                         <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-xs font-medium">
-                            <div className="flex items-center gap-2 text-k-text-quaternary">
+                            <div className="flex items-center gap-2 text-[#8E8E93] dark:text-k-text-quaternary">
                                 <svg className="w-3.5 h-3.5 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                                 </svg>
                                 <span className="hover:text-k-text-secondary transition-colors cursor-default">{student.email}</span>
                             </div>
 
-                            <div className="flex items-center gap-2 text-k-text-quaternary">
+                            <div className="flex items-center gap-2 text-[#8E8E93] dark:text-k-text-quaternary">
                                 <svg className="w-3.5 h-3.5 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                 </svg>

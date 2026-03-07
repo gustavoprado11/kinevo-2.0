@@ -120,7 +120,7 @@ export function PlansClient({ trainer, plans: initialPlans, hasStripeConnect, us
             trainerAvatarUrl={trainer.avatar_url}
             trainerTheme={trainer.theme as 'light' | 'dark' | 'system' | null}
         >
-            <div className="min-h-screen bg-surface-primary p-8 font-sans">
+            <div className="min-h-screen bg-[#F5F5F7] dark:bg-surface-primary p-8 font-sans">
                 <div className="max-w-7xl mx-auto space-y-8">
 
                     {/* Header */}
@@ -128,21 +128,21 @@ export function PlansClient({ trainer, plans: initialPlans, hasStripeConnect, us
                         <div>
                             <Link
                                 href="/financial"
-                                className="inline-flex items-center gap-1.5 text-xs text-k-text-secondary hover:text-violet-600 dark:hover:text-violet-400 transition-colors mb-3"
+                                className="inline-flex items-center gap-1.5 text-xs text-[#6E6E73] dark:text-k-text-secondary hover:text-[#007AFF] dark:hover:text-violet-400 transition-colors mb-3"
                             >
                                 <ArrowLeft size={14} />
                                 Voltar para Financeiro
                             </Link>
-                            <h1 className="text-3xl font-bold tracking-tighter bg-gradient-to-br from-[var(--gradient-text-from)] to-[var(--gradient-text-to)] bg-clip-text text-transparent">
+                            <h1 className="text-3xl font-bold tracking-tighter text-[#1D1D1F] dark:bg-gradient-to-br dark:from-[var(--gradient-text-from)] dark:to-[var(--gradient-text-to)] dark:bg-clip-text dark:text-transparent">
                                 Meus Planos
                             </h1>
-                            <p className="mt-1 text-sm text-muted-foreground/60">
+                            <p className="mt-1 text-sm text-[#86868B] dark:text-muted-foreground/60">
                                 Gerencie seus planos de consultoria
                             </p>
                         </div>
                         <button
                             onClick={handleCreatePlan}
-                            className="bg-violet-600 hover:bg-violet-500 text-white rounded-full px-6 py-2.5 text-sm font-semibold transition-all active:scale-95 flex items-center gap-2 w-fit"
+                            className="bg-[#007AFF] hover:bg-[#0056B3] dark:bg-violet-600 dark:hover:bg-violet-500 text-white rounded-full px-6 py-2.5 text-sm font-semibold transition-all active:scale-95 flex items-center gap-2 w-fit"
                         >
                             <Plus size={18} strokeWidth={2} />
                             Criar Plano
@@ -152,20 +152,20 @@ export function PlansClient({ trainer, plans: initialPlans, hasStripeConnect, us
                     {/* Search Bar */}
                     <div className="relative group">
                         <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-                            <Search className="w-[18px] h-[18px] text-k-text-quaternary group-focus-within:text-violet-500 transition-colors" strokeWidth={1.5} />
+                            <Search className="w-[18px] h-[18px] text-[#AEAEB2] dark:text-k-text-quaternary group-focus-within:text-[#007AFF] dark:group-focus-within:text-violet-500 transition-colors" strokeWidth={1.5} />
                         </div>
                         <input
                             type="text"
                             placeholder="Buscar planos..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full bg-glass-bg border border-k-border-primary rounded-2xl py-3.5 pl-11 pr-4 text-k-text-primary placeholder:text-k-text-quaternary focus:outline-none focus:ring-2 focus:ring-violet-500/10 focus:border-violet-500/50 backdrop-blur-md transition-all"
+                            className="w-full bg-white dark:bg-glass-bg border border-[#D2D2D7] dark:border-k-border-primary rounded-2xl py-3.5 pl-11 pr-4 text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:outline-none focus:ring-2 focus:ring-[#007AFF]/10 dark:focus:ring-violet-500/10 focus:border-[#007AFF]/50 dark:focus:border-violet-500/50 transition-all"
                         />
                     </div>
 
                     {/* Content Grid */}
                     {filteredPlans.length === 0 ? (
-                        <div className="bg-surface-card rounded-2xl border border-k-border-subtle border-dashed">
+                        <div className="bg-white dark:bg-surface-card rounded-2xl border border-[#D2D2D7] dark:border-k-border-subtle border-dashed">
                             {searchQuery ? (
                                 <div className="flex flex-col items-center justify-center py-24 px-4">
                                     <p className="text-muted-foreground/50 font-medium">
@@ -192,25 +192,25 @@ export function PlansClient({ trainer, plans: initialPlans, hasStripeConnect, us
                                     <div
                                         key={plan.id}
                                         onClick={() => handleEditPlan(plan)}
-                                        className="group relative bg-surface-card border border-k-border-primary rounded-2xl p-5 shadow-xl hover:border-k-border-primary hover:bg-glass-bg hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden"
+                                        className="group relative bg-white dark:bg-surface-card border border-[#E8E8ED] dark:border-k-border-primary rounded-2xl p-5 shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:shadow-xl hover:border-[#D2D2D7] dark:hover:border-k-border-primary hover:bg-[#F9F9FB] dark:hover:bg-glass-bg hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden"
                                     >
                                         {/* Card Header */}
                                         <div className="flex justify-between items-start mb-3 gap-4">
-                                            <h3 className="text-lg font-bold text-k-text-primary tracking-tight leading-snug group-hover:text-violet-200 transition-colors line-clamp-2">
+                                            <h3 className="text-lg font-bold text-[#1D1D1F] dark:text-k-text-primary tracking-tight leading-snug group-hover:text-[#007AFF] dark:group-hover:text-violet-200 transition-colors line-clamp-2">
                                                 {plan.title}
                                             </h3>
 
                                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-all">
                                                 <button
                                                     onClick={(e) => handleEditPlan(plan)}
-                                                    className="text-k-text-quaternary hover:text-violet-600 dark:hover:text-violet-400 hover:bg-glass-bg p-2 rounded-lg transition-all"
+                                                    className="text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#007AFF] dark:hover:text-violet-400 hover:bg-[#F5F5F7] dark:hover:bg-glass-bg p-2 rounded-lg transition-all"
                                                 >
                                                     <Pencil className="w-4 h-4" strokeWidth={1.5} />
                                                 </button>
                                                 <button
                                                     onClick={(e) => handleDeletePlan(plan.id, e)}
                                                     disabled={deleting === plan.id}
-                                                    className="text-k-text-quaternary hover:text-red-600 dark:hover:text-red-400 hover:bg-glass-bg p-2 rounded-lg transition-all"
+                                                    className="text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#FF3B30] dark:hover:text-red-400 hover:bg-[#F5F5F7] dark:hover:bg-glass-bg p-2 rounded-lg transition-all"
                                                 >
                                                     {deleting === plan.id ? (
                                                         <Loader2 className="w-4 h-4 animate-spin" />
@@ -223,16 +223,16 @@ export function PlansClient({ trainer, plans: initialPlans, hasStripeConnect, us
 
                                         {/* Price + interval */}
                                         <div className="mb-4">
-                                            <span className="text-2xl font-bold text-k-text-primary">
+                                            <span className="text-2xl font-bold text-[#1D1D1F] dark:text-k-text-primary">
                                                 {formatCurrency(plan.price)}
                                             </span>
-                                            <span className="text-sm text-k-text-tertiary ml-1">
+                                            <span className="text-sm text-[#86868B] dark:text-k-text-tertiary ml-1">
                                                 /{intervalInfo.label.toLowerCase()}
                                             </span>
                                         </div>
 
                                         {/* Usage count */}
-                                        <div className="flex items-center gap-1.5 text-xs text-k-text-secondary mb-3">
+                                        <div className="flex items-center gap-1.5 text-xs text-[#6E6E73] dark:text-k-text-secondary mb-3">
                                             <Users size={12} />
                                             <span>
                                                 {(usageByPlan[plan.id] || 0) === 0
@@ -243,7 +243,7 @@ export function PlansClient({ trainer, plans: initialPlans, hasStripeConnect, us
 
                                         {/* Description */}
                                         {plan.description && (
-                                            <p className="text-xs text-k-text-tertiary mb-4 line-clamp-2">
+                                            <p className="text-xs text-[#86868B] dark:text-k-text-tertiary mb-4 line-clamp-2">
                                                 {plan.description}
                                             </p>
                                         )}
@@ -280,7 +280,7 @@ export function PlansClient({ trainer, plans: initialPlans, hasStripeConnect, us
                                         </div>
 
                                         {/* Hover Glow Effect */}
-                                        <div className="absolute inset-0 rounded-2xl ring-1 ring-inset ring-k-border-subtle group-hover:ring-k-border-primary pointer-events-none" />
+                                        <div className="absolute inset-0 rounded-2xl ring-1 ring-inset ring-[#E8E8ED] dark:ring-k-border-subtle group-hover:ring-[#D2D2D7] dark:group-hover:ring-k-border-primary pointer-events-none" />
                                     </div>
                                 )
                             })}

@@ -76,6 +76,8 @@ function makeExercise(overrides: Partial<PrescriptionExerciseRef> = {}): Prescri
         difficulty_level: 'intermediate',
         is_primary_movement: false,
         session_position: 'middle',
+        movement_pattern: null,
+        prescription_notes: null,
         ...overrides,
     }
 }

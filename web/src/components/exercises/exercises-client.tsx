@@ -49,27 +49,27 @@ function FilterDropdown({
         <div ref={ref} className="relative">
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all ${
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-all ${
                     selected.length > 0
-                        ? 'bg-violet-500/10 border-violet-500/30 text-violet-600 dark:text-violet-300'
-                        : 'bg-glass-bg border-k-border-primary text-k-text-secondary hover:bg-glass-bg-active'
+                        ? 'bg-[#007AFF]/10 border-[#007AFF]/30 text-[#007AFF] dark:bg-violet-500/10 dark:border-violet-500/30 dark:text-violet-300'
+                        : 'bg-white dark:bg-glass-bg border-[#D2D2D7] dark:border-k-border-primary text-[#1D1D1F] dark:text-k-text-secondary hover:bg-[#F5F5F7] dark:hover:bg-glass-bg-active'
                 }`}
             >
                 {label}
                 {selected.length > 0 && (
-                    <span className="px-1.5 py-0.5 rounded bg-violet-500/20 text-[10px] font-bold">
+                    <span className="px-1.5 py-0.5 rounded bg-[#007AFF]/20 dark:bg-violet-500/20 text-[10px] font-bold">
                         {selected.length}
                     </span>
                 )}
-                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`w-3.5 h-3.5 text-[#AEAEB2] dark:text-inherit transition-transform ${isOpen ? 'rotate-180' : ''}`} />
             </button>
 
             {isOpen && (
-                <div className="absolute top-full left-0 mt-2 w-64 max-h-72 overflow-y-auto bg-surface-card border border-k-border-primary rounded-xl shadow-2xl z-50">
+                <div className="absolute top-full left-0 mt-2 w-64 max-h-72 overflow-y-auto bg-white dark:bg-surface-card border border-[#D2D2D7] dark:border-k-border-primary rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-2xl z-50">
                     {selected.length > 0 && (
                         <button
                             onClick={() => { onClear(); setIsOpen(false) }}
-                            className="w-full px-4 py-2 text-left text-xs font-medium text-red-400/80 hover:bg-glass-bg-active border-b border-k-border-subtle"
+                            className="w-full px-4 py-2 text-left text-xs font-medium text-[#FF3B30] dark:text-red-400/80 hover:bg-[#F5F5F7] dark:hover:bg-glass-bg-active border-b border-[#E8E8ED] dark:border-k-border-subtle"
                         >
                             Limpar filtros
                         </button>
@@ -82,17 +82,17 @@ function FilterDropdown({
                                 key={option}
                                 onClick={() => onToggle(option)}
                                 className={`w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors ${
-                                    isSelected ? 'text-violet-600 dark:text-violet-300 bg-violet-500/5' : 'text-k-text-secondary hover:bg-glass-bg-active'
+                                    isSelected ? 'text-[#007AFF] dark:text-violet-300 bg-[#007AFF]/5 dark:bg-violet-500/5' : 'text-[#1D1D1F] dark:text-k-text-secondary hover:bg-[#F5F5F7] dark:hover:bg-glass-bg-active'
                                 }`}
                             >
                                 <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
-                                    isSelected ? 'bg-violet-500 border-violet-500' : 'border-k-border-primary'
+                                    isSelected ? 'bg-[#007AFF] border-[#007AFF] dark:bg-violet-500 dark:border-violet-500' : 'border-[#D2D2D7] dark:border-k-border-primary'
                                 }`}>
                                     {isSelected && <Check className="w-3 h-3 text-white" />}
                                 </div>
                                 <span className="flex-1 truncate">{option}</span>
                                 {count !== undefined && (
-                                    <span className="text-[10px] font-bold text-k-text-quaternary">{count}</span>
+                                    <span className="text-[10px] font-bold text-[#AEAEB2] dark:text-k-text-quaternary">{count}</span>
                                 )}
                             </button>
                         )
@@ -238,18 +238,18 @@ export function ExercisesClient({
             trainerAvatarUrl={trainerAvatarUrl}
             trainerTheme={trainerTheme}
         >
-            {/* Header — simplified */}
+            {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
-                    <h1 className="text-2xl font-bold tracking-tight text-k-text-primary">Exercícios</h1>
-                    <span className="px-2 py-0.5 rounded-md bg-glass-bg text-xs font-bold text-k-text-tertiary border border-k-border-subtle">
+                    <h1 className="text-2xl font-bold tracking-tight text-[#1D1D1F] dark:text-k-text-primary">Exercícios</h1>
+                    <span className="px-2.5 py-0.5 rounded-full bg-[#F5F5F7] dark:bg-glass-bg text-sm font-medium text-[#86868B] dark:text-k-text-tertiary border border-[#E8E8ED] dark:border-k-border-subtle">
                         {deduplicatedExercises.length}
                     </span>
                 </div>
                 <Button
                     data-onboarding="exercises-add-btn"
                     onClick={handleCreate}
-                    className="gap-2 rounded-full border border-k-border-primary bg-glass-bg hover:bg-glass-bg-active text-k-text-secondary px-5 py-2 text-sm font-semibold transition-all"
+                    className="gap-2 rounded-full bg-[#007AFF] dark:bg-glass-bg dark:border dark:border-k-border-primary hover:bg-[#0066D6] dark:hover:bg-glass-bg-active text-white dark:text-k-text-secondary px-5 py-2 text-sm font-medium transition-all"
                 >
                     <Plus size={16} strokeWidth={2} />
                     Criar exercício
@@ -260,13 +260,13 @@ export function ExercisesClient({
                 {/* Search + Filters + View Toggle */}
                 <div className="flex flex-col md:flex-row gap-3">
                     <div data-onboarding="exercises-search" className="flex-1 relative group">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50 group-focus-within:text-violet-500 transition-colors" strokeWidth={1.5} />
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#AEAEB2] dark:text-muted-foreground/50 group-focus-within:text-[#007AFF] dark:group-focus-within:text-violet-500 transition-colors" strokeWidth={1.5} />
                         <input
                             type="text"
                             placeholder="Buscar por nome..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full rounded-xl border border-k-border-primary bg-glass-bg py-2.5 pl-11 pr-4 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500/50 transition-all"
+                            className="w-full rounded-lg border border-[#D2D2D7] dark:border-k-border-primary bg-white dark:bg-glass-bg py-2.5 pl-11 pr-4 text-sm text-[#1D1D1F] dark:text-foreground placeholder:text-[#AEAEB2] dark:placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-[#007AFF]/20 dark:focus:ring-2 dark:focus:ring-violet-500/20 focus:border-[#007AFF] dark:focus:border-violet-500/50 transition-all"
                         />
                     </div>
 
@@ -286,25 +286,25 @@ export function ExercisesClient({
 
                         <button
                             onClick={() => setIsManagerOpen(true)}
-                            className="p-2.5 rounded-xl border border-k-border-primary bg-glass-bg hover:bg-glass-bg-active text-k-text-secondary transition-all"
+                            className="p-2.5 rounded-lg border border-[#D2D2D7] dark:border-k-border-primary bg-white dark:bg-glass-bg hover:bg-[#F5F5F7] dark:hover:bg-glass-bg-active text-[#6E6E73] dark:text-k-text-secondary hover:text-[#1D1D1F] dark:hover:text-k-text-primary transition-all"
                             title="Gerenciar Grupos"
                         >
                             <Settings2 className="w-4 h-4" />
                         </button>
 
-                        <div className="w-px h-6 bg-k-border-subtle mx-1" />
+                        <div className="w-px h-6 bg-[#E8E8ED] dark:bg-k-border-subtle mx-1" />
 
-                        <div className="flex rounded-xl border border-k-border-primary overflow-hidden">
+                        <div className="flex rounded-lg border border-[#D2D2D7] dark:border-k-border-primary overflow-hidden">
                             <button
                                 onClick={() => setViewMode('grid')}
-                                className={`p-2.5 transition-all ${viewMode === 'grid' ? 'bg-violet-500/10 text-violet-600 dark:text-violet-400' : 'bg-glass-bg text-k-text-quaternary hover:text-k-text-secondary'}`}
+                                className={`p-2.5 transition-all ${viewMode === 'grid' ? 'bg-[#F5F5F7] dark:bg-violet-500/10 text-[#007AFF] dark:text-violet-400' : 'bg-white dark:bg-glass-bg text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#6E6E73] dark:hover:text-k-text-secondary'}`}
                                 title="Grade"
                             >
                                 <LayoutGrid className="w-4 h-4" />
                             </button>
                             <button
                                 onClick={() => setViewMode('list')}
-                                className={`p-2.5 transition-all ${viewMode === 'list' ? 'bg-violet-500/10 text-violet-600 dark:text-violet-400' : 'bg-glass-bg text-k-text-quaternary hover:text-k-text-secondary'}`}
+                                className={`p-2.5 transition-all ${viewMode === 'list' ? 'bg-[#F5F5F7] dark:bg-violet-500/10 text-[#007AFF] dark:text-violet-400' : 'bg-white dark:bg-glass-bg text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#6E6E73] dark:hover:text-k-text-secondary'}`}
                                 title="Lista"
                             >
                                 <List className="w-4 h-4" />
@@ -314,7 +314,7 @@ export function ExercisesClient({
                 </div>
 
                 {/* Results Count */}
-                <div className="text-[11px] font-bold text-k-text-quaternary pl-1">
+                <div className="text-sm font-medium text-[#86868B] dark:text-k-text-quaternary pl-1">
                     {filteredExercises.length} exercícios
                     {(searchQuery || selectedMuscleGroups.length > 0) && ` de ${deduplicatedExercises.length}`}
                 </div>
@@ -349,14 +349,14 @@ export function ExercisesClient({
                         </div>
                     )
                 ) : (
-                    <div className="text-center py-20 rounded-2xl border border-dashed border-k-border-primary">
-                        <Search className="w-6 h-6 text-k-text-quaternary mx-auto mb-3" strokeWidth={1.5} />
-                        <p className="text-sm font-semibold text-k-text-primary">Nenhum exercício encontrado</p>
-                        <p className="text-xs text-k-text-quaternary mt-1">Tente outro termo ou limpe os filtros</p>
+                    <div className="text-center py-20 rounded-2xl border border-dashed border-[#D2D2D7] dark:border-k-border-primary">
+                        <Search className="w-6 h-6 text-[#AEAEB2] dark:text-k-text-quaternary mx-auto mb-3" strokeWidth={1.5} />
+                        <p className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary">Nenhum exercício encontrado</p>
+                        <p className="text-xs text-[#86868B] dark:text-k-text-quaternary mt-1">Tente outro termo ou limpe os filtros</p>
                         {(searchQuery || selectedMuscleGroups.length > 0) && (
                             <button
                                 onClick={() => { setSearchQuery(''); setSelectedMuscleGroups([]) }}
-                                className="mt-4 text-xs font-medium text-violet-600 hover:text-violet-500 dark:text-violet-400 dark:hover:text-violet-300 transition-colors"
+                                className="mt-4 text-xs font-medium text-[#007AFF] hover:text-[#0056B3] dark:text-violet-400 dark:hover:text-violet-300 transition-colors"
                             >
                                 Limpar busca
                             </button>

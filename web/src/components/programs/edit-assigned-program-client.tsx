@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useMemo, useRef } from 'react'
+import { useState, useCallback, useId, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, Loader2, Calendar, Edit3, AlertCircle, BookmarkPlus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -86,6 +86,7 @@ const tempId = () => `temp_${Date.now()}_${Math.random().toString(36).substr(2, 
 
 export function EditAssignedProgramClient({ trainer, program, exercises, studentId }: EditAssignedProgramClientProps) {
     const router = useRouter()
+    const tabDndId = useId()
 
     // Program state
     const [name, setName] = useState(program.name)
@@ -1181,7 +1182,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                         )}
                         {/* Workout Tabs (Sortable Segmented Control) */}
                         <div className="flex items-center gap-1 p-4 overflow-x-auto no-scrollbar border-b border-k-border-subtle bg-surface-canvas">
-                            <DndContext sensors={tabSensors} collisionDetection={closestCenter} onDragEnd={handleWorkoutDragEnd}>
+                            <DndContext id={tabDndId} sensors={tabSensors} collisionDetection={closestCenter} onDragEnd={handleWorkoutDragEnd}>
                                 <SortableContext items={workouts.map(w => w.id)} strategy={horizontalListSortingStrategy}>
                                     <div className="bg-surface-card p-1 rounded-xl flex gap-1 items-center border border-k-border-subtle">
                                         {workouts.map((workout) => (

@@ -1,4 +1,5 @@
 import { requireNativeModule, type EventSubscription } from 'expo-modules-core';
+import { Platform } from 'react-native';
 import type {
   WatchWorkoutPayload,
   WatchMessageEvent,
@@ -8,7 +9,12 @@ import type {
 // NativeModulesProxy (legacy bridge) does NOT trigger OnStartObserving/OnStopObserving,
 // which means hasJSListeners stays false and ALL watch events get buffered but never delivered.
 // In Expo SDK 52+, NativeModule extends EventEmitter — the module IS the emitter.
-const WatchConnectivityModule = requireNativeModule('WatchConnectivityModule');
+//
+// Guard: only load native module on iOS — no Android implementation exists,
+// and requireNativeModule would crash at import time on Android.
+const WatchConnectivityModule = Platform.OS === 'ios'
+  ? requireNativeModule('WatchConnectivityModule')
+  : null;
 
 /**
  * Sync the latest workout snapshot to Apple Watch.
@@ -39,16 +45,21 @@ export function sendWorkoutState(payload: WatchWorkoutPayload): void {
  * Uses sendMessage (expects reply, may fail if watch unreachable)
  */
 export function sendMessage(message: any): Promise<any> {
+  if (!WatchConnectivityModule) return Promise.resolve(null);
   return WatchConnectivityModule.sendMessage(message);
 }
 
 /**
  * Subscribe to messages from Apple Watch.
  * NativeModule extends EventEmitter — addListener directly triggers OnStartObserving.
+ * Returns a no-op subscription on Android.
  */
 export function addWatchMessageListener(
   listener: (event: WatchMessageEvent) => void
 ): EventSubscription {
+  if (!WatchConnectivityModule) {
+    return { remove: () => {} } as EventSubscription;
+  }
   return WatchConnectivityModule.addListener('onWatchMessage', listener);
 }
 

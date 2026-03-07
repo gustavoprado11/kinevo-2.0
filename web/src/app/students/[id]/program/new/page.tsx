@@ -5,7 +5,7 @@ import { ProgramBuilderClient } from '@/components/programs/program-builder-clie
 import { mapAiOutputToBuilderData } from '@/lib/prescription/builder-mapper'
 import type { BuilderProgramData } from '@/lib/prescription/builder-mapper'
 import type { Exercise } from '@/types/exercise'
-import type { PrescriptionOutputSnapshot } from '@kinevo/shared/types/prescription'
+import type { PrescriptionOutputSnapshot, PrescriptionReasoningExtended } from '@kinevo/shared/types/prescription'
 
 interface PageProps {
     params: Promise<{
@@ -83,18 +83,28 @@ export default async function NewStudentProgramPage({ params, searchParams }: Pa
 
     // ── AI Prescription: load generation data if generationId is present ──
     let programData: BuilderProgramData | null = null
+    let prescriptionReasoning: PrescriptionReasoningExtended | null = null
 
     if (generationId) {
         // @ts-ignore — prescription_generations table from migration 035
         const { data: generation } = await supabase
             .from('prescription_generations')
-            .select('id, output_snapshot, status, student_id')
+            .select('id, output_snapshot, status, student_id, context_analysis')
             .eq('id', generationId)
             .single()
 
         if (generation && (generation as any).output_snapshot && (generation as any).student_id === studentId) {
             const outputSnapshot = (generation as any).output_snapshot as PrescriptionOutputSnapshot
             programData = mapAiOutputToBuilderData(outputSnapshot)
+
+            // Extract extended reasoning for the rationale panel
+            const reasoning = outputSnapshot.reasoning as PrescriptionReasoningExtended | undefined
+            if (reasoning) {
+                prescriptionReasoning = {
+                    ...reasoning,
+                    context_analysis: (generation as any).context_analysis || reasoning.context_analysis,
+                }
+            }
         }
     }
 
@@ -110,6 +120,7 @@ export default async function NewStudentProgramPage({ params, searchParams }: Pa
             }}
             initialAssignmentType={isScheduled ? 'scheduled' : 'immediate'}
             prescriptionGenerationId={generationId}
+            prescriptionReasoning={prescriptionReasoning}
         />
     )
 }

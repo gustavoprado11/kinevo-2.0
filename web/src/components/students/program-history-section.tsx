@@ -63,9 +63,9 @@ export function ProgramHistorySection({ programs }: ProgramHistorySectionProps) 
     }
 
     return (
-        <div className="bg-glass-bg backdrop-blur-md rounded-2xl border border-k-border-primary p-6">
+        <div className="bg-white dark:bg-glass-bg backdrop-blur-md rounded-2xl border border-[#E5E5EA] dark:border-k-border-primary p-6">
             <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-[#1C1C1E] dark:text-white flex items-center gap-2">
                     Histórico
                     <span className="px-2 py-0.5 rounded bg-glass-bg text-[10px] text-k-text-tertiary font-bold border border-k-border-subtle">
                         Concluídos
@@ -95,7 +95,7 @@ export function ProgramHistorySection({ programs }: ProgramHistorySectionProps) 
                                     className="w-full text-left relative z-10"
                                 >
                                     <div className="flex justify-between items-start mb-2">
-                                        <h4 className="font-black text-white text-lg tracking-tight group-hover:text-violet-300 transition-colors">
+                                        <h4 className="font-black text-[#1C1C1E] dark:text-white text-lg tracking-tight group-hover:text-violet-300 transition-colors">
                                             {program.name}
                                         </h4>
                                         <div className="flex items-center gap-3">
@@ -144,15 +144,15 @@ export function ProgramHistorySection({ programs }: ProgramHistorySectionProps) 
                                         {/* Program Stats */}
                                         <div className="grid grid-cols-3 gap-4">
                                             <div className="bg-glass-bg rounded-xl p-4 text-center border border-k-border-subtle">
-                                                <p className="text-2xl font-black text-white tracking-tighter">{program.workouts_count}</p>
+                                                <p className="text-2xl font-black text-[#1C1C1E] dark:text-white tracking-tighter">{program.workouts_count}</p>
                                                 <p className="text-[10px] font-bold text-k-text-quaternary">Treinos</p>
                                             </div>
                                             <div className="bg-glass-bg rounded-xl p-4 text-center border border-k-border-subtle">
-                                                <p className="text-2xl font-black text-white tracking-tighter">{program.sessions_count}</p>
+                                                <p className="text-2xl font-black text-[#1C1C1E] dark:text-white tracking-tighter">{program.sessions_count}</p>
                                                 <p className="text-[10px] font-bold text-k-text-quaternary">Sessões</p>
                                             </div>
                                             <div className="bg-glass-bg rounded-xl p-4 text-center border border-k-border-subtle">
-                                                <p className="text-2xl font-black text-white tracking-tighter">{program.duration_weeks || '-'}</p>
+                                                <p className="text-2xl font-black text-[#1C1C1E] dark:text-white tracking-tighter">{program.duration_weeks || '-'}</p>
                                                 <p className="text-[10px] font-bold text-k-text-quaternary">Semanas</p>
                                             </div>
                                         </div>

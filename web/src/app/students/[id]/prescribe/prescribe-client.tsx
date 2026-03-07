@@ -4,15 +4,25 @@ import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { AppLayout } from '@/components/layout'
 import { ChevronLeft, Sparkles } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 
 import { PrescriptionProfileForm } from '@/components/prescription/prescription-profile-form'
 import { GenerationStatus } from '@/components/prescription/generation-status'
+import { AgentQuestionsPanel } from '@/components/prescription/agent-questions-panel'
+import { QuestionnairePromptCard } from '@/components/prescription/questionnaire-prompt-card'
+import { QuestionnaireBadge } from '@/components/prescription/questionnaire-badge'
 
 import { generateProgram } from '@/actions/prescription/generate-program'
+import { analyzeStudentContext } from '@/actions/prescription/analyze-context'
+import { sendPrescriptionQuestionnaire } from '@/actions/prescription/questionnaire-actions'
+import { mapQuestionnaireToProfile } from '@/lib/prescription/questionnaire-mapper'
 
 import type { PrescriptionData } from '@/actions/prescription/get-prescription-data'
-import type { StudentPrescriptionProfile } from '@kinevo/shared/types/prescription'
+import type {
+    StudentPrescriptionProfile,
+    PrescriptionAgentState,
+    PrescriptionAgentQuestion,
+    PrescriptionContextAnalysis,
+} from '@kinevo/shared/types/prescription'
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
 import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
 
@@ -35,7 +45,7 @@ interface Trainer {
     theme?: 'light' | 'dark' | 'system' | null
 }
 
-type PageState = 'anamnese' | 'generating'
+type PageState = 'anamnese' | 'analyzing' | 'questions' | 'generating'
 
 // ============================================================================
 // Component
@@ -53,18 +63,40 @@ export function PrescribeClient({ trainer, student, prescriptionData }: Prescrib
     const [pageState, setPageState] = useState<PageState>('anamnese')
     const [error, setError] = useState<string | null>(null)
 
+    // Agent state
+    const [agentState, setAgentState] = useState<PrescriptionAgentState | null>(null)
+    const [analysis, setAnalysis] = useState<PrescriptionContextAnalysis | null>(null)
+    const [questions, setQuestions] = useState<PrescriptionAgentQuestion[]>([])
+    const [answers, setAnswers] = useState<Record<string, string>>({})
+    const [studentDisplayName, setStudentDisplayName] = useState(student.name)
+
+    // Questionnaire state
+    const questionnaireData = prescriptionData.questionnaireSubmission && profile
+        ? mapQuestionnaireToProfile(
+            prescriptionData.questionnaireSubmission.answers_json?.answers || {},
+            profile,
+            prescriptionData.exercises,
+        )
+        : null
+
+    const [questionnaireDismissed, setQuestionnaireDismissed] = useState(false)
+
+    const handleSendQuestionnaire = useCallback(async () => {
+        const result = await sendPrescriptionQuestionnaire(student.id)
+        if (!result.success) {
+            throw new Error(result.error || 'Erro ao enviar')
+        }
+    }, [student.id])
+
     // ── Profile Save ──
     const handleProfileSaved = useCallback((savedProfile: StudentPrescriptionProfile) => {
         setProfile(savedProfile)
         setError(null)
     }, [])
 
-    // ── Generate Program → redirect to builder ──
-    const handleGenerate = useCallback(async () => {
-        setPageState('generating')
-        setError(null)
-
-        const result = await generateProgram(student.id)
+    // ── Execute generation (shared by both paths) ──
+    const executeGeneration = useCallback(async (state: PrescriptionAgentState | null) => {
+        const result = await generateProgram(student.id, state)
 
         if (!result.success || !result.generationId) {
             setError(result.error || 'Erro ao gerar programa.')
@@ -72,11 +104,79 @@ export function PrescribeClient({ trainer, student, prescriptionData }: Prescrib
             return
         }
 
-        // Redirect directly to the program builder with the generation data
         router.push(
             `/students/${student.id}/program/new?source=prescription&generationId=${result.generationId}`
         )
     }, [student.id, router])
+
+    // ── Generate Program: Phase 1 (analyze) → Phase 2 (questions or generate) ──
+    const handleGenerate = useCallback(async () => {
+        setPageState('analyzing')
+        setError(null)
+
+        // Phase 1: Analyze context with Claude agent
+        const analysisResult = await analyzeStudentContext(student.id)
+
+        if (!analysisResult.success) {
+            setError(analysisResult.error || 'Erro na análise.')
+            setPageState('anamnese')
+            return
+        }
+
+        if (analysisResult.studentName) {
+            setStudentDisplayName(analysisResult.studentName)
+        }
+
+        setAnalysis(analysisResult.analysis || null)
+        setAgentState(analysisResult.agentState || null)
+
+        // If agent has questions, show them
+        if (analysisResult.questions && analysisResult.questions.length > 0) {
+            setQuestions(analysisResult.questions)
+            setPageState('questions')
+            return
+        }
+
+        // No questions needed — proceed to generation
+        setPageState('generating')
+        await executeGeneration(analysisResult.agentState || null)
+    }, [student.id, executeGeneration])
+
+    // ── Answer questions and generate ──
+    const handleAnswersSubmit = useCallback(async () => {
+        if (!agentState) return
+
+        const answersArray = questions.map(q => ({
+            question_id: q.id,
+            answer: answers[q.id] || '',
+        }))
+
+        const updatedState: PrescriptionAgentState = {
+            ...agentState,
+            answers: answersArray,
+            phase: 'generating',
+        }
+
+        setAgentState(updatedState)
+        setPageState('generating')
+        await executeGeneration(updatedState)
+    }, [agentState, questions, answers, executeGeneration])
+
+    // ── Skip questions and generate without answers ──
+    const handleSkipQuestions = useCallback(async () => {
+        const stateForGeneration = agentState
+            ? { ...agentState, answers: [], phase: 'generating' as const }
+            : null
+
+        setAgentState(stateForGeneration)
+        setPageState('generating')
+        await executeGeneration(stateForGeneration)
+    }, [agentState, executeGeneration])
+
+    // ── Answer change handler ──
+    const handleAnswerChange = useCallback((questionId: string, answer: string) => {
+        setAnswers(prev => ({ ...prev, [questionId]: answer }))
+    }, [])
 
     return (
         <AppLayout
@@ -97,9 +197,9 @@ export function PrescribeClient({ trainer, student, prescriptionData }: Prescrib
                     <div className="flex-1">
                         <h1 className="text-xl font-black text-k-text-primary tracking-tight flex items-center gap-2">
                             <Sparkles className="w-5 h-5 text-violet-500" />
-                            Prescrição Inteligente
+                            Prescrição com Copiloto
                         </h1>
-                        <p className="text-sm text-k-text-tertiary mt-0.5">
+                        <p className="text-sm text-k-text-secondary mt-0.5">
                             {student.name}
                         </p>
                     </div>
@@ -123,49 +223,61 @@ export function PrescribeClient({ trainer, student, prescriptionData }: Prescrib
                     </div>
                 )}
 
-                {/* State 1: Anamnese */}
+                {/* State 1: Anamnese / Form */}
                 {pageState === 'anamnese' && (
-                    <div className="space-y-6">
-                        <div data-onboarding="prescription-profile">
-                            <PrescriptionProfileForm
-                                studentId={student.id}
-                                existingProfile={profile}
-                                onSaved={handleProfileSaved}
+                    <div data-onboarding="prescription-profile">
+                        {/* Questionnaire badge (if answered) */}
+                        {questionnaireData && prescriptionData.questionnaireSubmission && (
+                            <QuestionnaireBadge
+                                completedAt={prescriptionData.questionnaireSubmission.submitted_at}
+                                divergences={questionnaireData.divergences}
                             />
-                        </div>
-
-                        {/* Generate button — only shows when profile exists */}
-                        {profile && (
-                            <div data-onboarding="prescription-generate" className="bg-glass-bg backdrop-blur-md rounded-2xl border border-k-border-primary p-6">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <h3 className="text-lg font-bold text-k-text-primary">Gerar Programa</h3>
-                                        <p className="text-sm text-k-text-tertiary mt-1">
-                                            A IA vai criar um programa personalizado com base no perfil acima.
-                                            Você poderá editar livremente antes de publicar.
-                                            {prescriptionData.activeProgram && (
-                                                <span className="text-amber-400 ml-1">
-                                                    O programa ativo atual ({prescriptionData.activeProgram.name}) será finalizado ao publicar.
-                                                </span>
-                                            )}
-                                        </p>
-                                    </div>
-                                    <Button
-                                        onClick={handleGenerate}
-                                        className="bg-violet-600 hover:bg-violet-500 text-white gap-2"
-                                    >
-                                        <Sparkles className="w-4 h-4" />
-                                        Gerar Programa
-                                    </Button>
-                                </div>
-                            </div>
                         )}
+
+                        {/* Questionnaire prompt card (if not answered and not dismissed) */}
+                        {!prescriptionData.questionnaireSubmission && !questionnaireDismissed && profile && (
+                            <QuestionnairePromptCard
+                                studentName={student.name}
+                                onSend={handleSendQuestionnaire}
+                                onSkip={() => setQuestionnaireDismissed(true)}
+                            />
+                        )}
+
+                        <PrescriptionProfileForm
+                            studentId={student.id}
+                            existingProfile={profile}
+                            onSaved={handleProfileSaved}
+                            recentSessions={prescriptionData.recentSessions}
+                            activeProgram={prescriptionData.activeProgram}
+                            previousProgramCount={prescriptionData.previousProgramCount}
+                            lastFormSubmissionDate={prescriptionData.lastFormSubmissionDate}
+                            onGenerate={handleGenerate}
+                        />
                     </div>
                 )}
 
-                {/* State 2: Generating (animated steps → redirect) */}
+                {/* State 2: Analyzing (agent context analysis) */}
+                {pageState === 'analyzing' && (
+                    <GenerationStatus studentName={studentDisplayName} phase="analyzing" />
+                )}
+
+                {/* State 3: Questions (agent needs clarification) */}
+                {pageState === 'questions' && (
+                    <AgentQuestionsPanel
+                        questions={questions}
+                        analysis={analysis}
+                        studentName={studentDisplayName}
+                        answers={answers}
+                        onAnswerChange={handleAnswerChange}
+                        onSubmit={handleAnswersSubmit}
+                        onSkip={handleSkipQuestions}
+                        isSubmitting={false}
+                    />
+                )}
+
+                {/* State 4: Generating (animated steps → redirect) */}
                 {pageState === 'generating' && (
-                    <GenerationStatus studentName={student.name} />
+                    <GenerationStatus studentName={studentDisplayName} phase="generating" />
                 )}
             </div>
 

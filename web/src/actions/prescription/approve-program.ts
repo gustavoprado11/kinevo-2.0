@@ -2,6 +2,8 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { computeEditsDiff, convertAssignedToGeneratedWorkouts } from '@/lib/prescription/edits-diff'
+import { refreshTrainerPatterns } from '@/lib/prescription/trainer-patterns'
 
 // ============================================================================
 // Response
@@ -119,6 +121,45 @@ export async function approveProgram(
         return { success: false, error: 'Erro ao ativar programa.' }
     }
 
+    // 6.5. Compute trainer edits diff (original AI output vs final approved)
+    let trainerEditsDiff = null
+    try {
+        // @ts-ignore — table from migration 035
+        const { data: fullGen } = await supabase
+            .from('prescription_generations')
+            .select('output_snapshot')
+            .eq('id', generationId)
+            .single()
+
+        const outputSnapshot = (fullGen as any)?.output_snapshot
+
+        if (outputSnapshot) {
+            const { data: workoutRows } = await supabase
+                .from('assigned_workouts')
+                .select('id, name, order_index, scheduled_days')
+                .eq('assigned_program_id', programId)
+                .order('order_index')
+
+            const workoutIds = (workoutRows || []).map((w: any) => w.id)
+
+            if (workoutIds.length > 0) {
+                const { data: itemRows } = await supabase
+                    .from('assigned_workout_items')
+                    .select('id, assigned_workout_id, exercise_id, exercise_name, exercise_muscle_group, exercise_equipment, sets, reps, rest_seconds, notes, order_index, item_type')
+                    .in('assigned_workout_id', workoutIds)
+                    .order('order_index')
+
+                if (workoutRows && itemRows) {
+                    const finalWorkouts = convertAssignedToGeneratedWorkouts(workoutRows as any, itemRows as any)
+                    trainerEditsDiff = computeEditsDiff(outputSnapshot, finalWorkouts)
+                    console.log(`[approveProgram] Diff computed: ${trainerEditsDiff.total_edits} edits, ${trainerEditsDiff.volume_changes.length} volume changes`)
+                }
+            }
+        }
+    } catch (err) {
+        console.error('[approveProgram] Failed to compute edits diff:', err)
+    }
+
     // 7. Mark generation as approved
     // @ts-ignore — table from migration 035
     const { error: approveError } = await supabase
@@ -134,7 +175,25 @@ export async function approveProgram(
         // Non-fatal: the program is already active
     }
 
+    // 7.5. Save trainer edits diff separately (column from migration 064, may not exist yet)
+    if (trainerEditsDiff) {
+        try {
+            // @ts-ignore — trainer_edits_diff from migration 064
+            await supabase
+                .from('prescription_generations')
+                .update({ trainer_edits_diff: trainerEditsDiff })
+                .eq('id', generationId)
+        } catch {
+            // Column doesn't exist yet — safe to ignore
+        }
+    }
+
     revalidatePath(`/students/${studentId}`)
+
+    // Fire-and-forget: refresh trainer patterns from accumulated diffs
+    refreshTrainerPatterns(supabase, trainer.id).catch(err =>
+        console.error('[approveProgram] Pattern refresh failed:', err)
+    )
 
     return { success: true, programId }
 }

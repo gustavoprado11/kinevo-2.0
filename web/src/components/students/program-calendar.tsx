@@ -275,20 +275,20 @@ function MetricsPanel({ days }: { days: CalendarDay[] }) {
     return (
         <div className="flex items-center gap-10">
             <div>
-                <p className="text-[10px] font-bold text-k-text-quaternary mb-1">
+                <p className="text-[10px] font-bold text-[#8E8E93] dark:text-k-text-quaternary mb-1">
                     Taxa de Adesão
                 </p>
                 <div className="flex items-baseline gap-1">
-                    <span className="text-2xl font-black text-white">{metrics.rate}%</span>
+                    <span className="text-2xl font-black text-[#1C1C1E] dark:text-white">{metrics.rate}%</span>
                 </div>
             </div>
             <div>
-                <p className="text-[10px] font-bold text-k-text-quaternary mb-1">
+                <p className="text-[10px] font-bold text-[#8E8E93] dark:text-k-text-quaternary mb-1">
                     Sequência
                 </p>
                 <div className="flex items-baseline gap-1">
                     <span className="text-2xl font-black text-violet-400">{metrics.streak}</span>
-                    <span className="text-[10px] font-bold text-k-text-tertiary">treinos</span>
+                    <span className="text-[10px] font-bold text-[#8E8E93] dark:text-k-text-tertiary">treinos</span>
                 </div>
             </div>
         </div>

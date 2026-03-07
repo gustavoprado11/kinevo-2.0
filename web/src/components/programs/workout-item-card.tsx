@@ -48,7 +48,7 @@ export function WorkoutItemCard({
 }: WorkoutItemCardProps) {
     if (item.item_type === 'note') {
         return (
-            <div className="bg-surface-card rounded-xl border border-k-border-subtle p-4 group flex items-start gap-3 relative">
+            <div className="bg-white dark:bg-surface-card rounded-xl border border-[#E8E8ED] dark:border-k-border-subtle p-4 group flex items-start gap-3 relative">
                 {/* Drag Handle */}
                 <div
                     {...dragHandleProps}
@@ -79,9 +79,9 @@ export function WorkoutItemCard({
 
     if (item.item_type === 'superset') {
         return (
-            <div className="bg-surface-card rounded-xl border border-k-border-subtle p-4 relative group">
+            <div className="bg-white dark:bg-surface-card rounded-xl border border-[#E8E8ED] dark:border-k-border-subtle p-4 relative group">
                 {/* Vertical Accent */}
-                <div className="absolute top-4 bottom-4 left-0 w-1 bg-violet-600/20 rounded-r-full" />
+                <div className="absolute top-4 bottom-4 left-0 w-1 bg-[#007AFF]/20 dark:bg-violet-600/20 rounded-r-full" />
 
                 {/* Header */}
                 <div className="flex items-center justify-between mb-4 pl-3">
@@ -90,8 +90,8 @@ export function WorkoutItemCard({
                             <GripVertical className="w-4 h-4" />
                         </div>
                         <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-violet-600 dark:text-violet-400">Superset</span>
-                            <span className="flex items-center justify-center bg-violet-500/10 text-violet-300 text-[10px] font-bold px-1.5 py-0.5 rounded border border-violet-500/20">
+                            <span className="text-xs font-bold text-[#007AFF] dark:text-violet-400">Superset</span>
+                            <span className="flex items-center justify-center bg-[#007AFF]/10 dark:bg-violet-500/10 text-[#007AFF] dark:text-violet-300 text-[10px] font-bold px-1.5 py-0.5 rounded border border-[#007AFF]/20 dark:border-violet-500/20">
                                 {item.children?.length || 0}
                             </span>
                         </div>
@@ -99,15 +99,15 @@ export function WorkoutItemCard({
 
                     <div className="flex items-center gap-4">
                         <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-bold text-k-text-tertiary">Descanso</span>
+                            <span className="text-[10px] font-bold text-[#8E8E93] dark:text-k-text-tertiary">Descanso</span>
                             <input
                                 type="number"
                                 value={item.rest_seconds || ''}
                                 onChange={(e) => onUpdate({ rest_seconds: parseInt(e.target.value) || null })}
                                 placeholder="0"
-                                className="w-8 bg-transparent text-k-text-primary text-xs font-medium text-center focus:outline-none focus:text-violet-400 transition-colors placeholder:text-k-border-subtle"
+                                className="w-8 bg-transparent text-[#1C1C1E] dark:text-k-text-primary text-xs font-medium text-center focus:outline-none focus:text-[#007AFF] dark:focus:text-violet-400 transition-colors placeholder:text-k-border-subtle"
                             />
-                            <span className="text-[10px] text-k-text-tertiary">s</span>
+                            <span className="text-[10px] text-[#8E8E93] dark:text-k-text-tertiary">s</span>
                         </div>
 
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -207,7 +207,7 @@ function ExerciseItemCard({
     if (isSwapping) {
         return (
             <>
-            <div className="bg-surface-card rounded-xl border border-violet-500/30 p-4 relative transition-all">
+            <div className="bg-white dark:bg-surface-card rounded-xl border border-[#007AFF]/30 dark:border-violet-500/30 p-4 relative transition-all">
                 <div className="flex items-center gap-3 mb-3">
                     <Search className="w-4 h-4 text-k-text-quaternary shrink-0" />
                     <input
@@ -234,7 +234,7 @@ function ExerciseItemCard({
                         swapCandidates.map(ex => (
                             <div
                                 key={ex.id}
-                                className="flex items-center gap-1 rounded-lg hover:bg-violet-500/10 transition-colors group/swap"
+                                className="flex items-center gap-1 rounded-lg hover:bg-[#007AFF]/10 dark:hover:bg-violet-500/10 transition-colors group/swap"
                             >
                                 <button
                                     onClick={() => confirmSwap(ex)}
@@ -258,7 +258,7 @@ function ExerciseItemCard({
                                             setVideoExercise(ex)
                                             setShowVideo(true)
                                         }}
-                                        className="p-1.5 text-k-text-quaternary hover:text-violet-400 transition-colors shrink-0 mr-1"
+                                        className="p-1.5 text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#007AFF] dark:hover:text-violet-400 transition-colors shrink-0 mr-1"
                                         title="Ver vídeo demonstrativo"
                                     >
                                         <PlayCircle className="w-3.5 h-3.5" />
@@ -285,7 +285,7 @@ function ExerciseItemCard({
 
     return (
         <>
-        <div className="bg-surface-card rounded-xl border border-k-border-subtle p-4 group relative transition-all hover:border-k-border-primary">
+        <div className="bg-white dark:bg-surface-card rounded-xl border border-[#E8E8ED] dark:border-k-border-subtle p-4 group relative transition-all hover:border-[#D2D2D7] dark:hover:border-k-border-primary">
             <div className="flex items-start gap-3">
                 {/* Drag Handle */}
                 <div
@@ -306,7 +306,7 @@ function ExerciseItemCard({
                             {item.exercise?.video_url && (
                                 <button
                                     onClick={() => { setVideoExercise(item.exercise!); setShowVideo(true) }}
-                                    className="text-k-text-quaternary hover:text-violet-400 transition-colors shrink-0"
+                                    className="text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#007AFF] dark:hover:text-violet-400 transition-colors shrink-0"
                                     title="Ver vídeo demonstrativo"
                                 >
                                     <PlayCircle className="w-4 h-4" />
@@ -323,14 +323,14 @@ function ExerciseItemCard({
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button
                                 onClick={startSwap}
-                                className="p-1.5 rounded-md text-k-text-quaternary hover:text-violet-400 hover:bg-violet-400/10 transition-colors"
+                                className="p-1.5 rounded-md text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#007AFF] dark:hover:text-violet-400 hover:bg-[#007AFF]/10 dark:hover:bg-violet-400/10 transition-colors"
                                 title="Trocar exercício"
                             >
                                 <ArrowLeftRight className="w-3.5 h-3.5" />
                             </button>
                             <button
                                 onClick={onDelete}
-                                className="p-1.5 rounded-md text-k-text-quaternary hover:text-red-400 hover:bg-red-400/10 transition-colors"
+                                className="p-1.5 rounded-md text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#FF3B30] dark:hover:text-red-400 hover:bg-[#FF3B30]/10 dark:hover:bg-red-400/10 transition-colors"
                             >
                                 <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -341,7 +341,7 @@ function ExerciseItemCard({
                     <div className="flex items-center gap-6">
                         {/* Sets */}
                         <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-bold text-k-text-tertiary">Séries</span>
+                            <span className="text-[10px] font-bold text-[#8E8E93] dark:text-k-text-tertiary">Séries</span>
                             <input
                                 type="number"
                                 min={1}
@@ -350,26 +350,26 @@ function ExerciseItemCard({
                                 onChange={(e) => onUpdate({ sets: parseInt(e.target.value) || null })}
                                 onFocus={(e) => e.target.select()}
                                 placeholder="0"
-                                className="w-8 bg-transparent text-k-text-primary text-sm font-medium text-center focus:outline-none focus:text-violet-400 transition-colors placeholder:text-k-border-subtle border-b border-transparent focus:border-violet-500/50 p-0"
+                                className="w-8 bg-transparent text-[#1C1C1E] dark:text-k-text-primary text-sm font-medium text-center focus:outline-none focus:text-[#007AFF] dark:focus:text-violet-400 transition-colors placeholder:text-k-border-subtle border-b border-transparent focus:border-[#007AFF]/50 dark:focus:border-violet-500/50 p-0"
                             />
                         </div>
 
                         {/* Reps */}
                         <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-bold text-k-text-tertiary">Reps</span>
+                            <span className="text-[10px] font-bold text-[#8E8E93] dark:text-k-text-tertiary">Reps</span>
                             <input
                                 type="text"
                                 value={item.reps || ''}
                                 onChange={(e) => onUpdate({ reps: e.target.value || null })}
                                 onFocus={(e) => e.target.select()}
                                 placeholder="0"
-                                className="w-12 bg-transparent text-k-text-primary text-sm font-medium text-center focus:outline-none focus:text-violet-400 transition-colors placeholder:text-k-border-subtle border-b border-transparent focus:border-violet-500/50 p-0"
+                                className="w-12 bg-transparent text-[#1C1C1E] dark:text-k-text-primary text-sm font-medium text-center focus:outline-none focus:text-[#007AFF] dark:focus:text-violet-400 transition-colors placeholder:text-k-border-subtle border-b border-transparent focus:border-[#007AFF]/50 dark:focus:border-violet-500/50 p-0"
                             />
                         </div>
 
                         {/* Rest */}
                         <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-bold text-k-text-tertiary">Descanso</span>
+                            <span className="text-[10px] font-bold text-[#8E8E93] dark:text-k-text-tertiary">Descanso</span>
                             <div className="relative">
                                 <input
                                     type="number"
@@ -379,9 +379,9 @@ function ExerciseItemCard({
                                     onChange={(e) => onUpdate({ rest_seconds: parseInt(e.target.value) || null })}
                                     onFocus={(e) => e.target.select()}
                                     placeholder="0"
-                                    className="w-10 bg-transparent text-k-text-primary text-sm font-medium text-center focus:outline-none focus:text-violet-400 transition-colors placeholder:text-k-border-subtle border-b border-transparent focus:border-violet-500/50 p-0"
+                                    className="w-10 bg-transparent text-[#1C1C1E] dark:text-k-text-primary text-sm font-medium text-center focus:outline-none focus:text-[#007AFF] dark:focus:text-violet-400 transition-colors placeholder:text-k-border-subtle border-b border-transparent focus:border-[#007AFF]/50 dark:focus:border-violet-500/50 p-0"
                                 />
-                                <span className="absolute -right-2 top-0.5 text-[9px] text-k-text-tertiary pointer-events-none">s</span>
+                                <span className="absolute -right-2 top-0.5 text-[9px] text-[#8E8E93] dark:text-k-text-tertiary pointer-events-none">s</span>
                             </div>
                         </div>
                     </div>
@@ -431,7 +431,7 @@ function SupersetChildCard({
     onRemoveFromSuperset?: () => void
 }) {
     return (
-        <div className="bg-surface-inset rounded-lg border border-k-border-subtle p-3 group/child relative hover:border-k-border-primary transition-colors">
+        <div className="bg-[#F9F9FB] dark:bg-surface-inset rounded-lg border border-[#E8E8ED] dark:border-k-border-subtle p-3 group/child relative hover:border-[#D2D2D7] dark:hover:border-k-border-primary transition-colors">
             <div className="flex items-start gap-3">
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-2">
@@ -452,7 +452,7 @@ function SupersetChildCard({
 
                     <div className="flex items-center gap-4">
                         <div className="flex items-center gap-2">
-                            <span className="text-[9px] font-bold text-k-text-tertiary">Sets</span>
+                            <span className="text-[9px] font-bold text-[#8E8E93] dark:text-k-text-tertiary">Sets</span>
                             <input
                                 type="number"
                                 min={1}
@@ -461,18 +461,18 @@ function SupersetChildCard({
                                 onChange={(e) => onUpdate({ sets: parseInt(e.target.value) || null })}
                                 onFocus={(e) => e.target.select()}
                                 placeholder="0"
-                                className="w-6 bg-transparent text-k-text-primary text-xs font-medium text-center focus:outline-none focus:text-violet-400 border-b border-transparent focus:border-violet-500/50 p-0"
+                                className="w-6 bg-transparent text-[#1C1C1E] dark:text-k-text-primary text-xs font-medium text-center focus:outline-none focus:text-[#007AFF] dark:focus:text-violet-400 border-b border-transparent focus:border-[#007AFF]/50 dark:focus:border-violet-500/50 p-0"
                             />
                         </div>
                         <div className="flex items-center gap-2">
-                            <span className="text-[9px] font-bold text-k-text-tertiary">Reps</span>
+                            <span className="text-[9px] font-bold text-[#8E8E93] dark:text-k-text-tertiary">Reps</span>
                             <input
                                 type="text"
                                 value={item.reps || ''}
                                 onChange={(e) => onUpdate({ reps: e.target.value || null })}
                                 onFocus={(e) => e.target.select()}
                                 placeholder="0"
-                                className="w-8 bg-transparent text-k-text-primary text-xs font-medium text-center focus:outline-none focus:text-violet-400 border-b border-transparent focus:border-violet-500/50 p-0"
+                                className="w-8 bg-transparent text-[#1D1D1F] dark:text-k-text-primary text-xs font-medium text-center focus:outline-none focus:text-[#007AFF] dark:focus:text-violet-400 border-b border-transparent focus:border-[#007AFF]/50 dark:focus:border-violet-500/50 p-0"
                             />
                         </div>
                     </div>
@@ -505,11 +505,11 @@ function ExerciseFunctionSelect({
 }) {
     return (
         <div className="flex items-center gap-2 mt-2">
-            <span className="text-[10px] font-bold text-k-text-tertiary">Função</span>
+            <span className="text-[10px] font-bold text-[#8E8E93] dark:text-k-text-tertiary">Função</span>
             <select
                 value={value || ''}
                 onChange={(e) => onChange(e.target.value || null)}
-                className="bg-transparent text-k-text-primary text-xs font-medium focus:outline-none focus:text-violet-400 transition-colors border-b border-transparent focus:border-violet-500/50 cursor-pointer appearance-none pr-4"
+                className="bg-transparent text-[#1D1D1F] dark:text-k-text-primary text-xs font-medium focus:outline-none focus:text-[#007AFF] dark:focus:text-violet-400 transition-colors border-b border-transparent focus:border-[#007AFF]/50 dark:focus:border-violet-500/50 cursor-pointer appearance-none pr-4"
             >
                 <option value="">—</option>
                 {EXERCISE_FUNCTION_OPTIONS.map(opt => (
@@ -542,7 +542,7 @@ function TechnicalNote({ value, onChange }: { value: string; onChange: (v: strin
     if (editing) {
         return (
             <div className="mt-2 flex items-center gap-2 py-1.5">
-                <MessageSquare size={14} className="text-violet-400 shrink-0" />
+                <MessageSquare size={14} className="text-[#007AFF] dark:text-violet-400 shrink-0" />
                 <input
                     ref={inputRef}
                     value={local}
@@ -553,7 +553,7 @@ function TechnicalNote({ value, onChange }: { value: string; onChange: (v: strin
                         if (e.key === 'Escape') { setLocal(value); setEditing(false) }
                     }}
                     placeholder="Ex: Manter lombar neutra, descer até 90°..."
-                    className="bg-transparent text-k-text-secondary text-xs outline-none flex-1 border-b border-violet-400 placeholder:text-k-text-quaternary pb-0.5"
+                    className="bg-transparent text-[#1D1D1F] dark:text-k-text-secondary text-xs outline-none flex-1 border-b border-[#007AFF] dark:border-violet-400 placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary pb-0.5"
                 />
             </div>
         )
@@ -563,9 +563,9 @@ function TechnicalNote({ value, onChange }: { value: string; onChange: (v: strin
         return (
             <div
                 onClick={startEditing}
-                className="mt-2 flex items-center gap-2 py-1.5 px-2 -mx-2 rounded-lg bg-violet-500/5 border-l-2 border-violet-500/40 cursor-pointer hover:bg-violet-500/10 transition-colors group/note"
+                className="mt-2 flex items-center gap-2 py-1.5 px-2 -mx-2 rounded-lg bg-[#007AFF]/5 dark:bg-violet-500/5 border-l-2 border-[#007AFF]/40 dark:border-violet-500/40 cursor-pointer hover:bg-[#007AFF]/10 dark:hover:bg-violet-500/10 transition-colors group/note"
             >
-                <MessageSquare size={14} className="text-violet-400/70 shrink-0" />
+                <MessageSquare size={14} className="text-[#007AFF]/70 dark:text-violet-400/70 shrink-0" />
                 <span className="text-k-text-secondary text-xs flex-1">{value}</span>
                 <Pencil size={12} className="text-k-text-quaternary opacity-0 group-hover/note:opacity-100 transition-opacity shrink-0" />
             </div>
@@ -575,9 +575,9 @@ function TechnicalNote({ value, onChange }: { value: string; onChange: (v: strin
     return (
         <div
             onClick={startEditing}
-            className="mt-2 flex items-center gap-2 py-1.5 cursor-pointer text-k-text-quaternary hover:text-k-text-tertiary transition-colors group/note"
+            className="mt-2 flex items-center gap-2 py-1.5 cursor-pointer text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#6E6E73] dark:hover:text-k-text-tertiary transition-colors group/note"
         >
-            <MessageSquare size={14} className="shrink-0 group-hover/note:text-violet-400/50" />
+            <MessageSquare size={14} className="shrink-0 group-hover/note:text-[#007AFF]/50 dark:group-hover/note:text-violet-400/50" />
             <span className="text-xs">Adicionar nota técnica...</span>
         </div>
     )
@@ -642,15 +642,15 @@ function SubstituteSelector({
                 onClick={() => setIsOpen(!isOpen)}
                 className="flex items-center gap-2 text-[10px] font-semibold transition-colors group select-none"
             >
-                <Repeat className={`w-3 h-3 ${isOpen ? 'text-violet-400' : 'text-k-text-tertiary group-hover:text-k-text-primary'}`} />
-                <span className={isOpen || selectedCount > 0 ? 'text-violet-400' : 'text-k-text-tertiary group-hover:text-k-text-secondary'}>
+                <Repeat className={`w-3 h-3 ${isOpen ? 'text-[#007AFF] dark:text-violet-400' : 'text-[#6E6E73] dark:text-k-text-tertiary group-hover:text-[#1D1D1F] dark:group-hover:text-k-text-primary'}`} />
+                <span className={isOpen || selectedCount > 0 ? 'text-[#007AFF] dark:text-violet-400' : 'text-[#6E6E73] dark:text-k-text-tertiary group-hover:text-[#1D1D1F] dark:group-hover:text-k-text-secondary'}>
                     {selectedCount > 0 ? `Substituições (${selectedCount})` : 'Substituições (nenhuma)'}
                 </span>
             </button>
 
             <div className={`grid transition-[grid-template-rows] duration-200 ease-in-out ${isOpen ? 'grid-rows-[1fr] mt-2' : 'grid-rows-[0fr]'}`}>
                 <div className="overflow-hidden">
-                    <div className="bg-surface-inset rounded-xl border border-k-border-subtle p-3">
+                    <div className="bg-[#F9F9FB] dark:bg-surface-inset rounded-xl border border-[#E8E8ED] dark:border-k-border-subtle p-3">
                         {/* Search */}
                         <div className="relative mb-2">
                             <input
@@ -658,7 +658,7 @@ function SubstituteSelector({
                                 value={query}
                                 onChange={(e) => setQuery(e.target.value)}
                                 placeholder="Buscar exercício..."
-                                className="w-full h-8 pl-8 pr-3 bg-glass-bg border-none rounded-lg text-k-text-primary text-xs placeholder:text-k-text-quaternary focus:outline-none focus:ring-1 focus:ring-violet-500/50 transition-all font-medium"
+                                className="w-full h-8 pl-8 pr-3 bg-white dark:bg-glass-bg border border-[#D2D2D7] dark:border-transparent rounded-lg text-[#1D1D1F] dark:text-k-text-primary text-xs placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:outline-none focus:ring-1 focus:ring-[#007AFF]/30 dark:focus:ring-violet-500/50 transition-all font-medium"
                             />
                             <svg className="w-3.5 h-3.5 text-k-text-quaternary absolute left-2.5 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -679,12 +679,12 @@ function SubstituteSelector({
                                             key={exercise.id}
                                             onClick={() => toggleSubstitute(exercise.id)}
                                             className={`w-full text-left flex items-center justify-between p-2 rounded-lg transition-all group/item ${isSelected
-                                                ? 'bg-violet-500/10 border border-violet-500/20'
-                                                : 'hover:bg-glass-bg border border-transparent hover:border-k-border-subtle'
+                                                ? 'bg-[#007AFF]/10 dark:bg-violet-500/10 border border-[#007AFF]/20 dark:border-violet-500/20'
+                                                : 'hover:bg-[#F5F5F7] dark:hover:bg-glass-bg border border-transparent hover:border-[#E8E8ED] dark:hover:border-k-border-subtle'
                                                 }`}
                                         >
                                             <div className="min-w-0 flex-1 pr-2">
-                                                <div className={`text-xs font-medium truncate transition-colors ${isSelected ? 'text-violet-300' : 'text-k-text-secondary group-hover/item:text-k-text-primary'}`}>
+                                                <div className={`text-xs font-medium truncate transition-colors ${isSelected ? 'text-[#007AFF] dark:text-violet-300' : 'text-[#1D1D1F] dark:text-k-text-secondary group-hover/item:text-[#1D1D1F] dark:group-hover/item:text-k-text-primary'}`}>
                                                     {exercise.name}
                                                 </div>
                                                 <div className="text-[9px] text-k-text-quaternary truncate mt-0.5">
@@ -693,7 +693,7 @@ function SubstituteSelector({
                                             </div>
 
                                             {isSelected && (
-                                                <div className="text-violet-400 animate-in zoom-in-50 duration-200">
+                                                <div className="text-[#007AFF] dark:text-violet-400 animate-in zoom-in-50 duration-200">
                                                     <Check className="w-3.5 h-3.5" />
                                                 </div>
                                             )}

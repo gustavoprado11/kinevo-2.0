@@ -148,13 +148,13 @@ export function AssignFormModal({
                         transition={{ duration: 0.2 }}
                         className="fixed inset-0 z-50 flex items-center justify-center p-4"
                     >
-                        <div className="w-full max-w-lg rounded-2xl border border-k-border-primary bg-surface-card shadow-2xl overflow-hidden">
+                        <div className="w-full max-w-lg rounded-2xl bg-white shadow-[0_8px_32px_rgba(0,0,0,0.12)] overflow-hidden dark:border dark:border-k-border-primary dark:bg-surface-card dark:shadow-2xl">
                             {/* Header */}
-                            <div className="flex items-center justify-between border-b border-k-border-subtle px-6 py-4">
-                                <h2 className="text-lg font-bold text-k-text-primary">Enviar Formulário</h2>
+                            <div className="flex items-center justify-between border-b border-[#E8E8ED] px-6 py-4 dark:border-k-border-subtle">
+                                <h2 className="text-xl font-semibold text-[#1D1D1F] dark:text-k-text-primary">Enviar Formulário</h2>
                                 <button
                                     onClick={resetAndClose}
-                                    className="rounded-full p-2 text-k-text-secondary hover:bg-glass-bg hover:text-k-text-primary transition-colors"
+                                    className="rounded-full p-2 text-[#AEAEB2] hover:text-[#6E6E73] hover:bg-[#F5F5F7] transition-colors dark:text-k-text-secondary dark:hover:bg-glass-bg dark:hover:text-k-text-primary"
                                 >
                                     <X size={18} />
                                 </button>
@@ -164,13 +164,13 @@ export function AssignFormModal({
                             <div className="px-6 py-5 space-y-5 max-h-[70vh] overflow-y-auto">
                                 {/* Template Select */}
                                 <div>
-                                    <label className="block text-xs font-medium text-k-text-tertiary mb-1.5">
+                                    <label className="block text-sm font-medium text-[#1D1D1F] mb-1.5 dark:text-k-text-tertiary">
                                         Template
                                     </label>
                                     <select
                                         value={templateId}
                                         onChange={(e) => setTemplateId(e.target.value)}
-                                        className="w-full rounded-xl border border-k-border-subtle bg-glass-bg px-4 py-3 text-sm text-k-text-primary outline-none transition-all focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/10"
+                                        className="w-full rounded-lg border border-[#D2D2D7] bg-white px-4 py-3 text-sm text-[#1D1D1F] outline-none transition-all focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/20 dark:rounded-xl dark:border-k-border-subtle dark:bg-glass-bg dark:text-k-text-primary dark:focus:border-violet-500/50 dark:focus:ring-violet-500/10"
                                     >
                                         <option value="">Selecione um template...</option>
                                         {templates.map((t) => (
@@ -183,8 +183,8 @@ export function AssignFormModal({
 
                                 {/* Deadline Chips */}
                                 <div>
-                                    <label className="block text-xs font-medium text-k-text-tertiary mb-1.5">
-                                        Prazo (opcional)
+                                    <label className="block text-sm font-medium text-[#1D1D1F] mb-1.5 dark:text-k-text-tertiary">
+                                        Prazo <span className="text-[#86868B] font-normal dark:text-k-text-quaternary">(opcional)</span>
                                     </label>
                                     <div className="flex items-center gap-2 flex-wrap">
                                         {[
@@ -196,10 +196,10 @@ export function AssignFormModal({
                                                 key={opt.value}
                                                 type="button"
                                                 onClick={() => selectDeadline(opt.value)}
-                                                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                                                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
                                                     deadlineDays === opt.value && !showDatePicker
-                                                        ? 'bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/30'
-                                                        : 'bg-glass-bg text-k-text-quaternary border border-k-border-subtle hover:text-k-text-secondary'
+                                                        ? 'bg-[#007AFF] text-white dark:bg-violet-500/10 dark:text-violet-400 dark:border dark:border-violet-500/30'
+                                                        : 'bg-white text-[#6E6E73] border border-[#D2D2D7] hover:bg-[#F5F5F7] dark:bg-glass-bg dark:text-k-text-quaternary dark:border-k-border-subtle dark:hover:text-k-text-secondary'
                                                 }`}
                                             >
                                                 {opt.label}
@@ -208,10 +208,10 @@ export function AssignFormModal({
                                         <button
                                             type="button"
                                             onClick={selectCustomDate}
-                                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                                            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
                                                 showDatePicker
-                                                    ? 'bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/30'
-                                                    : 'bg-glass-bg text-k-text-quaternary border border-k-border-subtle hover:text-k-text-secondary'
+                                                    ? 'bg-[#007AFF] text-white dark:bg-violet-500/10 dark:text-violet-400 dark:border dark:border-violet-500/30'
+                                                    : 'bg-white text-[#6E6E73] border border-[#D2D2D7] hover:bg-[#F5F5F7] dark:bg-glass-bg dark:text-k-text-quaternary dark:border-k-border-subtle dark:hover:text-k-text-secondary'
                                             }`}
                                         >
                                             Personalizar
@@ -222,40 +222,40 @@ export function AssignFormModal({
                                             type="date"
                                             value={customDate}
                                             onChange={(e) => setCustomDate(e.target.value)}
-                                            className="mt-2 w-full rounded-xl border border-k-border-subtle bg-glass-bg px-4 py-2.5 text-sm text-k-text-primary outline-none transition-all focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/10"
+                                            className="mt-2 w-full rounded-lg border border-[#D2D2D7] bg-white px-4 py-2.5 text-sm text-[#1D1D1F] outline-none transition-all focus:border-[#007AFF] focus:ring-1 focus:ring-[#007AFF]/20 dark:rounded-xl dark:border-k-border-subtle dark:bg-glass-bg dark:text-k-text-primary dark:focus:border-violet-500/50 dark:focus:ring-2 dark:focus:ring-violet-500/10"
                                         />
                                     )}
                                 </div>
 
                                 {/* Message */}
                                 <div>
-                                    <label className="block text-xs font-medium text-k-text-tertiary mb-1.5">
-                                        Mensagem pessoal (opcional)
+                                    <label className="block text-sm font-medium text-[#1D1D1F] mb-1.5 dark:text-k-text-tertiary">
+                                        Mensagem pessoal <span className="text-[#86868B] font-normal dark:text-k-text-quaternary">(opcional)</span>
                                     </label>
                                     <textarea
                                         placeholder="Adicione uma nota pessoal para os alunos..."
                                         value={message}
                                         onChange={(e) => setMessage(e.target.value)}
-                                        className="min-h-[80px] w-full rounded-xl border border-k-border-subtle bg-glass-bg px-4 py-3 text-sm text-k-text-primary outline-none transition-all focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/10 resize-none"
+                                        className="min-h-[80px] w-full rounded-lg border border-[#D2D2D7] bg-white px-4 py-3 text-sm text-[#1D1D1F] placeholder:text-[#AEAEB2] outline-none transition-all focus:border-[#007AFF] focus:ring-1 focus:ring-[#007AFF]/20 resize-none dark:rounded-xl dark:border-k-border-subtle dark:bg-glass-bg dark:text-k-text-primary dark:focus:border-violet-500/50 dark:focus:ring-2 dark:focus:ring-violet-500/10"
                                     />
                                 </div>
 
                                 {/* Students */}
                                 <div>
                                     <div className="flex items-center justify-between mb-1.5">
-                                        <label className="block text-xs font-medium text-k-text-tertiary">
+                                        <label className="block text-sm font-medium text-[#1D1D1F] dark:text-k-text-tertiary">
                                             Alunos
                                         </label>
                                         {students.length > 0 && (
                                             <button
                                                 onClick={toggleAll}
-                                                className="text-[11px] font-semibold text-violet-600 dark:text-violet-400 hover:text-violet-500 dark:hover:text-violet-300 transition-colors"
+                                                className="text-[11px] font-semibold text-[#007AFF] hover:text-[#0056B3] transition-colors dark:text-violet-400 dark:hover:text-violet-300"
                                             >
                                                 {selectedStudentIds.length === students.length ? 'Desmarcar todos' : 'Selecionar todos'}
                                             </button>
                                         )}
                                     </div>
-                                    <div className="max-h-48 overflow-y-auto rounded-xl border border-k-border-subtle bg-glass-bg p-2">
+                                    <div className="max-h-48 overflow-y-auto rounded-lg border border-[#E8E8ED] bg-white p-2 dark:rounded-xl dark:border-k-border-subtle dark:bg-glass-bg">
                                         {students.length === 0 ? (
                                             <p className="px-2 py-4 text-center text-xs text-k-text-secondary">
                                                 Nenhum aluno ativo encontrado.
@@ -267,17 +267,17 @@ export function AssignFormModal({
                                                     return (
                                                         <label
                                                             key={student.id}
-                                                            className={`flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 transition-all ${
+                                                            className={`flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 transition-all border-b border-[#E8E8ED] last:border-b-0 dark:border-b-0 ${
                                                                 isSelected
-                                                                    ? 'bg-violet-500/10'
-                                                                    : 'hover:bg-surface-elevated'
+                                                                    ? 'bg-[#007AFF]/5 dark:bg-violet-500/10'
+                                                                    : 'hover:bg-[#F5F5F7] dark:hover:bg-surface-elevated'
                                                             }`}
                                                         >
                                                             <input
                                                                 type="checkbox"
                                                                 checked={isSelected}
                                                                 onChange={() => toggleStudent(student.id)}
-                                                                className="h-4 w-4 rounded border-k-border-subtle text-violet-600 focus:ring-violet-500 accent-violet-600"
+                                                                className="h-4 w-4 rounded border-[#D2D2D7] text-[#007AFF] focus:ring-[#007AFF] accent-[#007AFF] dark:border-k-border-subtle dark:text-violet-600 dark:focus:ring-violet-500 dark:accent-violet-600"
                                                             />
                                                             <div className="flex h-7 w-7 items-center justify-center rounded-full border border-k-border-primary bg-glass-bg overflow-hidden shrink-0">
                                                                 {student.avatar_url ? (
@@ -290,8 +290,8 @@ export function AssignFormModal({
                                                             </div>
                                                             <span className={`text-sm font-medium ${
                                                                 isSelected
-                                                                    ? 'text-violet-600 dark:text-violet-400'
-                                                                    : 'text-k-text-primary'
+                                                                    ? 'text-[#1D1D1F] dark:text-violet-400'
+                                                                    : 'text-[#1D1D1F] dark:text-k-text-primary'
                                                             }`}>
                                                                 {student.name}
                                                             </span>
@@ -317,14 +317,14 @@ export function AssignFormModal({
                             </div>
 
                             {/* Footer */}
-                            <div className="border-t border-k-border-subtle px-6 py-4">
+                            <div className="border-t border-[#E8E8ED] px-6 py-4 dark:border-k-border-subtle">
                                 <button
                                     onClick={handleAssign}
                                     disabled={isAssigning || !canSubmit}
-                                    className={`w-full h-11 font-bold rounded-xl transition-all flex items-center justify-center gap-2 ${
+                                    className={`w-full h-11 font-bold rounded-full transition-all flex items-center justify-center gap-2 dark:rounded-xl ${
                                         canSubmit
-                                            ? 'bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-600/20'
-                                            : 'bg-surface-elevated text-k-text-quaternary cursor-not-allowed'
+                                            ? 'bg-[#007AFF] hover:bg-[#0066D6] text-white dark:bg-violet-600 dark:hover:bg-violet-500 dark:shadow-lg dark:shadow-violet-600/20'
+                                            : 'text-[#AEAEB2] cursor-not-allowed dark:bg-surface-elevated dark:text-k-text-quaternary'
                                     }`}
                                 >
                                     {isAssigning ? (

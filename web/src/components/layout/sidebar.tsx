@@ -66,7 +66,7 @@ export function Sidebar({ financialBadge }: SidebarProps = {}) {
     const pathname = usePathname()
 
     return (
-        <aside className="sidebar-container fixed inset-y-0 left-0 z-30 flex w-64 flex-col border-r border-k-border-subtle bg-surface-sidebar/60 backdrop-blur-2xl transition-all duration-300">
+        <aside className="sidebar-container fixed inset-y-0 left-0 z-30 flex w-64 flex-col border-r border-[#E8E8ED] dark:border-k-border-subtle bg-white dark:bg-surface-sidebar/60 dark:backdrop-blur-2xl transition-all duration-300">
             {/* Header / Logo */}
             <div className="px-6 pt-8 pb-8 flex items-center">
                 <Link href="/dashboard" className="flex items-center gap-3 group">
@@ -77,12 +77,12 @@ export function Sidebar({ financialBadge }: SidebarProps = {}) {
                         height={32}
                         className="rounded-lg"
                     />
-                    <span className="text-lg font-semibold text-foreground/90 tracking-tight">Kinevo</span>
+                    <span className="text-lg font-semibold text-[#1D1D1F] dark:text-foreground/90 tracking-tight">Kinevo</span>
                 </Link>
             </div>
 
             {/* Navigation */}
-            <nav className="flex-1 px-4 space-y-1 overflow-y-auto">
+            <nav className="flex-1 px-4 space-y-0.5 overflow-y-auto">
                 {navigation.map((item) => {
                     const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
                     const Icon = item.icon
@@ -92,20 +92,20 @@ export function Sidebar({ financialBadge }: SidebarProps = {}) {
                             href={item.href}
                             data-onboarding={item.onboardingId}
                             className={`
-                                relative flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium tracking-tight transition-all duration-200 ease-out group
+                                relative flex items-center gap-3 px-3 py-2 rounded-lg text-sm tracking-tight transition-all duration-200 ease-out group
                                 ${isActive
-                                    ? 'bg-glass-bg-active text-foreground'
-                                    : 'text-muted-foreground/60 hover:text-foreground hover:bg-glass-bg'
+                                    ? 'bg-[#007AFF]/10 dark:bg-glass-bg-active text-[#007AFF] dark:text-foreground font-semibold'
+                                    : 'text-[#6E6E73] dark:text-muted-foreground/60 hover:text-[#1D1D1F] dark:hover:text-foreground hover:bg-[#F5F5F7] dark:hover:bg-glass-bg font-medium'
                                 }
                             `}
                         >
                             {isActive && (
-                                <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] bg-violet-500 rounded-r-full shadow-sm shadow-purple-500/50" />
+                                <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] bg-[#007AFF] dark:bg-violet-500 rounded-r-full" />
                             )}
                             <Icon
                                 size={18}
                                 strokeWidth={1.5}
-                                className={`transition-colors duration-200 ${isActive ? 'text-violet-400' : 'text-muted-foreground/60 group-hover:text-foreground'}`}
+                                className={`transition-colors duration-200 ${isActive ? 'text-[#007AFF] dark:text-violet-400' : 'text-[#AEAEB2] dark:text-muted-foreground/60 group-hover:text-[#6E6E73] dark:group-hover:text-foreground'}`}
                             />
                             <span className="flex-1">{item.name}</span>
                             {item.name === 'Financeiro' && financialBadge}
@@ -115,8 +115,8 @@ export function Sidebar({ financialBadge }: SidebarProps = {}) {
             </nav>
 
             {/* Footer */}
-            <div className="px-6 py-6 border-t border-k-border-subtle">
-                <div className="px-2 py-1 text-xs font-medium text-muted-foreground/40">
+            <div className="px-6 py-6 border-t border-[#E8E8ED] dark:border-k-border-subtle">
+                <div className="px-2 py-1 text-xs font-medium text-[#AEAEB2] dark:text-muted-foreground/40">
                     Kinevo 2.0
                 </div>
             </div>
