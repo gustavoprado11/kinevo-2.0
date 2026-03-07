@@ -87,6 +87,7 @@ interface FormTemplate {
     created_at: string
     updated_at: string
     responseCount: number
+    trainer_id: string | null
 }
 
 interface TemplatesClientProps {
@@ -106,6 +107,7 @@ function ActionsMenu({ template, onDelete }: { template: FormTemplate; onDelete:
     const [open, setOpen] = useState(false)
     const ref = useRef<HTMLDivElement>(null)
     const router = useRouter()
+    const isSystem = template.trainer_id === null
 
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
@@ -125,25 +127,31 @@ function ActionsMenu({ template, onDelete }: { template: FormTemplate; onDelete:
             </button>
             {open && (
                 <div className="absolute right-0 top-8 z-20 w-44 rounded-xl border border-[#D2D2D7] bg-white shadow-[0_2px_8px_rgba(0,0,0,0.12)] py-1 dark:border-k-border-primary dark:bg-surface-card dark:shadow-xl">
-                    <button
-                        onClick={(e) => { e.stopPropagation(); setOpen(false); router.push(`/forms/templates/new?edit=${template.id}`) }}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-[#1D1D1F] hover:bg-[#F5F5F7] transition-colors dark:text-k-text-secondary dark:hover:bg-glass-bg"
-                    >
-                        <Pencil size={14} /> Editar
-                    </button>
+                    {!isSystem && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); setOpen(false); router.push(`/forms/templates/new?edit=${template.id}`) }}
+                            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-[#1D1D1F] hover:bg-[#F5F5F7] transition-colors dark:text-k-text-secondary dark:hover:bg-glass-bg"
+                        >
+                            <Pencil size={14} /> Editar
+                        </button>
+                    )}
                     <button
                         onClick={(e) => { e.stopPropagation(); setOpen(false); router.push(`/forms?assign=${template.id}`) }}
                         className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-[#1D1D1F] hover:bg-[#F5F5F7] transition-colors dark:text-k-text-secondary dark:hover:bg-glass-bg"
                     >
                         <Send size={14} /> Enviar para aluno
                     </button>
-                    <div className="my-1 border-t border-[#E8E8ED] dark:border-k-border-subtle" />
-                    <button
-                        onClick={(e) => { e.stopPropagation(); setOpen(false); onDelete(template.id) }}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-[#FF3B30] hover:bg-[#F5F5F7] transition-colors dark:text-red-400 dark:hover:bg-glass-bg"
-                    >
-                        <Trash2 size={14} /> Excluir
-                    </button>
+                    {!isSystem && (
+                        <>
+                            <div className="my-1 border-t border-[#E8E8ED] dark:border-k-border-subtle" />
+                            <button
+                                onClick={(e) => { e.stopPropagation(); setOpen(false); onDelete(template.id) }}
+                                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-[#FF3B30] hover:bg-[#F5F5F7] transition-colors dark:text-red-400 dark:hover:bg-glass-bg"
+                            >
+                                <Trash2 size={14} /> Excluir
+                            </button>
+                        </>
+                    )}
                 </div>
             )}
         </div>
@@ -253,6 +261,7 @@ export function TemplatesClient({ trainer, templates: initialTemplates }: Templa
                         const Icon = config.icon
                         const questions = (template.schema_json as any)?.questions || []
                         const questionsCount = questions.length
+                        const isSystem = template.trainer_id === null
 
                         return (
                             <div
@@ -280,6 +289,11 @@ export function TemplatesClient({ trainer, templates: initialTemplates }: Templa
                                                 <span className="text-xs text-[#86868B] dark:text-k-text-quaternary">
                                                     {questionsCount} {questionsCount === 1 ? 'pergunta' : 'perguntas'} · {config.label}
                                                 </span>
+                                                {isSystem && (
+                                                    <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-[#5856D6]/10 text-[#5856D6] border border-[#5856D6]/20 dark:bg-violet-500/10 dark:text-violet-400 dark:border-violet-500/20">
+                                                        Kinevo
+                                                    </span>
+                                                )}
                                                 {template.created_source === 'ai_assisted' && (
                                                     <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-[#007AFF]/10 text-[#007AFF] border border-[#007AFF]/20 dark:bg-violet-500/10 dark:text-violet-400 dark:border-violet-500/20">
                                                         IA

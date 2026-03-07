@@ -67,6 +67,7 @@ interface ExistingTemplate {
     schema_json?: Record<string, unknown> | null
     created_at: string
     updated_at: string
+    trainer_id: string | null
 }
 
 interface Question {
@@ -461,7 +462,10 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                         </h1>
                         {isEditing && (
                             <p className="mt-1 text-sm text-muted-foreground/60">
-                                Editando &quot;{existingTemplate?.title}&quot; (v{existingTemplate?.version})
+                                {existingTemplate?.trainer_id === null
+                                    ? <>Template Kinevo &mdash; ao salvar, uma cópia editável será criada para você</>
+                                    : <>Editando &quot;{existingTemplate?.title}&quot; (v{existingTemplate?.version})</>
+                                }
                             </p>
                         )}
                     </div>
@@ -963,7 +967,9 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                         Salvando...
                                     </>
                                 ) : (
-                                    isEditing ? 'Salvar Alterações' : 'Salvar Template'
+                                    isEditing
+                                        ? (existingTemplate?.trainer_id === null ? 'Salvar como Meu Template' : 'Salvar Alterações')
+                                        : 'Salvar Template'
                                 )}
                             </button>
                         </div>

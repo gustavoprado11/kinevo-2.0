@@ -131,6 +131,7 @@ interface TemplateInfo {
     category: string
     responseCount: number
     questionCount: number
+    trainer_id: string | null
 }
 
 interface FormTemplate {
