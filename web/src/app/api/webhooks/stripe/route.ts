@@ -45,24 +45,27 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
     }
 
-    // Idempotency check
-    const { data: existing } = await supabaseAdmin
-        .from('webhook_events')
-        .select('id')
-        .eq('event_id', event.id)
-        .single()
+    // Idempotency check (non-blocking — if DB fails, we still process the event)
+    try {
+        const { data: existing } = await supabaseAdmin
+            .from('webhook_events')
+            .select('id')
+            .eq('event_id', event.id)
+            .single()
 
-    if (existing) {
-        console.log(`[webhook] Event ${event.id} already processed, skipping`)
-        return NextResponse.json({ received: true })
+        if (existing) {
+            console.log(`[webhook] Event ${event.id} already processed, skipping`)
+            return NextResponse.json({ received: true })
+        }
+
+        await supabaseAdmin.from('webhook_events').insert({
+            event_id: event.id,
+            event_type: event.type,
+            metadata: {},
+        })
+    } catch (idempotencyError) {
+        console.error(`[webhook] Idempotency check failed (proceeding anyway):`, idempotencyError)
     }
-
-    // Record event for idempotency
-    await supabaseAdmin.from('webhook_events').insert({
-        event_id: event.id,
-        event_type: event.type,
-        metadata: {},
-    })
 
     console.log(`[webhook] Received event: ${event.type} (${event.id})`)
 
@@ -87,8 +90,8 @@ export async function POST(request: NextRequest) {
                 console.log(`[webhook] Unhandled event type: ${event.type}`)
         }
     } catch (handlerError) {
+        // CRITICAL: Return 200 even on processing errors to prevent Stripe from retrying endlessly
         console.error(`[webhook] Error handling ${event.type}:`, handlerError)
-        return NextResponse.json({ error: 'Handler failed' }, { status: 500 })
     }
 
     return NextResponse.json({ received: true })
