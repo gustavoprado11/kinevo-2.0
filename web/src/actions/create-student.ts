@@ -35,7 +35,7 @@ export async function createStudent(data: {
 
         // 3. Inserir na tabela 'students' vinculando ao userId
         // Corrigido para bater com a estrutura real do banco confirmada por print
-        const { error: dbError } = await supabaseAdmin
+        const { data: studentRow, error: dbError } = await supabaseAdmin
             .from('students')
             // @ts-ignore - Os tipos do projeto estão desatualizados em relação ao banco real
             .insert({
@@ -47,6 +47,8 @@ export async function createStudent(data: {
                 modality: data.modality,
                 status: 'active'
             })
+            .select('id')
+            .single()
 
         if (dbError) {
             console.error('Error creating student record:', dbError)
@@ -59,6 +61,7 @@ export async function createStudent(data: {
 
         return {
             success: true,
+            studentId: studentRow.id as string,
             email: data.email,
             password: generatedPassword,
             name: data.name,

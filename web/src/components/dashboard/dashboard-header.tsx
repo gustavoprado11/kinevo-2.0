@@ -16,16 +16,13 @@ function getGreeting(): string {
 
 function formatDate(): string {
     const raw = new Date().toLocaleDateString('pt-BR', {
-        weekday: 'short',
+        weekday: 'long',
         day: 'numeric',
-        month: 'short',
+        month: 'long',
+        timeZone: 'America/Sao_Paulo',
     })
-    // "sex., 28 de fev." → "Sex, 28 de fev"
-    return raw
-        .replace(/\./g, '')
-        .replace(/^(\w)/, (_, c: string) => c.toUpperCase())
-        .replace(/\s+/g, ' ')
-        .trim()
+    // "sábado, 7 de março" → "Sábado, 7 de março"
+    return raw.replace(/^(\w)/, (_, c: string) => c.toUpperCase())
 }
 
 export function DashboardHeader({ trainerName }: DashboardHeaderProps) {

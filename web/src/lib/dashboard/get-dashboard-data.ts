@@ -94,13 +94,35 @@ function daysDiff(from: Date, to: Date): number {
     return Math.floor((to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24))
 }
 
+/** Returns the UTC instant that corresponds to 00:00 of `dateStr` (YYYY-MM-DD) in `tz`. */
+function startOfDayInTZ(dateStr: string, tz: string): Date {
+    // Build a formatter that outputs full date+time parts in the target tz
+    const fmt = new Intl.DateTimeFormat('en-US', {
+        timeZone: tz,
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+        hour12: false,
+    })
+    // Use noon UTC on that date to safely determine the tz offset (avoids DST boundary issues)
+    const noon = new Date(`${dateStr}T12:00:00Z`)
+    const parts = Object.fromEntries(fmt.formatToParts(noon).map(p => [p.type, p.value]))
+    // The hour in tz when it's 12:00 UTC tells us the offset
+    const tzHour = parseInt(parts.hour)
+    const offsetMs = (tzHour - 12) * 60 * 60 * 1000
+    // Midnight in tz = dateStr 00:00 in tz = dateStr 00:00 UTC minus offset
+    return new Date(new Date(`${dateStr}T00:00:00Z`).getTime() - offsetMs)
+}
+
 // ── Main function ──
 
 async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
     const supabase = await createClient()
     const today = new Date()
-    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-    const weekRange = getWeekRange(today, 'America/Sao_Paulo')
+    // Use Brazil timezone so "today" matches the trainer's local date, not UTC
+    const TZ = 'America/Sao_Paulo'
+    const brDateStr = today.toLocaleDateString('en-CA', { timeZone: TZ }) // YYYY-MM-DD
+    const todayStart = startOfDayInTZ(brDateStr, TZ)
+    const weekRange = getWeekRange(today, TZ)
 
     // 8 parallel queries
     const [

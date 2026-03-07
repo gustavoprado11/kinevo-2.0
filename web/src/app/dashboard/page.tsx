@@ -39,10 +39,26 @@ export default async function DashboardPage({
 
     // Fetch students for StudentModal callback + self profile detection
     const supabase = await createClient()
-    const { data: students } = await supabase
-        .from('students')
-        .select('id, name, email, phone, status, created_at, is_trainer_profile')
-        .order('created_at', { ascending: false })
+    const [studentsResult, templatesResult] = await Promise.all([
+        supabase
+            .from('students')
+            .select('id, name, email, phone, status, created_at, is_trainer_profile')
+            .order('created_at', { ascending: false }),
+        supabase
+            .from('form_templates')
+            .select('id, title, trainer_id')
+            .or(`trainer_id.eq.${trainer.id},trainer_id.is.null`)
+            .or('system_key.is.null,system_key.neq.prescription_questionnaire')
+            .eq('is_active', true)
+            .order('created_at', { ascending: false }),
+    ])
+
+    const students = studentsResult.data
+    const formTemplates = (templatesResult.data || []).map(t => ({
+        id: t.id,
+        title: t.title,
+        trainer_id: t.trainer_id,
+    }))
 
     const selfStudent = students?.find(s => (s as any).is_trainer_profile) ?? null
 
@@ -55,6 +71,7 @@ export default async function DashboardPage({
             data={data}
             initialStudents={students || []}
             selfStudentId={selfStudent?.id ?? null}
+            formTemplates={formTemplates}
         />
     )
 }

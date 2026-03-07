@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { createStudent } from '@/actions/create-student'
+import { assignFormToStudents } from '@/actions/forms/assign-form'
 import { StudentAccessDialog } from '@/components/students'
 import { Button } from '@/components/ui/button'
-import { X, User, Mail, Phone, Globe, MapPin, Loader2, AlertCircle } from 'lucide-react'
+import { X, User, Mail, Phone, Globe, MapPin, Loader2, AlertCircle, FileText, ChevronDown } from 'lucide-react'
 import { useOnboardingStore } from '@/stores/onboarding-store'
 
 interface Student {
@@ -17,6 +18,12 @@ interface Student {
     created_at: string
 }
 
+export interface FormTemplateOption {
+    id: string
+    title: string
+    trainer_id: string | null
+}
+
 interface StudentModalProps {
     isOpen: boolean
     onClose: () => void
@@ -24,6 +31,7 @@ interface StudentModalProps {
     onStudentUpdated?: (student: Student) => void
     trainerId: string
     initialData?: Student | null
+    formTemplates?: FormTemplateOption[]
 }
 
 export function StudentModal({
@@ -32,12 +40,14 @@ export function StudentModal({
     onStudentCreated,
     onStudentUpdated,
     trainerId,
-    initialData
+    initialData,
+    formTemplates = [],
 }: StudentModalProps) {
     const [name, setName] = useState('')
     const [email, setEmail] = useState('')
     const [phone, setPhone] = useState('')
     const [modality, setModality] = useState<'online' | 'presential'>('online')
+    const [selectedFormId, setSelectedFormId] = useState('')
     const [error, setError] = useState<string | null>(null)
     const [loading, setLoading] = useState(false)
     const [createdCredentials, setCreatedCredentials] = useState<{
@@ -45,7 +55,15 @@ export function StudentModal({
         email: string
         password: string
         whatsapp: string | null
+        formName?: string | null
     } | null>(null)
+
+    // Sort templates: system first, then trainer-owned
+    const sortedTemplates = [...formTemplates].sort((a, b) => {
+        if (a.trainer_id === null && b.trainer_id !== null) return -1
+        if (a.trainer_id !== null && b.trainer_id === null) return 1
+        return a.title.localeCompare(b.title, 'pt-BR')
+    })
 
     // Update state when initialData changes or modal opens/closes
     useEffect(() => {
@@ -60,6 +78,7 @@ export function StudentModal({
                 setEmail('')
                 setPhone('')
                 setModality('online')
+                setSelectedFormId('')
             }
             setError(null)
             setCreatedCredentials(null)
@@ -112,6 +131,25 @@ export function StudentModal({
                 return
             }
 
+            // Assign form if selected
+            let assignedFormName: string | null = null
+            if (selectedFormId && result.studentId) {
+                const selectedTemplate = formTemplates.find(t => t.id === selectedFormId)
+                try {
+                    const assignResult = await assignFormToStudents({
+                        formTemplateId: selectedFormId,
+                        studentIds: [result.studentId],
+                    })
+                    if (assignResult.success) {
+                        assignedFormName = selectedTemplate?.title || null
+                    } else {
+                        console.error('[StudentModal] form assign failed:', assignResult.error)
+                    }
+                } catch (err) {
+                    console.error('[StudentModal] form assign error:', err)
+                }
+            }
+
             // Success! Mark onboarding milestone
             useOnboardingStore.getState().completeMilestone('first_student_created')
             setLoading(false)
@@ -121,13 +159,14 @@ export function StudentModal({
                 name: result.name!,
                 email: result.email!,
                 password: result.password!,
-                whatsapp: result.whatsapp || null
+                whatsapp: result.whatsapp || null,
+                formName: assignedFormName,
             })
 
             // Trigger parent update (optional, usually done via revalidatePath, but good for local state)
             if (onStudentCreated) {
                 onStudentCreated({
-                    id: '', // Temporary
+                    id: result.studentId || '',
                     name: result.name!,
                     email: result.email!,
                     phone: result.whatsapp || null,
@@ -285,6 +324,32 @@ export function StudentModal({
                                         </label>
                                     </div>
                                 </div>
+
+                                {/* Form template dropdown — only show in create mode */}
+                                {!isEdit && sortedTemplates.length > 0 && (
+                                    <div>
+                                        <label htmlFor="formTemplate" className="mb-1.5 block text-[11px] font-bold text-[#6E6E73] dark:text-k-text-quaternary uppercase tracking-wide">
+                                            Enviar formulário de boas-vindas
+                                        </label>
+                                        <div className="relative group">
+                                            <FileText className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#AEAEB2] dark:text-k-text-quaternary group-focus-within:text-[#007AFF] dark:group-focus-within:text-violet-400 transition-colors" strokeWidth={1.5} />
+                                            <select
+                                                id="formTemplate"
+                                                value={selectedFormId}
+                                                onChange={(e) => setSelectedFormId(e.target.value)}
+                                                className="w-full rounded-lg border border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-glass-bg pl-10 pr-10 py-3 text-[#1D1D1F] dark:text-k-text-primary focus:outline-none focus:border-[#007AFF] dark:focus:border-violet-500/50 focus:ring-4 focus:ring-[#007AFF]/20 dark:focus:ring-violet-500/20 transition-all text-sm appearance-none"
+                                            >
+                                                <option value="">Nenhum</option>
+                                                {sortedTemplates.map(t => (
+                                                    <option key={t.id} value={t.id}>
+                                                        {t.title}{t.trainer_id === null ? ' (Kinevo)' : ''}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#AEAEB2] dark:text-k-text-quaternary pointer-events-none" strokeWidth={1.5} />
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Actions */}
@@ -329,4 +394,3 @@ export function StudentModal({
         </>
     )
 }
-

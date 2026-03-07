@@ -36,14 +36,21 @@ interface Student {
     created_at: string
 }
 
+interface FormTemplateOption {
+    id: string
+    title: string
+    trainer_id: string | null
+}
+
 interface DashboardClientProps {
     trainer: Trainer
     data: DashboardData
     initialStudents: Student[]
     selfStudentId?: string | null
+    formTemplates?: FormTemplateOption[]
 }
 
-export function DashboardClient({ trainer, data, initialStudents, selfStudentId }: DashboardClientProps) {
+export function DashboardClient({ trainer, data, initialStudents, selfStudentId, formTemplates = [] }: DashboardClientProps) {
     const router = useRouter()
     const [students, setStudents] = useState<Student[]>(initialStudents)
     const [isModalOpen, setIsModalOpen] = useState(false)
@@ -103,6 +110,7 @@ export function DashboardClient({ trainer, data, initialStudents, selfStudentId 
                 onClose={() => setIsModalOpen(false)}
                 onStudentCreated={handleStudentCreated}
                 trainerId={trainer.id}
+                formTemplates={formTemplates}
             />
 
             <WelcomeModal trainerName={trainer.name} />

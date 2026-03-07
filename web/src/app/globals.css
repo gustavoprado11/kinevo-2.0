@@ -152,6 +152,9 @@
   --color-glass-bg: var(--glass-bg);
   --color-glass-bg-active: var(--glass-bg-active);
   --color-glass-bg-hover: var(--glass-bg-hover);
+
+  /* Font families */
+  --font-family-jakarta: var(--font-jakarta), "Plus Jakarta Sans", system-ui, sans-serif;
 }
 
 /* ── Base Resets ── */

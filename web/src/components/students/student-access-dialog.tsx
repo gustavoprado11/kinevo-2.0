@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { buildWelcomeMessage, buildWelcomeMessageWhatsApp, formatPhoneForWhatsApp } from '@/lib/welcome-message'
 
 interface StudentAccessDialogProps {
     isOpen: boolean
@@ -10,6 +11,7 @@ interface StudentAccessDialogProps {
         email: string
         password: string
         whatsapp: string | null
+        formName?: string | null
     } | null
 }
 
@@ -18,21 +20,23 @@ export function StudentAccessDialog({ isOpen, onClose, studentData }: StudentAcc
 
     if (!isOpen || !studentData) return null
 
-    const iosLink = 'https://apps.apple.com/br/app/kinevo/id6759053587'
+    const messageParams = {
+        studentName: studentData.name,
+        email: studentData.email,
+        password: studentData.password,
+        formName: studentData.formName,
+    }
 
     const handleCopy = () => {
-        const text = `Olá ${studentData.name}, aqui estão seus dados de acesso ao Kinevo:\n\n📧 Login: ${studentData.email}\n🔑 Senha: ${studentData.password}\n\nBaixe o app e comece seus treinos!\n\n📱 iPhone (App Store): ${iosLink}\n🤖 Android (Play Store): Em breve!`
-        navigator.clipboard.writeText(text)
+        navigator.clipboard.writeText(buildWelcomeMessage(messageParams))
         setCopied(true)
         setTimeout(() => setCopied(false), 2000)
     }
 
     const handleWhatsApp = () => {
-        const message = encodeURIComponent(
-            `Ola ${studentData.name}, aqui estao seus dados de acesso ao Kinevo:\n\n*Login:* ${studentData.email}\n*Senha:* ${studentData.password}\n\nBaixe o app e comece seus treinos!\n\n*iPhone (App Store):* ${iosLink}\n*Android (Play Store):* Em breve!`
-        )
-        const phone = studentData.whatsapp?.replace(/\D/g, '') || ''
-        window.open(`https://wa.me/55${phone}?text=${message}`, '_blank')
+        const message = encodeURIComponent(buildWelcomeMessageWhatsApp(messageParams))
+        const phone = studentData.whatsapp ? formatPhoneForWhatsApp(studentData.whatsapp) : ''
+        window.open(`https://wa.me/${phone}?text=${message}`, '_blank')
     }
 
     return (
@@ -70,6 +74,12 @@ export function StudentAccessDialog({ isOpen, onClose, studentData }: StudentAcc
                             <span className="text-[10px] font-bold text-[#86868B] dark:text-muted-foreground block mb-1 uppercase tracking-wide">Senha Provisória</span>
                             <p className="text-2xl font-mono font-bold text-[#34C759] dark:text-emerald-400 tracking-widest">{studentData.password}</p>
                         </div>
+                        {studentData.formName && (
+                            <div className="pt-4 border-t border-[#D2D2D7] dark:border-border">
+                                <span className="text-[10px] font-bold text-[#86868B] dark:text-muted-foreground block mb-1 uppercase tracking-wide">Formulário enviado</span>
+                                <p className="text-sm text-[#1D1D1F] dark:text-foreground font-medium">{studentData.formName}</p>
+                            </div>
+                        )}
                     </div>
 
                     {/* Actions */}

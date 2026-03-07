@@ -1,29 +1,29 @@
-import { Navbar } from "@/components/landing/navbar";
-import { Hero } from "@/components/landing/hero";
-import { StatsBar } from "@/components/landing/stats-bar";
-import { StudentMetrics } from "@/components/landing/student-metrics";
-import { TrainerManagement } from "@/components/landing/trainer-management";
-import { StudentExperience } from "@/components/landing/student-experience";
-import { BentoFeatures } from "@/components/landing/bento-features";
-import { Philosophy } from "@/components/landing/philosophy";
-import { Footer } from "@/components/landing/footer";
+import { Navbar } from '@/components/landing/navbar'
+import { LandingHero } from '@/components/landing/landing-hero'
+import { LandingTrainers } from '@/components/landing/landing-trainers'
+import { LandingStudents } from '@/components/landing/landing-students'
+import { LandingPricing } from '@/components/landing/landing-pricing'
+import { LandingCtaFooter } from '@/components/landing/landing-cta-footer'
 
 export default function Home() {
-  return (
-    <div className="min-h-screen bg-white selection:bg-violet-500/20 selection:text-violet-700">
-      <Navbar />
+    return (
+        <div className="min-h-screen bg-white selection:bg-[#007AFF]/20 selection:text-[#007AFF]">
+            <Navbar />
 
-      <main>
-        <Hero />
-        <StatsBar />
-        <StudentMetrics />
-        <TrainerManagement />
-        <StudentExperience />
-        <BentoFeatures />
-        <Philosophy />
-      </main>
+            <main>
+                <LandingHero />
+                <div id="treinadores">
+                    <LandingTrainers />
+                </div>
+                <div id="alunos">
+                    <LandingStudents />
+                </div>
+                <div id="precos">
+                    <LandingPricing />
+                </div>
+            </main>
 
-      <Footer />
-    </div>
-  );
+            <LandingCtaFooter />
+        </div>
+    )
 }

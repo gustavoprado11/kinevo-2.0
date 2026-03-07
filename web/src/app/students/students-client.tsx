@@ -43,9 +43,16 @@ type FilterKey = 'all' | 'attention' | 'online' | 'presential' | 'no_program'
 type SortKey = 'attention' | 'name' | 'lastWorkout' | 'weekProgress'
 type SortDir = 'asc' | 'desc'
 
+interface FormTemplateOption {
+    id: string
+    title: string
+    trainer_id: string | null
+}
+
 interface StudentsClientProps {
     trainer: Trainer
     initialStudents: Student[]
+    formTemplates?: FormTemplateOption[]
 }
 
 // ---------------------------------------------------------------------------
@@ -93,7 +100,7 @@ const ATTENTION_ORDER: Record<AttentionLevel, number> = { urgent: 0, warning: 1,
 // Component
 // ---------------------------------------------------------------------------
 
-export function StudentsClient({ trainer, initialStudents }: StudentsClientProps) {
+export function StudentsClient({ trainer, initialStudents, formTemplates = [] }: StudentsClientProps) {
     const router = useRouter()
     const [students, setStudents] = useState<Student[]>(initialStudents)
     const [isModalOpen, setIsModalOpen] = useState(false)
@@ -466,6 +473,7 @@ export function StudentsClient({ trainer, initialStudents }: StudentsClientProps
                 onClose={() => setIsModalOpen(false)}
                 onStudentCreated={handleStudentCreated}
                 trainerId={trainer.id}
+                formTemplates={formTemplates}
             />
 
             {/* Tour: Students (auto-start on first visit) */}

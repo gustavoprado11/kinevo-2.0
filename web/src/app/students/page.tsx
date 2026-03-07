@@ -7,15 +7,31 @@ export default async function StudentsPage() {
     const { trainer } = await getTrainerWithSubscription()
 
     const supabase = await createClient()
-    const { data: students } = await supabase
-        .from('students')
-        .select('id, name, email, phone, status, modality, avatar_url, created_at, is_trainer_profile')
-        .order('created_at', { ascending: false })
+    const [studentsResult, templatesResult] = await Promise.all([
+        supabase
+            .from('students')
+            .select('id, name, email, phone, status, modality, avatar_url, created_at, is_trainer_profile')
+            .order('created_at', { ascending: false }),
+        supabase
+            .from('form_templates')
+            .select('id, title, trainer_id')
+            .or(`trainer_id.eq.${trainer.id},trainer_id.is.null`)
+            .or('system_key.is.null,system_key.neq.prescription_questionnaire')
+            .eq('is_active', true)
+            .order('created_at', { ascending: false }),
+    ])
+
+    const students = studentsResult.data
+    const formTemplates = (templatesResult.data || []).map(t => ({
+        id: t.id,
+        title: t.title,
+        trainer_id: t.trainer_id,
+    }))
 
     const studentIds = students?.map(s => s.id) || []
 
     if (studentIds.length === 0) {
-        return <StudentsClient trainer={trainer} initialStudents={[]} />
+        return <StudentsClient trainer={trainer} initialStudents={[]} formTemplates={formTemplates} />
     }
 
     // Active programs with scheduled days for expected-per-week calculation
@@ -75,5 +91,5 @@ export default async function StudentsPage() {
         }
     })
 
-    return <StudentsClient trainer={trainer} initialStudents={enrichedStudents} />
+    return <StudentsClient trainer={trainer} initialStudents={enrichedStudents} formTemplates={formTemplates} />
 }
