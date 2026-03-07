@@ -43,8 +43,8 @@ interface IntensityGaugeProps {
 
 function IntensityGauge({ value }: IntensityGaugeProps) {
     if (!value) return (
-        <div className="w-20 h-20 rounded-full bg-glass-bg border border-k-border-primary flex items-center justify-center">
-            <span className="text-k-text-quaternary text-xs font-bold leading-none">N/A</span>
+        <div className="w-20 h-20 rounded-full bg-[#F5F5F7] dark:bg-glass-bg border border-[#E8E8ED] dark:border-k-border-primary flex items-center justify-center">
+            <span className="text-[#AEAEB2] dark:text-k-text-quaternary text-xs font-bold leading-none">N/A</span>
         </div>
     )
 
@@ -58,11 +58,11 @@ function IntensityGauge({ value }: IntensityGaugeProps) {
                 }}
             />
             {/* Inner Circle Buffer */}
-            <div className="absolute inset-1 rounded-full bg-surface-card border border-k-border-primary" />
+            <div className="absolute inset-1 rounded-full bg-white dark:bg-surface-card border border-[#E8E8ED] dark:border-k-border-primary" />
 
             <div className="relative z-10 flex flex-col items-center justify-center">
                 <span className="text-[10px] font-black text-violet-600 dark:text-violet-400 mb-0.5">PSE</span>
-                <span className="text-4xl font-black text-white tracking-tighter leading-none">{value}</span>
+                <span className="text-4xl font-black text-[#1D1D1F] dark:text-white tracking-tighter leading-none">{value}</span>
             </div>
         </div>
     )
@@ -71,11 +71,11 @@ function IntensityGauge({ value }: IntensityGaugeProps) {
 function StatItem({ icon: Icon, label, value }: { icon: any, label: string, value: string }) {
     return (
         <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-1.5 text-k-text-quaternary">
+            <div className="flex items-center gap-1.5 text-[#86868B] dark:text-k-text-quaternary">
                 <Icon size={14} strokeWidth={1.5} />
                 <span className="text-[10px] font-bold">{label}</span>
             </div>
-            <span className="text-sm font-semibold text-k-text-secondary">{value}</span>
+            <span className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-secondary">{value}</span>
         </div>
     )
 }
@@ -138,16 +138,16 @@ export function SessionDetailSheet({ isOpen, onClose, sessionId }: SessionDetail
         <div className="fixed inset-0 z-[100] flex justify-end">
             {/* Backdrop */}
             <div
-                className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-500 ease-in-out"
+                className="absolute inset-0 bg-black/30 dark:bg-black/40 backdrop-blur-sm transition-opacity duration-500 ease-in-out"
                 onClick={onClose}
             ></div>
 
             {/* Sheet Panel */}
-            <div className={`relative w-full max-w-lg h-full bg-surface-card/95 backdrop-blur-2xl border-l border-k-border-primary shadow-2xl flex flex-col transition-all duration-500 ease-apple antialiased animate-in slide-in-from-right`}>
+            <div className={`relative w-full max-w-lg h-full bg-white/95 dark:bg-surface-card/95 backdrop-blur-2xl border-l border-[#D2D2D7] dark:border-k-border-primary shadow-2xl flex flex-col transition-all duration-500 ease-apple antialiased animate-in slide-in-from-right`}>
                 {/* Close Button */}
                 <button
                     onClick={onClose}
-                    className="absolute top-6 right-6 z-10 p-2 bg-glass-bg hover:bg-glass-bg-active rounded-full text-k-text-tertiary hover:text-k-text-primary transition-all border border-k-border-subtle"
+                    className="absolute top-6 right-6 z-10 p-2 bg-[#F5F5F7] dark:bg-glass-bg hover:bg-[#ECECF0] dark:hover:bg-glass-bg-active rounded-full text-[#AEAEB2] dark:text-k-text-tertiary hover:text-[#6E6E73] dark:hover:text-k-text-primary transition-all border border-[#E8E8ED] dark:border-k-border-subtle"
                 >
                     <X size={20} strokeWidth={1.5} />
                 </button>
@@ -156,23 +156,23 @@ export function SessionDetailSheet({ isOpen, onClose, sessionId }: SessionDetail
                 <div className="flex-1 overflow-y-auto px-8 pt-10 pb-20 space-y-12">
                     {isLoading ? (
                         <div className="space-y-8">
-                            <div className="h-32 bg-glass-bg rounded-2xl animate-pulse"></div>
+                            <div className="h-32 bg-[#F5F5F7] dark:bg-glass-bg rounded-2xl animate-pulse"></div>
                             <div className="space-y-4">
-                                <div className="h-4 w-32 bg-glass-bg rounded animate-pulse"></div>
-                                <div className="h-40 bg-glass-bg rounded-2xl animate-pulse"></div>
-                                <div className="h-40 bg-glass-bg rounded-2xl animate-pulse"></div>
+                                <div className="h-4 w-32 bg-[#F5F5F7] dark:bg-glass-bg rounded animate-pulse"></div>
+                                <div className="h-40 bg-[#F5F5F7] dark:bg-glass-bg rounded-2xl animate-pulse"></div>
+                                <div className="h-40 bg-[#F5F5F7] dark:bg-glass-bg rounded-2xl animate-pulse"></div>
                             </div>
                         </div>
                     ) : error ? (
                         <div className="flex flex-col items-center justify-center h-full text-center">
-                            <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mb-4 border border-red-500/20">
-                                <X className="text-red-400" size={32} strokeWidth={1.5} />
+                            <div className="w-16 h-16 rounded-full bg-[#FF3B30]/10 dark:bg-red-500/10 flex items-center justify-center mb-4 border border-[#FF3B30]/20 dark:border-red-500/20">
+                                <X className="text-[#FF3B30] dark:text-red-400" size={32} strokeWidth={1.5} />
                             </div>
-                            <p className="text-white font-bold tracking-tight mb-2">Erro ao carregar detalhes</p>
-                            <p className="text-sm text-k-text-tertiary mb-6">{error}</p>
+                            <p className="text-[#1D1D1F] dark:text-white font-bold tracking-tight mb-2">Erro ao carregar detalhes</p>
+                            <p className="text-sm text-[#86868B] dark:text-k-text-tertiary mb-6">{error}</p>
                             <button
                                 onClick={onClose}
-                                className="px-6 py-2 bg-glass-bg hover:bg-glass-bg-active text-k-text-primary text-xs font-bold rounded-xl border border-k-border-primary transition-all"
+                                className="px-6 py-2 bg-[#F5F5F7] dark:bg-glass-bg hover:bg-[#ECECF0] dark:hover:bg-glass-bg-active text-[#1D1D1F] dark:text-k-text-primary text-xs font-bold rounded-xl border border-[#D2D2D7] dark:border-k-border-primary transition-all"
                             >
                                 Fechar
                             </button>
@@ -183,10 +183,10 @@ export function SessionDetailSheet({ isOpen, onClose, sessionId }: SessionDetail
                             <header className="flex items-start justify-between gap-6">
                                 <div className="flex-1 min-w-0">
                                     <p className="text-[10px] font-black text-violet-600 dark:text-violet-400 mb-2">Treino Executado</p>
-                                    <h2 className="text-3xl font-black text-white tracking-tighter truncate leading-none mb-4">
+                                    <h2 className="text-3xl font-black text-[#1D1D1F] dark:text-white tracking-tighter truncate leading-none mb-4">
                                         {details.assigned_workouts?.name || 'Treino'}
                                     </h2>
-                                    <p className="text-xs text-k-text-quaternary font-bold">
+                                    <p className="text-xs text-[#86868B] dark:text-k-text-quaternary font-bold">
                                         {new Date(details.completed_at).toLocaleDateString('pt-BR', {
                                             day: '2-digit',
                                             month: 'short',
@@ -201,7 +201,7 @@ export function SessionDetailSheet({ isOpen, onClose, sessionId }: SessionDetail
                             </header>
 
                             {/* Stats Rápidas */}
-                            <div className="grid grid-cols-3 gap-6 py-8 border-y border-k-border-subtle">
+                            <div className="grid grid-cols-3 gap-6 py-8 border-y border-[#E8E8ED] dark:border-k-border-subtle">
                                 <StatItem
                                     icon={Clock}
                                     label="Duração"
@@ -222,8 +222,8 @@ export function SessionDetailSheet({ isOpen, onClose, sessionId }: SessionDetail
                             {/* Feedback do Aluno */}
                             {details.feedback && (
                                 <div className="space-y-4">
-                                    <h3 className="text-[10px] font-black text-k-text-quaternary ">Feedback do Aluno</h3>
-                                    <div className="bg-glass-bg backdrop-blur-md rounded-2xl p-5 border border-k-border-subtle italic text-k-text-secondary text-sm leading-relaxed">
+                                    <h3 className="text-[10px] font-black text-[#86868B] dark:text-k-text-quaternary ">Feedback do Aluno</h3>
+                                    <div className="bg-[#F5F5F7] dark:bg-glass-bg backdrop-blur-md rounded-2xl p-5 border border-[#E8E8ED] dark:border-k-border-subtle italic text-[#6E6E73] dark:text-k-text-secondary text-sm leading-relaxed">
                                         "{details.feedback}"
                                     </div>
                                 </div>
@@ -231,44 +231,44 @@ export function SessionDetailSheet({ isOpen, onClose, sessionId }: SessionDetail
 
                             {/* Exercises List (The Log Table) */}
                             <div className="space-y-10">
-                                <h3 className="text-[10px] font-black text-k-text-quaternary ">Log de Exercícios</h3>
+                                <h3 className="text-[10px] font-black text-[#86868B] dark:text-k-text-quaternary ">Log de Exercícios</h3>
 
                                 {details.exercises.map((exercise) => (
                                     <div key={exercise.exercise_id} className="group">
                                         <div className="flex items-center justify-between mb-4">
                                             <div>
-                                                <h4 className="text-lg font-black text-white tracking-tight leading-none mb-1 group-hover:text-violet-400 transition-colors">
+                                                <h4 className="text-lg font-black text-[#1D1D1F] dark:text-white tracking-tight leading-none mb-1 group-hover:text-[#007AFF] dark:group-hover:text-violet-400 transition-colors">
                                                     {exercise.name}
                                                 </h4>
-                                                <p className="text-[10px] font-bold text-k-text-quaternary">
+                                                <p className="text-[10px] font-bold text-[#86868B] dark:text-k-text-quaternary">
                                                     {exercise.muscle_group || 'Geral'}
                                                 </p>
                                             </div>
                                         </div>
 
-                                        <div className="bg-surface-inset rounded-2xl border border-k-border-subtle overflow-hidden">
-                                            <div className="grid grid-cols-4 bg-glass-bg py-2 px-5 text-[10px] font-black text-k-text-quaternary">
+                                        <div className="bg-[#F5F5F7] dark:bg-surface-inset rounded-2xl border border-[#E8E8ED] dark:border-k-border-subtle overflow-hidden">
+                                            <div className="grid grid-cols-4 bg-[#ECECF0] dark:bg-glass-bg py-2 px-5 text-[10px] font-black text-[#86868B] dark:text-k-text-quaternary">
                                                 <div>Série</div>
                                                 <div className="text-center">Carga</div>
                                                 <div className="text-center">Reps</div>
                                                 <div className="text-right">PSE</div>
                                             </div>
 
-                                            <div className="divide-y divide-white/5">
+                                            <div className="divide-y divide-[#E8E8ED] dark:divide-white/5">
                                                 {exercise.sets.map((set, idx) => (
-                                                    <div key={idx} className="grid grid-cols-4 items-center py-4 px-5 hover:bg-glass-bg transition-colors group/row">
-                                                        <div className="text-xs font-mono text-k-text-tertiary">{set.set_number}</div>
-                                                        <div className="text-center text-sm font-semibold text-white">
+                                                    <div key={idx} className="grid grid-cols-4 items-center py-4 px-5 hover:bg-[#ECECF0] dark:hover:bg-glass-bg transition-colors group/row">
+                                                        <div className="text-xs font-mono text-[#86868B] dark:text-k-text-tertiary">{set.set_number}</div>
+                                                        <div className="text-center text-sm font-semibold text-[#1D1D1F] dark:text-white">
                                                             {set.weight > 0 ? `${set.weight}${set.weight_unit || 'kg'}` : '-'}
                                                         </div>
-                                                        <div className="text-center text-sm font-mono text-k-text-secondary">{set.reps}</div>
+                                                        <div className="text-center text-sm font-mono text-[#6E6E73] dark:text-k-text-secondary">{set.reps}</div>
                                                         <div className="flex justify-end">
                                                             {set.rpe ? (
-                                                                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-violet-500/10 text-violet-400 border border-violet-500/20">
+                                                                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[#007AFF]/10 dark:bg-violet-500/10 text-[#007AFF] dark:text-violet-400 border border-[#007AFF]/20 dark:border-violet-500/20">
                                                                     {set.rpe}
                                                                 </span>
                                                             ) : (
-                                                                <span className="text-[10px] font-bold text-k-border-subtle">-</span>
+                                                                <span className="text-[10px] font-bold text-[#AEAEB2] dark:text-k-border-subtle">-</span>
                                                             )}
                                                         </div>
                                                     </div>

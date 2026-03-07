@@ -43,8 +43,8 @@ export function ExerciseCard({
         <div
             className={`rounded-2xl border transition-colors ${
                 allCompleted
-                    ? 'border-emerald-500/30 bg-emerald-500/5'
-                    : 'border-k-border-subtle bg-surface-card'
+                    ? 'border-[#34C759]/30 dark:border-emerald-500/30 bg-[#34C759]/5 dark:bg-emerald-500/5'
+                    : 'border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-surface-card shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:shadow-none'
             }`}
         >
             {/* Exercise header */}
@@ -54,46 +54,46 @@ export function ExerciseCard({
             >
                 <div
                     className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-                        allCompleted ? 'bg-emerald-500/20' : 'bg-violet-600/20'
+                        allCompleted ? 'bg-[#34C759]/20 dark:bg-emerald-500/20' : 'bg-[#007AFF]/10 dark:bg-violet-600/20'
                     }`}
                 >
                     <Dumbbell
                         size={18}
-                        className={allCompleted ? 'text-emerald-400' : 'text-violet-400'}
+                        className={allCompleted ? 'text-[#34C759] dark:text-emerald-400' : 'text-[#007AFF] dark:text-violet-400'}
                     />
                 </div>
 
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                        <p className="text-sm font-semibold text-foreground truncate">
+                        <p className="text-sm font-semibold text-[#1D1D1F] dark:text-foreground truncate">
                             {exercise.name}
                         </p>
                         {exercise.exercise_function && (
-                            <span className="shrink-0 rounded-md bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-violet-600 dark:text-violet-400">
+                            <span className="shrink-0 rounded-md bg-[#007AFF]/10 dark:bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-[#007AFF] dark:text-violet-400">
                                 {FUNCTION_LABELS[exercise.exercise_function] || exercise.exercise_function}
                             </span>
                         )}
                         {exercise.swap_source !== 'none' && (
-                            <span className="shrink-0 rounded-md bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-amber-400">
+                            <span className="shrink-0 rounded-md bg-[#FF9500]/20 dark:bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-[#FF9500] dark:text-amber-400">
                                 TROCA
                             </span>
                         )}
                     </div>
                     <div className="flex items-center gap-3 mt-0.5">
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-xs text-[#86868B] dark:text-muted-foreground">
                             {exercise.sets}x{exercise.reps}
                         </span>
-                        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1 text-xs text-[#86868B] dark:text-muted-foreground">
                             <Clock size={10} />
                             {exercise.rest_seconds}s
                         </span>
                         {exercise.previousLoad && (
-                            <span className="text-xs text-violet-400/80">
+                            <span className="text-xs text-[#007AFF]/80 dark:text-violet-400/80">
                                 Ant: {exercise.previousLoad}
                             </span>
                         )}
                         {supersetBadge && (
-                            <span className="text-xs text-violet-400 font-medium">
+                            <span className="text-xs text-[#007AFF] dark:text-violet-400 font-medium">
                                 {supersetBadge}
                             </span>
                         )}
@@ -104,15 +104,15 @@ export function ExerciseCard({
                 <div className="flex items-center gap-2 shrink-0">
                     <span
                         className={`text-xs font-semibold ${
-                            allCompleted ? 'text-emerald-400' : 'text-muted-foreground'
+                            allCompleted ? 'text-[#34C759] dark:text-emerald-400' : 'text-[#86868B] dark:text-muted-foreground'
                         }`}
                     >
                         {completedSets}/{totalSets}
                     </span>
                     {isCollapsed ? (
-                        <ChevronDown size={16} className="text-muted-foreground" />
+                        <ChevronDown size={16} className="text-[#AEAEB2] dark:text-muted-foreground" />
                     ) : (
-                        <ChevronUp size={16} className="text-muted-foreground" />
+                        <ChevronUp size={16} className="text-[#AEAEB2] dark:text-muted-foreground" />
                     )}
                 </div>
             </button>
@@ -129,13 +129,13 @@ export function ExerciseCard({
                 <div className="px-4 pb-4">
                     {/* Column headers */}
                     <div className="flex items-center gap-3 px-3 pb-1.5">
-                        <span className="w-8 text-center text-[10px] font-semibold text-muted-foreground/50">
+                        <span className="w-8 text-center text-[10px] font-semibold text-[#86868B] dark:text-muted-foreground/50 uppercase">
                             Série
                         </span>
-                        <span className="flex-1 text-center text-[10px] font-semibold text-muted-foreground/50">
+                        <span className="flex-1 text-center text-[10px] font-semibold text-[#86868B] dark:text-muted-foreground/50 uppercase">
                             Peso (kg)
                         </span>
-                        <span className="flex-1 text-center text-[10px] font-semibold text-muted-foreground/50">
+                        <span className="flex-1 text-center text-[10px] font-semibold text-[#86868B] dark:text-muted-foreground/50 uppercase">
                             Reps
                         </span>
                         <span className="w-8" />

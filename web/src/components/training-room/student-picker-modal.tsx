@@ -101,20 +101,20 @@ export function StudentPickerModal({ isOpen, onClose, trainerId }: StudentPicker
         <div className="fixed inset-0 z-50 flex items-center justify-center">
             {/* Backdrop */}
             <div
-                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                className="absolute inset-0 bg-black/30 dark:bg-black/60 backdrop-blur-sm"
                 onClick={onClose}
             />
 
             {/* Modal */}
-            <div className="relative w-full max-w-lg rounded-2xl border border-k-border-subtle bg-surface-card shadow-2xl mx-4">
+            <div className="relative w-full max-w-lg rounded-2xl border border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-surface-card shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-2xl mx-4">
                 {/* Header */}
-                <div className="flex items-center justify-between border-b border-k-border-subtle p-5">
-                    <h2 className="text-lg font-semibold text-foreground">
+                <div className="flex items-center justify-between border-b border-[#E8E8ED] dark:border-k-border-subtle p-5">
+                    <h2 className="text-lg font-semibold text-[#1D1D1F] dark:text-foreground">
                         {selectedStudent ? 'Escolher Treino' : 'Adicionar Aluno'}
                     </h2>
                     <button
                         onClick={onClose}
-                        className="rounded-lg p-1.5 text-muted-foreground hover:bg-glass-bg hover:text-foreground transition-colors"
+                        className="rounded-full p-1.5 text-[#AEAEB2] dark:text-muted-foreground hover:bg-[#F5F5F7] dark:hover:bg-glass-bg hover:text-[#6E6E73] dark:hover:text-foreground transition-colors"
                     >
                         <X size={18} />
                     </button>
@@ -127,13 +127,13 @@ export function StudentPickerModal({ isOpen, onClose, trainerId }: StudentPicker
                         <>
                             {/* Search */}
                             <div className="relative mb-4">
-                                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#AEAEB2] dark:text-muted-foreground" />
                                 <input
                                     type="text"
                                     placeholder="Buscar aluno..."
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
-                                    className="w-full rounded-xl border border-k-border-subtle bg-glass-bg py-2.5 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500/50"
+                                    className="w-full rounded-lg border border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-glass-bg py-2.5 pl-10 pr-4 text-sm text-[#1D1D1F] dark:text-foreground placeholder:text-[#AEAEB2] dark:placeholder:text-muted-foreground/60 focus:border-[#007AFF] dark:focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-[#007AFF]/20 dark:focus:ring-violet-500/50"
                                     autoFocus
                                 />
                             </div>
@@ -142,10 +142,10 @@ export function StudentPickerModal({ isOpen, onClose, trainerId }: StudentPicker
                             <div className="max-h-[360px] overflow-y-auto space-y-1 -mx-1 px-1">
                                 {isLoading ? (
                                     <div className="flex items-center justify-center py-12">
-                                        <div className="h-6 w-6 animate-spin rounded-full border-2 border-violet-500 border-t-transparent" />
+                                        <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#007AFF] dark:border-violet-500 border-t-transparent" />
                                     </div>
                                 ) : filtered.length === 0 ? (
-                                    <p className="py-8 text-center text-sm text-muted-foreground">
+                                    <p className="py-8 text-center text-sm text-[#86868B] dark:text-muted-foreground">
                                         {search ? 'Nenhum aluno encontrado' : 'Nenhum aluno disponível'}
                                     </p>
                                 ) : (
@@ -153,7 +153,7 @@ export function StudentPickerModal({ isOpen, onClose, trainerId }: StudentPicker
                                         <button
                                             key={student.id}
                                             onClick={() => handleSelectStudent(student)}
-                                            className="group w-full flex items-center gap-3 rounded-xl p-3 text-left transition-colors hover:bg-glass-bg"
+                                            className="group w-full flex items-center gap-3 rounded-xl p-3 text-left transition-colors hover:bg-[#F5F5F7] dark:hover:bg-glass-bg"
                                         >
                                             {/* Avatar */}
                                             {student.avatar_url ? (
@@ -163,17 +163,17 @@ export function StudentPickerModal({ isOpen, onClose, trainerId }: StudentPicker
                                                     className="h-10 w-10 rounded-full object-cover"
                                                 />
                                             ) : (
-                                                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-violet-600/20 text-sm font-bold text-violet-300">
+                                                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#F5F5F7] dark:bg-violet-600/20 border border-[#E8E8ED] dark:border-transparent text-sm font-bold text-[#6E6E73] dark:text-violet-300">
                                                     {student.name.charAt(0).toUpperCase()}
                                                 </div>
                                             )}
 
                                             {/* Info */}
                                             <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-medium text-foreground truncate">
+                                                <p className="text-sm font-medium text-[#1D1D1F] dark:text-foreground truncate">
                                                     {student.name}
                                                 </p>
-                                                <p className="text-xs text-muted-foreground truncate">
+                                                <p className="text-xs text-[#86868B] dark:text-muted-foreground truncate">
                                                     {student.program
                                                         ? student.todayWorkouts.length > 0
                                                             ? `Hoje: ${student.todayWorkouts.map((w) => w.name).join(', ')}`
@@ -184,10 +184,10 @@ export function StudentPickerModal({ isOpen, onClose, trainerId }: StudentPicker
 
                                             {/* Status indicator */}
                                             {student.program && (
-                                                <div className={`h-2 w-2 rounded-full ${student.todayWorkouts.length > 0 ? 'bg-emerald-400' : 'bg-muted-foreground/30'}`} />
+                                                <div className={`h-2 w-2 rounded-full ${student.todayWorkouts.length > 0 ? 'bg-[#34C759] dark:bg-emerald-400' : 'bg-[#AEAEB2] dark:bg-muted-foreground/30'}`} />
                                             )}
 
-                                            <ChevronRight size={16} className="text-muted-foreground/40 transition-transform group-hover:translate-x-0.5" />
+                                            <ChevronRight size={16} className="text-[#AEAEB2] dark:text-muted-foreground/40 transition-transform group-hover:translate-x-0.5" />
                                         </button>
                                     ))
                                 )}
@@ -199,14 +199,14 @@ export function StudentPickerModal({ isOpen, onClose, trainerId }: StudentPicker
                             {/* Back to students */}
                             <button
                                 onClick={() => setSelectedStudent(null)}
-                                className="mb-4 flex items-center gap-2 text-xs text-muted-foreground hover:text-violet-400 transition-colors"
+                                className="mb-4 flex items-center gap-2 text-xs text-[#007AFF] dark:text-muted-foreground hover:text-[#0056B3] dark:hover:text-violet-400 transition-colors"
                             >
                                 <ChevronRight size={14} className="rotate-180" />
                                 Voltar para lista de alunos
                             </button>
 
                             {/* Selected student header */}
-                            <div className="flex items-center gap-3 mb-5 p-3 rounded-xl bg-glass-bg">
+                            <div className="flex items-center gap-3 mb-5 p-3 rounded-xl bg-[#F5F5F7] dark:bg-glass-bg">
                                 {selectedStudent.avatar_url ? (
                                     <img
                                         src={selectedStudent.avatar_url}
@@ -214,22 +214,22 @@ export function StudentPickerModal({ isOpen, onClose, trainerId }: StudentPicker
                                         className="h-10 w-10 rounded-full object-cover"
                                     />
                                 ) : (
-                                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-violet-600/20 text-sm font-bold text-violet-300">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#F5F5F7] dark:bg-violet-600/20 border border-[#E8E8ED] dark:border-transparent text-sm font-bold text-[#6E6E73] dark:text-violet-300">
                                         {selectedStudent.name.charAt(0).toUpperCase()}
                                     </div>
                                 )}
                                 <div>
-                                    <p className="text-sm font-semibold text-foreground">{selectedStudent.name}</p>
-                                    <p className="text-xs text-muted-foreground">{selectedStudent.program?.name || 'Programa'}</p>
+                                    <p className="text-sm font-semibold text-[#1D1D1F] dark:text-foreground">{selectedStudent.name}</p>
+                                    <p className="text-xs text-[#86868B] dark:text-muted-foreground">{selectedStudent.program?.name || 'Programa'}</p>
                                 </div>
                             </div>
 
                             {!selectedStudent.program ? (
-                                <p className="py-8 text-center text-sm text-muted-foreground">
+                                <p className="py-8 text-center text-sm text-[#86868B] dark:text-muted-foreground">
                                     Este aluno não possui um programa ativo.
                                 </p>
                             ) : selectedStudent.workoutOptions.length === 0 ? (
-                                <p className="py-8 text-center text-sm text-muted-foreground">
+                                <p className="py-8 text-center text-sm text-[#86868B] dark:text-muted-foreground">
                                     Nenhum treino encontrado neste programa.
                                 </p>
                             ) : (
@@ -237,7 +237,7 @@ export function StudentPickerModal({ isOpen, onClose, trainerId }: StudentPicker
                                     {/* Today section */}
                                     {selectedStudent.todayWorkouts.length > 0 && (
                                         <div className="mb-4">
-                                            <p className="text-[11px] font-semibold text-emerald-600/80 dark:text-emerald-400/80 mb-2">
+                                            <p className="text-[11px] font-semibold text-[#34C759] dark:text-emerald-400/80 mb-2">
                                                 Treino do dia
                                             </p>
                                             <div className="space-y-1">
@@ -256,7 +256,7 @@ export function StudentPickerModal({ isOpen, onClose, trainerId }: StudentPicker
                                     {/* All workouts section */}
                                     {selectedStudent.workoutOptions.filter((w) => !w.isToday).length > 0 && (
                                         <div>
-                                            <p className="text-[11px] font-semibold text-muted-foreground/60 mb-2">
+                                            <p className="text-[11px] font-semibold text-[#86868B] dark:text-muted-foreground/60 mb-2">
                                                 {selectedStudent.todayWorkouts.length > 0 ? 'Outros treinos' : 'Escolher treino'}
                                             </p>
                                             <div className="space-y-1">
@@ -275,7 +275,7 @@ export function StudentPickerModal({ isOpen, onClose, trainerId }: StudentPicker
                                     )}
 
                                     {error && (
-                                        <p className="mt-3 text-xs text-red-400">{error}</p>
+                                        <p className="mt-3 text-xs text-[#FF3B30] dark:text-red-400">{error}</p>
                                     )}
                                 </>
                             )}
@@ -285,11 +285,11 @@ export function StudentPickerModal({ isOpen, onClose, trainerId }: StudentPicker
 
                 {/* Footer */}
                 {selectedStudent && selectedStudent.program && selectedStudent.workoutOptions.length > 0 && (
-                    <div className="border-t border-k-border-subtle p-5">
+                    <div className="border-t border-[#E8E8ED] dark:border-k-border-subtle p-5">
                         <button
                             onClick={handleConfirm}
                             disabled={!selectedWorkoutId || isAdding}
-                            className="w-full rounded-xl bg-violet-600 py-3 text-sm font-semibold text-white transition-colors hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="w-full rounded-full bg-[#007AFF] dark:bg-violet-600 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#0066D6] dark:hover:bg-violet-500 disabled:bg-[#D2D2D7] dark:disabled:bg-violet-600 disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                             {isAdding ? (
                                 <span className="flex items-center justify-center gap-2">
@@ -322,19 +322,19 @@ function WorkoutOptionButton({
             className={`
                 w-full flex items-center gap-3 rounded-xl p-3 text-left transition-all
                 ${isSelected
-                    ? 'bg-violet-600/20 border border-violet-500/40'
-                    : 'bg-glass-bg border border-transparent hover:bg-glass-bg-hover'
+                    ? 'bg-[#007AFF]/5 dark:bg-violet-600/20 border-2 border-[#007AFF] dark:border-violet-500/40'
+                    : 'bg-white dark:bg-glass-bg border border-[#E8E8ED] dark:border-transparent hover:bg-[#F5F5F7] dark:hover:bg-glass-bg-hover hover:border-[#D2D2D7]'
                 }
             `}
         >
-            <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${isSelected ? 'bg-violet-600/30' : 'bg-glass-bg'}`}>
-                <Dumbbell size={16} className={isSelected ? 'text-violet-400' : 'text-muted-foreground'} />
+            <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${isSelected ? 'bg-[#007AFF]/10 dark:bg-violet-600/30' : 'bg-[#F5F5F7] dark:bg-glass-bg'}`}>
+                <Dumbbell size={16} className={isSelected ? 'text-[#007AFF] dark:text-violet-400' : 'text-[#AEAEB2] dark:text-muted-foreground'} />
             </div>
-            <span className={`text-sm font-medium ${isSelected ? 'text-violet-300' : 'text-foreground'}`}>
+            <span className={`text-sm font-medium ${isSelected ? 'text-[#007AFF] dark:text-violet-300' : 'text-[#1D1D1F] dark:text-foreground'}`}>
                 {workout.name}
             </span>
             {isSelected && (
-                <div className="ml-auto h-2 w-2 rounded-full bg-violet-400" />
+                <div className="ml-auto h-2 w-2 rounded-full bg-[#007AFF] dark:bg-violet-400" />
             )}
         </button>
     )

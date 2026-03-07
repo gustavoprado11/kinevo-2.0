@@ -22,9 +22,9 @@ export function WorkoutTimer({ startedAt }: WorkoutTimerProps) {
     const display = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
 
     return (
-        <div className="flex items-center gap-2 rounded-lg bg-glass-bg px-3 py-1.5">
-            <Timer size={14} className="text-emerald-400" />
-            <span className="text-sm font-mono font-semibold text-foreground tabular-nums">
+        <div className="flex items-center gap-2 rounded-lg bg-[#F5F5F7] dark:bg-glass-bg px-3 py-1.5">
+            <Timer size={14} className="text-[#34C759] dark:text-emerald-400" />
+            <span className="text-sm font-mono font-semibold text-[#1D1D1F] dark:text-foreground tabular-nums">
                 {display}
             </span>
         </div>

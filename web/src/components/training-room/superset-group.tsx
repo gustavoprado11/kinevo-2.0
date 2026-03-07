@@ -45,19 +45,19 @@ export function SupersetGroup({
         <div
             className={`border-l-2 rounded-2xl pl-3 pr-1 pt-3 pb-2 ${
                 allDone
-                    ? 'border-emerald-500/40 bg-emerald-500/[0.03]'
-                    : 'border-violet-500/40 bg-violet-500/[0.03]'
+                    ? 'border-[#34C759]/40 dark:border-emerald-500/40 bg-[#34C759]/[0.03] dark:bg-emerald-500/[0.03]'
+                    : 'border-[#007AFF]/40 dark:border-violet-500/40 bg-[#007AFF]/[0.03] dark:bg-violet-500/[0.03]'
             }`}
         >
             {/* Header */}
             <div className="flex items-center justify-between mb-3 pr-2">
                 <div className="flex items-center gap-2">
-                    <Link2 size={14} className="text-violet-400" />
-                    <span className="text-[10px] font-bold text-violet-600 dark:text-violet-400">
+                    <Link2 size={14} className="text-[#007AFF] dark:text-violet-400" />
+                    <span className="text-[10px] font-bold text-[#007AFF] dark:text-violet-400">
                         Superset
                     </span>
                 </div>
-                <span className="text-[11px] font-semibold text-violet-400 bg-violet-500/10 px-2.5 py-1 rounded-lg">
+                <span className="text-[11px] font-semibold text-[#007AFF] dark:text-violet-400 bg-[#007AFF]/10 dark:bg-violet-500/10 px-2.5 py-1 rounded-lg">
                     {allDone ? 'Concluído' : `Rodada ${currentRound + 1} de ${totalRounds}`}
                 </span>
             </div>
@@ -83,8 +83,8 @@ export function SupersetGroup({
 
             {/* Rest info */}
             <div className="flex items-center gap-1.5 mt-2 ml-1 mb-1">
-                <Clock size={12} className="text-violet-400" />
-                <span className="text-xs text-violet-400/80">
+                <Clock size={12} className="text-[#007AFF] dark:text-violet-400" />
+                <span className="text-xs text-[#007AFF]/80 dark:text-violet-400/80">
                     Descanso entre rodadas: {supersetRestSeconds}s
                 </span>
             </div>
