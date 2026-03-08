@@ -3,7 +3,6 @@
 import { useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
-import { Sparkles } from 'lucide-react'
 import { translateAuthError } from '@/lib/translate-auth-error'
 import { AuthLayout } from '@/components/auth/auth-layout'
 
@@ -105,11 +104,9 @@ export default function SignupPage() {
 
     return (
         <AuthLayout
-            tagline="Junte-se à elite"
-            taglineAccent="dos treinadores."
-            subtitle="Comece com 7 dias grátis. Sem compromisso, cancele quando quiser."
-            bottomIcon={Sparkles}
-            bottomText="Mais de 1.000 treinadores já transformaram suas consultorias"
+            tagline="A ferramenta à altura"
+            taglineAccent="do seu trabalho."
+            subtitle="Sistema completo para prescrição, acompanhamento e pagamentos. 7 dias grátis."
             backHref="/"
             backLabel="Voltar"
             footer={
@@ -217,7 +214,7 @@ export default function SignupPage() {
                     <button
                         type="submit"
                         disabled={loading}
-                        className="w-full py-3 px-4 bg-violet-600 hover:bg-violet-700 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-violet-500/15"
+                        className="w-full py-3 px-4 bg-gradient-to-r from-[#7C3AED] to-[#A855F7] hover:from-[#6D28D9] hover:to-[#9333EA] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-violet-500/15"
                     >
                         {loading ? 'Criando conta...' : 'Criar conta e começar trial'}
                     </button>

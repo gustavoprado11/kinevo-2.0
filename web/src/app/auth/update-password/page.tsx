@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Sparkles, CheckCircle2 } from 'lucide-react'
+import { CheckCircle2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { translateAuthError } from '@/lib/translate-auth-error'
 import { AuthLayout } from '@/components/auth/auth-layout'
@@ -52,11 +52,9 @@ export default function UpdatePasswordPage() {
 
     return (
         <AuthLayout
-            tagline="A evolução da sua consultoria"
-            taglineAccent="começa aqui."
-            subtitle="Gerencie treinos, acompanhe alunos e escale sua consultoria fitness com a plataforma feita por treinadores."
-            bottomIcon={Sparkles}
-            bottomText="Mais de 1.000 treinadores já transformaram suas consultorias"
+            tagline="Seus alunos merecem"
+            taglineAccent="uma experiência profissional."
+            subtitle="Prescreva com precisão, acompanhe cada aluno de perto e receba sem perder dinheiro com taxas."
             backHref={null}
         >
             <div className="bg-white border border-black/[0.06] rounded-2xl p-8 shadow-apple-elevated">

@@ -5,24 +5,39 @@ import { motion } from 'framer-motion'
 
 export function LandingCtaFooter() {
     return (
-        <section className="bg-black">
+        <section className="mesh-gradient-dark">
             {/* CTA */}
-            <div className="min-h-screen flex items-center py-32 md:py-40">
-                <div className="mx-auto max-w-7xl px-6 text-center w-full">
-                    <motion.h2
-                        initial={{ opacity: 0, y: 40 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true, margin: '-100px' }}
-                        transition={{ duration: 0.8, ease: 'easeOut' }}
-                        className="font-jakarta text-4xl md:text-6xl font-bold tracking-tight text-white"
-                    >
-                        Pronto para evoluir?
-                    </motion.h2>
+            <div className="py-24 md:py-32">
+                <div className="mx-auto max-w-7xl px-6 text-center">
                     <motion.div
                         initial={{ opacity: 0, y: 40 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true, margin: '-100px' }}
+                        transition={{ duration: 0.8, ease: 'easeOut' }}
+                    >
+                        <h2 className="font-jakarta text-3xl md:text-5xl font-bold tracking-tight text-white leading-tight">
+                            Seus alunos merecem mais que uma planilha.
+                        </h2>
+                        <p className="font-jakarta text-2xl md:text-3xl font-bold tracking-tight text-white/60 mt-2">
+                            Você merece uma ferramenta à altura do seu trabalho.
+                        </p>
+                    </motion.div>
+
+                    <motion.p
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true, margin: '-100px' }}
                         transition={{ duration: 0.8, ease: 'easeOut', delay: 0.1 }}
+                        className="font-jakarta text-white/50 text-lg mt-6"
+                    >
+                        Comece agora, grátis. Configure em 2 minutos. Veja a diferença na primeira semana.
+                    </motion.p>
+
+                    <motion.div
+                        initial={{ opacity: 0, y: 30 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true, margin: '-100px' }}
+                        transition={{ duration: 0.8, ease: 'easeOut', delay: 0.2 }}
                         className="mt-8"
                     >
                         <motion.div
@@ -33,33 +48,34 @@ export function LandingCtaFooter() {
                         >
                             <Link
                                 href="/signup"
-                                className="inline-block bg-gradient-to-r from-[#7C3AED] to-[#A855F7] hover:from-[#6D28D9] hover:to-[#9333EA] hover:shadow-[0_0_40px_rgba(124,58,237,0.3)] text-white font-semibold rounded-full px-8 py-4 transition-all font-jakarta text-lg"
+                                className="shimmer-btn inline-block bg-gradient-to-r from-[#7C3AED] to-[#A855F7] hover:from-[#6D28D9] hover:to-[#9333EA] hover:shadow-[0_0_40px_rgba(124,58,237,0.3)] text-white font-semibold rounded-full px-10 py-4 transition-all font-jakarta text-lg"
                             >
-                                Testar Grátis por 7 Dias &rarr;
+                                Criar minha conta grátis
                             </Link>
                         </motion.div>
                     </motion.div>
+
                     <motion.p
-                        initial={{ opacity: 0, y: 40 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true, margin: '-100px' }}
-                        transition={{ duration: 0.8, ease: 'easeOut', delay: 0.2 }}
-                        className="font-jakarta text-white/40 text-sm mt-4"
+                        initial={{ opacity: 0 }}
+                        whileInView={{ opacity: 1 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.8, delay: 0.4 }}
+                        className="font-jakarta text-white/30 text-sm mt-4"
                     >
-                        Teste grátis por 7 dias. Configure em 2 minutos.
+                        7 dias grátis &bull; Sem fidelidade &bull; Cancele quando quiser
                     </motion.p>
                 </div>
             </div>
 
             {/* Footer */}
-            <footer className="border-t border-white/10 pt-16 pb-8">
+            <footer className="border-t border-white/10 py-8">
                 <div className="mx-auto max-w-7xl px-6">
                     <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-white/30 text-sm font-jakarta">
-                        <p>&copy; {new Date().getFullYear()} Kinevo</p>
+                        <p>&copy; {new Date().getFullYear()} Kinevo. Todos os direitos reservados.</p>
                         <div className="flex items-center gap-4">
-                            <Link href="/privacy" className="hover:text-white/60 transition-colors">Privacidade</Link>
+                            <Link href="/terms" className="hover:text-white/60 transition-colors">Termos de Uso</Link>
                             <span>&middot;</span>
-                            <Link href="/terms" className="hover:text-white/60 transition-colors">Termos</Link>
+                            <Link href="/privacy" className="hover:text-white/60 transition-colors">Privacidade</Link>
                         </div>
                         <div className="flex items-center gap-3">
                             <a href="https://www.instagram.com/kinevo.app" target="_blank" rel="noopener noreferrer" className="hover:text-white/60 transition-colors" aria-label="Instagram">

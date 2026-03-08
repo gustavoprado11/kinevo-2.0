@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Sparkles } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { translateAuthError } from '@/lib/translate-auth-error'
 import { AuthLayout } from '@/components/auth/auth-layout'
@@ -39,11 +38,9 @@ export default function LoginPage() {
 
     return (
         <AuthLayout
-            tagline="A evolução da sua consultoria"
-            taglineAccent="começa aqui."
-            subtitle="Gerencie treinos, acompanhe alunos e escale sua consultoria fitness com a plataforma feita por treinadores."
-            bottomIcon={Sparkles}
-            bottomText="Mais de 1.000 treinadores já transformaram suas consultorias"
+            tagline="Seus alunos merecem"
+            taglineAccent="uma experiência profissional."
+            subtitle="Prescreva com precisão, acompanhe cada aluno de perto e receba sem perder dinheiro com taxas."
             backHref="/"
             backLabel="Voltar"
             footer={
@@ -106,7 +103,7 @@ export default function LoginPage() {
                     <button
                         type="submit"
                         disabled={loading}
-                        className="w-full py-3 px-4 bg-violet-600 hover:bg-violet-700 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-violet-500/15"
+                        className="w-full py-3 px-4 bg-gradient-to-r from-[#7C3AED] to-[#A855F7] hover:from-[#6D28D9] hover:to-[#9333EA] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-violet-500/15"
                     >
                         {loading ? 'Entrando...' : 'Entrar'}
                     </button>

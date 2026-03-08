@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Sparkles, Mail } from 'lucide-react'
+import { Mail } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { translateAuthError } from '@/lib/translate-auth-error'
 import { checkTrainerEmail } from './actions/check-trainer-email'
@@ -48,11 +48,9 @@ export default function ForgotPasswordPage() {
 
     return (
         <AuthLayout
-            tagline="A evolução da sua consultoria"
-            taglineAccent="começa aqui."
-            subtitle="Gerencie treinos, acompanhe alunos e escale sua consultoria fitness com a plataforma feita por treinadores."
-            bottomIcon={Sparkles}
-            bottomText="Mais de 1.000 treinadores já transformaram suas consultorias"
+            tagline="Seus alunos merecem"
+            taglineAccent="uma experiência profissional."
+            subtitle="Prescreva com precisão, acompanhe cada aluno de perto e receba sem perder dinheiro com taxas."
             backHref="/login"
             backLabel="Voltar para o Login"
         >

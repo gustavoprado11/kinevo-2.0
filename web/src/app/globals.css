@@ -372,6 +372,15 @@ body {
   animation: pulse-soft 2s ease-in-out infinite;
 }
 
+/* Smooth scroll for anchor navigation */
+html {
+  scroll-behavior: smooth;
+}
+
+[id] {
+  scroll-margin-top: 5rem;
+}
+
 /* Shake animation for validation errors */
 @keyframes shake {
   0%, 100% { transform: translateX(0); }

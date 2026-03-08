@@ -1,8 +1,11 @@
 import { Navbar } from '@/components/landing/navbar'
 import { LandingHero } from '@/components/landing/landing-hero'
-import { LandingTrainers } from '@/components/landing/landing-trainers'
-import { LandingStudents } from '@/components/landing/landing-students'
+import { LandingSocialProof } from '@/components/landing/landing-social-proof'
+import { LandingProblem } from '@/components/landing/landing-problem'
+import { LandingPillars } from '@/components/landing/landing-pillars'
+import { LandingStudentApp } from '@/components/landing/landing-student-app'
 import { LandingPricing } from '@/components/landing/landing-pricing'
+import { LandingFaq } from '@/components/landing/landing-faq'
 import { LandingCtaFooter } from '@/components/landing/landing-cta-footer'
 
 export default function Home() {
@@ -12,14 +15,19 @@ export default function Home() {
 
             <main>
                 <LandingHero />
-                <div id="treinadores">
-                    <LandingTrainers />
+                <LandingSocialProof />
+                <LandingProblem />
+                <div id="como-funciona">
+                    <LandingPillars />
                 </div>
-                <div id="alunos">
-                    <LandingStudents />
+                <div id="app-aluno">
+                    <LandingStudentApp />
                 </div>
                 <div id="precos">
                     <LandingPricing />
+                </div>
+                <div id="faq">
+                    <LandingFaq />
                 </div>
             </main>
 

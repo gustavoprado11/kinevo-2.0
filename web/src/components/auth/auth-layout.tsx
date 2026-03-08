@@ -45,46 +45,38 @@ export function AuthLayout({
                         height={40}
                         className="rounded-xl"
                     />
-                    <span className="text-2xl font-bold text-slate-900 tracking-tight">Kinevo</span>
+                    <span className="font-jakarta text-2xl font-bold text-slate-900 tracking-tight">Kinevo</span>
                 </div>
 
                 {/* Center content: Tagline + Product mockup */}
                 <div className="relative z-10 flex flex-col gap-8">
                     <div className="max-w-md">
-                        <h2 className="text-4xl font-extrabold text-slate-900 leading-tight tracking-tighter">
+                        <h2 className="font-jakarta text-4xl font-extrabold text-slate-900 leading-tight tracking-tighter">
                             {tagline}
                             <span className="block text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-violet-400">
                                 {taglineAccent}
                             </span>
                         </h2>
-                        <p className="mt-4 text-slate-500 text-lg leading-relaxed">
+                        <p className="font-jakarta mt-4 text-slate-500 text-lg leading-relaxed">
                             {subtitle}
                         </p>
                     </div>
 
                     {/* Product mockup */}
-                    <div className="relative w-full max-w-sm" style={{ perspective: '1200px' }}>
-                        <div
-                            className="rounded-xl overflow-hidden shadow-2xl shadow-violet-500/10 border border-black/[0.06]"
-                            style={{
-                                transform: 'rotateY(-4deg) rotateX(2deg)',
-                                transformOrigin: 'center center',
-                            }}
-                        >
-                            <Image
-                                src="/tela_dashboard.png"
-                                alt="Kinevo Dashboard"
-                                width={600}
-                                height={400}
-                                className="w-full h-auto"
-                                priority
-                            />
-                        </div>
+                    <div className="relative w-full max-w-md">
+                        <Image
+                            src="/719shots_so.png"
+                            alt="Kinevo Dashboard"
+                            width={1920}
+                            height={1080}
+                            className="w-full h-auto drop-shadow-2xl"
+                            priority
+                        />
                     </div>
                 </div>
 
                 {/* Bottom badge */}
-                <div className="relative z-10 flex items-center gap-2 text-slate-400 text-sm">
+                <div className="relative z-10 flex items-center gap-2 text-slate-400 text-sm font-jakarta">
                     <BottomIcon size={14} />
                     <span>{bottomText}</span>
                 </div>
@@ -120,7 +112,7 @@ export function AuthLayout({
                                 height={32}
                                 className="rounded-lg"
                             />
-                            <span className="text-xl font-bold text-slate-900 tracking-tight">Kinevo</span>
+                            <span className="font-jakarta text-xl font-bold text-slate-900 tracking-tight">Kinevo</span>
                         </div>
 
                         {/* Form card */}
