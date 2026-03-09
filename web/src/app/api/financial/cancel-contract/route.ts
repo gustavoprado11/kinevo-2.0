@@ -3,6 +3,8 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { stripe } from '@/lib/stripe'
 import { logContractEvent } from '@/lib/contract-events'
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 export async function POST(request: NextRequest) {
     const authHeader = request.headers.get('authorization')
     if (!authHeader?.startsWith('Bearer ')) {
@@ -26,6 +28,9 @@ export async function POST(request: NextRequest) {
     const { contractId, cancelAtPeriodEnd } = body
     if (!contractId) {
         return NextResponse.json({ error: 'contractId é obrigatório' }, { status: 400 })
+    }
+    if (!UUID_RE.test(contractId)) {
+        return NextResponse.json({ error: 'Formato de ID inválido' }, { status: 400 })
     }
 
     // Get trainer

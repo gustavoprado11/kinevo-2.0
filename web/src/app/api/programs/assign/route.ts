@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 /**
  * POST /api/programs/assign
  *
@@ -39,6 +41,29 @@ export async function POST(request: NextRequest) {
 
         if (!studentId || !templateId) {
             return NextResponse.json({ error: 'studentId and templateId are required' }, { status: 400 })
+        }
+
+        if (!UUID_RE.test(studentId) || !UUID_RE.test(templateId)) {
+            return NextResponse.json({ error: 'Invalid ID format' }, { status: 400 })
+        }
+
+        if (prescriptionGenerationId && !UUID_RE.test(prescriptionGenerationId)) {
+            return NextResponse.json({ error: 'Invalid prescriptionGenerationId format' }, { status: 400 })
+        }
+
+        // Validate workoutSchedule structure if provided
+        if (workoutSchedule != null) {
+            if (typeof workoutSchedule !== 'object' || Array.isArray(workoutSchedule)) {
+                return NextResponse.json({ error: 'workoutSchedule must be an object' }, { status: 400 })
+            }
+            for (const [key, value] of Object.entries(workoutSchedule)) {
+                if (isNaN(Number(key))) {
+                    return NextResponse.json({ error: 'workoutSchedule keys must be numeric' }, { status: 400 })
+                }
+                if (!Array.isArray(value) || !(value as number[]).every((d: number) => Number.isInteger(d) && d >= 0 && d <= 6)) {
+                    return NextResponse.json({ error: 'workoutSchedule values must be arrays of days (0-6)' }, { status: 400 })
+                }
+            }
         }
 
         // 1. Auth + trainer lookup

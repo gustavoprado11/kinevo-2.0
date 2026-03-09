@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { logContractEvent } from '@/lib/contract-events'
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 function addInterval(date: Date, interval: string): Date {
     const result = new Date(date)
     switch (interval) {
@@ -43,6 +45,9 @@ export async function POST(request: NextRequest) {
     const { contractId } = body
     if (!contractId) {
         return NextResponse.json({ error: 'contractId é obrigatório' }, { status: 400 })
+    }
+    if (!UUID_RE.test(contractId)) {
+        return NextResponse.json({ error: 'Formato de ID inválido' }, { status: 400 })
     }
 
     // Get trainer

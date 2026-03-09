@@ -76,6 +76,36 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Student not found' }, { status: 404 })
         }
 
+        // Rate limiting: 5 per minute, 20 per day
+        const oneMinuteAgo = new Date(Date.now() - 60 * 1000).toISOString()
+        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+
+        const [perMinute, perDay] = await Promise.all([
+            supabase
+                .from('prescription_generations')
+                .select('id', { count: 'exact', head: true })
+                .eq('trainer_id', trainer.id)
+                .gte('created_at', oneMinuteAgo),
+            supabase
+                .from('prescription_generations')
+                .select('id', { count: 'exact', head: true })
+                .eq('trainer_id', trainer.id)
+                .gte('created_at', oneDayAgo),
+        ])
+
+        if ((perMinute.count ?? 0) >= 5) {
+            return NextResponse.json(
+                { error: 'Limite de gerações por minuto atingido. Aguarde um momento.' },
+                { status: 429 }
+            )
+        }
+        if ((perDay.count ?? 0) >= 20) {
+            return NextResponse.json(
+                { error: 'Limite diário de gerações atingido (20/dia). Tente novamente amanhã.' },
+                { status: 429 }
+            )
+        }
+
         // Call the generation logic directly (inlined from generate-program.ts)
         // We import the shared libraries and replicate the flow here since
         // the server action uses cookie-based auth internally.
