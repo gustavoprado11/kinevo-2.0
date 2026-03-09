@@ -190,10 +190,12 @@ function groupExercisesByMuscle(
 
 interface VolumeTracker {
     volume: Record<string, number>
+    /** V3: primary (direct) volume per group, used for secondary cap */
+    primary: Record<string, number>
 }
 
 function createVolumeTracker(): VolumeTracker {
-    return { volume: {} }
+    return { volume: {}, primary: {} }
 }
 
 /**
@@ -255,12 +257,26 @@ function commitVolume(
     const weeklySets = sets * workoutFreq
 
     tracker.volume[targetGroup] = (tracker.volume[targetGroup] || 0) + weeklySets
+    tracker.primary[targetGroup] = (tracker.primary[targetGroup] || 0) + weeklySets
 
     const contributions = getContributions(targetGroup, exercise.movement_pattern, exercise.is_compound)
     for (const { group, weight } of contributions) {
-        const secSets = Math.round(weeklySets * weight)
+        let secSets = Math.round(weeklySets * weight)
         if (secSets > 0) {
-            tracker.volume[group] = (tracker.volume[group] || 0) + secSets
+            // V3: Secondary volume cap — cumulative secondary contribution
+            // to a muscle cannot exceed 60% of its primary (direct) volume.
+            // If the group has NO primary volume yet, secondary flows uncapped
+            // (those groups rely entirely on compound contributions).
+            const groupPrimary = tracker.primary[group] || 0
+            if (groupPrimary > 0) {
+                const secondaryCap = Math.round(groupPrimary * 0.6)
+                const currentSecondary = (tracker.volume[group] || 0) - groupPrimary
+                const headroom = Math.max(0, secondaryCap - currentSecondary)
+                secSets = Math.min(secSets, headroom)
+            }
+            if (secSets > 0) {
+                tracker.volume[group] = (tracker.volume[group] || 0) + secSets
+            }
         }
     }
 }
@@ -275,7 +291,7 @@ const MAX_DYNAMIC_SLOTS = 1
 /**
  * Generates dynamic accessory slots for groups that:
  * 1. Have budget > 0 (not removed by FREQUENCY_CUTS)
- * 2. Have forecasted volume < budget.min * 0.7
+ * 2. Have forecasted volume < budget.min * 0.85
  * 3. Are not already covered by template slots in this workout
  * 4. Fit within the session exercise limit
  */
@@ -293,7 +309,7 @@ function generateDynamicSlots(
         .map(g => ({
             group: g,
             deficit: (budget[g]?.min || 0) - (tracker.volume[g] || 0),
-            threshold: (budget[g]?.min || 0) * 0.7,
+            threshold: (budget[g]?.min || 0) * 0.85,
             current: tracker.volume[g] || 0,
         }))
         .filter(d => d.current < d.threshold)
@@ -304,7 +320,7 @@ function generateDynamicSlots(
     for (const { group } of deficits) {
         if (dynamicSlots.length >= maxSlots) break
 
-        console.log(`[VolumeV2] Dynamic slot added: ${group} (current=${tracker.volume[group] || 0}, threshold=${(budget[group]?.min || 0) * 0.7})`)
+        console.log(`[VolumeV2] Dynamic slot added: ${group} (current=${tracker.volume[group] || 0}, threshold=${(budget[group]?.min || 0) * 0.85})`)
 
         dynamicSlots.push({
             movement_pattern: 'isolation',
@@ -748,6 +764,13 @@ function findCandidatesForSlot(
         return true
     })
 
+    // V3: Hard duplicate rule — max 1 occurrence per exercise per program,
+    // except for Panturrilha and Abdominais which may repeat across workouts
+    const DUPLICATE_EXEMPT_GROUPS = new Set(['Panturrilha', 'Abdominais'])
+    if (!DUPLICATE_EXEMPT_GROUPS.has(slot.target_group)) {
+        candidates = candidates.filter(ex => !scoringCtx.weeklyUsedIds.has(ex.id))
+    }
+
     return candidates
 }
 
@@ -846,7 +869,7 @@ function distributeSetsForSlot(
 
 /**
  * Improved volume distribution that:
- * - Targets min + (max-min)*0.6 instead of max
+ * - Targets min + (max-min)*0.7 instead of max
  * - Divides by REMAINING occurrences, not total
  * - Respects forecast ceiling from forecastMaxSets
  */
@@ -864,8 +887,8 @@ function distributeSetsForSlotV2(
     if (!groupBudget) return slot.min_sets
 
     const currentVolume = tracker.volume[group] || 0
-    // Target = min + (max - min) * 0.6
-    const target = Math.round(groupBudget.min + (groupBudget.max - groupBudget.min) * 0.6)
+    // Target = min + (max - min) * 0.7
+    const target = Math.round(groupBudget.min + (groupBudget.max - groupBudget.min) * 0.7)
     const remaining = Math.max(0, target - currentVolume)
     const remOcc = remainingOccurrences[group] || 1
 

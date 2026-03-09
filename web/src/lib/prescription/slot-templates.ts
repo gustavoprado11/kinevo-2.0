@@ -86,6 +86,7 @@ const UPPER_SLOTS: WorkoutSlot[] = [
     { movement_pattern: 'pull_vertical', target_group: 'Costas', function: 'accessory', min_sets: 2, max_sets: 3, priority: 4, optional: true, prefer_compound: false },
     { movement_pattern: 'isolation', target_group: 'Bíceps', function: 'accessory', min_sets: 2, max_sets: 3, priority: 5, optional: true, prefer_compound: false },
     { movement_pattern: 'isolation', target_group: 'Tríceps', function: 'accessory', min_sets: 2, max_sets: 3, priority: 6, optional: true, prefer_compound: false },
+    { movement_pattern: 'isolation', target_group: 'Trapézio', function: 'accessory', min_sets: 2, max_sets: 3, priority: 7, optional: true, prefer_compound: false },
 ]
 
 const FULL_BODY_A_SLOTS: WorkoutSlot[] = [
