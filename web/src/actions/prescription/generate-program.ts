@@ -321,6 +321,7 @@ export async function generateProgram(
                 enrichedContext,
                 agentExercises,
                 agentState.answers,
+                trainerPatterns,
             )
 
             outputSnapshot = optimizerResult.output

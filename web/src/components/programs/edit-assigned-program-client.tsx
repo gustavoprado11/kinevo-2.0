@@ -15,6 +15,7 @@ import { ExerciseLibraryPanel } from './exercise-library-panel'
 import { VolumeSummary } from './volume-summary'
 
 import type { Exercise } from '@/types/exercise'
+import { capturePostAssignmentEdits } from '@/actions/prescription/capture-post-assignment-edits'
 
 export interface WorkoutItem {
     id: string
@@ -899,6 +900,10 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
 
             // Success feedback
             alert('Programa atualizado com sucesso!')
+
+            // Fire-and-forget: capture edits for AI learning (only processes AI-generated programs)
+            capturePostAssignmentEdits(program.id).catch(() => {})
+
             router.push(`/students/${studentId}`)
             router.refresh()
 

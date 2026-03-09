@@ -10,6 +10,7 @@ import { GenerationStatus } from '@/components/prescription/generation-status'
 import { AgentQuestionsPanel } from '@/components/prescription/agent-questions-panel'
 import { QuestionnairePromptCard } from '@/components/prescription/questionnaire-prompt-card'
 import { QuestionnaireBadge } from '@/components/prescription/questionnaire-badge'
+import { PrescriptionStepper } from '@/components/prescription/prescription-stepper'
 
 import { generateProgram } from '@/actions/prescription/generate-program'
 import { analyzeStudentContext } from '@/actions/prescription/analyze-context'
@@ -209,6 +210,14 @@ export function PrescribeClient({ trainer, student, prescriptionData }: Prescrib
                         </span>
                     )}
                 </div>
+
+                {/* Progress Stepper (visible on anamnese + questions only) */}
+                {(pageState === 'anamnese' || pageState === 'questions') && (
+                    <PrescriptionStepper
+                        currentStep={pageState === 'anamnese' ? 1 : 2}
+                        className="mb-8"
+                    />
+                )}
 
                 {/* Error Banner */}
                 {error && (

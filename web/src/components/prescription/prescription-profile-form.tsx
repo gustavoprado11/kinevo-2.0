@@ -5,7 +5,6 @@ import {
     User, Target, Calendar, Clock, Dumbbell, ShieldAlert,
     Brain, Save, Loader2, Check, Plus, X, AlertCircle,
     ChevronDown, ChevronUp, Sparkles, MessageSquare,
-    Activity, TrendingUp, FileText,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -53,6 +52,13 @@ const GOAL_LABELS: Record<PrescriptionGoal, string> = {
     weight_loss: 'Perda de Peso',
     performance: 'Performance',
     health: 'Saúde',
+}
+
+const GOAL_EMOJIS: Record<PrescriptionGoal, string> = {
+    hypertrophy: '🏋️',
+    weight_loss: '🔥',
+    performance: '⚡',
+    health: '❤️',
 }
 
 const EQUIPMENT_LABELS: Record<string, string> = {
@@ -118,8 +124,8 @@ export function PrescriptionProfileForm({
     const [generating, setGenerating] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
-    // Context card expanded state (Estado B)
-    const [contextExpanded, setContextExpanded] = useState(true)
+    // Context card expanded state (Estado B) — collapsed by default
+    const [contextExpanded, setContextExpanded] = useState(false)
 
     // Reset saved indicator after 3s
     useEffect(() => {
@@ -310,9 +316,14 @@ export function PrescriptionProfileForm({
                             <div className="w-8 h-8 rounded-lg bg-violet-500/15 border border-violet-500/30 flex items-center justify-center">
                                 <Brain className="w-4 h-4 text-violet-400" />
                             </div>
-                            <span className="text-sm font-semibold text-violet-300">
-                                O Copiloto vai usar
-                            </span>
+                            <div>
+                                <span className="text-sm font-semibold text-violet-300">
+                                    Contexto do Aluno
+                                </span>
+                                <p className="text-[10px] text-k-text-quaternary">
+                                    Dados que a IA vai considerar na prescrição
+                                </p>
+                            </div>
                         </div>
                         {contextExpanded
                             ? <ChevronUp className="w-4 h-4 text-k-text-quaternary" />
@@ -320,37 +331,36 @@ export function PrescriptionProfileForm({
                         }
                     </button>
 
-                    {contextExpanded && (
+                    <div
+                        className="overflow-hidden transition-all duration-300"
+                        style={{ maxHeight: contextExpanded ? '200px' : '0', opacity: contextExpanded ? 1 : 0 }}
+                    >
                         <div className="px-6 pb-5 border-t border-violet-500/10 pt-4">
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            <div className="flex flex-wrap gap-3 sm:flex-nowrap sm:items-center sm:divide-x sm:divide-violet-500/10 sm:gap-0">
+                                <ContextStat label="Sessões (4 sem)" value={`${recentSessions.length}`} />
                                 <ContextStat
-                                    icon={Activity}
-                                    label="Sessões (4 sem)"
-                                    value={`${recentSessions.length}`}
-                                />
-                                <ContextStat
-                                    icon={TrendingUp}
                                     label="Aderência"
                                     value={recentSessions.length > 0 ? `${adherenceRate}%` : '—'}
+                                    valueClassName={
+                                        recentSessions.length === 0 ? undefined
+                                        : adherenceRate >= 70 ? 'text-emerald-400'
+                                        : adherenceRate >= 40 ? 'text-yellow-400'
+                                        : 'text-red-400'
+                                    }
                                 />
+                                <ContextStat label="Programas anteriores" value={`${previousProgramCount}`} />
                                 <ContextStat
-                                    icon={Dumbbell}
-                                    label="Programas anteriores"
-                                    value={`${previousProgramCount}`}
-                                />
-                                <ContextStat
-                                    icon={Target}
                                     label="Programa ativo"
                                     value={activeProgram?.name || 'Nenhum'}
+                                    indicator={activeProgram ? 'active' : 'none'}
                                 />
                                 <ContextStat
-                                    icon={FileText}
                                     label="Última avaliação"
                                     value={lastFormSubmissionDate ? formatDate(lastFormSubmissionDate) : 'Nenhuma'}
                                 />
                             </div>
                         </div>
-                    )}
+                    </div>
                 </div>
             )}
 
@@ -362,12 +372,12 @@ export function PrescriptionProfileForm({
                 <div className="px-6 py-5 border-b border-k-border-subtle">
                     <h2 className="text-lg font-bold text-k-text-primary flex items-center gap-2">
                         <User className="w-5 h-5 text-violet-500" />
-                        {isFirstPrescription ? 'Anamnese do Aluno' : 'Configuração deste Ciclo'}
+                        {isFirstPrescription ? 'Anamnese do Aluno' : 'Configure o próximo ciclo'}
                     </h2>
                     <p className="text-xs text-k-text-tertiary mt-1">
                         {isFirstPrescription
                             ? 'Configure o perfil do aluno. O Copiloto usará essas informações para personalizar o programa.'
-                            : 'O Copiloto já tem o histórico do aluno. Confirme o foco deste ciclo.'
+                            : 'Defina o objetivo e a frequência. A IA vai usar o histórico para personalizar.'
                         }
                     </p>
                 </div>
@@ -419,12 +429,13 @@ export function PrescriptionProfileForm({
                                     key={value}
                                     type="button"
                                     onClick={() => setGoal(value)}
-                                    className={`px-4 py-2.5 rounded-xl text-sm font-semibold transition-all border ${
+                                    className={`px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 border ${
                                         goal === value
-                                            ? 'bg-violet-500/15 border-violet-500/30 text-violet-400'
-                                            : 'bg-glass-bg border-k-border-subtle text-k-text-tertiary hover:border-k-border-primary hover:text-k-text-secondary'
+                                            ? 'bg-violet-500/15 border-violet-500/30 text-violet-400 shadow-md'
+                                            : 'bg-glass-bg border-k-border-subtle text-k-text-tertiary hover:border-k-border-primary hover:text-k-text-secondary hover:shadow-sm'
                                     }`}
                                 >
+                                    <span className="mr-1.5">{GOAL_EMOJIS[value]}</span>
                                     {label}
                                 </button>
                             ))}
@@ -607,9 +618,9 @@ export function PrescriptionProfileForm({
                                     key={index}
                                     type="button"
                                     onClick={() => toggleDay(index)}
-                                    className={`flex-1 px-2 py-2.5 rounded-xl text-xs font-bold transition-all border ${
+                                    className={`flex-1 px-2 py-2.5 rounded-xl text-xs font-bold transition-all duration-150 border ${
                                         availableDays.includes(index)
-                                            ? 'bg-violet-500/15 border-violet-500/30 text-violet-400'
+                                            ? 'bg-violet-600 border-violet-500 text-white scale-105'
                                             : 'bg-glass-bg border-k-border-subtle text-k-text-quaternary hover:border-k-border-primary hover:text-k-text-tertiary'
                                     }`}
                                 >
@@ -617,9 +628,17 @@ export function PrescriptionProfileForm({
                                 </button>
                             ))}
                         </div>
-                        <p className="text-[11px] text-k-text-quaternary mt-1.5">
-                            {availableDays.length} dia{availableDays.length !== 1 ? 's' : ''} selecionado{availableDays.length !== 1 ? 's' : ''}
-                        </p>
+                        <div className="mt-1.5 flex items-center gap-2">
+                            {availableDays.length > 0 ? (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-violet-500/15 text-violet-400">
+                                    {availableDays.length} dia{availableDays.length !== 1 ? 's' : ''}/semana
+                                </span>
+                            ) : (
+                                <span className="text-[11px] text-k-text-quaternary">
+                                    Selecione os dias disponíveis
+                                </span>
+                            )}
+                        </div>
                     </div>
 
                     {/* ── Session Duration (Estado A only) ── */}
@@ -650,25 +669,22 @@ export function PrescriptionProfileForm({
                     <div>
                         <label className="mb-1.5 block text-[11px] font-bold text-k-text-tertiary">
                             <MessageSquare className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />
-                            Observação para o Copiloto
+                            Instruções adicionais
                         </label>
                         <textarea
                             value={cycleObservation}
                             onChange={e => setCycleObservation(e.target.value)}
-                            placeholder={isFirstPrescription
-                                ? 'Ex: aluno voltando de lesão, quer focar em pernas, viagem em 3 semanas...'
-                                : 'Alguma mudança ou foco específico para este ciclo?'
-                            }
+                            placeholder="Ex: foco em posterior de coxa, evitar exercícios com barra, lesão no ombro direito..."
                             rows={3}
                             className="w-full rounded-xl border border-k-border-subtle bg-glass-bg px-4 py-3 text-sm text-k-text-primary placeholder:text-k-text-quaternary focus:outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/10 resize-none transition-all"
                         />
                         <p className="text-[11px] text-k-text-quaternary mt-1">
-                            O Copiloto usará essa informação para personalizar o programa
+                            (opcional) A IA vai considerar estas instruções na montagem
                         </p>
                     </div>
 
                     {/* ── Actions ── */}
-                    <div className="flex items-center justify-end gap-3 pt-2">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center sm:justify-end gap-3 pt-2">
                         {isFirstPrescription ? (
                             <>
                                 {/* Estado A: Salvar + Gerar separados */}
@@ -690,9 +706,10 @@ export function PrescriptionProfileForm({
                                 <Button
                                     onClick={handleGenerate}
                                     disabled={!existingProfile || availableDays.length === 0}
-                                    className="bg-violet-600 hover:bg-violet-500 text-white gap-2"
+                                    className="bg-violet-600 hover:bg-violet-500 text-white gap-2 w-full sm:w-auto group"
+                                    title={!existingProfile ? 'Salve o perfil primeiro' : availableDays.length === 0 ? 'Selecione pelo menos 1 dia' : undefined}
                                 >
-                                    <Sparkles className="w-4 h-4" />
+                                    <Sparkles className="w-4 h-4 group-hover:animate-pulse" />
                                     Gerar Programa
                                 </Button>
                             </>
@@ -701,12 +718,13 @@ export function PrescriptionProfileForm({
                             <Button
                                 onClick={handleSaveAndGenerate}
                                 disabled={generating || availableDays.length === 0}
-                                className="bg-violet-600 hover:bg-violet-500 text-white gap-2"
+                                className="bg-violet-600 hover:bg-violet-500 text-white gap-2 w-full sm:w-auto group"
+                                title={availableDays.length === 0 ? 'Selecione pelo menos 1 dia' : undefined}
                             >
                                 {generating ? (
                                     <Loader2 className="w-4 h-4 animate-spin" />
                                 ) : (
-                                    <Sparkles className="w-4 h-4" />
+                                    <Sparkles className="w-4 h-4 group-hover:animate-pulse" />
                                 )}
                                 {generating ? 'Preparando...' : 'Gerar Programa'}
                             </Button>
@@ -722,17 +740,25 @@ export function PrescriptionProfileForm({
 // Context stat helper (Estado B card)
 // ============================================================================
 
-function ContextStat({ icon: Icon, label, value }: {
-    icon: React.ComponentType<{ className?: string }>
+function ContextStat({ label, value, valueClassName, indicator }: {
     label: string
     value: string
+    valueClassName?: string
+    indicator?: 'active' | 'none'
 }) {
     return (
-        <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-white/[0.03] border border-k-border-subtle">
-            <Icon className="w-3.5 h-3.5 text-violet-400 flex-shrink-0" />
-            <div className="min-w-0">
-                <p className="text-[10px] font-medium text-k-text-quaternary truncate">{label}</p>
-                <p className="text-sm font-semibold text-k-text-primary truncate">{value}</p>
+        <div className="flex-1 min-w-[calc(50%-6px)] sm:min-w-0 px-3 sm:px-4 py-2">
+            <p className="text-[10px] font-medium text-k-text-quaternary truncate">{label}</p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+                {indicator === 'active' && (
+                    <div className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0" />
+                )}
+                {indicator === 'none' && (
+                    <div className="w-2 h-2 rounded-full bg-k-text-quaternary/40 flex-shrink-0" />
+                )}
+                <p className={`text-2xl font-bold truncate ${valueClassName || 'text-k-text-primary'}`}>
+                    {value}
+                </p>
             </div>
         </div>
     )

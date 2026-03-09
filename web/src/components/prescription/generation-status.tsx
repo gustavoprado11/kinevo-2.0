@@ -17,17 +17,16 @@ interface GenerationStatusProps {
 // ============================================================================
 
 const GENERATION_STEPS = [
-    'Analisando perfil do aluno...',
-    'Consultando regras de prescrição...',
     'Montando estrutura do programa...',
     'Selecionando exercícios...',
-    'Validando volume e restrições...',
-    'Finalizando programa...',
+    'Calculando volume e progressão...',
+    'Validando restrições...',
+    'Revisando programa final...',
 ]
 
 const ANALYSIS_STEPS = [
-    'Coletando histórico do aluno...',
-    'Analisando programas anteriores...',
+    'Analisando histórico de treinos...',
+    'Comparando com programas anteriores...',
     'Verificando progressão de cargas...',
     'Pesquisando evidências científicas...',
     'Identificando lacunas no perfil...',
@@ -93,11 +92,11 @@ export function GenerationStatus({ studentName, phase = 'generating' }: Generati
     const progress = Math.min(((currentStep + 1) / STEPS.length) * 100, 100)
 
     return (
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 overflow-hidden">
+        <div className="bg-gradient-to-b from-white to-gray-50 dark:from-glass-bg dark:to-glass-bg rounded-2xl border border-gray-200 dark:border-k-border-primary shadow-sm p-8 overflow-hidden">
             <div className="flex flex-col items-center text-center space-y-6">
                 {/* Animated brain icon */}
                 <div className="relative">
-                    <div className="w-16 h-16 rounded-2xl bg-violet-50 border border-violet-200 flex items-center justify-center">
+                    <div className="w-16 h-16 rounded-2xl bg-violet-50 dark:bg-violet-500/10 border border-violet-200 dark:border-violet-500/30 flex items-center justify-center">
                         <Brain className="w-8 h-8 text-violet-500 animate-[pulse-subtle_2s_ease-in-out_infinite]" />
                     </div>
                     {/* Orbiting sparkle */}
@@ -107,27 +106,29 @@ export function GenerationStatus({ studentName, phase = 'generating' }: Generati
                     {/* Ripple rings */}
                     <div className="absolute inset-0 rounded-2xl border-2 border-violet-300/40 animate-[ripple_2s_ease-out_infinite]" />
                     <div className="absolute inset-0 rounded-2xl border-2 border-violet-300/20 animate-[ripple_2s_ease-out_infinite_0.8s]" />
+                    {/* Radar ping behind */}
+                    <div className="absolute inset-0 rounded-2xl bg-violet-400/10 animate-ping" style={{ animationDuration: '3s' }} />
                 </div>
 
                 {/* Title */}
                 <div>
-                    <h2 className="text-lg font-bold text-gray-900">
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-k-text-primary">
                         {phase === 'analyzing'
                             ? `Analisando contexto de ${studentName}`
                             : `Gerando programa para ${studentName}`
                         }
                     </h2>
-                    <p className="text-sm text-gray-500 mt-1">
+                    <p className="text-sm text-gray-500 dark:text-k-text-tertiary mt-1">
                         {phase === 'analyzing'
                             ? 'Analisando histórico e pesquisando evidências...'
-                            : 'Isso pode levar alguns segundos...'
+                            : 'Isso costuma levar 15-30 segundos'
                         }
                     </p>
                 </div>
 
                 {/* Progress bar */}
                 <div className="w-full max-w-sm">
-                    <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                    <div className="h-1.5 rounded-full bg-gray-100 dark:bg-white/5 overflow-hidden">
                         <div
                             className="h-full rounded-full bg-gradient-to-r from-violet-400 to-violet-600 transition-all duration-1000 ease-out relative"
                             style={{ width: `${progress}%` }}
@@ -150,7 +151,7 @@ export function GenerationStatus({ studentName, phase = 'generating' }: Generati
                                 key={i}
                                 className={`flex items-center gap-3 px-4 py-2 rounded-lg transition-all duration-500 ${
                                     isCurrent
-                                        ? 'bg-violet-50 border border-violet-200'
+                                        ? 'bg-violet-50 dark:bg-violet-500/10 border border-violet-200 dark:border-violet-500/30'
                                         : isCompleted
                                             ? 'opacity-60'
                                             : 'opacity-0 h-0 py-0 overflow-hidden'
@@ -160,22 +161,22 @@ export function GenerationStatus({ studentName, phase = 'generating' }: Generati
                                 {/* Step indicator */}
                                 <div className="flex-shrink-0 w-5 h-5 flex items-center justify-center">
                                     {isCompleted ? (
-                                        <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
-                                            <Check className="w-3 h-3 text-emerald-600" />
+                                        <div className="w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center">
+                                            <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                                         </div>
                                     ) : isCurrent ? (
                                         <div className="w-3 h-3 rounded-full bg-violet-500 animate-[pulse-dot_1.5s_ease-in-out_infinite]" />
                                     ) : (
-                                        <div className="w-2 h-2 rounded-full bg-gray-300" />
+                                        <div className="w-2 h-2 rounded-full bg-gray-300 dark:bg-k-text-quaternary" />
                                     )}
                                 </div>
 
                                 <span className={`text-sm transition-colors duration-500 ${
                                     isCurrent
-                                        ? 'text-violet-700 font-medium'
+                                        ? 'text-violet-700 dark:text-violet-300 font-medium'
                                         : isCompleted
-                                            ? 'text-gray-500'
-                                            : 'text-gray-400'
+                                            ? 'text-gray-500 dark:text-k-text-quaternary line-through'
+                                            : 'text-gray-400 dark:text-k-text-quaternary'
                                 }`}>
                                     {step}
                                 </span>
@@ -189,7 +190,7 @@ export function GenerationStatus({ studentName, phase = 'generating' }: Generati
                     <div className="w-full max-w-sm px-4 animate-[fade-in_0.5s_ease-out]">
                         <p
                             key={thinkingIdx}
-                            className="text-xs text-gray-400 italic text-center animate-[fade-in_0.6s_ease-out]"
+                            className="text-xs text-gray-400 dark:text-k-text-quaternary italic text-center animate-[fade-in_0.6s_ease-out]"
                         >
                             {THINKING_MESSAGES[thinkingIdx]}
                         </p>
@@ -197,7 +198,7 @@ export function GenerationStatus({ studentName, phase = 'generating' }: Generati
                 )}
 
                 {/* Elapsed time */}
-                <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                <div className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-k-text-quaternary">
                     <div className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
                     <span>{formatElapsed(elapsedSeconds)}</span>
                 </div>

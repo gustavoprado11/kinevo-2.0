@@ -17,6 +17,7 @@ import type {
     GeneratedWorkout,
     GeneratedWorkoutItem,
     StudentPrescriptionProfile,
+    TrainerPatterns,
 } from '@kinevo/shared/types/prescription'
 
 import type { PrescriptionConstraints } from './constraints-engine'
@@ -209,6 +210,7 @@ RULES:
 - Do NOT add/remove workouts or exercises.
 - Do NOT change reps, rest, or scheduled days.
 - If no improvements needed, return empty swaps/adjustments arrays.
+- If trainer_preferences are provided, incorporate them when possible (prefer swaps and set adjustments that align with the trainer's historical patterns). NEVER violate absolute constraints or volume limits to satisfy a preference.
 
 OUTPUT: Return ONLY valid JSON matching this schema:
 {
@@ -220,11 +222,23 @@ OUTPUT: Return ONLY valid JSON matching this schema:
 }`
 }
 
+function buildTrainerPreferenceText(trainerPatterns?: TrainerPatterns | null): string {
+    if (!trainerPatterns || trainerPatterns.patterns.length === 0) return ''
+
+    const lines = trainerPatterns.patterns
+        .slice(0, 5)
+        .map(p => `• ${p.description}`)
+        .join('\n')
+
+    return `PREFERÊNCIAS DO TREINADOR (aprendidas de ${trainerPatterns.analyzed_prescriptions} prescrições):\n${lines}`
+}
+
 function buildOptimizerUserPrompt(
     builderOutput: PrescriptionOutputSnapshot,
     contextSummary: ContextSummary,
     constraints: PrescriptionConstraints,
     swapCandidates: SwapCandidate[],
+    trainerPatterns?: TrainerPatterns | null,
 ): string {
     // Compact program representation
     const compactWorkouts = builderOutput.workouts.map(w => ({
@@ -244,11 +258,17 @@ function buildOptimizerUserPrompt(
         budget[group] = `${range.min}-${range.max}`
     }
 
-    const payload = {
+    const trainerPreferenceText = buildTrainerPreferenceText(trainerPatterns)
+
+    const payload: Record<string, unknown> = {
         program: compactWorkouts,
         context: contextSummary,
         volume_budget: budget,
         swap_candidates: swapCandidates,
+    }
+
+    if (trainerPreferenceText) {
+        payload.trainer_preferences = trainerPreferenceText
     }
 
     return JSON.stringify(payload)
@@ -401,6 +421,7 @@ export async function optimizeWithAI(
     enrichedContext: EnrichedStudentContext,
     exercises: PrescriptionExerciseRef[],
     trainerAnswers?: PrescriptionAgentAnswer[],
+    trainerPatterns?: TrainerPatterns | null,
 ): Promise<OptimizerResult> {
     const skipResult: OptimizerResult = {
         output: builderOutput,
@@ -442,7 +463,7 @@ export async function optimizeWithAI(
 
         // Build prompt
         const systemPrompt = buildOptimizerSystemPrompt()
-        const userPrompt = buildOptimizerUserPrompt(builderOutput, contextSummary, constraints, swapCandidates)
+        const userPrompt = buildOptimizerUserPrompt(builderOutput, contextSummary, constraints, swapCandidates, trainerPatterns)
 
         const estimatedTokens = Math.round((systemPrompt.length + userPrompt.length) / 4)
         console.log(`[BuilderFirst] Optimizer prompt: ~${estimatedTokens} tokens`)

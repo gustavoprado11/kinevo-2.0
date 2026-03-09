@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Brain, ChevronDown, ChevronUp, AlertTriangle, Loader2 } from 'lucide-react'
+import { Brain, ChevronDown, ChevronUp, AlertTriangle, Loader2, Sparkles, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 import type {
@@ -155,50 +155,104 @@ export function AgentQuestionsPanel({
             {/* Questions card */}
             <div className="bg-glass-bg backdrop-blur-md rounded-2xl border border-k-border-primary p-6 space-y-6">
                 <div>
-                    <h3 className="text-lg font-bold text-k-text-primary">
-                        Preciso de mais algumas informações
+                    <h3 className="text-lg font-bold text-k-text-primary flex items-center gap-2">
+                        <Brain className="w-5 h-5 text-violet-500" />
+                        Quase lá! Algumas decisões para refinar
                     </h3>
                     <p className="text-sm text-k-text-tertiary mt-1">
-                        Com base no histórico de {studentName}, tenho {questions.length} {questions.length === 1 ? 'dúvida' : 'dúvidas'} antes de prescrever:
+                        A IA identificou {questions.length} {questions.length === 1 ? 'ponto que precisa' : 'pontos que precisam'} da sua decisão antes de montar o programa.
                     </p>
                 </div>
 
-                <div className="space-y-5">
+                <div className="space-y-4">
                     {questions.map((q, i) => {
                         const answer = structuredAnswers[q.id] || { selectedOptions: [], textInput: '' }
+                        const isMultiChoice = q.type === 'multi_choice'
+
+                        // Per-QUESTION mode decision: if ANY option has "—" or >50 chars → ALL render as card
+                        const useCardMode = q.options?.some(o => o.includes(' — ') || o.length > 50) || false
 
                         return (
-                            <div key={q.id} className="space-y-2">
-                                <div>
-                                    <span className="text-sm font-medium text-k-text-primary">
-                                        {i + 1}. {q.question}
-                                    </span>
-                                    {q.context && (
-                                        <span className="block text-xs text-k-text-tertiary mt-0.5">
-                                            {q.context}
+                            <div key={q.id} className="border border-k-border-subtle rounded-xl p-5 space-y-3">
+                                <div className="flex items-start gap-3">
+                                    <div className="w-7 h-7 rounded-full bg-violet-600 text-white flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">
+                                        {i + 1}
+                                    </div>
+                                    <div>
+                                        <span className="text-sm font-medium text-k-text-primary">
+                                            {q.question}
                                         </span>
-                                    )}
+                                        {q.context && (
+                                            <span className="block text-xs text-k-text-tertiary mt-0.5">
+                                                {q.context}
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
 
                                 {/* Options for single_choice / multi_choice */}
                                 {(q.type === 'single_choice' || q.type === 'multi_choice') && q.options && (
-                                    <div className="flex flex-wrap gap-2 mt-1">
+                                    <div className={
+                                        useCardMode
+                                            ? 'space-y-2 mt-1'
+                                            : isMultiChoice
+                                                ? 'grid grid-cols-2 sm:grid-cols-3 gap-2 mt-1'
+                                                : 'flex flex-wrap gap-2 mt-1'
+                                    }>
                                         {q.options.map(option => {
                                             const isSelected = answer.selectedOptions.includes(option)
+
+                                            if (useCardMode) {
+                                                // Card mode — ALL options render as card
+                                                const hasDash = option.includes(' — ')
+                                                const [title, description] = hasDash
+                                                    ? [option.split(' — ')[0], option.split(' — ').slice(1).join(' — ')]
+                                                    : [option, null]
+
+                                                return (
+                                                    <button
+                                                        key={option}
+                                                        type="button"
+                                                        onClick={() => handleOptionToggle(q, option)}
+                                                        disabled={isSubmitting}
+                                                        className={`w-full text-left px-4 py-3 rounded-lg border transition-all duration-150 active:scale-[0.97] disabled:opacity-50 ${
+                                                            isSelected
+                                                                ? 'border-violet-500 bg-violet-500/10'
+                                                                : 'border-k-border-primary bg-k-surface hover:border-violet-400'
+                                                        }`}
+                                                    >
+                                                        <div className="flex items-start justify-between gap-2">
+                                                            <div className="min-w-0">
+                                                                <p className={`text-sm font-semibold ${isSelected ? 'text-violet-400' : 'text-k-text-primary'}`}>
+                                                                    {title}
+                                                                </p>
+                                                                {description && (
+                                                                    <p className="text-xs text-k-text-tertiary mt-0.5">{description}</p>
+                                                                )}
+                                                            </div>
+                                                            {isSelected && (
+                                                                <Check className="w-4 h-4 text-violet-400 flex-shrink-0 mt-0.5" />
+                                                            )}
+                                                        </div>
+                                                    </button>
+                                                )
+                                            }
+
+                                            // Chip mode — ALL options render as chip
                                             return (
                                                 <button
                                                     key={option}
                                                     type="button"
                                                     onClick={() => handleOptionToggle(q, option)}
                                                     disabled={isSubmitting}
-                                                    className={`px-3 py-1.5 rounded-lg text-sm border transition-all disabled:opacity-50 ${
+                                                    className={`px-4 py-2 rounded-lg text-sm border transition-all duration-150 active:scale-[0.97] disabled:opacity-50 ${
                                                         isSelected
-                                                            ? 'bg-violet-600 border-violet-500 text-white'
-                                                            : 'bg-k-surface border-k-border-primary text-k-text-secondary hover:border-violet-400'
+                                                            ? 'border-violet-500 bg-violet-500/10 text-violet-400 font-medium'
+                                                            : 'border-k-border-primary bg-k-surface text-k-text-secondary hover:border-violet-400'
                                                     }`}
                                                 >
-                                                    {q.type === 'multi_choice' && isSelected && (
-                                                        <span className="mr-1">✓</span>
+                                                    {isMultiChoice && isSelected && (
+                                                        <Check className="w-3 h-3 inline mr-1 -mt-0.5" />
                                                     )}
                                                     {option}
                                                 </button>
@@ -212,10 +266,11 @@ export function AgentQuestionsPanel({
                                     <textarea
                                         value={answer.textInput}
                                         onChange={(e) => handleTextChange(q, e.target.value)}
-                                        placeholder={q.placeholder || (q.type === 'text' ? 'Sua resposta...' : 'Informação adicional (opcional)...')}
+                                        placeholder={q.placeholder || (q.type === 'text' ? 'Sua resposta...' : 'Algo mais? (opcional)')}
                                         disabled={isSubmitting}
-                                        rows={2}
-                                        className="w-full px-4 py-3 rounded-xl bg-k-surface border border-k-border-primary text-sm text-k-text-primary placeholder:text-k-text-tertiary focus:border-violet-500/50 focus:outline-none focus:ring-1 focus:ring-violet-500/20 resize-none disabled:opacity-50 transition-colors"
+                                        rows={1}
+                                        className="w-full px-4 py-3 rounded-lg bg-k-surface border border-k-border-primary text-sm text-k-text-primary placeholder:text-k-text-tertiary focus:border-violet-500/50 focus:outline-none focus:ring-1 focus:ring-violet-500/20 resize-none disabled:opacity-50 transition-colors"
+                                        style={{ minHeight: '40px', maxHeight: '120px', fieldSizing: 'content' } as React.CSSProperties}
                                     />
                                 )}
                             </div>
@@ -223,30 +278,36 @@ export function AgentQuestionsPanel({
                     })}
                 </div>
 
-                {/* Actions */}
-                <div className="flex items-center justify-between pt-2">
-                    <button
-                        onClick={() => setShowSkipConfirm(true)}
-                        disabled={isSubmitting}
-                        className="text-sm text-k-text-tertiary hover:text-k-text-secondary transition-colors disabled:opacity-50"
-                    >
-                        Pular perguntas
-                    </button>
+                {/* Actions — sticky on mobile */}
+                <div className="sticky bottom-0 -mx-6 -mb-6 px-6 py-4 bg-glass-bg/80 backdrop-blur-sm border-t border-k-border-subtle sm:static sm:mx-0 sm:mb-0 sm:px-0 sm:py-0 sm:bg-transparent sm:backdrop-blur-none sm:border-0 sm:pt-2">
+                    <div className="flex items-center justify-between">
+                        <Button
+                            variant="ghost"
+                            onClick={() => setShowSkipConfirm(true)}
+                            disabled={isSubmitting}
+                            className="text-k-text-tertiary hover:text-k-text-secondary"
+                        >
+                            Pular perguntas
+                        </Button>
 
-                    <Button
-                        onClick={onSubmit}
-                        disabled={!allAnswered || isSubmitting}
-                        className="bg-violet-600 hover:bg-violet-500 text-white gap-2"
-                    >
-                        {isSubmitting ? (
-                            <>
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                                Gerando...
-                            </>
-                        ) : (
-                            'Gerar Programa'
-                        )}
-                    </Button>
+                        <Button
+                            onClick={onSubmit}
+                            disabled={!allAnswered || isSubmitting}
+                            className="bg-violet-600 hover:bg-violet-500 text-white gap-2"
+                        >
+                            {isSubmitting ? (
+                                <>
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    Gerando...
+                                </>
+                            ) : (
+                                <>
+                                    <Sparkles className="w-4 h-4" />
+                                    Gerar Programa
+                                </>
+                            )}
+                        </Button>
+                    </div>
                 </div>
             </div>
 
