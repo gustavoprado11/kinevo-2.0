@@ -140,6 +140,8 @@ struct WorkoutExecutionView: View {
         .font(.headline)
         .foregroundStyle(.white)
         .multilineTextAlignment(.center)
+        .lineLimit(2)
+        .minimumScaleFactor(0.75)
       Text("\(workout.exercises.count) exercícios")
         .font(.caption2)
         .foregroundStyle(.secondary)
@@ -422,13 +424,16 @@ private struct ExerciseExecutionPage: View {
           Text("Anterior \(String(format: "%.0f", lw)) × \(lr)")
             .font(.system(size: compact ? 9 : 10, weight: .medium))
             .foregroundStyle(.gray.opacity(0.7))
+            .lineLimit(1)
 
           if let progressText = progressLabel(exercise: exercise) {
             Text(progressText)
               .font(.system(size: compact ? 9 : 10, weight: .bold))
               .foregroundStyle(.green)
+              .lineLimit(1)
           }
         }
+        .minimumScaleFactor(0.7)
       }
 
       HStack(spacing: 0) {
@@ -528,10 +533,13 @@ private struct ExerciseExecutionPage: View {
             .foregroundStyle(.green)
           Text("Série concluída")
             .font(.system(size: 11, weight: .semibold))
+            .lineLimit(1)
         }
         Text("\(String(format: "%.1f", last.weight))kg × \(last.reps)")
           .font(.system(size: 10))
           .foregroundStyle(.secondary)
+          .lineLimit(1)
+          .minimumScaleFactor(0.7)
       }
 
       Spacer()
@@ -542,6 +550,7 @@ private struct ExerciseExecutionPage: View {
         Text("Desfazer")
           .font(.system(size: 11, weight: .semibold))
           .foregroundStyle(Color.kinevoViolet)
+          .lineLimit(1)
       }
       .buttonStyle(.plain)
     }
@@ -562,6 +571,7 @@ private struct ExerciseExecutionPage: View {
       Text("Novo recorde!")
         .font(.system(size: 11, weight: .bold))
         .foregroundStyle(.yellow)
+        .lineLimit(1)
     }
     .padding(.horizontal, 10)
     .padding(.vertical, 4)
@@ -697,10 +707,14 @@ private struct CrownInputCard: View {
         Text(subtitle)
           .font(.system(size: compact ? 9 : 10, weight: .medium))
           .foregroundStyle(Color.kinevoViolet.opacity(0.9))
+          .lineLimit(1)
+          .minimumScaleFactor(0.7)
       } else {
         Text(title.lowercased() == "reps" ? "Repetições" : "\(title) (\(unit))")
           .font(.caption2)
           .foregroundStyle(.gray)
+          .lineLimit(1)
+          .minimumScaleFactor(0.7)
       }
     }
     .frame(maxWidth: .infinity, minHeight: compact ? 60 : 70)
@@ -727,6 +741,8 @@ private struct SwipeHintView: View {
       Text("Próximo exercício")
         .font(.system(size: 13, weight: .semibold))
         .foregroundStyle(.white.opacity(0.85))
+        .lineLimit(1)
+        .minimumScaleFactor(0.75)
 
       Image(systemName: "chevron.right")
         .font(.system(size: 12, weight: .bold))
@@ -773,6 +789,8 @@ private struct RestTimerSheet: View {
           .font(.caption2)
           .foregroundStyle(.secondary)
           .multilineTextAlignment(.center)
+          .lineLimit(2)
+          .minimumScaleFactor(0.7)
 
         ZStack {
           Circle()
