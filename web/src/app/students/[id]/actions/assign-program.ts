@@ -2,6 +2,8 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { insertStudentNotification } from '@/lib/student-notifications'
+import { sendStudentPush } from '@/lib/push-notifications'
 
 interface AssignProgramParams {
     studentId: string
@@ -255,6 +257,25 @@ export async function assignProgram({ studentId, templateId, startDate, isSchedu
                     updated_at: new Date().toISOString(),
                 })
                 .eq('id', prescriptionGenerationId)
+        }
+
+        // 8. Notify student (fire-and-forget)
+        if (status === 'active') {
+            const programName = template.name
+            insertStudentNotification({
+                studentId,
+                trainerId: trainer.id,
+                type: 'program_assigned',
+                title: 'Novo programa de treino!',
+                subtitle: `${programName} está disponível no seu app.`,
+                payload: { program_id: assignedProgram.id, program_name: programName },
+            })
+            sendStudentPush({
+                studentId,
+                title: 'Novo programa de treino!',
+                body: `${programName} está disponível no seu app.`,
+                data: { program_id: assignedProgram.id },
+            })
         }
 
         revalidatePath(`/students/${studentId}`)

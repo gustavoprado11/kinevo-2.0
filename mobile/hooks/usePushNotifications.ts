@@ -63,23 +63,24 @@ async function registerTokenOnBackend(expoPushToken: string, role: "trainer" | "
 }
 
 /**
- * Hook: manages push notification lifecycle for trainer mode.
+ * Hook: manages push notification lifecycle.
  * - Requests permission + registers token on mount
  * - Sets up foreground notification handler
  * - Listens for notification taps and navigates via deep link
+ * @param role - 'trainer' | 'student' | null (null = disabled)
  */
-export function usePushNotifications(enabled: boolean) {
+export function usePushNotifications(role: "trainer" | "student" | null) {
     const router = useRouter();
     const notificationListener = useRef<EventSubscription>(null);
     const responseListener = useRef<EventSubscription>(null);
 
     useEffect(() => {
-        if (!enabled) return;
+        if (!role) return;
 
-        // Register token
+        // Register token with the correct role
         registerForPushNotificationsAsync().then((token) => {
             if (token) {
-                registerTokenOnBackend(token, "trainer");
+                registerTokenOnBackend(token, role);
             }
         });
 
@@ -122,5 +123,5 @@ export function usePushNotifications(enabled: boolean) {
             notificationListener.current?.remove();
             responseListener.current?.remove();
         };
-    }, [enabled, router]);
+    }, [role, router]);
 }

@@ -214,6 +214,8 @@ async function fetchExercises(
             is_primary_movement,
             session_position,
             movement_pattern,
+            movement_pattern_family,
+            fatigue_class,
             exercise_muscle_groups (
                 muscle_groups (
                     id,
@@ -247,6 +249,8 @@ async function fetchExercises(
             is_primary_movement: e.is_primary_movement || false,
             session_position: e.session_position || 'middle',
             movement_pattern: e.movement_pattern || null,
+            movement_pattern_family: e.movement_pattern_family || null,
+            fatigue_class: e.fatigue_class || 'moderate',
             prescription_notes: e.prescription_notes || null,
         } satisfies PrescriptionExerciseRef
     })

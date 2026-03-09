@@ -18,6 +18,7 @@ class HealthKitManager: NSObject, ObservableObject {
 
     override init() {
         super.init()
+        recoverActiveWorkoutSession()
     }
 
     // MARK: - Authorization
@@ -49,11 +50,52 @@ class HealthKitManager: NSObject, ObservableObject {
         }
     }
 
+    // MARK: - Crash Recovery
+
+    /// Attempt to recover an active workout session after app relaunch.
+    /// Called on init — if watchOS killed the app while a workout was running,
+    /// this reclaims the HKWorkoutSession so HR/calories tracking continues.
+    private func recoverActiveWorkoutSession() {
+        guard HKHealthStore.isHealthDataAvailable() else { return }
+
+        healthStore.recoverActiveWorkoutSession { [weak self] session, error in
+            guard let self else { return }
+
+            if let error {
+                print("[HealthKit] No active session to recover: \(error.localizedDescription)")
+                return
+            }
+
+            guard let session else {
+                print("[HealthKit] recoverActiveWorkoutSession returned nil session")
+                return
+            }
+
+            print("[HealthKit] Recovered active workout session — state: \(session.state.rawValue)")
+
+            self.workoutSession = session
+            self.builder = session.associatedWorkoutBuilder()
+
+            session.delegate = self
+            self.builder?.delegate = self
+
+            DispatchQueue.main.async {
+                self.isWorkoutActive = (session.state == .running)
+            }
+        }
+    }
+
     // MARK: - Workout Session
 
     func startWorkout() {
         guard HKHealthStore.isHealthDataAvailable() else {
             print("[HealthKit] Health data not available")
+            return
+        }
+
+        // Don't start a new session if one is already active
+        if workoutSession != nil {
+            print("[HealthKit] Workout session already active — skipping startWorkout")
             return
         }
 
@@ -116,11 +158,11 @@ class HealthKitManager: NSObject, ObservableObject {
 
             builder.finishWorkout { workout, error in
                 if let error = error {
-                    print("[HealthKit] ❌ Failed to save workout to HealthKit: \(error)")
+                    print("[HealthKit] Failed to save workout to HealthKit: \(error)")
                 } else if let workout = workout {
                     let duration = workout.duration
                     let calories = workout.totalEnergyBurned?.doubleValue(for: .kilocalorie()) ?? 0
-                    print("[HealthKit] ✅ Workout saved to HealthKit — duration: \(Int(duration))s, calories: \(Int(calories)) kcal")
+                    print("[HealthKit] Workout saved to HealthKit — duration: \(Int(duration))s, calories: \(Int(calories)) kcal")
                 }
 
                 DispatchQueue.main.async {

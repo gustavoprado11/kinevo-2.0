@@ -34,7 +34,8 @@ const DEFAULT_WEIGHTS: ScoreWeights = {
     preference: 0.20,
 }
 
-const SMART_GROUP_LIMITS: Record<string, number> = {
+/** Original limits (pre-Tier 1) — kept for feature flag fallback */
+const SMART_GROUP_LIMITS_ORIGINAL: Record<string, number> = {
     'Peito': 8,
     'Costas': 8,
     'Ombros': 8,
@@ -49,6 +50,29 @@ const SMART_GROUP_LIMITS: Record<string, number> = {
     'Adutores': 3,
     'Trapézio': 3,
     'Antebraço': 2,
+}
+
+/** Tier 1 compact limits — sized to typical program needs + 1-2 alternatives */
+const SMART_GROUP_LIMITS_COMPACT: Record<string, number> = {
+    'Peito': 4,
+    'Costas': 4,
+    'Ombros': 3,
+    'Quadríceps': 4,
+    'Glúteo': 3,
+    'Posterior de Coxa': 3,
+    'Bíceps': 2,
+    'Tríceps': 2,
+    'Panturrilha': 2,
+    'Abdominais': 2,
+    'Oblíquos': 1,
+    'Adutores': 1,
+    'Trapézio': 1,
+    'Antebraço': 1,
+}
+
+function getSmartGroupLimits(): Record<string, number> {
+    const useCompact = process.env.ENABLE_COMPACT_EXERCISE_POOL !== 'false'
+    return useCompact ? SMART_GROUP_LIMITS_COMPACT : SMART_GROUP_LIMITS_ORIGINAL
 }
 
 // ============================================================================
@@ -143,7 +167,9 @@ export function selectSmartExercises(
     const selected: ScoredExercise[] = []
     const selectedIds = new Set<string>()
 
-    for (const [group, limit] of Object.entries(SMART_GROUP_LIMITS)) {
+    const groupLimits = getSmartGroupLimits()
+
+    for (const [group, limit] of Object.entries(groupLimits)) {
         const groupExercises = byGroup[group] || []
 
         // Sort by score descending

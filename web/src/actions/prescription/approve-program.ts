@@ -4,6 +4,8 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { computeEditsDiff, convertAssignedToGeneratedWorkouts } from '@/lib/prescription/edits-diff'
 import { refreshTrainerPatterns } from '@/lib/prescription/trainer-patterns'
+import { insertStudentNotification } from '@/lib/student-notifications'
+import { sendStudentPush } from '@/lib/push-notifications'
 
 // ============================================================================
 // Response
@@ -77,7 +79,7 @@ export async function approveProgram(
     // 4. Verify the program is still in draft status
     const { data: program } = await supabase
         .from('assigned_programs')
-        .select('id, status')
+        .select('id, status, name')
         .eq('id', programId)
         .single()
 
@@ -187,6 +189,23 @@ export async function approveProgram(
             // Column doesn't exist yet — safe to ignore
         }
     }
+
+    // Notify student (fire-and-forget)
+    const programName = (program as any).name ?? 'Novo programa'
+    insertStudentNotification({
+        studentId,
+        trainerId: trainer.id,
+        type: 'program_assigned',
+        title: 'Novo programa de treino!',
+        subtitle: `${programName} está disponível no seu app.`,
+        payload: { program_id: programId, program_name: programName },
+    })
+    sendStudentPush({
+        studentId,
+        title: 'Novo programa de treino!',
+        body: `${programName} está disponível no seu app.`,
+        data: { program_id: programId },
+    })
 
     revalidatePath(`/students/${studentId}`)
 

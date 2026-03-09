@@ -2,6 +2,7 @@ import { requireNativeModule, type EventSubscription } from 'expo-modules-core';
 import { Platform } from 'react-native';
 import type {
   WatchWorkoutPayload,
+  WatchProgramPayload,
   WatchMessageEvent,
 } from './WatchConnectivityModule.types';
 
@@ -31,6 +32,20 @@ export function syncWorkoutToWatch(workout: WatchWorkoutPayload | null): void {
 
   const workoutJSON = JSON.stringify(workout);
   return WatchConnectivityModule.syncWorkoutToWatch(workoutJSON);
+}
+
+/**
+ * Sync the full program snapshot to Apple Watch (schemaVersion 2).
+ * Uses updateApplicationContext (last-write-wins state channel).
+ */
+export function syncProgramToWatch(program: WatchProgramPayload | null): void {
+  if (!WatchConnectivityModule || !WatchConnectivityModule.syncProgramToWatch) {
+    console.error('[WatchConnectivityModule.ts] syncProgramToWatch not available');
+    return;
+  }
+
+  const programJSON = JSON.stringify(program);
+  return WatchConnectivityModule.syncProgramToWatch(programJSON);
 }
 
 /**

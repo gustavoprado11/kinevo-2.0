@@ -12,6 +12,9 @@ export async function getSessionDetails(sessionId: string): Promise<GetSessionDe
     const supabase = await createClient()
 
     try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return { success: false, error: 'Não autorizado' }
+
         // 1. Get Session Info (including workout name)
         const { data: session, error: sessionError } = await supabase
             .from('workout_sessions')

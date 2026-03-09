@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
         const { data: exercisesRaw } = await supabase
             .from('exercises')
             .select(`
-                id, name, equipment, difficulty_level, is_primary_movement, session_position, movement_pattern,
+                id, name, equipment, difficulty_level, is_primary_movement, session_position, movement_pattern, movement_pattern_family, fatigue_class,
                 exercise_muscle_groups ( muscle_groups ( id, name ) )
             `)
             .eq('is_archived', false)
@@ -131,6 +131,8 @@ export async function POST(request: NextRequest) {
                 is_primary_movement: e.is_primary_movement || false,
                 session_position: e.session_position || 'middle',
                 movement_pattern: e.movement_pattern || null,
+                movement_pattern_family: e.movement_pattern_family || null,
+                fatigue_class: e.fatigue_class || 'moderate',
                 prescription_notes: e.prescription_notes || null,
             }
         })

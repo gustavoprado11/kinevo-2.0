@@ -16,13 +16,15 @@ import type {
 } from '@kinevo/shared/types/prescription'
 
 import { validateInput, validateOutput, fixViolations, resolveAiMode } from '@/lib/prescription/rules-engine'
-import { buildHeuristicProgram } from '@/lib/prescription/program-builder'
+import { buildHeuristicProgram, buildSlotBasedProgram } from '@/lib/prescription/program-builder'
 import { buildPromptPair, parseAiResponse } from '@/lib/prescription/prompt-builder'
 import { ENGINE_VERSION } from '@/lib/prescription/constants'
 import { generateWithAgent } from '@/lib/prescription/claude-agent'
 import { enrichStudentContext } from '@/lib/prescription/context-enricher'
 import { buildConstraints } from '@/lib/prescription/constraints-engine'
 import { selectSmartExercises } from '@/lib/prescription/exercise-selector'
+import { getSubstitutes } from '@/lib/prescription/exercise-graph'
+import { optimizeWithAI } from '@/lib/prescription/ai-optimizer'
 
 // ============================================================================
 // Types
@@ -214,6 +216,9 @@ export async function generateProgram(
     let allViolations: RulesViolation[] = []
 
     // ── 10a. Try Claude Agent if agentState is provided ──
+    const builderFirstMode = process.env.ENABLE_BUILDER_FIRST === 'true'
+    console.log(`[generateProgram] Mode: ${builderFirstMode ? 'builder-first' : 'agent'}`)
+
     if (agentState) {
         // Enforce agent state size limit
         const stateSize = new TextEncoder().encode(JSON.stringify(agentState)).length
@@ -275,6 +280,143 @@ export async function generateProgram(
         const previousIds = new Set(enrichedContext.previous_exercise_ids || [])
         const smartExercises = selectSmartExercises(agentExercises, constraints, previousIds)
 
+        // Tier 1: Attach top 2 graph substitutes to each exercise (if compact pool enabled)
+        const useCompactPool = process.env.ENABLE_COMPACT_EXERCISE_POOL !== 'false'
+        if (useCompactPool) {
+            const poolIds = new Set(smartExercises.map(e => e.id))
+            await Promise.all(smartExercises.map(async (ex) => {
+                try {
+                    const subs = await getSubstitutes(ex.id)
+                    // Filter to substitutes that exist in the pool and take top 2
+                    const validSubs = subs
+                        .filter(s => poolIds.has(s.exercise_id) && s.exercise_id !== ex.id)
+                        .slice(0, 2)
+                        .map(s => s.exercise_id)
+                    ;(ex as any).substitute_ids = validSubs
+                } catch {
+                    ;(ex as any).substitute_ids = []
+                }
+            }))
+            const withSubs = smartExercises.filter((e: any) => e.substitute_ids?.length > 0).length
+            console.log(`[LLM_OPT] graph_substitutes: ${withSubs}/${smartExercises.length} exercises have pre-attached subs`)
+        }
+
+        // ── Builder-First Pipeline (feature-flagged) ──
+        const useBuilderFirst = process.env.ENABLE_BUILDER_FIRST === 'true'
+
+        if (useBuilderFirst) {
+            console.log('[BuilderFirst] Pipeline active — skipping agent, using slot builder + optional optimizer')
+
+            // Step 1: Build program deterministically
+            outputSnapshot = await buildSlotBasedProgram(typedProfile, agentExercises, constraints, enrichedContext)
+            source = 'heuristic'
+            model = 'slot-builder'
+            llmStatus = 'llm_disabled' as LLMStatus
+
+            // Step 2: Optionally optimize with AI (Haiku)
+            const optimizerResult = await optimizeWithAI(
+                outputSnapshot,
+                typedProfile,
+                constraints,
+                enrichedContext,
+                agentExercises,
+                agentState.answers,
+            )
+
+            outputSnapshot = optimizerResult.output
+
+            if (optimizerResult.optimizerApplied) {
+                source = 'agent' // Indicate AI was involved
+                model = optimizerResult.model
+                llmStatus = 'llm_used'
+            }
+
+            console.log(`[BuilderFirst] Optimizer status: ${optimizerResult.status}, swaps: ${optimizerResult.swapsApplied}, set_adj: ${optimizerResult.setAdjustments}`)
+
+            // Step 3: Validate final output
+            const agentExerciseMap = new Map(agentExercises.map(e => [e.id, e]))
+            const validation = validateOutput(outputSnapshot, typedProfile, agentExerciseMap, constraints)
+            allViolations = validation.violations
+
+            if (validation.hasErrors) {
+                const fixResult = fixViolations(outputSnapshot, validation.violations, agentExerciseMap)
+                if (fixResult.remainingViolations.some(v => v.severity === 'error')) {
+                    console.warn('[BuilderFirst] Unfixable errors after optimization — rebuilding')
+                    outputSnapshot = await buildSlotBasedProgram(typedProfile, agentExercises, constraints, enrichedContext)
+                    source = 'heuristic'
+                    model = 'slot-builder'
+                    llmStatus = 'validation_failed' as LLMStatus
+                } else {
+                    outputSnapshot = fixResult.fixed
+                    allViolations = [...fixResult.appliedFixes, ...fixResult.remainingViolations]
+                }
+            }
+
+            // Step 4: Save
+            const generationTimeMs = Date.now() - startTime
+
+            const agentInputSnapshot = {
+                ...inputSnapshot,
+                agent_conversation: agentState.conversation_messages,
+                context_analysis: agentState.context_analysis,
+                web_search_queries: agentState.context_analysis?.web_search_queries || [],
+                builder_first: true,
+                optimizer_status: optimizerResult.status,
+                optimizer_tokens: optimizerResult.tokensUsed,
+            }
+
+            // @ts-ignore — table from migration 035
+            const insertPayload: Record<string, unknown> = {
+                trainer_id: trainer.id,
+                student_id: studentId,
+                assigned_program_id: null,
+                ai_mode_used: aiMode,
+                ai_model: model,
+                ai_source: source,
+                input_snapshot: agentInputSnapshot,
+                output_snapshot: outputSnapshot,
+                rules_violations: allViolations,
+                status: 'pending_review',
+                generation_time_ms: generationTimeMs,
+                confidence_score: outputSnapshot.reasoning.confidence_score,
+            }
+
+            // @ts-ignore — table from migration 035
+            const { data: generation, error: genError } = await supabase
+                .from('prescription_generations')
+                .insert(insertPayload)
+                .select('id')
+                .single()
+
+            if (genError || !generation) {
+                console.error('[BuilderFirst] Failed to save generation:', genError)
+                return { success: false, error: 'Erro ao salvar geração.' }
+            }
+
+            // Save equipment answer if changed
+            const equipmentAnswer = agentState.answers?.find(a => a.question_id === 'equipment')?.answer
+            if (equipmentAnswer && resolvedEquipKey && resolvedEquipKey !== profileEquipKey) {
+                // @ts-ignore — table from migration 034
+                await supabase
+                    .from('student_prescription_profiles')
+                    .update({ available_equipment: [resolvedEquipKey] })
+                    .eq('student_id', studentId)
+                    .then(({ error: updateErr }) => {
+                        if (updateErr) console.warn('[BuilderFirst] Failed to save equipment to profile:', updateErr.message)
+                    })
+            }
+
+            return {
+                success: true,
+                generationId: (generation as any).id as string,
+                aiMode,
+                source,
+                llmStatus,
+                violations: allViolations.length > 0 ? allViolations : undefined,
+            }
+        }
+
+        // ── Agent Pipeline (existing path when ENABLE_BUILDER_FIRST is not 'true') ──
         const agentResult = await generateWithAgent(agentState, typedProfile, smartExercises, enrichedContext, constraints, trainerPatterns)
 
         if (agentResult.output && !agentResult.fallback) {
@@ -308,7 +450,12 @@ export async function generateProgram(
                     console.warn('[AgentePrescitor] Unfixable errors:', JSON.stringify(
                         fixResult.remainingViolations.filter(v => v.severity === 'error'), null, 2
                     ))
-                    outputSnapshot = buildHeuristicProgram(typedProfile, agentExercises)
+                    const useSlotBuilder = process.env.ENABLE_SLOT_BASED_BUILDER !== 'false'
+                    if (useSlotBuilder) {
+                        outputSnapshot = await buildSlotBasedProgram(typedProfile, agentExercises, constraints, enrichedContext)
+                    } else {
+                        outputSnapshot = buildHeuristicProgram(typedProfile, agentExercises)
+                    }
                     source = 'heuristic'
                     llmStatus = 'validation_failed' as LLMStatus
                     allViolations = validation.violations
@@ -620,6 +767,8 @@ const EXERCISE_SELECT_COLUMNS = `
     is_primary_movement,
     session_position,
     movement_pattern,
+    movement_pattern_family,
+    fatigue_class,
     prescription_notes,
     exercise_muscle_groups (
         muscle_groups (
@@ -644,6 +793,8 @@ function mapExerciseRow(e: any): PrescriptionExerciseRef {
         is_primary_movement: e.is_primary_movement || false,
         session_position: e.session_position || 'middle',
         movement_pattern: e.movement_pattern || null,
+        movement_pattern_family: e.movement_pattern_family || null,
+        fatigue_class: e.fatigue_class || 'moderate',
         prescription_notes: e.prescription_notes || null,
     }
 }

@@ -112,6 +112,10 @@ export interface PrescriptionExerciseRef {
     session_position: 'first' | 'middle' | 'last'
     /** Biomechanical movement pattern (squat, hinge, lunge, push_h, push_v, pull_h, pull_v, isolation, core, carry) */
     movement_pattern: string | null
+    /** Broader movement family for slot matching (knee_dominant, hip_dominant, horizontal_push, etc.) */
+    movement_pattern_family: string | null
+    /** CNS fatigue classification: high=heavy compounds, moderate=machines/cables, low=isolation */
+    fatigue_class: 'high' | 'moderate' | 'low'
     /** Coaching context for AI: why/when to pick this exercise (only for curated exercises) */
     prescription_notes: string | null
 }

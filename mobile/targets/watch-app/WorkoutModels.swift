@@ -86,6 +86,8 @@ struct WatchExerciseSnapshot: Identifiable {
     let restTime: Int
     var completedSets: Int
     let targetReps: String?
+    let lastWeight: Double?
+    let lastReps: Int?
 
     static func from(_ exercise: WatchExercise) -> WatchExerciseSnapshot {
         WatchExerciseSnapshot(
@@ -96,7 +98,9 @@ struct WatchExerciseSnapshot: Identifiable {
             weight: exercise.weight,
             restTime: exercise.restTime,
             completedSets: exercise.completedSets,
-            targetReps: nil
+            targetReps: nil,
+            lastWeight: nil,
+            lastReps: nil
         )
     }
 
@@ -111,7 +115,9 @@ struct WatchExerciseSnapshot: Identifiable {
             weight: exercise.weight,
             restTime: exercise.restTime,
             completedSets: exercise.completedSets,
-            targetReps: targetReps
+            targetReps: targetReps,
+            lastWeight: dict["lastWeight"] as? Double,
+            lastReps: (dict["lastReps"] as? NSNumber)?.intValue
         )
     }
 }
@@ -166,6 +172,212 @@ struct WatchWorkoutSnapshot {
             isActive: isActive,
             startedAt: startedAt,
             updatedAt: updatedAt
+        )
+    }
+}
+
+// MARK: - Program Snapshot (schemaVersion 2)
+
+/// Full program received from iPhone — contains multiple workouts.
+struct WatchProgramSnapshot {
+    let programId: String
+    let programName: String
+    let currentWeek: Int
+    let totalWeeks: Int
+    let scheduleMode: ScheduleMode
+    let workouts: [WatchProgramWorkoutSummary]
+
+    enum ScheduleMode: String {
+        case scheduled
+        case flexible
+    }
+
+    static func parse(from dict: [String: Any]) -> WatchProgramSnapshot? {
+        guard let programDict = dict["program"] as? [String: Any] else {
+            // hasProgram was false or program key missing
+            return nil
+        }
+
+        guard
+            let programId = programDict["programId"] as? String,
+            let programName = programDict["programName"] as? String,
+            let workoutsArray = programDict["workouts"] as? [[String: Any]]
+        else {
+            print("[WorkoutModels] Failed to parse WatchProgramSnapshot from dict")
+            return nil
+        }
+
+        let currentWeek = programDict["currentWeek"] as? Int ?? 1
+        let totalWeeks = programDict["totalWeeks"] as? Int ?? 0
+        let scheduleModeRaw = programDict["scheduleMode"] as? String ?? "flexible"
+        let scheduleMode = ScheduleMode(rawValue: scheduleModeRaw) ?? .flexible
+
+        let workouts = workoutsArray.compactMap { WatchProgramWorkoutSummary.parse(from: $0) }
+
+        return WatchProgramSnapshot(
+            programId: programId,
+            programName: programName,
+            currentWeek: currentWeek,
+            totalWeeks: totalWeeks,
+            scheduleMode: scheduleMode,
+            workouts: workouts
+        )
+    }
+
+    /// Create a synthetic program from a legacy v1 single-workout context.
+    static func fromLegacy(_ dict: [String: Any]) -> WatchProgramSnapshot? {
+        guard let hasWorkout = dict["hasWorkout"] as? Bool, hasWorkout,
+              let workoutDict = dict["workout"] as? [String: Any],
+              let snapshot = WatchWorkoutSnapshot.parse(from: workoutDict)
+        else {
+            return nil
+        }
+
+        let exercises = snapshot.exercises.map { ex in
+            WatchProgramExerciseSummary(
+                id: ex.id,
+                name: ex.name,
+                muscleGroup: nil,
+                sets: ex.sets,
+                reps: ex.reps,
+                weight: ex.weight,
+                restTime: ex.restTime,
+                targetReps: ex.targetReps,
+                lastWeight: nil,
+                lastReps: nil
+            )
+        }
+
+        let workout = WatchProgramWorkoutSummary(
+            workoutId: snapshot.workoutId,
+            workoutName: snapshot.workoutName,
+            orderIndex: 0,
+            scheduledDays: [],
+            isCompletedToday: false,
+            lastCompletedAt: nil,
+            exercises: exercises
+        )
+
+        return WatchProgramSnapshot(
+            programId: "legacy",
+            programName: "",
+            currentWeek: 1,
+            totalWeeks: 0,
+            scheduleMode: .flexible,
+            workouts: [workout]
+        )
+    }
+}
+
+/// Exercise info within a program workout summary.
+struct WatchProgramExerciseSummary {
+    let id: String
+    let name: String
+    let muscleGroup: String?
+    let sets: Int
+    let reps: Int
+    let weight: Double?
+    let restTime: Int
+    let targetReps: String?
+    let lastWeight: Double?
+    let lastReps: Int?
+
+    static func parse(from dict: [String: Any]) -> WatchProgramExerciseSummary? {
+        guard
+            let id = dict["id"] as? String,
+            let name = dict["name"] as? String
+        else {
+            return nil
+        }
+
+        return WatchProgramExerciseSummary(
+            id: id,
+            name: name,
+            muscleGroup: dict["muscleGroup"] as? String,
+            sets: dict["sets"] as? Int ?? 3,
+            reps: dict["reps"] as? Int ?? 0,
+            weight: dict["weight"] as? Double,
+            restTime: dict["restTime"] as? Int ?? 60,
+            targetReps: dict["targetReps"] as? String,
+            lastWeight: dict["lastWeight"] as? Double,
+            lastReps: (dict["lastReps"] as? NSNumber)?.intValue
+        )
+    }
+}
+
+/// Single workout within a program snapshot.
+struct WatchProgramWorkoutSummary: Identifiable {
+    var id: String { workoutId }
+
+    let workoutId: String
+    let workoutName: String
+    let orderIndex: Int
+    let scheduledDays: [Int]
+    let isCompletedToday: Bool
+    let lastCompletedAt: Date?
+    let exercises: [WatchProgramExerciseSummary]
+
+    /// Whether this workout is scheduled for today.
+    var isScheduledToday: Bool {
+        guard !scheduledDays.isEmpty else { return false }
+        let todayDow = Calendar.current.component(.weekday, from: Date()) - 1 // 1=Sun → 0
+        return scheduledDays.contains(todayDow)
+    }
+
+    static func parse(from dict: [String: Any]) -> WatchProgramWorkoutSummary? {
+        guard
+            let workoutId = dict["workoutId"] as? String,
+            let workoutName = dict["workoutName"] as? String
+        else {
+            return nil
+        }
+
+        let exercisesArray = dict["exercises"] as? [[String: Any]] ?? []
+        let exercises = exercisesArray.compactMap { WatchProgramExerciseSummary.parse(from: $0) }
+
+        let scheduledDays = (dict["scheduledDays"] as? [Any])?.compactMap { ($0 as? NSNumber)?.intValue } ?? []
+        let isCompletedToday = dict["isCompletedToday"] as? Bool ?? false
+        let lastCompletedAtStr = dict["lastCompletedAt"] as? String
+        let lastCompletedAt = lastCompletedAtStr.flatMap { WatchDateParser.parseISO8601($0) }
+
+        return WatchProgramWorkoutSummary(
+            workoutId: workoutId,
+            workoutName: workoutName,
+            orderIndex: dict["orderIndex"] as? Int ?? 0,
+            scheduledDays: scheduledDays,
+            isCompletedToday: isCompletedToday,
+            lastCompletedAt: lastCompletedAt,
+            exercises: exercises
+        )
+    }
+
+    /// Convert to WatchWorkoutSnapshot for WorkoutExecutionView.
+    /// Each execution starts fresh (completedSets = 0).
+    func toWorkoutSnapshot() -> WatchWorkoutSnapshot {
+        let snapshotExercises = exercises.map { ex in
+            WatchExerciseSnapshot(
+                id: ex.id,
+                name: ex.name,
+                sets: ex.sets,
+                reps: ex.reps,
+                weight: ex.weight,
+                restTime: ex.restTime,
+                completedSets: 0,
+                targetReps: ex.targetReps,
+                lastWeight: ex.lastWeight,
+                lastReps: ex.lastReps
+            )
+        }
+
+        return WatchWorkoutSnapshot(
+            workoutId: workoutId,
+            workoutName: workoutName,
+            studentName: "",
+            exercises: snapshotExercises,
+            currentExerciseIndex: 0,
+            isActive: false,
+            startedAt: nil,
+            updatedAt: nil
         )
     }
 }

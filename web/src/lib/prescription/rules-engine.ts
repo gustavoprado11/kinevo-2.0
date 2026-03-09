@@ -30,6 +30,8 @@ import {
     SMALL_GROUP_EXERCISE_LIMITS,
 } from './constants'
 
+import { getContributions } from './contribution-matrix'
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -618,23 +620,10 @@ export function resolveAiMode(
 // ============================================================================
 
 /**
- * Secondary muscle group activation for compound exercises (Kinevo methodology).
- * Lower body compounds activate Glúteo at full weight (1.0).
- * Upper body compounds activate synergists at half weight (0.5).
- */
-const SECONDARY_MUSCLE_GROUPS: Record<string, Array<{ group: string; weight: number }>> = {
-    'Quadríceps':        [{ group: 'Glúteo', weight: 1.0 }],
-    'Posterior de Coxa': [{ group: 'Glúteo', weight: 1.0 }],
-    'Peito':             [{ group: 'Ombros', weight: 0.5 }, { group: 'Tríceps', weight: 0.5 }],
-    'Costas':            [{ group: 'Bíceps', weight: 0.5 }],
-    'Ombros':            [{ group: 'Tríceps', weight: 0.5 }],
-}
-
-/**
  * Computes total weekly sets per muscle group across all workouts.
  * Accounts for workout frequency (scheduled_days.length).
  * When exerciseMap is provided, also counts secondary muscle group volume
- * for compound exercises (e.g. squats count toward Glúteo).
+ * for compound exercises using the contribution matrix.
  */
 export function computeWeeklyVolumePerMuscle(
     workouts: GeneratedWorkout[],
@@ -655,11 +644,11 @@ export function computeWeeklyVolumePerMuscle(
             // Primary group: full weight
             volume[group] = (volume[group] || 0) + weeklySets
 
-            // Secondary groups: only for compounds
+            // Secondary groups: only for compounds, using contribution matrix
             if (exerciseMap) {
                 const ref = exerciseMap.get(item.exercise_id)
                 if (ref?.is_compound) {
-                    const secondaries = SECONDARY_MUSCLE_GROUPS[group] || []
+                    const secondaries = getContributions(group, ref.movement_pattern, true)
                     for (const { group: secGroup, weight } of secondaries) {
                         volume[secGroup] = (volume[secGroup] || 0) + Math.round(weeklySets * weight)
                     }
@@ -702,7 +691,7 @@ function reduceVolumeForMuscleGroup(
             if (exerciseMap) {
                 const ref = exerciseMap.get(item.exercise_id)
                 if (ref?.is_compound) {
-                    const secondaries = SECONDARY_MUSCLE_GROUPS[item.exercise_muscle_group] || []
+                    const secondaries = getContributions(item.exercise_muscle_group, ref.movement_pattern, true)
                     const match = secondaries.find(s => s.group === muscleGroup)
                     if (match) {
                         entries.push({ workout, item, frequency, contribution: match.weight, isDirect: false })

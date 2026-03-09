@@ -129,7 +129,32 @@ export async function analyzeStudentContext(
     const serverQuestions = selectConditionalQuestions(typedProfile, enrichedContext, tradeoff, questionnaireData)
     console.log(`[analyzeStudentContext] Server-side questions: ${serverQuestions.length} (${serverQuestions.map(q => q.id).join(', ')})`)
 
-    // ── 6. Call Claude agent for analysis ──
+    // ── 6. Builder-First or Agent analysis ──
+    const useBuilderFirst = process.env.ENABLE_BUILDER_FIRST === 'true'
+
+    if (useBuilderFirst) {
+        // Builder-First: skip LLM analysis entirely, use deterministic questions only
+        console.log(`[analyzeStudentContext] Builder-First mode — skipping LLM analysis`)
+        console.log(`[analyzeStudentContext] Server questions: ${serverQuestions.length} (${serverQuestions.map(q => q.id).join(', ')})`)
+
+        const agentState: PrescriptionAgentState = {
+            conversation_messages: [],
+            context_analysis: null,
+            questions: serverQuestions,
+            answers: [],
+            phase: serverQuestions.length > 0 ? 'questions' : 'generating',
+        }
+
+        return {
+            success: true,
+            analysis: undefined,
+            questions: serverQuestions,
+            agentState,
+            studentName: enrichedContext.student_name,
+        }
+    }
+
+    // ── 6b. Legacy Agent analysis (ENABLE_BUILDER_FIRST !== 'true') ──
     try {
         const result = await analyzeContextAndAsk(typedProfile, exercises, enrichedContext, serverQuestions)
 
@@ -279,6 +304,8 @@ const EXERCISE_SELECT_COLUMNS = `
     is_primary_movement,
     session_position,
     movement_pattern,
+    movement_pattern_family,
+    fatigue_class,
     prescription_notes,
     exercise_muscle_groups (
         muscle_groups (
@@ -303,6 +330,8 @@ function mapExerciseRow(e: any): PrescriptionExerciseRef {
         is_primary_movement: e.is_primary_movement || false,
         session_position: e.session_position || 'middle',
         movement_pattern: e.movement_pattern || null,
+        movement_pattern_family: e.movement_pattern_family || null,
+        fatigue_class: e.fatigue_class || 'moderate',
         prescription_notes: e.prescription_notes || null,
     }
 }

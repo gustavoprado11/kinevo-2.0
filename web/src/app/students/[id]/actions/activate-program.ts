@@ -2,6 +2,8 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { insertStudentNotification } from '@/lib/student-notifications'
+import { sendStudentPush } from '@/lib/push-notifications'
 
 export async function activateProgram(assignedProgramId: string) {
     const supabase = await createClient()
@@ -10,10 +12,19 @@ export async function activateProgram(assignedProgramId: string) {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) throw new Error('Unauthorized')
 
-        // 1. Get program details to know the student
+        // 1. Get trainer
+        const { data: trainer } = await supabase
+            .from('trainers')
+            .select('id')
+            .eq('auth_user_id', user.id)
+            .single()
+
+        if (!trainer) throw new Error('Trainer not found')
+
+        // 2. Get program details to know the student
         const { data: program } = await supabase
             .from('assigned_programs')
-            .select('student_id, status')
+            .select('student_id, status, name')
             .eq('id', assignedProgramId)
             .single()
 
@@ -26,9 +37,7 @@ export async function activateProgram(assignedProgramId: string) {
 
         const studentId = program.student_id
 
-        // 2. Archive/Complete current active program
-        // We do this BEFORE activating the new one to avoid unique constraint violation
-        // (idx_assigned_programs_active_unique WHERE status = 'active')
+        // 3. Archive/Complete current active program
         await supabase
             .from('assigned_programs')
             .update({
@@ -39,7 +48,7 @@ export async function activateProgram(assignedProgramId: string) {
             .eq('student_id', studentId)
             .eq('status', 'active')
 
-        // 3. Activate the new program
+        // 4. Activate the new program
         const { error: updateError } = await supabase
             .from('assigned_programs')
             .update({
@@ -50,6 +59,23 @@ export async function activateProgram(assignedProgramId: string) {
             .eq('id', assignedProgramId)
 
         if (updateError) throw updateError
+
+        // 5. Notify student (fire-and-forget)
+        const programName = program.name ?? 'Novo programa'
+        insertStudentNotification({
+            studentId,
+            trainerId: trainer.id,
+            type: 'program_assigned',
+            title: 'Novo programa de treino!',
+            subtitle: `${programName} está disponível no seu app.`,
+            payload: { program_id: assignedProgramId, program_name: programName },
+        })
+        sendStudentPush({
+            studentId,
+            title: 'Novo programa de treino!',
+            body: `${programName} está disponível no seu app.`,
+            data: { program_id: assignedProgramId },
+        })
 
         revalidatePath(`/students/${studentId}`)
         return { success: true }

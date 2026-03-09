@@ -99,11 +99,13 @@ export const useOnboardingStore = create<OnboardingStore>()(
 
       // ----- Hydration -----
       hydrate(serverState) {
+        // Server is authoritative for boolean flags.
+        // Arrays are unioned (additive — can't "un-complete" a tour).
+        // Milestones are OR-merged (once completed, stays completed).
         const currentLocal = get().state
-        // Server is source of truth — merge: server wins, but keep local
-        // arrays that may have grown since last sync
         const merged: OnboardingState = {
-          ...serverState,
+          welcome_tour_completed: serverState.welcome_tour_completed,
+          checklist_dismissed: serverState.checklist_dismissed,
           tours_completed: Array.from(
             new Set([
               ...serverState.tours_completed,
@@ -232,6 +234,7 @@ export const useOnboardingStore = create<OnboardingStore>()(
     {
       name: 'kinevo-onboarding',
       partialize: (s) => ({ state: s.state }),
+      skipHydration: true,
     },
   ),
 )

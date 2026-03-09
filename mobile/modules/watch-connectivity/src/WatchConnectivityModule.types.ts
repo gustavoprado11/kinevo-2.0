@@ -1,8 +1,9 @@
 /**
- * Apple Watch Workout Snapshot Contract (v1)
+ * Apple Watch Workout Snapshot Contract
  *
- * The iPhone sends this JSON through WatchConnectivity `updateApplicationContext`.
- * Native iOS wraps it as:
+ * The iPhone sends JSON through WatchConnectivity `updateApplicationContext`.
+ *
+ * schemaVersion 1 (legacy — single workout):
  * {
  *   schemaVersion: 1,
  *   syncedAt: string (ISO8601),
@@ -10,8 +11,16 @@
  *   workout?: WatchWorkoutPayload
  * }
  *
- * `workout` represents the latest visible workout state on iPhone.
+ * schemaVersion 2 (current — full program):
+ * {
+ *   schemaVersion: 2,
+ *   syncedAt: string (ISO8601),
+ *   hasProgram: boolean,
+ *   program?: WatchProgramPayload
+ * }
  */
+
+// ── v1 types (kept for backward compatibility) ──
 
 export interface WatchWorkoutExercise {
   id: string;
@@ -21,7 +30,7 @@ export interface WatchWorkoutExercise {
   weight?: number;
   restTime?: number;
   completedSets?: number;
-  targetReps?: string; // Prescribed rep range, e.g. "8-12" or "10"
+  targetReps?: string;
 }
 
 export interface WatchWorkoutPayload {
@@ -34,6 +43,41 @@ export interface WatchWorkoutPayload {
   isActive: boolean;
   startedAt?: string;
   updatedAt?: string;
+}
+
+// ── v2 types (program snapshot) ──
+
+export interface WatchProgramExercise {
+  id: string;
+  name: string;
+  muscleGroup?: string;
+  sets: number;
+  reps: number;
+  weight: number | null;
+  restTime: number;
+  targetReps: string | null;
+  lastWeight: number | null;
+  lastReps: number | null;
+}
+
+export interface WatchProgramWorkout {
+  workoutId: string;
+  workoutName: string;
+  orderIndex: number;
+  scheduledDays: number[];
+  isCompletedToday: boolean;
+  lastCompletedAt: string | null;
+  exercises: WatchProgramExercise[];
+}
+
+export interface WatchProgramPayload {
+  schemaVersion: 2;
+  programId: string;
+  programName: string;
+  currentWeek: number;
+  totalWeeks: number;
+  scheduleMode: 'scheduled' | 'flexible';
+  workouts: WatchProgramWorkout[];
 }
 
 export interface WatchSetCompletionEvent {

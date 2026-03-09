@@ -30,10 +30,10 @@ function WatchBridge() {
 
     const { useWatchConnectivity } = require("../hooks/useWatchConnectivity");
     const { finishWorkoutFromWatch, watchFinishState, processPendingWatchWorkouts } = require("../lib/finishWorkoutFromWatch");
-    const { sendAckToWatch, syncWorkoutToWatch } = require("../modules/watch-connectivity");
+    const { sendAckToWatch, syncProgramToWatch } = require("../modules/watch-connectivity");
     const { appEvents, WORKOUT_COMPLETED } = require("../lib/events");
     const { supabase } = require("../lib/supabase");
-    const { getNextWorkoutForWatch } = require("../lib/getNextWorkoutForWatch");
+    const { getProgramSnapshotForWatch } = require("../lib/getProgramSnapshotForWatch");
     const router = useRouter();
     const pathname = usePathname();
     const lastStartRef = React.useRef<{ workoutId: string; ts: number } | null>(null);
@@ -158,16 +158,16 @@ function WatchBridge() {
                         console.warn(`[Layout] Failed to send ACK (non-critical): ${ackError?.message}`);
                     }
 
-                    // Re-sync: send the NEXT pending workout to Watch (or null if all done).
+                    // Re-sync: send updated program snapshot to Watch (with completion status).
                     try {
                         const { data: { user } } = await supabase.auth.getUser();
                         if (user) {
-                            const nextPayload = await getNextWorkoutForWatch(user.id);
-                            syncWorkoutToWatch(nextPayload);
-                            console.log(`[Layout] Re-synced next workout after completion: ${nextPayload?.workoutName ?? 'none'}`);
+                            const programPayload = await getProgramSnapshotForWatch(user.id);
+                            syncProgramToWatch(programPayload);
+                            console.log(`[Layout] Re-synced program after completion: ${programPayload?.programName ?? 'none'}`);
                         }
                     } catch (syncError: any) {
-                        console.warn(`[Layout] Failed to re-sync next workout (non-critical): ${syncError?.message}`);
+                        console.warn(`[Layout] Failed to re-sync program (non-critical): ${syncError?.message}`);
                     }
 
                     Alert.alert(
@@ -233,30 +233,30 @@ function WatchBridge() {
         return () => clearTimeout(timer);
     }, []);
 
-    // Auto-sync: send today's next pending workout to Watch on app launch.
+    // Auto-sync: send full program snapshot to Watch on app launch.
     // Multiple retries with increasing delays — auth may still be loading on cold start.
     React.useEffect(() => {
         let synced = false;
 
-        async function trySyncNextWorkout() {
+        async function trySyncProgram() {
             if (synced) return;
             try {
                 const { data: { user } } = await supabase.auth.getUser();
                 if (!user) return;
 
-                const payload = await getNextWorkoutForWatch(user.id);
-                syncWorkoutToWatch(payload); // null clears the Watch (hasWorkout: false)
+                const payload = await getProgramSnapshotForWatch(user.id);
+                syncProgramToWatch(payload); // null clears the Watch (hasProgram: false)
                 synced = true;
-                console.log(`[WatchBridge] Auto-synced workout to Watch: ${payload?.workoutName ?? 'none (all done or rest day)'}`);
+                console.log(`[WatchBridge] Auto-synced program to Watch: ${payload?.programName ?? 'none (no active program)'}`);
             } catch (e: any) {
-                console.warn(`[WatchBridge] Failed to auto-sync workout: ${e?.message}`);
+                console.warn(`[WatchBridge] Failed to auto-sync program: ${e?.message}`);
             }
         }
 
-        trySyncNextWorkout();
-        const t1 = setTimeout(trySyncNextWorkout, 3000);
-        const t2 = setTimeout(trySyncNextWorkout, 8000);
-        const t3 = setTimeout(trySyncNextWorkout, 15000);
+        trySyncProgram();
+        const t1 = setTimeout(trySyncProgram, 3000);
+        const t2 = setTimeout(trySyncProgram, 8000);
+        const t3 = setTimeout(trySyncProgram, 15000);
         return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
     }, []);
 
@@ -267,9 +267,9 @@ function WatchBridge() {
             if (event === 'SIGNED_IN' && session?.user) {
                 console.log(`[WatchBridge] Auth SIGNED_IN detected — syncing Watch for new user`);
                 try {
-                    const payload = await getNextWorkoutForWatch(session.user.id);
-                    syncWorkoutToWatch(payload);
-                    console.log(`[WatchBridge] Re-synced Watch after account switch: ${payload?.workoutName ?? 'none'}`);
+                    const payload = await getProgramSnapshotForWatch(session.user.id);
+                    syncProgramToWatch(payload);
+                    console.log(`[WatchBridge] Re-synced Watch after account switch: ${payload?.programName ?? 'none'}`);
                 } catch (e: any) {
                     console.warn(`[WatchBridge] Failed to re-sync Watch on SIGNED_IN: ${e?.message}`);
                 }
@@ -281,10 +281,10 @@ function WatchBridge() {
     return null;
 }
 
-/** Activates push notifications when in trainer mode. Must be inside RoleModeProvider. */
+/** Activates push notifications for both trainer and student modes. */
 function PushNotificationBridge() {
     const { role } = useRoleMode();
-    usePushNotifications(role === 'trainer');
+    usePushNotifications(role);
     return null;
 }
 

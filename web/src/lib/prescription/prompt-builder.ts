@@ -250,18 +250,30 @@ function buildUserPrompt(
     exercises: PrescriptionExerciseRef[],
     performanceContext: PrescriptionPerformanceContext | null,
 ): string {
-    const exercisesSummary = exercises.map(e => ({
-        id: e.id,
-        name: e.name,
-        muscle_groups: e.muscle_group_names,
-        equipment: e.equipment,
-        is_compound: e.is_compound,
-        difficulty_level: e.difficulty_level,
-        session_position: e.session_position,
-        is_primary_movement: e.is_primary_movement,
-        movement_pattern: e.movement_pattern,
-        ...(e.prescription_notes ? { prescription_notes: e.prescription_notes } : {}),
-    }))
+    const useCompact = process.env.ENABLE_COMPACT_EXERCISE_POOL !== 'false'
+    const exercisesSummary = exercises.map(e => {
+        if (useCompact) {
+            const mp = e.movement_pattern || 'isolation'
+            return {
+                id: e.id,
+                n: e.name,
+                mg: e.muscle_group_names,
+                mp: MP_READABLE[mp] || mp,
+            }
+        }
+        return {
+            id: e.id,
+            name: e.name,
+            muscle_groups: e.muscle_group_names,
+            equipment: e.equipment,
+            is_compound: e.is_compound,
+            difficulty_level: e.difficulty_level,
+            session_position: e.session_position,
+            is_primary_movement: e.is_primary_movement,
+            movement_pattern: e.movement_pattern,
+            ...(e.prescription_notes ? { prescription_notes: e.prescription_notes } : {}),
+        }
+    })
 
     const payload: Record<string, unknown> = {
         student_profile: {
@@ -904,9 +916,24 @@ export function buildAgentGenerationMessage(
     answers: PrescriptionAgentAnswer[],
     exercises: PrescriptionExerciseRef[],
 ): string {
-    // Readable exercise list with full metadata
+    // Compact exercise list — Tier 1 optimization strips fields the LLM doesn't use
+    const useCompact = process.env.ENABLE_COMPACT_EXERCISE_POOL !== 'false'
     const compactExercises = exercises.map(e => {
         const mp = e.movement_pattern || 'isolation'
+        if (useCompact) {
+            const entry: Record<string, unknown> = {
+                id: e.id,
+                n: e.name,
+                mg: e.muscle_group_names,
+                mp: MP_READABLE[mp] || mp,
+            }
+            // Attach pre-computed substitutes if present
+            if ('substitute_ids' in e && (e as any).substitute_ids?.length > 0) {
+                entry.subs = (e as any).substitute_ids
+            }
+            return entry
+        }
+        // Original verbose format (feature flag off)
         const entry: Record<string, unknown> = {
             id: e.id,
             n: e.name,
@@ -937,8 +964,9 @@ export function buildAgentGenerationMessage(
     const payload: Record<string, unknown> = {
         fase: 'GERAÇÃO',
         instrucao: 'Com base em toda a análise anterior e nas respostas do treinador, gere o programa de treinos completo. Retorne APENAS o JSON no formato de saída especificado (program, workouts, reasoning). Use web_search para embasar decisões críticas se necessário.',
-        legenda_exercicios: 'id=UUID, n=nome, mg=grupos_musculares, c=composto(1/0), mp=movement_pattern, diff=difficulty(beginner/intermediate/advanced), pos=session_position(first/middle/last), prim=primary_movement(1/0), s=adequacy_score(0-100), note=prescription_notes',
-        nota_favoritos: 'Exercícios SEM "note" são favoritos do treinador fora do catálogo curado. Use-os se fizerem sentido para o objetivo, mas prefira exercícios curados (com "note") quando houver alternativa equivalente para a mesma função.',
+        legenda_exercicios: useCompact
+            ? 'id=UUID, n=nome, mg=grupos_musculares, mp=movement_pattern, subs=substitute_exercise_ids(top 2)'
+            : 'id=UUID, n=nome, mg=grupos_musculares, c=composto(1/0), mp=movement_pattern, diff=difficulty(beginner/intermediate/advanced), pos=session_position(first/middle/last), prim=primary_movement(1/0), s=adequacy_score(0-100), note=prescription_notes',
         exercicios_disponiveis: compactExercises,
     }
 
@@ -952,6 +980,12 @@ export function buildAgentGenerationMessage(
     }
 
     const serialized = JSON.stringify(payload)
-    console.log(`[AgentePrescitor] Generation message: ${serialized.length} chars, ~${Math.round(serialized.length / 4)} tokens`)
+    const estimatedTokens = Math.round(serialized.length / 4)
+    const baselineTokens = 8000 // Pre-Tier 1 average for exercise list
+    const reductionPct = Math.round((1 - estimatedTokens / baselineTokens) * 100)
+    console.log(`[AgentePrescitor] Generation message: ${serialized.length} chars, ~${estimatedTokens} tokens`)
+    console.log(`[LLM_OPT] exercises_sent=${exercises.length}`)
+    console.log(`[LLM_OPT] estimated_tokens=${estimatedTokens}`)
+    console.log(`[LLM_OPT] reduction=${Math.max(0, reductionPct)}%`)
     return serialized
 }

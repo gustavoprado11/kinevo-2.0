@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { LogOut } from 'lucide-react'
+import { NotificationBell } from './notification-bell'
 
 interface HeaderProps {
     trainerName: string
@@ -37,6 +38,9 @@ export function Header({ trainerName, trainerEmail, trainerAvatarUrl }: HeaderPr
 
             {/* Right side - User menu */}
             <div className="flex items-center gap-4">
+                {/* Notifications */}
+                <NotificationBell />
+
                 <div className="flex items-center gap-3">
                     {/* Avatar */}
                     <div className="w-9 h-9 rounded-full bg-gradient-to-br from-violet-600 to-blue-600 flex items-center justify-center ring-2 ring-[#E8E8ED] dark:ring-border">

@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { useOnboardingStore } from '@/stores/onboarding-store'
 import type { OnboardingState } from '@kinevo/shared/types/onboarding'
+import { DEFAULT_ONBOARDING_STATE } from '@kinevo/shared/types/onboarding'
 
 interface OnboardingProviderProps {
   initialState: OnboardingState | null
@@ -16,9 +17,9 @@ export function OnboardingProvider({
   const hydrate = useOnboardingStore((s) => s.hydrate)
 
   useEffect(() => {
-    if (initialState) {
-      hydrate(initialState)
-    }
+    // With skipHydration: true, localStorage is NOT auto-restored.
+    // Server state is the single source of truth for boolean flags.
+    hydrate(initialState ?? DEFAULT_ONBOARDING_STATE)
   }, [initialState, hydrate])
 
   return <>{children}</>

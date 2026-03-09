@@ -6,6 +6,9 @@ export async function completeProgram(programId: string, studentId: string) {
     const supabase = await createClient()
 
     try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return { success: false, error: 'Não autorizado' }
+
         const { error } = await supabase
             .from('assigned_programs')
             .update({

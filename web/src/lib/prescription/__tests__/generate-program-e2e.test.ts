@@ -77,6 +77,8 @@ function makeExercise(overrides: Partial<PrescriptionExerciseRef> = {}): Prescri
         is_primary_movement: false,
         session_position: 'middle',
         movement_pattern: null,
+        movement_pattern_family: null,
+        fatigue_class: 'moderate' as const,
         prescription_notes: null,
         ...overrides,
     }

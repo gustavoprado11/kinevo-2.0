@@ -78,6 +78,127 @@ export async function sendTrainerPush(params: SendTrainerPushParams): Promise<vo
     }
 }
 
+// ---------------------------------------------------------------------------
+// Student push
+// ---------------------------------------------------------------------------
+
+interface SendStudentPushParams {
+    studentId: string
+    title: string
+    body: string
+    data?: Record<string, string>
+}
+
+/**
+ * Send push notification to a student's registered devices.
+ * Non-blocking — never throws.
+ */
+export async function sendStudentPush(params: SendStudentPushParams): Promise<void> {
+    try {
+        const { data: student } = await supabaseAdmin
+            .from('students')
+            .select('auth_user_id')
+            .eq('id', params.studentId)
+            .single()
+
+        if (!student?.auth_user_id) return
+
+        const { data: tokens } = await supabaseAdmin
+            .from('push_tokens')
+            .select('id, expo_push_token')
+            .eq('user_id', student.auth_user_id)
+            .eq('role', 'student')
+            .eq('active', true)
+
+        if (!tokens || tokens.length === 0) return
+
+        const messages = tokens.map((t) => ({
+            to: t.expo_push_token,
+            sound: 'default' as const,
+            title: params.title,
+            body: params.body,
+            data: params.data ?? {},
+        }))
+
+        const response = await fetch('https://exp.host/--/api/v2/push/send', {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(messages),
+        })
+
+        if (!response.ok) {
+            console.error('[push-notifications] Expo API error (student):', response.status)
+            return
+        }
+
+        const result = await response.json()
+        const tickets = result.data ?? []
+
+        for (let i = 0; i < tickets.length; i++) {
+            if (tickets[i].status === 'error' && tickets[i].details?.error === 'DeviceNotRegistered') {
+                await supabaseAdmin
+                    .from('push_tokens')
+                    .update({ active: false, updated_at: new Date().toISOString() })
+                    .eq('id', tokens[i].id)
+            }
+        }
+    } catch (err) {
+        console.error('[push-notifications] Student push error:', err)
+    }
+}
+
+/**
+ * Process pending student inbox items and send push notifications.
+ */
+export async function processStudentPendingPush(studentId?: string): Promise<number> {
+    let query = supabaseAdmin
+        .from('student_inbox_items')
+        .select('id, student_id, type, title, subtitle, payload')
+        .is('push_sent_at', null)
+        .in('status', ['unread', 'pending_action'])
+        .order('created_at', { ascending: true })
+        .limit(50)
+
+    if (studentId) {
+        query = query.eq('student_id', studentId)
+    }
+
+    const { data: pending } = await query
+
+    if (!pending || pending.length === 0) return 0
+
+    let sent = 0
+
+    for (const item of pending) {
+        await sendStudentPush({
+            studentId: item.student_id,
+            title: item.title,
+            body: item.subtitle ?? '',
+            data: {
+                notificationId: item.id,
+                type: item.type,
+                ...(item.payload as Record<string, string> ?? {}),
+            },
+        })
+
+        await supabaseAdmin
+            .from('student_inbox_items')
+            .update({ push_sent_at: new Date().toISOString() })
+            .eq('id', item.id)
+
+        sent++
+    }
+
+    return sent
+}
+
+// ---------------------------------------------------------------------------
+// Trainer push processing
+// ---------------------------------------------------------------------------
+
 /**
  * Process pending notifications for a trainer and send push.
  * Used by flush-pending API route and process-push CRON.

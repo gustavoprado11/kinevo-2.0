@@ -8,7 +8,7 @@ export default async function SubscriptionsPage() {
     const { trainer } = await getTrainerWithSubscription()
 
     // Sync lazy: mark manual contracts overdue past grace period
-    await syncManualOverdue(trainer.id)
+    await syncManualOverdue()
 
     // Mark financial attention as seen (clears sidebar badge)
     await supabaseAdmin

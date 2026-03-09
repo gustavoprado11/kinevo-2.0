@@ -294,8 +294,6 @@ export async function finishWorkoutFromWatch(
       }
 
       for (const set of exercise.sets) {
-        if (!set.completed) continue;
-
         setLogs.push({
           workout_session_id: sessionId,
           assigned_workout_item_id: exercise.id,
@@ -306,15 +304,16 @@ export async function finishWorkoutFromWatch(
           set_number: set.setIndex + 1,
           weight: set.weight || 0,
           reps_completed: set.reps || 0,
-          is_completed: true,
-          completed_at: now.toISOString(),
+          is_completed: set.completed === true,
+          completed_at: set.completed ? now.toISOString() : null,
           weight_unit: 'kg',
         });
       }
     }
 
     if (setLogs.length > 0) {
-      console.log(`[finishWorkoutFromWatch] Step 7b: Upserting ${setLogs.length} set_logs`);
+      const completedCount = setLogs.filter(s => s.is_completed).length;
+      console.log(`[finishWorkoutFromWatch] Step 7b: Upserting ${setLogs.length} set_logs (${completedCount} completed, ${setLogs.length - completedCount} incomplete)`);
 
       const { error: logsError } = await supabase
         .from('set_logs' as any)
@@ -328,7 +327,7 @@ export async function finishWorkoutFromWatch(
         console.log(`[finishWorkoutFromWatch] Step 7b: Upserted ${setLogs.length} set_logs OK`);
       }
     } else {
-      console.warn('[finishWorkoutFromWatch] Step 7: No completed sets to upsert');
+      console.warn('[finishWorkoutFromWatch] Step 7: No set_logs to upsert');
     }
   } else {
     console.warn('[finishWorkoutFromWatch] Step 7: No exercise data from watch — session saved with RPE only');
