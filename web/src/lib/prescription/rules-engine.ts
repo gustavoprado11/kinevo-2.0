@@ -30,7 +30,6 @@ import {
     SMALL_GROUP_EXERCISE_LIMITS,
 } from './constants'
 
-import { getContributions } from './contribution-matrix'
 
 // ============================================================================
 // Types
@@ -635,24 +634,14 @@ export function computeWeeklyVolumePerMuscle(
         const frequency = Math.max(1, workout.scheduled_days.length)
 
         for (const item of workout.items) {
-            const group = item.exercise_muscle_group
-            if (!group) continue
-            // Skip non-trainable groups (e.g. "Cardio", "Alongamento")
-            if (!PRIMARY_MUSCLE_GROUPS.includes(group) && !SMALL_MUSCLE_GROUPS.includes(group)) continue
             const weeklySets = item.sets * frequency
+            const ref = exerciseMap?.get(item.exercise_id)
+            const groups = ref?.muscle_group_names
+                ?? (item.exercise_muscle_group ? [item.exercise_muscle_group] : [])
 
-            // Primary group: full weight
-            volume[group] = (volume[group] || 0) + weeklySets
-
-            // Secondary groups: only for compounds, using contribution matrix
-            if (exerciseMap) {
-                const ref = exerciseMap.get(item.exercise_id)
-                if (ref?.is_compound) {
-                    const secondaries = getContributions(group, ref.movement_pattern, true)
-                    for (const { group: secGroup, weight } of secondaries) {
-                        volume[secGroup] = (volume[secGroup] || 0) + Math.round(weeklySets * weight)
-                    }
-                }
+            for (const group of groups) {
+                if (!PRIMARY_MUSCLE_GROUPS.includes(group) && !SMALL_MUSCLE_GROUPS.includes(group)) continue
+                volume[group] = (volume[group] || 0) + weeklySets
             }
         }
     }
@@ -670,56 +659,41 @@ function reduceVolumeForMuscleGroup(
     maxSets: number,
     exerciseMap?: Map<string, PrescriptionExerciseRef>,
 ): void {
-    // Collect ALL items contributing to this muscle group (direct + secondary)
+    // Collect all exercises that train this muscle group
     const entries: {
         workout: GeneratedWorkout
         item: GeneratedWorkoutItem
         frequency: number
-        contribution: number  // 1.0 for direct, weight for secondary
-        isDirect: boolean
+        isCompound: boolean
     }[] = []
 
     for (const workout of workouts) {
         const frequency = Math.max(1, workout.scheduled_days.length)
         for (const item of workout.items) {
-            // Direct contribution
-            if (item.exercise_muscle_group === muscleGroup) {
-                entries.push({ workout, item, frequency, contribution: 1.0, isDirect: true })
-                continue
-            }
-            // Secondary contribution (only if exerciseMap available)
-            if (exerciseMap) {
-                const ref = exerciseMap.get(item.exercise_id)
-                if (ref?.is_compound) {
-                    const secondaries = getContributions(item.exercise_muscle_group, ref.movement_pattern, true)
-                    const match = secondaries.find(s => s.group === muscleGroup)
-                    if (match) {
-                        entries.push({ workout, item, frequency, contribution: match.weight, isDirect: false })
-                    }
-                }
+            const ref = exerciseMap?.get(item.exercise_id)
+            const groups = ref?.muscle_group_names ?? [item.exercise_muscle_group]
+            if (groups.includes(muscleGroup)) {
+                entries.push({ workout, item, frequency, isCompound: ref?.is_compound ?? false })
             }
         }
     }
 
-    // Reduce DIRECT exercises first (isolations), then secondary (compounds).
-    // Within each category, reduce biggest contributors first.
+    // Reduce isolations first, then compounds. Biggest contributors first.
     entries.sort((a, b) => {
-        if (a.isDirect !== b.isDirect) return a.isDirect ? -1 : 1
+        const aPriority = a.isCompound ? 1 : 0
+        if (aPriority !== (b.isCompound ? 1 : 0)) return aPriority - (b.isCompound ? 1 : 0)
         return (b.item.sets * b.frequency) - (a.item.sets * a.frequency)
     })
 
     let currentTotal = entries.reduce(
-        (sum, e) => sum + Math.round(e.item.sets * e.frequency * e.contribution), 0,
+        (sum, e) => sum + e.item.sets * e.frequency, 0,
     )
 
     for (const entry of entries) {
         if (currentTotal <= maxSets) break
-        // Only reduce direct exercises — don't touch compounds for secondary group overflow
-        // (reducing a compound's sets would cause deficit in its primary group)
-        if (!entry.isDirect) continue
         const excess = currentTotal - maxSets
         const canReduce = Math.min(
-            entry.item.sets - 1, // Never reduce below 1 set
+            entry.item.sets - 1,
             Math.ceil(excess / entry.frequency),
         )
         if (canReduce > 0) {

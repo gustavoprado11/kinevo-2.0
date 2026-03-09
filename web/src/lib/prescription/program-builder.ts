@@ -37,7 +37,6 @@ import {
     findVariationForStalled,
     filterBySafety,
 } from './exercise-graph'
-import { getContributions } from './contribution-matrix'
 
 // ============================================================================
 // Difficulty Preference — maps student level to exercise difficulty preference
@@ -101,8 +100,10 @@ export async function buildSlotBasedProgram(
     exercises: PrescriptionExerciseRef[],
     constraints: PrescriptionConstraints,
     enrichedContext: EnrichedStudentContext,
+    programIndex: number = 0,
 ): Promise<PrescriptionOutputSnapshot> {
     try {
+        initPRNG(profile.student_id, programIndex)
         const result = await buildWithSlots(profile, exercises, constraints, enrichedContext)
         console.log('[SlotBuilder] Program built successfully')
         return result
@@ -113,13 +114,45 @@ export async function buildSlotBasedProgram(
 }
 
 // ============================================================================
+// Deterministic PRNG (Mulberry32)
+// ============================================================================
+
+function hashSeed(str: string): number {
+    let h = 0
+    for (let i = 0; i < str.length; i++) {
+        h = Math.imul(31, h) + str.charCodeAt(i) | 0
+    }
+    return h >>> 0
+}
+
+function mulberry32(seed: number): () => number {
+    let s = seed | 0
+    return () => {
+        s = (s + 0x6D2B79F5) | 0
+        let t = Math.imul(s ^ (s >>> 15), 1 | s)
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+    }
+}
+
+/** Module-level PRNG — initialized per program build via initPRNG() */
+let prng: () => number = Math.random
+
+function initPRNG(studentId: string, programIndex: number): number {
+    const seed = hashSeed(`${studentId}:${programIndex}`)
+    prng = mulberry32(seed)
+    console.log(`[ExerciseSelector] seed used: ${seed} (studentId=${studentId}, programIndex=${programIndex})`)
+    return seed
+}
+
+// ============================================================================
 // Controlled Randomization
 // ============================================================================
 
 function shuffleArray<T>(arr: T[]): T[] {
     const copy = [...arr]
     for (let i = copy.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
+        const j = Math.floor(prng() * (i + 1));
         [copy[i], copy[j]] = [copy[j], copy[i]]
     }
     return copy
@@ -190,21 +223,18 @@ function groupExercisesByMuscle(
 
 interface VolumeTracker {
     volume: Record<string, number>
-    /** V3: primary (direct) volume per group, used for secondary cap */
-    primary: Record<string, number>
 }
 
 function createVolumeTracker(): VolumeTracker {
-    return { volume: {}, primary: {} }
+    return { volume: {} }
 }
 
 /**
  * FORECAST: Before allocating, predict the max sets this exercise can take
- * without exceeding any group's budget.max (primary + secondary).
+ * without exceeding any group's budget.max across all its muscle groups.
  */
 function forecastMaxSets(
     exercise: PrescriptionExerciseRef,
-    targetGroup: string,
     slotMinSets: number,
     slotMaxSets: number,
     workoutFreq: number,
@@ -213,30 +243,19 @@ function forecastMaxSets(
 ): number {
     let maxAllowed = slotMaxSets
 
-    // Check primary group headroom
-    const primaryUsed = tracker.volume[targetGroup] || 0
-    const primaryBudget = budget[targetGroup]
-    if (primaryBudget) {
-        const primaryRoom = Math.max(0, primaryBudget.max - primaryUsed)
-        maxAllowed = Math.min(maxAllowed, Math.ceil(primaryRoom / workoutFreq))
-    }
-
-    // Check secondary group headroom
-    const contributions = getContributions(targetGroup, exercise.movement_pattern, exercise.is_compound)
-    for (const { group, weight } of contributions) {
-        const secUsed = tracker.volume[group] || 0
-        const secBudget = budget[group]
-        if (secBudget && weight > 0) {
-            const secRoom = Math.max(0, secBudget.max - secUsed)
-            const maxBySecondary = Math.ceil(secRoom / (workoutFreq * weight))
-            maxAllowed = Math.min(maxAllowed, maxBySecondary)
+    for (const group of exercise.muscle_group_names) {
+        const used = tracker.volume[group] || 0
+        const groupBudget = budget[group]
+        if (groupBudget) {
+            const room = Math.max(0, groupBudget.max - used)
+            maxAllowed = Math.min(maxAllowed, Math.ceil(room / workoutFreq))
         }
     }
 
     const result = Math.max(slotMinSets, maxAllowed)
     if (result < slotMaxSets) {
         console.log(
-            `[VolumeV2] Forecast ceiling for ${exercise.name} (${targetGroup}): ` +
+            `[VolumeV2] Forecast ceiling for ${exercise.name}: ` +
             `${result} sets (budget limited from ${slotMaxSets})`,
         )
     }
@@ -244,40 +263,18 @@ function forecastMaxSets(
 }
 
 /**
- * COMMIT: After picking an exercise and its sets, record all volume
- * (primary + secondary contributions).
+ * COMMIT: After picking an exercise and its sets, record volume
+ * for every muscle group the exercise trains. Full sets, no weighting.
  */
 function commitVolume(
     exercise: PrescriptionExerciseRef,
     sets: number,
-    targetGroup: string,
     workoutFreq: number,
     tracker: VolumeTracker,
 ): void {
     const weeklySets = sets * workoutFreq
-
-    tracker.volume[targetGroup] = (tracker.volume[targetGroup] || 0) + weeklySets
-    tracker.primary[targetGroup] = (tracker.primary[targetGroup] || 0) + weeklySets
-
-    const contributions = getContributions(targetGroup, exercise.movement_pattern, exercise.is_compound)
-    for (const { group, weight } of contributions) {
-        let secSets = Math.round(weeklySets * weight)
-        if (secSets > 0) {
-            // V3: Secondary volume cap — cumulative secondary contribution
-            // to a muscle cannot exceed 60% of its primary (direct) volume.
-            // If the group has NO primary volume yet, secondary flows uncapped
-            // (those groups rely entirely on compound contributions).
-            const groupPrimary = tracker.primary[group] || 0
-            if (groupPrimary > 0) {
-                const secondaryCap = Math.round(groupPrimary * 0.6)
-                const currentSecondary = (tracker.volume[group] || 0) - groupPrimary
-                const headroom = Math.max(0, secondaryCap - currentSecondary)
-                secSets = Math.min(secSets, headroom)
-            }
-            if (secSets > 0) {
-                tracker.volume[group] = (tracker.volume[group] || 0) + secSets
-            }
-        }
+    for (const group of exercise.muscle_group_names) {
+        tracker.volume[group] = (tracker.volume[group] || 0) + weeklySets
     }
 }
 
@@ -521,7 +518,7 @@ async function buildWithSlots(
     }
 
     // 10. Post-process: cap any remaining overflow (safety net)
-    capSecondaryVolumeOverflow(workouts, safePool, level)
+    capVolumeOverflow(workouts, safePool, level)
 
     // 11. Attach graph substitutes (batch)
     await attachGraphSubstitutes(workouts, exerciseMap)
@@ -616,14 +613,17 @@ function buildSlotWorkout(
 
         const bestScore = scored[0].score
         const topCandidates = scored.filter(s => s.score >= bestScore - 5)
-        const pick = topCandidates[Math.floor(Math.random() * topCandidates.length)].exercise
+        const pick = topCandidates[Math.floor(prng() * topCandidates.length)].exercise
+
+        console.log(`[ExerciseSelector] candidate pool size: ${topCandidates.length} (slot: ${slot.target_group}/${slot.movement_pattern})`)
+        console.log(`[ExerciseSelector] selected exercise: ${pick.name} (score: ${scored.find(s => s.exercise.id === pick.id)?.score}/${bestScore})`)
 
         // Compute sets
         let sets: number
         if (useV2 && remainingOccurrences) {
             // Phase 2+3: Forecast ceiling + smart allocator
             const forecastCeiling = forecastMaxSets(
-                pick, slot.target_group, slot.min_sets, slot.max_sets,
+                pick, slot.min_sets, slot.max_sets,
                 freq, tracker!, constraints.volume_budget,
             )
             sets = distributeSetsForSlotV2(
@@ -649,9 +649,9 @@ function buildSlotWorkout(
 
         // Track volume
         if (useV2) {
-            commitVolume(pick, sets, slot.target_group, freq, tracker!)
+            commitVolume(pick, sets, freq, tracker!)
         } else {
-            trackVolumeForExercise(pick, sets, slot.target_group, freq, weeklyGroupVolume)
+            trackVolumeForExercise(pick, sets, freq, weeklyGroupVolume)
         }
 
         // Update scoring context for diversity protection
@@ -914,24 +914,18 @@ function distributeSetsForSlotV2(
 }
 
 // ============================================================================
-// Volume Tracking (with secondary contributions)
+// Volume Tracking
 // ============================================================================
 
 function trackVolumeForExercise(
     exercise: PrescriptionExerciseRef,
     sets: number,
-    targetGroup: string,
     frequency: number,
     weeklyGroupVolume: Record<string, number>,
 ): void {
     const weeklySets = sets * frequency
-    weeklyGroupVolume[targetGroup] = (weeklyGroupVolume[targetGroup] || 0) + weeklySets
-
-    if (exercise.is_compound) {
-        const secondaries = getContributions(targetGroup, exercise.movement_pattern, true)
-        for (const { group: secGroup, weight } of secondaries) {
-            weeklyGroupVolume[secGroup] = (weeklyGroupVolume[secGroup] || 0) + Math.round(weeklySets * weight)
-        }
+    for (const group of exercise.muscle_group_names) {
+        weeklyGroupVolume[group] = (weeklyGroupVolume[group] || 0) + weeklySets
     }
 }
 
@@ -1141,7 +1135,7 @@ function buildLegacyProgram(
         workouts.push(workout)
     }
 
-    capSecondaryVolumeOverflow(workouts, available, level)
+    capVolumeOverflow(workouts, available, level)
 
     const reasoning = buildLegacyReasoning(level, goal, frequency, structureKey, workouts)
 
@@ -1189,40 +1183,27 @@ function buildLegacyWorkout(
     const primaryGroups = muscleGroups.filter(g => PRIMARY_MUSCLE_GROUPS.includes(g))
     const smallGroups = muscleGroups.filter(g => SMALL_MUSCLE_GROUPS.includes(g))
 
-    function trackVolume(pick: PrescriptionExerciseRef, sets: number, targetGroup: string) {
+    function trackVolume(pick: PrescriptionExerciseRef, sets: number) {
         const weeklySets = sets * freq
-        weeklyGroupVolume[targetGroup] = (weeklyGroupVolume[targetGroup] || 0) + weeklySets
-        if (pick.is_compound) {
-            const secondaries = getContributions(targetGroup, pick.movement_pattern, true)
-            for (const { group: secGroup, weight } of secondaries) {
-                weeklyGroupVolume[secGroup] = (weeklyGroupVolume[secGroup] || 0) + Math.round(weeklySets * weight)
-            }
+        for (const group of pick.muscle_group_names) {
+            weeklyGroupVolume[group] = (weeklyGroupVolume[group] || 0) + weeklySets
         }
     }
 
-    function wouldOverflowSecondary(pick: PrescriptionExerciseRef, targetGroup: string): boolean {
-        if (!pick.is_compound) return false
-        for (const { group: secGroup, weight } of getContributions(targetGroup, pick.movement_pattern, true)) {
-            const current = weeklyGroupVolume[secGroup] || 0
-            const minAdd = Math.round(2 * freq * weight)
-            if (current + minAdd > maxVolume) return true
+    function wouldOverflow(pick: PrescriptionExerciseRef): boolean {
+        for (const group of pick.muscle_group_names) {
+            const current = weeklyGroupVolume[group] || 0
+            if (current + 2 * freq > maxVolume) return true
         }
         return false
     }
 
-    function maxSetsWithinBudget(pick: PrescriptionExerciseRef, targetGroup: string, baseSets: number): number {
+    function maxSetsWithinBudget(pick: PrescriptionExerciseRef, baseSets: number): number {
         let allowed = baseSets
-        const currentDirect = weeklyGroupVolume[targetGroup] || 0
-        const directRoom = Math.max(0, maxVolume - currentDirect)
-        allowed = Math.min(allowed, Math.ceil(directRoom / freq))
-        if (pick.is_compound) {
-            for (const { group: secGroup, weight } of getContributions(targetGroup, pick.movement_pattern, true)) {
-                const currentSec = weeklyGroupVolume[secGroup] || 0
-                const secRoom = Math.max(0, maxVolume - currentSec)
-                if (weight > 0) {
-                    allowed = Math.min(allowed, Math.ceil(secRoom / (freq * weight)))
-                }
-            }
+        for (const group of pick.muscle_group_names) {
+            const current = weeklyGroupVolume[group] || 0
+            const room = Math.max(0, maxVolume - current)
+            allowed = Math.min(allowed, Math.ceil(room / freq))
         }
         return Math.max(2, allowed)
     }
@@ -1240,7 +1221,7 @@ function buildLegacyWorkout(
         const sortedCompounds = sortByPrimaryGroupMatch(compoundCandidates, group, favoriteIds, level)
         const compoundPick = sortedCompounds[0] || null
 
-        const overflows = compoundPick && wouldOverflowSecondary(compoundPick, group)
+        const overflows = compoundPick && wouldOverflow(compoundPick)
         const useIsolation = overflows && hasCompoundInWorkout
         let pick: PrescriptionExerciseRef | null
 
@@ -1255,10 +1236,10 @@ function buildLegacyWorkout(
         if (pick) {
             const occurrences = groupFrequency[group] || 1
             const budget = Math.max(2, Math.round(targetSetsPerGroup / occurrences))
-            const sets = Math.min(4, maxSetsWithinBudget(pick, group, budget))
+            const sets = Math.min(4, maxSetsWithinBudget(pick, budget))
             items.push(buildItem(pick, sets, goal, pick.is_compound, itemIndex++, group))
             usedExerciseIds.add(pick.id)
-            trackVolume(pick, sets, group)
+            trackVolume(pick, sets)
             if (pick.is_compound) hasCompoundInWorkout = true
         }
     }
@@ -1276,7 +1257,7 @@ function buildLegacyWorkout(
             items.push(buildItem(pick, 3, goal, pick.is_compound, itemIndex++, group))
             usedExerciseIds.add(pick.id)
             weeklySmallGroupCount[group] = (weeklySmallGroupCount[group] || 0) + 1
-            trackVolume(pick, 3, group)
+            trackVolume(pick, 3)
         }
     }
 
@@ -1287,7 +1268,7 @@ function buildLegacyWorkout(
 
         let candidates = (byMuscleGroup.get(group) || [])
             .filter(e => !usedExerciseIds.has(e.id))
-        candidates = candidates.filter(e => !wouldOverflowSecondary(e, group))
+        candidates = candidates.filter(e => !wouldOverflow(e))
 
         const sorted = sortByPrimaryGroupMatch(candidates, group, favoriteIds, level)
         const pick = sorted[0] || null
@@ -1298,11 +1279,11 @@ function buildLegacyWorkout(
                 .filter(i => i.exercise_muscle_group === group)
                 .reduce((s, i) => s + i.sets, 0)
             const setsRemaining = Math.max(2, budget - setsUsedForGroup)
-            const sets = Math.min(3, maxSetsWithinBudget(pick, group, setsRemaining))
+            const sets = Math.min(3, maxSetsWithinBudget(pick, setsRemaining))
 
             items.push(buildItem(pick, sets, goal, pick.is_compound, itemIndex++, group))
             usedExerciseIds.add(pick.id)
-            trackVolume(pick, sets, group)
+            trackVolume(pick, sets)
         }
     }
 
@@ -1479,19 +1460,16 @@ function buildLegacyReasoning(
 }
 
 // ============================================================================
-// Post-Processing: Cap Volume for Secondary Contributions
+// Post-Processing: Cap Volume Overflow
 // ============================================================================
 
-// BUILDER_SECONDARY_MAP removed — now using getContributions() from contribution-matrix.ts
-
-function capSecondaryVolumeOverflow(
+function capVolumeOverflow(
     workouts: GeneratedWorkout[],
     available: PrescriptionExerciseRef[],
     level: TrainingLevel,
 ): void {
     const exerciseMap = new Map(available.map(e => [e.id, e]))
     const maxSets = VOLUME_RANGES[level].max
-    const minSets = VOLUME_RANGES[level].min
 
     for (let pass = 0; pass < 3; pass++) {
         const weeklyVolume = computeWeeklyVolumePerMuscle(workouts, exerciseMap)
@@ -1503,77 +1481,52 @@ function capSecondaryVolumeOverflow(
 
             let excess = totalSets - maxSets
 
-            type Contribution = {
+            // Collect all exercises that train this group
+            const entries: {
                 workout: GeneratedWorkout
                 item: GeneratedWorkoutItem
                 frequency: number
-                isDirect: boolean
-                weight: number
                 isCompound: boolean
-            }
-            const contributions: Contribution[] = []
+            }[] = []
 
             for (const workout of workouts) {
                 const freq = Math.max(1, workout.scheduled_days.length)
                 for (const item of workout.items) {
                     const ref = exerciseMap.get(item.exercise_id)
-                    const isCompound = ref?.is_compound ?? false
-
-                    if (item.exercise_muscle_group === group) {
-                        contributions.push({ workout, item, frequency: freq, isDirect: true, weight: 1.0, isCompound })
-                    } else if (isCompound) {
-                        const secondaries = getContributions(item.exercise_muscle_group, ref?.movement_pattern ?? null, true)
-                        const sec = secondaries.find(s => s.group === group)
-                        if (sec) {
-                            contributions.push({ workout, item, frequency: freq, isDirect: false, weight: sec.weight, isCompound: true })
-                        }
+                    const groups = ref?.muscle_group_names ?? [item.exercise_muscle_group]
+                    if (groups.includes(group)) {
+                        entries.push({ workout, item, frequency: freq, isCompound: ref?.is_compound ?? false })
                     }
                 }
             }
 
-            contributions.sort((a, b) => {
-                const aPriority = a.isDirect ? (a.isCompound ? 2 : 0) : 3
-                const bPriority = b.isDirect ? (b.isCompound ? 2 : 0) : 3
-                if (aPriority !== bPriority) return aPriority - bPriority
+            // Reduce accessory isolations first, then compounds
+            entries.sort((a, b) => {
+                const aPriority = a.isCompound ? 1 : 0
+                if (aPriority !== (b.isCompound ? 1 : 0)) return aPriority - (b.isCompound ? 1 : 0)
                 return b.item.sets - a.item.sets
             })
 
-            for (const c of contributions) {
+            for (const e of entries) {
                 if (excess <= 0) break
-                const canReduce = c.item.sets - 2
+                const canReduce = e.item.sets - 2
                 if (canReduce <= 0) continue
-
-                if (!c.isDirect) {
-                    const primaryGroup = c.item.exercise_muscle_group
-                    const primaryVol = weeklyVolume[primaryGroup] || 0
-                    const primaryHeadroom = primaryVol - minSets
-                    if (primaryHeadroom <= 0) continue
-                    const maxByHeadroom = Math.floor(primaryHeadroom / c.frequency)
-                    if (maxByHeadroom <= 0) continue
-                    const reduction = Math.min(canReduce, maxByHeadroom, Math.ceil(excess / (c.frequency * c.weight)))
-                    if (reduction > 0) {
-                        c.item.sets -= reduction
-                        excess -= Math.round(reduction * c.frequency * c.weight)
-                        weeklyVolume[primaryGroup] -= reduction * c.frequency
-                        anyChanged = true
-                    }
-                } else {
-                    const reduction = Math.min(canReduce, Math.ceil(excess / c.frequency))
-                    c.item.sets -= reduction
-                    excess -= reduction * c.frequency
-                    anyChanged = true
-                }
+                const reduction = Math.min(canReduce, Math.ceil(excess / e.frequency))
+                e.item.sets -= reduction
+                excess -= reduction * e.frequency
+                anyChanged = true
             }
 
+            // Last resort: remove isolation exercises entirely
             if (excess > 0) {
-                for (const c of contributions) {
+                for (const e of entries) {
                     if (excess <= 0) break
-                    if (!c.isDirect || c.isCompound) continue
-                    const idx = c.workout.items.indexOf(c.item)
+                    if (e.isCompound) continue
+                    const idx = e.workout.items.indexOf(e.item)
                     if (idx >= 0) {
-                        c.workout.items.splice(idx, 1)
-                        c.workout.items.forEach((it, i) => { it.order_index = i })
-                        excess -= c.item.sets * c.frequency
+                        e.workout.items.splice(idx, 1)
+                        e.workout.items.forEach((it, i) => { it.order_index = i })
+                        excess -= e.item.sets * e.frequency
                         anyChanged = true
                     }
                 }

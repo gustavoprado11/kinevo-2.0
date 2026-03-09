@@ -2,9 +2,9 @@
 // ============================================================================
 // Kinevo Volume V2 — Stress Test (100 randomized programs)
 // ============================================================================
-// Self-contained simulation that exercises the Volume V2 algorithms:
-// VolumeTracker, forecastMaxSets, commitVolume, distributeSetsForSlotV2,
-// generateDynamicSlots, diversity scoring — without requiring DB/Supabase.
+// Self-contained simulation that exercises the simple volume model:
+// VolumeTracker (direct muscle_group_names counting), forecastMaxSets,
+// commitVolume, distributeSetsForSlotV2, generateDynamicSlots — no DB needed.
 //
 // Run: npx tsx web/src/lib/prescription/__tests__/volume-v2-stress-test.ts
 // ============================================================================
@@ -35,7 +35,6 @@ import {
 } from '../slot-templates'
 import type { WorkoutSlot } from '../slot-templates'
 
-import { getContributions } from '../contribution-matrix'
 import { buildConstraints } from '../constraints-engine'
 import type { PrescriptionConstraints } from '../constraints-engine'
 import type { EnrichedStudentContext } from '../context-enricher'
@@ -55,16 +54,14 @@ const REPORT_PATH = join(__dirname, '..', '..', '..', '..', '..', 'docs', 'VOLUM
 
 interface VolumeTracker {
     volume: Record<string, number>
-    primary: Record<string, number>
 }
 
 function createVolumeTracker(): VolumeTracker {
-    return { volume: {}, primary: {} }
+    return { volume: {} }
 }
 
 function forecastMaxSets(
     exercise: PrescriptionExerciseRef,
-    targetGroup: string,
     slotMinSets: number,
     slotMaxSets: number,
     workoutFreq: number,
@@ -73,21 +70,12 @@ function forecastMaxSets(
 ): number {
     let maxAllowed = slotMaxSets
 
-    const primaryUsed = tracker.volume[targetGroup] || 0
-    const primaryBudget = budget[targetGroup]
-    if (primaryBudget) {
-        const primaryRoom = Math.max(0, primaryBudget.max - primaryUsed)
-        maxAllowed = Math.min(maxAllowed, Math.ceil(primaryRoom / workoutFreq))
-    }
-
-    const contributions = getContributions(targetGroup, exercise.movement_pattern, exercise.is_compound)
-    for (const { group, weight } of contributions) {
-        const secUsed = tracker.volume[group] || 0
-        const secBudget = budget[group]
-        if (secBudget && weight > 0) {
-            const secRoom = Math.max(0, secBudget.max - secUsed)
-            const maxBySecondary = Math.ceil(secRoom / (workoutFreq * weight))
-            maxAllowed = Math.min(maxAllowed, maxBySecondary)
+    for (const group of exercise.muscle_group_names) {
+        const used = tracker.volume[group] || 0
+        const groupBudget = budget[group]
+        if (groupBudget) {
+            const room = Math.max(0, groupBudget.max - used)
+            maxAllowed = Math.min(maxAllowed, Math.ceil(room / workoutFreq))
         }
     }
 
@@ -97,30 +85,12 @@ function forecastMaxSets(
 function commitVolume(
     exercise: PrescriptionExerciseRef,
     sets: number,
-    targetGroup: string,
     workoutFreq: number,
     tracker: VolumeTracker,
 ): void {
     const weeklySets = sets * workoutFreq
-    tracker.volume[targetGroup] = (tracker.volume[targetGroup] || 0) + weeklySets
-    tracker.primary[targetGroup] = (tracker.primary[targetGroup] || 0) + weeklySets
-    const contributions = getContributions(targetGroup, exercise.movement_pattern, exercise.is_compound)
-    for (const { group, weight } of contributions) {
-        let secSets = Math.round(weeklySets * weight)
-        if (secSets > 0) {
-            // V3: secondary cap — cannot exceed 60% of group's primary volume.
-            // If no primary volume yet, secondary flows uncapped.
-            const groupPrimary = tracker.primary[group] || 0
-            if (groupPrimary > 0) {
-                const secondaryCap = Math.round(groupPrimary * 0.6)
-                const currentSecondary = (tracker.volume[group] || 0) - groupPrimary
-                const headroom = Math.max(0, secondaryCap - currentSecondary)
-                secSets = Math.min(secSets, headroom)
-            }
-            if (secSets > 0) {
-                tracker.volume[group] = (tracker.volume[group] || 0) + secSets
-            }
-        }
+    for (const group of exercise.muscle_group_names) {
+        tracker.volume[group] = (tracker.volume[group] || 0) + weeklySets
     }
 }
 
@@ -301,6 +271,28 @@ function randomInt(a: number, b: number) { return Math.floor(Math.random() * (b 
 function randomPick<T>(arr: T[]): T { return arr[Math.floor(Math.random() * arr.length)] }
 function randomDays(n: number): number[] { return [0,1,2,3,4,5,6].sort(() => Math.random() - 0.5).slice(0, n).sort((a,b) => a - b) }
 
+// Deterministic PRNG (mirrors production program-builder.ts)
+function hashSeed(str: string): number {
+    let h = 0
+    for (let i = 0; i < str.length; i++) {
+        h = Math.imul(31, h) + str.charCodeAt(i) | 0
+    }
+    return h >>> 0
+}
+
+function mulberry32(seed: number): () => number {
+    let s = seed | 0
+    return () => {
+        s = (s + 0x6D2B79F5) | 0
+        let t = Math.imul(s ^ (s >>> 15), 1 | s)
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+    }
+}
+
+/** Per-simulation PRNG for exercise selection (seeded per program) */
+let simPrng: () => number = Math.random
+
 function makeProfile(frequency: number, level: TrainingLevel, goal: PrescriptionGoal, duration: number) {
     return {
         id: 'p', student_id: 's', trainer_id: 't', training_level: level, goal,
@@ -428,10 +420,10 @@ function runSimulation(
             scored.sort((a, b) => b.score - a.score)
             const bestScore = scored[0].score
             const top = scored.filter(s => s.score >= bestScore - 5)
-            const pick = top[Math.floor(Math.random() * top.length)].exercise
+            const pick = top[Math.floor(simPrng() * top.length)].exercise
 
             // Forecast + allocate
-            const forecastCeiling = forecastMaxSets(pick, slot.target_group, slot.min_sets, slot.max_sets, freq, tracker, constraints.volume_budget)
+            const forecastCeiling = forecastMaxSets(pick, slot.min_sets, slot.max_sets, freq, tracker, constraints.volume_budget)
             const sets = distributeSetsForSlotV2(slot, constraints.volume_budget, tracker, remainingOccurrences, freq, forecastCeiling)
 
             const isCompound = pick.is_compound
@@ -447,7 +439,7 @@ function runSimulation(
             usedInWorkout.add(pick.id)
             weeklyUsedIds.add(pick.id)
             coveredGroups.add(slot.target_group)
-            commitVolume(pick, sets, slot.target_group, freq, tracker)
+            commitVolume(pick, sets, freq, tracker)
 
             const pattern = pick.movement_pattern || 'isolation'
             usedPatternsInWorkout.add(`${pattern}:${slot.target_group}`)
@@ -577,6 +569,10 @@ function main() {
             ? [{ question_id: 'muscle_emphasis', answer: `${emphasisArr[0]} (mais volume)` }]
             : []
         const constraints = buildConstraints(profile as any, context, trainerAnswers as any)
+
+        // Seed deterministic PRNG for this program (mirrors production)
+        const seed = hashSeed(`stress-student-${i}:${i}`)
+        simPrng = mulberry32(seed)
 
         const result = runSimulation(exercises, constraints, profile)
         const metrics = analyze(result, exercises, constraints, i, level, goal, frequency, duration, emphasisArr)
