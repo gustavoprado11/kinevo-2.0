@@ -58,7 +58,6 @@ export async function getSessionDetails(sessionId: string): Promise<GetSessionDe
 
         logs.forEach(log => {
             const exerciseId = log.executed_exercise_id || log.exercise_id
-            // Force cast because Supabase types with joins can be tricky to infer automatically here
             const executedExerciseData = log.executed_exercise as any
             const legacyExerciseData = log.legacy_exercise as any
 
@@ -78,7 +77,6 @@ export async function getSessionDetails(sessionId: string): Promise<GetSessionDe
             })
         })
 
-        // Sort sets by set_number just in case
         exercisesMap.forEach(ex => {
             ex.sets.sort((a: any, b: any) => a.set_number - b.set_number)
         })
@@ -95,7 +93,7 @@ export async function getSessionDetails(sessionId: string): Promise<GetSessionDe
         console.error('Error fetching session details:', error)
         return {
             success: false,
-            error: error.message || JSON.stringify(error) || 'Erro desconhecido ao carregar detalhes do treino.'
+            error: 'Erro ao carregar detalhes do treino.'
         }
     }
 }

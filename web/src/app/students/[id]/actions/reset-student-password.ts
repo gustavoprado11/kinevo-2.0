@@ -1,13 +1,11 @@
 'use server'
 
+import crypto from 'crypto'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
-function generateSecureReadablePassword() {
-    const min = 1000
-    const max = 9999
-    const randomNumbers = Math.floor(Math.random() * (max - min + 1)) + min
-    return `Treino#${randomNumbers}`
+function generatePassword() {
+    return crypto.randomBytes(8).toString('base64url')
 }
 
 export async function resetStudentPassword(studentId: string) {
@@ -52,7 +50,7 @@ export async function resetStudentPassword(studentId: string) {
         }
 
         // 3. Generate new password
-        const newPassword = generateSecureReadablePassword()
+        const newPassword = generatePassword()
 
         // 4. Force update using Admin API
         const supabaseAdmin = createAdminClient()

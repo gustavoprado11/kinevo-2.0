@@ -1,5 +1,7 @@
 'use server'
 
+import crypto from 'crypto'
+import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { revalidatePath } from 'next/cache'
 
@@ -7,14 +9,25 @@ export async function createStudent(data: {
     name: string
     email: string
     phone: string
-    trainerId: string
     modality: 'online' | 'presential'
 }) {
     try {
-        // 1. Gerar senha aleatória de 6 dígitos
-        const generatedPassword = Math.floor(100000 + Math.random() * 900000).toString()
+        // 1. Verify caller is an authenticated trainer
+        const supabase = await createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return { success: false, error: 'Não autorizado' }
 
-        // 2. Criar usuário no Supabase Auth usando Admin
+        const { data: trainer } = await supabase
+            .from('trainers')
+            .select('id')
+            .eq('auth_user_id', user.id)
+            .single()
+        if (!trainer) return { success: false, error: 'Treinador não encontrado' }
+
+        // 2. Generate cryptographically secure password
+        const generatedPassword = crypto.randomBytes(8).toString('base64url')
+
+        // 3. Create auth user (requires service_role)
         const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
             email: data.email,
             password: generatedPassword,
@@ -33,14 +46,13 @@ export async function createStudent(data: {
 
         const userId = authUser.user.id
 
-        // 3. Inserir na tabela 'students' vinculando ao userId
-        // Corrigido para bater com a estrutura real do banco confirmada por print
+        // 4. Insert student record (requires service_role)
         const { data: studentRow, error: dbError } = await supabaseAdmin
             .from('students')
             // @ts-ignore - Os tipos do projeto estão desatualizados em relação ao banco real
             .insert({
                 auth_user_id: userId,
-                coach_id: data.trainerId,
+                coach_id: trainer.id,
                 name: data.name.trim(),
                 email: data.email.trim().toLowerCase(),
                 phone: data.phone,
@@ -52,7 +64,6 @@ export async function createStudent(data: {
 
         if (dbError) {
             console.error('Error creating student record:', dbError)
-            // Cleanup: Deletar usuário auth caso falhe o DB (opcional, mas recomendado)
             await supabaseAdmin.auth.admin.deleteUser(userId)
             return { success: false, error: 'Erro ao salvar dados do aluno no banco de dados' }
         }

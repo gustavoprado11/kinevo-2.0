@@ -21,11 +21,12 @@ export async function activateProgram(assignedProgramId: string) {
 
         if (!trainer) throw new Error('Trainer not found')
 
-        // 2. Get program details to know the student
+        // 2. Get program details — with trainer_id ownership filter
         const { data: program } = await supabase
             .from('assigned_programs')
-            .select('student_id, status, name')
+            .select('student_id, status, name, trainer_id')
             .eq('id', assignedProgramId)
+            .eq('trainer_id', trainer.id)
             .single()
 
         if (!program) throw new Error('Program not found')
@@ -37,7 +38,16 @@ export async function activateProgram(assignedProgramId: string) {
 
         const studentId = program.student_id
 
-        // 3. Archive/Complete current active program
+        // 3. Verify trainer owns this student
+        const { data: student } = await supabase
+            .from('students')
+            .select('id')
+            .eq('id', studentId)
+            .eq('coach_id', trainer.id)
+            .single()
+        if (!student) throw new Error('Student not found')
+
+        // 4. Archive/Complete current active program (scoped to trainer)
         await supabase
             .from('assigned_programs')
             .update({
@@ -46,9 +56,10 @@ export async function activateProgram(assignedProgramId: string) {
                 updated_at: new Date().toISOString()
             })
             .eq('student_id', studentId)
+            .eq('trainer_id', trainer.id)
             .eq('status', 'active')
 
-        // 4. Activate the new program
+        // 5. Activate the new program
         const { error: updateError } = await supabase
             .from('assigned_programs')
             .update({
@@ -57,10 +68,11 @@ export async function activateProgram(assignedProgramId: string) {
                 updated_at: new Date().toISOString()
             })
             .eq('id', assignedProgramId)
+            .eq('trainer_id', trainer.id)
 
         if (updateError) throw updateError
 
-        // 5. Notify student (fire-and-forget)
+        // 6. Notify student (fire-and-forget)
         const programName = program.name ?? 'Novo programa'
         insertStudentNotification({
             studentId,

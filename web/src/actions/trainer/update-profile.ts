@@ -10,9 +10,18 @@ export type UpdateTrainerProfileResult = {
     avatarUrl?: string | null
 }
 
-function getFileExtension(fileName: string): string {
+const ALLOWED_IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp']
+const ALLOWED_CONTENT_TYPES: Record<string, string> = {
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    png: 'image/png',
+    webp: 'image/webp',
+}
+const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
+
+function getFileExtension(fileName: string): string | null {
     const ext = fileName.split('.').pop()?.toLowerCase()
-    if (!ext || ext.length > 5) return 'png'
+    if (!ext || !ALLOWED_IMAGE_EXTENSIONS.includes(ext)) return null
     return ext
 }
 
@@ -49,14 +58,25 @@ export async function updateTrainerProfile(formData: FormData): Promise<UpdateTr
 
         const avatarFile = formData.get('avatar')
         if (avatarFile instanceof File && avatarFile.size > 0) {
+            // Validate file size
+            if (avatarFile.size > MAX_FILE_SIZE) {
+                return { success: false, message: 'Imagem muito grande. Máximo 5MB.' }
+            }
+
+            // Validate file extension (allowlist: jpg, jpeg, png, webp)
             const extension = getFileExtension(avatarFile.name)
+            if (!extension) {
+                return { success: false, message: 'Formato de imagem não suportado. Use JPG, PNG ou WebP.' }
+            }
+
             const filePath = `${user.id}/avatar_${trainer.id}_${Date.now()}.${extension}`
 
+            // Override content type from validated extension (never trust client)
             const { error: uploadError } = await supabase.storage
                 .from('avatars')
                 .upload(filePath, avatarFile, {
                     upsert: true,
-                    contentType: avatarFile.type || 'image/png',
+                    contentType: ALLOWED_CONTENT_TYPES[extension],
                 })
 
             if (uploadError) {

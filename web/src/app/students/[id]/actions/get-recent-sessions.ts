@@ -12,6 +12,9 @@ export async function getRecentSessions(programId: string, limit: number = 5): P
     const supabase = await createClient()
 
     try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return { success: false, error: 'Não autorizado' }
+
         const { data, error } = await supabase
             .from('workout_sessions')
             .select(`
@@ -25,7 +28,7 @@ export async function getRecentSessions(programId: string, limit: number = 5): P
             .eq('assigned_program_id', programId)
             .eq('status', 'completed')
             .order('completed_at', { ascending: false })
-            .limit(limit)
+            .limit(Math.min(limit, 50))
 
         if (error) throw error
 

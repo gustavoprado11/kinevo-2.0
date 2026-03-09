@@ -17,11 +17,12 @@ export async function duplicateProgram(templateId: string) {
             .single()
         if (!trainer) return { success: false, error: 'Trainer not found' }
 
-        // Fetch original template
+        // Fetch original template — only if owned by this trainer
         const { data: original } = await supabase
             .from('program_templates')
             .select('*')
             .eq('id', templateId)
+            .eq('trainer_id', trainer.id)
             .single()
         if (!original) return { success: false, error: 'Template not found' }
 

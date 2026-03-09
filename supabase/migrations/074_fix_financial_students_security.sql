@@ -1,11 +1,9 @@
--- ============================================================================
--- Kinevo — 074 Restore authorization check on get_financial_students
--- ============================================================================
+-- 074 Restore authorization check on get_financial_students
+--
 -- Migration 045 removed the auth check because auth.uid() returns NULL
 -- when called via service_role. This fix re-adds the check conditionally:
 -- service_role calls bypass the check (server pages already validate auth),
 -- but authenticated user calls must match current_trainer_id().
--- ============================================================================
 
 CREATE OR REPLACE FUNCTION public.get_financial_students(p_trainer_id UUID)
 RETURNS TABLE (
@@ -26,89 +24,98 @@ RETURNS TABLE (
   plan_title TEXT,
   plan_interval TEXT,
   display_status TEXT
-) AS $$
-SELECT
-  s.id,
-  s.name,
-  s.avatar_url,
-  s.phone,
-  sc.id,
-  sc.billing_type::TEXT,
-  sc.status,
-  sc.amount,
-  sc.current_period_end,
-  sc.block_on_fail,
-  sc.cancel_at_period_end,
-  sc.canceled_by,
-  sc.canceled_at,
-  sc.stripe_subscription_id,
-  tp.title,
-  tp.interval,
-  -- Derived display status
-  CASE
-    WHEN sc.id IS NULL THEN 'courtesy'
-    WHEN sc.billing_type = 'courtesy' THEN 'courtesy'
-    WHEN sc.status = 'canceled' THEN 'canceled'
-    WHEN sc.status = 'pending' THEN 'awaiting_payment'
-    WHEN sc.cancel_at_period_end = true AND sc.status != 'canceled' THEN 'canceling'
-    WHEN sc.status = 'past_due' THEN 'overdue'
-    WHEN sc.status = 'active'
-      AND sc.billing_type::TEXT IN ('manual_recurring', 'manual_one_off')
-      AND sc.current_period_end IS NOT NULL
-      AND sc.current_period_end < now()
-      AND sc.current_period_end >= now() - interval '3 days'
-      THEN 'grace_period'
-    WHEN sc.status = 'active'
-      AND sc.billing_type::TEXT IN ('manual_recurring', 'manual_one_off')
-      AND sc.current_period_end IS NOT NULL
-      AND sc.current_period_end < now() - interval '3 days'
-      THEN 'overdue'
-    WHEN sc.status = 'active' THEN 'active'
-    ELSE 'courtesy'
-  END
-FROM students s
--- Get the most relevant contract per student (active > past_due > pending > canceled)
-LEFT JOIN LATERAL (
-  SELECT * FROM student_contracts sc2
-  WHERE sc2.student_id = s.id
-    AND sc2.trainer_id = p_trainer_id
+)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  -- Enforce authorization: service_role may call with any trainer_id,
+  -- but authenticated users must match their own trainer_id.
+  IF current_setting('role', true) IS DISTINCT FROM 'service_role'
+     AND p_trainer_id IS DISTINCT FROM (SELECT public.current_trainer_id())
+  THEN
+    RETURN;  -- empty result set
+  END IF;
+
+  RETURN QUERY
+  SELECT
+    s.id,
+    s.name,
+    s.avatar_url,
+    s.phone,
+    sc.id,
+    sc.billing_type::TEXT,
+    sc.status,
+    sc.amount,
+    sc.current_period_end,
+    sc.block_on_fail,
+    sc.cancel_at_period_end,
+    sc.canceled_by,
+    sc.canceled_at,
+    sc.stripe_subscription_id,
+    tp.title,
+    tp.interval,
+    CASE
+      WHEN sc.id IS NULL THEN 'courtesy'
+      WHEN sc.billing_type = 'courtesy' THEN 'courtesy'
+      WHEN sc.status = 'canceled' THEN 'canceled'
+      WHEN sc.status = 'pending' THEN 'awaiting_payment'
+      WHEN sc.cancel_at_period_end = true AND sc.status != 'canceled' THEN 'canceling'
+      WHEN sc.status = 'past_due' THEN 'overdue'
+      WHEN sc.status = 'active'
+        AND sc.billing_type::TEXT IN ('manual_recurring', 'manual_one_off')
+        AND sc.current_period_end IS NOT NULL
+        AND sc.current_period_end < now()
+        AND sc.current_period_end >= now() - interval '3 days'
+        THEN 'grace_period'
+      WHEN sc.status = 'active'
+        AND sc.billing_type::TEXT IN ('manual_recurring', 'manual_one_off')
+        AND sc.current_period_end IS NOT NULL
+        AND sc.current_period_end < now() - interval '3 days'
+        THEN 'overdue'
+      WHEN sc.status = 'active' THEN 'active'
+      ELSE 'courtesy'
+    END
+  FROM students s
+  LEFT JOIN LATERAL (
+    SELECT * FROM student_contracts sc2
+    WHERE sc2.student_id = s.id
+      AND sc2.trainer_id = p_trainer_id
+    ORDER BY
+      CASE sc2.status
+        WHEN 'active' THEN 0
+        WHEN 'past_due' THEN 1
+        WHEN 'pending' THEN 2
+        WHEN 'canceled' THEN 3
+        ELSE 4
+      END,
+      sc2.created_at DESC
+    LIMIT 1
+  ) sc ON true
+  LEFT JOIN trainer_plans tp ON tp.id = sc.plan_id
+  WHERE s.coach_id = p_trainer_id
+    AND s.status = 'active'
+    AND COALESCE(s.is_trainer_profile, false) = false
   ORDER BY
-    CASE sc2.status
-      WHEN 'active' THEN 0
-      WHEN 'past_due' THEN 1
-      WHEN 'pending' THEN 2
-      WHEN 'canceled' THEN 3
-      ELSE 4
+    CASE
+      WHEN sc.status = 'past_due' THEN 0
+      WHEN sc.status = 'active'
+        AND sc.billing_type::TEXT IN ('manual_recurring', 'manual_one_off')
+        AND sc.current_period_end IS NOT NULL
+        AND sc.current_period_end < now() - interval '3 days'
+        THEN 1
+      WHEN sc.cancel_at_period_end = true AND sc.status != 'canceled' THEN 2
+      WHEN sc.status = 'active'
+        AND sc.current_period_end IS NOT NULL
+        AND sc.current_period_end < now()
+        THEN 3
+      WHEN sc.status = 'pending' THEN 4
+      WHEN sc.status = 'active' THEN 5
+      WHEN sc.status = 'canceled' THEN 6
+      ELSE 7
     END,
-    sc2.created_at DESC
-  LIMIT 1
-) sc ON true
-LEFT JOIN trainer_plans tp ON tp.id = sc.plan_id
-WHERE s.coach_id = p_trainer_id
-  AND s.status = 'active'
-  AND COALESCE(s.is_trainer_profile, false) = false
-  AND (
-    current_setting('role', true) = 'service_role'
-    OR p_trainer_id = (SELECT public.current_trainer_id())
-  )
-ORDER BY
-  -- Priority: urgent items first
-  CASE
-    WHEN sc.status = 'past_due' THEN 0
-    WHEN sc.status = 'active'
-      AND sc.billing_type::TEXT IN ('manual_recurring', 'manual_one_off')
-      AND sc.current_period_end IS NOT NULL
-      AND sc.current_period_end < now() - interval '3 days'
-      THEN 1
-    WHEN sc.cancel_at_period_end = true AND sc.status != 'canceled' THEN 2
-    WHEN sc.status = 'active'
-      AND sc.current_period_end IS NOT NULL
-      AND sc.current_period_end < now()
-      THEN 3
-    WHEN sc.status = 'pending' THEN 4
-    WHEN sc.status = 'active' THEN 5
-    WHEN sc.status = 'canceled' THEN 6
-    ELSE 7
-  END,
-  s.name;
-$$ LANGUAGE sql STABLE SECURITY DEFINER;
+    s.name;
+END;
+$$;

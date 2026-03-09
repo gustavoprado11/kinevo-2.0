@@ -121,7 +121,6 @@ export function StudentModal({
                 name: name.trim(),
                 email: email.trim().toLowerCase(),
                 phone: phone.trim(),
-                trainerId,
                 modality
             })
 
