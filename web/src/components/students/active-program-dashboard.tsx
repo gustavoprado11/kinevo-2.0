@@ -168,47 +168,37 @@ export function ActiveProgramDashboard({
 
     if (!program) {
         return (
-            <div className="bg-glass-bg backdrop-blur-md rounded-2xl border border-k-border-primary p-8 h-full flex flex-col">
-                <div className="flex items-center justify-between mb-8">
-                    <div>
-                        <h3 className="text-xl font-black text-[#1C1C1E] dark:text-white tracking-tight">Programa Atual</h3>
-                        <p className="text-sm text-k-text-tertiary mt-1">Nenhum programa ativo no momento</p>
-                    </div>
+            <div className="bg-white dark:bg-glass-bg backdrop-blur-md rounded-2xl border border-[#E5E5EA] dark:border-k-border-primary p-6">
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-semibold text-[#1C1C1E] dark:text-white flex items-center gap-2">
+                        Programa Atual
+                        <span className="px-2 py-0.5 rounded bg-glass-bg text-[10px] text-k-text-tertiary font-bold border border-k-border-subtle">
+                            Ativo
+                        </span>
+                    </h3>
                 </div>
 
-                <div className="flex-1 text-center py-10 border border-dashed border-k-border-primary rounded-2xl flex flex-col items-center justify-center">
-                    <div className="w-16 h-16 rounded-full bg-glass-bg flex items-center justify-center mx-auto mb-6">
-                        <svg className="w-8 h-8 text-k-text-quaternary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                        </svg>
-                    </div>
-                    <p className="text-k-text-tertiary font-medium mb-8">Nenhum programa ativo no momento.</p>
-
-                    <div className="flex items-center justify-center gap-4">
+                <div className="text-center py-4">
+                    <p className="text-sm text-k-text-quaternary mb-3">Nenhum programa ativo no momento.</p>
+                    <div className="flex items-center justify-center gap-2">
                         <button
                             onClick={onCreateProgram}
-                            className="px-6 py-3 bg-violet-600 hover:bg-violet-500 text-white text-[11px] font-black rounded-xl transition-all shadow-lg shadow-violet-600/20 flex items-center gap-2"
+                            className="px-3 py-1.5 text-xs font-bold bg-violet-600 hover:bg-violet-500 text-white rounded-lg transition-all"
                         >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                            </svg>
-                            Criar Novo
+                            + Criar Novo
                         </button>
                         <button
                             onClick={onAssignProgram}
-                            className="px-6 py-3 bg-transparent hover:bg-glass-bg text-k-text-secondary hover:text-k-text-primary text-[11px] font-black rounded-xl transition-all border border-k-border-primary flex items-center gap-2"
+                            className="px-3 py-1.5 text-xs font-bold text-k-text-tertiary hover:text-k-text-primary border border-k-border-subtle rounded-lg transition-all"
                         >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                            </svg>
                             Atribuir
                         </button>
                         {onPrescribeAI && (
                             <button
                                 onClick={onPrescribeAI}
-                                className="px-6 py-3 bg-gradient-to-r from-violet-600 to-indigo-500 hover:from-violet-500 hover:to-indigo-400 text-white text-[11px] font-black rounded-xl transition-all shadow-lg shadow-indigo-600/20 flex items-center gap-2"
+                                className="px-3 py-1.5 text-xs font-bold text-violet-400 hover:text-violet-300 border border-violet-500/30 rounded-lg transition-all"
                             >
-                                Prescrever com IA
+                                Novo com IA
                             </button>
                         )}
                     </div>
