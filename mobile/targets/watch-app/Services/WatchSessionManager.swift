@@ -204,6 +204,17 @@ class WatchSessionManager: NSObject, ObservableObject {
     print("[WatchSessionManager] ✅ FINISH_WORKOUT queued via transferUserInfo for \(workoutId)")
   }
 
+  /// Notify iPhone that the user abandoned a workout from the Watch.
+  func sendDiscardWorkout(workoutId: String) {
+    let message: [String: Any] = [
+      "type": "DISCARD_WORKOUT",
+      "payload": [
+        "workoutId": workoutId
+      ]
+    ]
+    sendReliable(message, label: "DISCARD_WORKOUT")
+  }
+
   func sendMessage(_ message: [String: Any]) {
     guard let session = wcSession, session.isReachable else {
       print("[WatchSessionManager] Cannot send message, session not reachable")

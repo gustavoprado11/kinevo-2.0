@@ -39,6 +39,7 @@ interface WorkoutPanelProps {
     onUpdateFrequency?: (days: string[]) => void
     occupiedDays?: string[]
     isScrolled?: boolean
+    readonly?: boolean
 }
 
 // Connector button between workout items
@@ -113,6 +114,7 @@ export function WorkoutPanel({
     onUpdateFrequency,
     occupiedDays = [],
     isScrolled = false,
+    readonly = false,
 }: WorkoutPanelProps) {
     const dndId = useId()
     const [isEditingName, setIsEditingName] = useState(false)
@@ -179,7 +181,11 @@ export function WorkoutPanel({
             <div className={`sticky -top-6 z-10 transition-all duration-300 ${isScrolled ? '-mx-6 px-6 py-2 bg-surface-canvas/95 backdrop-blur-sm border-b border-k-border-subtle' : ''}`}>
                 <div className={`flex items-center justify-between transition-all duration-300 ${isScrolled ? 'gap-4' : ''}`}>
                     <div className="flex items-center gap-3">
-                        {isEditingName ? (
+                        {readonly ? (
+                            <span className={`font-bold text-[#1D1D1F] dark:text-k-text-primary transition-all duration-300 ${isScrolled ? 'text-sm' : 'text-xl'}`}>
+                                {workout.name}
+                            </span>
+                        ) : isEditingName ? (
                             <input
                                 type="text"
                                 value={tempName}
@@ -203,8 +209,14 @@ export function WorkoutPanel({
                     </div>
 
                     <div className="flex items-center gap-4">
-                        {/* Day Selector — compact summary when scrolled */}
-                        {isScrolled ? (
+                        {/* Day Selector — hidden in readonly, compact summary when scrolled */}
+                        {readonly ? (
+                            totalSets > 0 && (
+                                <div className="flex items-center gap-2 text-sm text-k-text-tertiary">
+                                    <span className="font-medium">{totalSets} séries</span>
+                                </div>
+                            )
+                        ) : isScrolled ? (
                             <div className="flex items-center gap-2 text-xs text-k-text-tertiary">
                                 <span className="font-medium">{scheduledDaysCount > 0 ? `${scheduledDaysCount}x/sem` : 'Sem dias'}</span>
                                 {totalSets > 0 && (
@@ -295,16 +307,40 @@ export function WorkoutPanel({
             {/* Items with connectors */}
             <div className="">
                 {workout.items.length === 0 ? (
-                    <div className="text-center py-12 border border-dashed border-[#D2D2D7] dark:border-k-border-primary rounded-2xl bg-[#F9F9FB] dark:bg-glass-bg">
-                        <p className="text-[#86868B] dark:text-k-text-tertiary mb-4">Arraste exercícios da biblioteca ou adicione uma nota</p>
-                        <div className="flex items-center justify-center gap-2">
-                            <button
-                                onClick={onAddNote}
-                                className="px-4 py-2 bg-white dark:bg-glass-bg hover:bg-[#F5F5F7] dark:hover:bg-glass-bg-active border border-[#D2D2D7] dark:border-k-border-subtle text-[#1D1D1F] dark:text-k-text-primary text-sm font-medium rounded-lg transition-colors"
-                            >
-                                + Adicionar Nota
-                            </button>
+                    readonly ? (
+                        <div className="text-center py-12">
+                            <p className="text-[#86868B] dark:text-k-text-tertiary">Nenhum exercício neste treino</p>
                         </div>
+                    ) : (
+                        <div className="text-center py-12 border border-dashed border-[#D2D2D7] dark:border-k-border-primary rounded-2xl bg-[#F9F9FB] dark:bg-glass-bg">
+                            <p className="text-[#86868B] dark:text-k-text-tertiary mb-4">Arraste exercícios da biblioteca ou adicione uma nota</p>
+                            <div className="flex items-center justify-center gap-2">
+                                <button
+                                    onClick={onAddNote}
+                                    className="px-4 py-2 bg-white dark:bg-glass-bg hover:bg-[#F5F5F7] dark:hover:bg-glass-bg-active border border-[#D2D2D7] dark:border-k-border-subtle text-[#1D1D1F] dark:text-k-text-primary text-sm font-medium rounded-lg transition-colors"
+                                >
+                                    + Adicionar Nota
+                                </button>
+                            </div>
+                        </div>
+                    )
+                ) : readonly ? (
+                    <div className="space-y-4">
+                        {workout.items.map((item) => (
+                            <SortableWorkoutItem
+                                key={item.id}
+                                item={item}
+                                exercises={exercises}
+                                index={0}
+                                totalItems={workout.items.length}
+                                allItems={workout.items}
+                                onUpdate={() => {}}
+                                onDelete={() => {}}
+                                onMoveUp={() => {}}
+                                onMoveDown={() => {}}
+                                readonly
+                            />
+                        ))}
                     </div>
                 ) : (
                     <DndContext

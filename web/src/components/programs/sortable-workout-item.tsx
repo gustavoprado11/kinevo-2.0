@@ -25,9 +25,23 @@ interface SortableWorkoutItemProps {
     onAddToSuperset?: (supersetId: string) => void
     onRemoveFromSuperset?: (childId: string) => void
     onDissolveSuperset?: () => void
+    readonly?: boolean
 }
 
 export function SortableWorkoutItem(props: SortableWorkoutItemProps) {
+    // In readonly mode, skip DnD entirely — render a plain div
+    if (props.readonly) {
+        return (
+            <div style={{ position: 'relative' }}>
+                <WorkoutItemCard {...props} readonly />
+            </div>
+        )
+    }
+
+    return <DraggableSortableItem {...props} />
+}
+
+function DraggableSortableItem(props: SortableWorkoutItemProps) {
     const {
         attributes,
         listeners,
@@ -41,7 +55,6 @@ export function SortableWorkoutItem(props: SortableWorkoutItemProps) {
         transform: CSS.Transform.toString(transform),
         transition,
         opacity: isDragging ? 0.4 : 1,
-        // Ensure z-index is higher while dragging
         zIndex: isDragging ? 50 : 'auto',
         position: 'relative' as const,
     }

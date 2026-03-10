@@ -22,6 +22,7 @@ interface WorkoutItemCardProps {
     onCreateSupersetWithNext?: () => void
     onAddToSuperset?: (supersetId: string) => void
     dragHandleProps?: any // Passed from Sortable wrapper
+    readonly?: boolean
 }
 
 import { GripVertical, Trash2, MessageSquare, Repeat, Check, PlayCircle, ArrowLeftRight, Search, X, Pencil } from 'lucide-react'
@@ -45,34 +46,43 @@ export function WorkoutItemCard({
     onRemoveFromSuperset,
     onDissolveSuperset,
     dragHandleProps,
+    readonly,
 }: WorkoutItemCardProps) {
     if (item.item_type === 'note') {
         return (
             <div className="bg-white dark:bg-surface-card rounded-xl border border-[#E8E8ED] dark:border-k-border-subtle p-4 group flex items-start gap-3 relative">
                 {/* Drag Handle */}
-                <div
-                    {...dragHandleProps}
-                    className="mt-1 text-k-text-quaternary hover:text-k-text-secondary cursor-grab active:cursor-grabbing touch-none transition-colors"
-                >
-                    <GripVertical className="w-4 h-4" />
-                </div>
+                {!readonly && (
+                    <div
+                        {...dragHandleProps}
+                        className="mt-1 text-k-text-quaternary hover:text-k-text-secondary cursor-grab active:cursor-grabbing touch-none transition-colors"
+                    >
+                        <GripVertical className="w-4 h-4" />
+                    </div>
+                )}
 
                 <div className="flex-1">
-                    <textarea
-                        value={item.notes || ''}
-                        onChange={(e) => onUpdate({ notes: e.target.value })}
-                        placeholder="Escreva uma nota..."
-                        rows={2}
-                        className="w-full px-0 py-0 bg-transparent border-0 text-k-text-primary placeholder:text-k-text-quaternary focus:outline-none focus:ring-0 text-sm resize-none"
-                    />
+                    {readonly ? (
+                        <p className="text-sm text-k-text-primary">{item.notes || ''}</p>
+                    ) : (
+                        <textarea
+                            value={item.notes || ''}
+                            onChange={(e) => onUpdate({ notes: e.target.value })}
+                            placeholder="Escreva uma nota..."
+                            rows={2}
+                            className="w-full px-0 py-0 bg-transparent border-0 text-k-text-primary placeholder:text-k-text-quaternary focus:outline-none focus:ring-0 text-sm resize-none"
+                        />
+                    )}
                 </div>
 
-                <button
-                    onClick={onDelete}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity text-k-text-quaternary hover:text-red-400 p-1"
-                >
-                    <Trash2 className="w-4 h-4" />
-                </button>
+                {!readonly && (
+                    <button
+                        onClick={onDelete}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity text-k-text-quaternary hover:text-red-400 p-1"
+                    >
+                        <Trash2 className="w-4 h-4" />
+                    </button>
+                )}
             </div>
         )
     }
@@ -86,9 +96,11 @@ export function WorkoutItemCard({
                 {/* Header */}
                 <div className="flex items-center justify-between mb-4 pl-3">
                     <div className="flex items-center gap-3">
-                        <div {...dragHandleProps} className="text-k-text-quaternary hover:text-k-text-secondary cursor-grab active:cursor-grabbing touch-none">
-                            <GripVertical className="w-4 h-4" />
-                        </div>
+                        {!readonly && (
+                            <div {...dragHandleProps} className="text-k-text-quaternary hover:text-k-text-secondary cursor-grab active:cursor-grabbing touch-none">
+                                <GripVertical className="w-4 h-4" />
+                            </div>
+                        )}
                         <div className="flex items-center gap-2">
                             <span className="text-xs font-bold text-[#007AFF] dark:text-violet-400">Superset</span>
                             <span className="flex items-center justify-center bg-[#007AFF]/10 dark:bg-violet-500/10 text-[#007AFF] dark:text-violet-300 text-[10px] font-bold px-1.5 py-0.5 rounded border border-[#007AFF]/20 dark:border-violet-500/20">
@@ -100,24 +112,32 @@ export function WorkoutItemCard({
                     <div className="flex items-center gap-4">
                         <div className="flex items-center gap-2">
                             <span className="text-[10px] font-bold text-[#8E8E93] dark:text-k-text-tertiary">Descanso</span>
-                            <input
-                                type="number"
-                                value={item.rest_seconds || ''}
-                                onChange={(e) => onUpdate({ rest_seconds: parseInt(e.target.value) || null })}
-                                placeholder="0"
-                                className="w-8 bg-transparent text-[#1C1C1E] dark:text-k-text-primary text-xs font-medium text-center focus:outline-none focus:text-[#007AFF] dark:focus:text-violet-400 transition-colors placeholder:text-k-border-subtle"
-                            />
-                            <span className="text-[10px] text-[#8E8E93] dark:text-k-text-tertiary">s</span>
+                            {readonly ? (
+                                <span className="text-[#1C1C1E] dark:text-k-text-primary text-xs font-medium">{item.rest_seconds || 0}s</span>
+                            ) : (
+                                <>
+                                    <input
+                                        type="number"
+                                        value={item.rest_seconds || ''}
+                                        onChange={(e) => onUpdate({ rest_seconds: parseInt(e.target.value) || null })}
+                                        placeholder="0"
+                                        className="w-8 bg-transparent text-[#1C1C1E] dark:text-k-text-primary text-xs font-medium text-center focus:outline-none focus:text-[#007AFF] dark:focus:text-violet-400 transition-colors placeholder:text-k-border-subtle"
+                                    />
+                                    <span className="text-[10px] text-[#8E8E93] dark:text-k-text-tertiary">s</span>
+                                </>
+                            )}
                         </div>
 
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={onDissolveSuperset} className="text-k-text-quaternary hover:text-k-text-primary p-1" title="Dissolver">
-                                <Repeat className="w-3.5 h-3.5" />
-                            </button>
-                            <button onClick={onDelete} className="text-k-text-quaternary hover:text-red-400 p-1">
-                                <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                        </div>
+                        {!readonly && (
+                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button onClick={onDissolveSuperset} className="text-k-text-quaternary hover:text-k-text-primary p-1" title="Dissolver">
+                                    <Repeat className="w-3.5 h-3.5" />
+                                </button>
+                                <button onClick={onDelete} className="text-k-text-quaternary hover:text-red-400 p-1">
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -131,6 +151,7 @@ export function WorkoutItemCard({
                             onUpdate={(updates) => onUpdateChild?.(child.id, updates)}
                             onDelete={() => onDeleteChild?.(child.id)}
                             onRemoveFromSuperset={() => onRemoveFromSuperset?.(child.id)}
+                            readonly={readonly}
                         />
                     ))}
 
@@ -148,6 +169,7 @@ export function WorkoutItemCard({
             onUpdate={onUpdate}
             onDelete={onDelete}
             dragHandleProps={dragHandleProps}
+            readonly={readonly}
         />
     )
 }
@@ -158,12 +180,14 @@ function ExerciseItemCard({
     onUpdate,
     onDelete,
     dragHandleProps,
+    readonly,
 }: {
     item: WorkoutItem
     exercises: Exercise[]
     onUpdate: (updates: Partial<WorkoutItem>) => void
     onDelete: () => void
     dragHandleProps?: any
+    readonly?: boolean
 }) {
     const [showVideo, setShowVideo] = useState(false)
     const [videoExercise, setVideoExercise] = useState<Exercise | null>(null)
@@ -204,7 +228,7 @@ function ExerciseItemCard({
         setTimeout(() => swapInputRef.current?.focus(), 50)
     }
 
-    if (isSwapping) {
+    if (isSwapping && !readonly) {
         return (
             <>
             <div className="bg-white dark:bg-surface-card rounded-xl border border-[#007AFF]/30 dark:border-violet-500/30 p-4 relative transition-all">
@@ -288,12 +312,14 @@ function ExerciseItemCard({
         <div className="bg-white dark:bg-surface-card rounded-xl border border-[#E8E8ED] dark:border-k-border-subtle p-4 group relative transition-all hover:border-[#D2D2D7] dark:hover:border-k-border-primary">
             <div className="flex items-start gap-3">
                 {/* Drag Handle */}
-                <div
-                    {...dragHandleProps}
-                    className="mt-1 text-k-text-quaternary hover:text-k-text-secondary cursor-grab active:cursor-grabbing touch-none transition-colors"
-                >
-                    <GripVertical className="w-4 h-4" />
-                </div>
+                {!readonly && (
+                    <div
+                        {...dragHandleProps}
+                        className="mt-1 text-k-text-quaternary hover:text-k-text-secondary cursor-grab active:cursor-grabbing touch-none transition-colors"
+                    >
+                        <GripVertical className="w-4 h-4" />
+                    </div>
+                )}
 
                 {/* Content */}
                 <div className="flex-1 min-w-0">
@@ -303,7 +329,7 @@ function ExerciseItemCard({
                             <span className="text-sm font-bold text-k-text-primary truncate">
                                 {item.exercise?.name || 'Exercício sem nome'}
                             </span>
-                            {item.exercise?.video_url && (
+                            {!readonly && item.exercise?.video_url && (
                                 <button
                                     onClick={() => { setVideoExercise(item.exercise!); setShowVideo(true) }}
                                     className="text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#007AFF] dark:hover:text-violet-400 transition-colors shrink-0"
@@ -320,21 +346,23 @@ function ExerciseItemCard({
                         </div>
 
                         {/* Hover Actions */}
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
-                                onClick={startSwap}
-                                className="p-1.5 rounded-md text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#007AFF] dark:hover:text-violet-400 hover:bg-[#007AFF]/10 dark:hover:bg-violet-400/10 transition-colors"
-                                title="Trocar exercício"
-                            >
-                                <ArrowLeftRight className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                                onClick={onDelete}
-                                className="p-1.5 rounded-md text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#FF3B30] dark:hover:text-red-400 hover:bg-[#FF3B30]/10 dark:hover:bg-red-400/10 transition-colors"
-                            >
-                                <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                        </div>
+                        {!readonly && (
+                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                    onClick={startSwap}
+                                    className="p-1.5 rounded-md text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#007AFF] dark:hover:text-violet-400 hover:bg-[#007AFF]/10 dark:hover:bg-violet-400/10 transition-colors"
+                                    title="Trocar exercício"
+                                >
+                                    <ArrowLeftRight className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                    onClick={onDelete}
+                                    className="p-1.5 rounded-md text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#FF3B30] dark:hover:text-red-400 hover:bg-[#FF3B30]/10 dark:hover:bg-red-400/10 transition-colors"
+                                >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     {/* Inline Parameters */}
@@ -342,47 +370,59 @@ function ExerciseItemCard({
                         {/* Sets */}
                         <div className="flex items-center gap-2">
                             <span className="text-[10px] font-bold text-[#8E8E93] dark:text-k-text-tertiary">Séries</span>
-                            <input
-                                type="number"
-                                min={1}
-                                step={1}
-                                value={item.sets || ''}
-                                onChange={(e) => onUpdate({ sets: parseInt(e.target.value) || null })}
-                                onFocus={(e) => e.target.select()}
-                                placeholder="0"
-                                className="w-8 bg-transparent text-[#1C1C1E] dark:text-k-text-primary text-sm font-medium text-center focus:outline-none focus:text-[#007AFF] dark:focus:text-violet-400 transition-colors placeholder:text-k-border-subtle border-b border-transparent focus:border-[#007AFF]/50 dark:focus:border-violet-500/50 p-0"
-                            />
+                            {readonly ? (
+                                <span className="text-[#1C1C1E] dark:text-k-text-primary text-sm font-medium">{item.sets || 0}</span>
+                            ) : (
+                                <input
+                                    type="number"
+                                    min={1}
+                                    step={1}
+                                    value={item.sets || ''}
+                                    onChange={(e) => onUpdate({ sets: parseInt(e.target.value) || null })}
+                                    onFocus={(e) => e.target.select()}
+                                    placeholder="0"
+                                    className="w-8 bg-transparent text-[#1C1C1E] dark:text-k-text-primary text-sm font-medium text-center focus:outline-none focus:text-[#007AFF] dark:focus:text-violet-400 transition-colors placeholder:text-k-border-subtle border-b border-transparent focus:border-[#007AFF]/50 dark:focus:border-violet-500/50 p-0"
+                                />
+                            )}
                         </div>
 
                         {/* Reps */}
                         <div className="flex items-center gap-2">
                             <span className="text-[10px] font-bold text-[#8E8E93] dark:text-k-text-tertiary">Reps</span>
-                            <input
-                                type="text"
-                                value={item.reps || ''}
-                                onChange={(e) => onUpdate({ reps: e.target.value || null })}
-                                onFocus={(e) => e.target.select()}
-                                placeholder="0"
-                                className="w-12 bg-transparent text-[#1C1C1E] dark:text-k-text-primary text-sm font-medium text-center focus:outline-none focus:text-[#007AFF] dark:focus:text-violet-400 transition-colors placeholder:text-k-border-subtle border-b border-transparent focus:border-[#007AFF]/50 dark:focus:border-violet-500/50 p-0"
-                            />
+                            {readonly ? (
+                                <span className="text-[#1C1C1E] dark:text-k-text-primary text-sm font-medium">{item.reps || '—'}</span>
+                            ) : (
+                                <input
+                                    type="text"
+                                    value={item.reps || ''}
+                                    onChange={(e) => onUpdate({ reps: e.target.value || null })}
+                                    onFocus={(e) => e.target.select()}
+                                    placeholder="0"
+                                    className="w-12 bg-transparent text-[#1C1C1E] dark:text-k-text-primary text-sm font-medium text-center focus:outline-none focus:text-[#007AFF] dark:focus:text-violet-400 transition-colors placeholder:text-k-border-subtle border-b border-transparent focus:border-[#007AFF]/50 dark:focus:border-violet-500/50 p-0"
+                                />
+                            )}
                         </div>
 
                         {/* Rest */}
                         <div className="flex items-center gap-2">
                             <span className="text-[10px] font-bold text-[#8E8E93] dark:text-k-text-tertiary">Descanso</span>
-                            <div className="relative">
-                                <input
-                                    type="number"
-                                    min={0}
-                                    step={15}
-                                    value={item.rest_seconds || ''}
-                                    onChange={(e) => onUpdate({ rest_seconds: parseInt(e.target.value) || null })}
-                                    onFocus={(e) => e.target.select()}
-                                    placeholder="0"
-                                    className="w-10 bg-transparent text-[#1C1C1E] dark:text-k-text-primary text-sm font-medium text-center focus:outline-none focus:text-[#007AFF] dark:focus:text-violet-400 transition-colors placeholder:text-k-border-subtle border-b border-transparent focus:border-[#007AFF]/50 dark:focus:border-violet-500/50 p-0"
-                                />
-                                <span className="absolute -right-2 top-0.5 text-[9px] text-[#8E8E93] dark:text-k-text-tertiary pointer-events-none">s</span>
-                            </div>
+                            {readonly ? (
+                                <span className="text-[#1C1C1E] dark:text-k-text-primary text-sm font-medium">{item.rest_seconds || 0}s</span>
+                            ) : (
+                                <div className="relative">
+                                    <input
+                                        type="number"
+                                        min={0}
+                                        step={15}
+                                        value={item.rest_seconds || ''}
+                                        onChange={(e) => onUpdate({ rest_seconds: parseInt(e.target.value) || null })}
+                                        onFocus={(e) => e.target.select()}
+                                        placeholder="0"
+                                        className="w-10 bg-transparent text-[#1C1C1E] dark:text-k-text-primary text-sm font-medium text-center focus:outline-none focus:text-[#007AFF] dark:focus:text-violet-400 transition-colors placeholder:text-k-border-subtle border-b border-transparent focus:border-[#007AFF]/50 dark:focus:border-violet-500/50 p-0"
+                                    />
+                                    <span className="absolute -right-2 top-0.5 text-[9px] text-[#8E8E93] dark:text-k-text-tertiary pointer-events-none">s</span>
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -390,19 +430,23 @@ function ExerciseItemCard({
                     <ExerciseFunctionSelect
                         value={item.exercise_function}
                         onChange={(v) => onUpdate({ exercise_function: v })}
+                        readonly={readonly}
                     />
 
                     {/* Technical Note */}
                     <TechnicalNote
                         value={item.notes || ''}
                         onChange={(v) => onUpdate({ notes: v })}
+                        readonly={readonly}
                     />
 
-                    <SubstituteSelector
-                        item={item}
-                        exercises={exercises}
-                        onUpdate={onUpdate}
-                    />
+                    {!readonly && (
+                        <SubstituteSelector
+                            item={item}
+                            exercises={exercises}
+                            onUpdate={onUpdate}
+                        />
+                    )}
                 </div>
             </div>
         </div>
@@ -423,12 +467,14 @@ function SupersetChildCard({
     onUpdate,
     onDelete,
     onRemoveFromSuperset,
+    readonly,
 }: {
     item: WorkoutItem
     exercises: Exercise[]
     onUpdate: (updates: Partial<WorkoutItem>) => void
     onDelete: () => void
     onRemoveFromSuperset?: () => void
+    readonly?: boolean
 }) {
     return (
         <div className="bg-[#F9F9FB] dark:bg-surface-inset rounded-lg border border-[#E8E8ED] dark:border-k-border-subtle p-3 group/child relative hover:border-[#D2D2D7] dark:hover:border-k-border-primary transition-colors">
@@ -439,41 +485,51 @@ function SupersetChildCard({
                             {item.exercise?.name}
                         </span>
 
-                        <div className="flex items-center gap-1 opacity-0 group-hover/child:opacity-100 transition-opacity">
-                            <button onClick={onRemoveFromSuperset} className="text-k-text-quaternary hover:text-amber-400 p-1">
-                                <span className="sr-only">Desvincular</span>
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
-                            </button>
-                            <button onClick={onDelete} className="text-k-text-quaternary hover:text-red-400 p-1">
-                                <Trash2 className="w-3 h-3" />
-                            </button>
-                        </div>
+                        {!readonly && (
+                            <div className="flex items-center gap-1 opacity-0 group-hover/child:opacity-100 transition-opacity">
+                                <button onClick={onRemoveFromSuperset} className="text-k-text-quaternary hover:text-amber-400 p-1">
+                                    <span className="sr-only">Desvincular</span>
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                                </button>
+                                <button onClick={onDelete} className="text-k-text-quaternary hover:text-red-400 p-1">
+                                    <Trash2 className="w-3 h-3" />
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex items-center gap-4">
                         <div className="flex items-center gap-2">
                             <span className="text-[9px] font-bold text-[#8E8E93] dark:text-k-text-tertiary">Sets</span>
-                            <input
-                                type="number"
-                                min={1}
-                                step={1}
-                                value={item.sets || ''}
-                                onChange={(e) => onUpdate({ sets: parseInt(e.target.value) || null })}
-                                onFocus={(e) => e.target.select()}
-                                placeholder="0"
-                                className="w-6 bg-transparent text-[#1C1C1E] dark:text-k-text-primary text-xs font-medium text-center focus:outline-none focus:text-[#007AFF] dark:focus:text-violet-400 border-b border-transparent focus:border-[#007AFF]/50 dark:focus:border-violet-500/50 p-0"
-                            />
+                            {readonly ? (
+                                <span className="text-[#1C1C1E] dark:text-k-text-primary text-xs font-medium">{item.sets || 0}</span>
+                            ) : (
+                                <input
+                                    type="number"
+                                    min={1}
+                                    step={1}
+                                    value={item.sets || ''}
+                                    onChange={(e) => onUpdate({ sets: parseInt(e.target.value) || null })}
+                                    onFocus={(e) => e.target.select()}
+                                    placeholder="0"
+                                    className="w-6 bg-transparent text-[#1C1C1E] dark:text-k-text-primary text-xs font-medium text-center focus:outline-none focus:text-[#007AFF] dark:focus:text-violet-400 border-b border-transparent focus:border-[#007AFF]/50 dark:focus:border-violet-500/50 p-0"
+                                />
+                            )}
                         </div>
                         <div className="flex items-center gap-2">
                             <span className="text-[9px] font-bold text-[#8E8E93] dark:text-k-text-tertiary">Reps</span>
-                            <input
-                                type="text"
-                                value={item.reps || ''}
-                                onChange={(e) => onUpdate({ reps: e.target.value || null })}
-                                onFocus={(e) => e.target.select()}
-                                placeholder="0"
-                                className="w-8 bg-transparent text-[#1D1D1F] dark:text-k-text-primary text-xs font-medium text-center focus:outline-none focus:text-[#007AFF] dark:focus:text-violet-400 border-b border-transparent focus:border-[#007AFF]/50 dark:focus:border-violet-500/50 p-0"
-                            />
+                            {readonly ? (
+                                <span className="text-[#1D1D1F] dark:text-k-text-primary text-xs font-medium">{item.reps || '—'}</span>
+                            ) : (
+                                <input
+                                    type="text"
+                                    value={item.reps || ''}
+                                    onChange={(e) => onUpdate({ reps: e.target.value || null })}
+                                    onFocus={(e) => e.target.select()}
+                                    placeholder="0"
+                                    className="w-8 bg-transparent text-[#1D1D1F] dark:text-k-text-primary text-xs font-medium text-center focus:outline-none focus:text-[#007AFF] dark:focus:text-violet-400 border-b border-transparent focus:border-[#007AFF]/50 dark:focus:border-violet-500/50 p-0"
+                                />
+                            )}
                         </div>
                     </div>
 
@@ -481,6 +537,7 @@ function SupersetChildCard({
                     <ExerciseFunctionSelect
                         value={item.exercise_function}
                         onChange={(v) => onUpdate({ exercise_function: v })}
+                        readonly={readonly}
                     />
                 </div>
             </div>
@@ -499,10 +556,24 @@ const EXERCISE_FUNCTION_OPTIONS = [
 function ExerciseFunctionSelect({
     value,
     onChange,
+    readonly,
 }: {
     value?: string | null
     onChange: (v: string | null) => void
+    readonly?: boolean
 }) {
+    const label = EXERCISE_FUNCTION_OPTIONS.find(o => o.value === value)?.label
+
+    if (readonly) {
+        if (!label) return null
+        return (
+            <div className="flex items-center gap-2 mt-2">
+                <span className="text-[10px] font-bold text-[#8E8E93] dark:text-k-text-tertiary">Função</span>
+                <span className="text-[#1D1D1F] dark:text-k-text-primary text-xs font-medium">{label}</span>
+            </div>
+        )
+    }
+
     return (
         <div className="flex items-center gap-2 mt-2">
             <span className="text-[10px] font-bold text-[#8E8E93] dark:text-k-text-tertiary">Função</span>
@@ -520,10 +591,20 @@ function ExerciseFunctionSelect({
     )
 }
 
-function TechnicalNote({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function TechnicalNote({ value, onChange, readonly }: { value: string; onChange: (v: string) => void; readonly?: boolean }) {
     const [editing, setEditing] = useState(false)
     const [local, setLocal] = useState(value)
     const inputRef = useRef<HTMLInputElement>(null)
+
+    if (readonly) {
+        if (!value) return null
+        return (
+            <div className="mt-2 flex items-center gap-2 py-1.5 px-2 -mx-2 rounded-lg bg-[#007AFF]/5 dark:bg-violet-500/5 border-l-2 border-[#007AFF]/40 dark:border-violet-500/40">
+                <MessageSquare size={14} className="text-[#007AFF]/70 dark:text-violet-400/70 shrink-0" />
+                <span className="text-k-text-secondary text-xs flex-1">{value}</span>
+            </div>
+        )
+    }
 
     const commit = () => {
         setEditing(false)

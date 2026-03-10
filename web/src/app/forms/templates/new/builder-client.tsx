@@ -26,7 +26,9 @@ import {
     CircleDot,
     Camera,
     MessageSquarePlus,
+    Smartphone,
 } from 'lucide-react'
+import { EvaluationPreview } from '@/components/previews/evaluation-preview/evaluation-preview'
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
 import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
 import {
@@ -251,6 +253,9 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
 
     // Add question dropdown
     const [showAddMenu, setShowAddMenu] = useState(false)
+
+    // Preview
+    const [showPreview, setShowPreview] = useState(true)
 
     // Track unsaved changes
     const hasUnsavedChanges = useMemo(() => {
@@ -642,10 +647,10 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                         ════════════════════════════════════════════════ */}
                         {step === 'editor' && (
                             <motion.div key="editor" {...stepAnimation}>
-                                <div className="max-w-3xl mx-auto pb-24">
+                                <div className={`pb-24 ${showPreview ? 'flex gap-8 items-start' : 'max-w-3xl mx-auto'}`}>
 
                                     {/* Left Column — Form */}
-                                    <div className="space-y-6">
+                                    <div className={`space-y-6 ${showPreview ? 'flex-1 min-w-0' : ''}`}>
 
                                         {/* Card: Configuração */}
                                         <div className="rounded-xl border border-[#D2D2D7] bg-white p-4 space-y-3 shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:border-k-border-subtle dark:bg-surface-card dark:shadow-none">
@@ -694,14 +699,27 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                                 <h2 className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-secondary">
                                                     Perguntas ({questions.length})
                                                 </h2>
-                                                <button
-                                                    onClick={handleAuditAI}
-                                                    disabled={isAuditingAI || questions.length === 0}
-                                                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full border border-[#D2D2D7] bg-transparent hover:bg-[#F5F5F7] text-[#007AFF] transition-all disabled:opacity-40 dark:rounded-lg dark:border-k-border-subtle dark:hover:bg-glass-bg dark:text-k-text-secondary dark:hover:text-violet-400"
-                                                >
-                                                    <Sparkles size={12} />
-                                                    {isAuditingAI ? 'Auditando...' : 'Auditar Qualidade'}
-                                                </button>
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        onClick={() => setShowPreview(!showPreview)}
+                                                        className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full border transition-all ${
+                                                            showPreview
+                                                                ? 'border-violet-300 bg-violet-50 text-violet-600 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-400'
+                                                                : 'border-[#007AFF] bg-[#007AFF]/5 hover:bg-[#007AFF]/10 text-[#007AFF] dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-400 dark:hover:bg-violet-500/20'
+                                                        } dark:rounded-lg`}
+                                                    >
+                                                        <Smartphone size={12} />
+                                                        {showPreview ? 'Preview' : 'Abrir Preview'}
+                                                    </button>
+                                                    <button
+                                                        onClick={handleAuditAI}
+                                                        disabled={isAuditingAI || questions.length === 0}
+                                                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full border border-[#D2D2D7] bg-transparent hover:bg-[#F5F5F7] text-[#007AFF] transition-all disabled:opacity-40 dark:rounded-lg dark:border-k-border-subtle dark:hover:bg-glass-bg dark:text-k-text-secondary dark:hover:text-violet-400"
+                                                    >
+                                                        <Sparkles size={12} />
+                                                        {isAuditingAI ? 'Auditando...' : 'Auditar Qualidade'}
+                                                    </button>
+                                                </div>
                                             </div>
 
                                             {/* Quality Alerts — inline */}
@@ -921,6 +939,28 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                             </div>
                                         </div>
                                     </div>
+
+                                    {/* Right Column — Mobile Preview */}
+                                    {showPreview && (
+                                        <div className="w-[390px] shrink-0 sticky top-8">
+                                            <div className="flex items-center justify-between mb-3">
+                                                <span className="text-xs font-medium text-[#86868B] dark:text-k-text-quaternary">Como o aluno verá no app</span>
+                                                <button
+                                                    onClick={() => setShowPreview(false)}
+                                                    className="text-xs text-[#AEAEB2] hover:text-[#6E6E73] dark:text-k-text-quaternary dark:hover:text-k-text-secondary transition-colors"
+                                                >
+                                                    Ocultar
+                                                </button>
+                                            </div>
+                                            <div className="flex justify-center bg-[#F5F5F7] dark:bg-surface-elevated/30 rounded-2xl pt-4 pb-6 border border-[#E8E8ED] dark:border-k-border-subtle">
+                                                <EvaluationPreview
+                                                    title={title}
+                                                    description={description}
+                                                    questions={questions}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
 
                                 </div>
                             </motion.div>

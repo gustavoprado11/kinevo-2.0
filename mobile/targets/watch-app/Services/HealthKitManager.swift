@@ -137,6 +137,36 @@ class HealthKitManager: NSObject, ObservableObject {
         }
     }
 
+    /// End the workout session WITHOUT saving to Apple Health.
+    /// Used when the user abandons/discards a workout from the Watch.
+    func discardWorkout() {
+        guard let session = workoutSession, let builder = builder else {
+            print("[HealthKit] No active workout to discard")
+            return
+        }
+
+        session.end()
+        let endDate = Date()
+
+        builder.endCollection(withEnd: endDate) { [weak self] success, error in
+            if let error = error {
+                print("[HealthKit] Failed to end collection for discard: \(error)")
+            }
+
+            builder.discardWorkout {
+                print("[HealthKit] Workout discarded (not saved to Health)")
+                DispatchQueue.main.async {
+                    self?.isWorkoutActive = false
+                    self?.activeCalories = 0.0
+                    self?.heartRate = 0.0
+                }
+            }
+        }
+
+        workoutSession = nil
+        self.builder = nil
+    }
+
     func endWorkout() {
         guard let session = workoutSession, let builder = builder else {
             print("[HealthKit] No active workout to end")

@@ -19,6 +19,9 @@ import { updateTrainerNotes } from './actions/update-trainer-notes'
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
 import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
 import { getProgramWeek } from '@kinevo/shared/utils/schedule-projection'
+import { FinancialSidebarCard } from '@/components/students/financial-sidebar-card'
+import { AssessmentSidebarCard } from '@/components/students/assessment-sidebar-card'
+import type { DisplayStatus } from '@/types/financial'
 
 interface Student {
     id: string
@@ -98,6 +101,34 @@ interface StudentDetailClientProps {
     calendarInitialSessions: CalendarSession[]
     weeklyAdherence?: { week: number; rate: number }[]
     tonnageMap?: Record<string, { tonnage: number; previousTonnage: number | null; percentChange: number | null }>
+    sidebarContract: {
+        id: string
+        billing_type: string
+        amount: number | null
+        current_period_end: string | null
+        cancel_at_period_end: boolean | null
+        plan_title: string | null
+        plan_interval: string | null
+    } | null
+    displayStatus: DisplayStatus
+    lastSubmission: {
+        id: string
+        templateTitle: string
+        templateCategory: string
+        submittedAt: string
+    } | null
+    pendingForms: {
+        id: string
+        title: string
+        status: string
+        createdAt: string
+    }[]
+    bodyMetrics: {
+        weight: string | null
+        bodyFat: string | null
+        updatedAt: string | null
+    } | null
+    formTemplates: { id: string; title: string; category: string }[]
 }
 
 export function StudentDetailClient({
@@ -110,7 +141,13 @@ export function StudentDetailClient({
     calendarInitialSessions = [],
     completedPrograms,
     weeklyAdherence = [],
-    tonnageMap = {}
+    tonnageMap = {},
+    sidebarContract,
+    displayStatus,
+    lastSubmission,
+    pendingForms,
+    bodyMetrics,
+    formTemplates,
 }: StudentDetailClientProps) {
     console.log('StudentDetailClient Rendered. Scheduled:', scheduledPrograms) // DEBUG LOG
     const router = useRouter()
@@ -482,6 +519,23 @@ export function StudentDetailClient({
                                 </div>
                             )}
                         </div>
+
+                        {/* Financial Card */}
+                        <FinancialSidebarCard
+                            studentId={student.id}
+                            contract={sidebarContract}
+                            displayStatus={displayStatus}
+                            onViewHistory={() => router.push(`/financial?student=${student.id}`)}
+                        />
+
+                        {/* Assessments Card */}
+                        <AssessmentSidebarCard
+                            studentId={student.id}
+                            lastSubmission={lastSubmission}
+                            pendingForms={pendingForms}
+                            bodyMetrics={bodyMetrics}
+                            formTemplates={formTemplates}
+                        />
 
                         <ProgramHistorySection programs={completedPrograms} />
                     </div>

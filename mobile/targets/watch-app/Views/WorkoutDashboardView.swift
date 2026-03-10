@@ -4,6 +4,7 @@ import SwiftUI
 /// Displayed as a vertical page below the exercise carousel.
 struct WorkoutDashboardView: View {
   let workoutStartDate: Date
+  var onDiscardWorkout: (() -> Void)? = nil
   @EnvironmentObject private var healthKitManager: HealthKitManager
 
   var body: some View {
@@ -57,6 +58,24 @@ struct WorkoutDashboardView: View {
         RoundedRectangle(cornerRadius: 10, style: .continuous)
           .fill(Color.kinevoCard)
       )
+      if let onDiscard = onDiscardWorkout {
+        Button(action: onDiscard) {
+          HStack(spacing: 6) {
+            Image(systemName: "xmark.circle.fill")
+              .font(.system(size: 14))
+            Text("Abandonar Treino")
+              .font(.system(size: 13, weight: .medium))
+          }
+          .foregroundStyle(.red.opacity(0.9))
+          .frame(maxWidth: .infinity)
+          .padding(.vertical, 10)
+          .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+              .fill(Color.red.opacity(0.1))
+          )
+        }
+        .buttonStyle(.plain)
+      }
     }
     .padding(.horizontal, 8)
     .frame(maxWidth: .infinity, maxHeight: .infinity)

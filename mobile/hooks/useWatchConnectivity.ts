@@ -20,18 +20,21 @@ interface UseWatchConnectivityProps {
       sets: Array<{ setIndex: number; reps: number; weight: number; completed: boolean }>;
     }>;
   }) => void;
+  onWatchDiscardWorkout?: (event: { workoutId: string }) => void;
 }
 
-export function useWatchConnectivity({ onWatchSetComplete, onWatchStartWorkout, onWatchFinishWorkout }: UseWatchConnectivityProps = {}) {
+export function useWatchConnectivity({ onWatchSetComplete, onWatchStartWorkout, onWatchFinishWorkout, onWatchDiscardWorkout }: UseWatchConnectivityProps = {}) {
   // Stable refs — callbacks change every render but the listener stays subscribed once.
   const setCompleteRef = useRef(onWatchSetComplete);
   const startWorkoutRef = useRef(onWatchStartWorkout);
   const finishWorkoutRef = useRef(onWatchFinishWorkout);
+  const discardWorkoutRef = useRef(onWatchDiscardWorkout);
 
   useEffect(() => {
     setCompleteRef.current = onWatchSetComplete;
     startWorkoutRef.current = onWatchStartWorkout;
     finishWorkoutRef.current = onWatchFinishWorkout;
+    discardWorkoutRef.current = onWatchDiscardWorkout;
   });
 
   // Initialize module by checking if watch is reachable (forces module load)
@@ -107,6 +110,17 @@ export function useWatchConnectivity({ onWatchSetComplete, onWatchStartWorkout, 
 
         if (__DEV__) console.log(`[useWatchConnectivity] Watch requested FINISH_WORKOUT for ${workoutId} with rpe ${rpe}, ${exercises?.length ?? 0} exercises`);
         finishWorkoutRef.current?.({ workoutId, rpe, startedAt, exercises });
+      }
+
+      if (event.type === 'DISCARD_WORKOUT' && event.payload) {
+        const workoutId = typeof event.payload.workoutId === 'string' ? event.payload.workoutId : null;
+        if (!workoutId) {
+          if (__DEV__) console.warn('[useWatchConnectivity] Ignoring invalid DISCARD_WORKOUT payload:', event.payload);
+          return;
+        }
+
+        if (__DEV__) console.log(`[useWatchConnectivity] Watch requested DISCARD_WORKOUT for ${workoutId}`);
+        discardWorkoutRef.current?.({ workoutId });
       }
     });
 

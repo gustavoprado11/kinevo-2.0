@@ -12,7 +12,7 @@ import { SortableWorkoutTab } from './sortable-workout-tab'
 import { ExerciseLibraryPanel } from './exercise-library-panel'
 import { VolumeSummary } from './volume-summary'
 import { Button } from '@/components/ui/button'
-import { ChevronLeft, Loader2, Calendar, Edit3, AlertCircle, BookmarkPlus } from 'lucide-react'
+import { ChevronLeft, Loader2, Calendar, Edit3, AlertCircle, BookmarkPlus, Smartphone, GitCompareArrows, X } from 'lucide-react'
 
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
 import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
@@ -20,6 +20,14 @@ import { useOnboardingStore } from '@/stores/onboarding-store'
 import type { Exercise } from '@/types/exercise'
 import { assignProgram } from '@/app/students/[id]/actions/assign-program'
 import { PrescriptionRationalePanel } from './prescription-rationale-panel'
+import { ContextPanel } from '@/components/builder/context-panel/context-panel'
+import type { ContextPanelMode } from '@/components/builder/context-panel/context-panel-header'
+import { PastWorkoutSelector } from '@/components/builder/context-panel/past-workout-selector'
+import { getPastWorkoutsForStudent, getPastWorkoutDetail } from '@/app/students/[id]/actions/get-past-workouts'
+import type { PastWorkoutSummary, PastWorkoutDetail } from '@/app/students/[id]/actions/get-past-workouts'
+import { pastDetailToWorkout } from '@/lib/workouts/transformPastWorkout'
+
+export type BuilderViewMode = 'normal' | 'preview' | 'compare'
 
 export interface WorkoutItem {
     id: string
@@ -117,6 +125,18 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
     const [isEndDateFixed, setIsEndDateFixed] = useState(false)
     const [assignmentType] = useState<'immediate' | 'scheduled'>(initialAssignmentType)
     const [isDescriptionOpen, setIsDescriptionOpen] = useState(false)
+    const [contextPanelMode, setContextPanelMode] = useState<ContextPanelMode>('preview')
+    const [builderViewMode, setBuilderViewMode] = useState<BuilderViewMode>('preview')
+
+    // Compare mode state
+    const [comparePastWorkouts, setComparePastWorkouts] = useState<PastWorkoutSummary[]>([])
+    const [comparePastWorkoutsLoading, setComparePastWorkoutsLoading] = useState(false)
+    const [comparePastWorkoutsLoaded, setComparePastWorkoutsLoaded] = useState(false)
+    const [compareSelectedId, setCompareSelectedId] = useState<string | null>(null)
+    const [compareWorkout, setCompareWorkout] = useState<Workout | null>(null)
+    const [compareDetailLoading, setCompareDetailLoading] = useState(false)
+    const [comparePastDetail, setComparePastDetail] = useState<PastWorkoutDetail | null>(null)
+
     const [showActivateConfirm, setShowActivateConfirm] = useState(false)
     const [showTemplateDialog, setShowTemplateDialog] = useState(false)
     const [templateName, setTemplateName] = useState('')
@@ -179,6 +199,55 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
         const newEnd = calculateEndDate(start, durationWeeks)
         setEndDate(newEnd)
     }
+
+    // ── Compare mode handlers ──────────────────────────────────────────────
+    const handleEnterCompare = useCallback(() => {
+        setBuilderViewMode('compare')
+        setContextPanelMode('none')
+        if (studentContext?.id && !comparePastWorkoutsLoaded) {
+            setComparePastWorkoutsLoading(true)
+            getPastWorkoutsForStudent(studentContext.id)
+                .then((result) => {
+                    setComparePastWorkouts(result.data || [])
+                    setComparePastWorkoutsLoaded(true)
+                })
+                .catch(() => {
+                    setComparePastWorkouts([])
+                    setComparePastWorkoutsLoaded(true)
+                })
+                .finally(() => setComparePastWorkoutsLoading(false))
+        }
+    }, [studentContext?.id, comparePastWorkoutsLoaded])
+
+    const handleSelectCompareWorkout = useCallback((workoutId: string) => {
+        setCompareSelectedId(workoutId)
+        setCompareDetailLoading(true)
+        getPastWorkoutDetail(workoutId)
+            .then((result) => {
+                const detail = result.data || null
+                setComparePastDetail(detail)
+                setCompareWorkout(detail ? pastDetailToWorkout(detail) : null)
+            })
+            .catch(() => {
+                setComparePastDetail(null)
+                setCompareWorkout(null)
+            })
+            .finally(() => setCompareDetailLoading(false))
+    }, [])
+
+    const handleExitCompare = useCallback(() => {
+        setBuilderViewMode('normal')
+    }, [])
+
+    const handleEnterPreview = useCallback(() => {
+        setBuilderViewMode('preview')
+        setContextPanelMode('preview')
+    }, [])
+
+    const handleExitPreview = useCallback(() => {
+        setBuilderViewMode('normal')
+        setContextPanelMode('none')
+    }, [])
 
     // Initialize workouts helper
     const initializeWorkouts = (): Workout[] => {
@@ -1226,45 +1295,155 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
                                 </svg>
                             </button>
+
+                            {/* Preview & Compare toggles */}
+                            <div className="flex items-center gap-1 ml-auto">
+                                <button
+                                    onClick={builderViewMode === 'preview' ? handleExitPreview : handleEnterPreview}
+                                    className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all ${
+                                        builderViewMode === 'preview'
+                                            ? 'text-violet-600 dark:text-violet-400 bg-violet-100 dark:bg-violet-500/15'
+                                            : 'text-[#AEAEB2] dark:text-k-text-quaternary hover:text-violet-600 dark:hover:text-violet-400 hover:bg-violet-100/50 dark:hover:bg-violet-500/10'
+                                    }`}
+                                    title="Visão do aluno"
+                                >
+                                    <Smartphone className="w-4 h-4" />
+                                </button>
+                                {studentContext && (
+                                    <button
+                                        onClick={builderViewMode === 'compare' ? handleExitCompare : handleEnterCompare}
+                                        className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all ${
+                                            builderViewMode === 'compare'
+                                                ? 'text-[#007AFF] dark:text-violet-400 bg-[#007AFF]/10 dark:bg-violet-500/15'
+                                                : 'text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#007AFF] dark:hover:text-violet-400 hover:bg-[#007AFF]/5 dark:hover:bg-violet-500/10'
+                                        }`}
+                                        title="Comparar com treino anterior"
+                                    >
+                                        <GitCompareArrows className="w-4 h-4" />
+                                    </button>
+                                )}
+                            </div>
                         </div>
 
-                        {/* Workout Canvas — drop zone for exercises from library */}
-                        <div
-                            ref={canvasScrollRef}
-                            onScroll={(e) => setIsCanvasScrolled(e.currentTarget.scrollTop > 40)}
-                            onDragOver={handleCanvasDragOver}
-                            onDragLeave={handleCanvasDragLeave}
-                            onDrop={handleCanvasDrop}
-                            className={`flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent transition-colors duration-200 ${isDraggingOver ? 'bg-[#007AFF]/5 dark:bg-violet-500/5 ring-2 ring-inset ring-[#007AFF]/20 dark:ring-violet-500/20' : ''}`}
-                        >
-                            <div className="max-w-3xl mx-auto pb-20">
-                                {activeWorkout ? (
-                                    <WorkoutPanel
-                                        workout={activeWorkout}
-                                        exercises={localExercises}
-                                        onUpdateName={(name) => updateWorkoutName(activeWorkout.id, name)}
-                                        onAddExercise={() => { }} // Not used with drag/click
-                                        onAddNote={() => addNote(activeWorkout.id)}
-                                        onUpdateItem={(itemId, updates) => updateItem(activeWorkout.id, itemId, updates)}
-                                        onDeleteItem={(itemId) => deleteItem(activeWorkout.id, itemId)}
-                                        onMoveItem={(itemId, dir) => moveItem(activeWorkout.id, itemId, dir)}
-                                        onReorderItem={handleReorderItem}
-                                        onCreateSupersetWithNext={(itemId) => createSupersetWithNext(activeWorkout.id, itemId)}
-                                        onAddToExistingSuperset={(itemId, supersetId) => addToExistingSuperset(activeWorkout.id, itemId, supersetId)}
-                                        onRemoveFromSuperset={(supersetId, itemId) => removeFromSuperset(activeWorkout.id, supersetId, itemId)}
-                                        onDissolveSuperset={(supersetId) => dissolveSuperset(activeWorkout.id, supersetId)}
-                                        onUpdateFrequency={(days) => updateWorkoutFrequency(activeWorkout.id, days)}
-                                        occupiedDays={occupiedDays}
-                                        isScrolled={isCanvasScrolled}
-                                    />
-                                ) : (
-                                    <div className="text-center py-20">
-                                        <p className="text-k-text-quaternary text-sm">Selecione ou crie um treino para começar</p>
-                                    </div>
-                                )}
-
-                                {/* Delete workout is now in the tab ⋯ menu */}
+                        {/* Canvas + Preview/Compare row */}
+                        <div className="flex flex-1 overflow-hidden">
+                            {/* Workout Canvas — drop zone for exercises from library */}
+                            <div
+                                ref={canvasScrollRef}
+                                onScroll={(e) => setIsCanvasScrolled(e.currentTarget.scrollTop > 40)}
+                                onDragOver={handleCanvasDragOver}
+                                onDragLeave={handleCanvasDragLeave}
+                                onDrop={handleCanvasDrop}
+                                className={`${builderViewMode === 'compare' ? 'flex-[1.1]' : 'flex-1'} overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent transition-colors duration-200 ${isDraggingOver ? 'bg-[#007AFF]/5 dark:bg-violet-500/5 ring-2 ring-inset ring-[#007AFF]/20 dark:ring-violet-500/20' : ''}`}
+                            >
+                                <div className={`${builderViewMode === 'compare' ? '' : 'max-w-3xl'} mx-auto pb-20`}>
+                                    {activeWorkout ? (
+                                        <WorkoutPanel
+                                            workout={activeWorkout}
+                                            exercises={localExercises}
+                                            onUpdateName={(name) => updateWorkoutName(activeWorkout.id, name)}
+                                            onAddExercise={() => { }}
+                                            onAddNote={() => addNote(activeWorkout.id)}
+                                            onUpdateItem={(itemId, updates) => updateItem(activeWorkout.id, itemId, updates)}
+                                            onDeleteItem={(itemId) => deleteItem(activeWorkout.id, itemId)}
+                                            onMoveItem={(itemId, dir) => moveItem(activeWorkout.id, itemId, dir)}
+                                            onReorderItem={handleReorderItem}
+                                            onCreateSupersetWithNext={(itemId) => createSupersetWithNext(activeWorkout.id, itemId)}
+                                            onAddToExistingSuperset={(itemId, supersetId) => addToExistingSuperset(activeWorkout.id, itemId, supersetId)}
+                                            onRemoveFromSuperset={(supersetId, itemId) => removeFromSuperset(activeWorkout.id, supersetId, itemId)}
+                                            onDissolveSuperset={(supersetId) => dissolveSuperset(activeWorkout.id, supersetId)}
+                                            onUpdateFrequency={(days) => updateWorkoutFrequency(activeWorkout.id, days)}
+                                            occupiedDays={occupiedDays}
+                                            isScrolled={isCanvasScrolled}
+                                        />
+                                    ) : (
+                                        <div className="text-center py-20">
+                                            <p className="text-k-text-quaternary text-sm">Selecione ou crie um treino para começar</p>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
+
+                            {/* Compare Panel — readonly past workout */}
+                            {builderViewMode === 'compare' && (
+                                <div className="flex-[0.9] flex flex-col border-l border-[#E8E8ED] dark:border-k-border-subtle bg-[#FAFAFA] dark:bg-surface-canvas/50">
+                                    {/* Compare header */}
+                                    <div className="flex items-center justify-between px-4 py-3 border-b border-[#E8E8ED] dark:border-k-border-subtle bg-[#F5F5F7] dark:bg-surface-elevated">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <GitCompareArrows className="w-4 h-4 text-[#007AFF] dark:text-violet-400 shrink-0" />
+                                            <span className="text-xs font-semibold text-[#1D1D1F] dark:text-k-text-primary truncate">
+                                                {comparePastDetail
+                                                    ? `Comparando com: ${comparePastDetail.workoutName}`
+                                                    : 'Selecione um treino para comparar'
+                                                }
+                                            </span>
+                                            {comparePastDetail?.startedAt && (
+                                                <span className="text-[10px] text-[#86868B] dark:text-k-text-quaternary shrink-0">
+                                                    {new Date(comparePastDetail.startedAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <button
+                                            onClick={handleExitCompare}
+                                            className="p-1 rounded-md text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#1D1D1F] dark:hover:text-k-text-primary hover:bg-[#E8E8ED] dark:hover:bg-glass-bg transition-colors"
+                                        >
+                                            <X className="w-4 h-4" />
+                                        </button>
+                                    </div>
+
+                                    {/* Past workout selector */}
+                                    <PastWorkoutSelector
+                                        workouts={comparePastWorkouts}
+                                        selectedId={compareSelectedId}
+                                        onSelect={handleSelectCompareWorkout}
+                                        isLoading={comparePastWorkoutsLoading}
+                                    />
+
+                                    {/* Readonly workout panel */}
+                                    <div className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+                                        {compareDetailLoading ? (
+                                            <div className="flex items-center justify-center py-20">
+                                                <Loader2 className="w-5 h-5 animate-spin text-[#AEAEB2] dark:text-k-text-quaternary" />
+                                            </div>
+                                        ) : compareWorkout ? (
+                                            <WorkoutPanel
+                                                workout={compareWorkout}
+                                                exercises={localExercises}
+                                                onUpdateName={() => {}}
+                                                onAddExercise={() => {}}
+                                                onAddNote={() => {}}
+                                                onUpdateItem={() => {}}
+                                                onDeleteItem={() => {}}
+                                                onMoveItem={() => {}}
+                                                onReorderItem={() => {}}
+                                                onCreateSupersetWithNext={() => {}}
+                                                onAddToExistingSuperset={() => {}}
+                                                onRemoveFromSuperset={() => {}}
+                                                onDissolveSuperset={() => {}}
+                                                readonly
+                                            />
+                                        ) : !compareSelectedId ? (
+                                            <div className="text-center py-20">
+                                                <p className="text-[#AEAEB2] dark:text-k-text-quaternary text-sm">Selecione um treino anterior acima para comparar</p>
+                                            </div>
+                                        ) : null}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Context Panel (preview mode) */}
+                            {builderViewMode === 'preview' && (
+                                <ContextPanel
+                                    workoutName={activeWorkout?.name || 'Treino'}
+                                    workoutItems={activeWorkout?.items || []}
+                                    studentId={studentContext?.id}
+                                    mode={contextPanelMode}
+                                    onModeChange={(mode) => {
+                                        setContextPanelMode(mode)
+                                        if (mode === 'none') setBuilderViewMode('normal')
+                                    }}
+                                />
+                            )}
                         </div>
                     </div>
                 </div>

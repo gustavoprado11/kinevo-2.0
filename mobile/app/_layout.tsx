@@ -187,7 +187,38 @@ function WatchBridge() {
         [router]
     );
 
-    useWatchConnectivity({ onWatchStartWorkout, onWatchFinishWorkout });
+    const onWatchDiscardWorkout = React.useCallback(
+        async ({ workoutId }: { workoutId: string }) => {
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) return;
+                const { data: student }: { data: any } = await supabase
+                    .from('students')
+                    .select('id')
+                    .eq('auth_user_id', user.id)
+                    .maybeSingle();
+                if (!student) return;
+
+                const { error } = await supabase
+                    .from('workout_sessions')
+                    .update({ status: 'abandoned' })
+                    .eq('assigned_workout_id', workoutId)
+                    .eq('student_id', student.id)
+                    .eq('status', 'in_progress');
+
+                if (error) {
+                    if (__DEV__) console.error('[Layout] Failed to mark session as abandoned:', error);
+                } else {
+                    if (__DEV__) console.log(`[Layout] Marked session for ${workoutId} as abandoned (Watch discard)`);
+                }
+            } catch (e: any) {
+                if (__DEV__) console.warn(`[Layout] Discard cleanup failed: ${e?.message}`);
+            }
+        },
+        []
+    );
+
+    useWatchConnectivity({ onWatchStartWorkout, onWatchFinishWorkout, onWatchDiscardWorkout });
 
     // Lifecycle log for debugging Watch → iPhone data flow
     React.useEffect(() => {

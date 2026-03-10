@@ -19,12 +19,14 @@ struct WorkoutExecutionView: View {
   @EnvironmentObject private var sessionManager: WatchSessionManager
   @EnvironmentObject private var healthKitManager: HealthKitManager
   @EnvironmentObject private var workoutStore: WorkoutExecutionStore
+  @Environment(\.dismiss) private var dismiss
   let workout: WatchWorkoutSnapshot
 
   @State private var restTimerState: RestTimerState?
   @State private var isFinishingWorkout = false
   @State private var workoutRpe: Double = 5
   @State private var hasFinishedWorkout = false
+  @State private var showDiscardConfirmation = false
 
   var body: some View {
     let sm = sessionManager
@@ -57,6 +59,18 @@ struct WorkoutExecutionView: View {
       } else {
         pseSelectionView(sm: sm, hk: hk, store: store)
       }
+    }
+    .confirmationDialog(
+      "Abandonar treino?",
+      isPresented: $showDiscardConfirmation,
+      titleVisibility: .visible
+    ) {
+      Button("Abandonar", role: .destructive) {
+        discardCurrentWorkout()
+      }
+      Button("Cancelar", role: .cancel) { }
+    } message: {
+      Text("Seu progresso neste treino será perdido.")
     }
     .onAppear {
       // Load workout into store if not already present
@@ -121,7 +135,10 @@ struct WorkoutExecutionView: View {
       .tabViewStyle(.page(indexDisplayMode: .never))
 
       // Page 1: Workout dashboard
-      WorkoutDashboardView(workoutStartDate: state.startedAt)
+      WorkoutDashboardView(
+        workoutStartDate: state.startedAt,
+        onDiscardWorkout: { showDiscardConfirmation = true }
+      )
 
       // Page 2: Media controls
       KinevoNowPlayingView()
@@ -245,6 +262,29 @@ struct WorkoutExecutionView: View {
     }
     .padding()
     .background(Color.black.edgesIgnoringSafeArea(.all))
+  }
+
+  // MARK: - Discard Workout
+
+  private func discardCurrentWorkout() {
+    guard let state = workoutStore.state else { return }
+
+    NSLog("[KinevoWatch] Discarding workout %@", state.workoutId)
+
+    // 1. Notify iPhone to clean up the pre-created session
+    sessionManager.sendDiscardWorkout(workoutId: state.workoutId)
+
+    // 2. End HealthKit session WITHOUT saving to Apple Health
+    healthKitManager.discardWorkout()
+
+    // 3. Clear local workout state (deletes persisted file)
+    workoutStore.clearWorkout()
+
+    // 4. Haptic feedback
+    WKInterfaceDevice.current().play(.failure)
+
+    // 5. Navigate back to workout list
+    dismiss()
   }
 }
 

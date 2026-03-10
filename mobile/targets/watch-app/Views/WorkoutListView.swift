@@ -16,18 +16,13 @@ struct WorkoutListView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Priority 1: Resume an active workout from persisted state
-            if let activeState = workoutStore.state, activeState.hasStarted {
-                resumeWorkoutCard(state: activeState)
-            } else {
-                switch programState {
-                case .programLoaded(let snapshot):
-                    programView(snapshot: snapshot)
-                case .noProgram:
-                    noWorkoutView
-                case .neverSynced:
-                    neverSyncedView
-                }
+            switch programState {
+            case .programLoaded(let snapshot):
+                programView(snapshot: snapshot)
+            case .noProgram:
+                noWorkoutView
+            case .neverSynced:
+                neverSyncedView
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -49,6 +44,11 @@ struct WorkoutListView: View {
     private func programView(snapshot: WatchProgramSnapshot) -> some View {
         ScrollView {
             VStack(spacing: 12) {
+                // Resume card at the top when a workout is in progress
+                if let activeState = workoutStore.state, activeState.hasStarted {
+                    inlineResumeCard(state: activeState)
+                }
+
                 programHeader(snapshot: snapshot)
 
                 ForEach(sortedWorkouts(snapshot)) { workout in
@@ -139,46 +139,51 @@ struct WorkoutListView: View {
         .opacity(isCompleted ? 0.6 : 1.0)
     }
 
-    // MARK: - Resume Workout Card
+    // MARK: - Inline Resume Card
 
-    private func resumeWorkoutCard(state: WorkoutExecutionState) -> some View {
+    private func inlineResumeCard(state: WorkoutExecutionState) -> some View {
         let completedSets = state.exercises.reduce(0) { $0 + $1.sets.filter(\.isCompleted).count }
         let totalSets = state.exercises.reduce(0) { $0 + $1.sets.count }
         let snapshot = buildSnapshotForResume(state: state)
 
-        return VStack(spacing: 16) {
-            Image(systemName: "arrow.counterclockwise.circle.fill")
-                .font(.system(size: 36))
-                .foregroundColor(.kinevoViolet)
+        return NavigationLink(destination: WorkoutExecutionView(workout: snapshot)) {
+            HStack(spacing: 10) {
+                ZStack {
+                    Circle()
+                        .fill(Color.kinevoViolet.opacity(0.15))
+                        .frame(width: 32, height: 32)
 
-            Text(state.workoutName.isEmpty ? "Treino em andamento" : state.workoutName)
-                .font(.headline)
-                .foregroundColor(.kinevoTextPrimary)
-                .multilineTextAlignment(.center)
-
-            Text("\(completedSets)/\(totalSets) séries concluídas")
-                .font(.caption)
-                .foregroundColor(.kinevoTextSecondary)
-
-            NavigationLink(destination: WorkoutExecutionView(workout: snapshot)) {
-                HStack {
                     Image(systemName: "play.fill")
-                        .font(.system(size: 18))
-                    Text("Retomar")
-                        .font(.headline)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.kinevoViolet)
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-                .background(Color.kinevoViolet)
-                .foregroundColor(.white)
-                .cornerRadius(12)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(state.workoutName.isEmpty ? "Treino em andamento" : state.workoutName)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.kinevoTextPrimary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+
+                    Text("\(completedSets)/\(totalSets) séries • Retomar")
+                        .font(.system(size: 11))
+                        .foregroundColor(.kinevoViolet)
+                }
+
+                Spacer()
             }
-            .buttonStyle(.plain)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color.kinevoViolet.opacity(0.1))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(Color.kinevoViolet.opacity(0.3), lineWidth: 1)
+            )
         }
-        .padding()
-        .background(Color.kinevoCard)
-        .cornerRadius(16)
-        .padding(.horizontal)
+        .buttonStyle(.plain)
     }
 
     // MARK: - Empty States
