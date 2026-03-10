@@ -99,7 +99,7 @@ export function useTrainerDashboard() {
             setDailyActivity((activityRes.data || []) as DailyActivityItem[]);
             setError(null);
         } catch (err: any) {
-            console.error("[useTrainerDashboard] fetch error:", err);
+            if (__DEV__) console.error("[useTrainerDashboard] fetch error:", err);
             setError(err.message);
         }
     }, [trainerId]);

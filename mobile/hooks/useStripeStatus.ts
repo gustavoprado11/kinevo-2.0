@@ -24,7 +24,7 @@ export function useStripeStatus() {
                 setStatus(data as StripeConnectStatus);
             }
         } catch (err) {
-            console.error("[useStripeStatus] error:", err);
+            if (__DEV__) console.error("[useStripeStatus] error:", err);
         } finally {
             setIsLoading(false);
         }

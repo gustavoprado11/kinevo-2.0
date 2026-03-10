@@ -21,7 +21,7 @@ export async function getProgramSnapshotForWatch(
       .maybeSingle();
 
   if (studentError || !student) {
-    console.log('[getProgramSnapshot] Student not found:', studentError?.message);
+    if (__DEV__) console.log('[getProgramSnapshot] Student not found:', studentError?.message);
     return null;
   }
 
@@ -35,7 +35,7 @@ export async function getProgramSnapshotForWatch(
       .maybeSingle();
 
   if (programError || !program) {
-    console.log('[getProgramSnapshot] No active program:', programError?.message);
+    if (__DEV__) console.log('[getProgramSnapshot] No active program:', programError?.message);
     return null;
   }
 
@@ -53,7 +53,7 @@ export async function getProgramSnapshotForWatch(
       .order('order_index', { referencedTable: 'assigned_workout_items' });
 
   if (workoutsError || !workouts?.length) {
-    console.log('[getProgramSnapshot] No workouts found:', workoutsError?.message);
+    if (__DEV__) console.log('[getProgramSnapshot] No workouts found:', workoutsError?.message);
     return null;
   }
 
@@ -161,7 +161,7 @@ export async function getProgramSnapshotForWatch(
     workouts: programWorkouts,
   };
 
-  console.log(
+  if (__DEV__) console.log(
     `[getProgramSnapshot] Program "${program.name}" — ${programWorkouts.length} workouts, ${allItemIds.length} exercises`,
   );
 

@@ -97,7 +97,7 @@ export function useSessionStats(sessionId: string | null) {
                     setStats({ volume: totalVolume, maxLoads, exerciseDetails, loading: false });
                 }
             } catch (err) {
-                console.error("Error fetching session stats:", err);
+                if (__DEV__) console.error("Error fetching session stats:", err);
                 setStats(prev => ({ ...prev, loading: false }));
             }
         };

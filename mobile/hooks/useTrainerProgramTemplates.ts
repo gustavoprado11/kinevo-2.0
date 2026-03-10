@@ -26,7 +26,7 @@ export function useTrainerProgramTemplates() {
             setTemplates((data || []) as ProgramTemplate[]);
             setError(null);
         } catch (err: any) {
-            console.error("[useTrainerProgramTemplates] fetch error:", err);
+            if (__DEV__) console.error("[useTrainerProgramTemplates] fetch error:", err);
             setError(err.message);
         }
     }, [trainerId]);

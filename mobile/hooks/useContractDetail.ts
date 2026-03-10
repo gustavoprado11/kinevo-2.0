@@ -28,7 +28,7 @@ export function useContractDetail(contractId: string | null) {
             const eventsData = (eventsRes.data as any) || {};
             setEvents((eventsData.events || []) as ContractEvent[]);
         } catch (err) {
-            console.error("[useContractDetail] error:", err);
+            if (__DEV__) console.error("[useContractDetail] error:", err);
         } finally {
             setIsLoading(false);
         }

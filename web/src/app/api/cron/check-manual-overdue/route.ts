@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
 
         if (fetchError) {
             console.error('[cron] Failed to fetch overdue contracts:', fetchError)
-            return NextResponse.json({ error: fetchError.message }, { status: 500 })
+            return NextResponse.json({ error: 'Erro ao buscar contratos.' }, { status: 500 })
         }
 
         if (!overdueContracts || overdueContracts.length === 0) {

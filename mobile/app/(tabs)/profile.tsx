@@ -66,7 +66,7 @@ export default function ProfileScreen() {
                             await signOut();
                             router.replace("/login");
                         } catch (error) {
-                            console.error("Error signing out:", error);
+                            if (__DEV__) console.error("Error signing out:", error);
                             Alert.alert("Erro", "Não foi possível sair da conta.");
                         }
                     },

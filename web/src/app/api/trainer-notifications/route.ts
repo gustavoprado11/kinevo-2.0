@@ -30,7 +30,8 @@ export async function GET() {
         .limit(20)
 
     if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 })
+        console.error('[trainer-notifications] Fetch error:', error)
+        return NextResponse.json({ error: 'Erro ao carregar notificações.' }, { status: 500 })
     }
 
     const unreadCount = notifications?.filter(n => !n.read).length ?? 0

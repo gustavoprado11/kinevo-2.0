@@ -99,7 +99,7 @@ export default function InboxItemDetailScreen() {
         try {
             await SecureStore.deleteItemAsync(draftKey);
         } catch (err) {
-            console.error("[inbox/[id]] discard draft error:", err);
+            if (__DEV__) console.error("[inbox/[id]] discard draft error:", err);
         }
     }, [draftKey]);
 
@@ -117,7 +117,7 @@ export default function InboxItemDetailScreen() {
                 .single();
 
             if (inboxError || !inboxData) {
-                console.error("[inbox/[id]] inbox fetch error:", inboxError);
+                if (__DEV__) console.error("[inbox/[id]] inbox fetch error:", inboxError);
                 Alert.alert("Erro", "Item não encontrado.");
                 router.back();
                 return;
@@ -141,7 +141,7 @@ export default function InboxItemDetailScreen() {
 
                 const { data: submissionData, error: submissionError }: { data: any; error: any } = await submissionQuery.maybeSingle();
                 if (submissionError) {
-                    console.error("[inbox/[id]] submission fetch error:", submissionError);
+                    if (__DEV__) console.error("[inbox/[id]] submission fetch error:", submissionError);
                 } else if (submissionData) {
                     setSubmission(submissionData as Submission);
                     const initialAnswers = submissionData?.answers_json?.answers || {};
@@ -205,7 +205,7 @@ export default function InboxItemDetailScreen() {
                                 }
                             }
                         } catch (err) {
-                            console.error("[inbox/[id]] restore draft error:", err);
+                            if (__DEV__) console.error("[inbox/[id]] restore draft error:", err);
                         }
                     } else if (!isDraftSubmission && draftKey) {
                         await SecureStore.deleteItemAsync(draftKey);
@@ -213,7 +213,7 @@ export default function InboxItemDetailScreen() {
                 }
             }
         } catch (err) {
-            console.error("[inbox/[id]] fetchData unhandled error:", err);
+            if (__DEV__) console.error("[inbox/[id]] fetchData unhandled error:", err);
             Alert.alert("Erro", "Não foi possível carregar o item.");
             router.back();
         } finally {
@@ -244,7 +244,7 @@ export default function InboxItemDetailScreen() {
                 };
                 await SecureStore.setItemAsync(draftKey, JSON.stringify(payload));
             } catch (err) {
-                console.error("[inbox/[id]] autosave draft error:", err);
+                if (__DEV__) console.error("[inbox/[id]] autosave draft error:", err);
             }
         }, 450);
 
@@ -309,7 +309,7 @@ export default function InboxItemDetailScreen() {
                 ],
             });
         } catch (err: any) {
-            console.error("[inbox/[id]] upload error:", err);
+            if (__DEV__) console.error("[inbox/[id]] upload error:", err);
             Alert.alert("Erro", err?.message || "Falha ao enviar imagem.");
         }
     };

@@ -37,7 +37,7 @@ export function usePrescriptionData(studentId: string | null) {
             setAiEnabled(result?.aiEnabled || false);
             setError(null);
         } catch (err: any) {
-            console.error("[usePrescriptionData] fetch error:", err);
+            if (__DEV__) console.error("[usePrescriptionData] fetch error:", err);
             setError(err.message);
         }
     }, [trainerId, studentId]);

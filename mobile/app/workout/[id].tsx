@@ -119,7 +119,7 @@ export default function WorkoutPlayerScreen() {
                 return;
             }
 
-            console.log(
+            if (__DEV__) console.log(
                 `[WorkoutScreen] Watch reported set complete: exercise ${exerciseIndex}, set ${setIndex}, reps ${reps ?? '-'}, weight ${weight ?? '-'}`
             );
             applyWatchSetCompletion(exerciseIndex, setIndex, reps, weight);
@@ -153,7 +153,7 @@ export default function WorkoutPlayerScreen() {
                 updatedAt: new Date().toISOString(),
             };
 
-            console.log('[WorkoutScreen] Sending workout to watch:', watchPayload);
+            if (__DEV__) console.log('[WorkoutScreen] Sending workout to watch:', watchPayload);
             lastWatchPayloadRef.current = watchPayload;
             sendWorkoutToWatch(watchPayload);
         }
@@ -163,7 +163,7 @@ export default function WorkoutPlayerScreen() {
     useEffect(() => {
         const subscription = AppState.addEventListener('change', (nextState) => {
             if (nextState === 'active' && lastWatchPayloadRef.current) {
-                console.log('[WorkoutScreen] App became active, re-syncing workout to watch');
+                if (__DEV__) console.log('[WorkoutScreen] App became active, re-syncing workout to watch');
                 sendWorkoutToWatch(lastWatchPayloadRef.current);
             }
         });
@@ -218,7 +218,7 @@ export default function WorkoutPlayerScreen() {
             const options = await loadSubstituteOptions(exerciseIndex);
             setSwapOptions(options);
         } catch (error) {
-            console.error('Error loading substitute options:', error);
+            if (__DEV__) console.error('Error loading substitute options:', error);
             Alert.alert('Erro', 'Nao foi possivel carregar as opcoes de troca.');
         } finally {
             setSwapModalLoading(false);
@@ -274,7 +274,7 @@ export default function WorkoutPlayerScreen() {
                 setSwapSearchResults(results.filter((option) => !suggestionIds.has(option.id)));
             } catch (error) {
                 if (!cancelled) {
-                    console.error('Error searching substitute options:', error);
+                    if (__DEV__) console.error('Error searching substitute options:', error);
                     setSwapSearchResults([]);
                 }
             } finally {

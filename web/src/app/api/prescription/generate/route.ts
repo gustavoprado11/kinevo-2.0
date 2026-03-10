@@ -362,7 +362,7 @@ export async function POST(request: NextRequest) {
     } catch (error: any) {
         console.error('[API] Prescription generation error:', error)
         return NextResponse.json(
-            { error: error?.message || 'Failed to generate program' },
+            { error: 'Erro ao gerar programa.' },
             { status: 500 }
         )
     }

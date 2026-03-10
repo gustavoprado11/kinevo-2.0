@@ -54,7 +54,7 @@ export function useFinancialDashboard() {
                 totalStudents: students.length,
             });
         } catch (err) {
-            console.error("[useFinancialDashboard] error:", err);
+            if (__DEV__) console.error("[useFinancialDashboard] error:", err);
         } finally {
             setIsLoading(false);
             setIsRefreshing(false);

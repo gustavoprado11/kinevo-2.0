@@ -52,7 +52,7 @@ export default function NotificationSettingsScreen() {
                 setPreferences({ ...DEFAULT_PREFS, ...data.preferences });
             }
         } catch (err) {
-            console.error("[notification-settings] Fetch error:", err);
+            if (__DEV__) console.error("[notification-settings] Fetch error:", err);
         } finally {
             setIsLoading(false);
         }
@@ -80,7 +80,7 @@ export default function NotificationSettingsScreen() {
                 body: JSON.stringify({ preferences: updated }),
             });
         } catch (err) {
-            console.error("[notification-settings] Save error:", err);
+            if (__DEV__) console.error("[notification-settings] Save error:", err);
             // Revert on error
             setPreferences(preferences);
         } finally {

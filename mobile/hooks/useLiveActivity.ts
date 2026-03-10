@@ -106,7 +106,7 @@ export function useLiveActivity({
         }).then(() => {
             isActiveRef.current = true;
         }).catch((err: Error) => {
-            console.warn('[LiveActivity] Failed to start:', err.message);
+            if (__DEV__) console.warn('[LiveActivity] Failed to start:', err.message);
         });
 
         // Cleanup: stop activity when component unmounts (workout ends)
@@ -131,7 +131,7 @@ export function useLiveActivity({
         if (!state) return;
 
         liveActivityModule.updateWorkoutActivity(state).catch((err: Error) => {
-            console.warn('[LiveActivity] Failed to update:', err.message);
+            if (__DEV__) console.warn('[LiveActivity] Failed to update:', err.message);
         });
     }, [exercises, getWorkoutState]);
 
@@ -158,7 +158,7 @@ export function useLiveActivity({
                 isResting: true,
                 restEndTimestamp: restEnd,
             }).catch((err: Error) => {
-                console.warn('[LiveActivity] Failed to update rest:', err.message);
+                if (__DEV__) console.warn('[LiveActivity] Failed to update rest:', err.message);
             });
         }
 
@@ -174,7 +174,7 @@ export function useLiveActivity({
                     isResting: false,
                     restEndTimestamp: null,
                 }).catch((err: Error) => {
-                    console.warn('[LiveActivity] Failed to clear rest:', err.message);
+                    if (__DEV__) console.warn('[LiveActivity] Failed to clear rest:', err.message);
                 });
             }
         }, seconds * 1000);

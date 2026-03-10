@@ -23,7 +23,7 @@ async function registerForPushNotificationsAsync(): Promise<string | null> {
     }
 
     if (finalStatus !== "granted") {
-        console.log("[push] Permission not granted");
+        if (__DEV__) console.log("[push] Permission not granted");
         return null;
     }
 
@@ -55,10 +55,10 @@ async function registerTokenOnBackend(expoPushToken: string, role: "trainer" | "
         if (!res.ok) {
             console.error("[push] Failed to register token:", res.status);
         } else {
-            console.log("[push] Token registered successfully");
+            if (__DEV__) console.log("[push] Token registered successfully");
         }
     } catch (err) {
-        console.error("[push] Error registering token:", err);
+        if (__DEV__) console.error("[push] Error registering token:", err);
     }
 }
 
@@ -97,13 +97,13 @@ export function usePushNotifications(role: "trainer" | "student" | null) {
 
         // Listen for incoming notifications (foreground)
         notificationListener.current = Notifications.addNotificationReceivedListener((notification) => {
-            console.log("[push] Notification received:", notification.request.content.title);
+            if (__DEV__) console.log("[push] Notification received:", notification.request.content.title);
         });
 
         // Listen for notification taps
         responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
             const data = response.notification.request.content.data;
-            console.log("[push] Notification tapped, data:", data);
+            if (__DEV__) console.log("[push] Notification tapped, data:", data);
 
             // Deep link routing based on notification data
             if (data?.student_id) {

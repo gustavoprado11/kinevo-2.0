@@ -84,7 +84,7 @@ export async function getDailyActivity(): Promise<{ success: boolean; data?: Dai
 
     } catch (error: any) {
         console.error('Error in getDailyActivity:', error)
-        return { success: false, error: error.message }
+        return { success: false, error: 'Erro ao carregar atividades do dia.' }
     }
 }
 

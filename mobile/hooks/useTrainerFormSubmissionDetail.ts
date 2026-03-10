@@ -47,7 +47,7 @@ export function useTrainerFormSubmissionDetail(submissionId: string | null) {
             setSubmission(data as SubmissionDetail);
             setError(null);
         } catch (err: any) {
-            console.error("[useTrainerFormSubmissionDetail] fetch error:", err);
+            if (__DEV__) console.error("[useTrainerFormSubmissionDetail] fetch error:", err);
             setError(err.message);
         } finally {
             setIsLoading(false);

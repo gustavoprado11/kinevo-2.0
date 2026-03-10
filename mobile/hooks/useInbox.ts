@@ -59,7 +59,7 @@ export function useInbox() {
             .order("created_at", { ascending: false });
 
         if (error) {
-            console.error("[useInbox] fetch error:", error);
+            if (__DEV__) console.error("[useInbox] fetch error:", error);
             return;
         }
 
@@ -137,7 +137,7 @@ export function useInbox() {
             .eq("student_id", studentIdRef.current);
 
         if (error) {
-            console.error("[useInbox] markItemOpened error:", error);
+            if (__DEV__) console.error("[useInbox] markItemOpened error:", error);
             return { success: false, error: error.message };
         }
 

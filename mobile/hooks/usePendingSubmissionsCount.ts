@@ -25,7 +25,7 @@ export function usePendingSubmissionsCount() {
                 setCount(total);
             }
         } catch (err: any) {
-            console.error("[usePendingSubmissionsCount] error:", err);
+            if (__DEV__) console.error("[usePendingSubmissionsCount] error:", err);
         }
     }, [trainerId]);
 

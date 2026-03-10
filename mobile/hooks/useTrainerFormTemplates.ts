@@ -30,7 +30,7 @@ export function useTrainerFormTemplates() {
             setTemplates((data || []) as FormTemplate[]);
             setError(null);
         } catch (err: any) {
-            console.error("[useTrainerFormTemplates] fetch error:", err);
+            if (__DEV__) console.error("[useTrainerFormTemplates] fetch error:", err);
             setError(err.message);
         }
     }, [trainerId]);

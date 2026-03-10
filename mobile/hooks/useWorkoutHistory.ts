@@ -186,7 +186,7 @@ export function useWorkoutHistory() {
             setHistory(sessions);
 
         } catch (err) {
-            console.error('Error fetching history:', err);
+            if (__DEV__) console.error('Error fetching history:', err);
         } finally {
             setIsLoading(false);
         }

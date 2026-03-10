@@ -43,13 +43,13 @@ export function useStudentHeatmap(studentId: string) {
             });
 
             if (error) {
-                console.error("[heatmap] RPC error:", error.message);
+                if (__DEV__) console.error("[heatmap] RPC error:", error.message);
                 setDays([]);
             } else {
                 setDays(data || []);
             }
         } catch (err) {
-            console.error("[heatmap] Unexpected error:", err);
+            if (__DEV__) console.error("[heatmap] Unexpected error:", err);
             setDays([]);
         } finally {
             setIsLoading(false);

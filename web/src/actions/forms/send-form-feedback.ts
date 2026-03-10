@@ -34,7 +34,7 @@ export async function sendFormFeedback(input: SendFormFeedbackInput) {
 
     if (error) {
         console.error('[sendFormFeedback] error:', error)
-        return { success: false, error: error.message || 'Erro ao enviar feedback' }
+        return { success: false, error: 'Erro ao enviar feedback.' }
     }
 
     revalidatePath('/forms')

@@ -8,7 +8,7 @@ import { RoleModeProvider, useRoleMode } from "../contexts/RoleModeContext";
 import { usePushNotifications } from "../hooks/usePushNotifications";
 import "../global.css";
 
-console.log("[Layout] Iniciando RootLayout");
+if (__DEV__) console.log("[Layout] Iniciando RootLayout");
 
 // ── Premium iOS-like spring transition spec ──
 const PREMIUM_SPRING = {
@@ -50,7 +50,7 @@ function WatchBridge() {
 
             lastStartRef.current = { workoutId, ts: now };
 
-            console.log(`[Layout] Watch requested START_WORKOUT: ${workoutId}`);
+            if (__DEV__) console.log(`[Layout] Watch requested START_WORKOUT: ${workoutId}`);
 
             // Pre-create workout_session (in_progress) so data survives even if
             // the app is killed before the workout screen mounts.
@@ -94,17 +94,17 @@ function WatchBridge() {
                                 .single();
 
                             if (error) {
-                                console.error('[Layout] Failed to pre-create session:', error);
+                                if (__DEV__) console.error('[Layout] Failed to pre-create session:', error);
                             } else {
-                                console.log(`[Layout] Pre-created in_progress session: ${session.id}`);
+                                if (__DEV__) console.log(`[Layout] Pre-created in_progress session: ${session.id}`);
                             }
                         } else {
-                            console.log(`[Layout] Session already exists for ${workoutId}: ${existing.id}`);
+                            if (__DEV__) console.log(`[Layout] Session already exists for ${workoutId}: ${existing.id}`);
                         }
                     }
                 }
             } catch (e: any) {
-                console.warn(`[Layout] Non-critical: pre-create session failed: ${e?.message}`);
+                if (__DEV__) console.warn(`[Layout] Non-critical: pre-create session failed: ${e?.message}`);
             }
 
             const targetPath = `/workout/${workoutId}`;
@@ -134,7 +134,7 @@ function WatchBridge() {
             }
             lastFinishRef.current = { workoutId, ts: now };
 
-            console.log(`[Layout] Watch requested FINISH_WORKOUT: ${workoutId}`);
+            if (__DEV__) console.log(`[Layout] Watch requested FINISH_WORKOUT: ${workoutId}`);
 
             try {
                 const sessionId = await finishWorkoutFromWatch({
@@ -145,7 +145,7 @@ function WatchBridge() {
                 });
 
                 if (sessionId) {
-                    console.log(`[Layout] Workout saved from watch: session ${sessionId}. Sending ACK.`);
+                    if (__DEV__) console.log(`[Layout] Workout saved from watch: session ${sessionId}. Sending ACK.`);
 
                     // Notify useActiveProgram to refresh (works even if user is already on Home tab)
                     appEvents.emit(WORKOUT_COMPLETED);
@@ -153,9 +153,9 @@ function WatchBridge() {
                     // Send SYNC_SUCCESS ACK to Watch so it clears the pending finish entry.
                     try {
                         sendAckToWatch(workoutId);
-                        console.log(`[Layout] SYNC_SUCCESS ACK sent for ${workoutId}`);
+                        if (__DEV__) console.log(`[Layout] SYNC_SUCCESS ACK sent for ${workoutId}`);
                     } catch (ackError: any) {
-                        console.warn(`[Layout] Failed to send ACK (non-critical): ${ackError?.message}`);
+                        if (__DEV__) console.warn(`[Layout] Failed to send ACK (non-critical): ${ackError?.message}`);
                     }
 
                     // Re-sync: send updated program snapshot to Watch (with completion status).
@@ -164,10 +164,10 @@ function WatchBridge() {
                         if (user) {
                             const programPayload = await getProgramSnapshotForWatch(user.id);
                             syncProgramToWatch(programPayload);
-                            console.log(`[Layout] Re-synced program after completion: ${programPayload?.programName ?? 'none'}`);
+                            if (__DEV__) console.log(`[Layout] Re-synced program after completion: ${programPayload?.programName ?? 'none'}`);
                         }
                     } catch (syncError: any) {
-                        console.warn(`[Layout] Failed to re-sync program (non-critical): ${syncError?.message}`);
+                        if (__DEV__) console.warn(`[Layout] Failed to re-sync program (non-critical): ${syncError?.message}`);
                     }
 
                     Alert.alert(
@@ -180,7 +180,7 @@ function WatchBridge() {
                     Alert.alert("Erro", "Não foi possível salvar o treino do Apple Watch.");
                 }
             } catch (error) {
-                console.error('[Layout] Error finishing workout from watch:', error);
+                console.error('[Layout] Error finishing workout from watch:', __DEV__ ? error : '');
                 Alert.alert("Erro", "Falha ao salvar o treino do Apple Watch.");
             }
         },
@@ -191,8 +191,8 @@ function WatchBridge() {
 
     // Lifecycle log for debugging Watch → iPhone data flow
     React.useEffect(() => {
-        console.log('[WatchBridge] 🚀 MOUNTED');
-        return () => console.log('[WatchBridge] 💀 UNMOUNTED');
+        if (__DEV__) console.log('[WatchBridge] MOUNTED');
+        return () => { if (__DEV__) console.log('[WatchBridge] UNMOUNTED'); };
     }, []);
 
     // Cleanup stale in_progress sessions (>24h old → abandoned)
@@ -216,10 +216,10 @@ function WatchBridge() {
                     .lt('started_at', cutoff)
                     .select('id');
                 if (stale && stale.length > 0) {
-                    console.log(`[WatchBridge] Cleaned up ${stale.length} stale in_progress session(s)`);
+                    if (__DEV__) console.log(`[WatchBridge] Cleaned up ${stale.length} stale in_progress session(s)`);
                 }
             } catch (e: any) {
-                console.warn(`[WatchBridge] Stale session cleanup failed: ${e?.message}`);
+                if (__DEV__) console.warn(`[WatchBridge] Stale session cleanup failed: ${e?.message}`);
             }
         }
         cleanupStaleSessions();
@@ -247,9 +247,9 @@ function WatchBridge() {
                 const payload = await getProgramSnapshotForWatch(user.id);
                 syncProgramToWatch(payload); // null clears the Watch (hasProgram: false)
                 synced = true;
-                console.log(`[WatchBridge] Auto-synced program to Watch: ${payload?.programName ?? 'none (no active program)'}`);
+                if (__DEV__) console.log(`[WatchBridge] Auto-synced program to Watch: ${payload?.programName ?? 'none (no active program)'}`);
             } catch (e: any) {
-                console.warn(`[WatchBridge] Failed to auto-sync program: ${e?.message}`);
+                if (__DEV__) console.warn(`[WatchBridge] Failed to auto-sync program: ${e?.message}`);
             }
         }
 
@@ -265,13 +265,13 @@ function WatchBridge() {
     React.useEffect(() => {
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: string, session: any) => {
             if (event === 'SIGNED_IN' && session?.user) {
-                console.log(`[WatchBridge] Auth SIGNED_IN detected — syncing Watch for new user`);
+                if (__DEV__) console.log(`[WatchBridge] Auth SIGNED_IN detected — syncing Watch for new user`);
                 try {
                     const payload = await getProgramSnapshotForWatch(session.user.id);
                     syncProgramToWatch(payload);
-                    console.log(`[WatchBridge] Re-synced Watch after account switch: ${payload?.programName ?? 'none'}`);
+                    if (__DEV__) console.log(`[WatchBridge] Re-synced Watch after account switch: ${payload?.programName ?? 'none'}`);
                 } catch (e: any) {
-                    console.warn(`[WatchBridge] Failed to re-sync Watch on SIGNED_IN: ${e?.message}`);
+                    if (__DEV__) console.warn(`[WatchBridge] Failed to re-sync Watch on SIGNED_IN: ${e?.message}`);
                 }
             }
         });
@@ -289,7 +289,7 @@ function PushNotificationBridge() {
 }
 
 export default function RootLayout() {
-    console.log("[Layout] Renderizando Provider Wrapper");
+    if (__DEV__) console.log("[Layout] Renderizando Provider Wrapper");
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
             {/* WatchBridge MUST be outside AuthProvider so it mounts immediately,

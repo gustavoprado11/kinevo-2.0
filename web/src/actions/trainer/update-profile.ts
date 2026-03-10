@@ -80,7 +80,8 @@ export async function updateTrainerProfile(formData: FormData): Promise<UpdateTr
                 })
 
             if (uploadError) {
-                return { success: false, message: `Falha no upload da imagem: ${uploadError.message}` }
+                console.error('[updateTrainerProfile] Upload error:', uploadError)
+                return { success: false, message: 'Falha no upload da imagem.' }
             }
 
             const { data: publicData } = supabase.storage.from('avatars').getPublicUrl(filePath)
@@ -96,7 +97,8 @@ export async function updateTrainerProfile(formData: FormData): Promise<UpdateTr
             .eq('id', trainer.id)
 
         if (updateError) {
-            return { success: false, message: `Erro ao atualizar perfil: ${updateError.message}` }
+            console.error('[updateTrainerProfile] Update error:', updateError)
+            return { success: false, message: 'Erro ao atualizar perfil.' }
         }
 
         revalidatePath('/settings')

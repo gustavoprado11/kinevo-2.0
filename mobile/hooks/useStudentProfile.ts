@@ -48,7 +48,7 @@ export function useStudentProfile() {
                 });
             }
         } catch (err) {
-            console.error("[useStudentProfile] Error fetching profile:", err);
+            if (__DEV__) console.error("[useStudentProfile] Error fetching profile:", err);
         } finally {
             setIsLoading(false);
         }
@@ -100,7 +100,7 @@ export function useStudentProfile() {
             // Update local state
             setProfile(prev => prev ? { ...prev, avatar_url: publicUrl } : null);
         } catch (err) {
-            console.error("[useStudentProfile] Error uploading avatar:", err);
+            if (__DEV__) console.error("[useStudentProfile] Error uploading avatar:", err);
             throw err;
         } finally {
             setIsUploading(false);
@@ -113,7 +113,7 @@ export function useStudentProfile() {
             if (error) throw error;
             await signOut();
         } catch (err) {
-            console.error("[useStudentProfile] Error deleting account:", err);
+            if (__DEV__) console.error("[useStudentProfile] Error deleting account:", err);
             throw err;
         }
     }, [signOut]);

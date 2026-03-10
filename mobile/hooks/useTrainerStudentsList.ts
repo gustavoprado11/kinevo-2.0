@@ -44,7 +44,7 @@ export function useTrainerStudentsList() {
             setStudents((data || []) as TrainerStudent[]);
             setError(null);
         } catch (err: any) {
-            console.error("[useTrainerStudentsList] fetch error:", err);
+            if (__DEV__) console.error("[useTrainerStudentsList] fetch error:", err);
             setError(err.message);
         }
     }, [trainerId]);

@@ -55,7 +55,7 @@ export function useTrainingRoomStudents() {
             if (rpcError) throw rpcError;
             setStudents(data || []);
         } catch (err: any) {
-            console.error('[useTrainingRoomStudents]', err);
+            if (__DEV__) console.error('[useTrainingRoomStudents]', err);
             setError(err.message || 'Erro ao buscar alunos');
         } finally {
             setIsLoading(false);
@@ -88,11 +88,11 @@ export function useFetchStudentWorkout() {
             // Guard: reject empty/invalid UUIDs before hitting the RPC
             const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
             if (!studentId || !uuidRegex.test(studentId)) {
-                console.error('[useFetchStudentWorkout] invalid studentId:', JSON.stringify(studentId));
+                console.error('[useFetchStudentWorkout] invalid studentId:', __DEV__ ? JSON.stringify(studentId) : '');
                 return { data: null, error: 'ID do aluno inválido' };
             }
             if (!assignedWorkoutId || !uuidRegex.test(assignedWorkoutId)) {
-                console.error('[useFetchStudentWorkout] invalid assignedWorkoutId:', JSON.stringify(assignedWorkoutId));
+                console.error('[useFetchStudentWorkout] invalid assignedWorkoutId:', __DEV__ ? JSON.stringify(assignedWorkoutId) : '');
                 return { data: null, error: 'ID do treino inválido' };
             }
 
@@ -134,7 +134,7 @@ export function useFetchStudentWorkout() {
                     error: null,
                 };
             } catch (err: any) {
-                console.error('[useFetchStudentWorkout]', err);
+                if (__DEV__) console.error('[useFetchStudentWorkout]', err);
                 return { data: null, error: err.message || 'Erro ao carregar treino' };
             } finally {
                 setIsLoading(false);
@@ -303,7 +303,7 @@ export function useFinishTrainerWorkout() {
 
                 return { sessionId: data, error: null };
             } catch (err: any) {
-                console.error('[useFinishTrainerWorkout]', err);
+                if (__DEV__) console.error('[useFinishTrainerWorkout]', err);
                 return { sessionId: null, error: err.message || 'Erro ao salvar sessão' };
             } finally {
                 setIsSubmitting(false);

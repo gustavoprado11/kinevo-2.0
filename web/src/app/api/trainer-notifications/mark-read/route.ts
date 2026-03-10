@@ -36,7 +36,10 @@ export async function POST(request: NextRequest) {
             .eq('trainer_id', trainer.id)
             .eq('read', false)
 
-        if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+        if (error) {
+            console.error('[mark-read] Update error:', error)
+            return NextResponse.json({ error: 'Erro ao marcar notificações.' }, { status: 500 })
+        }
     } else if (body.ids && body.ids.length > 0) {
         const { error } = await supabase
             .from('trainer_notifications')
@@ -44,7 +47,10 @@ export async function POST(request: NextRequest) {
             .eq('trainer_id', trainer.id)
             .in('id', body.ids)
 
-        if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+        if (error) {
+            console.error('[mark-read] Update error:', error)
+            return NextResponse.json({ error: 'Erro ao marcar notificações.' }, { status: 500 })
+        }
     }
 
     return NextResponse.json({ success: true })

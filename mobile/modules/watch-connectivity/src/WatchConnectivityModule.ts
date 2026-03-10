@@ -22,8 +22,8 @@ const WatchConnectivityModule = Platform.OS === 'ios'
  * Uses updateApplicationContext (last-write-wins state channel).
  */
 export function syncWorkoutToWatch(workout: WatchWorkoutPayload | null): void {
-  console.log('[WatchConnectivityModule.ts] Module exists:', !!WatchConnectivityModule);
-  console.log('[WatchConnectivityModule.ts] syncWorkoutToWatch function exists:', !!WatchConnectivityModule?.syncWorkoutToWatch);
+  if (__DEV__) console.log('[WatchConnectivityModule.ts] Module exists:', !!WatchConnectivityModule);
+  if (__DEV__) console.log('[WatchConnectivityModule.ts] syncWorkoutToWatch function exists:', !!WatchConnectivityModule?.syncWorkoutToWatch);
 
   if (!WatchConnectivityModule || !WatchConnectivityModule.syncWorkoutToWatch) {
     console.error('[WatchConnectivityModule.ts] Native module or function not found!');
@@ -87,7 +87,7 @@ export function sendAckToWatch(workoutId: string): void {
     console.error('[WatchConnectivityModule.ts] sendAckToWatch not available on native module');
     return;
   }
-  console.log(`[WatchConnectivityModule.ts] Sending SYNC_SUCCESS ACK for workoutId: ${workoutId}`);
+  if (__DEV__) console.log(`[WatchConnectivityModule.ts] Sending SYNC_SUCCESS ACK for workoutId: ${workoutId}`);
   return WatchConnectivityModule.sendAckToWatch(workoutId);
 }
 

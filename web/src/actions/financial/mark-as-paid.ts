@@ -78,7 +78,7 @@ export async function markAsPaid({ contractId }: { contractId: string }) {
                 currency: 'brl',
                 type: 'subscription',
                 status: 'succeeded',
-                stripe_payment_id: `manual_${contractId}_${Date.now()}`,
+                stripe_payment_id: `manual_${crypto.randomUUID()}`,
                 description: 'Pagamento avulso registrado',
             })
 
@@ -135,7 +135,7 @@ export async function markAsPaid({ contractId }: { contractId: string }) {
             currency: 'brl',
             type: 'subscription',
             status: 'succeeded',
-            stripe_payment_id: `manual_${contractId}_${Date.now()}`,
+            stripe_payment_id: `manual_${crypto.randomUUID()}`,
             description: 'Pagamento manual registrado',
         })
 

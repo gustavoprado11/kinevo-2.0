@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { stripe } from '@/lib/stripe'
 import { logContractEvent } from '@/lib/contract-events'
+import { checkRateLimit, recordRequest } from '@/lib/rate-limit'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -43,6 +44,13 @@ export async function POST(request: NextRequest) {
     if (!trainer) {
         return NextResponse.json({ error: 'Treinador não encontrado' }, { status: 404 })
     }
+
+    // Rate limit: 5/min, 20/day per trainer
+    const rl = checkRateLimit(`financial:cancel:${trainer.id}`, { perMinute: 5, perDay: 20 })
+    if (!rl.allowed) {
+        return NextResponse.json({ error: rl.error }, { status: 429 })
+    }
+    recordRequest(`financial:cancel:${trainer.id}`)
 
     // Fetch contract
     const { data: contract } = await supabaseAdmin

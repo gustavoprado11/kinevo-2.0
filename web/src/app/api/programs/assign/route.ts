@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { checkRateLimit, recordRequest } from '@/lib/rate-limit'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -81,6 +82,13 @@ export async function POST(request: NextRequest) {
         if (!trainer) {
             return NextResponse.json({ error: 'Trainer not found' }, { status: 403 })
         }
+
+        // Rate limit: 10/min, 50/day per trainer
+        const rl = checkRateLimit(`programs:assign:${trainer.id}`, { perMinute: 10, perDay: 50 })
+        if (!rl.allowed) {
+            return NextResponse.json({ error: rl.error }, { status: 429 })
+        }
+        recordRequest(`programs:assign:${trainer.id}`)
 
         // 2. Validate student ownership
         const { data: student } = await supabase
@@ -298,7 +306,7 @@ export async function POST(request: NextRequest) {
     } catch (error: any) {
         console.error('[API] Error assigning program:', error)
         return NextResponse.json(
-            { error: error?.message || 'Failed to assign program' },
+            { error: 'Erro ao atribuir programa.' },
             { status: 500 }
         )
     }

@@ -91,7 +91,7 @@ export function useStudentDetail(studentId: string | null) {
             setData(result as StudentDetailData);
             setError(null);
         } catch (err: any) {
-            console.error("[useStudentDetail] fetch error:", err);
+            if (__DEV__) console.error("[useStudentDetail] fetch error:", err);
             setError(err.message);
         }
     }, [trainerId, studentId]);

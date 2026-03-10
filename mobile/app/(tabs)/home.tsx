@@ -69,7 +69,7 @@ export default function HomeScreen() {
         ) || daySessions.find(s => s.status === 'completed');
 
         if (!session) {
-            console.log("No completed session found for sharing");
+            if (__DEV__) console.log("No completed session found for sharing");
             return;
         }
 

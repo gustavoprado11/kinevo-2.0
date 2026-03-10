@@ -38,17 +38,17 @@ export function useWatchConnectivity({ onWatchSetComplete, onWatchStartWorkout, 
   useEffect(() => {
     try {
       const reachable = isWatchReachable();
-      console.log('[useWatchConnectivity] Module initialized, watch reachable:', reachable);
+      if (__DEV__) console.log('[useWatchConnectivity] Module initialized, watch reachable:', reachable);
     } catch (error) {
-      console.error('[useWatchConnectivity] Error initializing module:', error);
+      if (__DEV__) console.error('[useWatchConnectivity] Error initializing module:', error);
     }
   }, []);
 
   // Listen for messages from Apple Watch — subscribed ONCE, refs always point to latest callbacks.
   useEffect(() => {
-    console.log('[useWatchConnectivity] 📡 Adding watch message listener (stable, once)');
+    if (__DEV__) console.log('[useWatchConnectivity] 📡 Adding watch message listener (stable, once)');
     const subscription = addWatchMessageListener((event) => {
-      console.log('[useWatchConnectivity] 📥 Received message — type:', event?.type, 'payload keys:', event?.payload ? Object.keys(event.payload).join(', ') : 'NONE');
+      if (__DEV__) console.log('[useWatchConnectivity] 📥 Received message — type:', event?.type, 'payload keys:', event?.payload ? Object.keys(event.payload).join(', ') : 'NONE');
 
       if (event.type === 'SET_COMPLETE' && event.payload) {
         const parsed: WatchSetCompletionEvent = {
@@ -61,11 +61,11 @@ export function useWatchConnectivity({ onWatchSetComplete, onWatchStartWorkout, 
         };
 
         if (parsed.exerciseIndex < 0 || parsed.setIndex < 0) {
-          console.warn('[useWatchConnectivity] Ignoring invalid SET_COMPLETE payload:', event.payload);
+          if (__DEV__) console.warn('[useWatchConnectivity] Ignoring invalid SET_COMPLETE payload:', event.payload);
           return;
         }
 
-        console.log(
+        if (__DEV__) console.log(
           `[useWatchConnectivity] Set completed on watch: exercise ${parsed.exerciseIndex}, set ${parsed.setIndex}, reps ${parsed.reps ?? '-'}, weight ${parsed.weight ?? '-'}`
         );
         setCompleteRef.current?.(parsed);
@@ -74,11 +74,11 @@ export function useWatchConnectivity({ onWatchSetComplete, onWatchStartWorkout, 
       if (event.type === 'START_WORKOUT' && event.payload) {
         const workoutId = typeof event.payload.workoutId === 'string' ? event.payload.workoutId : null;
         if (!workoutId) {
-          console.warn('[useWatchConnectivity] Ignoring invalid START_WORKOUT payload:', event.payload);
+          if (__DEV__) console.warn('[useWatchConnectivity] Ignoring invalid START_WORKOUT payload:', event.payload);
           return;
         }
 
-        console.log(`[useWatchConnectivity] Watch requested START_WORKOUT for ${workoutId}`);
+        if (__DEV__) console.log(`[useWatchConnectivity] Watch requested START_WORKOUT for ${workoutId}`);
         startWorkoutRef.current?.({ workoutId });
       }
 
@@ -101,17 +101,17 @@ export function useWatchConnectivity({ onWatchSetComplete, onWatchStartWorkout, 
           : undefined;
 
         if (!workoutId) {
-          console.warn('[useWatchConnectivity] Ignoring invalid FINISH_WORKOUT payload:', event.payload);
+          if (__DEV__) console.warn('[useWatchConnectivity] Ignoring invalid FINISH_WORKOUT payload:', event.payload);
           return;
         }
 
-        console.log(`[useWatchConnectivity] Watch requested FINISH_WORKOUT for ${workoutId} with rpe ${rpe}, ${exercises?.length ?? 0} exercises`);
+        if (__DEV__) console.log(`[useWatchConnectivity] Watch requested FINISH_WORKOUT for ${workoutId} with rpe ${rpe}, ${exercises?.length ?? 0} exercises`);
         finishWorkoutRef.current?.({ workoutId, rpe, startedAt, exercises });
       }
     });
 
     return () => {
-      console.log('[useWatchConnectivity] 🔌 Removing watch message listener');
+      if (__DEV__) console.log('[useWatchConnectivity] 🔌 Removing watch message listener');
       subscription.remove();
     };
   }, []); // empty deps — subscribe once
@@ -119,10 +119,10 @@ export function useWatchConnectivity({ onWatchSetComplete, onWatchStartWorkout, 
   // Send workout state to watch
   const sendWorkoutToWatch = useCallback((payload: WatchWorkoutPayload) => {
     try {
-      console.log('[useWatchConnectivity] Sending workout to watch:', payload);
+      if (__DEV__) console.log('[useWatchConnectivity] Sending workout to watch:', payload);
       syncWorkoutToWatch(payload);
     } catch (error) {
-      console.error('[useWatchConnectivity] Error sending workout to watch:', error);
+      if (__DEV__) console.error('[useWatchConnectivity] Error sending workout to watch:', error);
     }
   }, []);
 

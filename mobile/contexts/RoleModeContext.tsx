@@ -138,7 +138,7 @@ export function RoleModeProvider({ children }: { children: ReactNode }) {
                     setSubscriptionStatus(null);
                 }
             } catch (err) {
-                console.error("[RoleModeContext] Error resolving role:", err);
+                if (__DEV__) console.error("[RoleModeContext] Error resolving role:", err);
                 // Default to student on error
                 if (!cancelled) setRole("student");
             } finally {

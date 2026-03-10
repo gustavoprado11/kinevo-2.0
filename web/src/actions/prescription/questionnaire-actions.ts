@@ -124,7 +124,7 @@ export async function sendPrescriptionQuestionnaire(
 
     if (error) {
         console.error('[sendPrescriptionQuestionnaire] RPC error:', error)
-        return { success: false, error: error.message || 'Erro ao enviar questionário' }
+        return { success: false, error: 'Erro ao enviar questionário.' }
     }
 
     const result = data as { assigned_count: number; skipped_count: number } | null

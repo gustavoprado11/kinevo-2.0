@@ -231,7 +231,7 @@ export function ShareWorkoutModal({ visible, onClose, data, sessionId }: ShareWo
                 ...(Platform.OS === 'ios' ? { UTI: 'public.png' } : {}),
             });
         } catch (error) {
-            console.error("Error sharing:", error);
+            if (__DEV__) console.error("Error sharing:", error);
             Alert.alert("Erro", "Não foi possível compartilhar a imagem.");
         } finally {
             setIsSharing(false);

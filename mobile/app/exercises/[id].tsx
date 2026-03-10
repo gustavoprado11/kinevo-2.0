@@ -42,7 +42,7 @@ export default function ExerciseDetailScreen() {
                     });
                 }
             } catch (err) {
-                console.error("[exercise-detail] Error:", err);
+                if (__DEV__) console.error("[exercise-detail] Error:", err);
             } finally {
                 setIsLoading(false);
             }

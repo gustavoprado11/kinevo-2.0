@@ -26,7 +26,7 @@ export function useTrainerContracts() {
 
             setAllContracts((data as any as FinancialStudent[]) || []);
         } catch (err) {
-            console.error("[useTrainerContracts] error:", err);
+            if (__DEV__) console.error("[useTrainerContracts] error:", err);
         } finally {
             setIsLoading(false);
             setIsRefreshing(false);

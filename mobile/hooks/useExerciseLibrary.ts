@@ -56,7 +56,7 @@ export function useExerciseLibrary() {
                 setMuscleGroups(muscleRes.data);
             }
         } catch (err) {
-            console.error("[exercises] Fetch error:", err);
+            if (__DEV__) console.error("[exercises] Fetch error:", err);
         } finally {
             setIsLoading(false);
         }

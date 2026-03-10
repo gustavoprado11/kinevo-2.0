@@ -251,12 +251,12 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                 });
 
             if (error) {
-                console.error(`[useWorkoutSession] persistSetLog error: ${error.message}`);
+                if (__DEV__) console.error(`[useWorkoutSession] persistSetLog error: ${error.message}`);
             } else {
-                console.log(`[useWorkoutSession] Set persisted: exercise=${exercise.name}, set=${setIndex + 1}, ${repsCompleted}reps x ${weight}kg`);
+                if (__DEV__) console.log(`[useWorkoutSession] Set persisted: exercise=${exercise.name}, set=${setIndex + 1}, ${repsCompleted}reps x ${weight}kg`);
             }
         } catch (err: any) {
-            console.error(`[useWorkoutSession] persistSetLog exception: ${err?.message}`);
+            if (__DEV__) console.error(`[useWorkoutSession] persistSetLog exception: ${err?.message}`);
         }
     };
 
@@ -311,7 +311,7 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                     .maybeSingle();
 
                 if (existingSession) {
-                    console.log(`[useWorkoutSession] Found existing in_progress session: ${existingSession.id}`);
+                    if (__DEV__) console.log(`[useWorkoutSession] Found existing in_progress session: ${existingSession.id}`);
                     if (mounted) setSessionId(existingSession.id);
                 } else {
                     // Get trainer_id from student
@@ -336,9 +336,9 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                         .single();
 
                     if (sessionError) {
-                        console.error('[useWorkoutSession] Failed to create session:', sessionError);
+                        console.error('[useWorkoutSession] Failed to create session:', __DEV__ ? sessionError : '');
                     } else {
-                        console.log(`[useWorkoutSession] Created new in_progress session: ${newSession.id}`);
+                        if (__DEV__) console.log(`[useWorkoutSession] Created new in_progress session: ${newSession.id}`);
                         if (mounted) setSessionId(newSession.id);
                     }
                 }
@@ -420,7 +420,7 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                 }
 
             } catch (error) {
-                console.error("Error fetching workout:", error);
+                if (__DEV__) console.error("Error fetching workout:", error);
                 Alert.alert("Erro", "Falha ao carregar o treino.");
             } finally {
                 if (mounted) setIsLoading(false);
@@ -673,7 +673,7 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
             let currentSessionId = sessionId;
 
             if (!currentSessionId) {
-                console.warn('[useWorkoutSession] No sessionId at finish — creating session now');
+                if (__DEV__) console.warn('[useWorkoutSession] No sessionId at finish — creating session now');
 
                 const { data: student }: { data: any; error: any } = await supabase
                     .from('students' as any)
@@ -758,15 +758,15 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                     });
 
                 if (logsError) {
-                    console.error('[useWorkoutSession] Error upserting set_logs at finish:', logsError);
+                    console.error('[useWorkoutSession] Error upserting set_logs at finish:', __DEV__ ? logsError : '');
                 }
             }
 
-            console.log(`[useWorkoutSession] Workout finished. Session: ${currentSessionId}, sets: ${setLogs.length}`);
+            if (__DEV__) console.log(`[useWorkoutSession] Workout finished. Session: ${currentSessionId}, sets: ${setLogs.length}`);
             return currentSessionId;
 
         } catch (error: any) {
-            console.error("Error finishing workout:", error);
+            if (__DEV__) console.error("Error finishing workout:", error);
             throw error;
         } finally {
             setIsSubmitting(false);

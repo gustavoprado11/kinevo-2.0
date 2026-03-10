@@ -35,7 +35,7 @@ export function useTrainerFormSubmissions() {
             setSubmissions((data || []) as FormSubmission[]);
             setError(null);
         } catch (err: any) {
-            console.error("[useTrainerFormSubmissions] fetch error:", err);
+            if (__DEV__) console.error("[useTrainerFormSubmissions] fetch error:", err);
             setError(err.message);
         }
     }, [trainerId]);

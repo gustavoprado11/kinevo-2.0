@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { generateCheckoutCore } from '@/lib/stripe/generate-checkout'
+import { checkRateLimit, recordRequest } from '@/lib/rate-limit'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -42,6 +43,13 @@ export async function POST(request: NextRequest) {
     if (!trainer) {
         return NextResponse.json({ error: 'Treinador não encontrado' }, { status: 404 })
     }
+
+    // Rate limit: 10/min, 30/day per trainer
+    const rl = checkRateLimit(`financial:checkout:${trainer.id}`, { perMinute: 10, perDay: 30 })
+    if (!rl.allowed) {
+        return NextResponse.json({ error: rl.error }, { status: 429 })
+    }
+    recordRequest(`financial:checkout:${trainer.id}`)
 
     // Validate Stripe Connect
     const { data: settings } = await supabaseAdmin
@@ -88,7 +96,7 @@ export async function POST(request: NextRequest) {
     } catch (err) {
         console.error('[checkout-link] Error:', err)
         return NextResponse.json(
-            { error: err instanceof Error ? err.message : 'Erro ao gerar link' },
+            { error: 'Erro ao gerar link de pagamento.' },
             { status: 500 }
         )
     }
