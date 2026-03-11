@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { ProgramBuilderClient, type Exercise } from '@/components/programs'
+import { getFormTemplatesForTriggers } from '@/actions/programs/get-form-templates-for-triggers'
 
 export default async function NewProgramPage() {
     const supabase = await createClient()
@@ -61,11 +62,15 @@ export default async function NewProgramPage() {
         updated_at: new Date().toISOString()
     }))
 
+    // Fetch form templates for trigger configuration
+    const triggerResult = await getFormTemplatesForTriggers()
+
     return (
         <ProgramBuilderClient
             trainer={trainer}
             program={null}
             exercises={mappedExercises}
+            formTriggerTemplates={triggerResult.templates || []}
         />
     )
 }

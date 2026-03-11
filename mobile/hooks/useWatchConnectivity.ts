@@ -19,22 +19,26 @@ interface UseWatchConnectivityProps {
       id: string;
       sets: Array<{ setIndex: number; reps: number; weight: number; completed: boolean }>;
     }>;
+    cardio?: Array<{ itemId: string; elapsedSeconds: number }>;
   }) => void;
   onWatchDiscardWorkout?: (event: { workoutId: string }) => void;
+  onWatchCardioComplete?: (event: { workoutId: string; itemId: string; elapsedSeconds: number }) => void;
 }
 
-export function useWatchConnectivity({ onWatchSetComplete, onWatchStartWorkout, onWatchFinishWorkout, onWatchDiscardWorkout }: UseWatchConnectivityProps = {}) {
+export function useWatchConnectivity({ onWatchSetComplete, onWatchStartWorkout, onWatchFinishWorkout, onWatchDiscardWorkout, onWatchCardioComplete }: UseWatchConnectivityProps = {}) {
   // Stable refs — callbacks change every render but the listener stays subscribed once.
   const setCompleteRef = useRef(onWatchSetComplete);
   const startWorkoutRef = useRef(onWatchStartWorkout);
   const finishWorkoutRef = useRef(onWatchFinishWorkout);
   const discardWorkoutRef = useRef(onWatchDiscardWorkout);
+  const cardioCompleteRef = useRef(onWatchCardioComplete);
 
   useEffect(() => {
     setCompleteRef.current = onWatchSetComplete;
     startWorkoutRef.current = onWatchStartWorkout;
     finishWorkoutRef.current = onWatchFinishWorkout;
     discardWorkoutRef.current = onWatchDiscardWorkout;
+    cardioCompleteRef.current = onWatchCardioComplete;
   });
 
   // Initialize module by checking if watch is reachable (forces module load)
@@ -108,8 +112,29 @@ export function useWatchConnectivity({ onWatchSetComplete, onWatchStartWorkout, 
           return;
         }
 
-        if (__DEV__) console.log(`[useWatchConnectivity] Watch requested FINISH_WORKOUT for ${workoutId} with rpe ${rpe}, ${exercises?.length ?? 0} exercises`);
-        finishWorkoutRef.current?.({ workoutId, rpe, startedAt, exercises });
+        const cardio = Array.isArray(event.payload.cardio)
+          ? event.payload.cardio.map((c: any) => ({
+              itemId: String(c.itemId ?? ''),
+              elapsedSeconds: Number(c.elapsedSeconds ?? 0),
+            }))
+          : undefined;
+
+        if (__DEV__) console.log(`[useWatchConnectivity] Watch requested FINISH_WORKOUT for ${workoutId} with rpe ${rpe}, ${exercises?.length ?? 0} exercises, ${cardio?.length ?? 0} cardio`);
+        finishWorkoutRef.current?.({ workoutId, rpe, startedAt, exercises, cardio });
+      }
+
+      if (event.type === 'CARDIO_COMPLETE' && event.payload) {
+        const workoutId = typeof event.payload.workoutId === 'string' ? event.payload.workoutId : null;
+        const itemId = typeof event.payload.itemId === 'string' ? event.payload.itemId : null;
+        const elapsedSeconds = Number(event.payload.elapsedSeconds ?? 0);
+
+        if (!workoutId || !itemId) {
+          if (__DEV__) console.warn('[useWatchConnectivity] Ignoring invalid CARDIO_COMPLETE payload:', event.payload);
+          return;
+        }
+
+        if (__DEV__) console.log(`[useWatchConnectivity] Watch completed cardio ${itemId} — ${elapsedSeconds}s`);
+        cardioCompleteRef.current?.({ workoutId, itemId, elapsedSeconds });
       }
 
       if (event.type === 'DISCARD_WORKOUT' && event.payload) {

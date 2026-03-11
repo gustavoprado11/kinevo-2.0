@@ -96,18 +96,40 @@ function enrichWorkoutItem(
     fallbackIndex: number,
     exerciseMap: Map<string, PrescriptionExerciseRef>,
 ): GeneratedWorkoutItem {
-    const exercise = exerciseMap.get(compact.exercise_id)
+    const itemType = compact.item_type || 'exercise'
+
+    // Warmup/cardio items don't need exercise enrichment
+    if (itemType === 'warmup' || itemType === 'cardio') {
+        return {
+            item_type: itemType,
+            order_index: fallbackIndex,
+            item_config: compact.item_config ?? {},
+            exercise_id: null,
+            exercise_name: null,
+            exercise_muscle_group: null,
+            exercise_equipment: null,
+            sets: null,
+            reps: null,
+            rest_seconds: null,
+            notes: null,
+            substitute_exercise_ids: [],
+            exercise_function: null,
+        }
+    }
+
+    const exercise = compact.exercise_id ? exerciseMap.get(compact.exercise_id) : undefined
 
     return {
-        exercise_id: compact.exercise_id,
+        item_type: 'exercise',
+        exercise_id: compact.exercise_id!,
         exercise_name: exercise?.name ?? 'Exercício desconhecido',
         exercise_muscle_group: exercise?.muscle_group_names[0] ?? '',
         exercise_equipment: exercise?.equipment ?? null,
-        sets: compact.sets,
-        reps: compact.reps,
-        rest_seconds: compact.rest_seconds,
-        notes: translateNoteKey(compact.note_key, exercise),
-        substitute_exercise_ids: compact.substitute_exercise_ids,
+        sets: compact.sets!,
+        reps: compact.reps!,
+        rest_seconds: compact.rest_seconds!,
+        notes: compact.note_key ? translateNoteKey(compact.note_key, exercise) : null,
+        substitute_exercise_ids: compact.substitute_exercise_ids ?? [],
         order_index: fallbackIndex,
         exercise_function: compact.exercise_function,
     }
@@ -248,11 +270,14 @@ function generateWorkoutNotes(
     exerciseMap: Map<string, PrescriptionExerciseRef>,
 ): string[] {
     return workouts.map(w => {
+        // Filter to exercise items only for analysis
+        const exerciseItems = w.items.filter(item => (item.item_type || 'exercise') === 'exercise')
+
         // Find main (compound anchor) exercises
-        const anchors = w.items
+        const anchors = exerciseItems
             .filter(item => item.exercise_function === 'main')
             .map(item => {
-                const ref = exerciseMap.get(item.exercise_id)
+                const ref = item.exercise_id ? exerciseMap.get(item.exercise_id) : undefined
                 return ref?.name ?? item.exercise_name
             })
 
@@ -262,8 +287,8 @@ function generateWorkoutNotes(
 
         // Identify primary muscle groups in this workout
         const groups = new Set<string>()
-        for (const item of w.items) {
-            const ref = exerciseMap.get(item.exercise_id)
+        for (const item of exerciseItems) {
+            const ref = item.exercise_id ? exerciseMap.get(item.exercise_id) : undefined
             if (ref) {
                 for (const g of ref.muscle_group_names) {
                     groups.add(g)

@@ -180,6 +180,8 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
                 duration_seconds,
                 rpe,
                 feedback,
+                pre_workout_submission_id,
+                post_workout_submission_id,
                 assigned_workouts ( name )
             `)
             .eq('assigned_program_id', activeProgram.id)
@@ -222,6 +224,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
         { data: pendingFormsData },
         { data: bodyMetricsData },
         { data: formTemplatesData },
+        { data: formSchedulesData },
     ] = await Promise.all([
         // Active contract (most relevant: active > past_due > pending)
         supabase
@@ -274,6 +277,15 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
             .or(`trainer_id.eq.${trainer.id},trainer_id.is.null`)
             .eq('is_active', true)
             .order('title'),
+
+        // Active recurring form schedules
+        supabase
+            .from('form_schedules')
+            .select('id, student_id, form_template_id, frequency, is_active, next_due_at, last_sent_at, created_at, form_templates!inner(title)')
+            .eq('student_id', id)
+            .eq('trainer_id', trainer.id)
+            .eq('is_active', true)
+            .order('created_at', { ascending: false }),
     ])
 
     // Compute financial display status
@@ -337,6 +349,19 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
         category: t.category,
     }))
 
+    // Shape form schedules
+    const formSchedules = (formSchedulesData || []).map((s: any) => ({
+        id: s.id,
+        student_id: s.student_id,
+        form_template_id: s.form_template_id,
+        frequency: s.frequency,
+        is_active: s.is_active,
+        next_due_at: s.next_due_at,
+        last_sent_at: s.last_sent_at,
+        created_at: s.created_at,
+        form_template_title: s.form_templates?.title ?? 'Formulário',
+    }))
+
     return (
         <StudentDetailClient
             trainer={trainer}
@@ -355,6 +380,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
             pendingForms={pendingForms}
             bodyMetrics={bodyMetrics}
             formTemplates={formTemplates}
+            formSchedules={formSchedules}
         />
     )
 }

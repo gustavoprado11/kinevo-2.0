@@ -148,14 +148,18 @@ class HealthKitManager: NSObject, ObservableObject {
         session.end()
         let endDate = Date()
 
-        builder.endCollection(withEnd: endDate) { [weak self] success, error in
+        builder.endCollection(withEnd: endDate) { [weak self] _, error in
             if let error = error {
                 print("[HealthKit] Failed to end collection for discard: \(error)")
             }
-
-            builder.discardWorkout {
-                print("[HealthKit] Workout discarded (not saved to Health)")
-                DispatchQueue.main.async {
+            Task {
+                do {
+                    try await builder.discardWorkout()
+                    print("[HealthKit] Workout discarded (not saved to Health)")
+                } catch {
+                    print("[HealthKit] Failed to discard workout: \(error)")
+                }
+                await MainActor.run {
                     self?.isWorkoutActive = false
                     self?.activeCalories = 0.0
                     self?.heartRate = 0.0
@@ -179,23 +183,25 @@ class HealthKitManager: NSObject, ObservableObject {
 
         // Critical order: endCollection FIRST, then finishWorkout.
         // Without finishWorkout(), the workout won't appear in Apple Health.
-        builder.endCollection(withEnd: endDate) { [weak self] success, error in
+        builder.endCollection(withEnd: endDate) { [weak self] _, error in
             if let error = error {
                 print("[HealthKit] Failed to end collection: \(error)")
             } else {
                 print("[HealthKit] Workout collection ended — saving to HealthKit...")
             }
 
-            builder.finishWorkout { workout, error in
-                if let error = error {
+            Task {
+                do {
+                    if let workout = try await builder.finishWorkout() {
+                        let duration = workout.duration
+                        let calories = workout.totalEnergyBurned?.doubleValue(for: .kilocalorie()) ?? 0
+                        print("[HealthKit] Workout saved to HealthKit — duration: \(Int(duration))s, calories: \(Int(calories)) kcal")
+                    }
+                } catch {
                     print("[HealthKit] Failed to save workout to HealthKit: \(error)")
-                } else if let workout = workout {
-                    let duration = workout.duration
-                    let calories = workout.totalEnergyBurned?.doubleValue(for: .kilocalorie()) ?? 0
-                    print("[HealthKit] Workout saved to HealthKit — duration: \(Int(duration))s, calories: \(Int(calories)) kcal")
                 }
 
-                DispatchQueue.main.async {
+                await MainActor.run {
                     self?.isWorkoutActive = false
                     self?.activeCalories = 0.0
                     self?.heartRate = 0.0

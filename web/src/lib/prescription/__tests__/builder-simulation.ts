@@ -277,8 +277,8 @@ function buildTestProfiles(): TestProfileConfig[] {
                 training_level: 'intermediate',
                 available_days: [1, 3, 5],
                 medical_restrictions: [{
-                    id: 'mr-1',
                     description: 'Lesão no ombro direito',
+                    severity: 'moderate',
                     restricted_exercise_ids: fullLib.filter(e => e.name.includes('Press Militar') || e.name.includes('Desenvolvimento')).map(e => e.id),
                     restricted_muscle_groups: [],
                 }],
@@ -294,8 +294,8 @@ function buildTestProfiles(): TestProfileConfig[] {
                 training_level: 'intermediate',
                 available_days: [1, 2, 4, 5],
                 medical_restrictions: [{
-                    id: 'mr-2',
                     description: 'Hérnia lombar',
+                    severity: 'severe',
                     restricted_exercise_ids: fullLib.filter(e => e.name.includes('Terra') || e.name.includes('Stiff com Barra')).map(e => e.id),
                     restricted_muscle_groups: [],
                 }],
@@ -734,17 +734,17 @@ function collectMetrics(
             let highFatigueInWorkout = 0
 
             for (const item of workout.items) {
-                progUniqueIds.add(item.exercise_id)
-                uniqueExercises.add(item.exercise_id)
-                exerciseFrequency.set(item.exercise_id, (exerciseFrequency.get(item.exercise_id) || 0) + 1)
+                progUniqueIds.add(item.exercise_id!)
+                uniqueExercises.add(item.exercise_id!)
+                exerciseFrequency.set(item.exercise_id!, (exerciseFrequency.get(item.exercise_id!) || 0) + 1)
 
                 // Volume tracking (primary + secondary, mirrors builder)
-                const group = item.exercise_muscle_group
-                weeklyVol[group] = (weeklyVol[group] || 0) + item.sets
-                const ex = exerciseMap.get(item.exercise_id)
+                const group = item.exercise_muscle_group!
+                weeklyVol[group] = (weeklyVol[group] || 0) + (item.sets ?? 0)
+                const ex = exerciseMap.get(item.exercise_id!)
                 if (ex?.is_compound) {
                     for (const { group: sg, weight } of BUILDER_SECONDARY_MAP[group] || []) {
-                        weeklyVol[sg] = (weeklyVol[sg] || 0) + Math.round(item.sets * weight)
+                        weeklyVol[sg] = (weeklyVol[sg] || 0) + Math.round((item.sets ?? 0) * weight)
                     }
                 }
 
@@ -754,7 +754,7 @@ function collectMetrics(
                 }
 
                 // Stall check
-                if (stalledSet.has(item.exercise_id)) {
+                if (stalledSet.has(item.exercise_id!)) {
                     progHasStalled = true
                 }
 

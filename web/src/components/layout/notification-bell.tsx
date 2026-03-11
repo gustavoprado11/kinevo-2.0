@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Bell, Dumbbell, FileText, CreditCard, AlertTriangle, X } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 
 function timeAgo(dateStr: string): string {
     const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000)
@@ -63,12 +64,77 @@ export function NotificationBell() {
         }
     }, [])
 
-    // Fetch on mount + poll every 30s
+    // Fetch on mount
     useEffect(() => {
         fetchNotifications()
-        const interval = setInterval(fetchNotifications, 30_000)
-        return () => clearInterval(interval)
     }, [fetchNotifications])
+
+    // Supabase realtime subscription replaces polling.
+    // NOTE: Requires the `trainer_notifications` table to have replication enabled
+    // in Supabase Dashboard > Database > Replication for realtime to work.
+    useEffect(() => {
+        const supabase = createClient()
+        let channel: ReturnType<typeof supabase.channel> | null = null
+
+        async function setupRealtime() {
+            // Resolve trainer_id from the authenticated user
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) return
+
+            const { data: trainer } = await supabase
+                .from('trainers')
+                .select('id')
+                .eq('auth_user_id', user.id)
+                .single()
+
+            if (!trainer) return
+
+            channel = supabase
+                .channel(`trainer_notifications_${trainer.id}`)
+                .on(
+                    'postgres_changes',
+                    {
+                        event: 'INSERT',
+                        schema: 'public',
+                        table: 'trainer_notifications',
+                        filter: `trainer_id=eq.${trainer.id}`,
+                    },
+                    (payload) => {
+                        const newNotif = payload.new as Notification
+                        setNotifications(prev => [newNotif, ...prev])
+                        if (!newNotif.read) setUnreadCount(prev => prev + 1)
+                    }
+                )
+                .on(
+                    'postgres_changes',
+                    {
+                        event: 'UPDATE',
+                        schema: 'public',
+                        table: 'trainer_notifications',
+                        filter: `trainer_id=eq.${trainer.id}`,
+                    },
+                    (payload) => {
+                        const updated = payload.new as Notification
+                        setNotifications(prev =>
+                            prev.map(n => n.id === updated.id ? updated : n)
+                        )
+                        // Decrement unread count when a notification is marked as read
+                        if (payload.old && !(payload.old as any).read && updated.read) {
+                            setUnreadCount(prev => Math.max(0, prev - 1))
+                        }
+                    }
+                )
+                .subscribe()
+        }
+
+        setupRealtime()
+
+        return () => {
+            if (channel) {
+                supabase.removeChannel(channel)
+            }
+        }
+    }, [])
 
     // Close on outside click
     useEffect(() => {

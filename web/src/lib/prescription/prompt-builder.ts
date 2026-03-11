@@ -129,7 +129,37 @@ ${restLines}
 - Hip Thrust / Elevação de Quadril: SOMENTE Glúteo — não conta para Quadríceps nem Posterior de Coxa
 - Agachamentos NÃO contam para Posterior de Coxa — são dominantes de joelho
 - Upper body: compostos de Peito contam 0.5x para Ombros e Tríceps; compostos de Costas contam 0.5x para Bíceps
-- Use esta lógica ao calcular volume semanal por grupo antes de gerar e no volume_rationale`
+- Use esta lógica ao calcular volume semanal por grupo antes de gerar e no volume_rationale
+
+## Aquecimento e Aeróbio (item_type: warmup / cardio)
+Além dos exercícios de força, você pode prescrever blocos de aquecimento e aeróbio quando apropriado.
+Estes são ADICIONAIS aos exercícios de força — não substituem compostos e acessórios.
+NÃO contam para o budget de volume.
+
+### Aquecimento (item_type: "warmup")
+Prescreva quando:
+- Aluno iniciante ou intermediário
+- Condições clínicas (articulares, cardíacas) que exigem preparação
+- Sessão inclui exercícios pesados (agachamento, supino, terra)
+NÃO prescreva quando:
+- Aluno avançado que já tem protocolo próprio
+- Sessão de baixa intensidade
+Tipos: "free" (geral), "light_cardio" (5-10 min esteira/bike), "mobility" (mobilidade articular), "activation" (bandas/isométricos)
+Duração: 5-15 minutos
+
+### Aeróbio (item_type: "cardio")
+Prescreva quando:
+- Objetivo inclui emagrecimento ou condicionamento cardiovascular
+- Aluno tem frequência ≥ 4x/semana e há tempo para cardio
+- Aluno expressa interesse em cardio
+Modos:
+- "continuous": cardio contínuo em intensidade estável (zona 2, LISS). Para base aeróbia ou emagrecimento.
+- "interval": HIIT ou intervalado. Para condicionamento, VO2max, ou alunos com pouco tempo.
+Intensidade: use linguagem clara — "Zona 2 (FC 120-140bpm)", "RPE 6-7", "ritmo conversacional"
+
+### Posicionamento
+- Aquecimento: SEMPRE order_index 0 (primeiro item do treino)
+- Aeróbio: SEMPRE maior order_index (último item do treino)`
 }
 
 /**
@@ -152,7 +182,15 @@ Cada item deve ter um exercise_function baseado em sua característica:
 - "warmup": SOMENTE se for um exercício de mobilidade ou ativação muscular leve (NÃO atribua apenas pela posição)
 - "activation": exercícios leves de ativação do grupo muscular alvo (bandas, isométricos)
 - "conditioning": SOMENTE para exercícios cardiovasculares ou circuitos (esteira, bike, etc.)
-Se não houver certeza, use "main" para compostos e "accessory" para isolamentos.`
+Se não houver certeza, use "main" para compostos e "accessory" para isolamentos.
+
+# ITEM TYPE (item_type)
+Além de exercícios de força, o programa pode incluir itens especiais:
+- "exercise" (padrão): exercício do catálogo com exercise_id, sets, reps, rest_seconds
+- "warmup": bloco de aquecimento (sem exercise_id, usa item_config com warmup_type/description/duration_minutes)
+- "cardio": bloco de aeróbio (sem exercise_id, usa item_config com mode/equipment/duration_minutes/intervals/intensity)
+NÃO inclua AMBOS exercise_function="warmup" E item_type="warmup" no mesmo treino — use um ou outro.
+Prefira item_type="warmup" para protocolos gerais e exercise_function="warmup" apenas para exercícios específicos do catálogo.`
 }
 
 /**
@@ -173,19 +211,7 @@ Retorne exatamente este JSON (sem campos extras, sem texto fora do JSON):
       "order_index": number,
       "scheduled_days": [number] (0=Dom, 6=Sáb),
       "items": [
-        {
-          "exercise_id": "UUID do exercício",
-          "exercise_name": "string — nome do exercício",
-          "exercise_muscle_group": "string — grupo muscular principal",
-          "exercise_equipment": "string | null",
-          "sets": number,
-          "reps": "string — ex: 8-12",
-          "rest_seconds": number,
-          "notes": "string | null",
-          "substitute_exercise_ids": ["UUID"],
-          "order_index": number,
-          "exercise_function": "string | null — um de: warmup, activation, main, accessory, conditioning"
-        }
+        ... veja os tipos de item abaixo ...
       ]
     }
   ],
@@ -196,7 +222,72 @@ Retorne exatamente este JSON (sem campos extras, sem texto fora do JSON):
     "attention_flags": ["string — alertas para o treinador"],
     "confidence_score": number (0.0 a 1.0)
   }
-}`
+}
+
+## Tipos de Item
+Cada item no array "items" pode ser um dos seguintes tipos:
+
+### Exercício de força (padrão):
+{
+  "exercise_id": "UUID do exercício",
+  "exercise_name": "Supino Reto com Barra",
+  "exercise_muscle_group": "Peito",
+  "exercise_equipment": "Barra",
+  "sets": 4,
+  "reps": "8-10",
+  "rest_seconds": 90,
+  "notes": "string | null",
+  "substitute_exercise_ids": ["UUID"],
+  "order_index": 1,
+  "exercise_function": "main"
+}
+
+### Aquecimento (item_type obrigatório):
+{
+  "item_type": "warmup",
+  "order_index": 0,
+  "item_config": {
+    "warmup_type": "mobility",
+    "description": "5 min esteira leve (FC até 110bpm). Mobilidade articular: círculos de ombro 10x cada lado, world's greatest stretch 5x cada lado, agachamento com rotação torácica 8x.",
+    "duration_minutes": 10
+  }
+}
+
+### Aeróbio contínuo (item_type obrigatório):
+{
+  "item_type": "cardio",
+  "order_index": 8,
+  "item_config": {
+    "mode": "continuous",
+    "equipment": "treadmill",
+    "objective": "time",
+    "duration_minutes": 25,
+    "intensity": "Zona 2 — ritmo conversacional, FC 120-140bpm"
+  }
+}
+
+### Aeróbio intervalado (item_type obrigatório):
+{
+  "item_type": "cardio",
+  "order_index": 8,
+  "item_config": {
+    "mode": "interval",
+    "equipment": "bike",
+    "intervals": {
+      "work_seconds": 30,
+      "rest_seconds": 20,
+      "rounds": 8
+    },
+    "intensity": "Esforço: RPE 8-9. Descanso: RPE 3 (pedalada leve)"
+  }
+}
+
+Valores válidos:
+- warmup_type: "free", "light_cardio", "mobility", "activation"
+- equipment: "treadmill", "bike", "elliptical", "rower", "stairmaster", "jump_rope", "outdoor_run", "outdoor_bike", "swimming", "other"
+- mode: "continuous", "interval"
+- objective: "time", "distance"
+- exercise_function: "warmup", "activation", "main", "accessory", "conditioning"`
 }
 
 /**
@@ -335,8 +426,17 @@ export function parseAiResponse(rawJson: string): PrescriptionOutputSnapshot | n
             return null
         }
         for (const item of w.items) {
-            if (!item.exercise_id || typeof item.sets !== 'number' || typeof item.reps !== 'string') {
-                return null
+            const itemType = item.item_type || 'exercise'
+            if (itemType === 'warmup' || itemType === 'cardio') {
+                // Warmup/cardio: item_config required
+                if (!item.item_config || typeof item.item_config !== 'object') {
+                    return null
+                }
+            } else {
+                // Exercise: exercise_id, sets, reps required
+                if (!item.exercise_id || typeof item.sets !== 'number' || typeof item.reps !== 'string') {
+                    return null
+                }
             }
         }
     }
@@ -352,21 +452,76 @@ export function parseAiResponse(rawJson: string): PrescriptionOutputSnapshot | n
             name: w.name,
             order_index: w.order_index ?? wi,
             scheduled_days: Array.isArray(w.scheduled_days) ? w.scheduled_days : [],
-            items: (w.items || []).map((item: any, ii: number) => ({
-                exercise_id: item.exercise_id,
-                exercise_name: item.exercise_name || '',
-                exercise_muscle_group: item.exercise_muscle_group || '',
-                exercise_equipment: item.exercise_equipment ?? null,
-                sets: item.sets,
-                reps: item.reps,
-                rest_seconds: item.rest_seconds ?? 60,
-                notes: item.notes ?? null,
-                substitute_exercise_ids: Array.isArray(item.substitute_exercise_ids) ? item.substitute_exercise_ids : [],
-                order_index: item.order_index ?? ii,
-                exercise_function: ['warmup', 'activation', 'main', 'accessory', 'conditioning'].includes(item.exercise_function)
-                    ? item.exercise_function
-                    : null,
-            })),
+            items: (w.items || []).map((item: any, ii: number) => {
+                const itemType = item.item_type || 'exercise'
+
+                if (itemType === 'warmup') {
+                    return {
+                        item_type: 'warmup' as const,
+                        order_index: item.order_index ?? ii,
+                        item_config: {
+                            warmup_type: item.item_config?.warmup_type || 'free',
+                            description: item.item_config?.description || undefined,
+                            duration_minutes: item.item_config?.duration_minutes || undefined,
+                        },
+                        exercise_id: null,
+                        exercise_name: null,
+                        exercise_muscle_group: null,
+                        exercise_equipment: null,
+                        sets: null,
+                        reps: null,
+                        rest_seconds: null,
+                        notes: item.notes ?? null,
+                        substitute_exercise_ids: [],
+                        exercise_function: null,
+                    }
+                }
+
+                if (itemType === 'cardio') {
+                    return {
+                        item_type: 'cardio' as const,
+                        order_index: item.order_index ?? ii,
+                        item_config: {
+                            mode: item.item_config?.mode || 'continuous',
+                            equipment: item.item_config?.equipment || undefined,
+                            objective: item.item_config?.objective || undefined,
+                            duration_minutes: item.item_config?.duration_minutes || undefined,
+                            distance_km: item.item_config?.distance_km || undefined,
+                            intensity: item.item_config?.intensity || undefined,
+                            intervals: item.item_config?.intervals || undefined,
+                            notes: item.item_config?.notes || undefined,
+                        },
+                        exercise_id: null,
+                        exercise_name: null,
+                        exercise_muscle_group: null,
+                        exercise_equipment: null,
+                        sets: null,
+                        reps: null,
+                        rest_seconds: null,
+                        notes: item.notes ?? null,
+                        substitute_exercise_ids: [],
+                        exercise_function: null,
+                    }
+                }
+
+                // Default: exercise item
+                return {
+                    item_type: 'exercise' as const,
+                    exercise_id: item.exercise_id,
+                    exercise_name: item.exercise_name || '',
+                    exercise_muscle_group: item.exercise_muscle_group || '',
+                    exercise_equipment: item.exercise_equipment ?? null,
+                    sets: item.sets,
+                    reps: item.reps,
+                    rest_seconds: item.rest_seconds ?? 60,
+                    notes: item.notes ?? null,
+                    substitute_exercise_ids: Array.isArray(item.substitute_exercise_ids) ? item.substitute_exercise_ids : [],
+                    order_index: item.order_index ?? ii,
+                    exercise_function: ['warmup', 'activation', 'main', 'accessory', 'conditioning'].includes(item.exercise_function)
+                        ? item.exercise_function
+                        : null,
+                }
+            }),
         })),
         reasoning: {
             structure_rationale: parsed.reasoning.structure_rationale || '',
@@ -695,7 +850,26 @@ Prioridade de alocação em cada treino:
   3. Grupos secundários enfatizados pelo treinador
   4. Panturrilha (se é Legs day e sobra espaço)
   5. Abdominais/Oblíquos (só se sobra espaço E contribuição indireta de compostos é insuficiente)
-  6. Adutores (raramente — só com ênfase ou espaço)`
+  6. Adutores (raramente — só com ênfase ou espaço)
+
+### DF-12. WARMUP E CARDIO (item_type)
+Inclua um bloco de aquecimento (item_type: "warmup") quando:
+  - Aluno é "beginner" ou "intermediate"
+  - Aluno tem condições clínicas que afetam articulações ou sistema cardiovascular
+  - Sessão inclui compostos pesados (agachamento, supino, terra)
+Inclua um bloco de cardio (item_type: "cardio") quando:
+  - Objetivo primário ou secundário inclui emagrecimento ou condicionamento cardiovascular
+  - Aluno treina ≥ 4x/semana E a duração da sessão permite tempo para cardio (~15-25 min extras)
+
+Regras de posicionamento:
+  - Warmup SEMPRE em order_index 0 (primeiro item)
+  - Cardio SEMPRE no maior order_index (último item)
+  - NÃO misture exercise_function="warmup" com item_type="warmup" no mesmo treino
+  - Prefira item_type="warmup" para protocolos gerais (mais flexível para o aluno)
+  - Use exercise_function="warmup" APENAS para exercícios específicos do catálogo (ex: face pull com banda como ativação)
+
+Cardio NÃO conta para o budget de volume muscular — é suplementar.
+Warmup NÃO conta para exercises_per_session — é preparação.`
 }
 
 /**

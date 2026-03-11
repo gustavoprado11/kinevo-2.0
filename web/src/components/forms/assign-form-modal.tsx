@@ -2,9 +2,10 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Send, CheckCircle2, Loader2 } from 'lucide-react'
+import { X, Send, CheckCircle2, Loader2, RefreshCw } from 'lucide-react'
 import Image from 'next/image'
 import { assignFormToStudents } from '@/actions/forms/assign-form'
+import { createFormSchedules, type ScheduleFrequency } from '@/actions/forms/form-schedules'
 import { useOnboardingStore } from '@/stores/onboarding-store'
 
 interface Student {
@@ -25,6 +26,13 @@ interface AssignFormModalProps {
     templates: FormTemplate[]
     students: Student[]
     preselectedTemplateId?: string | null
+}
+
+const frequencyLabels: Record<ScheduleFrequency, string> = {
+    daily: 'diária',
+    weekly: 'semanal',
+    biweekly: 'quinzenal',
+    monthly: 'mensal',
 }
 
 function cleanTemplateName(name: string): string {
@@ -48,6 +56,8 @@ export function AssignFormModal({
     const [showDatePicker, setShowDatePicker] = useState(false)
     const [message, setMessage] = useState('')
     const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([])
+    const [isRecurring, setIsRecurring] = useState(false)
+    const [frequency, setFrequency] = useState<ScheduleFrequency>('weekly')
     const [isAssigning, setIsAssigning] = useState(false)
     const [result, setResult] = useState<{ message: string; isError: boolean } | null>(null)
 
@@ -83,6 +93,7 @@ export function AssignFormModal({
         setIsAssigning(true)
         setResult(null)
 
+        // Always send the form immediately
         const res = await assignFormToStudents({
             formTemplateId: templateId,
             studentIds: selectedStudentIds,
@@ -90,12 +101,28 @@ export function AssignFormModal({
             message: message || undefined,
         })
 
+        // If recurring, also create the schedule
+        let scheduleResult: { success: boolean; count?: number; error?: string } | null = null
+        if (isRecurring && res.success) {
+            scheduleResult = await createFormSchedules({
+                formTemplateId: templateId,
+                studentIds: selectedStudentIds,
+                frequency,
+            })
+        }
+
         if (res.success) {
             useOnboardingStore.getState().completeMilestone('first_form_sent')
-            setResult({
-                message: `Formulário enviado para ${res.assignedCount} aluno${res.assignedCount !== 1 ? 's' : ''}${res.skippedCount ? ` (${res.skippedCount} já ${res.skippedCount === 1 ? 'tinha' : 'tinham'})` : ''}.`,
-                isError: false,
-            })
+            const parts: string[] = []
+            parts.push(`Formulário enviado para ${res.assignedCount} aluno${res.assignedCount !== 1 ? 's' : ''}`)
+            if (res.skippedCount) {
+                parts.push(` (${res.skippedCount} já ${res.skippedCount === 1 ? 'tinha' : 'tinham'})`)
+            }
+            if (scheduleResult?.success) {
+                const freqLabel = frequencyLabels[frequency]
+                parts.push(`. Recorrência ${freqLabel} ativada`)
+            }
+            setResult({ message: parts.join('') + '.', isError: false })
             setTimeout(() => {
                 resetAndClose()
             }, 2000)
@@ -113,6 +140,8 @@ export function AssignFormModal({
         setShowDatePicker(false)
         setMessage('')
         setSelectedStudentIds([])
+        setIsRecurring(false)
+        setFrequency('weekly')
         setResult(null)
         onClose()
     }
@@ -224,6 +253,51 @@ export function AssignFormModal({
                                             onChange={(e) => setCustomDate(e.target.value)}
                                             className="mt-2 w-full rounded-lg border border-[#D2D2D7] bg-white px-4 py-2.5 text-sm text-[#1D1D1F] outline-none transition-all focus:border-[#007AFF] focus:ring-1 focus:ring-[#007AFF]/20 dark:rounded-xl dark:border-k-border-subtle dark:bg-glass-bg dark:text-k-text-primary dark:focus:border-violet-500/50 dark:focus:ring-2 dark:focus:ring-violet-500/10"
                                         />
+                                    )}
+                                </div>
+
+                                {/* Recurring toggle */}
+                                <div>
+                                    <div className="flex items-center justify-between">
+                                        <label className="flex items-center gap-2 text-sm font-medium text-[#1D1D1F] dark:text-k-text-tertiary cursor-pointer">
+                                            <RefreshCw size={14} className={isRecurring ? 'text-violet-500' : 'text-[#86868B] dark:text-k-text-quaternary'} />
+                                            Envio recorrente
+                                        </label>
+                                        <button
+                                            type="button"
+                                            role="switch"
+                                            aria-checked={isRecurring}
+                                            onClick={() => setIsRecurring(!isRecurring)}
+                                            className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                                                isRecurring
+                                                    ? 'bg-violet-600'
+                                                    : 'bg-[#D2D2D7] dark:bg-k-border-subtle'
+                                            }`}
+                                        >
+                                            <span
+                                                className={`inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform duration-200 ${
+                                                    isRecurring ? 'translate-x-5' : 'translate-x-0'
+                                                }`}
+                                            />
+                                        </button>
+                                    </div>
+                                    {isRecurring && (
+                                        <div className="flex items-center gap-2 flex-wrap mt-2">
+                                            {(Object.entries(frequencyLabels) as [ScheduleFrequency, string][]).map(([key, label]) => (
+                                                <button
+                                                    key={key}
+                                                    type="button"
+                                                    onClick={() => setFrequency(key)}
+                                                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all capitalize ${
+                                                        frequency === key
+                                                            ? 'bg-violet-600 text-white dark:bg-violet-500/10 dark:text-violet-400 dark:border dark:border-violet-500/30'
+                                                            : 'bg-white text-[#6E6E73] border border-[#D2D2D7] hover:bg-[#F5F5F7] dark:bg-glass-bg dark:text-k-text-quaternary dark:border-k-border-subtle dark:hover:text-k-text-secondary'
+                                                    }`}
+                                                >
+                                                    {label}
+                                                </button>
+                                            ))}
+                                        </div>
                                     )}
                                 </div>
 

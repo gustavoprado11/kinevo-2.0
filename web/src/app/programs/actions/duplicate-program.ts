@@ -84,6 +84,7 @@ export async function duplicateProgram(templateId: string) {
                         rest_seconds: item.rest_seconds,
                         notes: item.notes,
                         exercise_function: item.exercise_function || null,
+                        item_config: item.item_config || {},
                     })
                     .select('id')
                     .single()
@@ -109,6 +110,7 @@ export async function duplicateProgram(templateId: string) {
                         rest_seconds: item.rest_seconds,
                         notes: item.notes,
                         exercise_function: item.exercise_function || null,
+                        item_config: item.item_config || {},
                     })
             }
         }

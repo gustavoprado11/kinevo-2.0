@@ -60,6 +60,26 @@ export interface WatchProgramExercise {
   lastReps: number | null;
 }
 
+export interface WatchCardioItem {
+  id: string;
+  itemType: 'cardio';
+  orderIndex: number;
+  config: {
+    mode: 'continuous' | 'interval';
+    equipment?: string;
+    equipmentLabel?: string;
+    // Continuous
+    objective?: 'time' | 'distance';
+    durationMinutes?: number;
+    distanceKm?: number;
+    intensity?: string;
+    // Interval
+    workSeconds?: number;
+    restSeconds?: number;
+    rounds?: number;
+  };
+}
+
 export interface WatchProgramWorkout {
   workoutId: string;
   workoutName: string;
@@ -68,6 +88,7 @@ export interface WatchProgramWorkout {
   isCompletedToday: boolean;
   lastCompletedAt: string | null;
   exercises: WatchProgramExercise[];
+  cardioItems?: WatchCardioItem[];
 }
 
 export interface WatchProgramPayload {

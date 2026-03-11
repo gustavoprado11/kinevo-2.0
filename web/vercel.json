@@ -7,6 +7,14 @@
     {
       "path": "/api/cron/process-push",
       "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/cron/process-form-schedules",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/check-push-receipts",
+      "schedule": "*/15 * * * *"
     }
   ]
 }

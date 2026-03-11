@@ -1,6 +1,7 @@
 'use client'
 
 import { Check } from 'lucide-react'
+import type { PreviousSetData } from '@/stores/training-room-store'
 
 interface SetRowProps {
     setIndex: number
@@ -9,6 +10,7 @@ interface SetRowProps {
     completed: boolean
     targetReps: string
     disabled: boolean
+    previousSet?: PreviousSetData
     onWeightChange: (value: string) => void
     onRepsChange: (value: string) => void
     onToggleComplete: () => void
@@ -21,34 +23,57 @@ export function SetRow({
     completed,
     targetReps,
     disabled,
+    previousSet,
     onWeightChange,
     onRepsChange,
     onToggleComplete,
 }: SetRowProps) {
+    const hasPrevious = previousSet && previousSet.weight !== undefined && previousSet.reps !== undefined
+
+    const formatPrevWeight = (w: number) =>
+        Number.isInteger(w) ? String(w) : w.toFixed(1)
+
     return (
         <div
-            className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-colors ${
-                completed ? 'bg-[#34C759]/5 dark:bg-emerald-500/10' : 'hover:bg-[#F5F5F7] dark:hover:bg-glass-bg'
+            className={`flex items-center gap-2 rounded-xl px-2 py-1.5 transition-colors ${
+                completed
+                    ? 'bg-violet-500/[0.06] dark:bg-violet-500/10'
+                    : 'hover:bg-slate-50 dark:hover:bg-glass-bg'
             }`}
         >
-            {/* Set number */}
-            <span className="w-8 text-center text-xs font-semibold text-[#007AFF] dark:text-muted-foreground">
+            {/* Set number — circular badge */}
+            <div
+                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
+                    completed
+                        ? 'bg-violet-500/15 dark:bg-violet-500/20 text-violet-600 dark:text-violet-400'
+                        : 'bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-muted-foreground'
+                }`}
+            >
                 {setIndex + 1}
-            </span>
+            </div>
+
+            {/* Previous set data */}
+            <div className="w-[58px] shrink-0 text-center">
+                <span className="text-xs font-medium text-slate-400 dark:text-muted-foreground/60 tabular-nums">
+                    {hasPrevious
+                        ? `${formatPrevWeight(previousSet.weight)}×${previousSet.reps}`
+                        : '—'}
+                </span>
+            </div>
 
             {/* Weight input */}
             <div className="flex-1">
                 <input
                     type="text"
                     inputMode="decimal"
-                    placeholder="kg"
+                    placeholder={hasPrevious ? String(previousSet.weight) : 'kg'}
                     value={weight}
                     onChange={(e) => onWeightChange(e.target.value)}
                     disabled={disabled || completed}
-                    className={`w-full rounded-lg border px-3 py-2 text-center text-sm font-medium transition-colors focus:outline-none focus:ring-1 focus:ring-[#007AFF]/20 dark:focus:ring-violet-500/50 ${
+                    className={`w-full rounded-xl border-0 px-2 py-2 text-center text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-violet-500/30 ${
                         completed
-                            ? 'border-[#34C759]/30 dark:border-emerald-500/30 text-[#34C759] dark:text-emerald-400 bg-transparent'
-                            : 'border-[#E8E8ED] dark:border-k-border-subtle bg-[#F5F5F7] dark:bg-transparent text-[#1D1D1F] dark:text-foreground placeholder:text-[#AEAEB2] dark:placeholder:text-muted-foreground/40 focus:border-[#007AFF] dark:focus:border-violet-500 focus:bg-white dark:focus:bg-transparent'
+                            ? 'bg-violet-500/[0.08] dark:bg-violet-500/[0.12] text-violet-600 dark:text-violet-400'
+                            : 'bg-slate-100 dark:bg-transparent dark:border dark:border-k-border-subtle text-slate-900 dark:text-foreground placeholder:text-slate-300 dark:placeholder:text-muted-foreground/40'
                     } disabled:opacity-50`}
                 />
             </div>
@@ -58,29 +83,33 @@ export function SetRow({
                 <input
                     type="text"
                     inputMode="numeric"
-                    placeholder={targetReps}
+                    placeholder={hasPrevious ? String(previousSet.reps) : targetReps}
                     value={reps}
                     onChange={(e) => onRepsChange(e.target.value)}
                     disabled={disabled || completed}
-                    className={`w-full rounded-lg border px-3 py-2 text-center text-sm font-medium transition-colors focus:outline-none focus:ring-1 focus:ring-[#007AFF]/20 dark:focus:ring-violet-500/50 ${
+                    className={`w-full rounded-xl border-0 px-2 py-2 text-center text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-violet-500/30 ${
                         completed
-                            ? 'border-[#34C759]/30 dark:border-emerald-500/30 text-[#34C759] dark:text-emerald-400 bg-transparent'
-                            : 'border-[#E8E8ED] dark:border-k-border-subtle bg-[#F5F5F7] dark:bg-transparent text-[#1D1D1F] dark:text-foreground placeholder:text-[#AEAEB2] dark:placeholder:text-muted-foreground/40 focus:border-[#007AFF] dark:focus:border-violet-500 focus:bg-white dark:focus:bg-transparent'
+                            ? 'bg-violet-500/[0.08] dark:bg-violet-500/[0.12] text-violet-600 dark:text-violet-400'
+                            : 'bg-slate-100 dark:bg-transparent dark:border dark:border-k-border-subtle text-slate-900 dark:text-foreground placeholder:text-slate-300 dark:placeholder:text-muted-foreground/40'
                     } disabled:opacity-50`}
                 />
             </div>
 
-            {/* Complete checkbox */}
+            {/* Complete button — circular, gray → violet */}
             <button
                 onClick={onToggleComplete}
                 disabled={disabled}
-                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition-all ${
+                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-all ${
                     completed
-                        ? 'border-[#34C759] dark:border-emerald-500 bg-[#34C759] dark:bg-emerald-500 text-white'
-                        : 'border-[#D2D2D7] dark:border-k-border-subtle text-transparent hover:border-[#86868B] dark:hover:border-muted-foreground/40'
+                        ? 'bg-violet-600 dark:bg-violet-600 text-white'
+                        : 'bg-slate-200 dark:bg-zinc-800 text-transparent hover:bg-slate-300 dark:hover:bg-zinc-700'
                 } disabled:opacity-50`}
             >
-                <Check size={14} strokeWidth={3} />
+                {completed ? (
+                    <Check size={16} strokeWidth={3} />
+                ) : (
+                    <div className="h-4 w-4 rounded-full border-2 border-slate-300 dark:border-zinc-600" />
+                )}
             </button>
         </div>
     )

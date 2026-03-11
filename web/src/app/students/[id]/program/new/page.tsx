@@ -6,6 +6,7 @@ import { mapAiOutputToBuilderData } from '@/lib/prescription/builder-mapper'
 import type { BuilderProgramData } from '@/lib/prescription/builder-mapper'
 import type { Exercise } from '@/types/exercise'
 import type { PrescriptionOutputSnapshot, PrescriptionReasoningExtended } from '@kinevo/shared/types/prescription'
+import { getFormTemplatesForTriggers } from '@/actions/programs/get-form-templates-for-triggers'
 
 interface PageProps {
     params: Promise<{
@@ -108,6 +109,9 @@ export default async function NewStudentProgramPage({ params, searchParams }: Pa
         }
     }
 
+    // Fetch form templates for trigger configuration
+    const triggerResult = await getFormTemplatesForTriggers()
+
     return (
         <ProgramBuilderClient
             trainer={trainer}
@@ -121,6 +125,7 @@ export default async function NewStudentProgramPage({ params, searchParams }: Pa
             initialAssignmentType={isScheduled ? 'scheduled' : 'immediate'}
             prescriptionGenerationId={generationId}
             prescriptionReasoning={prescriptionReasoning}
+            formTriggerTemplates={triggerResult.templates || []}
         />
     )
 }

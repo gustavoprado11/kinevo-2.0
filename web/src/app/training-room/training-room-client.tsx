@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { Plus, ArrowLeft, Play, Square, Trash2, X } from 'lucide-react'
 import { useTrainingRoomStore } from '@/stores/training-room-store'
@@ -11,7 +11,13 @@ import { SupersetGroup } from '@/components/training-room/superset-group'
 import { WorkoutNoteCard } from '@/components/training-room/workout-note-card'
 import { WorkoutTimer } from '@/components/training-room/workout-timer'
 import { WorkoutFeedbackModal } from '@/components/training-room/workout-feedback-modal'
+import { ExerciseSwapModal } from '@/components/training-room/exercise-swap-modal'
+import { ExerciseVideoModal } from '@/components/training-room/exercise-video-modal'
+import { RestTimerOverlay } from '@/components/training-room/rest-timer-overlay'
+import { WarmupCardioCard } from '@/components/training-room/warmup-cardio-card'
+import { WorkoutFormInline } from '@/components/training-room/workout-form-inline'
 import { finishTrainingRoomWorkout } from '@/actions/training-room/finish-training-room-workout'
+import type { SubstituteOption } from '@/actions/training-room/get-substitute-exercises'
 
 interface TrainingRoomClientProps {
     trainerId: string
@@ -24,13 +30,31 @@ export function TrainingRoomClient({ trainerId }: TrainingRoomClientProps) {
     const startWorkout = useTrainingRoomStore((s) => s.startWorkout)
     const updateSet = useTrainingRoomStore((s) => s.updateSet)
     const toggleSetComplete = useTrainingRoomStore((s) => s.toggleSetComplete)
+    const toggleCardioComplete = useTrainingRoomStore((s) => s.toggleCardioComplete)
+    const swapExercise = useTrainingRoomStore((s) => s.swapExercise)
     const setFinishing = useTrainingRoomStore((s) => s.setFinishing)
     const finishSession = useTrainingRoomStore((s) => s.finishSession)
     const removeStudent = useTrainingRoomStore((s) => s.removeStudent)
+    const startRestTimer = useTrainingRoomStore((s) => s.startRestTimer)
+    const clearRestTimer = useTrainingRoomStore((s) => s.clearRestTimer)
+    const setPreCheckin = useTrainingRoomStore((s) => s.setPreCheckin)
+    const completePreCheckin = useTrainingRoomStore((s) => s.completePreCheckin)
+    const setPostCheckin = useTrainingRoomStore((s) => s.setPostCheckin)
+    const completePostCheckin = useTrainingRoomStore((s) => s.completePostCheckin)
+    const skipCheckin = useTrainingRoomStore((s) => s.skipCheckin)
 
     const [isPickerOpen, setIsPickerOpen] = useState(false)
     const [isFeedbackOpen, setIsFeedbackOpen] = useState(false)
     const [isSubmitting, setIsSubmitting] = useState(false)
+
+    // Swap modal state
+    const [swapExerciseIndex, setSwapExerciseIndex] = useState<number | null>(null)
+    const isSwapOpen = swapExerciseIndex !== null
+
+    // Video modal state
+    const [videoUrl, setVideoUrl] = useState<string | null>(null)
+    const [videoExerciseName, setVideoExerciseName] = useState<string>('')
+    const isVideoOpen = videoUrl !== null
 
     const sessionCount = Object.keys(sessions).length
     const activeSession = activeStudentId ? sessions[activeStudentId] : null
@@ -41,14 +65,24 @@ export function TrainingRoomClient({ trainerId }: TrainingRoomClientProps) {
     }, [clearExpiredSessions])
 
     const handleStartWorkout = () => {
-        if (!activeStudentId) return
-        startWorkout(activeStudentId)
+        if (!activeStudentId || !activeSession) return
+        // If there's a pre-workout trigger, go to pre_checkin instead
+        if (activeSession.preWorkoutTrigger && !activeSession.preWorkoutSubmissionId) {
+            setPreCheckin(activeStudentId)
+        } else {
+            startWorkout(activeStudentId)
+        }
     }
 
     const handleFinishClick = () => {
-        if (!activeStudentId) return
-        setFinishing(activeStudentId)
-        setIsFeedbackOpen(true)
+        if (!activeStudentId || !activeSession) return
+        // If there's a post-workout trigger, go to post_checkin instead
+        if (activeSession.postWorkoutTrigger && !activeSession.postWorkoutSubmissionId) {
+            setPostCheckin(activeStudentId)
+        } else {
+            setFinishing(activeStudentId)
+            setIsFeedbackOpen(true)
+        }
     }
 
     const handleConfirmFinish = async (rpe: number | null, feedback: string | null) => {
@@ -65,6 +99,8 @@ export function TrainingRoomClient({ trainerId }: TrainingRoomClientProps) {
             exercises: activeSession.exercises,
             rpe,
             feedback,
+            preWorkoutSubmissionId: activeSession.preWorkoutSubmissionId || null,
+            postWorkoutSubmissionId: activeSession.postWorkoutSubmissionId || null,
         })
 
         setIsSubmitting(false)
@@ -80,7 +116,6 @@ export function TrainingRoomClient({ trainerId }: TrainingRoomClientProps) {
 
     const handleCancelFeedback = () => {
         if (!activeStudentId) return
-        // Revert back to in_progress
         useTrainingRoomStore.getState().startWorkout(activeStudentId)
         setIsFeedbackOpen(false)
     }
@@ -90,6 +125,56 @@ export function TrainingRoomClient({ trainerId }: TrainingRoomClientProps) {
         if (!confirm('Descartar treino? Os dados não serão salvos.')) return
         removeStudent(activeStudentId)
     }
+
+    // Swap handler
+    const handleSwapPress = useCallback((exerciseIndex: number) => {
+        setSwapExerciseIndex(exerciseIndex)
+    }, [])
+
+    const handleSwapSelect = useCallback(
+        (option: SubstituteOption) => {
+            if (!activeStudentId || swapExerciseIndex === null) return
+            swapExercise(activeStudentId, swapExerciseIndex, {
+                id: option.id,
+                name: option.name,
+                source: option.source,
+            })
+            setSwapExerciseIndex(null)
+        },
+        [activeStudentId, swapExerciseIndex, swapExercise],
+    )
+
+    // Video handler
+    const handleVideoPress = useCallback(
+        (url: string | undefined) => {
+            if (url) {
+                // Find the exercise name for the video
+                const exercise = activeSession?.exercises.find((e) => e.video_url === url)
+                setVideoExerciseName(exercise?.name || '')
+                setVideoUrl(url)
+            } else {
+                alert('Este exercício não possui vídeo cadastrado.')
+            }
+        },
+        [activeSession],
+    )
+
+    // Toggle set complete with auto rest timer
+    const handleToggleSetComplete = useCallback(
+        (exerciseIdx: number, setIdx: number) => {
+            if (!activeStudentId || !activeSession) return
+            const exercise = activeSession.exercises[exerciseIdx]
+            const setData = exercise?.setsData[setIdx]
+
+            toggleSetComplete(activeStudentId, exerciseIdx, setIdx)
+
+            // Start rest timer when completing a set (not uncompleting)
+            if (setData && !setData.completed && exercise.rest_seconds > 0) {
+                startRestTimer(activeStudentId, exercise.rest_seconds)
+            }
+        },
+        [activeStudentId, activeSession, toggleSetComplete, startRestTimer],
+    )
 
     const completedSetsTotal = activeSession
         ? activeSession.exercises.reduce(
@@ -101,12 +186,15 @@ export function TrainingRoomClient({ trainerId }: TrainingRoomClientProps) {
         ? activeSession.exercises.reduce((acc, ex) => acc + ex.setsData.length, 0)
         : 0
 
+    // Get swap exercise data for modal
+    const swapExercise_ = swapExerciseIndex !== null ? activeSession?.exercises[swapExerciseIndex] : null
+
     return (
         <div className="flex flex-col gap-6">
             {/* Back navigation */}
             <Link
                 href="/dashboard"
-                className="inline-flex items-center gap-2 text-sm text-[#007AFF] dark:text-muted-foreground hover:text-[#0056B3] dark:hover:text-foreground transition-colors w-fit"
+                className="inline-flex items-center gap-2 text-sm text-slate-500 dark:text-muted-foreground hover:text-slate-700 dark:hover:text-foreground transition-colors w-fit"
             >
                 <ArrowLeft size={16} />
                 Voltar para Dashboard
@@ -116,19 +204,19 @@ export function TrainingRoomClient({ trainerId }: TrainingRoomClientProps) {
                 /* Empty state */
                 <div className="flex flex-1 items-center justify-center min-h-[60vh]">
                     <div className="text-center">
-                        <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-[#F5F5F7] dark:bg-glass-bg border border-[#E8E8ED] dark:border-transparent">
-                            <Plus size={32} className="text-[#AEAEB2] dark:text-violet-400" strokeWidth={1.5} />
+                        <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-slate-50 dark:bg-glass-bg border border-slate-200 dark:border-transparent">
+                            <Plus size={32} className="text-slate-400 dark:text-violet-400" strokeWidth={1.5} />
                         </div>
-                        <h2 className="text-xl font-semibold text-[#1D1D1F] dark:text-foreground mb-2">
+                        <h2 className="text-xl font-semibold text-slate-900 dark:text-foreground mb-2">
                             Sala de Treino
                         </h2>
-                        <p className="text-sm text-[#86868B] dark:text-muted-foreground mb-8 max-w-sm">
+                        <p className="text-sm text-slate-500 dark:text-muted-foreground mb-8 max-w-sm">
                             Adicione alunos para iniciar sessões de treino presenciais.
                             Os dados serão salvos no histórico do aluno.
                         </p>
                         <button
                             onClick={() => setIsPickerOpen(true)}
-                            className="inline-flex items-center gap-2 rounded-full bg-[#007AFF] dark:bg-violet-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#0066D6] dark:hover:bg-violet-500"
+                            className="inline-flex items-center gap-2 rounded-full bg-violet-600 dark:bg-violet-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-violet-500 dark:hover:bg-violet-500"
                         >
                             <Plus size={18} strokeWidth={2} />
                             Adicionar Aluno
@@ -140,12 +228,12 @@ export function TrainingRoomClient({ trainerId }: TrainingRoomClientProps) {
                 <>
                     {/* Header */}
                     <div className="flex items-center justify-between">
-                        <h1 className="text-xl font-semibold text-[#1D1D1F] dark:text-foreground">
+                        <h1 className="text-xl font-semibold text-slate-900 dark:text-foreground">
                             Sala de Treino
                         </h1>
                         <button
                             onClick={() => setIsPickerOpen(true)}
-                            className="inline-flex items-center gap-2 rounded-full bg-white dark:bg-glass-bg border border-[#D2D2D7] dark:border-transparent px-4 py-2 text-sm font-medium text-[#6E6E73] dark:text-foreground transition-colors hover:bg-[#F5F5F7] dark:hover:bg-glass-bg-hover"
+                            className="inline-flex items-center gap-2 rounded-full bg-white dark:bg-glass-bg border border-slate-200 dark:border-transparent px-4 py-2 text-sm font-medium text-slate-600 dark:text-foreground transition-colors hover:bg-slate-50 dark:hover:bg-glass-bg-hover"
                         >
                             <Plus size={16} strokeWidth={2} />
                             Adicionar Aluno
@@ -153,7 +241,7 @@ export function TrainingRoomClient({ trainerId }: TrainingRoomClientProps) {
                     </div>
 
                     {/* Student tabs */}
-                    <div className="flex gap-2 border-b border-[#E8E8ED] dark:border-k-border-subtle pb-3 overflow-x-auto">
+                    <div className="flex gap-2 border-b border-slate-200 dark:border-k-border-subtle pb-3 overflow-x-auto">
                         {Object.values(sessions).map((session) => (
                             <div
                                 key={session.studentId}
@@ -162,8 +250,8 @@ export function TrainingRoomClient({ trainerId }: TrainingRoomClientProps) {
                                 }
                                 className={`group flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors shrink-0 cursor-pointer ${
                                     session.studentId === activeStudentId
-                                        ? 'bg-[#007AFF]/10 text-[#007AFF] dark:bg-violet-600/20 dark:text-violet-400'
-                                        : 'text-[#6E6E73] dark:text-muted-foreground hover:text-[#1D1D1F] dark:hover:text-foreground hover:bg-[#F5F5F7] dark:hover:bg-glass-bg'
+                                        ? 'bg-violet-500/10 text-violet-600 dark:bg-violet-600/20 dark:text-violet-400'
+                                        : 'text-slate-500 dark:text-muted-foreground hover:text-slate-900 dark:hover:text-foreground hover:bg-slate-50 dark:hover:bg-glass-bg'
                                 }`}
                             >
                                 {session.studentAvatarUrl ? (
@@ -173,13 +261,13 @@ export function TrainingRoomClient({ trainerId }: TrainingRoomClientProps) {
                                         className="h-6 w-6 rounded-full object-cover"
                                     />
                                 ) : (
-                                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#007AFF]/20 text-[10px] font-bold text-[#007AFF] dark:bg-violet-600/30 dark:text-violet-300">
+                                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-violet-500/20 text-[10px] font-bold text-violet-600 dark:bg-violet-600/30 dark:text-violet-300">
                                         {session.studentName.charAt(0).toUpperCase()}
                                     </div>
                                 )}
                                 <span>{session.studentName}</span>
                                 {session.status === 'in_progress' && (
-                                    <span className="h-2 w-2 rounded-full bg-[#34C759] dark:bg-emerald-400" />
+                                    <span className="h-2 w-2 rounded-full bg-emerald-500 dark:bg-emerald-400" />
                                 )}
                                 <button
                                     onClick={(e) => {
@@ -199,9 +287,9 @@ export function TrainingRoomClient({ trainerId }: TrainingRoomClientProps) {
 
                     {/* Active session content */}
                     {activeSession && (
-                        <div className="space-y-4">
+                        <div className="space-y-4 relative">
                             {/* Workout info bar */}
-                            <div className="flex items-center justify-between rounded-2xl border border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-surface-card shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:shadow-none p-4">
+                            <div className="flex items-center justify-between rounded-2xl border border-slate-200 dark:border-k-border-subtle bg-white dark:bg-surface-card shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:shadow-none p-4">
                                 <div className="flex items-center gap-3">
                                     {activeSession.studentAvatarUrl ? (
                                         <img
@@ -210,15 +298,15 @@ export function TrainingRoomClient({ trainerId }: TrainingRoomClientProps) {
                                             className="h-10 w-10 rounded-full object-cover"
                                         />
                                     ) : (
-                                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#007AFF]/10 text-sm font-bold text-[#007AFF] dark:bg-violet-600/20 dark:text-violet-300">
+                                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-violet-500/10 text-sm font-bold text-violet-600 dark:bg-violet-600/20 dark:text-violet-300">
                                             {activeSession.studentName.charAt(0).toUpperCase()}
                                         </div>
                                     )}
                                     <div>
-                                        <p className="text-sm font-semibold text-[#1D1D1F] dark:text-foreground">
+                                        <p className="text-sm font-semibold text-slate-900 dark:text-foreground">
                                             {activeSession.workoutName}
                                         </p>
-                                        <p className="text-xs text-[#86868B] dark:text-muted-foreground">
+                                        <p className="text-xs text-slate-500 dark:text-muted-foreground">
                                             {activeSession.exercises.length} exercício(s) — {completedSetsTotal}/{totalSets} séries
                                         </p>
                                     </div>
@@ -232,7 +320,7 @@ export function TrainingRoomClient({ trainerId }: TrainingRoomClientProps) {
                                     {activeSession.status === 'ready' && (
                                         <button
                                             onClick={handleStartWorkout}
-                                            className="inline-flex items-center gap-2 rounded-full bg-[#34C759] dark:bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#2DB84D] dark:hover:bg-emerald-500"
+                                            className="inline-flex items-center gap-2 rounded-full bg-emerald-500 dark:bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-400 dark:hover:bg-emerald-500"
                                         >
                                             <Play size={14} fill="currentColor" />
                                             Iniciar
@@ -243,14 +331,14 @@ export function TrainingRoomClient({ trainerId }: TrainingRoomClientProps) {
                                         <>
                                             <button
                                                 onClick={handleFinishClick}
-                                                className="inline-flex items-center gap-2 rounded-full bg-[#007AFF] dark:bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#0066D6] dark:hover:bg-violet-500"
+                                                className="inline-flex items-center gap-2 rounded-full bg-violet-600 dark:bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-violet-500 dark:hover:bg-violet-500"
                                             >
                                                 <Square size={14} fill="currentColor" />
                                                 Concluir
                                             </button>
                                             <button
                                                 onClick={handleDiscardWorkout}
-                                                className="rounded-xl p-2 text-[#AEAEB2] dark:text-muted-foreground hover:bg-[#FF3B30]/10 dark:hover:bg-red-500/10 hover:text-[#FF3B30] dark:hover:text-red-400 transition-colors"
+                                                className="rounded-xl p-2 text-slate-400 dark:text-muted-foreground hover:bg-red-500/10 dark:hover:bg-red-500/10 hover:text-red-500 dark:hover:text-red-400 transition-colors"
                                                 title="Descartar treino"
                                             >
                                                 <Trash2 size={16} />
@@ -260,8 +348,40 @@ export function TrainingRoomClient({ trainerId }: TrainingRoomClientProps) {
                                 </div>
                             </div>
 
+                            {/* Pre-workout checkin form */}
+                            {activeSession.status === 'pre_checkin' && activeSession.preWorkoutTrigger && activeStudentId && (
+                                <WorkoutFormInline
+                                    trigger={activeSession.preWorkoutTrigger}
+                                    triggerContext="pre_workout"
+                                    studentId={activeSession.studentId}
+                                    trainerId={activeSession.trainerId}
+                                    formTemplateId={activeSession.preWorkoutTrigger.formTemplateId}
+                                    onSubmit={(submissionId) => completePreCheckin(activeStudentId, submissionId)}
+                                    onSkip={() => skipCheckin(activeStudentId, 'pre')}
+                                />
+                            )}
+
+                            {/* Post-workout checkin form */}
+                            {activeSession.status === 'post_checkin' && activeSession.postWorkoutTrigger && activeStudentId && (
+                                <WorkoutFormInline
+                                    trigger={activeSession.postWorkoutTrigger}
+                                    triggerContext="post_workout"
+                                    studentId={activeSession.studentId}
+                                    trainerId={activeSession.trainerId}
+                                    formTemplateId={activeSession.postWorkoutTrigger.formTemplateId}
+                                    onSubmit={(submissionId) => {
+                                        completePostCheckin(activeStudentId, submissionId)
+                                        setIsFeedbackOpen(true)
+                                    }}
+                                    onSkip={() => {
+                                        skipCheckin(activeStudentId, 'post')
+                                        setIsFeedbackOpen(true)
+                                    }}
+                                />
+                            )}
+
                             {/* Unified workout items: exercises, supersets, and notes ordered by order_index */}
-                            <div className="space-y-3">
+                            {(activeSession.status === 'ready' || activeSession.status === 'in_progress') && <div className="space-y-3">
                                 {(() => {
                                     const exercises = activeSession.exercises
                                     const notes = activeSession.workoutNotes || []
@@ -276,6 +396,26 @@ export function TrainingRoomClient({ trainerId }: TrainingRoomClientProps) {
                                     const items: RenderItem[] = []
 
                                     exercises.forEach((exercise, ei) => {
+                                        // Warmup/Cardio items — no set tracking, just display
+                                        if (exercise.item_type === 'warmup' || exercise.item_type === 'cardio') {
+                                            items.push({
+                                                type: 'exercise',
+                                                orderIndex: exercise.order_index,
+                                                exerciseFunction: exercise.exercise_function || null,
+                                                node: (
+                                                    <WarmupCardioCard
+                                                        key={exercise.id}
+                                                        exercise={exercise}
+                                                        disabled={disabled}
+                                                        onCardioToggle={(exerciseId, completed) =>
+                                                            toggleCardioComplete(activeStudentId!, exerciseId, completed)
+                                                        }
+                                                    />
+                                                ),
+                                            })
+                                            return
+                                        }
+
                                         if (exercise.supersetId) {
                                             if (processedSupersets.has(exercise.supersetId)) return
                                             processedSupersets.add(exercise.supersetId)
@@ -284,7 +424,6 @@ export function TrainingRoomClient({ trainerId }: TrainingRoomClientProps) {
                                                 .map((e, i) => ({ ...e, _gi: i }))
                                                 .filter((e) => e.supersetId === exercise.supersetId)
 
-                                            // Use first child's order_index - 0.5 to approximate parent superset position
                                             const groupOrderIndex = Math.min(...group.map((e) => e.order_index)) - 0.5
 
                                             items.push({
@@ -304,8 +443,10 @@ export function TrainingRoomClient({ trainerId }: TrainingRoomClientProps) {
                                                             updateSet(activeStudentId!, gi, si, 'reps', v)
                                                         }
                                                         onToggleComplete={(gi, si) =>
-                                                            toggleSetComplete(activeStudentId!, gi, si)
+                                                            handleToggleSetComplete(gi, si)
                                                         }
+                                                        onSwapPress={handleSwapPress}
+                                                        onVideoPress={handleVideoPress}
                                                         globalIndexOffset={group[0]._gi}
                                                     />
                                                 ),
@@ -328,8 +469,10 @@ export function TrainingRoomClient({ trainerId }: TrainingRoomClientProps) {
                                                             updateSet(activeStudentId!, ei, si, 'reps', v)
                                                         }
                                                         onToggleComplete={(si) =>
-                                                            toggleSetComplete(activeStudentId!, ei, si)
+                                                            handleToggleSetComplete(ei, si)
                                                         }
+                                                        onSwapPress={() => handleSwapPress(ei)}
+                                                        onVideoPress={handleVideoPress}
                                                     />
                                                 ),
                                             })
@@ -374,10 +517,10 @@ export function TrainingRoomClient({ trainerId }: TrainingRoomClientProps) {
                                             if (item.type !== 'note' && itemFunction && itemFunction !== lastFunction) {
                                                 finalNodes.push(
                                                     <div key={`section-${itemFunction}-${idx}`} className="flex items-center gap-3 pt-4 pb-1">
-                                                        <span className="text-[10px] font-bold text-[#86868B] dark:text-muted-foreground/50">
+                                                        <span className="text-[10px] font-bold text-slate-500 dark:text-muted-foreground/50">
                                                             {FUNCTION_LABELS[itemFunction] || itemFunction}
                                                         </span>
-                                                        <div className="flex-1 h-px bg-[#E8E8ED] dark:bg-k-border-subtle" />
+                                                        <div className="flex-1 h-px bg-slate-200 dark:bg-k-border-subtle" />
                                                     </div>
                                                 )
                                                 lastFunction = itemFunction
@@ -391,18 +534,28 @@ export function TrainingRoomClient({ trainerId }: TrainingRoomClientProps) {
 
                                     return finalNodes
                                 })()}
-                            </div>
+                            </div>}
 
                             {/* Bottom actions (visible when in_progress) */}
                             {activeSession.status === 'in_progress' && (
                                 <div className="flex justify-center gap-3 pt-4 pb-8">
                                     <button
                                         onClick={handleFinishClick}
-                                        className="inline-flex items-center gap-2 rounded-full bg-[#007AFF] dark:bg-violet-600 px-8 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#0066D6] dark:hover:bg-violet-500"
+                                        className="inline-flex items-center gap-2 rounded-full bg-violet-600 dark:bg-violet-600 px-8 py-3 text-sm font-semibold text-white transition-colors hover:bg-violet-500 dark:hover:bg-violet-500"
                                     >
                                         Concluir Treino
                                     </button>
                                 </div>
+                            )}
+
+                            {/* Rest Timer Overlay */}
+                            {activeStudentId && activeSession.restTimerEnd && activeSession.restTimerDuration && (
+                                <RestTimerOverlay
+                                    endTime={activeSession.restTimerEnd}
+                                    duration={activeSession.restTimerDuration}
+                                    onSkip={() => clearRestTimer(activeStudentId)}
+                                    onAddTime={() => startRestTimer(activeStudentId, 15 + Math.max(0, Math.ceil((activeSession.restTimerEnd! - Date.now()) / 1000)))}
+                                />
                             )}
                         </div>
                     )}
@@ -427,6 +580,26 @@ export function TrainingRoomClient({ trainerId }: TrainingRoomClientProps) {
                     onCancel={handleCancelFeedback}
                 />
             )}
+
+            {/* Swap Modal */}
+            {swapExercise_ && (
+                <ExerciseSwapModal
+                    isOpen={isSwapOpen}
+                    onClose={() => setSwapExerciseIndex(null)}
+                    onSelect={handleSwapSelect}
+                    exerciseName={swapExercise_.name}
+                    exerciseId={swapExercise_.exercise_id}
+                    substituteExerciseIds={swapExercise_.substitute_exercise_ids}
+                />
+            )}
+
+            {/* Video Modal */}
+            <ExerciseVideoModal
+                isOpen={isVideoOpen}
+                onClose={() => setVideoUrl(null)}
+                videoUrl={videoUrl}
+                exerciseName={videoExerciseName}
+            />
         </div>
     )
 }

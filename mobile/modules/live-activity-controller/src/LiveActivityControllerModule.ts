@@ -9,6 +9,7 @@ export interface WorkoutActivityParams {
     firstExerciseName: string;
     firstExerciseTotalSets: number;
     totalSetsOverall: number;
+    currentItemType?: string;
 }
 
 export interface WorkoutActivityState {
@@ -21,6 +22,27 @@ export interface WorkoutActivityState {
     totalSetsCompleted: number;
     totalSetsOverall: number;
     workoutStartTimestamp: number;
+
+    // Item type: "exercise" | "warmup" | "cardio"
+    currentItemType?: string;
+
+    // Timer fields (warmup & cardio active timers)
+    timerEndTimestamp?: number | null;
+    timerTotalSeconds?: number | null;
+
+    // Warmup-specific
+    warmupType?: string | null;
+
+    // Cardio-specific
+    cardioEquipment?: string | null;
+    cardioIntensity?: string | null;
+    cardioMode?: string | null;       // "continuous" | "interval"
+    intervalPhase?: string | null;     // "work" | "rest"
+    intervalCurrentRound?: number | null;
+    intervalTotalRounds?: number | null;
+
+    // Unique ID per update — forces SwiftUI to recreate timer views
+    updateId?: string;
 }
 
 // Only require the native module on iOS

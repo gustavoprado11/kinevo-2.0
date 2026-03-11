@@ -549,7 +549,7 @@ section('buildHeuristicProgram — Beginner 5x/week (PPL+)')
     for (const w of program.workouts) {
         const smallGroupCounts: Record<string, number> = {}
         for (const item of w.items) {
-            const group = item.exercise_muscle_group
+            const group = item.exercise_muscle_group!
             if (['Bíceps', 'Tríceps', 'Panturrilha', 'Abdominais', 'Trapézio'].includes(group)) {
                 smallGroupCounts[group] = (smallGroupCounts[group] || 0) + 1
             }
@@ -561,14 +561,14 @@ section('buildHeuristicProgram — Beginner 5x/week (PPL+)')
     // All workouts should have at least 1 compound
     for (const w of program.workouts) {
         const hasCompound = w.items.some(item => {
-            const ref = exerciseMap.get(item.exercise_id)
+            const ref = exerciseMap.get(item.exercise_id!)
             return ref?.is_compound === true
         })
         assert(hasCompound, `${w.name}: has at least 1 compound exercise`)
     }
 
     // Should cover Quadríceps, Posterior de Coxa, and Glúteo
-    const allMuscleGroups = new Set(program.workouts.flatMap(w => w.items.map(i => i.exercise_muscle_group)))
+    const allMuscleGroups = new Set(program.workouts.flatMap(w => w.items.map(i => i.exercise_muscle_group!)))
     assert(allMuscleGroups.has('Quadríceps'), 'Covers Quadríceps')
     assert(allMuscleGroups.has('Posterior de Coxa') || allMuscleGroups.has('Glúteo'), 'Covers Posterior de Coxa or Glúteo')
 
@@ -588,8 +588,8 @@ section('buildHeuristicProgram — Beginner 5x/week (PPL+)')
     // Print program summary
     console.log('\n  Program summary:')
     for (const w of program.workouts) {
-        const groups = [...new Set(w.items.map(i => i.exercise_muscle_group))]
-        console.log(`    ${w.name}: ${w.items.length} ex, ${w.items.reduce((s, i) => s + i.sets, 0)} sets [${groups.join(', ')}]`)
+        const groups = [...new Set(w.items.map(i => i.exercise_muscle_group!))]
+        console.log(`    ${w.name}: ${w.items.length} ex, ${w.items.reduce((s, i) => s + (i.sets ?? 0), 0)} sets [${groups.join(', ')}]`)
         for (const item of w.items) {
             console.log(`      - ${item.exercise_name} (${item.exercise_muscle_group}) ${item.sets}×${item.reps} rest ${item.rest_seconds}s`)
         }

@@ -4,7 +4,20 @@ import { useState, useEffect, useCallback } from 'react'
 import { X, Search, User, Dumbbell, ChevronRight } from 'lucide-react'
 import { getTrainingRoomStudents, type TrainingRoomStudent, type WorkoutOption } from '@/actions/training-room/get-training-room-students'
 import { getStudentTodayWorkout } from '@/actions/training-room/get-student-today-workout'
+import { getWorkoutFormTriggers } from '@/actions/training-room/get-workout-form-triggers'
 import { useTrainingRoomStore, type SessionSetupData } from '@/stores/training-room-store'
+
+function formatRelativeDate(isoDate: string): string {
+    const date = new Date(isoDate)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+
+    if (diffDays === 0) return 'hoje'
+    if (diffDays === 1) return 'ontem'
+    if (diffDays < 7) return `${diffDays} dias atrás`
+    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+}
 
 interface StudentPickerModalProps {
     isOpen: boolean
@@ -79,6 +92,30 @@ export function StudentPickerModal({ isOpen, onClose, trainerId }: StudentPicker
             return
         }
 
+        // Fetch form triggers for the program
+        let preWorkoutTrigger = null
+        let postWorkoutTrigger = null
+
+        if (result.data.assignedProgramId) {
+            const triggerResult = await getWorkoutFormTriggers(result.data.assignedProgramId)
+            if (triggerResult.success && triggerResult.data) {
+                preWorkoutTrigger = triggerResult.data.preWorkout
+                    ? {
+                          formTemplateId: triggerResult.data.preWorkout.formTemplateId,
+                          title: triggerResult.data.preWorkout.title,
+                          schemaJson: triggerResult.data.preWorkout.schemaJson,
+                      }
+                    : null
+                postWorkoutTrigger = triggerResult.data.postWorkout
+                    ? {
+                          formTemplateId: triggerResult.data.postWorkout.formTemplateId,
+                          title: triggerResult.data.postWorkout.title,
+                          schemaJson: triggerResult.data.postWorkout.schemaJson,
+                      }
+                    : null
+            }
+        }
+
         const setupData: SessionSetupData = {
             studentName: selectedStudent.name,
             studentAvatarUrl: selectedStudent.avatar_url,
@@ -88,6 +125,8 @@ export function StudentPickerModal({ isOpen, onClose, trainerId }: StudentPicker
             workoutName: result.data.workoutName,
             exercises: result.data.exercises,
             workoutNotes: result.data.workoutNotes,
+            preWorkoutTrigger,
+            postWorkoutTrigger,
         }
 
         addStudent(selectedStudent.id, setupData)
@@ -327,14 +366,21 @@ function WorkoutOptionButton({
                 }
             `}
         >
-            <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${isSelected ? 'bg-[#007AFF]/10 dark:bg-violet-600/30' : 'bg-[#F5F5F7] dark:bg-glass-bg'}`}>
+            <div className={`flex h-8 w-8 items-center justify-center rounded-lg shrink-0 ${isSelected ? 'bg-[#007AFF]/10 dark:bg-violet-600/30' : 'bg-[#F5F5F7] dark:bg-glass-bg'}`}>
                 <Dumbbell size={16} className={isSelected ? 'text-[#007AFF] dark:text-violet-400' : 'text-[#AEAEB2] dark:text-muted-foreground'} />
             </div>
-            <span className={`text-sm font-medium ${isSelected ? 'text-[#007AFF] dark:text-violet-300' : 'text-[#1D1D1F] dark:text-foreground'}`}>
-                {workout.name}
-            </span>
+            <div className="flex-1 min-w-0">
+                <span className={`text-sm font-medium block truncate ${isSelected ? 'text-[#007AFF] dark:text-violet-300' : 'text-[#1D1D1F] dark:text-foreground'}`}>
+                    {workout.name}
+                </span>
+                {workout.lastCompletedAt && (
+                    <span className="text-[11px] text-[#86868B] dark:text-muted-foreground/60">
+                        Último: {formatRelativeDate(workout.lastCompletedAt)}
+                    </span>
+                )}
+            </div>
             {isSelected && (
-                <div className="ml-auto h-2 w-2 rounded-full bg-[#007AFF] dark:bg-violet-400" />
+                <div className="ml-auto h-2 w-2 rounded-full bg-[#007AFF] dark:bg-violet-400 shrink-0" />
             )}
         </button>
     )

@@ -358,7 +358,7 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice, connectedAccountI
         style: 'currency', currency: 'BRL'
     }).format(amountPaid)
 
-    await insertTrainerNotification({
+    const paymentNotifId = await insertTrainerNotification({
         trainerId: contract.trainer_id,
         type: 'payment_received',
         title: 'Pagamento confirmado',
@@ -375,7 +375,8 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice, connectedAccountI
         type: 'payment_received',
         title: 'Pagamento confirmado',
         body: `${paidStudent?.name ?? 'Aluno'} pagou ${amountFormatted}.`,
-        data: { student_id: contract.student_id, contract_id: contract.id },
+        notificationId: paymentNotifId ?? undefined,
+        data: { type: 'payment_received', student_id: contract.student_id, contract_id: contract.id },
     })
 
     console.log(`[connect-webhook:payment_succeeded] Recorded for contract ${contract.id}, amount=${amountPaid}`)
@@ -445,7 +446,7 @@ async function handlePaymentFailed(invoice: Stripe.Invoice, connectedAccountId?:
         .eq('id', contract.student_id)
         .single()
 
-    await insertTrainerNotification({
+    const failedNotifId = await insertTrainerNotification({
         trainerId: contract.trainer_id,
         type: 'payment_failed',
         title: 'Pagamento falhou',
@@ -461,7 +462,8 @@ async function handlePaymentFailed(invoice: Stripe.Invoice, connectedAccountId?:
         type: 'payment_failed',
         title: 'Pagamento falhou',
         body: `Pagamento de ${failedStudent?.name ?? 'Aluno'} falhou.`,
-        data: { student_id: contract.student_id, contract_id: contract.id },
+        notificationId: failedNotifId ?? undefined,
+        data: { type: 'payment_failed', student_id: contract.student_id, contract_id: contract.id },
     })
 
     console.log(`[connect-webhook:payment_failed] Contract ${contract.id} marked past_due`)
@@ -521,7 +523,7 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
             metadata: { canceled_by: 'system', source: 'stripe_dashboard' },
         })
 
-        await insertTrainerNotification({
+        const cancelNotifId = await insertTrainerNotification({
             trainerId: contract.trainer_id,
             type: 'cancellation_alert',
             title: 'Assinatura cancelada',
@@ -535,10 +537,11 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
 
         sendTrainerPush({
             trainerId: contract.trainer_id,
-            type: 'payment_overdue',
+            type: 'cancellation_alert',
             title: 'Assinatura cancelada',
             body: `A assinatura de ${cancelStudent?.name ?? 'Aluno'} foi cancelada. Acesso até ${endDateStr}.`,
-            data: { student_id: contract.student_id, contract_id: contract.id },
+            notificationId: cancelNotifId ?? undefined,
+            data: { type: 'cancellation_alert', student_id: contract.student_id, contract_id: contract.id },
         })
     }
 

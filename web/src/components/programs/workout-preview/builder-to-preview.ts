@@ -25,11 +25,19 @@ export interface PreviewExercise {
     supersetBadge?: string
 }
 
+export interface PreviewWarmupCardio {
+    id: string
+    itemType: 'warmup' | 'cardio'
+    name: string
+    config: Record<string, any>
+}
+
 export type PreviewRenderItem =
     | { type: 'exercise'; exercise: PreviewExercise; orderIndex: number }
     | { type: 'superset'; exercises: PreviewExercise[]; supersetRestSeconds: number; orderIndex: number }
     | { type: 'note'; text: string; orderIndex: number }
     | { type: 'section_header'; label: string; orderIndex: number }
+    | { type: 'warmup_cardio'; item: PreviewWarmupCardio; orderIndex: number }
 
 // ── Transform function ──────────────────────────────────────────────────────
 
@@ -53,6 +61,17 @@ export function builderItemsToPreview(items: WorkoutItem[]): PreviewRenderItem[]
             renderItems.push({
                 type: 'exercise',
                 exercise: toPreviewExercise(item, sets),
+                orderIndex: item.order_index,
+            })
+        } else if ((item.item_type === 'warmup' || item.item_type === 'cardio') && !item.parent_item_id) {
+            renderItems.push({
+                type: 'warmup_cardio',
+                item: {
+                    id: item.id,
+                    itemType: item.item_type,
+                    name: item.item_type === 'warmup' ? 'Aquecimento' : 'Aeróbio',
+                    config: item.item_config || {},
+                },
                 orderIndex: item.order_index,
             })
         } else if (item.item_type === 'superset') {

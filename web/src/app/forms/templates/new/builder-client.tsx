@@ -134,8 +134,21 @@ function parseQuestionsFromSchema(schema: Record<string, unknown> | null | undef
         type: q.type || 'short_text',
         label: q.label || '',
         required: q.required ?? true,
-        options: q.options || undefined,
-        scale: q.scale || undefined,
+        options: q.options
+            ? q.options.map((opt: any, i: number) =>
+                typeof opt === 'string'
+                    ? { value: `opt_${i + 1}`, label: opt }
+                    : opt
+            )
+            : undefined,
+        scale: q.scale
+            ? {
+                min: q.scale.min,
+                max: q.scale.max,
+                min_label: q.scale.min_label || q.scale.minLabel,
+                max_label: q.scale.max_label || q.scale.maxLabel,
+            }
+            : undefined,
     }))
 }
 

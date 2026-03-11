@@ -159,12 +159,14 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
             .limit(10),
 
         // 4. Pending form submissions (submitted, no feedback)
+        // Exclude workout check-ins — they are operational data shown in session context
         supabaseAdmin
             .from('form_submissions')
             .select('id, student_id, submitted_at, form_template_id')
             .eq('trainer_id', trainerId)
             .eq('status', 'submitted')
             .is('feedback_sent_at', null)
+            .not('trigger_context', 'in', '("pre_workout","post_workout")')
             .order('submitted_at', { ascending: false })
             .limit(10),
 

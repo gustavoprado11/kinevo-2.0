@@ -194,6 +194,7 @@ export async function assignProgram({ studentId, templateId, startDate, isSchedu
                                 rest_seconds: item.rest_seconds,
                                 notes: item.notes,
                                 exercise_function: item.exercise_function || null,
+                                item_config: item.item_config || {},
                                 parent_item_id: null
                             })
                             .select('id')
@@ -238,6 +239,7 @@ export async function assignProgram({ studentId, templateId, startDate, isSchedu
                                 rest_seconds: item.rest_seconds,
                                 notes: item.notes,
                                 exercise_function: item.exercise_function || null,
+                                item_config: item.item_config || {},
                                 parent_item_id: parentAssignedId
                             })
                     }
@@ -269,12 +271,14 @@ export async function assignProgram({ studentId, templateId, startDate, isSchedu
                 title: 'Novo programa de treino!',
                 subtitle: `${programName} está disponível no seu app.`,
                 payload: { program_id: assignedProgram.id, program_name: programName },
-            })
-            sendStudentPush({
-                studentId,
-                title: 'Novo programa de treino!',
-                body: `${programName} está disponível no seu app.`,
-                data: { program_id: assignedProgram.id },
+            }).then((inboxItemId) => {
+                sendStudentPush({
+                    studentId,
+                    title: 'Novo programa de treino!',
+                    body: `${programName} está disponível no seu app.`,
+                    inboxItemId: inboxItemId ?? undefined,
+                    data: { type: 'program_assigned', program_id: assignedProgram.id },
+                })
             })
         }
 

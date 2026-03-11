@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ClipboardList, FileCheck, Clock, Loader2, Send, ChevronDown } from 'lucide-react'
 import { assignFormToStudents } from '@/actions/forms/assign-form'
+import { ActiveSchedulesList } from './active-schedules-list'
+import type { FormScheduleRow } from '@/actions/forms/form-schedules'
 
 interface LastSubmission {
     id: string
@@ -37,6 +39,7 @@ interface AssessmentSidebarCardProps {
     pendingForms: PendingForm[]
     bodyMetrics: BodyMetrics | null
     formTemplates: FormTemplate[]
+    formSchedules?: FormScheduleRow[]
 }
 
 const categoryLabels: Record<string, string> = {
@@ -51,6 +54,7 @@ export function AssessmentSidebarCard({
     pendingForms,
     bodyMetrics,
     formTemplates,
+    formSchedules = [],
 }: AssessmentSidebarCardProps) {
     const router = useRouter()
     const [dropdownOpen, setDropdownOpen] = useState(false)
@@ -77,7 +81,7 @@ export function AssessmentSidebarCard({
     }
 
     const pendingCount = pendingForms.length
-    const hasData = lastSubmission || pendingCount > 0 || (bodyMetrics?.weight || bodyMetrics?.bodyFat)
+    const hasData = lastSubmission || pendingCount > 0 || formSchedules.length > 0 || (bodyMetrics?.weight || bodyMetrics?.bodyFat)
     const maxVisiblePending = 3
 
     // Empty state — follows "Próximos Programas" empty pattern
@@ -149,6 +153,11 @@ export function AssessmentSidebarCard({
                     </div>
                 )}
 
+                {/* Recurring schedules */}
+                {formSchedules.length > 0 && (
+                    <ActiveSchedulesList schedules={formSchedules} />
+                )}
+
                 {/* Last submission */}
                 {lastSubmission && (
                     <div className="flex items-start gap-2 hover:bg-[#F5F5F7] dark:hover:bg-white/5 rounded-lg -mx-2 px-2 py-1.5 transition-colors cursor-default">
@@ -192,6 +201,7 @@ export function AssessmentSidebarCard({
                     </div>
                 )}
             </div>
+
         </div>
     )
 }

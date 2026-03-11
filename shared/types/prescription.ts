@@ -1,10 +1,11 @@
 // ============================================================================
 // Kinevo — AI Prescription Module Types
 // ============================================================================
-// These types mirror the SQL schema defined in migrations 034, 035, and 036.
+// These types mirror the SQL schema defined in migrations 034, 035, 036, and 079.
 // JSONB columns have well-defined TypeScript interfaces — no `any` or `unknown`.
 //
 // Exercise and MuscleGroup types are NOT redefined here — import from exercise.ts.
+// Warmup/Cardio config types are in workout-items.ts.
 
 // ============================================================================
 // ENUMS (union types matching SQL CHECK constraints)
@@ -169,30 +170,34 @@ export interface GeneratedWorkout {
     items: GeneratedWorkoutItem[]
 }
 
-/** A single exercise in a generated workout */
+/** A single item in a generated workout (exercise, warmup, or cardio) */
 export interface GeneratedWorkoutItem {
-    /** exercise.id from the library */
-    exercise_id: string
-    /** Snapshot: exercise name at generation time */
-    exercise_name: string
-    /** Snapshot: primary muscle group */
-    exercise_muscle_group: string
-    /** Snapshot: equipment used */
-    exercise_equipment: string | null
-    /** Number of sets prescribed */
-    sets: number
-    /** Rep range or target, e.g. "8-12" or "10" */
-    reps: string
-    /** Rest between sets in seconds */
-    rest_seconds: number
+    /** Item type: 'exercise' (default), 'warmup', or 'cardio' */
+    item_type?: 'exercise' | 'warmup' | 'cardio'
+    /** exercise.id from the library (null for warmup/cardio) */
+    exercise_id?: string | null
+    /** Snapshot: exercise name at generation time (null for warmup/cardio) */
+    exercise_name?: string | null
+    /** Snapshot: primary muscle group (null for warmup/cardio) */
+    exercise_muscle_group?: string | null
+    /** Snapshot: equipment used (null for warmup/cardio) */
+    exercise_equipment?: string | null
+    /** Number of sets prescribed (null for warmup/cardio) */
+    sets?: number | null
+    /** Rep range or target, e.g. "8-12" or "10" (null for warmup/cardio) */
+    reps?: string | null
+    /** Rest between sets in seconds (null for warmup/cardio) */
+    rest_seconds?: number | null
     /** Trainer/AI notes for this exercise */
-    notes: string | null
+    notes?: string | null
     /** Pre-approved substitute exercise IDs */
-    substitute_exercise_ids: string[]
+    substitute_exercise_ids?: string[]
     /** 0-based order within the workout */
     order_index: number
     /** Functional category of the exercise in the workout */
     exercise_function?: ExerciseFunction | null
+    /** Configuration for warmup/cardio items (JSONB in DB) */
+    item_config?: Record<string, unknown>
 }
 
 /** AI reasoning attached to the generated program */

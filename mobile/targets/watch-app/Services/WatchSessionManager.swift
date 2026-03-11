@@ -89,6 +89,32 @@ class WatchSessionManager: NSObject, ObservableObject {
               ["id": "ex14", "name": "Mesa Flexora", "muscleGroup": "Posterior", "sets": 3, "reps": 12, "weight": 35.0, "restTime": 60, "targetReps": "12"],
               ["id": "ex15", "name": "Elevação Lateral", "muscleGroup": "Ombros", "sets": 3, "reps": 15, "weight": 10.0, "restTime": 60, "targetReps": "12-15"],
               ["id": "ex16", "name": "Desenvolvimento Máquina", "muscleGroup": "Ombros", "sets": 3, "reps": 10, "weight": 30.0, "restTime": 60, "targetReps": "10"],
+            ],
+            "cardioItems": [
+              [
+                "id": "cardio1",
+                "orderIndex": 6,
+                "config": [
+                  "mode": "continuous",
+                  "equipment": "treadmill",
+                  "equipmentLabel": "Esteira",
+                  "objective": "time",
+                  "durationMinutes": 20,
+                  "intensity": "Moderada (65-75% FCmáx)"
+                ]
+              ],
+              [
+                "id": "cardio2",
+                "orderIndex": 7,
+                "config": [
+                  "mode": "interval",
+                  "equipment": "bike",
+                  "equipmentLabel": "Bicicleta",
+                  "workSeconds": 30,
+                  "restSeconds": 15,
+                  "rounds": 8
+                ]
+              ]
             ]
           ] as [String: Any],
         ]
@@ -178,23 +204,28 @@ class WatchSessionManager: NSObject, ObservableObject {
     sendReliable(message, label: "START_WORKOUT")
   }
 
-  /// Send FINISH_WORKOUT with RPE, start time, and completed exercises.
+  /// Send FINISH_WORKOUT with RPE, start time, completed exercises, and cardio results.
   /// Uses transferUserInfo for guaranteed delivery.
-  func sendFinishWorkout(workoutId: String, rpe: Int, startedAt: Date, exercises: [[String: Any]]) {
+  func sendFinishWorkout(workoutId: String, rpe: Int, startedAt: Date, exercises: [[String: Any]], cardio: [[String: Any]] = []) {
     let formatter = ISO8601DateFormatter()
     formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
 
-    let message: [String: Any] = [
-      "type": "FINISH_WORKOUT",
-      "payload": [
+    var payload: [String: Any] = [
         "workoutId": workoutId,
         "rpe": rpe,
         "startedAt": formatter.string(from: startedAt),
         "exercises": exercises,
-      ]
+    ]
+    if !cardio.isEmpty {
+        payload["cardio"] = cardio
+    }
+
+    let message: [String: Any] = [
+      "type": "FINISH_WORKOUT",
+      "payload": payload
     ]
 
-    print("[WatchSessionManager] 📤 Sending FINISH_WORKOUT for \(workoutId) with RPE \(rpe), \(exercises.count) exercises")
+    print("[WatchSessionManager] 📤 Sending FINISH_WORKOUT for \(workoutId) with RPE \(rpe), \(exercises.count) exercises, \(cardio.count) cardio")
 
     guard let session = wcSession, session.activationState == .activated else {
       print("[WatchSessionManager] ❌ Session not activated for FINISH_WORKOUT")
@@ -202,6 +233,19 @@ class WatchSessionManager: NSObject, ObservableObject {
     }
     session.transferUserInfo(message)
     print("[WatchSessionManager] ✅ FINISH_WORKOUT queued via transferUserInfo for \(workoutId)")
+  }
+
+  /// Notify iPhone that a cardio item was completed on the Watch.
+  func sendCardioCompletion(workoutId: String, itemId: String, elapsedSeconds: Int) {
+    let message: [String: Any] = [
+      "type": "CARDIO_COMPLETE",
+      "payload": [
+        "workoutId": workoutId,
+        "itemId": itemId,
+        "elapsedSeconds": elapsedSeconds
+      ]
+    ]
+    sendReliable(message, label: "CARDIO_COMPLETE")
   }
 
   /// Notify iPhone that the user abandoned a workout from the Watch.

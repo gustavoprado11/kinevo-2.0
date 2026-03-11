@@ -20,18 +20,21 @@ import { useOnboardingStore } from '@/stores/onboarding-store'
 import type { Exercise } from '@/types/exercise'
 import { assignProgram } from '@/app/students/[id]/actions/assign-program'
 import { PrescriptionRationalePanel } from './prescription-rationale-panel'
+import { ProgramFormTriggers, type TriggerSelection, type InitialTrigger } from './program-form-triggers'
+import { saveProgramFormTriggers } from '@/actions/programs/save-program-form-triggers'
+import type { FormTemplateOption } from '@/actions/programs/get-form-templates-for-triggers'
 import { ContextPanel } from '@/components/builder/context-panel/context-panel'
 import type { ContextPanelMode } from '@/components/builder/context-panel/context-panel-header'
-import { PastWorkoutSelector } from '@/components/builder/context-panel/past-workout-selector'
-import { getPastWorkoutsForStudent, getPastWorkoutDetail } from '@/app/students/[id]/actions/get-past-workouts'
-import type { PastWorkoutSummary, PastWorkoutDetail } from '@/app/students/[id]/actions/get-past-workouts'
-import { pastDetailToWorkout } from '@/lib/workouts/transformPastWorkout'
+import { ProgramSelector } from '@/components/builder/context-panel/program-selector'
+import { getPastProgramsForStudent, getFullProgramForCompare } from '@/actions/programs/get-program-for-compare'
+import type { CompareProgramSummary, CompareProgramData } from '@/actions/programs/get-program-for-compare'
+import { compareWorkoutToWorkout } from '@/lib/workouts/transformPastWorkout'
 
 export type BuilderViewMode = 'normal' | 'preview' | 'compare'
 
 export interface WorkoutItem {
     id: string
-    item_type: 'exercise' | 'superset' | 'note'
+    item_type: 'exercise' | 'superset' | 'note' | 'warmup' | 'cardio'
     order_index: number
     parent_item_id: string | null
     exercise_id: string | null
@@ -42,6 +45,7 @@ export interface WorkoutItem {
     rest_seconds: number | null
     notes: string | null
     exercise_function?: string | null
+    item_config?: Record<string, any>
     children?: WorkoutItem[]
 }
 
@@ -75,6 +79,7 @@ interface ProgramData {
             rest_seconds: number | null
             notes: string | null
             exercise_function?: string | null
+            item_config?: Record<string, any>
         }>
     }>
 }
@@ -103,12 +108,19 @@ interface ProgramBuilderClientProps {
     prescriptionGenerationId?: string
     /** Extended reasoning from the AI agent (shown in collapsible panel) */
     prescriptionReasoning?: import('@kinevo/shared/types/prescription').PrescriptionReasoningExtended | null
+    /** Available form templates for trigger configuration */
+    formTriggerTemplates?: FormTemplateOption[]
+    /** Pre-loaded triggers when editing an existing program */
+    initialFormTriggers?: {
+        preWorkout: InitialTrigger | null
+        postWorkout: InitialTrigger | null
+    }
 }
 
 // Generate temp ID for new items
 const tempId = () => `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 
-export function ProgramBuilderClient({ trainer, program, exercises, studentContext, initialAssignmentType = 'immediate', prescriptionGenerationId, prescriptionReasoning }: ProgramBuilderClientProps) {
+export function ProgramBuilderClient({ trainer, program, exercises, studentContext, initialAssignmentType = 'immediate', prescriptionGenerationId, prescriptionReasoning, formTriggerTemplates = [], initialFormTriggers }: ProgramBuilderClientProps) {
     const router = useRouter()
     const tabDndId = useId()
     const isEditing = !!program && !!program.id && !program.id.startsWith('temp_')
@@ -129,13 +141,14 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
     const [builderViewMode, setBuilderViewMode] = useState<BuilderViewMode>('preview')
 
     // Compare mode state
-    const [comparePastWorkouts, setComparePastWorkouts] = useState<PastWorkoutSummary[]>([])
-    const [comparePastWorkoutsLoading, setComparePastWorkoutsLoading] = useState(false)
-    const [comparePastWorkoutsLoaded, setComparePastWorkoutsLoaded] = useState(false)
-    const [compareSelectedId, setCompareSelectedId] = useState<string | null>(null)
-    const [compareWorkout, setCompareWorkout] = useState<Workout | null>(null)
-    const [compareDetailLoading, setCompareDetailLoading] = useState(false)
-    const [comparePastDetail, setComparePastDetail] = useState<PastWorkoutDetail | null>(null)
+    const [compareProgramsList, setCompareProgramsList] = useState<CompareProgramSummary[]>([])
+    const [compareProgramsLoading, setCompareProgramsLoading] = useState(false)
+    const [compareProgramsLoaded, setCompareProgramsLoaded] = useState(false)
+    const [compareSelectedProgramId, setCompareSelectedProgramId] = useState<string | null>(null)
+    const [compareProgramData, setCompareProgramData] = useState<CompareProgramData | null>(null)
+    const [compareProgramLoading, setCompareProgramLoading] = useState(false)
+    const [compareWorkouts, setCompareWorkouts] = useState<Workout[]>([])
+    const [compareActiveWorkoutId, setCompareActiveWorkoutId] = useState<string | null>(null)
 
     const [showActivateConfirm, setShowActivateConfirm] = useState(false)
     const [showTemplateDialog, setShowTemplateDialog] = useState(false)
@@ -204,35 +217,43 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
     const handleEnterCompare = useCallback(() => {
         setBuilderViewMode('compare')
         setContextPanelMode('none')
-        if (studentContext?.id && !comparePastWorkoutsLoaded) {
-            setComparePastWorkoutsLoading(true)
-            getPastWorkoutsForStudent(studentContext.id)
+        if (studentContext?.id && !compareProgramsLoaded) {
+            setCompareProgramsLoading(true)
+            getPastProgramsForStudent(studentContext.id)
                 .then((result) => {
-                    setComparePastWorkouts(result.data || [])
-                    setComparePastWorkoutsLoaded(true)
+                    setCompareProgramsList(result.data || [])
+                    setCompareProgramsLoaded(true)
                 })
                 .catch(() => {
-                    setComparePastWorkouts([])
-                    setComparePastWorkoutsLoaded(true)
+                    setCompareProgramsList([])
+                    setCompareProgramsLoaded(true)
                 })
-                .finally(() => setComparePastWorkoutsLoading(false))
+                .finally(() => setCompareProgramsLoading(false))
         }
-    }, [studentContext?.id, comparePastWorkoutsLoaded])
+    }, [studentContext?.id, compareProgramsLoaded])
 
-    const handleSelectCompareWorkout = useCallback((workoutId: string) => {
-        setCompareSelectedId(workoutId)
-        setCompareDetailLoading(true)
-        getPastWorkoutDetail(workoutId)
+    const handleSelectCompareProgram = useCallback((programId: string) => {
+        setCompareSelectedProgramId(programId)
+        setCompareProgramLoading(true)
+        getFullProgramForCompare(programId)
             .then((result) => {
-                const detail = result.data || null
-                setComparePastDetail(detail)
-                setCompareWorkout(detail ? pastDetailToWorkout(detail) : null)
+                const data = result.data || null
+                setCompareProgramData(data)
+                if (data && data.workouts.length > 0) {
+                    const converted = data.workouts.map(compareWorkoutToWorkout)
+                    setCompareWorkouts(converted)
+                    setCompareActiveWorkoutId(converted[0].id)
+                } else {
+                    setCompareWorkouts([])
+                    setCompareActiveWorkoutId(null)
+                }
             })
             .catch(() => {
-                setComparePastDetail(null)
-                setCompareWorkout(null)
+                setCompareProgramData(null)
+                setCompareWorkouts([])
+                setCompareActiveWorkoutId(null)
             })
-            .finally(() => setCompareDetailLoading(false))
+            .finally(() => setCompareProgramLoading(false))
     }, [])
 
     const handleExitCompare = useCallback(() => {
@@ -277,7 +298,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                             .sort((a, b) => a.order_index - b.order_index)
                             .map(c => ({
                                 id: c.id,
-                                item_type: c.item_type as 'exercise' | 'superset' | 'note',
+                                item_type: c.item_type as WorkoutItem['item_type'],
                                 order_index: c.order_index,
                                 parent_item_id: c.parent_item_id,
                                 exercise_id: c.exercise_id,
@@ -288,11 +309,12 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                 rest_seconds: c.rest_seconds,
                                 notes: c.notes,
                                 exercise_function: c.exercise_function || null,
+                                item_config: c.item_config || {},
                             }))
 
                         return {
                             id: p.id,
-                            item_type: p.item_type as 'exercise' | 'superset' | 'note',
+                            item_type: p.item_type as WorkoutItem['item_type'],
                             order_index: p.order_index,
                             parent_item_id: p.parent_item_id,
                             exercise_id: p.exercise_id,
@@ -303,6 +325,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                             rest_seconds: p.rest_seconds,
                             notes: p.notes,
                             exercise_function: p.exercise_function || null,
+                            item_config: p.item_config || {},
                             children: itemChildren
                         }
                     })
@@ -326,6 +349,10 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
     const [nameShake, setNameShake] = useState(false)
     const [isCanvasScrolled, setIsCanvasScrolled] = useState(false)
     const [isDraggingOver, setIsDraggingOver] = useState(false)
+    const [formTriggers, setFormTriggers] = useState<TriggerSelection>({
+        preWorkout: initialFormTriggers?.preWorkout?.formTemplateId ?? null,
+        postWorkout: initialFormTriggers?.postWorkout?.formTemplateId ?? null,
+    })
     const canvasScrollRef = useRef<HTMLDivElement>(null)
     // Sensors for tab drag-and-drop (distance constraint allows click without triggering drag)
     const tabSensors = useSensors(
@@ -337,6 +364,10 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
     const activeWorkout = useMemo(() =>
         workouts.find(w => w.id === activeWorkoutId) || null
         , [workouts, activeWorkoutId])
+
+    const compareActiveWorkout = useMemo(() =>
+        compareWorkouts.find(w => w.id === compareActiveWorkoutId) || null
+        , [compareWorkouts, compareActiveWorkoutId])
 
     const workoutsWithoutDays = useMemo(() =>
         workouts.filter(w => !w.frequency || w.frequency.length === 0),
@@ -392,7 +423,8 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                 items: source.items.map(item => ({
                     ...item,
                     id: tempId(),
-                    children: item.children?.map(child => ({ ...child, id: tempId() })),
+                    item_config: item.item_config ? { ...item.item_config } : {},
+                    children: item.children?.map(child => ({ ...child, id: tempId(), item_config: child.item_config ? { ...child.item_config } : {} })),
                 })),
                 frequency: [],
             }
@@ -492,6 +524,48 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                 reps: null,
                 rest_seconds: null,
                 notes: '',
+                children: []
+            }
+            return { ...w, items: [...w.items, newItem] }
+        }))
+    }, [])
+
+    const addWarmup = useCallback((workoutId: string) => {
+        setWorkouts(prev => prev.map(w => {
+            if (w.id !== workoutId) return w
+            const newItem: WorkoutItem = {
+                id: tempId(),
+                item_type: 'warmup',
+                order_index: w.items.length,
+                parent_item_id: null,
+                exercise_id: null,
+                substitute_exercise_ids: [],
+                sets: null,
+                reps: null,
+                rest_seconds: null,
+                notes: null,
+                item_config: { warmup_type: 'free' },
+                children: []
+            }
+            return { ...w, items: [...w.items, newItem] }
+        }))
+    }, [])
+
+    const addCardio = useCallback((workoutId: string) => {
+        setWorkouts(prev => prev.map(w => {
+            if (w.id !== workoutId) return w
+            const newItem: WorkoutItem = {
+                id: tempId(),
+                item_type: 'cardio',
+                order_index: w.items.length,
+                parent_item_id: null,
+                exercise_id: null,
+                substitute_exercise_ids: [],
+                sets: null,
+                reps: null,
+                rest_seconds: null,
+                notes: null,
+                item_config: { mode: 'continuous', objective: 'time' },
                 children: []
             }
             return { ...w, items: [...w.items, newItem] }
@@ -634,6 +708,9 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
 
             const item = w.items[itemIndex]
             const superset = w.items[supersetIndex]
+
+            // Only exercise items can be added to supersets
+            if (item.item_type !== 'exercise') return w
 
             // Create new child with parent reference
             const newChild = {
@@ -811,6 +888,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                             rest_seconds: item.rest_seconds,
                             notes: item.notes,
                             exercise_function: item.exercise_function || null,
+                            item_config: item.item_config || {},
                         })
                         .select('id')
                         .single()
@@ -834,11 +912,24 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                     rest_seconds: child.rest_seconds,
                                     notes: child.notes,
                                     exercise_function: child.exercise_function || null,
+                                    item_config: child.item_config || {},
                                 })
 
                             if (childError) throw childError
                         }
                     }
+                }
+            }
+
+            // Save form triggers (secondary — failure shows warning, doesn't revert program)
+            if (programId && (formTriggers.preWorkout || formTriggers.postWorkout)) {
+                const triggerResult = await saveProgramFormTriggers({
+                    programTemplateId: programId,
+                    preWorkout: formTriggers.preWorkout,
+                    postWorkout: formTriggers.postWorkout,
+                })
+                if (!triggerResult.success) {
+                    console.error('Form triggers save error:', triggerResult.error)
                 }
             }
 
@@ -966,6 +1057,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                             rest_seconds: item.rest_seconds,
                             notes: item.notes,
                             exercise_function: item.exercise_function || null,
+                            item_config: item.item_config || {},
                         })
                         .select('id')
                         .single()
@@ -988,6 +1080,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                     rest_seconds: child.rest_seconds,
                                     notes: child.notes,
                                     exercise_function: child.exercise_function || null,
+                                    item_config: child.item_config || {},
                                 })
                             if (childError) throw childError
                         }
@@ -1199,6 +1292,15 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                     <VolumeSummary workouts={workouts} />
                 </div>
 
+                {/* Form Triggers (pre/post workout check-in) */}
+                {formTriggerTemplates.length > 0 && (
+                    <ProgramFormTriggers
+                        initialTriggers={initialFormTriggers ?? { preWorkout: null, postWorkout: null }}
+                        availableTemplates={formTriggerTemplates}
+                        onChange={setFormTriggers}
+                    />
+                )}
+
                 {/* AI Agent Rationale Panel (collapsible) */}
                 {prescriptionReasoning && (
                     <div className="px-6 pt-3">
@@ -1208,8 +1310,8 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
 
                 {/* Workspace (Layout Columns) */}
                 <div className="flex flex-1 overflow-hidden">
-                    {/* Left Panel: Exercise Library */}
-                    <div data-onboarding="program-exercise-library" className="w-[320px] bg-white dark:bg-surface-primary border-r border-[#E8E8ED] dark:border-k-border-subtle flex flex-col flex-shrink-0">
+                    {/* Left Panel: Exercise Library — hidden in compare mode */}
+                    <div data-onboarding="program-exercise-library" className={`bg-white dark:bg-surface-primary border-r border-[#E8E8ED] dark:border-k-border-subtle flex flex-col flex-shrink-0 transition-all duration-300 ${builderViewMode === 'compare' ? 'w-0 overflow-hidden opacity-0 border-r-0' : 'w-[320px]'}`}>
                         <ExerciseLibraryPanel
                             exercises={localExercises}
                             trainerId={trainer.id}
@@ -1330,11 +1432,16 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                             {/* Workout Canvas — drop zone for exercises from library */}
                             <div
                                 ref={canvasScrollRef}
-                                onScroll={(e) => setIsCanvasScrolled(e.currentTarget.scrollTop > 40)}
+                                onScroll={(e) => {
+                                    const scrollTop = e.currentTarget.scrollTop
+                                    // Hysteresis: different thresholds up/down to prevent feedback loop
+                                    const shouldBeScrolled = isCanvasScrolled ? scrollTop > 10 : scrollTop > 60
+                                    if (shouldBeScrolled !== isCanvasScrolled) setIsCanvasScrolled(shouldBeScrolled)
+                                }}
                                 onDragOver={handleCanvasDragOver}
                                 onDragLeave={handleCanvasDragLeave}
                                 onDrop={handleCanvasDrop}
-                                className={`${builderViewMode === 'compare' ? 'flex-[1.1]' : 'flex-1'} overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent transition-colors duration-200 ${isDraggingOver ? 'bg-[#007AFF]/5 dark:bg-violet-500/5 ring-2 ring-inset ring-[#007AFF]/20 dark:ring-violet-500/20' : ''}`}
+                                className={`flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent transition-colors duration-200 ${isDraggingOver ? 'bg-[#007AFF]/5 dark:bg-violet-500/5 ring-2 ring-inset ring-[#007AFF]/20 dark:ring-violet-500/20' : ''}`}
                             >
                                 <div className={`${builderViewMode === 'compare' ? '' : 'max-w-3xl'} mx-auto pb-20`}>
                                     {activeWorkout ? (
@@ -1344,6 +1451,8 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                             onUpdateName={(name) => updateWorkoutName(activeWorkout.id, name)}
                                             onAddExercise={() => { }}
                                             onAddNote={() => addNote(activeWorkout.id)}
+                                            onAddWarmup={() => addWarmup(activeWorkout.id)}
+                                            onAddCardio={() => addCardio(activeWorkout.id)}
                                             onUpdateItem={(itemId, updates) => updateItem(activeWorkout.id, itemId, updates)}
                                             onDeleteItem={(itemId) => deleteItem(activeWorkout.id, itemId)}
                                             onMoveItem={(itemId, dir) => moveItem(activeWorkout.id, itemId, dir)}
@@ -1355,6 +1464,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                             onUpdateFrequency={(days) => updateWorkoutFrequency(activeWorkout.id, days)}
                                             occupiedDays={occupiedDays}
                                             isScrolled={isCanvasScrolled}
+                                            scrollContainerRef={canvasScrollRef}
                                         />
                                     ) : (
                                         <div className="text-center py-20">
@@ -1364,22 +1474,28 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                 </div>
                             </div>
 
-                            {/* Compare Panel — readonly past workout */}
+                            {/* Compare Panel — full program side-by-side */}
                             {builderViewMode === 'compare' && (
-                                <div className="flex-[0.9] flex flex-col border-l border-[#E8E8ED] dark:border-k-border-subtle bg-[#FAFAFA] dark:bg-surface-canvas/50">
+                                <div className="flex-1 flex flex-col border-l border-[#E8E8ED] dark:border-k-border-subtle bg-[#FAFAFA] dark:bg-surface-canvas/50">
                                     {/* Compare header */}
                                     <div className="flex items-center justify-between px-4 py-3 border-b border-[#E8E8ED] dark:border-k-border-subtle bg-[#F5F5F7] dark:bg-surface-elevated">
                                         <div className="flex items-center gap-2 min-w-0">
                                             <GitCompareArrows className="w-4 h-4 text-[#007AFF] dark:text-violet-400 shrink-0" />
                                             <span className="text-xs font-semibold text-[#1D1D1F] dark:text-k-text-primary truncate">
-                                                {comparePastDetail
-                                                    ? `Comparando com: ${comparePastDetail.workoutName}`
-                                                    : 'Selecione um treino para comparar'
+                                                {compareProgramData
+                                                    ? compareProgramData.programName
+                                                    : 'Programa anterior'
                                                 }
                                             </span>
-                                            {comparePastDetail?.startedAt && (
+                                            {compareProgramData?.startedAt && (
                                                 <span className="text-[10px] text-[#86868B] dark:text-k-text-quaternary shrink-0">
-                                                    {new Date(comparePastDetail.startedAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                                    {new Date(compareProgramData.startedAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                                </span>
+                                            )}
+                                            {compareProgramData?.status === 'active' && (
+                                                <span className="flex items-center gap-1 text-[10px] text-emerald-500 dark:text-emerald-400 font-medium shrink-0">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                                                    Ativo
                                                 </span>
                                             )}
                                         </div>
@@ -1391,27 +1507,59 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                         </button>
                                     </div>
 
-                                    {/* Past workout selector */}
-                                    <PastWorkoutSelector
-                                        workouts={comparePastWorkouts}
-                                        selectedId={compareSelectedId}
-                                        onSelect={handleSelectCompareWorkout}
-                                        isLoading={comparePastWorkoutsLoading}
+                                    {/* Program selector */}
+                                    <ProgramSelector
+                                        programs={compareProgramsList}
+                                        selectedId={compareSelectedProgramId}
+                                        onSelect={handleSelectCompareProgram}
+                                        isLoading={compareProgramsLoading}
                                     />
+
+                                    {/* Workout tabs for compare program */}
+                                    {compareWorkouts.length > 0 && (
+                                        <div className="flex items-center gap-1 px-3 py-2 border-b border-[#E8E8ED] dark:border-k-border-subtle">
+                                            <div className="bg-white dark:bg-surface-card p-0.5 rounded-lg flex gap-0.5 items-center border border-[#E8E8ED] dark:border-k-border-subtle">
+                                                {compareWorkouts.map((cw) => (
+                                                    <button
+                                                        key={cw.id}
+                                                        onClick={() => setCompareActiveWorkoutId(cw.id)}
+                                                        className={`
+                                                            px-3 py-1 text-[11px] font-semibold rounded-md transition-all whitespace-nowrap
+                                                            ${compareActiveWorkoutId === cw.id
+                                                                ? 'bg-[#F5F5F7] dark:bg-glass-bg-active text-[#1D1D1F] dark:text-k-text-primary shadow-sm ring-1 ring-[#E8E8ED] dark:ring-k-border-subtle'
+                                                                : 'text-[#6E6E73] dark:text-k-text-tertiary hover:text-[#1D1D1F] dark:hover:text-k-text-primary hover:bg-[#F5F5F7]/50 dark:hover:bg-glass-bg'
+                                                            }
+                                                        `}
+                                                    >
+                                                        {cw.name}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Volume summary for compare program */}
+                                    {compareWorkouts.length > 0 && (
+                                        <div className="px-3 py-2 border-b border-[#E8E8ED] dark:border-k-border-subtle">
+                                            <VolumeSummary workouts={compareWorkouts} />
+                                        </div>
+                                    )}
 
                                     {/* Readonly workout panel */}
                                     <div className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-                                        {compareDetailLoading ? (
+                                        {compareProgramLoading ? (
                                             <div className="flex items-center justify-center py-20">
                                                 <Loader2 className="w-5 h-5 animate-spin text-[#AEAEB2] dark:text-k-text-quaternary" />
                                             </div>
-                                        ) : compareWorkout ? (
+                                        ) : compareActiveWorkout ? (
                                             <WorkoutPanel
-                                                workout={compareWorkout}
+                                                workout={compareActiveWorkout}
                                                 exercises={localExercises}
                                                 onUpdateName={() => {}}
                                                 onAddExercise={() => {}}
                                                 onAddNote={() => {}}
+                                                onAddWarmup={() => {}}
+                                                onAddCardio={() => {}}
                                                 onUpdateItem={() => {}}
                                                 onDeleteItem={() => {}}
                                                 onMoveItem={() => {}}
@@ -1422,9 +1570,11 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                                 onDissolveSuperset={() => {}}
                                                 readonly
                                             />
-                                        ) : !compareSelectedId ? (
+                                        ) : !compareSelectedProgramId ? (
                                             <div className="text-center py-20">
-                                                <p className="text-[#AEAEB2] dark:text-k-text-quaternary text-sm">Selecione um treino anterior acima para comparar</p>
+                                                <GitCompareArrows className="w-8 h-8 text-[#AEAEB2] dark:text-k-text-quaternary mx-auto mb-3 opacity-50" />
+                                                <p className="text-[#AEAEB2] dark:text-k-text-quaternary text-sm">Selecione um programa acima para comparar</p>
+                                                <p className="text-[#AEAEB2] dark:text-k-text-quaternary text-[11px] mt-1 opacity-70">Visualize lado a lado com o programa atual</p>
                                             </div>
                                         ) : null}
                                     </div>

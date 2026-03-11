@@ -27,6 +27,7 @@ struct WorkoutExecutionView: View {
   @State private var workoutRpe: Double = 5
   @State private var hasFinishedWorkout = false
   @State private var showDiscardConfirmation = false
+  @State private var carouselPage: Int = 0
 
   var body: some View {
     let sm = sessionManager
@@ -77,6 +78,8 @@ struct WorkoutExecutionView: View {
       if store.state == nil || store.state?.workoutId != workout.workoutId {
         store.loadWorkout(from: workout)
       }
+      // Sync carousel page with exercise index
+      carouselPage = store.state?.exerciseIndex ?? 0
     }
     .navigationBarTitleDisplayMode(.inline)
   }
@@ -84,20 +87,29 @@ struct WorkoutExecutionView: View {
   // MARK: - Workout Content
 
   private func workoutContent(state: WorkoutExecutionState, sm: WatchSessionManager, store: WorkoutExecutionStore) -> some View {
-    let exerciseIndexBinding = Binding<Int>(
-      get: { state.exerciseIndex },
-      set: { store.setExerciseIndex($0) }
+    let totalCarouselPages = state.exercises.count + workout.cardioItems.count
+
+    let carouselIndexBinding = Binding<Int>(
+      get: { carouselPage },
+      set: { newValue in
+        carouselPage = newValue
+        if newValue < state.exercises.count {
+          store.setExerciseIndex(newValue)
+        }
+      }
     )
 
     return TabView {
-      // Page 0: Exercise carousel
-      TabView(selection: exerciseIndexBinding) {
+      // Page 0: Exercise + Cardio carousel
+      TabView(selection: carouselIndexBinding) {
         ForEach(Array(state.exercises.indices), id: \.self) { index in
           ExerciseExecutionPage(
             store: store,
             exerciseIndex: index,
             totalExercises: state.exercises.count,
+            totalCarouselPages: totalCarouselPages,
             workoutStartDate: state.startedAt,
+            hasCardioAfter: !workout.cardioItems.isEmpty,
             onSetLogged: { setIndex, reps, weight in
               guard index < (store.state?.exercises.count ?? 0) else { return }
               let exerciseId = state.exercises[index].id
@@ -131,6 +143,36 @@ struct WorkoutExecutionView: View {
           )
           .tag(index)
         }
+
+        // Cardio pages (after exercises)
+        ForEach(Array(workout.cardioItems.enumerated()), id: \.element.id) { cardioIdx, item in
+          let pageTag = state.exercises.count + cardioIdx
+          let isLastPage = pageTag == (totalCarouselPages - 1)
+          let isCardioCompleted = state.cardioStates.first(where: { $0.itemId == item.id })?.isCompleted ?? false
+
+          ZStack(alignment: .bottom) {
+            CardioExecutionView(item: item) { elapsedSeconds in
+              store.markCardioCompleted(itemId: item.id, elapsedSeconds: elapsedSeconds)
+              sm.sendCardioCompletion(
+                workoutId: state.workoutId,
+                itemId: item.id,
+                elapsedSeconds: elapsedSeconds
+              )
+            }
+
+            // Show "Finalizar Treino" when this is the last page and cardio is done
+            if isLastPage && isCardioCompleted && state.exercises.allSatisfy({ ex in ex.sets.allSatisfy(\.isCompleted) }) {
+              Button("Finalizar Treino") {
+                isFinishingWorkout = true
+              }
+              .font(.caption)
+              .buttonStyle(.borderedProminent)
+              .tint(.green)
+              .padding(.bottom, 8)
+            }
+          }
+          .tag(pageTag)
+        }
       }
       .tabViewStyle(.page(indexDisplayMode: .never))
 
@@ -159,7 +201,7 @@ struct WorkoutExecutionView: View {
         .multilineTextAlignment(.center)
         .lineLimit(2)
         .minimumScaleFactor(0.75)
-      Text("\(workout.exercises.count) exercícios")
+      Text(workoutItemsSummary)
         .font(.caption2)
         .foregroundStyle(.secondary)
       Button("Iniciar treino") {
@@ -173,6 +215,15 @@ struct WorkoutExecutionView: View {
       .tint(Color.kinevoViolet)
     }
     .padding()
+  }
+
+  private var workoutItemsSummary: String {
+    let exCount = workout.exercises.count
+    let cardioCount = workout.cardioItems.count
+    if cardioCount > 0 {
+      return "\(exCount) exercícios • \(cardioCount) aeróbio\(cardioCount > 1 ? "s" : "")"
+    }
+    return "\(exCount) exercícios"
   }
 
   private var emptyView: some View {
@@ -225,6 +276,7 @@ struct WorkoutExecutionView: View {
         guard let state = store.state else { return }
 
         let exercisesPayload = state.buildFinishPayload()
+        let cardioPayload = state.buildCardioPayload()
 
         // Mark as pending BEFORE sending — persists so it survives app termination
         store.markFinishPending()
@@ -233,7 +285,8 @@ struct WorkoutExecutionView: View {
           workoutId: state.workoutId,
           rpe: Int(workoutRpe),
           startedAt: state.startedAt,
-          exercises: exercisesPayload
+          exercises: exercisesPayload,
+          cardio: cardioPayload
         )
         hk.endWorkout()
         hasFinishedWorkout = true
@@ -294,7 +347,9 @@ private struct ExerciseExecutionPage: View {
   @ObservedObject var store: WorkoutExecutionStore
   let exerciseIndex: Int
   let totalExercises: Int
+  let totalCarouselPages: Int
   let workoutStartDate: Date
+  let hasCardioAfter: Bool
   let onSetLogged: (_ setIndex: Int, _ reps: Int, _ weight: Double) -> Void
   let onRestTimerRequested: (_ setIndex: Int, _ restTime: Int) -> Void
   let onFinishWorkout: () -> Void
@@ -708,8 +763,10 @@ private struct ExerciseExecutionPage: View {
     exercise.sets.allSatisfy(\.isCompleted)
   }
 
+  /// True when this is the last exercise AND there are no cardio pages after it.
+  /// If cardio pages exist, the "Finalizar Treino" button moves to the last cardio page.
   private var isLastExercise: Bool {
-    (exerciseIndex + 1) == totalExercises
+    (exerciseIndex + 1) == totalExercises && !hasCardioAfter
   }
 
   private func currentReps(_ exercise: WorkoutExecutionState.ExerciseState) -> Int {

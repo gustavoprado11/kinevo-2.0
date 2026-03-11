@@ -100,22 +100,73 @@ export function usePushNotifications(role: "trainer" | "student" | null) {
             if (__DEV__) console.log("[push] Notification received:", notification.request.content.title);
         });
 
-        // Listen for notification taps
+        // Listen for notification taps — deep link based on data.type
         responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
             const data = response.notification.request.content.data;
             if (__DEV__) console.log("[push] Notification tapped, data:", data);
 
-            // Deep link routing based on notification data
-            if (data?.student_id) {
-                router.push({
-                    pathname: "/students/[id]",
-                    params: { id: data.student_id as string },
-                });
-            } else if (data?.contract_id) {
-                router.push({
-                    pathname: "/financial/contract/[id]",
-                    params: { id: data.contract_id as string },
-                });
+            const type = data?.type as string | undefined;
+
+            switch (type) {
+                case "form_request":
+                case "feedback":
+                    if (data?.inbox_item_id) {
+                        router.push({
+                            pathname: "/inbox/[id]",
+                            params: { id: data.inbox_item_id as string },
+                        });
+                    }
+                    break;
+                case "program_assigned":
+                    // Navigate to home so the student sees the new program
+                    router.push("/(tabs)/home");
+                    break;
+                case "workout_completed":
+                    if (data?.student_id) {
+                        router.push({
+                            pathname: "/student/[id]",
+                            params: { id: data.student_id as string },
+                        });
+                    } else {
+                        router.push("/(trainer-tabs)/dashboard");
+                    }
+                    break;
+                case "new_student":
+                    if (data?.student_id) {
+                        router.push({
+                            pathname: "/student/[id]",
+                            params: { id: data.student_id as string },
+                        });
+                    }
+                    break;
+                case "payment_received":
+                case "payment_failed":
+                case "payment_overdue":
+                case "subscription_canceled":
+                case "cancellation_alert":
+                    if (data?.contract_id) {
+                        router.push({
+                            pathname: "/financial/contract/[id]",
+                            params: { id: data.contract_id as string },
+                        });
+                    } else {
+                        router.push("/financial");
+                    }
+                    break;
+                default:
+                    // Fallback: legacy routing by field presence
+                    if (data?.contract_id) {
+                        router.push({
+                            pathname: "/financial/contract/[id]",
+                            params: { id: data.contract_id as string },
+                        });
+                    } else if (data?.student_id) {
+                        router.push({
+                            pathname: "/student/[id]",
+                            params: { id: data.student_id as string },
+                        });
+                    }
+                    break;
             }
         });
 

@@ -81,12 +81,14 @@ export async function activateProgram(assignedProgramId: string) {
             title: 'Novo programa de treino!',
             subtitle: `${programName} está disponível no seu app.`,
             payload: { program_id: assignedProgramId, program_name: programName },
-        })
-        sendStudentPush({
-            studentId,
-            title: 'Novo programa de treino!',
-            body: `${programName} está disponível no seu app.`,
-            data: { program_id: assignedProgramId },
+        }).then((inboxItemId) => {
+            sendStudentPush({
+                studentId,
+                title: 'Novo programa de treino!',
+                body: `${programName} está disponível no seu app.`,
+                inboxItemId: inboxItemId ?? undefined,
+                data: { type: 'program_assigned', program_id: assignedProgramId },
+            })
         })
 
         revalidatePath(`/students/${studentId}`)

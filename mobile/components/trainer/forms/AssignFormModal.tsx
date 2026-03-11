@@ -13,7 +13,7 @@ import {
     KeyboardAvoidingView,
     Platform,
 } from "react-native";
-import { X, Search, Check } from "lucide-react-native";
+import { X, Search, Check, RefreshCw } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { supabase } from "../../../lib/supabase";
 import { useTrainerStudentsList } from "../../../hooks/useTrainerStudentsList";
@@ -33,6 +33,26 @@ const DEADLINE_OPTIONS = [
     { label: "Sem prazo", days: 0 },
 ];
 
+type Frequency = "daily" | "weekly" | "biweekly" | "monthly";
+
+const FREQUENCY_OPTIONS: { key: Frequency; label: string }[] = [
+    { key: "daily", label: "Diário" },
+    { key: "weekly", label: "Semanal" },
+    { key: "biweekly", label: "Quinzenal" },
+    { key: "monthly", label: "Mensal" },
+];
+
+function computeNextDue(frequency: Frequency): string {
+    const d = new Date();
+    switch (frequency) {
+        case "daily": d.setDate(d.getDate() + 1); break;
+        case "weekly": d.setDate(d.getDate() + 7); break;
+        case "biweekly": d.setDate(d.getDate() + 14); break;
+        case "monthly": d.setMonth(d.getMonth() + 1); break;
+    }
+    return d.toISOString();
+}
+
 export function AssignFormModal({ visible, template, onClose, onSuccess }: Props) {
     const insets = useSafeAreaInsets();
     const { students, isLoading: studentsLoading } = useTrainerStudentsList();
@@ -40,6 +60,8 @@ export function AssignFormModal({ visible, template, onClose, onSuccess }: Props
     const [deadlineDays, setDeadlineDays] = useState(7);
     const [message, setMessage] = useState("");
     const [search, setSearch] = useState("");
+    const [isRecurring, setIsRecurring] = useState(false);
+    const [frequency, setFrequency] = useState<Frequency>("weekly");
     const [isSending, setIsSending] = useState(false);
 
     const filteredStudents = useMemo(() => {
@@ -88,15 +110,38 @@ export function AssignFormModal({ visible, template, onClose, onSuccess }: Props
             if (error) throw error;
 
             const result = data as any;
+
+            // If recurring, create schedules
+            if (isRecurring) {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                    const studentIds = Array.from(selectedIds);
+                    for (const studentId of studentIds) {
+                        await (supabase as any)
+                            .from("form_schedules")
+                            .upsert({
+                                trainer_id: user.id,
+                                student_id: studentId,
+                                form_template_id: template.id,
+                                frequency,
+                                next_due_at: computeNextDue(frequency),
+                            }, { onConflict: "student_id,form_template_id,frequency" });
+                    }
+                }
+            }
+
+            const freqLabel = FREQUENCY_OPTIONS.find((f) => f.key === frequency)?.label ?? "";
             Alert.alert(
                 "Enviado!",
                 `Formulário enviado para ${result.assigned_count} aluno(s).${
                     result.skipped_count > 0 ? ` ${result.skipped_count} já tinham pendente.` : ""
-                }`
+                }${isRecurring ? ` Recorrência ${freqLabel.toLowerCase()} ativada.` : ""}`
             );
 
             setSelectedIds(new Set());
             setMessage("");
+            setIsRecurring(false);
+            setFrequency("weekly");
             onSuccess();
             onClose();
         } catch (err: any) {
@@ -110,6 +155,8 @@ export function AssignFormModal({ visible, template, onClose, onSuccess }: Props
         setSelectedIds(new Set());
         setSearch("");
         setMessage("");
+        setIsRecurring(false);
+        setFrequency("weekly");
         onClose();
     };
 
@@ -203,6 +250,75 @@ export function AssignFormModal({ visible, template, onClose, onSuccess }: Props
                         }}
                         placeholderTextColor="#94a3b8"
                     />
+                </View>
+
+                {/* Recurring toggle */}
+                <View style={{ paddingHorizontal: 20, paddingBottom: 12 }}>
+                    <TouchableOpacity
+                        onPress={() => setIsRecurring(!isRecurring)}
+                        activeOpacity={0.7}
+                        style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            backgroundColor: "#ffffff",
+                            borderRadius: 12,
+                            padding: 14,
+                        }}
+                    >
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                            <RefreshCw size={16} color={isRecurring ? "#7c3aed" : "#94a3b8"} />
+                            <Text style={{ fontSize: 14, fontWeight: "600", color: "#1a1a2e" }}>
+                                Envio recorrente
+                            </Text>
+                        </View>
+                        <View
+                            style={{
+                                width: 44,
+                                height: 24,
+                                borderRadius: 12,
+                                backgroundColor: isRecurring ? "#7c3aed" : "#d1d5db",
+                                justifyContent: "center",
+                                paddingHorizontal: 2,
+                            }}
+                        >
+                            <View
+                                style={{
+                                    width: 20,
+                                    height: 20,
+                                    borderRadius: 10,
+                                    backgroundColor: "#ffffff",
+                                    alignSelf: isRecurring ? "flex-end" : "flex-start",
+                                }}
+                            />
+                        </View>
+                    </TouchableOpacity>
+                    {isRecurring && (
+                        <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
+                            {FREQUENCY_OPTIONS.map((opt) => (
+                                <TouchableOpacity
+                                    key={opt.key}
+                                    onPress={() => setFrequency(opt.key)}
+                                    style={{
+                                        paddingHorizontal: 14,
+                                        paddingVertical: 8,
+                                        borderRadius: 20,
+                                        backgroundColor: frequency === opt.key ? "#7c3aed" : "#ffffff",
+                                    }}
+                                >
+                                    <Text
+                                        style={{
+                                            fontSize: 13,
+                                            fontWeight: "600",
+                                            color: frequency === opt.key ? "#ffffff" : "#64748b",
+                                        }}
+                                    >
+                                        {opt.label}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    )}
                 </View>
 
                 {/* Student search */}

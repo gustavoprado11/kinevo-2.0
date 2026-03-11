@@ -25,7 +25,21 @@ interface WorkoutItemCardProps {
     readonly?: boolean
 }
 
-import { GripVertical, Trash2, MessageSquare, Repeat, Check, PlayCircle, ArrowLeftRight, Search, X, Pencil } from 'lucide-react'
+import { GripVertical, Trash2, MessageSquare, Repeat, Check, PlayCircle, ArrowLeftRight, Search, X, Pencil, Flame, Activity, Clock, Timer, ChevronDown, ChevronUp, Zap } from 'lucide-react'
+import { AnimatePresence, motion } from 'framer-motion'
+import {
+    CARDIO_EQUIPMENT_LABELS,
+    CARDIO_EQUIPMENT_OPTIONS,
+    WARMUP_TYPE_LABELS,
+    WARMUP_TYPE_OPTIONS,
+    CARDIO_OBJECTIVE_LABELS,
+    type CardioEquipment,
+    type CardioConfig,
+    type CardioMode,
+    type CardioObjective,
+    type WarmupConfig,
+    type WarmupType,
+} from '@kinevo/shared/types/workout-items'
 import { FloatingExercisePlayer } from '@/components/exercises/floating-exercise-player'
 
 export function WorkoutItemCard({
@@ -158,6 +172,30 @@ export function WorkoutItemCard({
 
                 </div>
             </div>
+        )
+    }
+
+    if (item.item_type === 'warmup') {
+        return (
+            <WarmupItemCard
+                item={item}
+                onUpdate={onUpdate}
+                onDelete={onDelete}
+                dragHandleProps={dragHandleProps}
+                readonly={readonly}
+            />
+        )
+    }
+
+    if (item.item_type === 'cardio') {
+        return (
+            <CardioItemCard
+                item={item}
+                onUpdate={onUpdate}
+                onDelete={onDelete}
+                dragHandleProps={dragHandleProps}
+                readonly={readonly}
+            />
         )
     }
 
@@ -660,6 +698,554 @@ function TechnicalNote({ value, onChange, readonly }: { value: string; onChange:
         >
             <MessageSquare size={14} className="shrink-0 group-hover/note:text-[#007AFF]/50 dark:group-hover/note:text-violet-400/50" />
             <span className="text-xs">Adicionar nota técnica...</span>
+        </div>
+    )
+}
+
+// ============================================================================
+// Warmup Item Card
+// ============================================================================
+
+/** Check if a warmup config has meaningful data filled in */
+function isWarmupFilled(config: WarmupConfig): boolean {
+    return !!(config.duration_minutes || config.description)
+}
+
+/** Build compact summary text for warmup */
+function warmupSummary(config: WarmupConfig): string {
+    const parts: string[] = []
+    if (config.duration_minutes) parts.push(`${config.duration_minutes} min`)
+    const typeLabel = WARMUP_TYPE_LABELS[config.warmup_type] || 'Livre'
+    parts.push(typeLabel)
+    return parts.join(' · ')
+}
+
+function WarmupItemCard({
+    item,
+    onUpdate,
+    onDelete,
+    dragHandleProps,
+    readonly,
+}: {
+    item: WorkoutItem
+    onUpdate: (updates: Partial<WorkoutItem>) => void
+    onDelete: () => void
+    dragHandleProps?: any
+    readonly?: boolean
+}) {
+    const config = (item.item_config || { warmup_type: 'free' }) as WarmupConfig
+    const warmupType = config.warmup_type || 'free'
+
+    const [isExpanded, setIsExpanded] = useState(() => !isWarmupFilled(config))
+    const [showDescription, setShowDescription] = useState(() => warmupType === 'free' || !!config.description)
+
+    const updateConfig = (patch: Partial<WarmupConfig>) => {
+        onUpdate({ item_config: { ...config, ...patch } })
+    }
+
+    // Readonly — compact
+    if (readonly) {
+        return (
+            <div className="bg-white dark:bg-surface-card rounded-xl border border-[#E8E8ED] dark:border-k-border-subtle px-4 py-3">
+                <div className="flex items-center gap-3">
+                    <Flame className="w-[18px] h-[18px] text-amber-500 shrink-0" />
+                    <span className="text-sm font-medium text-[#1D1D1F] dark:text-k-text-primary">Aquecimento</span>
+                    <span className="text-sm text-[#8E8E93] dark:text-k-text-tertiary truncate">{warmupSummary(config)}</span>
+                </div>
+            </div>
+        )
+    }
+
+    // --- Collapsed ---
+    if (!isExpanded) {
+        return (
+            <div
+                onClick={() => setIsExpanded(true)}
+                className="bg-white dark:bg-surface-card rounded-xl border border-[#E8E8ED] dark:border-k-border-subtle px-4 py-3 cursor-pointer group hover:border-[#D2D2D7] dark:hover:border-k-border-primary transition-colors"
+            >
+                <div className="flex items-center gap-3">
+                    <div
+                        {...dragHandleProps}
+                        onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                        className="text-[#D2D2D7] dark:text-k-text-quaternary hover:text-k-text-secondary cursor-grab active:cursor-grabbing touch-none transition-colors"
+                    >
+                        <GripVertical className="w-4 h-4" />
+                    </div>
+
+                    <Flame className="w-[18px] h-[18px] text-amber-500 shrink-0" />
+                    <span className="text-sm font-medium text-[#1D1D1F] dark:text-k-text-primary">Aquecimento</span>
+                    <span className="text-sm text-[#8E8E93] dark:text-k-text-tertiary flex-1 truncate">{warmupSummary(config)}</span>
+
+                    <ChevronDown className="w-4 h-4 text-[#8E8E93] dark:text-k-text-quaternary shrink-0" />
+
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onDelete() }}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity text-[#D2D2D7] dark:text-k-text-quaternary hover:text-red-500 dark:hover:text-red-400 p-1"
+                    >
+                        <Trash2 className="w-4 h-4" />
+                    </button>
+                </div>
+            </div>
+        )
+    }
+
+    // --- Expanded ---
+    return (
+        <div className="bg-white dark:bg-surface-card rounded-xl border border-[#E8E8ED] dark:border-k-border-subtle p-3 group transition-all">
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-2">
+                <div
+                    {...dragHandleProps}
+                    className="text-[#D2D2D7] dark:text-k-text-quaternary hover:text-k-text-secondary cursor-grab active:cursor-grabbing touch-none transition-colors"
+                >
+                    <GripVertical className="w-4 h-4" />
+                </div>
+
+                <Flame className="w-[18px] h-[18px] text-amber-500 shrink-0" />
+                <span className="text-sm font-medium text-[#1D1D1F] dark:text-k-text-primary flex-1">Aquecimento</span>
+
+                <button
+                    onClick={() => setIsExpanded(false)}
+                    className="text-[#8E8E93] dark:text-k-text-quaternary hover:text-k-text-secondary p-1 transition-colors"
+                >
+                    <ChevronUp className="w-4 h-4" />
+                </button>
+
+                <button
+                    onClick={onDelete}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity text-[#D2D2D7] dark:text-k-text-quaternary hover:text-red-500 dark:hover:text-red-400 p-1"
+                >
+                    <Trash2 className="w-4 h-4" />
+                </button>
+            </div>
+
+            {/* Row: Type chips + Duration */}
+            <div className="flex items-center gap-1.5 flex-wrap mb-2">
+                {WARMUP_TYPE_OPTIONS.map(wt => {
+                    const isSelected = warmupType === wt
+                    return (
+                        <button
+                            key={wt}
+                            onClick={() => {
+                                updateConfig({ warmup_type: wt })
+                                if (wt === 'free') setShowDescription(true)
+                            }}
+                            className={`px-3 py-1 rounded-full text-xs transition-colors border cursor-pointer ${
+                                isSelected
+                                    ? 'bg-amber-50 dark:bg-amber-500/10 border-amber-300 dark:border-amber-500/30 text-amber-700 dark:text-amber-300 font-medium'
+                                    : 'bg-transparent border-[#E8E8ED] dark:border-slate-700/50 text-[#8E8E93] dark:text-k-text-quaternary hover:bg-[#F5F5F7] dark:hover:bg-glass-bg'
+                            }`}
+                        >
+                            {WARMUP_TYPE_LABELS[wt]}
+                        </button>
+                    )
+                })}
+
+                {/* Duration inline */}
+                <div className="flex items-center gap-1 ml-2">
+                    <Clock size={14} className="text-[#AEAEB2] dark:text-k-text-quaternary" />
+                    <input
+                        type="number"
+                        min={1}
+                        value={config.duration_minutes || ''}
+                        onChange={(e) => updateConfig({ duration_minutes: parseInt(e.target.value) || undefined })}
+                        onFocus={(e) => e.target.select()}
+                        placeholder="10"
+                        className="w-14 h-7 bg-transparent text-[#1D1D1F] dark:text-k-text-primary text-sm font-medium text-center focus:outline-none border-0 border-b border-[#D2D2D7] dark:border-slate-600 focus:border-[#8E8E93] dark:focus:border-k-text-tertiary transition-colors placeholder:text-[#D2D2D7] dark:placeholder:text-k-text-quaternary"
+                    />
+                    <span className="text-xs text-[#AEAEB2] dark:text-k-text-quaternary">min</span>
+                </div>
+            </div>
+
+            {/* Description textarea */}
+            <AnimatePresence>
+                {(warmupType === 'free' || showDescription) && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2, ease: 'easeOut' }}
+                        className="overflow-hidden mb-1.5"
+                    >
+                        <textarea
+                            value={config.description || ''}
+                            onChange={(e) => updateConfig({ description: e.target.value || undefined })}
+                            placeholder="Ex: 5 min esteira leve, mobilidade articular, 2x15 rotação externa"
+                            rows={2}
+                            className="w-full px-2.5 py-1.5 bg-[#F9F9FB] dark:bg-glass-bg border border-[#E8E8ED] dark:border-slate-700/50 rounded-lg text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:outline-none focus:border-[#D2D2D7] dark:focus:border-k-border-primary text-sm resize-none max-h-16"
+                        />
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {warmupType !== 'free' && !showDescription && (
+                <button
+                    onClick={() => setShowDescription(true)}
+                    className="text-xs text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#8E8E93] dark:hover:text-k-text-tertiary transition-colors mb-1.5"
+                >
+                    + Adicionar descrição...
+                </button>
+            )}
+
+            <TechnicalNote
+                value={item.notes || ''}
+                onChange={(v) => onUpdate({ notes: v })}
+                readonly={false}
+            />
+        </div>
+    )
+}
+
+// ============================================================================
+// Cardio Item Card
+// ============================================================================
+
+/** Check if a cardio config has meaningful data filled in */
+function isCardioFilled(config: CardioConfig): boolean {
+    if (config.mode === 'interval' && config.intervals) return true
+    return !!(config.duration_minutes || config.distance_km || config.equipment || config.intensity)
+}
+
+/** Build compact summary for cardio */
+function cardioCompactSummary(config: CardioConfig): string {
+    const mode = config.mode || 'continuous'
+    const parts: string[] = []
+
+    parts.push(mode === 'interval' ? 'Intervalado' : 'Contínuo')
+
+    if (config.equipment) {
+        parts.push(CARDIO_EQUIPMENT_LABELS[config.equipment] || config.equipment)
+    }
+
+    if (mode === 'interval' && config.intervals) {
+        parts.push(`${config.intervals.work_seconds}s ON`)
+        parts.push(`${config.intervals.rest_seconds}s OFF`)
+        parts.push(`${config.intervals.rounds} rounds`)
+    } else {
+        if (config.duration_minutes) parts.push(`${config.duration_minutes} min`)
+        if (config.distance_km) parts.push(`${config.distance_km} km`)
+        if (config.intensity) parts.push(config.intensity)
+    }
+
+    return parts.join(' · ')
+}
+
+function CardioItemCard({
+    item,
+    onUpdate,
+    onDelete,
+    dragHandleProps,
+    readonly,
+}: {
+    item: WorkoutItem
+    onUpdate: (updates: Partial<WorkoutItem>) => void
+    onDelete: () => void
+    dragHandleProps?: any
+    readonly?: boolean
+}) {
+    const config = (item.item_config || { mode: 'continuous' }) as CardioConfig
+    const mode: CardioMode = config.mode || 'continuous'
+    const objective: CardioObjective = config.objective || 'time'
+
+    // New items (no data) start expanded; existing items start collapsed
+    const [isExpanded, setIsExpanded] = useState(() => !isCardioFilled(config))
+
+    const updateConfig = (patch: Partial<CardioConfig>) => {
+        onUpdate({ item_config: { ...config, ...patch } })
+    }
+
+    // Estimated duration for interval mode
+    const estimatedIntervalDuration = config.intervals
+        ? (config.intervals.work_seconds * config.intervals.rounds +
+            config.intervals.rest_seconds * (config.intervals.rounds - 1))
+        : 0
+    const estMin = Math.floor(estimatedIntervalDuration / 60)
+    const estSec = estimatedIntervalDuration % 60
+
+    // Readonly — always compact
+    if (readonly) {
+        return (
+            <div className="bg-white dark:bg-surface-card rounded-xl border border-[#E8E8ED] dark:border-k-border-subtle px-3 py-2.5">
+                <div className="flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-cyan-500 dark:text-cyan-400 shrink-0" />
+                    <span className="text-sm font-medium text-cyan-600 dark:text-cyan-400">Aeróbio</span>
+                    <span className="text-sm text-[#8E8E93] dark:text-k-text-tertiary truncate">{cardioCompactSummary(config)}</span>
+                </div>
+            </div>
+        )
+    }
+
+    // --- Collapsed ---
+    if (!isExpanded) {
+        return (
+            <div
+                onClick={() => setIsExpanded(true)}
+                className="bg-white dark:bg-surface-card rounded-xl border border-[#E8E8ED] dark:border-k-border-subtle px-3 py-2.5 cursor-pointer group hover:border-[#D2D2D7] dark:hover:border-k-border transition-colors"
+            >
+                <div className="flex items-center gap-2">
+                    <div
+                        {...dragHandleProps}
+                        onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                        className="text-[#D2D2D7] dark:text-k-text-quaternary hover:text-[#8E8E93] dark:hover:text-k-text-secondary cursor-grab active:cursor-grabbing touch-none transition-colors"
+                    >
+                        <GripVertical className="w-4 h-4" />
+                    </div>
+
+                    <Activity className="w-4 h-4 text-cyan-500 dark:text-cyan-400 shrink-0" />
+                    <span className="text-sm font-medium text-cyan-600 dark:text-cyan-400">Aeróbio</span>
+                    <span className="text-sm text-[#8E8E93] dark:text-k-text-tertiary flex-1 truncate">{cardioCompactSummary(config)}</span>
+
+                    <ChevronDown className="w-4 h-4 text-[#D2D2D7] dark:text-k-text-quaternary shrink-0" />
+
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onDelete() }}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity text-[#D2D2D7] hover:text-red-400 p-1"
+                    >
+                        <Trash2 className="w-4 h-4" />
+                    </button>
+                </div>
+            </div>
+        )
+    }
+
+    // --- Expanded ---
+    return (
+        <div className="bg-white dark:bg-surface-card rounded-xl border border-[#E8E8ED] dark:border-k-border-subtle p-3 group transition-all">
+            {/* Header */}
+            <div className="flex items-center gap-2 mb-2">
+                <div
+                    {...dragHandleProps}
+                    className="text-[#D2D2D7] dark:text-k-text-quaternary hover:text-[#8E8E93] dark:hover:text-k-text-secondary cursor-grab active:cursor-grabbing touch-none transition-colors"
+                >
+                    <GripVertical className="w-4 h-4" />
+                </div>
+
+                <Activity className="w-4 h-4 text-cyan-500 dark:text-cyan-400 shrink-0" />
+                <span className="text-sm font-medium text-cyan-600 dark:text-cyan-400 flex-1">Aeróbio</span>
+
+                <button
+                    onClick={() => setIsExpanded(false)}
+                    className="text-[#D2D2D7] dark:text-k-text-quaternary hover:text-[#8E8E93] dark:hover:text-k-text-secondary p-1 transition-colors"
+                >
+                    <ChevronUp className="w-4 h-4" />
+                </button>
+
+                <button
+                    onClick={onDelete}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity text-[#D2D2D7] hover:text-red-400 p-1"
+                >
+                    <Trash2 className="w-4 h-4" />
+                </button>
+            </div>
+
+            {/* Row 1: Mode toggle + Equipment select */}
+            <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
+                {/* Mode segmented control */}
+                <div className="inline-flex rounded-full overflow-hidden h-7 gap-1">
+                    <button
+                        onClick={() => updateConfig({ mode: 'continuous' })}
+                        className={`px-3 text-xs font-medium rounded-full transition-all ${
+                            mode === 'continuous'
+                                ? 'bg-cyan-50 dark:bg-cyan-500/15 text-cyan-700 dark:text-cyan-300'
+                                : 'bg-transparent text-[#8E8E93] dark:text-k-text-quaternary hover:bg-gray-50 dark:hover:bg-glass-bg'
+                        }`}
+                    >
+                        Contínuo
+                    </button>
+                    <button
+                        onClick={() => updateConfig({ mode: 'interval' })}
+                        className={`px-3 text-xs font-medium rounded-full transition-all ${
+                            mode === 'interval'
+                                ? 'bg-cyan-50 dark:bg-cyan-500/15 text-cyan-700 dark:text-cyan-300'
+                                : 'bg-transparent text-[#8E8E93] dark:text-k-text-quaternary hover:bg-gray-50 dark:hover:bg-glass-bg'
+                        }`}
+                    >
+                        Intervalado
+                    </button>
+                </div>
+
+                {/* Equipment select */}
+                <select
+                    value={config.equipment || ''}
+                    onChange={(e) => updateConfig({ equipment: (e.target.value || undefined) as CardioEquipment | undefined })}
+                    className="h-7 bg-transparent border-0 border-b border-[#D2D2D7] dark:border-slate-600 text-sm text-k-text-primary focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-400 cursor-pointer transition-colors"
+                >
+                    <option value="">Selecionar...</option>
+                    {CARDIO_EQUIPMENT_OPTIONS.map(eq => (
+                        <option key={eq} value={eq}>{CARDIO_EQUIPMENT_LABELS[eq]}</option>
+                    ))}
+                </select>
+            </div>
+
+            {/* Continuous Mode */}
+            {mode === 'continuous' && (
+                <div className="space-y-2">
+                    {/* Objective chips */}
+                    <div className="flex items-center gap-1.5">
+                        {(['time', 'distance'] as const).map(obj => {
+                            const isSelected = objective === obj
+                            return (
+                                <button
+                                    key={obj}
+                                    onClick={() => updateConfig({ objective: obj })}
+                                    className={`px-2.5 py-0.5 rounded-full text-xs transition-all border cursor-pointer ${
+                                        isSelected
+                                            ? 'bg-cyan-50 dark:bg-cyan-500/15 border-cyan-300 dark:border-cyan-500/40 text-cyan-700 dark:text-cyan-300 font-medium'
+                                            : 'bg-transparent border-[#E8E8ED] dark:border-slate-700/50 text-[#8E8E93] dark:text-k-text-quaternary hover:border-cyan-300 dark:hover:border-cyan-500/30'
+                                    }`}
+                                >
+                                    {CARDIO_OBJECTIVE_LABELS[obj]}
+                                </button>
+                            )
+                        })}
+                    </div>
+
+                    {/* Duration or Distance + Intensity */}
+                    <div className="flex items-center gap-4 flex-wrap">
+                        {objective === 'time' ? (
+                            <div className="flex items-center gap-1.5">
+                                <Clock size={14} className="text-[#D2D2D7] dark:text-k-text-quaternary" />
+                                <input
+                                    type="number"
+                                    min={1}
+                                    value={config.duration_minutes || ''}
+                                    onChange={(e) => updateConfig({ duration_minutes: parseInt(e.target.value) || undefined })}
+                                    onFocus={(e) => e.target.select()}
+                                    placeholder="30"
+                                    className="w-14 h-7 bg-transparent text-k-text-primary text-sm font-medium text-center focus:outline-none border-0 border-b border-[#D2D2D7] dark:border-slate-600 focus:border-cyan-500 dark:focus:border-cyan-400 transition-colors placeholder:text-[#D2D2D7]"
+                                />
+                                <span className="text-xs text-[#8E8E93] dark:text-k-text-quaternary">min</span>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-1.5">
+                                <Activity size={14} className="text-[#D2D2D7] dark:text-k-text-quaternary" />
+                                <input
+                                    type="number"
+                                    min={0}
+                                    step={0.1}
+                                    value={config.distance_km || ''}
+                                    onChange={(e) => updateConfig({ distance_km: parseFloat(e.target.value) || undefined })}
+                                    onFocus={(e) => e.target.select()}
+                                    placeholder="5"
+                                    className="w-14 h-7 bg-transparent text-k-text-primary text-sm font-medium text-center focus:outline-none border-0 border-b border-[#D2D2D7] dark:border-slate-600 focus:border-cyan-500 dark:focus:border-cyan-400 transition-colors placeholder:text-[#D2D2D7]"
+                                />
+                                <span className="text-xs text-[#8E8E93] dark:text-k-text-quaternary">km</span>
+                            </div>
+                        )}
+
+                        {/* Intensity */}
+                        <div className="flex items-center gap-1.5 flex-1 min-w-[180px]">
+                            <Zap size={14} className="text-[#D2D2D7] dark:text-k-text-quaternary shrink-0" />
+                            <input
+                                type="text"
+                                value={config.intensity || ''}
+                                onChange={(e) => updateConfig({ intensity: e.target.value || undefined })}
+                                placeholder="Ex: Zona 2, RPE 6, 130bpm"
+                                className="flex-1 h-7 bg-transparent text-k-text-primary text-sm font-medium focus:outline-none border-0 border-b border-[#D2D2D7] dark:border-slate-600 focus:border-cyan-500 dark:focus:border-cyan-400 transition-colors placeholder:text-[#D2D2D7]"
+                            />
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Interval Mode */}
+            {mode === 'interval' && (
+                <div className="space-y-2">
+                    {/* Protocol row */}
+                    <div className="flex items-center gap-3 flex-wrap">
+                        {/* Work */}
+                        <div className="flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
+                            <input
+                                type="number"
+                                min={1}
+                                value={config.intervals?.work_seconds || ''}
+                                onChange={(e) => updateConfig({
+                                    intervals: {
+                                        work_seconds: parseInt(e.target.value) || 30,
+                                        rest_seconds: config.intervals?.rest_seconds || 15,
+                                        rounds: config.intervals?.rounds || 8,
+                                    }
+                                })}
+                                onFocus={(e) => e.target.select()}
+                                placeholder="30"
+                                className="w-14 h-7 bg-transparent text-k-text-primary text-sm font-medium text-center focus:outline-none border-0 border-b border-[#D2D2D7] dark:border-slate-600 focus:border-red-400 dark:focus:border-red-400 transition-colors placeholder:text-[#D2D2D7]"
+                            />
+                            <span className="text-xs text-[#8E8E93] dark:text-k-text-quaternary">s</span>
+                        </div>
+
+                        {/* Rest */}
+                        <div className="flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+                            <input
+                                type="number"
+                                min={1}
+                                value={config.intervals?.rest_seconds || ''}
+                                onChange={(e) => updateConfig({
+                                    intervals: {
+                                        work_seconds: config.intervals?.work_seconds || 30,
+                                        rest_seconds: parseInt(e.target.value) || 15,
+                                        rounds: config.intervals?.rounds || 8,
+                                    }
+                                })}
+                                onFocus={(e) => e.target.select()}
+                                placeholder="15"
+                                className="w-14 h-7 bg-transparent text-k-text-primary text-sm font-medium text-center focus:outline-none border-0 border-b border-[#D2D2D7] dark:border-slate-600 focus:border-emerald-400 dark:focus:border-emerald-400 transition-colors placeholder:text-[#D2D2D7]"
+                            />
+                            <span className="text-xs text-[#8E8E93] dark:text-k-text-quaternary">s</span>
+                        </div>
+
+                        {/* Rounds */}
+                        <div className="flex items-center gap-1.5">
+                            <Repeat size={14} className="text-[#8E8E93] dark:text-k-text-tertiary" />
+                            <input
+                                type="number"
+                                min={1}
+                                value={config.intervals?.rounds || ''}
+                                onChange={(e) => updateConfig({
+                                    intervals: {
+                                        work_seconds: config.intervals?.work_seconds || 30,
+                                        rest_seconds: config.intervals?.rest_seconds || 15,
+                                        rounds: parseInt(e.target.value) || 8,
+                                    }
+                                })}
+                                onFocus={(e) => e.target.select()}
+                                placeholder="8"
+                                className="w-14 h-7 bg-transparent text-k-text-primary text-sm font-medium text-center focus:outline-none border-0 border-b border-[#D2D2D7] dark:border-slate-600 focus:border-cyan-500 dark:focus:border-cyan-400 transition-colors placeholder:text-[#D2D2D7]"
+                            />
+                            <span className="text-xs text-[#8E8E93] dark:text-k-text-quaternary">séries</span>
+                        </div>
+
+                        {/* Estimated duration inline */}
+                        {config.intervals && estimatedIntervalDuration > 0 && (
+                            <span className="text-xs text-[#D2D2D7] dark:text-k-text-quaternary italic">
+                                ≈ {estMin > 0 ? `${estMin}min ` : ''}{estSec > 0 ? `${estSec}s` : ''}
+                            </span>
+                        )}
+                    </div>
+
+                    {/* Intensity (optional) */}
+                    <div className="flex items-center gap-1.5 flex-1">
+                        <Zap size={14} className="text-[#D2D2D7] dark:text-k-text-quaternary shrink-0" />
+                        <input
+                            type="text"
+                            value={config.intensity || ''}
+                            onChange={(e) => updateConfig({ intensity: e.target.value || undefined })}
+                            placeholder="Intensidade (ex: Zona 2, RPE 6, 130bpm)"
+                            className="flex-1 h-7 bg-transparent text-k-text-primary text-sm font-medium focus:outline-none border-0 border-b border-[#D2D2D7] dark:border-slate-600 focus:border-cyan-500 dark:focus:border-cyan-400 transition-colors placeholder:text-[#D2D2D7]"
+                        />
+                    </div>
+                </div>
+            )}
+
+            {/* Technical note */}
+            <div className="mt-2">
+                <TechnicalNote
+                    value={config.notes || ''}
+                    onChange={(v) => updateConfig({ notes: v || undefined })}
+                    readonly={false}
+                />
+            </div>
         </div>
     )
 }

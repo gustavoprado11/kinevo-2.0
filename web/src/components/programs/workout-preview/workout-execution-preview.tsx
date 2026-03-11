@@ -6,6 +6,8 @@ import { PhoneFrame } from './phone-frame'
 import { PreviewExerciseCard } from './preview-exercise-card'
 import { PreviewSupersetGroup } from './preview-superset-group'
 import { PreviewNoteCard } from './preview-note-card'
+import { PreviewWarmupCard } from './preview-warmup-card'
+import { PreviewCardioCard } from './preview-cardio-card'
 import { builderItemsToPreview } from './builder-to-preview'
 import { colors, spacing, typography } from './preview-design-tokens'
 import type { WorkoutItem } from '../program-builder-client'
@@ -111,6 +113,13 @@ export function WorkoutExecutionPreview({ workoutName, items }: WorkoutExecution
                                 supersetRestSeconds={item.supersetRestSeconds}
                             />
                         )
+                    }
+
+                    if (item.type === 'warmup_cardio') {
+                        if (item.item.itemType === 'warmup') {
+                            return <PreviewWarmupCard key={item.item.id} item={item.item} />
+                        }
+                        return <PreviewCardioCard key={item.item.id} item={item.item} />
                     }
 
                     if (item.type === 'exercise') {

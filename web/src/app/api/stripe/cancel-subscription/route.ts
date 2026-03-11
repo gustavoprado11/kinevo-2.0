@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
             })
             : 'fim do ciclo atual'
 
-        await insertTrainerNotification({
+        const cancelNotifId = await insertTrainerNotification({
             trainerId: contract.trainer_id,
             type: 'subscription_canceled',
             title: 'Assinatura cancelada',
@@ -147,10 +147,11 @@ export async function POST(request: NextRequest) {
 
         sendTrainerPush({
             trainerId: contract.trainer_id,
-            type: 'payment_overdue',
+            type: 'subscription_canceled',
             title: 'Assinatura cancelada',
             body: `O aluno ${student.name} cancelou a assinatura "${planTitle}". Acesso até ${periodEnd}.`,
-            data: { student_id: student.id, contract_id: contract.id },
+            notificationId: cancelNotifId ?? undefined,
+            data: { type: 'subscription_canceled', student_id: student.id, contract_id: contract.id },
         })
 
         return NextResponse.json({

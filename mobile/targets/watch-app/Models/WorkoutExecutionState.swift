@@ -7,6 +7,13 @@ enum FinishState: String, Codable {
     case acknowledged   // iPhone confirmed save via SYNC_SUCCESS
 }
 
+/// Execution state for a cardio item.
+struct CardioExecutionState: Codable, Equatable {
+    let itemId: String
+    var isCompleted: Bool = false
+    var elapsedSeconds: Int = 0
+}
+
 /// Persistent model for in-progress workout execution on the Watch.
 /// Serialized to JSON after every meaningful mutation.
 struct WorkoutExecutionState: Codable, Equatable {
@@ -18,6 +25,7 @@ struct WorkoutExecutionState: Codable, Equatable {
     var exercises: [ExerciseState]
     var lastPersistedAt: Date
     var finishState: FinishState
+    var cardioStates: [CardioExecutionState]
 
     /// Custom decoding to support older persisted state that lacks finishState.
     init(from decoder: Decoder) throws {
@@ -30,6 +38,7 @@ struct WorkoutExecutionState: Codable, Equatable {
         exercises = try container.decode([ExerciseState].self, forKey: .exercises)
         lastPersistedAt = try container.decode(Date.self, forKey: .lastPersistedAt)
         finishState = try container.decodeIfPresent(FinishState.self, forKey: .finishState) ?? .none
+        cardioStates = try container.decodeIfPresent([CardioExecutionState].self, forKey: .cardioStates) ?? []
     }
 
     init(
@@ -40,7 +49,8 @@ struct WorkoutExecutionState: Codable, Equatable {
         exerciseIndex: Int,
         exercises: [ExerciseState],
         lastPersistedAt: Date,
-        finishState: FinishState = .none
+        finishState: FinishState = .none,
+        cardioStates: [CardioExecutionState] = []
     ) {
         self.workoutId = workoutId
         self.workoutName = workoutName
@@ -50,6 +60,7 @@ struct WorkoutExecutionState: Codable, Equatable {
         self.exercises = exercises
         self.lastPersistedAt = lastPersistedAt
         self.finishState = finishState
+        self.cardioStates = cardioStates
     }
 
     struct ExerciseState: Codable, Equatable, Identifiable {
@@ -130,6 +141,10 @@ struct WorkoutExecutionState: Codable, Equatable {
             ?? WatchDateParser.parseISO8601(snapshot.updatedAt)
             ?? Date()
 
+        let cardioStates = snapshot.cardioItems.map { item in
+            CardioExecutionState(itemId: item.id)
+        }
+
         let maxIndex = max(0, exercises.count - 1)
         let startIndex = min(max(snapshot.currentExerciseIndex, 0), maxIndex)
 
@@ -140,7 +155,8 @@ struct WorkoutExecutionState: Codable, Equatable {
             hasStarted: snapshot.isActive,
             exerciseIndex: startIndex,
             exercises: exercises,
-            lastPersistedAt: Date()
+            lastPersistedAt: Date(),
+            cardioStates: cardioStates
         )
     }
 
@@ -158,6 +174,16 @@ struct WorkoutExecutionState: Codable, Equatable {
             return [
                 "id": ex.id,
                 "sets": setsPayload,
+            ]
+        }
+    }
+
+    /// Build the cardio payload for sendFinishWorkout.
+    func buildCardioPayload() -> [[String: Any]] {
+        cardioStates.filter(\.isCompleted).map { cardio in
+            [
+                "itemId": cardio.itemId,
+                "elapsedSeconds": cardio.elapsedSeconds,
             ]
         }
     }

@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { getTrainerWithSubscription } from '@/lib/auth/get-trainer'
 import { ProgramBuilderClient, type Exercise } from '@/components/programs'
+import { getFormTemplatesForTriggers } from '@/actions/programs/get-form-templates-for-triggers'
 
 export default async function EditProgramPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params
@@ -32,20 +33,13 @@ export default async function EditProgramPage({ params }: { params: Promise<{ id
                     reps,
                     rest_seconds,
                     notes,
-                    exercise_function
+                    exercise_function,
+                    item_config
                 )
             )
         `)
         .eq('id', id)
-        .eq('id', id)
         .single()
-
-    if (program) {
-        console.log('SERVER LOG: Fetched program:', program.name)
-        program.workout_templates.forEach((wt: any) => {
-            console.log(`SERVER LOG: Workout ${wt.name} frequency:`, wt.frequency)
-        })
-    }
 
     if (!program) {
         redirect('/programs')
@@ -89,11 +83,39 @@ export default async function EditProgramPage({ params }: { params: Promise<{ id
         updated_at: new Date().toISOString()
     }))
 
+    // Fetch form templates and existing triggers for this program
+    const [triggerResult, { data: existingTriggers }] = await Promise.all([
+        getFormTemplatesForTriggers(),
+        supabase
+            .from('program_form_triggers')
+            .select('trigger_type, form_template_id, form_templates(title, category)')
+            .eq('program_template_id', id)
+            .eq('is_active', true),
+    ])
+
+    const preTrigger = existingTriggers?.find((t: any) => t.trigger_type === 'pre_workout')
+    const postTrigger = existingTriggers?.find((t: any) => t.trigger_type === 'post_workout')
+
+    const initialFormTriggers = {
+        preWorkout: preTrigger ? {
+            formTemplateId: preTrigger.form_template_id,
+            formTitle: (preTrigger as any).form_templates?.title || '',
+            formCategory: (preTrigger as any).form_templates?.category || '',
+        } : null,
+        postWorkout: postTrigger ? {
+            formTemplateId: postTrigger.form_template_id,
+            formTitle: (postTrigger as any).form_templates?.title || '',
+            formCategory: (postTrigger as any).form_templates?.category || '',
+        } : null,
+    }
+
     return (
         <ProgramBuilderClient
             trainer={trainer}
             program={program}
             exercises={mappedExercises}
+            formTriggerTemplates={triggerResult.templates || []}
+            initialFormTriggers={initialFormTriggers}
         />
     )
 }

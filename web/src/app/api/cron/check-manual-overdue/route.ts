@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
             const studentName = student?.name ?? 'Aluno'
 
             // Notify trainer
-            await insertTrainerNotification({
+            const overdueNotifId = await insertTrainerNotification({
                 trainerId: contract.trainer_id,
                 type: 'financial_alert',
                 title: 'Pagamento manual vencido',
@@ -87,7 +87,8 @@ export async function GET(request: NextRequest) {
                 type: 'payment_overdue',
                 title: 'Pagamento manual vencido',
                 body: `${studentName} tem pagamento manual vencido há ${daysOverdue} dia${daysOverdue !== 1 ? 's' : ''}.`,
-                data: { student_id: contract.student_id, contract_id: contract.id },
+                notificationId: overdueNotifId ?? undefined,
+                data: { type: 'payment_overdue', student_id: contract.student_id, contract_id: contract.id },
             })
             notifiedCount++
         }

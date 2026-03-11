@@ -9,6 +9,7 @@ export interface StudentProfile {
     phone: string | null;
     avatar_url: string | null;
     status: string;
+    coach_id: string | null;
     coach?: {
         name: string;
         avatar_url: string | null;
@@ -27,7 +28,7 @@ export function useStudentProfile() {
         try {
             const { data, error }: { data: any; error: any } = await supabase
                 .from("students" as any)
-                .select("id, name, email, phone, avatar_url, status, trainers:coach_id (name, avatar_url)")
+                .select("id, name, email, phone, avatar_url, status, coach_id, trainers:coach_id (name, avatar_url)")
                 .eq("auth_user_id", user.id)
                 .maybeSingle();
 
@@ -41,6 +42,7 @@ export function useStudentProfile() {
                     phone: data.phone,
                     avatar_url: data.avatar_url,
                     status: data.status,
+                    coach_id: data.coach_id || null,
                     coach: data.trainers ? {
                         name: data.trainers.name,
                         avatar_url: data.trainers.avatar_url

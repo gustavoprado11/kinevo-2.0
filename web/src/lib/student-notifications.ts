@@ -12,10 +12,11 @@ interface StudentNotificationParams {
 /**
  * Insert a notification into the student inbox.
  * Non-blocking — never throws. A failed notification should not break the calling flow.
+ * Returns the inserted inbox item ID (or null on failure).
  */
-export async function insertStudentNotification(params: StudentNotificationParams): Promise<void> {
+export async function insertStudentNotification(params: StudentNotificationParams): Promise<string | null> {
     try {
-        const { error } = await supabaseAdmin
+        const { data, error } = await supabaseAdmin
             .from('student_inbox_items')
             .insert({
                 student_id: params.studentId,
@@ -26,11 +27,17 @@ export async function insertStudentNotification(params: StudentNotificationParam
                 subtitle: params.subtitle ?? null,
                 payload: params.payload ?? {},
             })
+            .select('id')
+            .single()
 
         if (error) {
             console.error('[student-notifications] Insert failed:', error.message)
+            return null
         }
+
+        return data?.id ?? null
     } catch (err) {
         console.error('[student-notifications] Unexpected error:', err)
+        return null
     }
 }

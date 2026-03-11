@@ -4,6 +4,8 @@ import crypto from 'crypto'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { revalidatePath } from 'next/cache'
+import { insertTrainerNotification } from '@/lib/trainer-notifications'
+import { sendTrainerPush } from '@/lib/push-notifications'
 
 export async function createStudent(data: {
     name: string
@@ -69,6 +71,27 @@ export async function createStudent(data: {
         }
 
         revalidatePath('/students')
+
+        // Notify trainer (fire-and-forget)
+        insertTrainerNotification({
+            trainerId: trainer.id,
+            type: 'new_student',
+            title: 'Novo aluno vinculado',
+            message: `${data.name.trim()} foi adicionado à sua lista.`,
+            metadata: {
+                student_id: studentRow.id as string,
+                student_name: data.name.trim(),
+            },
+        }).then((notifId) => {
+            sendTrainerPush({
+                trainerId: trainer.id,
+                type: 'new_student',
+                title: 'Novo aluno vinculado',
+                body: `${data.name.trim()} foi adicionado à sua lista.`,
+                notificationId: notifId ?? undefined,
+                data: { type: 'new_student', student_id: studentRow.id as string },
+            })
+        })
 
         return {
             success: true,

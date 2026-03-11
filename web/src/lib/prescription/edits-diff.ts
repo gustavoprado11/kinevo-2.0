@@ -160,6 +160,7 @@ function diffWorkoutItems(
     const finalByExerciseId = new Map<string, number[]>()
     for (let fi = 0; fi < finalItems.length; fi++) {
         const id = finalItems[fi].exercise_id
+        if (!id) continue
         const list = finalByExerciseId.get(id) || []
         list.push(fi)
         finalByExerciseId.set(id, list)
@@ -213,6 +214,7 @@ function diffWorkoutItems(
         if (matchedOriginal.has(i) || matchedFinal.has(i)) continue
 
         const origExId = origItems[i].exercise_id
+        if (!origExId) continue
         const finalCandidates = finalByExerciseId.get(origExId) || []
         const unmatchedCandidate = finalCandidates.find(fi => !matchedFinal.has(fi) && fi !== i)
 
@@ -281,7 +283,7 @@ function computeSimpleVolume(workouts: GeneratedWorkout[]): Record<string, numbe
         const freq = Math.max(1, workout.scheduled_days.length)
         for (const item of workout.items) {
             const group = item.exercise_muscle_group
-            if (!group) continue
+            if (!group || item.sets == null) continue
             volume[group] = (volume[group] || 0) + item.sets * freq
         }
     }
@@ -318,11 +320,11 @@ function computeVolumeChanges(
 
 function toSnapshot(item: GeneratedWorkoutItem): TrainerEditItemSnapshot {
     return {
-        exercise_id: item.exercise_id,
-        exercise_name: item.exercise_name,
-        exercise_muscle_group: item.exercise_muscle_group,
-        sets: item.sets,
-        reps: item.reps,
-        rest_seconds: item.rest_seconds,
+        exercise_id: item.exercise_id ?? '',
+        exercise_name: item.exercise_name ?? '',
+        exercise_muscle_group: item.exercise_muscle_group ?? '',
+        sets: item.sets ?? 0,
+        reps: item.reps ?? '',
+        rest_seconds: item.rest_seconds ?? 0,
     }
 }

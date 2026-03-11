@@ -7,7 +7,16 @@ interface Props {
     answer: any; // { value: string | number } or { files: string[] }
 }
 
-export function AnswerRenderer({ question, answer }: Props) {
+export function AnswerRenderer({ question: rawQuestion, answer }: Props) {
+    // Normalize options: plain strings → { value, label } objects
+    const question = {
+        ...rawQuestion,
+        options: rawQuestion.options
+            ? rawQuestion.options.map((opt: any, i: number) =>
+                typeof opt === "string" ? { value: `opt_${i + 1}`, label: opt } : opt
+            )
+            : undefined,
+    };
     const value = answer?.value;
     const files = answer?.files;
 
@@ -105,16 +114,17 @@ function renderAnswer(question: SchemaQuestion, value: any, files: any) {
             }
             return (
                 <View>
-                    <View style={{ flexDirection: "row", justifyContent: "center", gap: 6 }}>
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 6 }}>
                         {items.map((num) => {
                             const isSelected = num === selected;
+                            const btnSize = items.length > 7 ? 30 : 36;
                             return (
                                 <View
                                     key={num}
                                     style={{
-                                        width: 36,
-                                        height: 36,
-                                        borderRadius: 18,
+                                        width: btnSize,
+                                        height: btnSize,
+                                        borderRadius: btnSize / 2,
                                         backgroundColor: isSelected ? "#7c3aed" : "#f1f5f9",
                                         alignItems: "center",
                                         justifyContent: "center",
@@ -122,7 +132,7 @@ function renderAnswer(question: SchemaQuestion, value: any, files: any) {
                                 >
                                     <Text
                                         style={{
-                                            fontSize: 14,
+                                            fontSize: items.length > 7 ? 12 : 14,
                                             fontWeight: "600",
                                             color: isSelected ? "#ffffff" : "#64748b",
                                         }}

@@ -13,6 +13,8 @@ interface FinishPayload {
     exercises: ExerciseData[]
     rpe: number | null
     feedback: string | null
+    preWorkoutSubmissionId: string | null
+    postWorkoutSubmissionId: string | null
 }
 
 interface FinishResult {
@@ -62,6 +64,8 @@ export async function finishTrainingRoomWorkout(payload: FinishPayload): Promise
             sync_status: 'synced',
             rpe: payload.rpe,
             feedback: payload.feedback,
+            pre_workout_submission_id: payload.preWorkoutSubmissionId,
+            post_workout_submission_id: payload.postWorkoutSubmissionId,
         })
         .select('id')
         .single()
@@ -74,6 +78,38 @@ export async function finishTrainingRoomWorkout(payload: FinishPayload): Promise
     const setLogs: any[] = []
 
     for (const exercise of payload.exercises) {
+        // Cardio items: persist a single set_log with config data in notes
+        if (exercise.item_type === 'cardio' && exercise.setsData.length > 0 && exercise.setsData[0].completed) {
+            const config = exercise.item_config || {}
+            const notesJson = JSON.stringify({
+                mode: config.mode || 'continuous',
+                equipment: config.equipment,
+                duration_minutes: config.duration_minutes,
+                distance_km: config.distance_km,
+                intensity: config.intensity,
+                intervals: config.intervals,
+            })
+            setLogs.push({
+                workout_session_id: session.id,
+                assigned_workout_item_id: exercise.id,
+                planned_exercise_id: exercise.planned_exercise_id || exercise.exercise_id,
+                executed_exercise_id: exercise.exercise_id,
+                swap_source: exercise.swap_source || 'none',
+                exercise_id: exercise.exercise_id,
+                set_number: 1,
+                weight: 0,
+                reps_completed: 1,
+                is_completed: true,
+                completed_at: new Date().toISOString(),
+                weight_unit: 'kg',
+                notes: notesJson,
+            })
+            continue
+        }
+
+        // Warmup items: visual-only, no persistence
+        if (exercise.item_type === 'warmup') continue
+
         for (let i = 0; i < exercise.setsData.length; i++) {
             const set = exercise.setsData[i]
             if (set.completed) {

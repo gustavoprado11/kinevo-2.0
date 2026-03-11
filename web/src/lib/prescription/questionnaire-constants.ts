@@ -196,6 +196,29 @@ export const PRESCRIPTION_QUESTIONNAIRE_SCHEMA = {
                 { value: 'sem_cardio', label: 'Só musculação, sem cardio' },
             ],
         },
+        {
+            id: 'warmup_preference',
+            type: 'single_choice',
+            label: 'Como você prefere aquecer antes do treino?',
+            required: false,
+            options: [
+                { value: 'structured', label: 'Quero um aquecimento estruturado no programa' },
+                { value: 'own', label: 'Já tenho meu próprio aquecimento' },
+                { value: 'none', label: 'Não costumo aquecer' },
+            ],
+        },
+        {
+            id: 'cardio_preference',
+            type: 'single_choice',
+            label: 'Deseja incluir exercício aeróbio no programa?',
+            required: false,
+            options: [
+                { value: 'yes_continuous', label: 'Sim, cardio contínuo (esteira, bike, etc.)' },
+                { value: 'yes_hiit', label: 'Sim, intervalado/HIIT' },
+                { value: 'yes_both', label: 'Sim, ambos' },
+                { value: 'no', label: 'Não, apenas musculação' },
+            ],
+        },
 
         // ─────────────────────────────────────────────
         // SEÇÃO 5 — Contexto de Vida

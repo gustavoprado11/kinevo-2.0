@@ -13,6 +13,7 @@ import type { DragEndEvent } from '@dnd-kit/core'
 import { SortableWorkoutTab } from './sortable-workout-tab'
 import { ExerciseLibraryPanel } from './exercise-library-panel'
 import { VolumeSummary } from './volume-summary'
+import { ProgramFormTriggers, type InitialTrigger } from './program-form-triggers'
 
 import type { Exercise } from '@/types/exercise'
 import { capturePostAssignmentEdits } from '@/actions/prescription/capture-post-assignment-edits'
@@ -26,7 +27,7 @@ import type { BuilderViewMode } from './program-builder-client'
 
 export interface WorkoutItem {
     id: string
-    item_type: 'exercise' | 'superset' | 'note'
+    item_type: 'exercise' | 'superset' | 'note' | 'warmup' | 'cardio'
     order_index: number
     parent_item_id: string | null
     exercise_id: string | null
@@ -36,6 +37,8 @@ export interface WorkoutItem {
     reps: string | null
     rest_seconds: number | null
     notes: string | null
+    exercise_function?: string | null
+    item_config?: Record<string, any>
     children?: WorkoutItem[]
 }
 
@@ -87,12 +90,17 @@ interface EditAssignedProgramClientProps {
     program: AssignedProgramData
     exercises: Exercise[]
     studentId: string
+    /** Read-only form triggers inherited from the source program template */
+    formTriggers?: {
+        preWorkout: InitialTrigger | null
+        postWorkout: InitialTrigger | null
+    }
 }
 
 // Generate temp ID for new items
 const tempId = () => `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 
-export function EditAssignedProgramClient({ trainer, program, exercises, studentId }: EditAssignedProgramClientProps) {
+export function EditAssignedProgramClient({ trainer, program, exercises, studentId, formTriggers: initialFormTriggers }: EditAssignedProgramClientProps) {
     const router = useRouter()
     const tabDndId = useId()
 
@@ -249,7 +257,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                     .sort((a, b) => a.order_index - b.order_index)
                     .map(item => ({
                         id: item.id,
-                        item_type: item.item_type as 'exercise' | 'superset' | 'note',
+                        item_type: item.item_type as WorkoutItem['item_type'],
                         order_index: item.order_index,
                         parent_item_id: null,
                         exercise_id: item.exercise_id,
@@ -259,12 +267,13 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                         reps: item.reps,
                         rest_seconds: item.rest_seconds,
                         notes: item.notes,
+                        item_config: (item as any).item_config || {},
                         children: items
                             .filter(child => child.parent_item_id === item.id)
                             .sort((a, b) => a.order_index - b.order_index)
                             .map(child => ({
                                 id: child.id,
-                                item_type: child.item_type as 'exercise' | 'superset' | 'note',
+                                item_type: child.item_type as WorkoutItem['item_type'],
                                 order_index: child.order_index,
                                 parent_item_id: item.id,
                                 exercise_id: child.exercise_id,
@@ -663,6 +672,50 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
         }))
     }
 
+    const addWarmup = (workoutId: string) => {
+        setWorkouts(prev => prev.map(w => {
+            if (w.id !== workoutId) return w
+            return {
+                ...w,
+                items: [...w.items, {
+                    id: tempId(),
+                    item_type: 'warmup' as const,
+                    order_index: w.items.length,
+                    parent_item_id: null,
+                    exercise_id: null,
+                    substitute_exercise_ids: [],
+                    sets: null,
+                    reps: null,
+                    rest_seconds: null,
+                    notes: null,
+                    item_config: { warmup_type: 'free' },
+                }]
+            }
+        }))
+    }
+
+    const addCardio = (workoutId: string) => {
+        setWorkouts(prev => prev.map(w => {
+            if (w.id !== workoutId) return w
+            return {
+                ...w,
+                items: [...w.items, {
+                    id: tempId(),
+                    item_type: 'cardio' as const,
+                    order_index: w.items.length,
+                    parent_item_id: null,
+                    exercise_id: null,
+                    substitute_exercise_ids: [],
+                    sets: null,
+                    reps: null,
+                    rest_seconds: null,
+                    notes: null,
+                    item_config: { mode: 'continuous', objective: 'time' },
+                }]
+            }
+        }))
+    }
+
     const updateItem = (workoutId: string, itemId: string, updates: Partial<WorkoutItem>) => {
         setWorkouts(prev => prev.map(w => {
             if (w.id !== workoutId) return w
@@ -901,6 +954,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                         reps: item.reps,
                         rest_seconds: item.rest_seconds,
                         notes: item.notes,
+                        item_config: item.item_config || {},
                         parent_item_id: null,
                         // Snapshot data
                         exercise_name: item.exercise?.name,
@@ -941,6 +995,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                                 reps: child.reps,
                                 rest_seconds: child.rest_seconds,
                                 notes: child.notes,
+                                item_config: child.item_config || {},
                                 parent_item_id: itemId,
                                 // Snapshot
                                 exercise_name: child.exercise?.name,
@@ -1049,6 +1104,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                             reps: item.reps,
                             rest_seconds: item.rest_seconds,
                             notes: item.notes,
+                            item_config: item.item_config || {},
                         })
                         .select('id')
                         .single()
@@ -1070,6 +1126,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                                     reps: child.reps,
                                     rest_seconds: child.rest_seconds,
                                     notes: child.notes,
+                                    item_config: child.item_config || {},
                                 })
                             if (childError) throw childError
                         }
@@ -1225,6 +1282,16 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                 {/* Weekly Volume Summary */}
                 <VolumeSummary workouts={workouts} />
 
+                {/* Form Triggers (read-only — inherited from source template) */}
+                {initialFormTriggers && (initialFormTriggers.preWorkout || initialFormTriggers.postWorkout) && (
+                    <ProgramFormTriggers
+                        initialTriggers={initialFormTriggers}
+                        availableTemplates={[]}
+                        onChange={() => {}}
+                        readOnly
+                    />
+                )}
+
                 {/* Workspace (Layout Columns) — identical to program-builder-client */}
                 <div className="flex flex-1 overflow-hidden">
                     {/* Left Panel: Exercise Library */}
@@ -1347,7 +1414,12 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                             {/* Workout Canvas — drop zone for exercises from library */}
                             <div
                                 ref={canvasScrollRef}
-                                onScroll={(e) => setIsCanvasScrolled(e.currentTarget.scrollTop > 40)}
+                                onScroll={(e) => {
+                                    const scrollTop = e.currentTarget.scrollTop
+                                    // Hysteresis: different thresholds up/down to prevent feedback loop
+                                    const shouldBeScrolled = isCanvasScrolled ? scrollTop > 10 : scrollTop > 60
+                                    if (shouldBeScrolled !== isCanvasScrolled) setIsCanvasScrolled(shouldBeScrolled)
+                                }}
                                 onDragOver={handleCanvasDragOver}
                                 onDragLeave={handleCanvasDragLeave}
                                 onDrop={handleCanvasDrop}
@@ -1361,6 +1433,8 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                                             onUpdateName={(newName) => updateWorkoutName(activeWorkout.id, newName)}
                                             onAddExercise={() => { }}
                                             onAddNote={() => addNote(activeWorkout.id)}
+                                            onAddWarmup={() => addWarmup(activeWorkout.id)}
+                                            onAddCardio={() => addCardio(activeWorkout.id)}
                                             onUpdateItem={(itemId, updates) => updateItem(activeWorkout.id, itemId, updates)}
                                             onDeleteItem={(itemId) => deleteItem(activeWorkout.id, itemId)}
                                             onMoveItem={(itemId, dir) => moveItem(activeWorkout.id, itemId, dir)}
@@ -1372,6 +1446,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                                             onUpdateFrequency={(days) => updateWorkoutFrequency(activeWorkout.id, days)}
                                             occupiedDays={occupiedDays}
                                             isScrolled={isCanvasScrolled}
+                                            scrollContainerRef={canvasScrollRef}
                                         />
                                     ) : (
                                         <div className="text-center py-20">

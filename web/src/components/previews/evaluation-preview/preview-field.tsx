@@ -138,7 +138,7 @@ export function PreviewField({ question }: PreviewFieldProps) {
         // Mock: select the second-to-last value for realism
         const mockSelected = values.length >= 2 ? values[values.length - 2] : values[0]
         return (
-            <div style={{ marginTop: spacing.fieldMarginTop, display: 'flex', flexDirection: 'row', gap: spacing.scaleGap }}>
+            <div style={{ marginTop: spacing.fieldMarginTop, display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: spacing.scaleGap }}>
                 {values.map((value) => {
                     const isSelected = value === mockSelected
                     return (

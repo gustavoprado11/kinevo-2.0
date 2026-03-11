@@ -106,7 +106,7 @@ struct WorkoutListView: View {
                         .minimumScaleFactor(0.8)
 
                     HStack(spacing: 6) {
-                        Text("\(workout.exercises.count) exercícios")
+                        Text(workoutItemsLabel(workout))
                             .font(.system(size: 11))
                             .foregroundColor(.kinevoTextSecondary)
 
@@ -289,6 +289,15 @@ struct WorkoutListView: View {
         return .kinevoTextSecondary
     }
 
+    private func workoutItemsLabel(_ workout: WatchProgramWorkoutSummary) -> String {
+        let exCount = workout.exercises.count
+        let cardioCount = workout.cardioItems.count
+        if cardioCount > 0 {
+            return "\(exCount) exercícios • \(cardioCount) aeróbio\(cardioCount > 1 ? "s" : "")"
+        }
+        return "\(exCount) exercícios"
+    }
+
     private func workoutSubtitle(workout: WatchProgramWorkoutSummary, snapshot: WatchProgramSnapshot) -> String? {
         if snapshot.scheduleMode == .scheduled {
             let dayNames = workout.scheduledDays.compactMap { shortDayName($0) }
@@ -346,6 +355,7 @@ struct WorkoutListView: View {
             workoutName: state.workoutName,
             studentName: "",
             exercises: exercises,
+            cardioItems: [],
             currentExerciseIndex: state.exerciseIndex,
             isActive: state.hasStarted,
             startedAt: formatter.string(from: state.startedAt),

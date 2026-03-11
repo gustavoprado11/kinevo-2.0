@@ -19,7 +19,8 @@
       "buildNumber": "20",
       "appleTeamId": "3D5M22J52M",
       "entitlements": {
-        "com.apple.developer.healthkit": true
+        "com.apple.developer.healthkit": true,
+        "aps-environment": "production"
       },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
@@ -34,6 +35,7 @@
         "backgroundColor": "#111019"
       },
       "package": "com.kinevo.mobile",
+      "googleServicesFile": "./google-services.json",
       "edgeToEdgeEnabled": true,
       "permissions": [
         "android.permission.RECORD_AUDIO"
@@ -51,6 +53,13 @@
         "expo-image-picker",
         {
           "photosPermission": "O Kinevo precisa de acesso à sua galeria para você alterar sua foto de perfil."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/adaptive-icon.png",
+          "color": "#7c3aed"
         }
       ],
       "@bacons/apple-targets",

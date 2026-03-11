@@ -6,6 +6,8 @@ interface SendTrainerPushParams {
     title: string
     body: string
     data?: Record<string, string>
+    /** When provided, marks push_sent_at on this trainer_notifications row after successful send. */
+    notificationId?: string
 }
 
 /**
@@ -73,6 +75,34 @@ export async function sendTrainerPush(params: SendTrainerPushParams): Promise<vo
                 console.log('[push-notifications] Token deactivated:', tokens[i].expo_push_token)
             }
         }
+
+        // Save tickets for receipt checking
+        const ticketRows = tickets
+            .map((ticket: any, i: number) => {
+                if (ticket.status === 'ok' && ticket.id) {
+                    return {
+                        ticket_id: ticket.id,
+                        push_token_id: tokens[i].id,
+                        user_id: params.trainerId,
+                        role: 'trainer',
+                        notification_id: params.notificationId ?? null,
+                    }
+                }
+                return null
+            })
+            .filter(Boolean)
+
+        if (ticketRows.length > 0) {
+            await supabaseAdmin.from('push_tickets').insert(ticketRows)
+        }
+
+        // 5. Mark push_sent_at so flush/cron won't re-send
+        if (params.notificationId) {
+            await supabaseAdmin
+                .from('trainer_notifications')
+                .update({ push_sent_at: new Date().toISOString() })
+                .eq('id', params.notificationId)
+        }
     } catch (err) {
         console.error('[push-notifications] Unexpected error:', err)
     }
@@ -87,6 +117,8 @@ interface SendStudentPushParams {
     title: string
     body: string
     data?: Record<string, string>
+    /** When provided, marks push_sent_at on this student_inbox_items row after successful send. */
+    inboxItemId?: string
 }
 
 /**
@@ -97,11 +129,19 @@ export async function sendStudentPush(params: SendStudentPushParams): Promise<vo
     try {
         const { data: student } = await supabaseAdmin
             .from('students')
-            .select('auth_user_id')
+            .select('auth_user_id, notification_preferences')
             .eq('id', params.studentId)
             .single()
 
         if (!student?.auth_user_id) return
+
+        // Check student notification preferences (null = all enabled)
+        const prefs = student.notification_preferences as { push_enabled?: boolean; categories?: Record<string, boolean> } | null
+        if (prefs) {
+            if (prefs.push_enabled === false) return
+            const notifType = params.data?.type
+            if (notifType && prefs.categories?.[notifType] === false) return
+        }
 
         const { data: tokens } = await supabaseAdmin
             .from('push_tokens')
@@ -145,6 +185,34 @@ export async function sendStudentPush(params: SendStudentPushParams): Promise<vo
                     .eq('id', tokens[i].id)
             }
         }
+
+        // Save tickets for receipt checking
+        const ticketRows = tickets
+            .map((ticket: any, i: number) => {
+                if (ticket.status === 'ok' && ticket.id) {
+                    return {
+                        ticket_id: ticket.id,
+                        push_token_id: tokens[i].id,
+                        user_id: student.auth_user_id,
+                        role: 'student',
+                        notification_id: params.inboxItemId ?? null,
+                    }
+                }
+                return null
+            })
+            .filter(Boolean)
+
+        if (ticketRows.length > 0) {
+            await supabaseAdmin.from('push_tickets').insert(ticketRows)
+        }
+
+        // Mark push_sent_at so flush/cron won't re-send
+        if (params.inboxItemId) {
+            await supabaseAdmin
+                .from('student_inbox_items')
+                .update({ push_sent_at: new Date().toISOString() })
+                .eq('id', params.inboxItemId)
+        }
     } catch (err) {
         console.error('[push-notifications] Student push error:', err)
     }
@@ -177,17 +245,13 @@ export async function processStudentPendingPush(studentId?: string): Promise<num
             studentId: item.student_id,
             title: item.title,
             body: item.subtitle ?? '',
+            inboxItemId: item.id,
             data: {
                 notificationId: item.id,
                 type: item.type,
                 ...(item.payload as Record<string, string> ?? {}),
             },
         })
-
-        await supabaseAdmin
-            .from('student_inbox_items')
-            .update({ push_sent_at: new Date().toISOString() })
-            .eq('id', item.id)
 
         sent++
     }
@@ -237,16 +301,12 @@ export async function processPendingPush(trainerId?: string): Promise<number> {
                 type: notif.type,
                 title: notif.title,
                 body: notif.message,
+                notificationId: notif.id,
                 data: {
                     notificationId: notif.id,
                     ...(notif.metadata as Record<string, string> ?? {}),
                 },
             })
-
-            await supabaseAdmin
-                .from('trainer_notifications')
-                .update({ push_sent_at: new Date().toISOString() })
-                .eq('id', notif.id)
 
             sent++
         }

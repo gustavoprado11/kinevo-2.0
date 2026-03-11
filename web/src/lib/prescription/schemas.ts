@@ -60,22 +60,26 @@ export type ExerciseNoteKey =
     | 'emphasis_priority'        // Prioritized due to trainer's emphasis request
     | null                       // No specific note
 
-/** A single exercise item in the compact generation output */
+/** A single item in the compact generation output (exercise, warmup, or cardio) */
 export interface CompactWorkoutItem {
-    /** UUID from the exercise pool provided in the prompt */
-    exercise_id: string
-    /** Number of sets (typically 2-4) */
-    sets: number
-    /** Rep range string, e.g. "8-12" */
-    reps: string
-    /** Rest between sets in seconds */
-    rest_seconds: number
-    /** Functional category within the workout */
-    exercise_function: ExerciseFunction
+    /** Item type: 'exercise' (default when absent), 'warmup', or 'cardio' */
+    item_type?: 'exercise' | 'warmup' | 'cardio'
+    /** UUID from the exercise pool (required for exercises, absent for warmup/cardio) */
+    exercise_id?: string
+    /** Number of sets (required for exercises) */
+    sets?: number
+    /** Rep range string, e.g. "8-12" (required for exercises) */
+    reps?: string
+    /** Rest between sets in seconds (required for exercises) */
+    rest_seconds?: number
+    /** Functional category within the workout (required for exercises) */
+    exercise_function?: ExerciseFunction
     /** 0-2 substitute exercise UUIDs from the pool */
-    substitute_exercise_ids: string[]
+    substitute_exercise_ids?: string[]
     /** Semantic key describing why this exercise was chosen */
-    note_key: ExerciseNoteKey
+    note_key?: ExerciseNoteKey
+    /** Configuration for warmup/cardio items */
+    item_config?: Record<string, unknown>
 }
 
 /** A single workout day in the compact generation output */
@@ -156,17 +160,23 @@ export const GENERATION_JSON_SCHEMA = {
                                 type: 'object' as const,
                                 additionalProperties: false,
                                 required: [
+                                    'item_type',
                                     'exercise_id', 'sets', 'reps', 'rest_seconds',
                                     'exercise_function', 'substitute_exercise_ids', 'note_key',
+                                    'item_config',
                                 ],
                                 properties: {
-                                    exercise_id: { type: 'string' as const },
-                                    sets: { type: 'number' as const },
-                                    reps: { type: 'string' as const },
-                                    rest_seconds: { type: 'number' as const },
-                                    exercise_function: {
+                                    item_type: {
                                         type: 'string' as const,
-                                        enum: ['warmup', 'activation', 'main', 'accessory', 'conditioning'],
+                                        enum: ['exercise', 'warmup', 'cardio'],
+                                    },
+                                    exercise_id: { type: ['string', 'null'] as const },
+                                    sets: { type: ['number', 'null'] as const },
+                                    reps: { type: ['string', 'null'] as const },
+                                    rest_seconds: { type: ['number', 'null'] as const },
+                                    exercise_function: {
+                                        type: ['string', 'null'] as const,
+                                        enum: ['warmup', 'activation', 'main', 'accessory', 'conditioning', null],
                                     },
                                     substitute_exercise_ids: {
                                         type: 'array' as const,
@@ -189,6 +199,9 @@ export const GENERATION_JSON_SCHEMA = {
                                             'emphasis_priority',
                                             null,
                                         ],
+                                    },
+                                    item_config: {
+                                        type: ['object', 'null'] as const,
                                     },
                                 },
                             },
@@ -247,11 +260,19 @@ export function validateCompactGeneration(raw: unknown): CompactGenerationOutput
         for (const item of w.items) {
             if (!item || typeof item !== 'object') return null
             const it = item as Record<string, unknown>
-            if (typeof it.exercise_id !== 'string') return null
-            if (typeof it.sets !== 'number') return null
-            if (typeof it.reps !== 'string') return null
-            if (typeof it.rest_seconds !== 'number') return null
-            if (!validFunctions.has(it.exercise_function as string)) return null
+            const itemType = (it.item_type as string) || 'exercise'
+
+            if (itemType === 'warmup' || itemType === 'cardio') {
+                // Warmup/cardio: item_config required, exercise fields optional
+                if (!it.item_config || typeof it.item_config !== 'object') return null
+            } else {
+                // Exercise: exercise_id, sets, reps, rest_seconds, exercise_function required
+                if (typeof it.exercise_id !== 'string') return null
+                if (typeof it.sets !== 'number') return null
+                if (typeof it.reps !== 'string') return null
+                if (typeof it.rest_seconds !== 'number') return null
+                if (!validFunctions.has(it.exercise_function as string)) return null
+            }
         }
     }
 
@@ -270,15 +291,33 @@ export function validateCompactGeneration(raw: unknown): CompactGenerationOutput
             name: w.name,
             order_index: typeof w.order_index === 'number' ? w.order_index : wi,
             scheduled_days: Array.isArray(w.scheduled_days) ? w.scheduled_days : [],
-            items: (w.items as any[]).map((it: any, ii: number) => ({
-                exercise_id: it.exercise_id,
-                sets: it.sets,
-                reps: it.reps,
-                rest_seconds: it.rest_seconds,
-                exercise_function: it.exercise_function,
-                substitute_exercise_ids: Array.isArray(it.substitute_exercise_ids) ? it.substitute_exercise_ids : [],
-                note_key: it.note_key ?? null,
-            })),
+            items: (w.items as any[]).map((it: any, ii: number) => {
+                const itemType = it.item_type || 'exercise'
+                if (itemType === 'warmup' || itemType === 'cardio') {
+                    return {
+                        item_type: itemType,
+                        exercise_id: undefined,
+                        sets: undefined,
+                        reps: undefined,
+                        rest_seconds: undefined,
+                        exercise_function: undefined,
+                        substitute_exercise_ids: [],
+                        note_key: null,
+                        item_config: it.item_config ?? {},
+                    } as CompactWorkoutItem
+                }
+                return {
+                    item_type: 'exercise',
+                    exercise_id: it.exercise_id,
+                    sets: it.sets,
+                    reps: it.reps,
+                    rest_seconds: it.rest_seconds,
+                    exercise_function: it.exercise_function,
+                    substitute_exercise_ids: Array.isArray(it.substitute_exercise_ids) ? it.substitute_exercise_ids : [],
+                    note_key: it.note_key ?? null,
+                    item_config: undefined,
+                } as CompactWorkoutItem
+            }),
         })),
         meta: {
             confidence: Math.max(0, Math.min(1, meta.confidence as number)),

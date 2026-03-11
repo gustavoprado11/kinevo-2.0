@@ -7,7 +7,20 @@
  */
 
 import { supabase } from './supabase';
-import type { WatchProgramPayload, WatchProgramWorkout, WatchProgramExercise } from '../modules/watch-connectivity/src/WatchConnectivityModule.types';
+
+const EQUIPMENT_LABELS: Record<string, string> = {
+  treadmill: 'Esteira',
+  bike: 'Bicicleta',
+  elliptical: 'Elíptico',
+  rower: 'Remo',
+  stairmaster: 'Escada',
+  jump_rope: 'Corda',
+  outdoor_run: 'Corrida',
+  outdoor_bike: 'Bike Outdoor',
+  swimming: 'Natação',
+  other: 'Outro',
+};
+import type { WatchProgramPayload, WatchProgramWorkout, WatchProgramExercise, WatchCardioItem } from '../modules/watch-connectivity/src/WatchConnectivityModule.types';
 
 export async function getProgramSnapshotForWatch(
   userId: string,
@@ -45,10 +58,10 @@ export async function getProgramSnapshotForWatch(
       .from('assigned_workouts' as any)
       .select(`
         id, name, order_index, scheduled_days,
-        assigned_workout_items!inner(id, exercise_id, exercise_name, exercise_muscle_group, sets, reps, rest_seconds)
+        assigned_workout_items!inner(id, item_type, exercise_id, exercise_name, exercise_muscle_group, sets, reps, rest_seconds, order_index, item_config)
       `)
       .eq('assigned_program_id', program.id)
-      .eq('assigned_workout_items.item_type', 'exercise')
+      .in('assigned_workout_items.item_type', ['exercise', 'cardio'])
       .order('order_index')
       .order('order_index', { referencedTable: 'assigned_workout_items' });
 
@@ -125,9 +138,13 @@ export async function getProgramSnapshotForWatch(
 
   // 8. Build payload
   const programWorkouts: WatchProgramWorkout[] = workouts.map((w: any) => {
-    const items: any[] = w.assigned_workout_items || [];
+    const allItems: any[] = w.assigned_workout_items || [];
 
-    const exercises: WatchProgramExercise[] = items.map((item: any, idx: number) => ({
+    // Split by type
+    const exerciseItems = allItems.filter((i: any) => (i.item_type || 'exercise') === 'exercise');
+    const cardioRawItems = allItems.filter((i: any) => i.item_type === 'cardio');
+
+    const exercises: WatchProgramExercise[] = exerciseItems.map((item: any, idx: number) => ({
       id: item.id,
       name: item.exercise_name || `Exercício ${idx + 1}`,
       muscleGroup: item.exercise_muscle_group || undefined,
@@ -140,6 +157,28 @@ export async function getProgramSnapshotForWatch(
       lastReps: repsMap.get(item.id) ?? null,
     }));
 
+    // Build cardio items for Watch
+    const cardioItems: WatchCardioItem[] = cardioRawItems.map((item: any) => {
+      const cfg = item.item_config || {};
+      return {
+        id: item.id,
+        itemType: 'cardio' as const,
+        orderIndex: item.order_index ?? 999,
+        config: {
+          mode: cfg.mode || 'continuous',
+          equipment: cfg.equipment,
+          equipmentLabel: cfg.equipment ? EQUIPMENT_LABELS[cfg.equipment] ?? undefined : undefined,
+          objective: cfg.objective,
+          durationMinutes: cfg.duration_minutes,
+          distanceKm: cfg.distance_km,
+          intensity: cfg.intensity,
+          workSeconds: cfg.intervals?.work_seconds,
+          restSeconds: cfg.intervals?.rest_seconds,
+          rounds: cfg.intervals?.rounds,
+        },
+      };
+    });
+
     return {
       workoutId: w.id,
       workoutName: w.name,
@@ -148,6 +187,7 @@ export async function getProgramSnapshotForWatch(
       isCompletedToday: completedToday.has(w.id),
       lastCompletedAt: lastCompletedMap.get(w.id) ?? null,
       exercises,
+      ...(cardioItems.length > 0 ? { cardioItems } : {}),
     };
   });
 

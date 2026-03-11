@@ -129,6 +129,7 @@ interface StudentDetailClientProps {
         updatedAt: string | null
     } | null
     formTemplates: { id: string; title: string; category: string }[]
+    formSchedules?: any[]
 }
 
 export function StudentDetailClient({
@@ -148,6 +149,7 @@ export function StudentDetailClient({
     pendingForms,
     bodyMetrics,
     formTemplates,
+    formSchedules = [],
 }: StudentDetailClientProps) {
     console.log('StudentDetailClient Rendered. Scheduled:', scheduledPrograms) // DEBUG LOG
     const router = useRouter()
@@ -535,6 +537,7 @@ export function StudentDetailClient({
                             pendingForms={pendingForms}
                             bodyMetrics={bodyMetrics}
                             formTemplates={formTemplates}
+                            formSchedules={formSchedules}
                         />
 
                         <ProgramHistorySection programs={completedPrograms} />

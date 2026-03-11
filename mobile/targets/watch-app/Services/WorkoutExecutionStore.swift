@@ -211,6 +211,20 @@ class WorkoutExecutionStore: ObservableObject {
         persistDebounced()
     }
 
+    /// Mark a cardio item as completed — immediate persistence.
+    func markCardioCompleted(itemId: String, elapsedSeconds: Int) {
+        guard var s = state else { return }
+        if let idx = s.cardioStates.firstIndex(where: { $0.itemId == itemId }) {
+            s.cardioStates[idx].isCompleted = true
+            s.cardioStates[idx].elapsedSeconds = elapsedSeconds
+        } else {
+            s.cardioStates.append(CardioExecutionState(itemId: itemId, isCompleted: true, elapsedSeconds: elapsedSeconds))
+        }
+        state = s
+        persistImmediate()
+        print("[WorkoutStore] Cardio \(itemId) completed — \(elapsedSeconds)s")
+    }
+
     /// Change the currently viewed exercise — immediate persistence.
     func setExerciseIndex(_ index: Int) {
         guard var s = state else { return }

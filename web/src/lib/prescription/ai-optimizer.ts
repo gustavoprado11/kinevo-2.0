@@ -162,7 +162,7 @@ async function buildSwapCandidates(
     workouts: GeneratedWorkout[],
 ): Promise<SwapCandidate[]> {
     const allExerciseIds = workouts.flatMap(w =>
-        w.items.map(i => i.exercise_id),
+        w.items.map(i => i.exercise_id).filter((id): id is string => !!id),
     )
     const uniqueIds = [...new Set(allExerciseIds)]
 
@@ -176,6 +176,7 @@ async function buildSwapCandidates(
     const candidates: SwapCandidate[] = []
     for (const workout of workouts) {
         for (const item of workout.items) {
+            if (!item.exercise_id || !item.exercise_name) continue
             const subs = subsMap.get(item.exercise_id) || []
             if (subs.length === 0) continue
             candidates.push({
@@ -243,13 +244,15 @@ function buildOptimizerUserPrompt(
     // Compact program representation
     const compactWorkouts = builderOutput.workouts.map(w => ({
         name: w.name,
-        items: w.items.map(i => ({
-            id: i.exercise_id,
-            name: i.exercise_name,
-            group: i.exercise_muscle_group,
-            sets: i.sets,
-            fn: i.exercise_function || 'accessory',
-        })),
+        items: w.items
+            .filter(i => (i.item_type || 'exercise') === 'exercise')
+            .map(i => ({
+                id: i.exercise_id ?? '',
+                name: i.exercise_name ?? '',
+                group: i.exercise_muscle_group ?? '',
+                sets: i.sets ?? 0,
+                fn: i.exercise_function || 'accessory',
+            })),
     }))
 
     // Compact volume budget (only groups with budget)
@@ -393,7 +396,7 @@ function applyOptimizerDiffs(
         if (!item) continue
 
         // Only allow ±1
-        if (Math.abs(adj.new_sets - item.sets) > 1) continue
+        if (item.sets == null || Math.abs(adj.new_sets - item.sets) > 1) continue
         item.sets = adj.new_sets
         setAdjustmentsApplied++
     }

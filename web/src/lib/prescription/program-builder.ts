@@ -514,7 +514,7 @@ async function buildWithSlots(
 
         workouts.push(workout)
         // Track exercise IDs per workout for same-label diversity
-        workoutExerciseIds[label] = new Set(workout.items.map(it => it.exercise_id))
+        workoutExerciseIds[label] = new Set(workout.items.map(it => it.exercise_id).filter((id): id is string => !!id))
     }
 
     // 10. Post-process: cap any remaining overflow (safety net)
@@ -690,8 +690,8 @@ function buildSlotWorkout(
     // Sort items by session_position (compounds first, isolation last)
     const exerciseLookup = new Map(pool.map(e => [e.id, e]))
     items.sort((a, b) => {
-        const posA = SESSION_POSITION_ORDER[exerciseLookup.get(a.exercise_id)?.session_position || 'middle'] ?? 1
-        const posB = SESSION_POSITION_ORDER[exerciseLookup.get(b.exercise_id)?.session_position || 'middle'] ?? 1
+        const posA = SESSION_POSITION_ORDER[exerciseLookup.get(a.exercise_id!)?.session_position || 'middle'] ?? 1
+        const posB = SESSION_POSITION_ORDER[exerciseLookup.get(b.exercise_id!)?.session_position || 'middle'] ?? 1
         return posA - posB
     })
     items.forEach((item, idx) => { item.order_index = idx })
@@ -940,7 +940,7 @@ async function attachGraphSubstitutes(
     const allExerciseIds = new Set<string>()
     for (const w of workouts) {
         for (const item of w.items) {
-            allExerciseIds.add(item.exercise_id)
+            if (item.exercise_id) allExerciseIds.add(item.exercise_id)
         }
     }
 
@@ -949,6 +949,7 @@ async function attachGraphSubstitutes(
 
     for (const w of workouts) {
         for (const item of w.items) {
+            if (!item.exercise_id) continue
             const subs = subsMap.get(item.exercise_id) || []
             item.substitute_exercise_ids = subs
                 .filter(s => poolIds.has(s.exercise_id) && s.exercise_id !== item.exercise_id)
@@ -1036,7 +1037,7 @@ function buildSlotReasoning(
     }
 
     const workoutNotes = workouts.map(w => {
-        const totalSets = w.items.reduce((s, i) => s + i.sets, 0)
+        const totalSets = w.items.reduce((s, i) => s + (i.sets ?? 0), 0)
         const mainCount = w.items.filter(i => i.exercise_function === 'main').length
         return `${w.name}: ${w.items.length} exercícios (${mainCount} compostos), ${totalSets} séries totais.`
     })
@@ -1061,7 +1062,7 @@ function logBuilderStats(
     stallReplacementCount: number,
 ): void {
     const totalExercises = workouts.reduce((s, w) => s + w.items.length, 0)
-    const totalSets = workouts.reduce((s, w) => s + w.items.reduce((ss, i) => ss + i.sets, 0), 0)
+    const totalSets = workouts.reduce((s, w) => s + w.items.reduce((ss, i) => ss + (i.sets ?? 0), 0), 0)
     const mainCount = workouts.reduce((s, w) => s + w.items.filter(i => i.exercise_function === 'main').length, 0)
 
     console.log(`[SlotBuilder] Stats: ${totalExercises} exercises, ${totalSets} total sets, ${mainCount} mains`)
@@ -1277,7 +1278,7 @@ function buildLegacyWorkout(
             const budget = Math.max(2, Math.round(targetSetsPerGroup / occurrences))
             const setsUsedForGroup = items
                 .filter(i => i.exercise_muscle_group === group)
-                .reduce((s, i) => s + i.sets, 0)
+                .reduce((s, i) => s + (i.sets ?? 0), 0)
             const setsRemaining = Math.max(2, budget - setsUsedForGroup)
             const sets = Math.min(3, maxSetsWithinBudget(pick, setsRemaining))
 
@@ -1290,14 +1291,14 @@ function buildLegacyWorkout(
     // ── Final: Sort by session_position ──
     const exerciseLookup = new Map(available.map(e => [e.id, e]))
     items.sort((a, b) => {
-        const posA = SESSION_POSITION_ORDER[exerciseLookup.get(a.exercise_id)?.session_position || 'middle'] ?? 1
-        const posB = SESSION_POSITION_ORDER[exerciseLookup.get(b.exercise_id)?.session_position || 'middle'] ?? 1
+        const posA = SESSION_POSITION_ORDER[exerciseLookup.get(a.exercise_id!)?.session_position || 'middle'] ?? 1
+        const posB = SESSION_POSITION_ORDER[exerciseLookup.get(b.exercise_id!)?.session_position || 'middle'] ?? 1
         return posA - posB
     })
     items.forEach((item, idx) => { item.order_index = idx })
 
     items.forEach((item) => {
-        const ex = exerciseLookup.get(item.exercise_id)
+        const ex = exerciseLookup.get(item.exercise_id!)
         if (!ex) return
         item.exercise_function = ex.is_compound ? 'main' : 'accessory'
     })
@@ -1452,7 +1453,7 @@ function buildLegacyReasoning(
         structure_rationale: `Estrutura ${structureLabels[structureKey] || structureKey} selecionada para ${frequency} dias/semana — padrão Kinevo para nível ${LEVEL_LABELS[level].toLowerCase()}.`,
         volume_rationale: `Volume inicial no limite inferior (${range.min} séries/grupo/semana). Progressão após 2 semanas com aderência acima de ${PRESCRIPTION_CONSTRAINTS.adherence_threshold_for_progression}%.`,
         workout_notes: workouts.map(w =>
-            `${w.name}: ${w.items.length} exercícios, ${w.items.reduce((s, i) => s + i.sets, 0)} séries totais.`
+            `${w.name}: ${w.items.length} exercícios, ${w.items.reduce((s, i) => s + (i.sets ?? 0), 0)} séries totais.`
         ),
         attention_flags: [],
         confidence_score: 0.85,
@@ -1492,8 +1493,9 @@ function capVolumeOverflow(
             for (const workout of workouts) {
                 const freq = Math.max(1, workout.scheduled_days.length)
                 for (const item of workout.items) {
+                    if (!item.exercise_id || item.sets == null) continue
                     const ref = exerciseMap.get(item.exercise_id)
-                    const groups = ref?.muscle_group_names ?? [item.exercise_muscle_group]
+                    const groups = ref?.muscle_group_names ?? [item.exercise_muscle_group ?? '']
                     if (groups.includes(group)) {
                         entries.push({ workout, item, frequency: freq, isCompound: ref?.is_compound ?? false })
                     }
@@ -1504,15 +1506,15 @@ function capVolumeOverflow(
             entries.sort((a, b) => {
                 const aPriority = a.isCompound ? 1 : 0
                 if (aPriority !== (b.isCompound ? 1 : 0)) return aPriority - (b.isCompound ? 1 : 0)
-                return b.item.sets - a.item.sets
+                return (b.item.sets ?? 0) - (a.item.sets ?? 0)
             })
 
             for (const e of entries) {
                 if (excess <= 0) break
-                const canReduce = e.item.sets - 2
+                const canReduce = (e.item.sets ?? 0) - 2
                 if (canReduce <= 0) continue
                 const reduction = Math.min(canReduce, Math.ceil(excess / e.frequency))
-                e.item.sets -= reduction
+                e.item.sets = (e.item.sets ?? 0) - reduction
                 excess -= reduction * e.frequency
                 anyChanged = true
             }
@@ -1526,7 +1528,7 @@ function capVolumeOverflow(
                     if (idx >= 0) {
                         e.workout.items.splice(idx, 1)
                         e.workout.items.forEach((it, i) => { it.order_index = i })
-                        excess -= e.item.sets * e.frequency
+                        excess -= (e.item.sets ?? 0) * e.frequency
                         anyChanged = true
                     }
                 }

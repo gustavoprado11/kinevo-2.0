@@ -4,6 +4,9 @@ import { useState } from 'react'
 import { SessionDetailSheet } from './session-detail-sheet'
 import { ProgramCalendar } from './program-calendar'
 import { getProgramWeek, getProgramEndDate } from '@kinevo/shared/utils/schedule-projection'
+import { Flame, Activity, ArrowUpRight } from 'lucide-react'
+import { WARMUP_TYPE_LABELS, CARDIO_EQUIPMENT_LABELS } from '@kinevo/shared/types/workout-items'
+import type { SessionItem } from '@/app/students/[id]/actions/get-session-details'
 import type { RangeSession } from '@/app/students/[id]/actions/get-sessions-for-range'
 
 // --- Helpers ---
@@ -32,6 +35,81 @@ function getExpectedPerWeek(workouts?: Array<{ scheduled_days: number[] }>): num
     const uniqueDays = new Set<number>()
     workouts.forEach(w => w.scheduled_days?.forEach(d => uniqueDays.add(d)))
     return uniqueDays.size
+}
+
+// ── Compact item renderer for expanded session accordion ──
+
+function ExpandedSessionItem({ item }: { item: SessionItem }) {
+    if (item.itemType === 'warmup') {
+        const cfg = item.itemConfig as any
+        const label = cfg?.warmup_type ? (WARMUP_TYPE_LABELS as any)[cfg.warmup_type] || cfg.warmup_type : 'Aquecimento'
+        const duration = cfg?.duration_minutes ? `${cfg.duration_minutes} min` : null
+        return (
+            <div className="flex items-center gap-2 text-sm py-1">
+                <Flame size={13} className="text-orange-400 shrink-0" />
+                <span className="text-k-text-secondary font-medium truncate flex-1">{label}</span>
+                {duration && <span className="text-k-text-quaternary text-xs shrink-0">{duration}</span>}
+            </div>
+        )
+    }
+
+    if (item.itemType === 'cardio') {
+        const cfg = item.itemConfig as any
+        const equipment = cfg?.equipment ? (CARDIO_EQUIPMENT_LABELS as any)[cfg.equipment] || cfg.equipment : 'Cardio'
+        const duration = cfg?.duration_minutes ? `${cfg.duration_minutes} min` : null
+        const mode = cfg?.mode === 'interval' ? 'Intervalado' : null
+        return (
+            <div className="flex items-center gap-2 text-sm py-1">
+                <Activity size={13} className="text-blue-400 shrink-0" />
+                <span className="text-k-text-secondary font-medium truncate flex-1">
+                    {equipment}{mode ? ` — ${mode}` : ''}
+                </span>
+                {duration && <span className="text-k-text-quaternary text-xs shrink-0">{duration}</span>}
+            </div>
+        )
+    }
+
+    if (item.itemType === 'note') {
+        return (
+            <div className="flex items-center gap-2 text-sm py-1">
+                <span className="text-k-text-quaternary text-xs">●</span>
+                <span className="text-k-text-quaternary italic text-xs truncate flex-1">{item.notes || 'Nota'}</span>
+            </div>
+        )
+    }
+
+    if (item.itemType === 'superset') {
+        return (
+            <div className="py-1">
+                <div className="flex items-center gap-2 text-sm mb-1">
+                    <span className="text-violet-400 text-xs">●</span>
+                    <span className="text-violet-400 text-xs font-bold">Superset</span>
+                </div>
+                {item.children?.map(child => (
+                    <ExpandedSessionItem key={child.id} item={child} />
+                ))}
+            </div>
+        )
+    }
+
+    // exercise (default)
+    return (
+        <div className="flex items-center justify-between text-sm py-1">
+            <span className="text-k-text-secondary font-medium truncate flex-1 mr-4">{item.exerciseName || 'Exercício'}</span>
+            <div className="flex items-center gap-3 text-k-text-quaternary text-xs shrink-0">
+                {item.setLogs.length > 0 ? (
+                    <>
+                        <span className="font-bold">{item.setLogs.length}×{item.setLogs[0]?.reps ?? '-'}</span>
+                        {item.setLogs[0]?.weight > 0 && (
+                            <span className="text-k-text-tertiary">@ {item.setLogs[0].weight}kg</span>
+                        )}
+                    </>
+                ) : item.setsPrescribed ? (
+                    <span className="font-bold">{item.setsPrescribed}×{item.repsPrescribed || '-'}</span>
+                ) : null}
+            </div>
+        </div>
+    )
 }
 
 interface AssignedProgram {
@@ -499,41 +577,32 @@ export function ActiveProgramDashboard({
                                             <div className="px-4 pb-4 pt-1 bg-glass-bg rounded-b-xl border-x border-b border-k-border-subtle space-y-3">
                                                 {isLoading ? (
                                                     <div className="text-center py-4 text-k-text-quaternary text-xs font-medium animate-pulse">
-                                                        Carregando exercícios...
+                                                        Carregando detalhes...
                                                     </div>
-                                                ) : details?.exercises?.length > 0 ? (
+                                                ) : details?.items?.length > 0 ? (
                                                     <>
                                                         {/* Summary stats */}
                                                         <div className="flex items-center gap-4 text-[10px] font-bold text-k-text-quaternary pb-2 border-b border-k-border-subtle">
-                                                            {details.duration_seconds > 0 && (
+                                                            {details.stats?.durationSeconds > 0 && (
                                                                 <span>
-                                                                    {Math.floor(details.duration_seconds / 3600) > 0
-                                                                        ? `${Math.floor(details.duration_seconds / 3600)}h ${Math.floor((details.duration_seconds % 3600) / 60)}m`
-                                                                        : `${Math.floor(details.duration_seconds / 60)}m`
+                                                                    {Math.floor(details.stats.durationSeconds / 3600) > 0
+                                                                        ? `${Math.floor(details.stats.durationSeconds / 3600)}h ${Math.floor((details.stats.durationSeconds % 3600) / 60)}m`
+                                                                        : `${Math.floor(details.stats.durationSeconds / 60)}m`
                                                                     }
                                                                 </span>
                                                             )}
-                                                            <span>
-                                                                {details.exercises.reduce((t: number, ex: any) => t + ex.sets.length, 0)} séries
-                                                            </span>
-                                                            {(() => {
-                                                                const tonnage = details.exercises.reduce((t: number, ex: any) =>
-                                                                    t + ex.sets.reduce((s: number, set: any) => s + ((set.weight || 0) * (set.reps || 0)), 0), 0)
-                                                                return tonnage > 0 ? <span>{tonnage.toLocaleString('pt-BR')}kg volume</span> : null
-                                                            })()}
+                                                            {details.stats?.completedSets > 0 && (
+                                                                <span>{details.stats.completedSets} séries</span>
+                                                            )}
+                                                            {details.stats?.totalTonnage > 0 && (
+                                                                <span>{details.stats.totalTonnage.toLocaleString('pt-BR')}kg volume</span>
+                                                            )}
+                                                            <span>{details.items.length} itens</span>
                                                         </div>
 
-                                                        {/* Exercise list */}
-                                                        {details.exercises.map((ex: any) => (
-                                                            <div key={ex.exercise_id} className="flex items-center justify-between text-sm py-1">
-                                                                <span className="text-k-text-secondary font-medium truncate flex-1 mr-4">{ex.name}</span>
-                                                                <div className="flex items-center gap-3 text-k-text-quaternary text-xs shrink-0">
-                                                                    <span className="font-bold">{ex.sets.length}×{ex.sets[0]?.reps ?? '-'}</span>
-                                                                    {ex.sets[0]?.weight > 0 && (
-                                                                        <span className="text-k-text-tertiary">@ {ex.sets[0].weight}kg</span>
-                                                                    )}
-                                                                </div>
-                                                            </div>
+                                                        {/* Item list — all types */}
+                                                        {details.items.map((item: SessionItem) => (
+                                                            <ExpandedSessionItem key={item.id} item={item} />
                                                         ))}
 
                                                         {/* Feedback */}
@@ -545,9 +614,18 @@ export function ActiveProgramDashboard({
                                                                 &ldquo;{session.feedback}&rdquo;
                                                             </p>
                                                         )}
+
+                                                        {/* Open full detail modal */}
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); handleSessionClick(session.id) }}
+                                                            className="w-full mt-1 pt-2 border-t border-k-border-subtle flex items-center justify-center gap-1.5 text-[11px] font-bold text-k-text-tertiary hover:text-violet-400 transition-colors"
+                                                        >
+                                                            Ver detalhes
+                                                            <ArrowUpRight size={12} />
+                                                        </button>
                                                     </>
                                                 ) : (
-                                                    <p className="text-xs text-k-text-quaternary italic py-2">Nenhum exercício registrado.</p>
+                                                    <p className="text-xs text-k-text-quaternary italic py-2">Nenhum item registrado.</p>
                                                 )}
                                             </div>
                                         )}

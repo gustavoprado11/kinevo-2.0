@@ -18,6 +18,7 @@ export interface PreviousSetData {
 
 export interface ExerciseData {
     id: string; // assigned_workout_item_id
+    item_type?: 'exercise' | 'warmup' | 'cardio';
     planned_exercise_id: string;
     exercise_id: string;
     name: string;
@@ -35,6 +36,7 @@ export interface ExerciseData {
     supersetRestSeconds?: number;
     order_index: number;
     exerciseFunction?: string | null;
+    item_config?: Record<string, any>;
 }
 
 export interface WorkoutNote {
@@ -54,6 +56,8 @@ export interface ExerciseSubstituteOption {
 
 interface UseWorkoutSessionOptions {
     onSetComplete?: (exerciseIndex: number, setIndex: number) => void;
+    /** When true, the session is NOT created on mount. Call createSession() manually. */
+    deferSessionCreation?: boolean;
 }
 
 export function useWorkoutSession(workoutId: string, options?: UseWorkoutSessionOptions) {
@@ -63,6 +67,8 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
     const [workoutNotes, setWorkoutNotes] = useState<WorkoutNote[]>([]);
     const [studentId, setStudentId] = useState<string | null>(null);
     const [sessionId, setSessionId] = useState<string | null>(null);
+    const preSubmissionIdRef = useRef<string | null>(null);
+    const [assignedProgramId, setAssignedProgramId] = useState<string | null>(null);
     const [startTime] = useState(() => Date.now());
     const [elapsed, setElapsed] = useState(0);
     const [workoutName, setWorkoutName] = useState('');
@@ -297,9 +303,14 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                     .single();
 
                 if (workoutError) throw workoutError;
-                if (mounted) setWorkoutName(workout.name);
+                if (mounted) {
+                    setWorkoutName(workout.name);
+                    setAssignedProgramId(workout.assigned_program_id || null);
+                }
 
                 // 1b. Find or create workout_session (in_progress)
+                // When deferSessionCreation is true, skip creating a new session.
+                // An existing in_progress session is still reattached.
                 const { data: existingSession }: { data: any; error: any } = await supabase
                     .from('workout_sessions' as any)
                     .select('id')
@@ -313,7 +324,7 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                 if (existingSession) {
                     if (__DEV__) console.log(`[useWorkoutSession] Found existing in_progress session: ${existingSession.id}`);
                     if (mounted) setSessionId(existingSession.id);
-                } else {
+                } else if (!options?.deferSessionCreation) {
                     // Get trainer_id from student
                     const { data: studentFull }: { data: any; error: any } = await supabase
                         .from('students' as any)
@@ -341,6 +352,8 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                         if (__DEV__) console.log(`[useWorkoutSession] Created new in_progress session: ${newSession.id}`);
                         if (mounted) setSessionId(newSession.id);
                     }
+                } else {
+                    if (__DEV__) console.log('[useWorkoutSession] Session creation deferred — waiting for createSession()');
                 }
 
                 // 2. Get ALL Workout Items (exercises, supersets, notes)
@@ -359,6 +372,7 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                         parent_item_id,
                         notes,
                         exercise_function,
+                        item_config,
                         exercises ( id, video_url )
                     `)
                     .eq('assigned_workout_id', workoutId)
@@ -380,6 +394,7 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
 
                 // 4. Initialize exercise state and fetch history
                 const exerciseItems = items.filter((item: any) => item.item_type === 'exercise');
+                const warmupCardioItems = items.filter((item: any) => item.item_type === 'warmup' || item.item_type === 'cardio');
                 const exercisesData: ExerciseData[] = await Promise.all(exerciseItems.map(async (item: any) => {
                     let previousLoad: string | undefined = undefined;
                     let previousSets: PreviousSetData[] | undefined = undefined;
@@ -393,6 +408,7 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
 
                     return {
                         id: item.id,
+                        item_type: 'exercise' as const,
                         planned_exercise_id: item.exercise_id,
                         exercise_id: item.exercise_id,
                         name: item.exercise_name,
@@ -410,8 +426,29 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                         supersetRestSeconds: parentSuperset?.rest_seconds,
                         order_index: item.order_index,
                         exerciseFunction: item.exercise_function || null,
+                        item_config: item.item_config || {},
                     };
                 }));
+
+                // Add warmup/cardio items — no set tracking
+                for (const item of warmupCardioItems) {
+                    exercisesData.push({
+                        id: item.id,
+                        item_type: item.item_type as 'warmup' | 'cardio',
+                        planned_exercise_id: '',
+                        exercise_id: '',
+                        name: item.notes || (item.item_type === 'warmup' ? 'Aquecimento' : 'Aeróbio'),
+                        sets: 0,
+                        reps: '0',
+                        rest_seconds: 0,
+                        substitute_exercise_ids: [],
+                        swap_source: 'none',
+                        setsData: [],
+                        order_index: item.order_index,
+                        exerciseFunction: item.exercise_function || null,
+                        item_config: item.item_config || {},
+                    });
+                }
 
                 if (mounted) {
                     setExercises(exercisesData);
@@ -660,7 +697,56 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
         return { success: true };
     };
 
-    const finishWorkout = async (rpe?: number, feedback?: string) => {
+    /**
+     * Manually create the workout_session. Used when deferSessionCreation is true.
+     * Returns the new session ID, or null on failure.
+     */
+    const createSession = async (preWorkoutSubmissionId?: string): Promise<string | null> => {
+        if (sessionId) return sessionId; // Already exists
+        if (!user || !studentId) return null;
+
+        try {
+            const { data: studentFull }: { data: any; error: any } = await supabase
+                .from('students' as any)
+                .select('coach_id')
+                .eq('id', studentId)
+                .single();
+
+            const insertPayload: Record<string, any> = {
+                student_id: studentId,
+                trainer_id: studentFull?.coach_id,
+                assigned_workout_id: workoutId,
+                assigned_program_id: assignedProgramId,
+                status: 'in_progress',
+                started_at: new Date().toISOString(),
+                sync_status: 'synced',
+            };
+            if (preWorkoutSubmissionId) {
+                insertPayload.pre_workout_submission_id = preWorkoutSubmissionId;
+                preSubmissionIdRef.current = preWorkoutSubmissionId;
+            }
+
+            const { data: newSession, error: sessionError }: { data: any; error: any } = await supabase
+                .from('workout_sessions' as any)
+                .insert(insertPayload)
+                .select('id')
+                .single();
+
+            if (sessionError) {
+                console.error('[useWorkoutSession] createSession error:', __DEV__ ? sessionError : '');
+                return null;
+            }
+
+            if (__DEV__) console.log(`[useWorkoutSession] Session created via createSession(): ${newSession.id}`);
+            setSessionId(newSession.id);
+            return newSession.id;
+        } catch (err: any) {
+            if (__DEV__) console.error('[useWorkoutSession] createSession exception:', err?.message);
+            return null;
+        }
+    };
+
+    const finishWorkout = async (rpe?: number, feedback?: string, postWorkoutSubmissionId?: string) => {
         if (isSubmitting || !user) return;
 
         setIsSubmitting(true);
@@ -689,21 +775,29 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                     .eq('id', workoutId)
                     .single();
 
+                const fallbackPayload: Record<string, any> = {
+                    student_id: student.id,
+                    trainer_id: student.coach_id,
+                    assigned_workout_id: workoutId,
+                    assigned_program_id: workout?.assigned_program_id,
+                    status: 'completed',
+                    started_at: new Date(startTime).toISOString(),
+                    completed_at: now,
+                    duration_seconds: durationSeconds,
+                    sync_status: 'synced',
+                    rpe: rpe || null,
+                    feedback: feedback || null,
+                };
+                if (preSubmissionIdRef.current) {
+                    fallbackPayload.pre_workout_submission_id = preSubmissionIdRef.current;
+                }
+                if (postWorkoutSubmissionId) {
+                    fallbackPayload.post_workout_submission_id = postWorkoutSubmissionId;
+                }
+
                 const { data: newSession, error: sessionError }: { data: any; error: any } = await supabase
                     .from('workout_sessions' as any)
-                    .insert({
-                        student_id: student.id,
-                        trainer_id: student.coach_id,
-                        assigned_workout_id: workoutId,
-                        assigned_program_id: workout?.assigned_program_id,
-                        status: 'completed',
-                        started_at: new Date(startTime).toISOString(),
-                        completed_at: now,
-                        duration_seconds: durationSeconds,
-                        sync_status: 'synced',
-                        rpe: rpe || null,
-                        feedback: feedback || null,
-                    })
+                    .insert(fallbackPayload)
                     .select('id')
                     .single();
 
@@ -711,16 +805,21 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                 currentSessionId = newSession.id;
             } else {
                 // Update existing in_progress session to completed
+                const updatePayload: Record<string, any> = {
+                    status: 'completed',
+                    started_at: new Date(startTime).toISOString(), // Correct to actual workout start
+                    completed_at: now,
+                    duration_seconds: durationSeconds,
+                    rpe: rpe || null,
+                    feedback: feedback || null,
+                };
+                if (postWorkoutSubmissionId) {
+                    updatePayload.post_workout_submission_id = postWorkoutSubmissionId;
+                }
+
                 const { error: updateError } = await supabase
                     .from('workout_sessions' as any)
-                    .update({
-                        status: 'completed',
-                        started_at: new Date(startTime).toISOString(), // Correct to actual workout start
-                        completed_at: now,
-                        duration_seconds: durationSeconds,
-                        rpe: rpe || null,
-                        feedback: feedback || null,
-                    })
+                    .update(updatePayload)
                     .eq('id', currentSessionId);
 
                 if (updateError) throw updateError;
@@ -729,6 +828,40 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
             // Upsert any remaining set_logs (catch-up for sets that may not have been persisted)
             const setLogs: any[] = [];
             for (const exercise of exercises) {
+                // Cardio items: persist a single set_log with config data in notes
+                if (exercise.item_type === 'cardio' && exercise.setsData.length > 0 && exercise.setsData[0].completed) {
+                    const config = exercise.item_config || {};
+                    const notesJson = JSON.stringify({
+                        mode: config.mode || 'continuous',
+                        equipment: config.equipment,
+                        duration_minutes: config.duration_minutes,
+                        distance_km: config.distance_km,
+                        intensity: config.intensity,
+                        intervals: config.intervals,
+                        actual_duration_seconds: config.actual_duration_seconds,
+                        completed_rounds: config.completed_rounds,
+                    });
+                    setLogs.push({
+                        workout_session_id: currentSessionId,
+                        assigned_workout_item_id: exercise.id,
+                        planned_exercise_id: exercise.planned_exercise_id || exercise.exercise_id,
+                        executed_exercise_id: exercise.exercise_id,
+                        swap_source: exercise.swap_source || 'none',
+                        exercise_id: exercise.exercise_id,
+                        set_number: 1,
+                        weight: 0,
+                        reps_completed: 1,
+                        is_completed: true,
+                        completed_at: now,
+                        weight_unit: 'kg',
+                        notes: notesJson,
+                    });
+                    continue;
+                }
+
+                // Warmup items: visual-only, no persistence
+                if (exercise.item_type === 'warmup') continue;
+
                 for (let i = 0; i < exercise.setsData.length; i++) {
                     const set = exercise.setsData[i];
                     if (set.completed) {
@@ -773,6 +906,27 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
         }
     };
 
+    const toggleCardioComplete = (exerciseId: string, completed: boolean, extraData?: Record<string, any>) => {
+        setExercises(prev => {
+            const newExercises = [...prev];
+            const idx = newExercises.findIndex(e => e.id === exerciseId);
+            if (idx === -1) return prev;
+
+            const exercise = { ...newExercises[idx] };
+            if (completed) {
+                exercise.setsData = [{ weight: '0', reps: '1', completed: true }];
+                // Store actual execution data for serialization at finishWorkout
+                if (extraData) {
+                    exercise.item_config = { ...(exercise.item_config || {}), ...extraData };
+                }
+            } else {
+                exercise.setsData = [];
+            }
+            newExercises[idx] = exercise;
+            return newExercises;
+        });
+    };
+
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
         const secs = seconds % 60;
@@ -792,6 +946,9 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
         searchSubstituteOptions,
         swapExercise,
         finishWorkout,
+        createSession,
+        assignedProgramId,
+        toggleCardioComplete,
         isSubmitting
     };
 }

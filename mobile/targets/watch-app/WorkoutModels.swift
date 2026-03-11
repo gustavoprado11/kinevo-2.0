@@ -128,6 +128,7 @@ struct WatchWorkoutSnapshot {
     let workoutName: String
     let studentName: String
     let exercises: [WatchExerciseSnapshot]
+    let cardioItems: [WatchCardioItem]
     var currentExerciseIndex: Int
     let isActive: Bool
     let startedAt: String?
@@ -139,6 +140,7 @@ struct WatchWorkoutSnapshot {
             workoutName: "",
             studentName: workout.studentName,
             exercises: workout.exercises.map { WatchExerciseSnapshot.from($0) },
+            cardioItems: [],
             currentExerciseIndex: workout.currentExerciseIndex,
             isActive: workout.isActive,
             startedAt: nil,
@@ -158,6 +160,8 @@ struct WatchWorkoutSnapshot {
         }
 
         let exercises = exercisesArray.compactMap { WatchExerciseSnapshot.parse(from: $0) }
+        let cardioArray = dict["cardioItems"] as? [[String: Any]] ?? []
+        let cardioItems = cardioArray.compactMap { WatchCardioItem.parse(from: $0) }
         let studentName = dict["studentName"] as? String ?? ""
         let workoutName = dict["workoutName"] as? String ?? ""
         let startedAt = dict["startedAt"] as? String
@@ -168,6 +172,7 @@ struct WatchWorkoutSnapshot {
             workoutName: workoutName,
             studentName: studentName,
             exercises: exercises,
+            cardioItems: cardioItems,
             currentExerciseIndex: currentExerciseIndex,
             isActive: isActive,
             startedAt: startedAt,
@@ -255,7 +260,8 @@ struct WatchProgramSnapshot {
             scheduledDays: [],
             isCompletedToday: false,
             lastCompletedAt: nil,
-            exercises: exercises
+            exercises: exercises,
+            cardioItems: []
         )
 
         return WatchProgramSnapshot(
@@ -316,6 +322,7 @@ struct WatchProgramWorkoutSummary: Identifiable {
     let isCompletedToday: Bool
     let lastCompletedAt: Date?
     let exercises: [WatchProgramExerciseSummary]
+    let cardioItems: [WatchCardioItem]
 
     /// Whether this workout is scheduled for today.
     var isScheduledToday: Bool {
@@ -334,6 +341,8 @@ struct WatchProgramWorkoutSummary: Identifiable {
 
         let exercisesArray = dict["exercises"] as? [[String: Any]] ?? []
         let exercises = exercisesArray.compactMap { WatchProgramExerciseSummary.parse(from: $0) }
+        let cardioArray = dict["cardioItems"] as? [[String: Any]] ?? []
+        let cardioItems = cardioArray.compactMap { WatchCardioItem.parse(from: $0) }
 
         let scheduledDays = (dict["scheduledDays"] as? [Any])?.compactMap { ($0 as? NSNumber)?.intValue } ?? []
         let isCompletedToday = dict["isCompletedToday"] as? Bool ?? false
@@ -347,7 +356,8 @@ struct WatchProgramWorkoutSummary: Identifiable {
             scheduledDays: scheduledDays,
             isCompletedToday: isCompletedToday,
             lastCompletedAt: lastCompletedAt,
-            exercises: exercises
+            exercises: exercises,
+            cardioItems: cardioItems
         )
     }
 
@@ -374,10 +384,102 @@ struct WatchProgramWorkoutSummary: Identifiable {
             workoutName: workoutName,
             studentName: "",
             exercises: snapshotExercises,
+            cardioItems: cardioItems,
             currentExerciseIndex: 0,
             isActive: false,
             startedAt: nil,
             updatedAt: nil
+        )
+    }
+}
+
+// MARK: - Cardio Item (Watch)
+
+struct WatchCardioItem: Codable, Identifiable {
+    let id: String
+    let orderIndex: Int
+    let config: CardioConfig
+
+    struct CardioConfig: Codable {
+        let mode: String        // "continuous" | "interval"
+        let equipment: String?
+        let equipmentLabel: String?
+        // Continuous
+        let objective: String?  // "time" | "distance"
+        let durationMinutes: Int?
+        let distanceKm: Double?
+        let intensity: String?
+        // Interval
+        let workSeconds: Int?
+        let restSeconds: Int?
+        let rounds: Int?
+    }
+
+    var isInterval: Bool { config.mode == "interval" }
+    var isContinuous: Bool { config.mode == "continuous" }
+
+    var equipmentIcon: String {
+        switch config.equipment {
+        case "treadmill": return "figure.run"
+        case "bike", "outdoor_bike": return "bicycle"
+        case "elliptical": return "ellipsis.circle"
+        case "rower": return "oar.2.crossed"
+        case "stairmaster": return "stairs"
+        case "jump_rope": return "bolt"
+        case "outdoor_run": return "figure.run"
+        case "swimming": return "figure.pool.swim"
+        default: return "heart.circle"
+        }
+    }
+
+    var summaryText: String {
+        if isInterval {
+            let w = config.workSeconds ?? 30
+            let r = config.restSeconds ?? 15
+            let rounds = config.rounds ?? 8
+            return "\(rounds)x (\(w)s/\(r)s)"
+        } else {
+            if config.objective == "distance", let km = config.distanceKm {
+                return String(format: "%.1f km", km)
+            } else if let min = config.durationMinutes {
+                return "\(min) min"
+            }
+            return config.equipmentLabel ?? "Aeróbio"
+        }
+    }
+
+    var totalDurationSeconds: Int {
+        if isInterval {
+            let w = config.workSeconds ?? 30
+            let r = config.restSeconds ?? 15
+            let rounds = config.rounds ?? 8
+            return (w * rounds) + (r * max(rounds - 1, 0))
+        } else {
+            return (config.durationMinutes ?? 20) * 60
+        }
+    }
+
+    static func parse(from dict: [String: Any]) -> WatchCardioItem? {
+        guard let id = dict["id"] as? String else { return nil }
+
+        let configDict = dict["config"] as? [String: Any] ?? [:]
+        let config = CardioConfig(
+            mode: configDict["mode"] as? String ?? "continuous",
+            equipment: configDict["equipment"] as? String,
+            equipmentLabel: configDict["equipmentLabel"] as? String,
+            objective: configDict["objective"] as? String,
+            durationMinutes: configDict["durationMinutes"] as? Int,
+            distanceKm: configDict["distanceKm"] as? Double,
+            intensity: configDict["intensity"] as? String,
+            workSeconds: configDict["workSeconds"] as? Int,
+            restSeconds: configDict["restSeconds"] as? Int,
+            rounds: configDict["rounds"] as? Int
+        )
+
+        return WatchCardioItem(
+            id: id,
+            orderIndex: dict["orderIndex"] as? Int ?? 999,
+            config: config
         )
     }
 }

@@ -429,7 +429,7 @@ export async function generateProgram(
             console.log(`[AgentePrescitor] smartExercises: ${smartExercises.length} exercises (from ${agentExercises.length} raw, equipKey: ${resolvedEquipKey})`)
 
             // Check how many exercise_ids from the output exist in our exercise map
-            const allItemIds = agentResult.output.workouts.flatMap(w => w.items.map(i => i.exercise_id))
+            const allItemIds = agentResult.output.workouts.flatMap(w => w.items.map(i => i.exercise_id).filter((id): id is string => !!id))
             const missingIds = allItemIds.filter(id => !agentExerciseMap.has(id))
             if (missingIds.length > 0) {
                 console.warn(`[AgentePrescitor] ${missingIds.length}/${allItemIds.length} exercise_ids NOT in exerciseMap:`, missingIds)

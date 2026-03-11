@@ -128,6 +128,10 @@ export function validateOutput(
     const violations: RulesViolation[] = []
     const level = profile.training_level
 
+    // Helper: filter to exercise items only (skip warmup/cardio)
+    const getExerciseItems = (items: GeneratedWorkoutItem[]) =>
+        items.filter(item => (item.item_type || 'exercise') === 'exercise')
+
     // ---- Rule: Medical restrictions ----
     const restrictedExerciseIds = new Set(
         profile.medical_restrictions.flatMap(r => r.restricted_exercise_ids)
@@ -137,8 +141,8 @@ export function validateOutput(
     )
 
     for (const workout of generated.workouts) {
-        for (const item of workout.items) {
-            if (restrictedExerciseIds.has(item.exercise_id)) {
+        for (const item of getExerciseItems(workout.items)) {
+            if (item.exercise_id && restrictedExerciseIds.has(item.exercise_id)) {
                 violations.push({
                     rule_id: 'restricted_exercise',
                     description: `Exercício "${item.exercise_name}" está bloqueado por restrição médica.`,
@@ -150,7 +154,7 @@ export function validateOutput(
                     },
                 })
             }
-            if (restrictedMuscleGroups.has(item.exercise_muscle_group)) {
+            if (item.exercise_muscle_group && restrictedMuscleGroups.has(item.exercise_muscle_group)) {
                 violations.push({
                     rule_id: 'restricted_muscle_group',
                     description: `Grupo muscular "${item.exercise_muscle_group}" está restrito por condição médica.`,
@@ -158,7 +162,7 @@ export function validateOutput(
                     auto_fixed: false,
                     context: {
                         workout_index: workout.order_index,
-                        exercise_id: item.exercise_id,
+                        exercise_id: item.exercise_id ?? undefined,
                         muscle_group: item.exercise_muscle_group,
                     },
                 })
@@ -168,8 +172,8 @@ export function validateOutput(
 
     // ---- Rule: Exercise must exist in provided pool ----
     for (const workout of generated.workouts) {
-        for (const item of workout.items) {
-            if (!exerciseMap.has(item.exercise_id)) {
+        for (const item of getExerciseItems(workout.items)) {
+            if (item.exercise_id && !exerciseMap.has(item.exercise_id)) {
                 violations.push({
                     rule_id: 'exercise_not_in_pool',
                     description: `Exercício "${item.exercise_name}" (${item.exercise_id}) não está no pool disponível.`,
@@ -186,8 +190,8 @@ export function validateOutput(
 
     // ---- Rule: At least 1 compound per workout (PRD §2.5) ----
     for (const workout of generated.workouts) {
-        const compoundsInWorkout = workout.items.filter(item => {
-            const ref = exerciseMap.get(item.exercise_id)
+        const compoundsInWorkout = getExerciseItems(workout.items).filter(item => {
+            const ref = item.exercise_id ? exerciseMap.get(item.exercise_id) : undefined
             return ref?.is_compound === true
         })
         if (compoundsInWorkout.length < PRESCRIPTION_CONSTRAINTS.min_compounds_per_day) {
@@ -244,8 +248,8 @@ export function validateOutput(
         const sessionSmallGroupCount: Record<string, number> = {}
         const freq = Math.max(1, workout.scheduled_days.length)
 
-        for (const item of workout.items) {
-            const group = item.exercise_muscle_group
+        for (const item of getExerciseItems(workout.items)) {
+            const group = item.exercise_muscle_group || ''
             if (SMALL_MUSCLE_GROUPS.includes(group)) {
                 sessionSmallGroupCount[group] = (sessionSmallGroupCount[group] || 0) + 1
                 weeklySmallGroupCount[group] = (weeklySmallGroupCount[group] || 0) + freq
@@ -290,18 +294,18 @@ export function validateOutput(
 
     // ---- Rule: Minimum rest for compound exercises (PRD §2.5) ----
     for (const workout of generated.workouts) {
-        for (const item of workout.items) {
-            const ref = exerciseMap.get(item.exercise_id)
-            if (ref?.is_compound && item.rest_seconds < PRESCRIPTION_CONSTRAINTS.min_rest_seconds_compound) {
+        for (const item of getExerciseItems(workout.items)) {
+            const ref = item.exercise_id ? exerciseMap.get(item.exercise_id) : undefined
+            if (ref?.is_compound && (item.rest_seconds ?? 0) < PRESCRIPTION_CONSTRAINTS.min_rest_seconds_compound) {
                 violations.push({
                     rule_id: 'rest_too_low_compound',
-                    description: `Exercício composto "${item.exercise_name}" com descanso de ${item.rest_seconds}s (mínimo ${PRESCRIPTION_CONSTRAINTS.min_rest_seconds_compound}s).`,
+                    description: `Exercício composto "${item.exercise_name}" com descanso de ${item.rest_seconds ?? 0}s (mínimo ${PRESCRIPTION_CONSTRAINTS.min_rest_seconds_compound}s).`,
                     severity: 'warning',
                     auto_fixed: false,
                     context: {
                         workout_index: workout.order_index,
-                        exercise_id: item.exercise_id,
-                        actual_value: item.rest_seconds,
+                        exercise_id: item.exercise_id ?? undefined,
+                        actual_value: item.rest_seconds ?? undefined,
                         expected_range: {
                             min: PRESCRIPTION_CONSTRAINTS.min_rest_seconds_compound,
                             max: 300,
@@ -332,8 +336,8 @@ export function validateOutput(
     // ---- Rule 9: No duplicate exercises across program ----
     const seenExercises = new Map<string, string>() // exerciseId → workoutName
     for (const workout of generated.workouts) {
-        for (const item of workout.items) {
-            if (seenExercises.has(item.exercise_id)) {
+        for (const item of getExerciseItems(workout.items)) {
+            if (item.exercise_id && seenExercises.has(item.exercise_id)) {
                 violations.push({
                     rule_id: 'duplicate_exercise',
                     description: `"${item.exercise_name}" aparece em "${seenExercises.get(item.exercise_id)}" e "${workout.name}".`,
@@ -344,7 +348,7 @@ export function validateOutput(
                         exercise_id: item.exercise_id,
                     },
                 })
-            } else {
+            } else if (item.exercise_id) {
                 seenExercises.set(item.exercise_id, workout.name)
             }
         }
@@ -353,11 +357,11 @@ export function validateOutput(
     // ---- Rule 10: Movement pattern diversity per workout ----
     for (const workout of generated.workouts) {
         const patternCount = new Map<string, string[]>()
-        for (const item of workout.items) {
-            const pattern = exerciseMap.get(item.exercise_id)?.movement_pattern
+        for (const item of getExerciseItems(workout.items)) {
+            const pattern = item.exercise_id ? exerciseMap.get(item.exercise_id)?.movement_pattern : undefined
             if (!pattern || pattern === 'isolation' || pattern === 'core') continue
             if (!patternCount.has(pattern)) patternCount.set(pattern, [])
-            patternCount.get(pattern)!.push(item.exercise_name)
+            patternCount.get(pattern)!.push(item.exercise_name ?? '')
         }
         for (const [pattern, names] of patternCount) {
             if (names.length >= 3) {
@@ -378,7 +382,7 @@ export function validateOutput(
     // ---- Rule 11: Exercise function ordering ----
     for (const workout of generated.workouts) {
         let lastOrder = -1
-        for (const item of workout.items) {
+        for (const item of getExerciseItems(workout.items)) {
             const fn = (item.exercise_function || 'accessory') as ExerciseFunction
             const currentOrder = EXERCISE_FUNCTION_ORDER[fn] ?? 3
             if (currentOrder < lastOrder) {
@@ -389,7 +393,7 @@ export function validateOutput(
                     auto_fixed: false,
                     context: {
                         workout_index: workout.order_index,
-                        exercise_id: item.exercise_id,
+                        exercise_id: item.exercise_id ?? undefined,
                     },
                 })
                 break // 1 violation per workout is sufficient
@@ -404,9 +408,26 @@ export function validateOutput(
     for (const workout of generated.workouts) {
         let totalMinutes = 0
         for (const item of workout.items) {
-            const reps = parseInt(item.reps) || 10
-            const repTime = (item.sets * reps * AVG_REP_DURATION) / 60
-            const restTime = (item.sets * item.rest_seconds) / 60
+            const itemType = item.item_type || 'exercise'
+            if (itemType === 'warmup') {
+                // Estimate warmup duration from item_config
+                totalMinutes += (item.item_config as any)?.duration_minutes ?? 5
+                continue
+            }
+            if (itemType === 'cardio') {
+                // Estimate cardio duration from item_config
+                const cfg = item.item_config as any
+                if (cfg?.mode === 'interval' && cfg?.intervals) {
+                    const { work_seconds = 30, rest_seconds: restSec = 15, rounds = 8 } = cfg.intervals
+                    totalMinutes += ((work_seconds * rounds) + (restSec * (rounds - 1))) / 60
+                } else {
+                    totalMinutes += cfg?.duration_minutes ?? 15
+                }
+                continue
+            }
+            const reps = parseInt(item.reps || '10') || 10
+            const repTime = ((item.sets ?? 0) * reps * AVG_REP_DURATION) / 60
+            const restTime = ((item.sets ?? 0) * (item.rest_seconds ?? 60)) / 60
             totalMinutes += repTime + restTime + SETUP_TIME_PER_EXERCISE
         }
         if (totalMinutes > profile.session_duration_minutes * 1.2) {
@@ -634,8 +655,10 @@ export function computeWeeklyVolumePerMuscle(
         const frequency = Math.max(1, workout.scheduled_days.length)
 
         for (const item of workout.items) {
-            const weeklySets = item.sets * frequency
-            const ref = exerciseMap?.get(item.exercise_id)
+            // Skip warmup/cardio items — they don't contribute to muscle volume
+            if ((item.item_type || 'exercise') !== 'exercise') continue
+            const weeklySets = (item.sets ?? 0) * frequency
+            const ref = item.exercise_id ? exerciseMap?.get(item.exercise_id) : undefined
             const groups = ref?.muscle_group_names
                 ?? (item.exercise_muscle_group ? [item.exercise_muscle_group] : [])
 
@@ -670,8 +693,9 @@ function reduceVolumeForMuscleGroup(
     for (const workout of workouts) {
         const frequency = Math.max(1, workout.scheduled_days.length)
         for (const item of workout.items) {
+            if (!item.exercise_id || item.sets == null) continue
             const ref = exerciseMap?.get(item.exercise_id)
-            const groups = ref?.muscle_group_names ?? [item.exercise_muscle_group]
+            const groups = ref?.muscle_group_names ?? [item.exercise_muscle_group ?? '']
             if (groups.includes(muscleGroup)) {
                 entries.push({ workout, item, frequency, isCompound: ref?.is_compound ?? false })
             }
@@ -682,22 +706,22 @@ function reduceVolumeForMuscleGroup(
     entries.sort((a, b) => {
         const aPriority = a.isCompound ? 1 : 0
         if (aPriority !== (b.isCompound ? 1 : 0)) return aPriority - (b.isCompound ? 1 : 0)
-        return (b.item.sets * b.frequency) - (a.item.sets * a.frequency)
+        return ((b.item.sets ?? 0) * b.frequency) - ((a.item.sets ?? 0) * a.frequency)
     })
 
     let currentTotal = entries.reduce(
-        (sum, e) => sum + e.item.sets * e.frequency, 0,
+        (sum, e) => sum + (e.item.sets ?? 0) * e.frequency, 0,
     )
 
     for (const entry of entries) {
         if (currentTotal <= maxSets) break
         const excess = currentTotal - maxSets
         const canReduce = Math.min(
-            entry.item.sets - 1,
+            (entry.item.sets ?? 0) - 1,
             Math.ceil(excess / entry.frequency),
         )
         if (canReduce > 0) {
-            entry.item.sets -= canReduce
+            entry.item.sets = (entry.item.sets ?? 0) - canReduce
             currentTotal -= canReduce * entry.frequency
         }
     }

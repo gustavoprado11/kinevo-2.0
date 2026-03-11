@@ -7,6 +7,8 @@ import { ScreenWrapper } from '../../components/ScreenWrapper';
 import { ExerciseCard } from '../../components/workout/ExerciseCard';
 import { SupersetGroup } from '../../components/workout/SupersetGroup';
 import { WorkoutNoteCard } from '../../components/workout/WorkoutNoteCard';
+import { WarmupCard } from '../../components/workout/WarmupCard';
+import { CardioCard } from '../../components/workout/CardioCard';
 import { useWorkoutSession } from '../../hooks/useWorkoutSession';
 import { useLiveActivity } from '../../hooks/useLiveActivity';
 import { useStudentProfile } from '../../hooks/useStudentProfile';
@@ -18,6 +20,10 @@ import { WorkoutCelebration, CelebrationData } from '../../components/workout/Wo
 import { ExerciseVideoModal } from '../../components/workout/ExerciseVideoModal';
 import { RestTimerOverlay } from '../../components/workout/RestTimerOverlay';
 import { ExerciseSwapModal } from '../../components/workout/ExerciseSwapModal';
+import { PreWorkoutFormSheet } from '../../components/workout/PreWorkoutFormSheet';
+import { PostWorkoutFormSheet } from '../../components/workout/PostWorkoutFormSheet';
+import { useWorkoutFormTriggers } from '../../hooks/useWorkoutFormTriggers';
+import { supabase } from '../../lib/supabase';
 import type { ExerciseSubstituteOption, ExerciseData, WorkoutNote } from '../../hooks/useWorkoutSession';
 import { ShareableCardProps } from '../../components/workout/sharing/types';
 import { watchFinishState } from '../../lib/finishWorkoutFromWatch';
@@ -28,7 +34,11 @@ export default function WorkoutPlayerScreen() {
     const { profile } = useStudentProfile();
 
     // Live Activity rest timer trigger
-    const liveActivityRef = useRef<{ startRestTimer: (exerciseIndex: number, seconds: number) => void } | null>(null);
+    const liveActivityRef = useRef<{
+        startRestTimer: (exerciseIndex: number, seconds: number) => void;
+        updateTimerState: (data: import('../../hooks/useLiveActivity').TimerUpdateData) => void;
+        clearTimerState: () => void;
+    } | null>(null);
 
     const onSetComplete = useCallback((exerciseIndex: number, _setIndex: number) => {
         const exercise = exercisesRef.current[exerciseIndex];
@@ -89,15 +99,47 @@ export default function WorkoutPlayerScreen() {
         searchSubstituteOptions,
         swapExercise,
         finishWorkout,
+        createSession,
+        assignedProgramId,
+        toggleCardioComplete,
         isSubmitting
-    } = useWorkoutSession(id as string, { onSetComplete });
+    } = useWorkoutSession(id as string, { onSetComplete, deferSessionCreation: true });
+
+    // Form triggers for pre/post workout check-in
+    const {
+        preWorkoutTrigger,
+        postWorkoutTrigger,
+        isLoading: triggersLoading,
+    } = useWorkoutFormTriggers(assignedProgramId);
+
+    // Pre/post checkin state
+    const [preCheckinState, setPreCheckinState] = React.useState<'pending' | 'showing' | 'completed' | 'skipped'>('pending');
+    const [postCheckinState, setPostCheckinState] = React.useState<'idle' | 'showing' | 'completed' | 'skipped'>('idle');
+    const [preSubmissionId, setPreSubmissionId] = React.useState<string | null>(null);
+    const [postSubmissionId, setPostSubmissionId] = React.useState<string | null>(null);
+    // Stash feedback data while post-checkin is showing
+    const pendingFeedbackRef = React.useRef<{ rpe: number; feedback: string } | null>(null);
+
+    // Auto-show pre-checkin or create session when triggers are resolved
+    const sessionCreatedRef = React.useRef(false);
+    React.useEffect(() => {
+        if (isLoading || triggersLoading || sessionCreatedRef.current) return;
+
+        if (preWorkoutTrigger && preCheckinState === 'pending') {
+            setPreCheckinState('showing');
+        } else if (!preWorkoutTrigger && preCheckinState === 'pending') {
+            // No pre-workout trigger — create session immediately
+            sessionCreatedRef.current = true;
+            createSession();
+        }
+    }, [isLoading, triggersLoading, preWorkoutTrigger, preCheckinState]);
 
     // Keep a ref to exercises for the onSetComplete callback
     const exercisesRef = useRef(exercises);
     exercisesRef.current = exercises;
 
     // Live Activity hook
-    const { startRestTimer, stopActivity } = useLiveActivity({
+    const { startRestTimer, updateTimerState, clearTimerState, stopActivity } = useLiveActivity({
         workoutName,
         workoutId: id as string,
         exercises,
@@ -107,8 +149,8 @@ export default function WorkoutPlayerScreen() {
 
     // Expose startRestTimer to onSetComplete callback via ref
     useEffect(() => {
-        liveActivityRef.current = { startRestTimer };
-    }, [startRestTimer]);
+        liveActivityRef.current = { startRestTimer, updateTimerState, clearTimerState };
+    }, [startRestTimer, updateTimerState, clearTimerState]);
 
     // Apple Watch connectivity
     // Note: FINISH_WORKOUT is handled at root level (_layout.tsx → finishWorkoutFromWatch)
@@ -320,6 +362,103 @@ export default function WorkoutPlayerScreen() {
         return unsubscribe;
     }, [navigation, isSubmitting]);
 
+    // ── Pre-workout check-in handlers ──
+    const handlePreCheckinSubmit = useCallback(async (answers: Record<string, any>) => {
+        if (!preWorkoutTrigger || !assignedProgramId || !profile?.id || !profile?.coach_id) return;
+
+        try {
+            const { data, error }: { data: any; error: any } = await supabase.rpc(
+                'submit_inline_form' as any,
+                {
+                    p_form_template_id: preWorkoutTrigger.formTemplateId,
+                    p_student_id: profile.id,
+                    p_trainer_id: profile.coach_id,
+                    p_answers_json: { answers },
+                    p_trigger_context: 'pre_workout',
+                }
+            );
+
+            if (error) throw error;
+            const result = data as { ok: boolean; submission_id: string };
+            if (!result?.ok) throw new Error('Submission failed');
+
+            setPreSubmissionId(result.submission_id);
+            setPreCheckinState('completed');
+            sessionCreatedRef.current = true;
+            await createSession(result.submission_id);
+        } catch (err: any) {
+            if (__DEV__) console.error('[PreCheckin] Submit error:', err?.message);
+            // Don't block the workout — skip and continue
+            Alert.alert('Erro ao enviar', 'O check-in falhou. Continuando o treino.', [
+                {
+                    text: 'OK',
+                    onPress: () => {
+                        setPreCheckinState('skipped');
+                        sessionCreatedRef.current = true;
+                        createSession();
+                    },
+                },
+            ]);
+        }
+    }, [preWorkoutTrigger, assignedProgramId, createSession, profile]);
+
+    const handlePreCheckinSkip = useCallback(() => {
+        setPreCheckinState('skipped');
+        sessionCreatedRef.current = true;
+        createSession();
+    }, [createSession]);
+
+    // ── Post-workout check-in handlers ──
+    // Use a ref-based approach to avoid circular dependency with handleConfirmFinish
+    const executeFinishRef = useRef<(rpe: number, feedback: string, pSubmissionId?: string) => void>(undefined);
+
+    const handlePostCheckinSubmit = useCallback(async (answers: Record<string, any>) => {
+        if (!postWorkoutTrigger || !profile?.id || !profile?.coach_id) return;
+
+        try {
+            const { data, error }: { data: any; error: any } = await supabase.rpc(
+                'submit_inline_form' as any,
+                {
+                    p_form_template_id: postWorkoutTrigger.formTemplateId,
+                    p_student_id: profile.id,
+                    p_trainer_id: profile.coach_id,
+                    p_answers_json: { answers },
+                    p_trigger_context: 'post_workout',
+                }
+            );
+
+            if (error) throw error;
+            const result = data as { ok: boolean; submission_id: string };
+            if (!result?.ok) throw new Error('Submission failed');
+
+            setPostSubmissionId(result.submission_id);
+            setPostCheckinState('completed');
+
+            if (pendingFeedbackRef.current) {
+                const { rpe, feedback } = pendingFeedbackRef.current;
+                pendingFeedbackRef.current = null;
+                executeFinishRef.current?.(rpe, feedback, result.submission_id);
+            }
+        } catch (err: any) {
+            if (__DEV__) console.error('[PostCheckin] Submit error:', err?.message);
+            setPostCheckinState('skipped');
+            if (pendingFeedbackRef.current) {
+                const { rpe, feedback } = pendingFeedbackRef.current;
+                pendingFeedbackRef.current = null;
+                executeFinishRef.current?.(rpe, feedback);
+            }
+        }
+    }, [postWorkoutTrigger, profile]);
+
+    const handlePostCheckinSkip = useCallback(() => {
+        setPostCheckinState('skipped');
+        if (pendingFeedbackRef.current) {
+            const { rpe, feedback } = pendingFeedbackRef.current;
+            pendingFeedbackRef.current = null;
+            executeFinishRef.current?.(rpe, feedback);
+        }
+    }, []);
+
     const handleFinish = () => {
         // Open feedback modal instead of alert
         setIsFeedbackVisible(true);
@@ -327,10 +466,10 @@ export default function WorkoutPlayerScreen() {
 
     const [successData, setSuccessData] = React.useState<ShareableCardProps & { sessionId?: string } | undefined>(undefined);
 
-    const handleConfirmFinish = async (rpe: number, feedback: string) => {
+    // Core finish logic — called directly or via post-checkin flow
+    const executeFinish = async (rpe: number, feedback: string, pSubmissionId?: string) => {
         try {
-            setIsFeedbackVisible(false);
-            const success = await finishWorkout(rpe, feedback);
+            const success = await finishWorkout(rpe, feedback, pSubmissionId || postSubmissionId || undefined);
             if (success) {
                 // Stop Live Activity immediately
                 stopActivity();
@@ -443,6 +582,24 @@ export default function WorkoutPlayerScreen() {
         }
     };
 
+    // Register the finish function so post-checkin handlers can call it
+    executeFinishRef.current = executeFinish;
+
+    // Wrapper called from FeedbackModal — may intercept to show post-checkin
+    const handleConfirmFinish = async (rpe: number, feedback: string) => {
+        setIsFeedbackVisible(false);
+
+        // If there's a post-workout trigger we haven't shown yet, intercept
+        if (postWorkoutTrigger && postCheckinState === 'idle') {
+            pendingFeedbackRef.current = { rpe, feedback };
+            setPostCheckinState('showing');
+            return;
+        }
+
+        // No post-checkin needed — proceed directly
+        executeFinish(rpe, feedback);
+    };
+
     const handleCelebrationComplete = useCallback(() => {
         setShowCelebration(false);
         // After celebration fades out, show the success/share modal
@@ -514,7 +671,8 @@ export default function WorkoutPlayerScreen() {
                             | { type: 'exercise'; exercise: ExerciseData; globalIndex: number; orderIndex: number }
                             | { type: 'superset'; exercises: ExerciseData[]; supersetId: string; supersetRestSeconds: number; globalIndexOffset: number; orderIndex: number }
                             | { type: 'note'; note: WorkoutNote; orderIndex: number }
-                            | { type: 'section_header'; label: string; orderIndex: number };
+                            | { type: 'section_header'; label: string; orderIndex: number }
+                            | { type: 'warmup_cardio'; exercise: ExerciseData; orderIndex: number };
 
                         const FUNCTION_LABELS: Record<string, string> = {
                             warmup: 'AQUECIMENTO',
@@ -528,6 +686,16 @@ export default function WorkoutPlayerScreen() {
                         const processedSupersets = new Set<string>();
 
                         exercises.forEach((exercise, globalIndex) => {
+                            // Warmup/Cardio items — render as special cards
+                            if (exercise.item_type === 'warmup' || exercise.item_type === 'cardio') {
+                                renderItems.push({
+                                    type: 'warmup_cardio',
+                                    exercise,
+                                    orderIndex: exercise.order_index,
+                                });
+                                return;
+                            }
+
                             if (exercise.supersetId) {
                                 if (processedSupersets.has(exercise.supersetId)) return;
                                 processedSupersets.add(exercise.supersetId);
@@ -608,6 +776,34 @@ export default function WorkoutPlayerScreen() {
                                                     {item.label}
                                                 </Text>
                                             </View>
+                                        );
+                                    }
+                                    if (item.type === 'warmup_cardio') {
+                                        if (item.exercise.item_type === 'warmup') {
+                                            return (
+                                                <WarmupCard
+                                                    key={item.exercise.id}
+                                                    exercise={item.exercise}
+                                                    onTimerStart={(endTs, totalSecs, warmupType) => {
+                                                        liveActivityRef.current?.updateTimerState({
+                                                            itemType: 'warmup',
+                                                            timerEndTimestamp: endTs,
+                                                            timerTotalSeconds: totalSecs,
+                                                            warmupType,
+                                                        });
+                                                    }}
+                                                    onTimerStop={() => liveActivityRef.current?.clearTimerState()}
+                                                />
+                                            );
+                                        }
+                                        return (
+                                            <CardioCard
+                                                key={item.exercise.id}
+                                                exercise={item.exercise}
+                                                onCardioToggle={toggleCardioComplete}
+                                                onTimerUpdate={(data) => liveActivityRef.current?.updateTimerState(data)}
+                                                onTimerStop={() => liveActivityRef.current?.clearTimerState()}
+                                            />
                                         );
                                     }
                                     if (item.type === 'note') {
@@ -786,6 +982,24 @@ export default function WorkoutPlayerScreen() {
                             };
                         });
                     }}
+                />
+            )}
+            {/* Pre-workout check-in sheet */}
+            {preWorkoutTrigger && (
+                <PreWorkoutFormSheet
+                    visible={preCheckinState === 'showing'}
+                    trigger={preWorkoutTrigger}
+                    onSubmit={handlePreCheckinSubmit}
+                    onSkip={handlePreCheckinSkip}
+                />
+            )}
+            {/* Post-workout check-in sheet */}
+            {postWorkoutTrigger && (
+                <PostWorkoutFormSheet
+                    visible={postCheckinState === 'showing'}
+                    trigger={postWorkoutTrigger}
+                    onSubmit={handlePostCheckinSubmit}
+                    onSkip={handlePostCheckinSkip}
                 />
             )}
         </ScreenWrapper>

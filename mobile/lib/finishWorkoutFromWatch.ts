@@ -17,11 +17,17 @@ interface WatchExerciseData {
   sets: WatchSetData[];
 }
 
+interface WatchCardioData {
+  itemId: string;
+  elapsedSeconds: number;
+}
+
 export interface WatchFinishPayload {
   workoutId: string;
   rpe: number;
   startedAt?: string;
   exercises?: WatchExerciseData[];
+  cardio?: WatchCardioData[];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

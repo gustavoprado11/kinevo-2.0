@@ -306,9 +306,10 @@ function makeProfile(frequency: number, level: TrainingLevel, goal: Prescription
 
 function makeContext(): EnrichedStudentContext {
     return {
-        student_name: 'Sim', trainer_name: 'Sim',
-        session_patterns: { total_sessions_4w: 12, completed_sessions_4w: 10, avg_duration_minutes: 55, most_active_days: [1,3,5] },
-        load_progression: [], previous_exercise_ids: [], muscle_group_frequency: {}, training_age_weeks: 16,
+        student_name: 'Sim',
+        previous_programs: [],
+        session_patterns: { total_sessions_4w: 12, completed_sessions_4w: 10, preferred_days: [1,3,5], avg_session_duration_minutes: null, dropout_rate_by_workout: {} },
+        load_progression: [], previous_exercise_ids: [],
     }
 }
 
@@ -463,7 +464,7 @@ function runSimulation(
         }
 
         workouts.push({ name: `Treino ${String.fromCharCode(65 + i)} — ${label}`, order_index: i, scheduled_days: scheduledDays, items })
-        workoutExerciseIds[label] = new Set(items.map(it => it.exercise_id))
+        workoutExerciseIds[label] = new Set(items.map(it => it.exercise_id).filter((id): id is string => !!id))
     }
 
     return { workouts, tracker, dynamicSlotsUsed: totalDynamicSlots }
@@ -505,9 +506,9 @@ function analyze(
     const exerciseIds = new Map<string, string[]>()
     for (const w of result.workouts) {
         for (const item of w.items) {
-            const l = exerciseIds.get(item.exercise_id) || []
+            const l = exerciseIds.get(item.exercise_id!) || []
             l.push(w.name)
-            exerciseIds.set(item.exercise_id, l)
+            exerciseIds.set(item.exercise_id!, l)
         }
     }
     const duplicateExercises: string[] = []
@@ -518,14 +519,14 @@ function analyze(
     const movementPatternDist: Record<string, number> = {}
     for (const w of result.workouts) {
         for (const item of w.items) {
-            const p = exerciseMap.get(item.exercise_id)?.movement_pattern || 'unknown'
+            const p = exerciseMap.get(item.exercise_id!)?.movement_pattern || 'unknown'
             movementPatternDist[p] = (movementPatternDist[p] || 0) + 1
         }
     }
 
     const workoutFatigueScores = result.workouts.map(w => {
         let s = 0
-        for (const item of w.items) { s += (FATIGUE_WEIGHTS[exerciseMap.get(item.exercise_id)?.fatigue_class || 'moderate'] || 2) * item.sets }
+        for (const item of w.items) { s += (FATIGUE_WEIGHTS[exerciseMap.get(item.exercise_id!)?.fatigue_class || 'moderate'] || 2) * (item.sets ?? 0) }
         return s
     })
 
@@ -534,7 +535,7 @@ function analyze(
         volumePerGroup, budgetCompliance: budgetCompliance as any,
         duplicateExercises, movementPatternDist, workoutFatigueScores,
         totalExercises: result.workouts.reduce((s, w) => s + w.items.length, 0),
-        totalSets: result.workouts.reduce((s, w) => s + w.items.reduce((ss, i) => ss + i.sets, 0), 0),
+        totalSets: result.workouts.reduce((s, w) => s + w.items.reduce((ss, i) => ss + (i.sets ?? 0), 0), 0),
         dynamicSlotsUsed: result.dynamicSlotsUsed,
     }
 }
@@ -665,7 +666,7 @@ function main() {
             console.log(`\n  ${w.name} [days: ${w.scheduled_days.join(',')}]`)
             for (const item of w.items) {
                 const ref = exercises.find(e => e.id === item.exercise_id)
-                console.log(`    ${String(item.order_index + 1).padStart(2)}. ${item.exercise_name.padEnd(26)} ${item.exercise_muscle_group.padEnd(18)} ${item.sets}×${item.reps.padEnd(6)} [${item.exercise_function}] ${ref?.movement_pattern || '-'} (${ref?.fatigue_class || '?'})`)
+                console.log(`    ${String(item.order_index + 1).padStart(2)}. ${item.exercise_name!.padEnd(26)} ${item.exercise_muscle_group!.padEnd(18)} ${item.sets}×${item.reps!.padEnd(6)} [${item.exercise_function}] ${ref?.movement_pattern || '-'} (${ref?.fatigue_class || '?'})`)
             }
         }
 

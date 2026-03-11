@@ -174,9 +174,9 @@ section('Full Pipeline — Beginner 3x/week Heuristic')
         for (const item of workout.items) {
             assert(item.exercise_name !== '', `Item has exercise_name: ${item.exercise_name}`)
             assert(item.exercise_muscle_group !== '', `Item has muscle_group: ${item.exercise_muscle_group}`)
-            assert(item.sets >= 1, `Item has sets >= 1: ${item.sets}`)
+            assert(item.sets! >= 1, `Item has sets >= 1: ${item.sets}`)
             assert(item.reps !== '', `Item has reps: ${item.reps}`)
-            assert(item.rest_seconds > 0, `Item has rest_seconds > 0: ${item.rest_seconds}`)
+            assert(item.rest_seconds! > 0, `Item has rest_seconds > 0: ${item.rest_seconds}`)
         }
     }
 
@@ -343,7 +343,7 @@ section('Full Pipeline — Beginner 5x/week PPL+')
 
     // All workouts have at least 1 compound
     for (const w of output.workouts) {
-        const hasCompound = w.items.some(i => exerciseMap.get(i.exercise_id)?.is_compound === true)
+        const hasCompound = w.items.some(i => exerciseMap.get(i.exercise_id!)?.is_compound === true)
         assert(hasCompound, `${w.name}: has compound`)
     }
 

@@ -2,6 +2,8 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { supabaseAdmin } from '@/lib/supabase-admin'
+import { sendStudentPush } from '@/lib/push-notifications'
 
 interface AssignFormInput {
     formTemplateId: string
@@ -28,6 +30,9 @@ export async function assignFormToStudents(input: AssignFormInput) {
     const dueAt = input.dueAt && input.dueAt.trim() !== ''
         ? new Date(input.dueAt).toISOString()
         : null
+
+    // Capture timestamp before RPC to scope the push query precisely
+    const beforeRpc = new Date().toISOString()
 
     const { data, error } = await supabase.rpc('assign_form_to_students', {
         p_form_template_id: input.formTemplateId,
@@ -57,10 +62,37 @@ export async function assignFormToStudents(input: AssignFormInput) {
         }
     }
 
+    // Fire-and-forget: send push to each assigned student
+    // Query the inbox items just created by the RPC (created after beforeRpc) to get their IDs
+    try {
+        const { data: createdItems } = await supabaseAdmin
+            .from('student_inbox_items')
+            .select('id, student_id, title')
+            .in('student_id', normalizedStudentIds)
+            .eq('type', 'form_request')
+            .is('push_sent_at', null)
+            .gte('created_at', beforeRpc)
+            .order('created_at', { ascending: false })
+            .limit(normalizedStudentIds.length)
+
+        if (createdItems && createdItems.length > 0) {
+            for (const item of createdItems) {
+                sendStudentPush({
+                    studentId: item.student_id,
+                    title: 'Nova avaliação disponível',
+                    body: 'Seu treinador enviou uma avaliação para você preencher.',
+                    inboxItemId: item.id,
+                    data: { type: 'form_request', inbox_item_id: item.id },
+                })
+            }
+        }
+    } catch (pushErr) {
+        console.error('[assignFormToStudents] Push error (non-fatal):', pushErr)
+    }
+
     return {
         success: true,
         assignedCount,
         skippedCount,
     }
 }
-
