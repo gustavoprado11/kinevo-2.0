@@ -313,12 +313,12 @@ export function AgentQuestionsPanel({
 
             {/* Skip Confirmation Dialog */}
             {showSkipConfirm && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center">
+                <div className="fixed inset-0 z-modal flex items-center justify-center">
                     <div
                         className="fixed inset-0 bg-black/60 backdrop-blur-sm"
                         onClick={() => setShowSkipConfirm(false)}
                     />
-                    <div className="relative w-full max-w-md bg-k-surface border border-k-border-primary rounded-2xl p-6 z-50 space-y-4 mx-4">
+                    <div className="relative w-full max-w-md bg-k-surface border border-k-border-primary rounded-2xl p-6 z-modal space-y-4 mx-4">
                         <div className="flex items-start gap-3">
                             <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center flex-shrink-0">
                                 <AlertTriangle className="w-5 h-5 text-amber-400" />

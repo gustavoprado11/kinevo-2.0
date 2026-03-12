@@ -124,7 +124,7 @@ export function WeeklyPerformanceTracker({
                                 </div>
 
                                 {/* Tooltip */}
-                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-surface-card border border-k-border-primary rounded-lg text-xs font-medium text-k-text-primary opacity-0 group-hover/day:opacity-100 transition-opacity pointer-events-none z-20 whitespace-nowrap shadow-xl">
+                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-surface-card border border-k-border-primary rounded-lg text-xs font-medium text-k-text-primary opacity-0 group-hover/day:opacity-100 transition-opacity pointer-events-none z-header whitespace-nowrap shadow-xl">
                                     {day.session ? (
                                         <span>Realizado: {day.session.assigned_workout_id ? 'Treino' : 'Sessão'}</span>
                                     ) : day.isMissed ? (

@@ -119,7 +119,7 @@ function ActionsMenu({
 
             {isOpen && (
                 <div
-                    className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-surface-card border border-[#D2D2D7] dark:border-k-border-primary rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-2xl z-40 py-1"
+                    className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-surface-card border border-[#D2D2D7] dark:border-k-border-primary rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-2xl z-dropdown py-1"
                     onClick={(e) => e.stopPropagation()}
                 >
                     <button
@@ -216,7 +216,7 @@ function ApplyToStudentDialog({
     }
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-modal flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/30 dark:bg-black/60 backdrop-blur-sm" onClick={onClose} />
             <div className="relative bg-white dark:bg-surface-card border border-[#D2D2D7] dark:border-k-border-primary rounded-2xl w-full max-w-md shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-2xl">
                 {/* Header */}

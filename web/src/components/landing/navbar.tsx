@@ -29,7 +29,7 @@ export function Navbar() {
                 initial={{ y: -20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ duration: 0.6 }}
-                className={`fixed top-0 left-0 right-0 z-50 h-16 transition-all duration-300 ${
+                className={`fixed top-0 left-0 right-0 z-modal h-16 transition-all duration-300 ${
                     scrolled
                         ? 'bg-white/80 backdrop-blur-xl border-b border-black/5'
                         : 'bg-transparent'
@@ -100,7 +100,7 @@ export function Navbar() {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
                         transition={{ duration: 0.2 }}
-                        className="fixed inset-x-0 top-16 z-40 bg-white/95 backdrop-blur-xl border-b border-black/5 md:hidden"
+                        className="fixed inset-x-0 top-16 z-dropdown bg-white/95 backdrop-blur-xl border-b border-black/5 md:hidden"
                     >
                         <div className="px-6 py-6 flex flex-col gap-4">
                             {navLinks.map((link) => (

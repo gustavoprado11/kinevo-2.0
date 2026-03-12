@@ -43,7 +43,7 @@ export function ExerciseActionsMenu({ exercise, currentTrainerId, onEdit, onDele
             </button>
 
             {isOpen && (
-                <div className="absolute right-0 mt-2 w-40 bg-white dark:bg-muted rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-xl border border-[#D2D2D7] dark:border-border overflow-hidden z-10 py-1">
+                <div className="absolute right-0 mt-2 w-40 bg-white dark:bg-muted rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-xl border border-[#D2D2D7] dark:border-border overflow-hidden z-sticky py-1">
                     <button
                         onClick={() => {
                             setIsOpen(false)

@@ -65,7 +65,7 @@ function FilterDropdown({
             </button>
 
             {isOpen && (
-                <div className="absolute top-full left-0 mt-2 w-64 max-h-72 overflow-y-auto bg-white dark:bg-surface-card border border-[#D2D2D7] dark:border-k-border-primary rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-2xl z-50">
+                <div className="absolute top-full left-0 mt-2 w-64 max-h-72 overflow-y-auto bg-white dark:bg-surface-card border border-[#D2D2D7] dark:border-k-border-primary rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-2xl z-modal">
                     {selected.length > 0 && (
                         <button
                             onClick={() => { onClear(); setIsOpen(false) }}

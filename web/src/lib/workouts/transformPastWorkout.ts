@@ -33,8 +33,9 @@ export function pastDetailToWorkout(detail: PastWorkoutDetail): Workout {
 /**
  * Converts a CompareWorkout (from full program load) into a Workout
  * compatible with WorkoutPanel's readonly mode. Includes warmup/cardio + item_config.
+ * When exercises are provided, muscle_groups are resolved by name for VolumeSummary.
  */
-export function compareWorkoutToWorkout(cw: CompareWorkout): Workout {
+export function compareWorkoutToWorkout(cw: CompareWorkout, exercises?: { name: string; muscle_groups?: any[] }[]): Workout {
     const topLevel = cw.items.filter(i => !i.parent_item_id)
     const childrenMap = new Map<string, CompareWorkoutItem[]>()
 
@@ -46,14 +47,28 @@ export function compareWorkoutToWorkout(cw: CompareWorkout): Workout {
         }
     }
 
+    // Build a lookup map for exercise name → muscle_groups
+    const exerciseLookup = new Map<string, any[]>()
+    if (exercises) {
+        for (const ex of exercises) {
+            if (ex.name && ex.muscle_groups) {
+                exerciseLookup.set(ex.name.toLowerCase(), ex.muscle_groups)
+            }
+        }
+    }
+
     const items: WorkoutItem[] = topLevel
         .sort((a, b) => a.order_index - b.order_index)
-        .map(item => compareItemToWorkoutItem(item, childrenMap))
+        .map(item => compareItemToWorkoutItem(item, childrenMap, exerciseLookup))
+
+    const dayMap: Record<number, string> = { 0: 'sun', 1: 'mon', 2: 'tue', 3: 'wed', 4: 'thu', 5: 'fri', 6: 'sat' }
+    const frequency = (cw.scheduled_days || []).map(d => dayMap[d])
 
     return {
         id: cw.id,
         name: cw.name,
         order_index: cw.order_index,
+        frequency,
         items,
     }
 }
@@ -89,11 +104,16 @@ function toWorkoutItem(
 function compareItemToWorkoutItem(
     item: CompareWorkoutItem,
     childrenMap: Map<string, CompareWorkoutItem[]>,
+    exerciseLookup: Map<string, any[]>,
 ): WorkoutItem {
     const children = childrenMap.get(item.id)
     const sortedChildren = children
-        ? children.sort((a, b) => a.order_index - b.order_index).map(c => compareItemToWorkoutItem(c, childrenMap))
+        ? children.sort((a, b) => a.order_index - b.order_index).map(c => compareItemToWorkoutItem(c, childrenMap, exerciseLookup))
         : undefined
+
+    const muscleGroups = item.exercise_name
+        ? exerciseLookup.get(item.exercise_name.toLowerCase()) || []
+        : []
 
     return {
         id: item.id,
@@ -103,7 +123,7 @@ function compareItemToWorkoutItem(
         exercise_id: null,
         substitute_exercise_ids: [],
         exercise: item.exercise_name
-            ? { id: '', name: item.exercise_name, muscle_groups: [] } as any
+            ? { id: '', name: item.exercise_name, muscle_groups: muscleGroups } as any
             : undefined,
         sets: item.sets,
         reps: item.reps,

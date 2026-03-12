@@ -126,7 +126,7 @@ function ActionsMenu({ template, onDelete }: { template: FormTemplate; onDelete:
                 <MoreVertical size={16} />
             </button>
             {open && (
-                <div className="absolute right-0 top-8 z-20 w-44 rounded-xl border border-[#D2D2D7] bg-white shadow-[0_2px_8px_rgba(0,0,0,0.12)] py-1 dark:border-k-border-primary dark:bg-surface-card dark:shadow-xl">
+                <div className="absolute right-0 top-8 z-header w-44 rounded-xl border border-[#D2D2D7] bg-white shadow-[0_2px_8px_rgba(0,0,0,0.12)] py-1 dark:border-k-border-primary dark:bg-surface-card dark:shadow-xl">
                     {!isSystem && (
                         <button
                             onClick={(e) => { e.stopPropagation(); setOpen(false); router.push(`/forms/templates/new?edit=${template.id}`) }}
@@ -270,7 +270,7 @@ export function TemplatesClient({ trainer, templates: initialTemplates }: Templa
                                 className="group relative bg-white border border-[#D2D2D7] rounded-xl p-4 shadow-[0_1px_3px_rgba(0,0,0,0.08)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.12)] hover:bg-[#F5F5F7] transition-all cursor-pointer dark:bg-surface-card dark:border-k-border-subtle dark:shadow-none dark:hover:border-k-border-primary dark:hover:bg-glass-bg"
                             >
                                 {deleting === template.id && (
-                                    <div className="absolute inset-0 flex items-center justify-center bg-surface-card/80 rounded-xl z-10">
+                                    <div className="absolute inset-0 flex items-center justify-center bg-surface-card/80 rounded-xl z-sticky">
                                         <Loader2 size={20} className="animate-spin text-k-text-quaternary" />
                                     </div>
                                 )}

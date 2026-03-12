@@ -21,14 +21,14 @@ export function ExerciseVideoModal({
     const embedUrl = normalizeYouTubeEmbedUrl(videoUrl)
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-modal flex items-center justify-center">
             {/* Backdrop */}
             <div className="absolute inset-0 bg-black/85" onClick={onClose} />
 
             {/* Close button */}
             <button
                 onClick={onClose}
-                className="absolute top-6 right-6 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+                className="absolute top-6 right-6 z-sticky flex h-10 w-10 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors"
             >
                 <X size={20} className="text-white" />
             </button>

@@ -22,6 +22,7 @@ export interface CompareWorkout {
     id: string
     name: string
     order_index: number
+    scheduled_days: number[]
     items: CompareWorkoutItem[]
 }
 
@@ -106,7 +107,7 @@ export async function getFullProgramForCompare(
         // 2. All workouts in the program
         const { data: workouts, error: wError } = await supabase
             .from('assigned_workouts')
-            .select('id, name, order_index')
+            .select('id, name, order_index, scheduled_days')
             .eq('assigned_program_id', programId)
             .order('order_index')
 
@@ -151,6 +152,7 @@ export async function getFullProgramForCompare(
             id: w.id,
             name: w.name,
             order_index: w.order_index,
+            scheduled_days: w.scheduled_days || [],
             items: itemsByWorkout.get(w.id) || [],
         }))
 

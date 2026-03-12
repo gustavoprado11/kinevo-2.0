@@ -37,7 +37,7 @@ export function AuthLayout({
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_80%,rgba(124,58,237,0.05),transparent_50%)]" />
 
                 {/* Logo */}
-                <div className="relative z-10 flex items-center gap-3">
+                <div className="relative z-sticky flex items-center gap-3">
                     <Image
                         src="/logo-icon.png"
                         alt="Kinevo"
@@ -49,7 +49,7 @@ export function AuthLayout({
                 </div>
 
                 {/* Center content: Tagline + Product mockup */}
-                <div className="relative z-10 flex flex-col gap-8">
+                <div className="relative z-sticky flex flex-col gap-8">
                     <div className="max-w-md">
                         <h2 className="font-jakarta text-4xl font-extrabold text-slate-900 leading-tight tracking-tighter">
                             {tagline}
@@ -76,7 +76,7 @@ export function AuthLayout({
                 </div>
 
                 {/* Bottom badge */}
-                <div className="relative z-10 flex items-center gap-2 text-slate-400 text-sm font-jakarta">
+                <div className="relative z-sticky flex items-center gap-2 text-slate-400 text-sm font-jakarta">
                     <BottomIcon size={14} />
                     <span>{bottomText}</span>
                 </div>

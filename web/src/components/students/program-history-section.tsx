@@ -87,12 +87,12 @@ export function ProgramHistorySection({ programs }: ProgramHistorySectionProps) 
                     {programs.map((program) => (
                         <div key={program.id} className="relative pl-12 group">
                             {/* Timeline Dot */}
-                            <div className="absolute left-4 top-2 w-4 h-4 rounded-full border-2 border-surface-primary bg-glass-bg-active z-10 group-hover:bg-violet-500 transition-colors" />
+                            <div className="absolute left-4 top-2 w-4 h-4 rounded-full border-2 border-surface-primary bg-glass-bg-active z-sticky group-hover:bg-violet-500 transition-colors" />
 
                             <div className="bg-glass-bg rounded-2xl p-5 border border-k-border-subtle hover:border-violet-500/30 transition-all overflow-hidden relative">
                                 <button
                                     onClick={() => handleExpand(program.id)}
-                                    className="w-full text-left relative z-10"
+                                    className="w-full text-left relative z-sticky"
                                 >
                                     <div className="flex justify-between items-start mb-2">
                                         <h4 className="font-black text-[#1C1C1E] dark:text-white text-lg tracking-tight group-hover:text-violet-300 transition-colors">
@@ -140,7 +140,7 @@ export function ProgramHistorySection({ programs }: ProgramHistorySectionProps) 
 
                                 {/* Expanded Details */}
                                 {expandedProgramId === program.id && (
-                                    <div className="mt-6 pt-6 border-t border-k-border-subtle space-y-6 relative z-10">
+                                    <div className="mt-6 pt-6 border-t border-k-border-subtle space-y-6 relative z-sticky">
                                         {/* Program Stats */}
                                         <div className="grid grid-cols-3 gap-4">
                                             <div className="bg-glass-bg rounded-xl p-4 text-center border border-k-border-subtle">

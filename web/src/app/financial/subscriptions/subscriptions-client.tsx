@@ -605,7 +605,7 @@ export function SubscriptionsClient({
                                                                 />
                                                             </button>
                                                             {blockConfirmId === s.student_id && (
-                                                                <div className="absolute z-20 top-full mt-1 right-0 w-56 p-3 rounded-xl border border-[#FF9500]/20 dark:border-amber-500/20 bg-white dark:bg-surface-card shadow-lg">
+                                                                <div className="absolute z-header top-full mt-1 right-0 w-56 p-3 rounded-xl border border-[#FF9500]/20 dark:border-amber-500/20 bg-white dark:bg-surface-card shadow-lg">
                                                                     <p className="text-[11px] text-[#FF9500] dark:text-amber-400 mb-2">
                                                                         Bloquear acesso de {s.student_name} se inadimplente?
                                                                     </p>

@@ -81,7 +81,7 @@ export function MuscleGroupManagerModal({ isOpen, onClose, trainerId, manager }:
     if (!isOpen) return null
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-modal flex items-center justify-center p-4">
             <div
                 className="absolute inset-0 bg-black/30 dark:bg-black/60 backdrop-blur-sm transition-opacity duration-300"
                 onClick={onClose}
@@ -238,7 +238,7 @@ export function MuscleGroupManagerModal({ isOpen, onClose, trainerId, manager }:
 
             {/* Delete Confirmation Modal */}
             {deletingGroup && (
-                <div className="absolute inset-0 z-[60] flex items-center justify-center p-4 bg-black/30 dark:bg-black/60 backdrop-blur-sm">
+                <div className="absolute inset-0 z-float flex items-center justify-center p-4 bg-black/30 dark:bg-black/60 backdrop-blur-sm">
                     <div className="bg-white dark:bg-[#1C1C1E] border border-[#D2D2D7] dark:border-white/10 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-2xl max-w-sm w-full p-6 animate-in fade-in zoom-in-95 duration-200 dark:ring-1 dark:ring-white/5">
                         <div className="flex flex-col items-center text-center mb-6">
                             <div className="w-12 h-12 rounded-full bg-[#FF3B30]/10 dark:bg-red-500/10 flex items-center justify-center mb-4">

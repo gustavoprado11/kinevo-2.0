@@ -44,12 +44,12 @@ export function TrainerProfileBanner({ selfStudentId }: TrainerProfileBannerProp
             {/* Dismiss button */}
             <button
                 onClick={handleDismiss}
-                className="absolute top-3 right-3 p-1.5 text-[#AEAEB2] dark:text-muted-foreground/40 hover:text-[#1D1D1F] dark:hover:text-foreground rounded-lg transition-colors z-10"
+                className="absolute top-3 right-3 p-1.5 text-[#AEAEB2] dark:text-muted-foreground/40 hover:text-[#1D1D1F] dark:hover:text-foreground rounded-lg transition-colors z-sticky"
             >
                 <X size={16} />
             </button>
 
-            <div className="relative z-10 space-y-3">
+            <div className="relative z-sticky space-y-3">
                 {/* Top row: icon + text */}
                 <div className="flex items-start gap-3 pr-6">
                     <div className="w-10 h-10 bg-[#F5F5F7] dark:bg-violet-500/15 rounded-xl flex items-center justify-center flex-shrink-0 border border-[#E8E8ED] dark:border-violet-500/20">

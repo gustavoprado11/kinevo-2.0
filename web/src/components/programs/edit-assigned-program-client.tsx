@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useId, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, Loader2, Calendar, Edit3, AlertCircle, BookmarkPlus, Smartphone, GitCompareArrows, X } from 'lucide-react'
+import { ChevronLeft, Loader2, Calendar, Edit3, AlertCircle, BookmarkPlus, Smartphone, GitCompareArrows, X, ChevronDown, ClipboardCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { AppLayout } from '@/components/layout'
 import { createClient } from '@/lib/supabase/client'
@@ -17,12 +17,11 @@ import { ProgramFormTriggers, type InitialTrigger } from './program-form-trigger
 
 import type { Exercise } from '@/types/exercise'
 import { capturePostAssignmentEdits } from '@/actions/prescription/capture-post-assignment-edits'
-import { ContextPanel } from '@/components/builder/context-panel/context-panel'
-import type { ContextPanelMode } from '@/components/builder/context-panel/context-panel-header'
-import { PastWorkoutSelector } from '@/components/builder/context-panel/past-workout-selector'
-import { getPastWorkoutsForStudent, getPastWorkoutDetail } from '@/app/students/[id]/actions/get-past-workouts'
-import type { PastWorkoutSummary, PastWorkoutDetail } from '@/app/students/[id]/actions/get-past-workouts'
-import { pastDetailToWorkout } from '@/lib/workouts/transformPastWorkout'
+import { WorkoutExecutionPreview } from './workout-preview/workout-execution-preview'
+import { ProgramSelector } from '@/components/builder/context-panel/program-selector'
+import { getPastProgramsForStudent, getFullProgramForCompare } from '@/actions/programs/get-program-for-compare'
+import type { CompareProgramSummary, CompareProgramData } from '@/actions/programs/get-program-for-compare'
+import { compareWorkoutToWorkout } from '@/lib/workouts/transformPastWorkout'
 import type { BuilderViewMode } from './program-builder-client'
 
 export interface WorkoutItem {
@@ -115,17 +114,20 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
     const [isEndDateFixed, setIsEndDateFixed] = useState(false)
     const [isDescriptionOpen, setIsDescriptionOpen] = useState(false)
     const [showTemplateDialog, setShowTemplateDialog] = useState(false)
-    const [contextPanelMode, setContextPanelMode] = useState<ContextPanelMode>('preview')
     const [builderViewMode, setBuilderViewMode] = useState<BuilderViewMode>('preview')
+    const [checkinExpanded, setCheckinExpanded] = useState(false)
 
     // Compare mode state
-    const [comparePastWorkouts, setComparePastWorkouts] = useState<PastWorkoutSummary[]>([])
-    const [comparePastWorkoutsLoading, setComparePastWorkoutsLoading] = useState(false)
-    const [comparePastWorkoutsLoaded, setComparePastWorkoutsLoaded] = useState(false)
-    const [compareSelectedId, setCompareSelectedId] = useState<string | null>(null)
-    const [compareWorkout, setCompareWorkout] = useState<import('./program-builder-client').Workout | null>(null)
-    const [compareDetailLoading, setCompareDetailLoading] = useState(false)
-    const [comparePastDetail, setComparePastDetail] = useState<PastWorkoutDetail | null>(null)
+    const [compareProgramsList, setCompareProgramsList] = useState<CompareProgramSummary[]>([])
+    const [compareProgramsLoading, setCompareProgramsLoading] = useState(false)
+    const [compareProgramsLoaded, setCompareProgramsLoaded] = useState(false)
+    const [compareSelectedProgramId, setCompareSelectedProgramId] = useState<string | null>(null)
+    const [compareProgramData, setCompareProgramData] = useState<CompareProgramData | null>(null)
+    const [compareProgramLoading, setCompareProgramLoading] = useState(false)
+    const [compareWorkouts, setCompareWorkouts] = useState<Workout[]>([])
+    const [compareActiveWorkoutId, setCompareActiveWorkoutId] = useState<string | null>(null)
+
+    const formTriggerCount = [initialFormTriggers?.preWorkout, initialFormTriggers?.postWorkout].filter(Boolean).length
 
     const [templateName, setTemplateName] = useState('')
     const [savingTemplate, setSavingTemplate] = useState(false)
@@ -188,40 +190,49 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
         setEndDate(newEnd)
     }
 
+    const [localExercises, setLocalExercises] = useState<Exercise[]>(exercises)
+
     // ── Compare mode handlers ──────────────────────────────────────────────
     const handleEnterCompare = useCallback(() => {
         setBuilderViewMode('compare')
-        setContextPanelMode('none')
-        if (!comparePastWorkoutsLoaded) {
-            setComparePastWorkoutsLoading(true)
-            getPastWorkoutsForStudent(studentId)
+        if (!compareProgramsLoaded) {
+            setCompareProgramsLoading(true)
+            getPastProgramsForStudent(studentId)
                 .then((result) => {
-                    setComparePastWorkouts(result.data || [])
-                    setComparePastWorkoutsLoaded(true)
+                    setCompareProgramsList(result.data || [])
+                    setCompareProgramsLoaded(true)
                 })
                 .catch(() => {
-                    setComparePastWorkouts([])
-                    setComparePastWorkoutsLoaded(true)
+                    setCompareProgramsList([])
+                    setCompareProgramsLoaded(true)
                 })
-                .finally(() => setComparePastWorkoutsLoading(false))
+                .finally(() => setCompareProgramsLoading(false))
         }
-    }, [studentId, comparePastWorkoutsLoaded])
+    }, [studentId, compareProgramsLoaded])
 
-    const handleSelectCompareWorkout = useCallback((workoutId: string) => {
-        setCompareSelectedId(workoutId)
-        setCompareDetailLoading(true)
-        getPastWorkoutDetail(workoutId)
+    const handleSelectCompareProgram = useCallback((programId: string) => {
+        setCompareSelectedProgramId(programId)
+        setCompareProgramLoading(true)
+        getFullProgramForCompare(programId)
             .then((result) => {
-                const detail = result.data || null
-                setComparePastDetail(detail)
-                setCompareWorkout(detail ? pastDetailToWorkout(detail) : null)
+                const data = result.data || null
+                setCompareProgramData(data)
+                if (data && data.workouts.length > 0) {
+                    const converted = data.workouts.map(cw => compareWorkoutToWorkout(cw, localExercises))
+                    setCompareWorkouts(converted)
+                    setCompareActiveWorkoutId(converted[0].id)
+                } else {
+                    setCompareWorkouts([])
+                    setCompareActiveWorkoutId(null)
+                }
             })
             .catch(() => {
-                setComparePastDetail(null)
-                setCompareWorkout(null)
+                setCompareProgramData(null)
+                setCompareWorkouts([])
+                setCompareActiveWorkoutId(null)
             })
-            .finally(() => setCompareDetailLoading(false))
-    }, [])
+            .finally(() => setCompareProgramLoading(false))
+    }, [localExercises])
 
     const handleExitCompare = useCallback(() => {
         setBuilderViewMode('normal')
@@ -229,15 +240,11 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
 
     const handleEnterPreview = useCallback(() => {
         setBuilderViewMode('preview')
-        setContextPanelMode('preview')
     }, [])
 
     const handleExitPreview = useCallback(() => {
         setBuilderViewMode('normal')
-        setContextPanelMode('none')
     }, [])
-
-    const [localExercises, setLocalExercises] = useState<Exercise[]>(exercises)
 
     // Handler for new inline exercises
     const handleExerciseCreated = (newExercise: Exercise) => {
@@ -316,6 +323,10 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
     )
 
     const activeWorkout = workouts.find(w => w.id === activeWorkoutId)
+
+    const compareActiveWorkout = useMemo(() =>
+        compareWorkouts.find(w => w.id === compareActiveWorkoutId) || null
+    , [compareWorkouts, compareActiveWorkoutId])
 
     const workoutsWithoutDays = useMemo(() =>
         workouts.filter(w => !w.frequency || w.frequency.length === 0),
@@ -1153,7 +1164,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
         >
             <div className="flex flex-col h-[calc(100vh-64px)] overflow-hidden bg-surface-canvas">
                 {/* Compact Header */}
-                <div className="flex-shrink-0 bg-surface-primary backdrop-blur-md border-b border-k-border-primary flex items-center gap-4 px-6 py-3 z-30">
+                <div className="flex-shrink-0 bg-white dark:bg-surface-primary backdrop-blur-md border-b border-[#E8E8ED] dark:border-k-border-primary flex items-center gap-4 px-6 py-3 z-sticky">
                     {/* Left: Back + Name */}
                     <div className="flex items-center gap-3 min-w-0">
                         <Button
@@ -1279,23 +1290,75 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
 
 
 
-                {/* Weekly Volume Summary */}
-                <VolumeSummary workouts={workouts} />
+                {/* Secondary Toolbar: Check-in trigger (left) + Preview/Compare icons (right) — always visible */}
+                <div className="flex-shrink-0 flex items-center justify-between px-6 min-h-[44px] border-b border-[#E8E8ED] dark:border-k-border-subtle bg-[#FAFAFA] dark:bg-white/[0.02]">
+                    {/* Left: Check-in trigger (read-only) */}
+                    {formTriggerCount > 0 ? (
+                        <button
+                            onClick={() => setCheckinExpanded(!checkinExpanded)}
+                            className="flex items-center gap-2 py-2.5"
+                            aria-expanded={checkinExpanded}
+                        >
+                            <ClipboardCheck className="w-4 h-4 text-[#AEAEB2] dark:text-k-text-quaternary shrink-0" />
+                            <span className="text-sm font-medium text-[#1D1D1F]/80 dark:text-k-text-primary/80">Check-in do Programa</span>
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium rounded-full text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10">
+                                <span className="w-[5px] h-[5px] rounded-full bg-emerald-500 dark:bg-emerald-400" />
+                                {formTriggerCount} formulário{formTriggerCount > 1 ? 's' : ''}
+                            </span>
+                            <ChevronDown
+                                className={`w-4 h-4 text-[#AEAEB2]/60 dark:text-k-text-quaternary/60 shrink-0 transition-transform duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+                                    checkinExpanded ? 'rotate-180' : ''
+                                }`}
+                            />
+                        </button>
+                    ) : (
+                        <div />
+                    )}
 
-                {/* Form Triggers (read-only — inherited from source template) */}
-                {initialFormTriggers && (initialFormTriggers.preWorkout || initialFormTriggers.postWorkout) && (
+                    {/* Right: Preview & Compare icons */}
+                    <div className="flex items-center gap-1">
+                        <button
+                            onClick={builderViewMode === 'preview' ? handleExitPreview : handleEnterPreview}
+                            className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors duration-150 ${
+                                builderViewMode === 'preview'
+                                    ? 'text-violet-600 dark:text-violet-400 bg-violet-100/80 dark:bg-violet-500/[0.08]'
+                                    : 'text-[#AEAEB2] dark:text-k-text-quaternary hover:bg-[#F5F5F7]/60 dark:hover:bg-glass-bg/50 hover:text-[#1D1D1F] dark:hover:text-k-text-primary'
+                            }`}
+                            title="Pré-visualizar no celular"
+                        >
+                            <Smartphone className="w-4 h-4" />
+                        </button>
+                        <button
+                            onClick={builderViewMode === 'compare' ? handleExitCompare : handleEnterCompare}
+                            className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors duration-150 ${
+                                builderViewMode === 'compare'
+                                    ? 'text-violet-600 dark:text-violet-400 bg-violet-100/80 dark:bg-violet-500/[0.08]'
+                                    : 'text-[#AEAEB2] dark:text-k-text-quaternary hover:bg-[#F5F5F7]/60 dark:hover:bg-glass-bg/50 hover:text-[#1D1D1F] dark:hover:text-k-text-primary'
+                            }`}
+                            title={builderViewMode === 'compare' ? 'Sair da comparação' : 'Comparar com treino anterior'}
+                        >
+                            <GitCompareArrows className="w-4 h-4" />
+                        </button>
+                    </div>
+                </div>
+
+                {/* Check-in expanded content panel (read-only) */}
+                {formTriggerCount > 0 && builderViewMode !== 'compare' && (
                     <ProgramFormTriggers
-                        initialTriggers={initialFormTriggers}
+                        initialTriggers={initialFormTriggers!}
                         availableTemplates={[]}
                         onChange={() => {}}
                         readOnly
+                        expanded={checkinExpanded}
+                        onToggle={() => setCheckinExpanded(!checkinExpanded)}
+                        renderContentOnly
                     />
                 )}
 
-                {/* Workspace (Layout Columns) — identical to program-builder-client */}
+                {/* Workspace (Layout Columns) */}
                 <div className="flex flex-1 overflow-hidden">
                     {/* Left Panel: Exercise Library */}
-                    <div className="w-[320px] bg-surface-primary border-r border-k-border-subtle flex flex-col flex-shrink-0">
+                    <div className="w-[320px] bg-white dark:bg-surface-primary border-r border-[#E8E8ED] dark:border-k-border-subtle flex flex-col flex-shrink-0">
                         <ExerciseLibraryPanel
                             exercises={localExercises}
                             trainerId={trainer.id}
@@ -1311,7 +1374,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                         {workoutsWithoutDays.length > 0 && (
                             <button
                                 onClick={() => setActiveWorkoutId(workoutsWithoutDays[0].id)}
-                                className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border-b border-amber-500/20 text-amber-400 text-xs font-medium hover:bg-amber-500/15 transition-colors"
+                                className="flex items-center gap-2 px-4 py-2 bg-[#FF9500]/10 dark:bg-amber-500/10 border-b border-[#FF9500]/20 dark:border-amber-500/20 text-[#FF9500] dark:text-amber-400 text-xs font-medium hover:bg-[#FF9500]/15 dark:hover:bg-amber-500/15 transition-colors"
                             >
                                 <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                                 {workoutsWithoutDays.length === 1
@@ -1320,230 +1383,341 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                                 }
                             </button>
                         )}
-                        {/* Workout Tabs (Sortable Segmented Control) */}
-                        <div className="flex items-center gap-1 p-4 overflow-x-auto no-scrollbar border-b border-k-border-subtle bg-surface-canvas">
-                            <DndContext id={tabDndId} sensors={tabSensors} collisionDetection={closestCenter} onDragEnd={handleWorkoutDragEnd}>
-                                <SortableContext items={workouts.map(w => w.id)} strategy={horizontalListSortingStrategy}>
-                                    <div className="bg-surface-card p-1 rounded-xl flex gap-1 items-center border border-k-border-subtle">
-                                        {workouts.map((workout) => (
-                                            <SortableWorkoutTab key={workout.id} id={workout.id}>
-                                                <button
-                                                    onClick={() => setActiveWorkoutId(workout.id)}
-                                                    className={`
-                                                        px-4 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap flex items-center gap-2
-                                                        ${activeWorkoutId === workout.id
-                                                            ? 'bg-glass-bg-active text-k-text-primary shadow-sm ring-1 ring-k-border-subtle'
-                                                            : 'text-k-text-tertiary hover:text-k-text-primary hover:bg-glass-bg'
-                                                        }
-                                                    `}
-                                                >
-                                                    {workout.name}
-                                                    {(!workout.frequency || workout.frequency.length === 0) && (
-                                                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" title="Sem dia da semana selecionado" />
-                                                    )}
-                                                    {activeWorkoutId === workout.id && (
-                                                        <span className="flex items-center gap-0.5 ml-1 border-l border-k-border-subtle pl-2">
-                                                            <span
-                                                                onClick={(e) => { e.stopPropagation(); duplicateWorkout(workout.id) }}
-                                                                className="p-0.5 rounded text-k-text-quaternary hover:text-violet-400 transition-colors cursor-pointer"
-                                                                title="Duplicar treino"
-                                                            >
-                                                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                                                </svg>
-                                                            </span>
-                                                            {workouts.length > 1 && (
-                                                                <span
-                                                                    onClick={(e) => { e.stopPropagation(); deleteWorkout(workout.id) }}
-                                                                    className="p-0.5 rounded text-k-text-quaternary hover:text-red-400 transition-colors cursor-pointer"
-                                                                    title="Excluir treino"
-                                                                >
-                                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                                    </svg>
-                                                                </span>
-                                                            )}
-                                                        </span>
-                                                    )}
-                                                </button>
-                                            </SortableWorkoutTab>
-                                        ))}
-                                    </div>
-                                </SortableContext>
-                            </DndContext>
 
-                            <button
-                                onClick={addWorkout}
-                                className="w-8 h-8 flex items-center justify-center rounded-lg text-k-text-quaternary hover:text-k-text-primary hover:bg-glass-bg transition-all ml-2"
-                                title="Adicionar Treino"
-                            >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
-                                </svg>
-                            </button>
-
-                            {/* Preview & Compare toggles */}
-                            <div className="flex items-center gap-1 ml-auto">
-                                <button
-                                    onClick={builderViewMode === 'preview' ? handleExitPreview : handleEnterPreview}
-                                    className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all ${
-                                        builderViewMode === 'preview'
-                                            ? 'text-violet-400 bg-violet-500/15'
-                                            : 'text-k-text-quaternary hover:text-violet-400 hover:bg-violet-500/10'
-                                    }`}
-                                    title="Visão do aluno"
-                                >
-                                    <Smartphone className="w-4 h-4" />
-                                </button>
-                                <button
-                                    onClick={builderViewMode === 'compare' ? handleExitCompare : handleEnterCompare}
-                                    className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all ${
-                                        builderViewMode === 'compare'
-                                            ? 'text-violet-400 bg-violet-500/15'
-                                            : 'text-k-text-quaternary hover:text-violet-400 hover:bg-violet-500/10'
-                                    }`}
-                                    title="Comparar com treino anterior"
-                                >
-                                    <GitCompareArrows className="w-4 h-4" />
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Canvas + Preview/Compare row */}
-                        <div className="flex flex-1 overflow-hidden">
-                            {/* Workout Canvas — drop zone for exercises from library */}
-                            <div
-                                ref={canvasScrollRef}
-                                onScroll={(e) => {
-                                    const scrollTop = e.currentTarget.scrollTop
-                                    // Hysteresis: different thresholds up/down to prevent feedback loop
-                                    const shouldBeScrolled = isCanvasScrolled ? scrollTop > 10 : scrollTop > 60
-                                    if (shouldBeScrolled !== isCanvasScrolled) setIsCanvasScrolled(shouldBeScrolled)
-                                }}
-                                onDragOver={handleCanvasDragOver}
-                                onDragLeave={handleCanvasDragLeave}
-                                onDrop={handleCanvasDrop}
-                                className={`${builderViewMode === 'compare' ? 'flex-[1.1]' : 'flex-1'} overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent transition-colors duration-200 ${isDraggingOver ? 'bg-violet-500/5 ring-2 ring-inset ring-violet-500/20' : ''}`}
-                            >
-                                <div className={`${builderViewMode === 'compare' ? '' : 'max-w-3xl'} mx-auto pb-20`}>
-                                    {activeWorkout ? (
-                                        <WorkoutPanel
-                                            workout={activeWorkout}
-                                            exercises={localExercises}
-                                            onUpdateName={(newName) => updateWorkoutName(activeWorkout.id, newName)}
-                                            onAddExercise={() => { }}
-                                            onAddNote={() => addNote(activeWorkout.id)}
-                                            onAddWarmup={() => addWarmup(activeWorkout.id)}
-                                            onAddCardio={() => addCardio(activeWorkout.id)}
-                                            onUpdateItem={(itemId, updates) => updateItem(activeWorkout.id, itemId, updates)}
-                                            onDeleteItem={(itemId) => deleteItem(activeWorkout.id, itemId)}
-                                            onMoveItem={(itemId, dir) => moveItem(activeWorkout.id, itemId, dir)}
-                                            onReorderItem={handleReorderItem}
-                                            onCreateSupersetWithNext={(itemId) => createSupersetWithNext(activeWorkout.id, itemId)}
-                                            onAddToExistingSuperset={(itemId, supersetId) => addToExistingSuperset(activeWorkout.id, itemId, supersetId)}
-                                            onRemoveFromSuperset={(supersetId, exerciseItemId) => removeFromSuperset(activeWorkout.id, supersetId, exerciseItemId)}
-                                            onDissolveSuperset={(supersetId) => dissolveSuperset(activeWorkout.id, supersetId)}
-                                            onUpdateFrequency={(days) => updateWorkoutFrequency(activeWorkout.id, days)}
-                                            occupiedDays={occupiedDays}
-                                            isScrolled={isCanvasScrolled}
-                                            scrollContainerRef={canvasScrollRef}
-                                        />
-                                    ) : (
-                                        <div className="text-center py-20">
-                                            <p className="text-k-text-quaternary text-sm">Selecione ou crie um treino para começar</p>
-                                        </div>
+                        {/* Compare header bar (full width, above the two columns) */}
+                        {builderViewMode === 'compare' && (
+                            <div className="flex items-center justify-between px-4 py-2 border-b border-[#E8E8ED] dark:border-k-border-subtle bg-[#F5F5F7] dark:bg-surface-elevated flex-shrink-0">
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <GitCompareArrows className="w-4 h-4 text-[#007AFF] dark:text-violet-400 shrink-0" />
+                                    <span className="text-xs font-medium text-[#6E6E73] dark:text-k-text-tertiary">Comparando com:</span>
+                                    <span className="text-xs font-semibold text-[#1D1D1F] dark:text-k-text-primary truncate">
+                                        {compareProgramData?.programName || 'Programa anterior'}
+                                    </span>
+                                    {compareProgramData?.startedAt && (
+                                        <span className="text-[10px] text-[#86868B] dark:text-k-text-quaternary shrink-0">
+                                            {new Date(compareProgramData.startedAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                        </span>
+                                    )}
+                                    {compareProgramData?.status === 'active' && (
+                                        <span className="flex items-center gap-1 text-[10px] text-emerald-500 dark:text-emerald-400 font-medium shrink-0">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                                            Ativo
+                                        </span>
                                     )}
                                 </div>
+                                <div className="flex items-center gap-2">
+                                    <ProgramSelector
+                                        programs={compareProgramsList}
+                                        selectedId={compareSelectedProgramId}
+                                        onSelect={handleSelectCompareProgram}
+                                        isLoading={compareProgramsLoading}
+                                    />
+                                    <button
+                                        onClick={handleExitCompare}
+                                        className="p-1.5 rounded-md text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#1D1D1F] dark:hover:text-k-text-primary hover:bg-[#E8E8ED] dark:hover:bg-glass-bg transition-colors"
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                </div>
                             </div>
+                        )}
 
-                            {/* Compare Panel — readonly past workout */}
-                            {builderViewMode === 'compare' && (
-                                <div className="flex-[0.9] flex flex-col border-l border-k-border-subtle bg-surface-canvas/50">
-                                    {/* Compare header */}
-                                    <div className="flex items-center justify-between px-4 py-3 border-b border-k-border-subtle bg-surface-elevated">
-                                        <div className="flex items-center gap-2 min-w-0">
-                                            <GitCompareArrows className="w-4 h-4 text-violet-400 shrink-0" />
-                                            <span className="text-xs font-semibold text-k-text-primary truncate">
-                                                {comparePastDetail
-                                                    ? `Comparando com: ${comparePastDetail.workoutName}`
-                                                    : 'Selecione um treino para comparar'
-                                                }
-                                            </span>
-                                            {comparePastDetail?.startedAt && (
-                                                <span className="text-[10px] text-k-text-quaternary shrink-0">
-                                                    {new Date(comparePastDetail.startedAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
-                                                </span>
-                                            )}
-                                        </div>
+                        {/* Two-column layout when compare is active, single column otherwise */}
+                        {builderViewMode === 'compare' ? (
+                            <div className="flex flex-1 overflow-hidden">
+                                {/* ══ LEFT COLUMN: Editable builder (50%) ══ */}
+                                <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+                                    {/* Volume */}
+                                    <VolumeSummary workouts={workouts} />
+                                    {/* Tabs */}
+                                    <div className="flex items-center gap-1 p-4 overflow-x-auto no-scrollbar border-b border-[#E8E8ED] dark:border-k-border-subtle bg-[#F5F5F7] dark:bg-surface-canvas">
+                                        <DndContext id={tabDndId} sensors={tabSensors} collisionDetection={closestCenter} onDragEnd={handleWorkoutDragEnd}>
+                                            <SortableContext items={workouts.map(w => w.id)} strategy={horizontalListSortingStrategy}>
+                                                <div className="bg-white dark:bg-surface-card p-1 rounded-xl flex gap-1 items-center border border-[#E8E8ED] dark:border-k-border-subtle">
+                                                    {workouts.map((workout) => (
+                                                        <SortableWorkoutTab key={workout.id} id={workout.id}>
+                                                            <button
+                                                                onClick={() => setActiveWorkoutId(workout.id)}
+                                                                className={`
+                                                                    px-4 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap flex items-center gap-2
+                                                                    ${activeWorkoutId === workout.id
+                                                                        ? 'bg-[#F5F5F7] dark:bg-glass-bg-active text-[#1D1D1F] dark:text-k-text-primary shadow-sm ring-1 ring-[#E8E8ED] dark:ring-k-border-subtle'
+                                                                        : 'text-[#6E6E73] dark:text-k-text-tertiary hover:text-[#1D1D1F] dark:hover:text-k-text-primary hover:bg-[#F5F5F7]/50 dark:hover:bg-glass-bg'
+                                                                    }
+                                                                `}
+                                                            >
+                                                                {workout.name}
+                                                                {(!workout.frequency || workout.frequency.length === 0) && (
+                                                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" title="Sem dia da semana selecionado" />
+                                                                )}
+                                                            </button>
+                                                        </SortableWorkoutTab>
+                                                    ))}
+                                                </div>
+                                            </SortableContext>
+                                        </DndContext>
                                         <button
-                                            onClick={handleExitCompare}
-                                            className="p-1 rounded-md text-k-text-quaternary hover:text-k-text-primary hover:bg-glass-bg transition-colors"
+                                            onClick={addWorkout}
+                                            className="w-8 h-8 flex items-center justify-center rounded-lg text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#007AFF] dark:hover:text-k-text-primary hover:bg-[#007AFF]/10 dark:hover:bg-glass-bg transition-all ml-2"
+                                            title="Adicionar Treino"
                                         >
-                                            <X className="w-4 h-4" />
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
+                                            </svg>
                                         </button>
                                     </div>
+                                    {/* Canvas (scrollable) */}
+                                    <div
+                                        ref={canvasScrollRef}
+                                        onScroll={(e) => {
+                                            const scrollTop = e.currentTarget.scrollTop
+                                            const shouldBeScrolled = isCanvasScrolled ? scrollTop > 10 : scrollTop > 60
+                                            if (shouldBeScrolled !== isCanvasScrolled) setIsCanvasScrolled(shouldBeScrolled)
+                                        }}
+                                        onDragOver={handleCanvasDragOver}
+                                        onDragLeave={handleCanvasDragLeave}
+                                        onDrop={handleCanvasDrop}
+                                        className={`flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent transition-colors duration-200 ${isDraggingOver ? 'bg-[#007AFF]/5 dark:bg-violet-500/5 ring-2 ring-inset ring-[#007AFF]/20 dark:ring-violet-500/20' : ''}`}
+                                    >
+                                        <div className="pb-20">
+                                            {activeWorkout ? (
+                                                <WorkoutPanel
+                                                    workout={activeWorkout}
+                                                    exercises={localExercises}
+                                                    onUpdateName={(newName) => updateWorkoutName(activeWorkout.id, newName)}
+                                                    onAddExercise={() => { }}
+                                                    onAddNote={() => addNote(activeWorkout.id)}
+                                                    onAddWarmup={() => addWarmup(activeWorkout.id)}
+                                                    onAddCardio={() => addCardio(activeWorkout.id)}
+                                                    onSearchAddExercise={addExerciseFromLibrary}
+                                                    onUpdateItem={(itemId, updates) => updateItem(activeWorkout.id, itemId, updates)}
+                                                    onDeleteItem={(itemId) => deleteItem(activeWorkout.id, itemId)}
+                                                    onMoveItem={(itemId, dir) => moveItem(activeWorkout.id, itemId, dir)}
+                                                    onReorderItem={handleReorderItem}
+                                                    onCreateSupersetWithNext={(itemId) => createSupersetWithNext(activeWorkout.id, itemId)}
+                                                    onAddToExistingSuperset={(itemId, supersetId) => addToExistingSuperset(activeWorkout.id, itemId, supersetId)}
+                                                    onRemoveFromSuperset={(supersetId, exerciseItemId) => removeFromSuperset(activeWorkout.id, supersetId, exerciseItemId)}
+                                                    onDissolveSuperset={(supersetId) => dissolveSuperset(activeWorkout.id, supersetId)}
+                                                    onUpdateFrequency={(days) => updateWorkoutFrequency(activeWorkout.id, days)}
+                                                    occupiedDays={occupiedDays}
+                                                    isScrolled={isCanvasScrolled}
+                                                    scrollContainerRef={canvasScrollRef}
+                                                />
+                                            ) : (
+                                                <div className="text-center py-20">
+                                                    <p className="text-k-text-quaternary text-sm">Selecione ou crie um treino para começar</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
 
-                                    {/* Past workout selector */}
-                                    <PastWorkoutSelector
-                                        workouts={comparePastWorkouts}
-                                        selectedId={compareSelectedId}
-                                        onSelect={handleSelectCompareWorkout}
-                                        isLoading={comparePastWorkoutsLoading}
-                                    />
+                                {/* Vertical divider */}
+                                <div className="w-px bg-[#E8E8ED] dark:bg-k-border-subtle flex-shrink-0" />
 
-                                    {/* Readonly workout panel */}
-                                    <div className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-                                        {compareDetailLoading ? (
-                                            <div className="flex items-center justify-center py-20">
-                                                <Loader2 className="w-5 h-5 animate-spin text-k-text-quaternary" />
+                                {/* ══ RIGHT COLUMN: Compare read-only (50%) ══ */}
+                                <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-[#FAFAFA] dark:bg-surface-canvas/50">
+                                    {/* Volume */}
+                                    {compareWorkouts.length > 0 && (
+                                        <VolumeSummary workouts={compareWorkouts} />
+                                    )}
+                                    {/* Tabs */}
+                                    {compareWorkouts.length > 0 && (
+                                        <div className="flex items-center gap-1 p-4 overflow-x-auto no-scrollbar border-b border-[#E8E8ED] dark:border-k-border-subtle bg-[#F5F5F7]/50 dark:bg-surface-canvas">
+                                            <div className="bg-white dark:bg-surface-card p-0.5 rounded-lg flex gap-0.5 items-center border border-[#E8E8ED] dark:border-k-border-subtle">
+                                                {compareWorkouts.map((cw) => (
+                                                    <button
+                                                        key={cw.id}
+                                                        onClick={() => setCompareActiveWorkoutId(cw.id)}
+                                                        className={`
+                                                            px-3 py-1 text-[11px] font-semibold rounded-md transition-all whitespace-nowrap
+                                                            ${compareActiveWorkoutId === cw.id
+                                                                ? 'bg-[#F5F5F7] dark:bg-glass-bg-active text-[#1D1D1F] dark:text-k-text-primary shadow-sm ring-1 ring-[#E8E8ED] dark:ring-k-border-subtle'
+                                                                : 'text-[#6E6E73] dark:text-k-text-tertiary hover:text-[#1D1D1F] dark:hover:text-k-text-primary hover:bg-[#F5F5F7]/50 dark:hover:bg-glass-bg'
+                                                            }
+                                                        `}
+                                                    >
+                                                        {cw.name}
+                                                    </button>
+                                                ))}
                                             </div>
-                                        ) : compareWorkout ? (
-                                            <WorkoutPanel
-                                                workout={compareWorkout}
-                                                exercises={localExercises}
-                                                onUpdateName={() => {}}
-                                                onAddExercise={() => {}}
-                                                onAddNote={() => {}}
-                                                onUpdateItem={() => {}}
-                                                onDeleteItem={() => {}}
-                                                onMoveItem={() => {}}
-                                                onReorderItem={() => {}}
-                                                onCreateSupersetWithNext={() => {}}
-                                                onAddToExistingSuperset={() => {}}
-                                                onRemoveFromSuperset={() => {}}
-                                                onDissolveSuperset={() => {}}
-                                                readonly
-                                            />
-                                        ) : !compareSelectedId ? (
+                                        </div>
+                                    )}
+                                    {/* Canvas (scrollable, read-only) */}
+                                    <div className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+                                        {compareProgramLoading ? (
+                                            <div className="flex items-center justify-center py-20">
+                                                <Loader2 className="w-5 h-5 animate-spin text-[#AEAEB2] dark:text-k-text-quaternary" />
+                                            </div>
+                                        ) : compareActiveWorkout ? (
+                                            <div className="pb-20">
+                                                <WorkoutPanel
+                                                    workout={compareActiveWorkout}
+                                                    exercises={localExercises}
+                                                    onUpdateName={() => {}}
+                                                    onAddExercise={() => {}}
+                                                    onAddNote={() => {}}
+                                                    onAddWarmup={() => {}}
+                                                    onAddCardio={() => {}}
+                                                    onUpdateItem={() => {}}
+                                                    onDeleteItem={() => {}}
+                                                    onMoveItem={() => {}}
+                                                    onReorderItem={() => {}}
+                                                    onCreateSupersetWithNext={() => {}}
+                                                    onAddToExistingSuperset={() => {}}
+                                                    onRemoveFromSuperset={() => {}}
+                                                    onDissolveSuperset={() => {}}
+                                                    readonly
+                                                />
+                                            </div>
+                                        ) : !compareSelectedProgramId ? (
                                             <div className="text-center py-20">
-                                                <p className="text-k-text-quaternary text-sm">Selecione um treino anterior acima para comparar</p>
+                                                <GitCompareArrows className="w-8 h-8 text-[#AEAEB2] dark:text-k-text-quaternary mx-auto mb-3 opacity-50" />
+                                                <p className="text-[#AEAEB2] dark:text-k-text-quaternary text-sm">Selecione um programa para comparar</p>
+                                                <p className="text-[#AEAEB2] dark:text-k-text-quaternary text-[11px] mt-1 opacity-70">Visualize lado a lado com o programa atual</p>
                                             </div>
                                         ) : null}
                                     </div>
                                 </div>
-                            )}
+                            </div>
+                        ) : (
+                            /* ══ NORMAL MODE: Single column with optional preview panel ══ */
+                            <>
+                                {/* Volume Summary */}
+                                <VolumeSummary workouts={workouts} />
 
-                            {/* Context Panel (preview mode) */}
-                            {builderViewMode === 'preview' && (
-                                <ContextPanel
-                                    workoutName={activeWorkout?.name || 'Treino'}
-                                    workoutItems={(activeWorkout?.items || []) as any}
-                                    studentId={studentId}
-                                    mode={contextPanelMode}
-                                    onModeChange={(mode) => {
-                                        setContextPanelMode(mode)
-                                        if (mode === 'none') setBuilderViewMode('normal')
-                                    }}
-                                />
-                            )}
-                        </div>
+                                {/* Workout Tabs */}
+                                <div className="flex items-center gap-1 p-4 overflow-x-auto no-scrollbar border-b border-[#E8E8ED] dark:border-k-border-subtle bg-[#F5F5F7] dark:bg-surface-canvas">
+                                    <DndContext id={tabDndId} sensors={tabSensors} collisionDetection={closestCenter} onDragEnd={handleWorkoutDragEnd}>
+                                        <SortableContext items={workouts.map(w => w.id)} strategy={horizontalListSortingStrategy}>
+                                            <div className="bg-white dark:bg-surface-card p-1 rounded-xl flex gap-1 items-center border border-[#E8E8ED] dark:border-k-border-subtle">
+                                                {workouts.map((workout) => (
+                                                    <SortableWorkoutTab key={workout.id} id={workout.id}>
+                                                        <button
+                                                            onClick={() => setActiveWorkoutId(workout.id)}
+                                                            className={`
+                                                                px-4 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap flex items-center gap-2
+                                                                ${activeWorkoutId === workout.id
+                                                                    ? 'bg-[#F5F5F7] dark:bg-glass-bg-active text-[#1D1D1F] dark:text-k-text-primary shadow-sm ring-1 ring-[#E8E8ED] dark:ring-k-border-subtle'
+                                                                    : 'text-[#6E6E73] dark:text-k-text-tertiary hover:text-[#1D1D1F] dark:hover:text-k-text-primary hover:bg-[#F5F5F7]/50 dark:hover:bg-glass-bg'
+                                                                }
+                                                            `}
+                                                        >
+                                                            {workout.name}
+                                                            {(!workout.frequency || workout.frequency.length === 0) && (
+                                                                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" title="Sem dia da semana selecionado" />
+                                                            )}
+                                                            {activeWorkoutId === workout.id && (
+                                                                <span className="flex items-center gap-0.5 ml-1 border-l border-[#E8E8ED] dark:border-k-border-subtle pl-2">
+                                                                    <span
+                                                                        onClick={(e) => { e.stopPropagation(); duplicateWorkout(workout.id) }}
+                                                                        className="p-0.5 rounded text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#007AFF] dark:hover:text-violet-400 transition-colors cursor-pointer"
+                                                                        title="Duplicar treino"
+                                                                    >
+                                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                                        </svg>
+                                                                    </span>
+                                                                    {workouts.length > 1 && (
+                                                                        <span
+                                                                            onClick={(e) => { e.stopPropagation(); deleteWorkout(workout.id) }}
+                                                                            className="p-0.5 rounded text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#FF3B30] dark:hover:text-red-400 transition-colors cursor-pointer"
+                                                                            title="Excluir treino"
+                                                                        >
+                                                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                                            </svg>
+                                                                        </span>
+                                                                    )}
+                                                                </span>
+                                                            )}
+                                                        </button>
+                                                    </SortableWorkoutTab>
+                                                ))}
+                                            </div>
+                                        </SortableContext>
+                                    </DndContext>
+
+                                    <button
+                                        onClick={addWorkout}
+                                        className="w-8 h-8 flex items-center justify-center rounded-lg text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#007AFF] dark:hover:text-k-text-primary hover:bg-[#007AFF]/10 dark:hover:bg-glass-bg transition-all ml-2"
+                                        title="Adicionar Treino"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
+                                        </svg>
+                                    </button>
+                                </div>
+
+                                {/* Canvas + inline Preview */}
+                                <div className="flex flex-1 overflow-hidden">
+                                    <div
+                                        ref={canvasScrollRef}
+                                        onScroll={(e) => {
+                                            const scrollTop = e.currentTarget.scrollTop
+                                            const shouldBeScrolled = isCanvasScrolled ? scrollTop > 10 : scrollTop > 60
+                                            if (shouldBeScrolled !== isCanvasScrolled) setIsCanvasScrolled(shouldBeScrolled)
+                                        }}
+                                        onDragOver={handleCanvasDragOver}
+                                        onDragLeave={handleCanvasDragLeave}
+                                        onDrop={handleCanvasDrop}
+                                        className={`flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent transition-colors duration-200 ${isDraggingOver ? 'bg-[#007AFF]/5 dark:bg-violet-500/5 ring-2 ring-inset ring-[#007AFF]/20 dark:ring-violet-500/20' : ''}`}
+                                    >
+                                        <div className={`mx-auto pb-20 transition-[max-width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+                                            builderViewMode === 'preview' ? 'max-w-6xl flex gap-8' : 'max-w-3xl'
+                                        }`}>
+                                            <div className={builderViewMode === 'preview' ? 'flex-1 min-w-0' : ''}>
+                                                {activeWorkout ? (
+                                                    <WorkoutPanel
+                                                        workout={activeWorkout}
+                                                        exercises={localExercises}
+                                                        onUpdateName={(newName) => updateWorkoutName(activeWorkout.id, newName)}
+                                                        onAddExercise={() => { }}
+                                                        onAddNote={() => addNote(activeWorkout.id)}
+                                                        onAddWarmup={() => addWarmup(activeWorkout.id)}
+                                                        onAddCardio={() => addCardio(activeWorkout.id)}
+                                                        onSearchAddExercise={addExerciseFromLibrary}
+                                                        onUpdateItem={(itemId, updates) => updateItem(activeWorkout.id, itemId, updates)}
+                                                        onDeleteItem={(itemId) => deleteItem(activeWorkout.id, itemId)}
+                                                        onMoveItem={(itemId, dir) => moveItem(activeWorkout.id, itemId, dir)}
+                                                        onReorderItem={handleReorderItem}
+                                                        onCreateSupersetWithNext={(itemId) => createSupersetWithNext(activeWorkout.id, itemId)}
+                                                        onAddToExistingSuperset={(itemId, supersetId) => addToExistingSuperset(activeWorkout.id, itemId, supersetId)}
+                                                        onRemoveFromSuperset={(supersetId, exerciseItemId) => removeFromSuperset(activeWorkout.id, supersetId, exerciseItemId)}
+                                                        onDissolveSuperset={(supersetId) => dissolveSuperset(activeWorkout.id, supersetId)}
+                                                        onUpdateFrequency={(days) => updateWorkoutFrequency(activeWorkout.id, days)}
+                                                        occupiedDays={occupiedDays}
+                                                        isScrolled={isCanvasScrolled}
+                                                        scrollContainerRef={canvasScrollRef}
+                                                    />
+                                                ) : (
+                                                    <div className="text-center py-20">
+                                                        <p className="text-k-text-quaternary text-sm">Selecione ou crie um treino para começar</p>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* Mobile Preview — inline sticky, aligned with workout tabs */}
+                                            {builderViewMode === 'preview' && (
+                                                <div className="w-[340px] flex-shrink-0 sticky top-0 self-start">
+                                                    <WorkoutExecutionPreview
+                                                        workoutName={activeWorkout?.name || 'Treino'}
+                                                        items={activeWorkout?.items || []}
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
             </div>
 
             {/* Frequency warning modal */}
             {frequencyWarning && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-modal flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setFrequencyWarning(null)} />
                     <div className="relative bg-surface-card border border-k-border-primary rounded-2xl shadow-2xl p-6 max-w-md w-full animate-in zoom-in-95 fade-in duration-200">
                         <div className="w-12 h-12 bg-amber-500/10 rounded-xl flex items-center justify-center mb-4 mx-auto">
@@ -1583,7 +1757,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
 
             {/* Dialog — save as template */}
             {showTemplateDialog && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center">
+                <div className="fixed inset-0 z-modal flex items-center justify-center">
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowTemplateDialog(false)} />
                     <div className="relative bg-surface-primary border border-k-border-subtle rounded-2xl shadow-2xl p-6 max-w-md w-full mx-4 animate-in zoom-in-95 fade-in duration-200">
                         <h3 className="text-base font-semibold text-k-text-primary mb-1">Salvar como Modelo</h3>

@@ -175,7 +175,7 @@ export function ExerciseFormModal({ isOpen, onClose, onSuccess, exercise, traine
     if (!isOpen) return null
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-modal flex items-center justify-center p-4">
             <div
                 className="absolute inset-0 bg-black/30 dark:bg-black/60 backdrop-blur-sm transition-opacity duration-300"
                 onClick={onClose}
@@ -184,7 +184,7 @@ export function ExerciseFormModal({ isOpen, onClose, onSuccess, exercise, traine
             <div className="relative w-full max-w-2xl bg-white dark:bg-surface-card dark:backdrop-blur-2xl rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-2xl dark:ring-1 dark:ring-inset dark:ring-k-border-primary max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-200">
 
                 {/* Header */}
-                <div className="p-6 pb-4 flex items-center justify-between z-10 border-b border-[#E8E8ED] dark:border-transparent">
+                <div className="p-6 pb-4 flex items-center justify-between z-sticky border-b border-[#E8E8ED] dark:border-transparent">
                     <div>
                         <h2 className="text-xl font-semibold text-[#1D1D1F] dark:text-white tracking-tight">
                             {isEditing ? 'Editar Exercício' : 'Novo Exercício'}
@@ -424,7 +424,7 @@ function CreatableMultiSelect({ availableGroups, selectedGroups, onChange, onCre
             </div>
 
             {isOpen && (inputValue || filteredGroups.length > 0 || isLoading) && (
-                <div className="absolute z-50 left-0 right-0 top-full mt-2 bg-white dark:bg-surface-card border border-[#D2D2D7] dark:border-k-border-primary rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-2xl max-h-60 overflow-y-auto dark:ring-1 dark:ring-k-border-subtle animate-in fade-in zoom-in-95 duration-150">
+                <div className="absolute z-modal left-0 right-0 top-full mt-2 bg-white dark:bg-surface-card border border-[#D2D2D7] dark:border-k-border-primary rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-2xl max-h-60 overflow-y-auto dark:ring-1 dark:ring-k-border-subtle animate-in fade-in zoom-in-95 duration-150">
                     {isLoading ? (
                         <div className="p-4 text-center text-[#86868B] dark:text-muted-foreground text-xs font-medium flex items-center justify-center gap-2">
                             <Loader2 className="w-4 h-4 animate-spin" />

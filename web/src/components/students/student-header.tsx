@@ -218,7 +218,7 @@ export function StudentHeader({ student, onEdit, onDelete, children }: StudentHe
             {/* Confirmation Modal — outside backdrop-blur container to avoid stacking context issues */}
             {
                 showDeleteConfirm && (
-                    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                    <div className="fixed inset-0 z-float flex items-center justify-center p-4">
                         <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowDeleteConfirm(false)} />
                         <div className="relative bg-background border border-border rounded-2xl p-6 max-w-sm w-full shadow-2xl">
                             <div className="w-12 h-12 bg-red-500/10 rounded-full flex items-center justify-center mb-4 mx-auto">
@@ -255,7 +255,7 @@ export function StudentHeader({ student, onEdit, onDelete, children }: StudentHe
             {/* Reset Password Modal */}
             {
                 showResetConfirm && (
-                    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                    <div className="fixed inset-0 z-float flex items-center justify-center p-4">
                         <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => !isResetting && setShowResetConfirm(false)} />
                         <div className="relative bg-[#09090b] border border-[#1f1f22] rounded-3xl p-8 max-w-md w-full shadow-2xl">
                             {!newPassword ? (

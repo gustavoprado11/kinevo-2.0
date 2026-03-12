@@ -167,7 +167,7 @@ export function AssignFormModal({
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+                        className="fixed inset-0 z-dropdown bg-black/40 backdrop-blur-sm"
                         onClick={resetAndClose}
                     />
                     <motion.div
@@ -175,7 +175,7 @@ export function AssignFormModal({
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: 10 }}
                         transition={{ duration: 0.2 }}
-                        className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                        className="fixed inset-0 z-modal flex items-center justify-center p-4"
                     >
                         <div className="w-full max-w-lg rounded-2xl bg-white shadow-[0_8px_32px_rgba(0,0,0,0.12)] overflow-hidden dark:border dark:border-k-border-primary dark:bg-surface-card dark:shadow-2xl">
                             {/* Header */}

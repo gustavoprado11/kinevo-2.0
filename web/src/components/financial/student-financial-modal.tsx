@@ -263,7 +263,7 @@ export function StudentFinancialModal({
     }
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-modal flex items-center justify-center p-4">
             <div
                 className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300"
                 onClick={onClose}
@@ -691,7 +691,7 @@ export function StudentFinancialModal({
 
                                             return (
                                                 <div key={event.id} className="flex items-start gap-3 relative">
-                                                    <div className={`flex-shrink-0 w-[22px] h-[22px] rounded-full bg-surface-card border border-k-border-subtle flex items-center justify-center z-10 ${config.color}`}>
+                                                    <div className={`flex-shrink-0 w-[22px] h-[22px] rounded-full bg-surface-card border border-k-border-subtle flex items-center justify-center z-sticky ${config.color}`}>
                                                         <Icon size={11} strokeWidth={2} />
                                                     </div>
                                                     <div className="flex-1 min-w-0">

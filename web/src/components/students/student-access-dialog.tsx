@@ -40,7 +40,7 @@ export function StudentAccessDialog({ isOpen, onClose, studentData }: StudentAcc
     }
 
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-float flex items-center justify-center p-4">
             {/* Backdrop */}
             <div
                 className="absolute inset-0 bg-black/30 dark:bg-black/80 backdrop-blur-md"

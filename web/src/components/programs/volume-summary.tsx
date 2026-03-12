@@ -59,7 +59,7 @@ export function VolumeSummary({ workouts }: VolumeSummaryProps) {
     }
 
     return (
-        <div className="w-full bg-surface-primary border-b border-k-border-subtle px-8 py-2.5 flex-shrink-0 z-20">
+        <div className="w-full bg-surface-primary border-b border-k-border-subtle px-8 py-2.5 flex-shrink-0 z-header">
             <div className="flex items-start gap-6">
                 {/* Master Label Group */}
                 <div className="flex items-center gap-2 shrink-0 border-r border-k-border-primary pr-6 py-0.5">

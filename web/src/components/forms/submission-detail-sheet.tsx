@@ -343,7 +343,7 @@ export function SubmissionDetailSheet({
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm"
+                className="fixed inset-0 z-dropdown bg-black/20 backdrop-blur-sm"
                 onClick={onClose}
             />
 
@@ -352,7 +352,7 @@ export function SubmissionDetailSheet({
                 animate={{ x: 0 }}
                 exit={{ x: '100%' }}
                 transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                className="fixed right-0 top-0 z-50 flex h-full w-full max-w-2xl flex-col border-l border-k-border-subtle bg-surface-card shadow-2xl"
+                className="fixed right-0 top-0 z-modal flex h-full w-full max-w-2xl flex-col border-l border-k-border-subtle bg-surface-card shadow-2xl"
             >
                 {/* Header — simplified with avatar */}
                 <header className="flex items-center justify-between border-b border-k-border-subtle px-6 py-4">

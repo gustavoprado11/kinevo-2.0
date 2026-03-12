@@ -5,6 +5,7 @@ import { Flame, Zap, FileText } from 'lucide-react'
 import type { Workout, WorkoutItem } from './program-builder-client'
 import type { Exercise } from '@/types/exercise'
 import { SortableWorkoutItem } from './sortable-workout-item'
+import { InlineExerciseSearch } from './inline-exercise-search'
 import {
     DndContext,
     closestCenter,
@@ -30,6 +31,7 @@ interface WorkoutPanelProps {
     onAddNote: () => void
     onAddWarmup?: () => void
     onAddCardio?: () => void
+    onSearchAddExercise?: (exercise: Exercise) => void
     onUpdateItem: (itemId: string, updates: Partial<WorkoutItem>) => void
     onDeleteItem: (itemId: string) => void
     onMoveItem: (itemId: string, direction: 'up' | 'down') => void
@@ -83,7 +85,7 @@ function SupersetConnector({
             {/* Connect button */}
             <button
                 onClick={onConnect}
-                className="relative z-10 flex items-center gap-1.5 px-2 py-1 rounded-full
+                className="relative z-sticky flex items-center gap-1.5 px-2 py-1 rounded-full
                            bg-white dark:bg-slate-900 border border-[#D2D2D7] dark:border-slate-800
                            hover:bg-[#007AFF] dark:hover:bg-violet-600 hover:border-[#007AFF] dark:hover:border-violet-500
                            text-[#6E6E73] dark:text-slate-400 hover:text-white dark:hover:text-foreground
@@ -109,6 +111,7 @@ export function WorkoutPanel({
     onAddNote,
     onAddWarmup,
     onAddCardio,
+    onSearchAddExercise,
     onUpdateItem,
     onDeleteItem,
     onMoveItem,
@@ -210,7 +213,7 @@ export function WorkoutPanel({
     return (
         <div className="space-y-6">
             {/* Workout Header — collapses to compact bar on scroll */}
-            <div className={`sticky -top-6 z-10 transition-[background-color,border-color,backdrop-filter] duration-300 ${isScrolled ? '-mx-6 px-6 py-2 bg-surface-canvas/95 backdrop-blur-sm border-b border-k-border-subtle' : ''}`}>
+            <div className={`sticky -top-6 z-sticky transition-[background-color,border-color,backdrop-filter] duration-300 ${isScrolled ? '-mx-6 px-6 py-2 bg-[#F5F5F7] dark:bg-surface-canvas border-b border-[#E8E8ED] dark:border-k-border-subtle' : ''}`}>
                 <div className={`flex items-center justify-between ${isScrolled ? 'gap-4' : ''}`}>
                     <div className="flex items-center gap-3">
                         {readonly ? (
@@ -352,7 +355,15 @@ export function WorkoutPanel({
                         </div>
                     ) : (
                         <div className="text-center py-12 border border-dashed border-[#D2D2D7] dark:border-k-border-primary rounded-2xl bg-[#F9F9FB] dark:bg-glass-bg">
-                            <p className="text-[#86868B] dark:text-k-text-tertiary mb-4">Arraste exercícios da biblioteca ou adicione itens</p>
+                            <p className="text-[#86868B] dark:text-k-text-tertiary mb-4">Arraste exercícios da biblioteca ou pesquise abaixo</p>
+
+                            {onSearchAddExercise && (
+                                <InlineExerciseSearch
+                                    exercises={exercises}
+                                    onAdd={onSearchAddExercise}
+                                />
+                            )}
+
                             <div className="flex items-center justify-center gap-2 flex-wrap">
                                 {onAddWarmup && (
                                     <button
@@ -436,7 +447,7 @@ export function WorkoutPanel({
 
                                         {/* Connector between items (if there's a next item) */}
                                         {index < workout.items.length - 1 && (
-                                            <div className="absolute left-0 right-0 -bottom-4 z-10 flex justify-center">
+                                            <div className="absolute left-0 right-0 -bottom-4 z-sticky flex justify-center">
                                                 <SupersetConnector
                                                     currentItem={item}
                                                     nextItem={workout.items[index + 1]}
@@ -447,8 +458,17 @@ export function WorkoutPanel({
                                     </div>
                                 ))}
 
-                                {/* Add buttons footer */}
-                                <div className="flex justify-center gap-2 pt-6 flex-wrap">
+                                {/* Inline search + Add buttons footer */}
+                                {onSearchAddExercise && (
+                                    <div className="pt-6">
+                                        <InlineExerciseSearch
+                                            exercises={exercises}
+                                            onAdd={onSearchAddExercise}
+                                            compact
+                                        />
+                                    </div>
+                                )}
+                                <div className="flex justify-center gap-2 pt-4 flex-wrap">
                                     {onAddWarmup && (
                                         <button
                                             onClick={onAddWarmup}

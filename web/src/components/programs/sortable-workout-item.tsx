@@ -5,6 +5,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { WorkoutItemCard } from './workout-item-card'
 import type { WorkoutItem } from './program-builder-client'
 import type { Exercise } from '@/types/exercise'
+import { Z } from '@/lib/z-index'
 
 interface SortableWorkoutItemProps {
     item: WorkoutItem
@@ -55,7 +56,7 @@ function DraggableSortableItem(props: SortableWorkoutItemProps) {
         transform: CSS.Transform.toString(transform),
         transition,
         opacity: isDragging ? 0.4 : 1,
-        zIndex: isDragging ? 50 : 'auto',
+        zIndex: isDragging ? Z.MODAL : 'auto',
         position: 'relative' as const,
     }
 

@@ -155,6 +155,21 @@
 
   /* Font families */
   --font-family-jakarta: var(--font-jakarta), "Plus Jakarta Sans", system-ui, sans-serif;
+
+  /* Z-Index Design Tokens — semantic stacking layers
+     Usage: z-sticky, z-header, z-sidebar, z-dropdown, z-modal, etc. */
+  --z-index-content: 0;
+  --z-index-raised: 1;
+  --z-index-sticky: 10;
+  --z-index-header: 20;
+  --z-index-sidebar: 30;
+  --z-index-dropdown: 40;
+  --z-index-backdrop: 45;
+  --z-index-modal: 50;
+  --z-index-float: 60;
+  --z-index-onboarding: 70;
+  --z-index-tooltip: 100;
+  --z-index-topmost: 110;
 }
 
 /* ── Base Resets ── */
@@ -270,7 +285,7 @@ body {
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
   background-repeat: repeat;
   pointer-events: none;
-  z-index: 1;
+  z-index: var(--z-index-raised);
 }
 
 /* Animated gradient border */
@@ -379,6 +394,15 @@ html {
 
 [id] {
   scroll-margin-top: 5rem;
+}
+
+/* Hide scrollbar but keep scroll functionality */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
 /* Shake animation for validation errors */

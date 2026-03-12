@@ -38,7 +38,7 @@ export function RestTimerOverlay({ endTime, duration, onSkip, onAddTime }: RestT
         : `${seconds}s`
 
     return (
-        <div className="fixed bottom-6 right-6 z-40 flex items-center gap-3 rounded-2xl bg-slate-900/95 dark:bg-surface-card border border-slate-700 dark:border-k-border-subtle shadow-2xl px-5 py-4 backdrop-blur-sm">
+        <div className="fixed bottom-6 right-6 z-dropdown flex items-center gap-3 rounded-2xl bg-slate-900/95 dark:bg-surface-card border border-slate-700 dark:border-k-border-subtle shadow-2xl px-5 py-4 backdrop-blur-sm">
             {/* Circular timer */}
             <div className="relative flex items-center justify-center" style={{ width: 72, height: 72 }}>
                 <svg width={72} height={72} className="-rotate-90">

@@ -47,6 +47,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { arrayMove } from '@dnd-kit/sortable'
+import { Z } from '@/lib/z-index'
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -223,7 +224,7 @@ function SortableQuestionWrapper({ id, children }: { id: string; children: (prop
         transform: CSS.Transform.toString(transform),
         transition,
         opacity: isDragging ? 0.4 : 1,
-        zIndex: isDragging ? 50 : 'auto',
+        zIndex: isDragging ? Z.MODAL : 'auto',
         position: 'relative',
     }
 
@@ -928,7 +929,7 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                                 </button>
 
                                                 {showAddMenu && (
-                                                    <div className="absolute top-full left-0 right-0 mt-2 rounded-xl border border-k-border-primary bg-surface-card shadow-2xl z-10 overflow-hidden p-1">
+                                                    <div className="absolute top-full left-0 right-0 mt-2 rounded-xl border border-k-border-primary bg-surface-card shadow-2xl z-sticky overflow-hidden p-1">
                                                         {QUESTION_TYPES.map((qt) => {
                                                             const Icon = qt.icon
                                                             return (
@@ -984,7 +985,7 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
 
             {/* Sticky Save Footer — only on editor step */}
             {step === 'editor' && (
-                <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-[#E8E8ED] bg-white/95 backdrop-blur-sm dark:border-k-border-subtle dark:bg-surface-card/95">
+                <div className="fixed bottom-0 left-0 right-0 z-sidebar border-t border-[#E8E8ED] bg-white/95 backdrop-blur-sm dark:border-k-border-subtle dark:bg-surface-card/95">
                     <div className="max-w-3xl mx-auto px-8 py-3 flex items-center justify-between">
                         <div className="text-xs text-[#86868B] flex items-center gap-2 dark:text-k-text-quaternary">
                             <span>{questions.length} pergunta{questions.length !== 1 ? 's' : ''}</span>

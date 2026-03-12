@@ -36,7 +36,7 @@ function IntensityGauge({ value }: { value: number | null }) {
                 style={{ background: `conic-gradient(from 180deg at 50% 50%, #8b5cf6 ${value * 10}%, transparent 0)` }}
             />
             <div className="absolute inset-1 rounded-full bg-white dark:bg-surface-card border border-[#E8E8ED] dark:border-k-border-primary" />
-            <div className="relative z-10 flex flex-col items-center justify-center">
+            <div className="relative z-sticky flex flex-col items-center justify-center">
                 <span className="text-[10px] font-black text-violet-600 dark:text-violet-400 mb-0.5">PSE</span>
                 <span className="text-4xl font-black text-[#1D1D1F] dark:text-white tracking-tighter leading-none">{value}</span>
             </div>
@@ -279,7 +279,7 @@ export function SessionDetailSheet({ isOpen, onClose, sessionId }: SessionDetail
     }
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-8">
+        <div className="fixed inset-0 z-tooltip flex items-center justify-center p-4 sm:p-8">
             {/* Backdrop */}
             <div
                 className="absolute inset-0 bg-black/40 dark:bg-black/50 backdrop-blur-sm"
@@ -291,7 +291,7 @@ export function SessionDetailSheet({ isOpen, onClose, sessionId }: SessionDetail
                 {/* Close Button */}
                 <button
                     onClick={onClose}
-                    className="absolute top-5 right-5 z-10 p-2 bg-[#F5F5F7] dark:bg-glass-bg hover:bg-[#ECECF0] dark:hover:bg-glass-bg-active rounded-full text-[#AEAEB2] dark:text-k-text-tertiary hover:text-[#6E6E73] dark:hover:text-k-text-primary transition-all border border-[#E8E8ED] dark:border-k-border-subtle"
+                    className="absolute top-5 right-5 z-sticky p-2 bg-[#F5F5F7] dark:bg-glass-bg hover:bg-[#ECECF0] dark:hover:bg-glass-bg-active rounded-full text-[#AEAEB2] dark:text-k-text-tertiary hover:text-[#6E6E73] dark:hover:text-k-text-primary transition-all border border-[#E8E8ED] dark:border-k-border-subtle"
                 >
                     <X size={18} strokeWidth={1.5} />
                 </button>

@@ -71,7 +71,7 @@ export function PastWorkoutSelector({ workouts, selectedId, onSelect, isLoading 
             </button>
 
             {open && (
-                <div className="absolute left-3 right-3 top-full mt-1 z-20 rounded-xl border border-[#E8E8ED] dark:border-k-border-primary bg-white dark:bg-surface-card shadow-lg dark:shadow-2xl overflow-hidden max-h-[300px] overflow-y-auto">
+                <div className="absolute left-3 right-3 top-full mt-1 z-dropdown rounded-xl border border-[#E8E8ED] dark:border-k-border-primary bg-white dark:bg-surface-card shadow-lg dark:shadow-2xl overflow-hidden max-h-[300px] overflow-y-auto">
                     {[...grouped.entries()].map(([programId, group]) => (
                         <div key={programId}>
                             <div className="px-3 py-2 bg-[#F5F5F7] dark:bg-surface-elevated border-b border-[#E8E8ED] dark:border-k-border-subtle">

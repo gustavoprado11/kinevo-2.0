@@ -492,7 +492,7 @@ export function StudentDetailClient({
                                     {scheduledPrograms.map(program => (
                                         <div key={program.id} className="bg-glass-bg rounded-xl p-4 border border-k-border-subtle hover:border-violet-500/30 transition-all group relative overflow-hidden">
                                             <div className="flex justify-between items-start">
-                                                <div className="relative z-10">
+                                                <div className="relative z-sticky">
                                                     <h4 className="font-bold text-[#1C1C1E] dark:text-white text-sm group-hover:text-violet-300 transition-colors">{program.name}</h4>
                                                     <div className="flex items-center gap-3 text-[10px] font-bold text-k-text-quaternary mt-1">
                                                         {program.duration_weeks && <span>{program.duration_weeks} sem</span>}
@@ -503,7 +503,7 @@ export function StudentDetailClient({
                                                         )}
                                                     </div>
                                                 </div>
-                                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all relative z-10">
+                                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all relative z-sticky">
                                                     <button onClick={() => handleActivateScheduled(program.id)} disabled={!!processingId} className="p-1.5 text-violet-400 hover:text-white hover:bg-violet-600 rounded-lg transition-all">
                                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /></svg>
                                                     </button>

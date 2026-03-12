@@ -80,7 +80,7 @@ export function Sidebar({ financialBadge }: SidebarProps = {}) {
 
     return (
         <aside
-            className={`sidebar-container fixed inset-y-0 left-0 z-30 flex flex-col border-r border-[#E8E8ED] dark:border-k-border-subtle bg-white dark:bg-surface-sidebar/60 dark:backdrop-blur-2xl transition-all duration-300 ease-in-out ${
+            className={`sidebar-container fixed inset-y-0 left-0 z-sidebar flex flex-col border-r border-[#E8E8ED] dark:border-k-border-subtle bg-white dark:bg-surface-sidebar/60 dark:backdrop-blur-2xl transition-all duration-300 ease-in-out ${
                 isCollapsed ? 'w-[68px]' : 'w-64'
             }`}
         >
@@ -143,7 +143,7 @@ export function Sidebar({ financialBadge }: SidebarProps = {}) {
 
                             {/* Tooltip — only when collapsed */}
                             {isCollapsed && (
-                                <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2.5 py-1 rounded-md bg-[#1D1D1F] dark:bg-white text-white dark:text-[#1D1D1F] text-xs font-medium whitespace-nowrap opacity-0 pointer-events-none group-hover/nav:opacity-100 transition-opacity duration-150 z-50 shadow-lg">
+                                <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2.5 py-1 rounded-md bg-[#1D1D1F] dark:bg-white text-white dark:text-[#1D1D1F] text-xs font-medium whitespace-nowrap opacity-0 pointer-events-none group-hover/nav:opacity-100 transition-opacity duration-150 z-modal shadow-lg">
                                     {item.name}
                                 </div>
                             )}

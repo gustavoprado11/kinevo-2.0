@@ -1,4 +1,5 @@
 import { ReactNode } from 'react'
+import { Z } from '@/lib/z-index'
 
 interface PhoneFrameProps {
     children: ReactNode
@@ -39,7 +40,7 @@ export function PhoneFrame({ children }: PhoneFrameProps) {
                     height: 34,
                     borderRadius: 20,
                     backgroundColor: '#000',
-                    zIndex: 10,
+                    zIndex: Z.STICKY,
                 }}
             />
 

@@ -87,7 +87,7 @@ export function AssessmentSidebarCard({
     // Empty state — follows "Próximos Programas" empty pattern
     if (!hasData) {
         return (
-            <div className={`bg-white dark:bg-glass-bg backdrop-blur-md rounded-2xl border border-[#E5E5EA] dark:border-k-border-primary p-6 ${dropdownOpen ? 'relative z-30' : ''}`}>
+            <div className={`bg-white dark:bg-glass-bg backdrop-blur-md rounded-2xl border border-[#E5E5EA] dark:border-k-border-primary p-6 ${dropdownOpen ? 'relative z-sidebar' : ''}`}>
                 <div className="flex items-center justify-between mb-4">
                     <h3 className="text-sm font-semibold text-[#1C1C1E] dark:text-white flex items-center gap-2">
                         Avaliações
@@ -110,7 +110,7 @@ export function AssessmentSidebarCard({
     }
 
     return (
-        <div className={`bg-white dark:bg-glass-bg backdrop-blur-md rounded-2xl border border-[#E5E5EA] dark:border-k-border-primary p-6 ${dropdownOpen ? 'relative z-30' : ''}`}>
+        <div className={`bg-white dark:bg-glass-bg backdrop-blur-md rounded-2xl border border-[#E5E5EA] dark:border-k-border-primary p-6 ${dropdownOpen ? 'relative z-sidebar' : ''}`}>
             {/* Header — same pattern as Observações / Próximos Programas */}
             <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-semibold text-[#1C1C1E] dark:text-white flex items-center gap-2">
@@ -242,9 +242,9 @@ function SendButton({
             {dropdownOpen && (
                 <>
                     {/* Backdrop */}
-                    <div className="fixed inset-0 z-30" onClick={() => setDropdownOpen(false)} />
+                    <div className="fixed inset-0 z-sidebar" onClick={() => setDropdownOpen(false)} />
                     {/* Dropdown menu */}
-                    <div className="absolute right-0 mt-1 z-40 min-w-[220px] bg-white dark:bg-surface-card border border-[#E5E5EA] dark:border-k-border-primary rounded-xl shadow-lg overflow-hidden">
+                    <div className="absolute right-0 mt-1 z-dropdown min-w-[220px] bg-white dark:bg-surface-card border border-[#E5E5EA] dark:border-k-border-primary rounded-xl shadow-lg overflow-hidden">
                         {formTemplates.map(template => (
                             <button
                                 key={template.id}
