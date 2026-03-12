@@ -8,22 +8,22 @@ const config: Record<string, { label: string; icon: React.ElementType; classes: 
     stripe_auto: {
         label: 'Stripe',
         icon: CreditCard,
-        classes: 'bg-violet-500/10 text-violet-400 border-violet-500/20',
+        classes: 'bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20',
     },
     manual_recurring: {
         label: 'Manual',
         icon: HandCoins,
-        classes: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+        classes: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20',
     },
     manual_one_off: {
         label: 'Avulso',
         icon: Banknote,
-        classes: 'bg-gray-500/10 text-gray-400 border-gray-500/20',
+        classes: 'bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-500/20',
     },
     courtesy: {
         label: 'Cortesia',
         icon: Heart,
-        classes: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+        classes: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
     },
 }
 

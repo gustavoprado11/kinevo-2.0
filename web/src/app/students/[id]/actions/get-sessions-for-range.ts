@@ -25,6 +25,9 @@ export async function getSessionsForRange(
     const supabase = await createClient()
 
     try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return { success: false, error: 'Não autorizado' }
+
         const { data, error } = await supabase
             .from('workout_sessions')
             .select('id, assigned_workout_id, started_at, completed_at, status, rpe')

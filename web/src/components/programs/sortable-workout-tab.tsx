@@ -2,6 +2,7 @@
 
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { Z } from '@/lib/z-index'
 
 interface SortableWorkoutTabProps {
     id: string
@@ -22,7 +23,7 @@ export function SortableWorkoutTab({ id, children }: SortableWorkoutTabProps) {
         transform: CSS.Transform.toString(transform),
         transition,
         opacity: isDragging ? 0.5 : 1,
-        zIndex: isDragging ? 50 : 'auto',
+        zIndex: isDragging ? Z.MODAL : 'auto',
         position: 'relative' as const,
         cursor: 'grab',
     }

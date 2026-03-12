@@ -11,17 +11,8 @@ import Animated, { FadeInUp, FadeIn, ZoomIn } from "react-native-reanimated";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../contexts/AuthContext";
 import { PressableScale } from "../../components/shared/PressableScale";
-
-type QuestionType = "short_text" | "long_text" | "single_choice" | "scale" | "photo";
-
-interface Question {
-    id: string;
-    type: QuestionType;
-    label: string;
-    required?: boolean;
-    options?: Array<{ value: string; label: string }>;
-    scale?: { min?: number; max?: number };
-}
+import { FormRenderer } from "../../components/forms/FormRenderer";
+import type { Question } from "../../components/forms/FormFieldRenderer";
 
 interface InboxItem {
     id: string;
@@ -54,11 +45,25 @@ export default function InboxItemDetailScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
 
     const [isLoading, setIsLoading] = useState(true);
-    const [isSubmitting, setIsSubmitting] = useState(false);
     const [item, setItem] = useState<InboxItem | null>(null);
     const [submission, setSubmission] = useState<Submission | null>(null);
     const [answers, setAnswers] = useState<Record<string, any>>({});
     const [draftReady, setDraftReady] = useState(false);
+    const [studentId, setStudentId] = useState<string | null>(null);
+    const [templateDescription, setTemplateDescription] = useState<string | null>(null);
+
+    // Resolve student table ID from auth UID
+    useEffect(() => {
+        if (!user) return;
+        (async () => {
+            const { data }: { data: any; error: any } = await supabase
+                .from("students" as any)
+                .select("id")
+                .eq("auth_user_id", user.id)
+                .single();
+            if (data?.id) setStudentId(data.id);
+        })();
+    }, [user]);
 
     const draftKey = useMemo(() => {
         if (!id) return null;
@@ -85,12 +90,12 @@ export default function InboxItemDetailScreen() {
         try {
             await SecureStore.deleteItemAsync(draftKey);
         } catch (err) {
-            console.error("[inbox/[id]] discard draft error:", err);
+            if (__DEV__) console.error("[inbox/[id]] discard draft error:", err);
         }
     }, [draftKey]);
 
     const fetchData = useCallback(async () => {
-        if (!id) return;
+        if (!id || !studentId) return;
         setIsLoading(true);
         setDraftReady(false);
 
@@ -99,10 +104,11 @@ export default function InboxItemDetailScreen() {
                 .from("student_inbox_items" as any)
                 .select("id, type, status, title, subtitle, payload")
                 .eq("id", id)
+                .eq("student_id", studentId)
                 .single();
 
             if (inboxError || !inboxData) {
-                console.error("[inbox/[id]] inbox fetch error:", inboxError);
+                if (__DEV__) console.error("[inbox/[id]] inbox fetch error:", inboxError);
                 Alert.alert("Erro", "Item não encontrado.");
                 router.back();
                 return;
@@ -110,12 +116,24 @@ export default function InboxItemDetailScreen() {
 
             setItem(inboxData as InboxItem);
 
+            // Fetch template description for form requests
+            const templateId = inboxData.payload?.form_template_id as string | undefined;
+            if (templateId) {
+                const { data: tplData }: { data: any } = await supabase
+                    .from("form_templates" as any)
+                    .select("description")
+                    .eq("id", templateId)
+                    .maybeSingle();
+                if (tplData?.description) setTemplateDescription(tplData.description);
+            }
+
             if (inboxData.type === "form_request" || inboxData.type === "feedback") {
                 const submissionId = inboxData.payload?.submission_id as string | undefined;
 
                 let submissionQuery = supabase
                     .from("form_submissions" as any)
-                    .select("id, status, schema_snapshot_json, answers_json, submitted_at, trainer_feedback");
+                    .select("id, status, schema_snapshot_json, answers_json, submitted_at, trainer_feedback")
+                    .eq("student_id", studentId);
 
                 if (submissionId) {
                     submissionQuery = submissionQuery.eq("id", submissionId);
@@ -125,7 +143,7 @@ export default function InboxItemDetailScreen() {
 
                 const { data: submissionData, error: submissionError }: { data: any; error: any } = await submissionQuery.maybeSingle();
                 if (submissionError) {
-                    console.error("[inbox/[id]] submission fetch error:", submissionError);
+                    if (__DEV__) console.error("[inbox/[id]] submission fetch error:", submissionError);
                 } else if (submissionData) {
                     setSubmission(submissionData as Submission);
                     const initialAnswers = submissionData?.answers_json?.answers || {};
@@ -189,7 +207,7 @@ export default function InboxItemDetailScreen() {
                                 }
                             }
                         } catch (err) {
-                            console.error("[inbox/[id]] restore draft error:", err);
+                            if (__DEV__) console.error("[inbox/[id]] restore draft error:", err);
                         }
                     } else if (!isDraftSubmission && draftKey) {
                         await SecureStore.deleteItemAsync(draftKey);
@@ -197,49 +215,36 @@ export default function InboxItemDetailScreen() {
                 }
             }
         } catch (err) {
-            console.error("[inbox/[id]] fetchData unhandled error:", err);
+            if (__DEV__) console.error("[inbox/[id]] fetchData unhandled error:", err);
             Alert.alert("Erro", "Não foi possível carregar o item.");
             router.back();
         } finally {
             setIsLoading(false);
             setDraftReady(true);
         }
-    }, [draftKey, id, router]);
+    }, [draftKey, id, router, studentId]);
 
     useEffect(() => {
-        fetchData();
-    }, [fetchData]);
+        if (studentId) fetchData();
+    }, [fetchData, studentId]);
 
     const questions = useMemo(
-        () => submission?.schema_snapshot_json?.questions || [],
+        () => (submission?.schema_snapshot_json?.questions || []).map((q: any) => ({
+            ...q,
+            options: q.options
+                ? q.options.map((opt: any, i: number) =>
+                    typeof opt === "string" ? { value: `opt_${i + 1}`, label: opt } : opt
+                )
+                : undefined,
+        })),
         [submission]
     );
 
-    useEffect(() => {
-        if (!draftKey || !draftReady || !submission || submission.status !== "draft") return;
-
-        const timeout = setTimeout(async () => {
-            try {
-                const payload: LocalDraft = {
-                    answers,
-                    saved_at: new Date().toISOString(),
-                    schema_version: schemaVersion,
-                    template_version: templateVersion,
-                };
-                await SecureStore.setItemAsync(draftKey, JSON.stringify(payload));
-            } catch (err) {
-                console.error("[inbox/[id]] autosave draft error:", err);
-            }
-        }, 450);
-
-        return () => clearTimeout(timeout);
-    }, [answers, draftKey, draftReady, submission, schemaVersion, templateVersion]);
-
+    // Note: auto-save is now managed by FormRenderer in full mode.
+    // We keep local answers state for draft recovery during fetchData,
+    // the feedback read-only view, and handlePickImage.
     const setAnswer = (questionId: string, value: any) => {
-        setAnswers((prev) => ({
-            ...prev,
-            [questionId]: value,
-        }));
+        setAnswers((prev) => ({ ...prev, [questionId]: value }));
     };
 
     const handlePickImage = async (questionId: string) => {
@@ -293,20 +298,21 @@ export default function InboxItemDetailScreen() {
                 ],
             });
         } catch (err: any) {
-            console.error("[inbox/[id]] upload error:", err);
+            if (__DEV__) console.error("[inbox/[id]] upload error:", err);
             Alert.alert("Erro", err?.message || "Falha ao enviar imagem.");
         }
     };
 
-    const handleSubmit = useCallback(async () => {
+
+    // handleSubmit adapted for FormRenderer — receives answers from the renderer
+    const handleFormRendererSubmit = useCallback(async (formAnswers: Record<string, any>) => {
         if (!submission) return;
 
-        setIsSubmitting(true);
         try {
             const payload = {
                 submitted_from: "mobile",
                 app_version: "1.0.0",
-                answers,
+                answers: formAnswers,
             };
 
             const { error }: { error: any } = await supabase.rpc("submit_form_submission" as any, {
@@ -324,131 +330,10 @@ export default function InboxItemDetailScreen() {
             Alert.alert("Enviado", "Seu formulário foi enviado com sucesso.", [
                 { text: "OK", onPress: () => router.replace("/(tabs)/inbox") },
             ]);
-        } finally {
-            setIsSubmitting(false);
+        } catch (err: any) {
+            Alert.alert("Erro", err?.message || "Falha ao enviar.");
         }
-    }, [answers, discardLocalDraft, router, submission]);
-
-    const renderQuestion = (question: Question) => {
-        const answer = answers[question.id];
-
-        if (question.type === "short_text" || question.type === "long_text") {
-            return (
-                <TextInput
-                    value={answer?.value || ""}
-                    onChangeText={(text) =>
-                        setAnswer(question.id, { type: question.type, value: text })
-                    }
-                    multiline={question.type === "long_text"}
-                    placeholder="Digite sua resposta"
-                    style={{
-                        borderWidth: 1,
-                        borderColor: "#e2e8f0",
-                        borderRadius: 10,
-                        padding: 10,
-                        color: "#0f172a",
-                        backgroundColor: "#f8fafc",
-                        minHeight: question.type === "long_text" ? 90 : 44,
-                        textAlignVertical: "top",
-                        marginTop: 8,
-                    }}
-                    placeholderTextColor="#94a3b8"
-                />
-            );
-        }
-
-        if (question.type === "single_choice") {
-            return (
-                <View style={{ marginTop: 8, gap: 8 }}>
-                    {(question.options || []).map((opt) => {
-                        const isSelected = answer?.value === opt.value;
-                        return (
-                            <Pressable
-                                key={opt.value}
-                                onPress={() => setAnswer(question.id, { type: "single_choice", value: opt.value })}
-                                style={{
-                                    borderWidth: 1,
-                                    borderColor: isSelected ? "#7c3aed" : "#e2e8f0",
-                                    backgroundColor: isSelected ? "#f5f3ff" : "#f8fafc",
-                                    borderRadius: 10,
-                                    padding: 10,
-                                }}
-                            >
-                                <Text style={{ color: "#0f172a", fontSize: 14 }}>{opt.label}</Text>
-                            </Pressable>
-                        );
-                    })}
-                </View>
-            );
-        }
-
-        if (question.type === "scale") {
-            const min = question.scale?.min ?? 1;
-            const max = question.scale?.max ?? 5;
-            const values = Array.from({ length: max - min + 1 }, (_, i) => min + i);
-            return (
-                <View style={{ marginTop: 8, flexDirection: "row", gap: 8 }}>
-                    {values.map((value) => {
-                        const selected = Number(answer?.value) === value;
-                        return (
-                            <Pressable
-                                key={value}
-                                onPress={() => setAnswer(question.id, { type: "scale", value })}
-                                style={{
-                                    width: 36,
-                                    height: 36,
-                                    borderRadius: 18,
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    borderWidth: 1,
-                                    borderColor: selected ? "#7c3aed" : "#e2e8f0",
-                                    backgroundColor: selected ? "#f5f3ff" : "#f8fafc",
-                                }}
-                            >
-                                <Text style={{ color: "#0f172a", fontWeight: "700" }}>{value}</Text>
-                            </Pressable>
-                        );
-                    })}
-                </View>
-            );
-        }
-
-        if (question.type === "photo") {
-            const file = answer?.files?.[0];
-            return (
-                <View style={{ marginTop: 8 }}>
-                    <Pressable
-                        onPress={() => handlePickImage(question.id)}
-                        style={{
-                            backgroundColor: 'rgba(124, 58, 237, 0.05)',
-                            borderRadius: 12,
-                            padding: 12,
-                            flexDirection: "row",
-                            alignItems: "center",
-                            gap: 8,
-                            borderWidth: 1,
-                            borderColor: 'rgba(124, 58, 237, 0.1)',
-                        }}
-                    >
-                        <Upload size={16} color="#7c3aed" />
-                        <Text style={{ color: "#7c3aed", fontWeight: "600", fontSize: 13 }}>
-                            {file ? "Trocar foto" : "Selecionar foto"}
-                        </Text>
-                    </Pressable>
-
-                    {!!file?.url && (
-                        <Image
-                            source={{ uri: file.url }}
-                            style={{ width: "100%", height: 180, borderRadius: 12, marginTop: 12 }}
-                            resizeMode="cover"
-                        />
-                    )}
-                </View>
-            );
-        }
-
-        return null;
-    };
+    }, [discardLocalDraft, router, submission]);
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: "#F2F2F7" }} edges={["top"]}>
@@ -498,7 +383,12 @@ export default function InboxItemDetailScreen() {
                         }}
                     >
                         <Text style={{ color: "#0f172a", fontWeight: "800", fontSize: 16 }}>{item.title}</Text>
-                        {!!item.subtitle && <Text style={{ color: "#64748b", marginTop: 6, fontSize: 14 }}>{item.subtitle}</Text>}
+                        {!!templateDescription && (
+                            <Text style={{ color: "#64748b", marginTop: 6, fontSize: 13, lineHeight: 19 }}>{templateDescription}</Text>
+                        )}
+                        {!!item.subtitle && item.subtitle !== "Novo formulário" && (
+                            <Text style={{ color: "#94a3b8", marginTop: 4, fontSize: 12 }}>{item.subtitle}</Text>
+                        )}
                     </Animated.View>
 
                     {item.type === "feedback" && (
@@ -636,66 +526,18 @@ export default function InboxItemDetailScreen() {
                                 </View>
                             )}
 
-                            {questions.map((question) => (
-                                <BlurView
-                                    key={question.id}
-                                    intensity={60}
-                                    tint="light"
-                                    style={{
-                                        backgroundColor: 'rgba(255, 255, 255, 0.7)',
-                                        borderRadius: 20,
-                                        padding: 14,
-                                        marginBottom: 12,
-                                        overflow: 'hidden',
-                                        borderWidth: 1,
-                                        borderColor: 'rgba(255, 255, 255, 0.5)',
-                                        shadowColor: '#000',
-                                        shadowOffset: { width: 0, height: 2 },
-                                        shadowOpacity: 0.04,
-                                        shadowRadius: 8,
-                                        elevation: 2,
-                                    }}
-                                >
-                                    <Text style={{ color: "#0f172a", fontWeight: "700", fontSize: 15, marginBottom: 4 }}>
-                                        {question.label} {question.required ? "*" : ""}
-                                    </Text>
-                                    {renderQuestion(question)}
-                                </BlurView>
-                            ))}
-
-                            {submission.status === "draft" && (
-                                <Pressable
-                                    onPress={handleSubmit}
-                                    disabled={isSubmitting}
-                                    style={{
-                                        marginTop: 10,
-                                        borderRadius: 16,
-                                        overflow: 'hidden',
-                                        shadowColor: '#8b5cf6',
-                                        shadowOffset: { width: 0, height: 4 },
-                                        shadowOpacity: 0.3,
-                                        shadowRadius: 10,
-                                        elevation: 6,
-                                    }}
-                                >
-                                    <BlurView intensity={80} tint="light" style={{ backgroundColor: 'rgba(124, 58, 237, 0.85)' }}>
-                                        <LinearGradient
-                                            colors={['rgba(139, 92, 246, 0.5)', 'rgba(109, 40, 217, 0.5)']}
-                                            style={{
-                                                paddingVertical: 16,
-                                                alignItems: "center",
-                                                borderWidth: 1,
-                                                borderColor: 'rgba(255, 255, 255, 0.2)',
-                                                borderRadius: 16,
-                                            }}
-                                        >
-                                            <Text style={{ color: "#fff", fontWeight: "800", fontSize: 16, letterSpacing: 0.5 }}>
-                                                {isSubmitting ? "ENVIANDO..." : "ENVIAR FORMULÁRIO"}
-                                            </Text>
-                                        </LinearGradient>
-                                    </BlurView>
-                                </Pressable>
-                            )}
+                            <FormRenderer
+                                mode="full"
+                                schema={{ questions }}
+                                initialAnswers={answers}
+                                onSubmit={handleFormRendererSubmit}
+                                submitLabel="Enviar Formulário"
+                                disabled={submission.status !== "draft"}
+                                draftKey={draftKey}
+                                schemaVersion={schemaVersion}
+                                templateVersion={templateVersion}
+                                onPickImage={handlePickImage}
+                            />
                         </View>
                     )}
                 </ScrollView>

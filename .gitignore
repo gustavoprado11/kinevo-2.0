@@ -3,6 +3,12 @@
 .env.*
 .env.local
 .env.production
+*.env
+
+# Firebase / Google Services
+mobile/google-services.json
+mobile/GoogleService-Info.plist
+mobile/ios/**/GoogleService-Info.plist
 
 # dependencies
 node_modules/
@@ -18,3 +24,13 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+.claude/worktrees/
+.next/
+supabase/.temp/
+
+# EAS (root-level artifacts created by eas-cli, real configs live in mobile/)
+/app.json
+/eas.json
+
+# tmp artifacts
+tmp/

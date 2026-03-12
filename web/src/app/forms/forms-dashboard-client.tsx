@@ -83,13 +83,13 @@ function submissionStatusForSheet(submission: FullSubmission) {
     if (submission.status === 'submitted' || submission.submitted_at) {
         return { label: 'Concluído', className: 'bg-emerald-500/10 text-emerald-500 ring-1 ring-emerald-500/20' }
     }
-    return { label: 'Pendente', className: 'bg-amber-500/10 text-amber-500 ring-1 ring-amber-500/20' }
+    return { label: 'Pendente', className: 'bg-amber-500/10 text-amber-500 ring-1 ring-amber-500/20 dark:bg-amber-500/10 dark:text-amber-500' }
 }
 
 const CATEGORY_CONFIG: Record<string, { label: string; icon: typeof FileText; color: string }> = {
-    anamnese: { label: 'Anamnese', icon: ClipboardList, color: 'text-blue-400' },
-    checkin: { label: 'Check-in', icon: CheckCircle2, color: 'text-emerald-400' },
-    survey: { label: 'Pesquisa', icon: MessageSquare, color: 'text-amber-400' },
+    anamnese: { label: 'Anamnese', icon: ClipboardList, color: 'text-blue-600 dark:text-blue-400' },
+    checkin: { label: 'Check-in', icon: CheckCircle2, color: 'text-emerald-600 dark:text-emerald-400' },
+    survey: { label: 'Pesquisa', icon: MessageSquare, color: 'text-amber-600 dark:text-amber-400' },
 }
 
 // --- Types ---
@@ -131,6 +131,7 @@ interface TemplateInfo {
     category: string
     responseCount: number
     questionCount: number
+    trainer_id: string | null
 }
 
 interface FormTemplate {
@@ -302,9 +303,9 @@ export function FormsDashboardClient({
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
-                    <h1 className="text-2xl font-bold tracking-tight text-white">Avaliações</h1>
+                    <h1 className="text-2xl font-bold tracking-tight text-[#1D1D1F] dark:text-k-text-primary">Avaliações</h1>
                     {submissions.length > 0 && (
-                        <span className="px-2 py-0.5 rounded-md bg-glass-bg text-xs font-bold text-k-text-tertiary border border-k-border-subtle">
+                        <span className="px-2.5 py-0.5 rounded-full bg-[#F5F5F7] text-sm text-[#6E6E73] dark:bg-glass-bg dark:text-k-text-tertiary dark:border dark:border-k-border-subtle">
                             {submissions.length}
                         </span>
                     )}
@@ -312,7 +313,7 @@ export function FormsDashboardClient({
                 <div className="flex items-center gap-2">
                     <button
                         onClick={() => setIsAssignOpen(true)}
-                        className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-xl transition-all"
+                        className="flex items-center gap-2 px-4 py-2 bg-[#007AFF] hover:bg-[#0066D6] text-white text-sm font-medium rounded-full transition-all dark:bg-violet-600 dark:hover:bg-violet-500 dark:rounded-xl"
                     >
                         <Send size={14} />
                         Enviar para aluno
@@ -320,7 +321,7 @@ export function FormsDashboardClient({
                     <button
                         data-onboarding="forms-templates-card"
                         onClick={() => router.push('/forms/templates/new')}
-                        className="flex items-center gap-2 rounded-xl border border-k-border-primary text-k-text-tertiary hover:text-k-text-primary px-4 py-2 text-sm transition-all"
+                        className="flex items-center gap-2 rounded-full bg-white border border-[#D2D2D7] text-[#6E6E73] hover:bg-[#F5F5F7] hover:text-[#1D1D1F] px-4 py-2 text-sm transition-all dark:rounded-xl dark:bg-transparent dark:border-k-border-primary dark:text-k-text-tertiary dark:hover:text-k-text-primary dark:hover:bg-transparent"
                     >
                         <Plus size={14} />
                         Novo Template
@@ -328,46 +329,49 @@ export function FormsDashboardClient({
                 </div>
             </div>
 
+            {/* Card sections container */}
+            <div className="space-y-6">
+
             {/* Pending Feedback Section */}
-            <div data-onboarding="forms-pending" className="mb-6">
+            <div data-onboarding="forms-pending" className="bg-white rounded-xl border border-[#D2D2D7] shadow-[0_1px_3px_rgba(0,0,0,0.08)] overflow-hidden dark:bg-transparent dark:border-k-border-subtle dark:shadow-none dark:rounded-none">
                 {pending.length > 0 ? (
                     <>
-                        <div className="flex items-center gap-2 mb-3">
-                            <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse" />
-                            <h2 className="text-sm font-semibold text-white">Aguardando Feedback</h2>
-                            <span className="px-1.5 py-0.5 rounded bg-yellow-500/10 text-[10px] font-bold text-yellow-400 border border-yellow-500/20">
+                        <div className="flex items-center gap-2 px-5 py-4 border-b border-[#E8E8ED] dark:border-k-border-subtle">
+                            <div className="w-2 h-2 bg-[#FF9500] dark:bg-yellow-500 rounded-full animate-pulse" />
+                            <h2 className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary">Aguardando Feedback</h2>
+                            <span className="px-1.5 py-0.5 rounded-full bg-[#FF9500]/10 text-[10px] font-bold text-[#FF9500] dark:text-yellow-400 border border-[#FF9500]/20 dark:border-yellow-500/20">
                                 {pending.length}
                             </span>
                         </div>
-                        <div className="space-y-2">
+                        <div className="divide-y divide-[#E8E8ED] dark:divide-k-border-subtle">
                             {pending.map(sub => (
                                 <div
                                     key={sub.id}
-                                    className="flex items-center justify-between p-4 bg-yellow-500/5 border border-yellow-500/15 rounded-xl hover:border-yellow-500/30 transition-all cursor-pointer"
+                                    className="flex items-center justify-between px-5 py-3 hover:bg-[#F5F5F7] transition-all cursor-pointer dark:hover:bg-glass-bg"
                                     onClick={() => openSubmission(sub.id)}
                                 >
                                     <div className="flex items-center gap-3 min-w-0">
-                                        <div className="flex h-8 w-8 items-center justify-center rounded-full border border-k-border-primary bg-glass-bg overflow-hidden shrink-0">
+                                        <div className="flex h-8 w-8 items-center justify-center rounded-full border border-[#D2D2D7] bg-[#F5F5F7] overflow-hidden shrink-0 dark:border-k-border-primary dark:bg-glass-bg">
                                             {sub.student_avatar ? (
                                                 <Image src={sub.student_avatar} alt="" width={32} height={32} className="h-8 w-8 rounded-full object-cover" unoptimized />
                                             ) : (
-                                                <span className="text-[10px] font-semibold text-k-text-primary">
+                                                <span className="text-[10px] font-semibold text-[#1D1D1F] dark:text-k-text-primary">
                                                     {(sub.student_name || '?').charAt(0).toUpperCase()}
                                                 </span>
                                             )}
                                         </div>
                                         <div className="min-w-0">
-                                            <p className="text-sm font-medium text-white truncate">{sub.student_name || 'Aluno'}</p>
-                                            <p className="text-xs text-k-text-quaternary">
+                                            <p className="text-sm font-medium text-[#1D1D1F] dark:text-k-text-primary truncate">{sub.student_name || 'Aluno'}</p>
+                                            <p className="text-xs text-[#86868B] dark:text-k-text-quaternary">
                                                 {cleanTemplateName(sub.template_title || 'Template')} · Recebido {timeAgo(sub.submitted_at || sub.created_at)}
                                             </p>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2 shrink-0">
                                         {loadingSubmissionId === sub.id ? (
-                                            <Loader2 size={14} className="animate-spin text-yellow-400" />
+                                            <Loader2 size={14} className="animate-spin text-[#007AFF] dark:text-yellow-400" />
                                         ) : (
-                                            <span className="text-xs px-3 py-1.5 bg-yellow-500/15 text-yellow-400 hover:bg-yellow-500/25 rounded-lg transition-colors font-medium">
+                                            <span className="text-xs px-3 py-1.5 text-[#007AFF] hover:text-[#0056B3] font-medium transition-colors dark:bg-yellow-500/15 dark:text-yellow-400 dark:hover:bg-yellow-500/25 dark:rounded-lg">
                                                 Dar Feedback →
                                             </span>
                                         )}
@@ -377,47 +381,47 @@ export function FormsDashboardClient({
                         </div>
                     </>
                 ) : (
-                    <div className="flex items-center gap-2 px-3 py-2 bg-emerald-500/5 border border-emerald-500/10 rounded-lg w-fit">
-                        <Check size={14} className="text-emerald-400" />
-                        <span className="text-sm text-emerald-400 font-medium">Todos os feedbacks em dia</span>
+                    <div className="flex items-center gap-2 px-5 py-4">
+                        <Check size={14} className="text-[#34C759] dark:text-emerald-400" />
+                        <span className="text-sm text-[#34C759] dark:text-emerald-400 font-medium">Todos os feedbacks em dia</span>
                     </div>
                 )}
             </div>
 
             {/* Pending Sent — forms assigned but not yet answered */}
             {pendingSent.length > 0 && (
-                <div className="mb-6">
-                    <div className="flex items-center gap-2 mb-3">
-                        <Send size={14} className="text-violet-400" />
-                        <h2 className="text-sm font-semibold text-white">Enviados pendentes</h2>
-                        <span className="px-1.5 py-0.5 rounded bg-violet-500/10 text-[10px] font-bold text-violet-400 border border-violet-500/20">
+                <div className="bg-white rounded-xl border border-[#D2D2D7] shadow-[0_1px_3px_rgba(0,0,0,0.08)] overflow-hidden dark:bg-transparent dark:border-k-border-subtle dark:shadow-none dark:rounded-none">
+                    <div className="flex items-center gap-2 px-5 py-4 border-b border-[#E8E8ED] dark:border-k-border-subtle">
+                        <Send size={14} className="text-[#007AFF] dark:text-violet-400" />
+                        <h2 className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary">Enviados pendentes</h2>
+                        <span className="px-1.5 py-0.5 rounded-full bg-[#007AFF]/10 text-[10px] font-bold text-[#007AFF] dark:text-violet-400 border border-[#007AFF]/20 dark:bg-violet-500/10 dark:border-violet-500/20">
                             {pendingSent.length}
                         </span>
                     </div>
-                    <div className="space-y-2">
+                    <div className="divide-y divide-[#E8E8ED] dark:divide-k-border-subtle">
                         {pendingSent.map(item => (
                             <div
                                 key={item.id}
-                                className="flex items-center justify-between p-4 bg-violet-500/5 border border-violet-500/10 rounded-xl"
+                                className="flex items-center justify-between px-5 py-3"
                             >
                                 <div className="flex items-center gap-3 min-w-0">
-                                    <div className="flex h-8 w-8 items-center justify-center rounded-full border border-k-border-primary bg-glass-bg overflow-hidden shrink-0">
+                                    <div className="flex h-8 w-8 items-center justify-center rounded-full border border-[#D2D2D7] bg-[#F5F5F7] overflow-hidden shrink-0 dark:border-k-border-primary dark:bg-glass-bg">
                                         {item.student_avatar ? (
                                             <Image src={item.student_avatar} alt="" width={32} height={32} className="h-8 w-8 rounded-full object-cover" unoptimized />
                                         ) : (
-                                            <span className="text-[10px] font-semibold text-k-text-primary">
+                                            <span className="text-[10px] font-semibold text-[#1D1D1F] dark:text-k-text-primary">
                                                 {(item.student_name || '?').charAt(0).toUpperCase()}
                                             </span>
                                         )}
                                     </div>
                                     <div className="min-w-0">
-                                        <p className="text-sm font-medium text-white truncate">{item.student_name || 'Aluno'}</p>
-                                        <p className="text-xs text-k-text-quaternary">
+                                        <p className="text-sm font-medium text-[#1D1D1F] dark:text-k-text-primary truncate">{item.student_name || 'Aluno'}</p>
+                                        <p className="text-xs text-[#86868B] dark:text-k-text-quaternary">
                                             {cleanTemplateName(item.template_title || 'Template')} · Enviado {timeAgo(item.created_at)}
                                         </p>
                                     </div>
                                 </div>
-                                <span className="text-[11px] px-2.5 py-1 rounded-full bg-violet-500/10 text-violet-400 font-medium shrink-0">
+                                <span className="text-[11px] px-2.5 py-1 rounded-full bg-[#FF9500]/10 text-[#FF9500] font-medium shrink-0 dark:bg-violet-500/10 dark:text-violet-400">
                                     Aguardando resposta
                                 </span>
                             </div>
@@ -428,34 +432,33 @@ export function FormsDashboardClient({
 
             {/* All Submissions */}
             {submissions.length > 0 && (
-                <div>
-                    <div className="flex items-center gap-2 mb-3">
-                        <h2 className="text-sm font-semibold text-white">Todas as Respostas</h2>
-                    </div>
-
-                    {/* Filter Chips */}
-                    <div className="flex items-center gap-2 mb-4">
-                        {([
-                            { key: 'all' as const, label: 'Todas', count: submissions.length },
-                            { key: 'pending' as const, label: 'Pendentes', count: pending.length },
-                            { key: 'completed' as const, label: 'Concluídas', count: completed.length },
-                        ]).map(f => (
-                            <button
-                                key={f.key}
-                                onClick={() => setFilter(f.key)}
-                                className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
-                                    filter === f.key
-                                        ? 'bg-violet-500/10 text-violet-400 border border-violet-500/30'
-                                        : 'bg-glass-bg text-k-text-quaternary border border-k-border-subtle hover:text-k-text-secondary'
-                                }`}
-                            >
-                                {f.label} ({f.count})
-                            </button>
-                        ))}
+                <div className="bg-white rounded-xl border border-[#D2D2D7] shadow-[0_1px_3px_rgba(0,0,0,0.08)] overflow-hidden dark:bg-transparent dark:border-k-border-subtle dark:shadow-none dark:rounded-none">
+                    <div className="flex items-center justify-between px-5 py-4 border-b border-[#E8E8ED] dark:border-k-border-subtle">
+                        <h2 className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary">Todas as Respostas</h2>
+                        {/* Filter Chips */}
+                        <div className="flex items-center gap-2">
+                            {([
+                                { key: 'all' as const, label: 'Todas', count: submissions.length },
+                                { key: 'pending' as const, label: 'Pendentes', count: pending.length },
+                                { key: 'completed' as const, label: 'Concluídas', count: completed.length },
+                            ]).map(f => (
+                                <button
+                                    key={f.key}
+                                    onClick={() => setFilter(f.key)}
+                                    className={`px-3 py-1.5 text-xs font-medium rounded-full transition-all ${
+                                        filter === f.key
+                                            ? 'bg-[#007AFF] text-white dark:bg-violet-500/10 dark:text-violet-400 dark:border dark:border-violet-500/30'
+                                            : 'bg-[#F5F5F7] text-[#6E6E73] hover:bg-[#E8E8ED] dark:bg-glass-bg dark:text-k-text-quaternary dark:border-k-border-subtle dark:hover:text-k-text-secondary'
+                                    }`}
+                                >
+                                    {f.label} ({f.count})
+                                </button>
+                            ))}
+                        </div>
                     </div>
 
                     {/* Submission Rows */}
-                    <div className="space-y-1">
+                    <div className="divide-y divide-[#E8E8ED] dark:divide-k-border-subtle">
                         {filteredSubmissions.map(sub => {
                             const isPending = sub.status === 'submitted'
                             const isLoading = loadingSubmissionId === sub.id
@@ -463,28 +466,28 @@ export function FormsDashboardClient({
                                 <button
                                     key={sub.id}
                                     onClick={() => openSubmission(sub.id)}
-                                    className="w-full group flex items-center justify-between py-3 px-4 hover:bg-glass-bg rounded-xl transition-all text-left"
+                                    className="w-full group flex items-center justify-between py-3 px-5 hover:bg-[#F5F5F7] transition-all text-left dark:hover:bg-glass-bg"
                                 >
                                     <div className="flex items-center gap-3 min-w-0">
-                                        <div className="flex h-8 w-8 items-center justify-center rounded-full border border-k-border-primary bg-glass-bg overflow-hidden shrink-0">
+                                        <div className="flex h-8 w-8 items-center justify-center rounded-full border border-[#D2D2D7] bg-[#F5F5F7] overflow-hidden shrink-0 dark:border-k-border-primary dark:bg-glass-bg">
                                             {sub.student_avatar ? (
                                                 <Image src={sub.student_avatar} alt="" width={32} height={32} className="h-8 w-8 rounded-full object-cover" unoptimized />
                                             ) : (
-                                                <span className="text-[10px] font-semibold text-k-text-primary">
+                                                <span className="text-[10px] font-semibold text-[#1D1D1F] dark:text-k-text-primary">
                                                     {(sub.student_name || '?').charAt(0).toUpperCase()}
                                                 </span>
                                             )}
                                         </div>
                                         <div className="min-w-0">
                                             <div className="flex items-center gap-2">
-                                                <span className="text-sm font-medium text-k-text-secondary group-hover:text-white transition-colors truncate">
+                                                <span className="text-sm font-medium text-[#1D1D1F] group-hover:text-[#1D1D1F] transition-colors truncate dark:text-k-text-secondary dark:group-hover:text-k-text-primary">
                                                     {sub.student_name || 'Aluno'}
                                                 </span>
-                                                <span className="text-xs text-k-text-quaternary truncate hidden sm:inline">
+                                                <span className="text-xs text-[#86868B] truncate hidden sm:inline dark:text-k-text-quaternary">
                                                     {cleanTemplateName(sub.template_title || '')}
                                                 </span>
                                             </div>
-                                            <span className="text-xs text-k-text-quaternary">
+                                            <span className="text-xs text-[#AEAEB2] dark:text-k-text-quaternary">
                                                 {timeAgo(sub.submitted_at || sub.created_at)}
                                             </span>
                                         </div>
@@ -494,11 +497,13 @@ export function FormsDashboardClient({
                                         {isLoading ? (
                                             <Loader2 size={14} className="animate-spin text-k-text-quaternary" />
                                         ) : isPending ? (
-                                            <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
+                                            <span className="flex items-center gap-1.5 text-xs font-medium text-[#FF9500] dark:text-yellow-400">
+                                                <span className="w-2 h-2 rounded-full bg-[#FF9500] dark:bg-yellow-400 inline-block" />
                                                 Aguardando
                                             </span>
                                         ) : (
-                                            <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                            <span className="flex items-center gap-1.5 text-xs font-medium text-[#34C759] dark:text-emerald-400">
+                                                <span className="w-2 h-2 rounded-full bg-[#34C759] dark:bg-emerald-400 inline-block" />
                                                 Concluído
                                             </span>
                                         )}
@@ -512,37 +517,37 @@ export function FormsDashboardClient({
             )}
 
             {/* Templates Section */}
-            <div className="mt-8 pt-6 border-t border-k-border-subtle">
-                <div className="flex items-center justify-between mb-3">
+            <div className="bg-white rounded-xl border border-[#D2D2D7] shadow-[0_1px_3px_rgba(0,0,0,0.08)] overflow-hidden dark:bg-transparent dark:border-k-border-subtle dark:shadow-none dark:rounded-none">
+                <div className="flex items-center justify-between px-5 py-4 border-b border-[#E8E8ED] dark:border-k-border-subtle">
                     <div className="flex items-center gap-2">
-                        <h2 className="text-sm font-semibold text-white">Templates de Avaliação</h2>
+                        <h2 className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary">Templates de Avaliação</h2>
                         {templates.length > 0 && (
-                            <span className="px-1.5 py-0.5 rounded bg-glass-bg text-[10px] font-bold text-k-text-quaternary border border-k-border-subtle">
+                            <span className="text-[#86868B] dark:text-k-text-quaternary">
                                 {templates.length}
                             </span>
                         )}
                     </div>
                     <button
                         onClick={() => router.push('/forms/templates')}
-                        className="text-xs text-k-text-quaternary hover:text-k-text-secondary transition-colors font-medium"
+                        className="text-xs text-[#007AFF] hover:text-[#0056B3] transition-colors font-medium dark:text-k-text-quaternary dark:hover:text-k-text-secondary"
                     >
                         Gerenciar →
                     </button>
                 </div>
 
                 {templates.length === 0 ? (
-                    <div className="text-center py-8 rounded-xl border border-dashed border-k-border-primary">
-                        <FileText className="w-6 h-6 text-k-text-quaternary mx-auto mb-2" />
-                        <p className="text-xs text-k-text-quaternary">Nenhum template criado</p>
+                    <div className="text-center py-8">
+                        <FileText className="w-6 h-6 text-[#AEAEB2] dark:text-k-text-quaternary mx-auto mb-2" />
+                        <p className="text-xs text-[#86868B] dark:text-k-text-quaternary">Nenhum template criado</p>
                         <button
                             onClick={() => router.push('/forms/templates/new')}
-                            className="mt-3 text-xs font-medium text-violet-400 hover:text-violet-300 transition-colors"
+                            className="mt-3 text-xs font-medium text-[#007AFF] hover:text-[#0056B3] transition-colors dark:text-violet-400 dark:hover:text-violet-300"
                         >
                             Criar primeiro template
                         </button>
                     </div>
                 ) : (
-                    <div className="space-y-1">
+                    <div className="divide-y divide-[#E8E8ED] dark:divide-k-border-subtle">
                         {templates.map(t => {
                             const config = CATEGORY_CONFIG[t.category] || CATEGORY_CONFIG.survey
                             const Icon = config.icon
@@ -550,23 +555,23 @@ export function FormsDashboardClient({
                                 <div
                                     key={t.id}
                                     onClick={() => router.push(`/forms/templates/new?edit=${t.id}`)}
-                                    className="w-full flex items-center justify-between py-2.5 px-3 hover:bg-glass-bg rounded-xl transition-all text-left group cursor-pointer"
+                                    className="w-full flex items-center justify-between py-3 px-5 hover:bg-[#F5F5F7] transition-all text-left group cursor-pointer dark:hover:bg-glass-bg"
                                 >
                                     <div className="flex items-center gap-2.5 min-w-0">
                                         <Icon size={14} className={config.color} />
-                                        <span className="text-sm text-k-text-secondary group-hover:text-white transition-colors truncate">
+                                        <span className="text-sm text-[#1D1D1F] group-hover:text-[#1D1D1F] transition-colors truncate dark:text-k-text-secondary dark:group-hover:text-k-text-primary">
                                             {cleanTemplateName(t.title)}
                                         </span>
                                     </div>
-                                    <div className="flex items-center gap-3 text-xs text-k-text-quaternary shrink-0">
+                                    <div className="flex items-center gap-3 text-xs text-[#86868B] dark:text-k-text-quaternary shrink-0">
                                         {t.questionCount > 0 && (
                                             <span>{t.questionCount} {t.questionCount === 1 ? 'pergunta' : 'perguntas'}</span>
                                         )}
-                                        <span className="text-k-text-quaternary">·</span>
+                                        <span className="text-[#AEAEB2] dark:text-k-text-quaternary">·</span>
                                         <span>{t.responseCount} {t.responseCount === 1 ? 'resposta' : 'respostas'}</span>
                                         <button
                                             onClick={(e) => { e.stopPropagation(); setPreselectedTemplateId(t.id); setIsAssignOpen(true) }}
-                                            className="text-violet-400 hover:text-violet-300 opacity-0 group-hover:opacity-100 transition-all font-medium"
+                                            className="text-[#007AFF] hover:text-[#0056B3] dark:text-violet-400 dark:hover:text-violet-300 opacity-0 group-hover:opacity-100 transition-all font-medium"
                                         >
                                             Enviar →
                                         </button>
@@ -579,17 +584,19 @@ export function FormsDashboardClient({
                 )}
             </div>
 
+            </div>{/* end card sections container */}
+
             {/* Empty state: no submissions AND no templates */}
             {submissions.length === 0 && templates.length === 0 && (
                 <div className="text-center py-16 mt-4">
                     <ClipboardList className="w-10 h-10 text-k-text-quaternary mx-auto mb-3" strokeWidth={1} />
-                    <p className="text-sm font-semibold text-white mb-1">Comece criando um template</p>
+                    <p className="text-sm font-semibold text-k-text-primary mb-1">Comece criando um template</p>
                     <p className="text-xs text-k-text-quaternary max-w-sm mx-auto">
                         Templates são formulários que você envia para seus alunos. Crie anamneses, check-ins semanais ou pesquisas personalizadas.
                     </p>
                     <button
                         onClick={() => router.push('/forms/templates/new')}
-                        className="mt-5 text-xs font-medium text-violet-400 hover:text-violet-300 transition-colors"
+                        className="mt-5 text-xs font-medium text-[#007AFF] hover:text-[#0056B3] transition-colors dark:text-violet-400 dark:hover:text-violet-300"
                     >
                         Criar primeiro template
                     </button>
@@ -621,7 +628,7 @@ export function FormsDashboardClient({
             {/* Zoom Image Overlay */}
             {zoomImageUrl && (
                 <div
-                    className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm"
+                    className="fixed inset-0 z-float flex items-center justify-center bg-black/80 backdrop-blur-sm"
                     onClick={() => setZoomImageUrl(null)}
                 >
                     <img

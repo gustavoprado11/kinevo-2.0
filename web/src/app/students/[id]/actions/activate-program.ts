@@ -2,6 +2,8 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { insertStudentNotification } from '@/lib/student-notifications'
+import { sendStudentPush } from '@/lib/push-notifications'
 
 export async function activateProgram(assignedProgramId: string) {
     const supabase = await createClient()
@@ -10,11 +12,21 @@ export async function activateProgram(assignedProgramId: string) {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) throw new Error('Unauthorized')
 
-        // 1. Get program details to know the student
+        // 1. Get trainer
+        const { data: trainer } = await supabase
+            .from('trainers')
+            .select('id')
+            .eq('auth_user_id', user.id)
+            .single()
+
+        if (!trainer) throw new Error('Trainer not found')
+
+        // 2. Get program details — with trainer_id ownership filter
         const { data: program } = await supabase
             .from('assigned_programs')
-            .select('student_id, status')
+            .select('student_id, status, name, trainer_id')
             .eq('id', assignedProgramId)
+            .eq('trainer_id', trainer.id)
             .single()
 
         if (!program) throw new Error('Program not found')
@@ -26,9 +38,16 @@ export async function activateProgram(assignedProgramId: string) {
 
         const studentId = program.student_id
 
-        // 2. Archive/Complete current active program
-        // We do this BEFORE activating the new one to avoid unique constraint violation
-        // (idx_assigned_programs_active_unique WHERE status = 'active')
+        // 3. Verify trainer owns this student
+        const { data: student } = await supabase
+            .from('students')
+            .select('id')
+            .eq('id', studentId)
+            .eq('coach_id', trainer.id)
+            .single()
+        if (!student) throw new Error('Student not found')
+
+        // 4. Archive/Complete current active program (scoped to trainer)
         await supabase
             .from('assigned_programs')
             .update({
@@ -37,9 +56,10 @@ export async function activateProgram(assignedProgramId: string) {
                 updated_at: new Date().toISOString()
             })
             .eq('student_id', studentId)
+            .eq('trainer_id', trainer.id)
             .eq('status', 'active')
 
-        // 3. Activate the new program
+        // 5. Activate the new program
         const { error: updateError } = await supabase
             .from('assigned_programs')
             .update({
@@ -48,8 +68,28 @@ export async function activateProgram(assignedProgramId: string) {
                 updated_at: new Date().toISOString()
             })
             .eq('id', assignedProgramId)
+            .eq('trainer_id', trainer.id)
 
         if (updateError) throw updateError
+
+        // 6. Notify student (fire-and-forget)
+        const programName = program.name ?? 'Novo programa'
+        insertStudentNotification({
+            studentId,
+            trainerId: trainer.id,
+            type: 'program_assigned',
+            title: 'Novo programa de treino!',
+            subtitle: `${programName} está disponível no seu app.`,
+            payload: { program_id: assignedProgramId, program_name: programName },
+        }).then((inboxItemId) => {
+            sendStudentPush({
+                studentId,
+                title: 'Novo programa de treino!',
+                body: `${programName} está disponível no seu app.`,
+                inboxItemId: inboxItemId ?? undefined,
+                data: { type: 'program_assigned', program_id: assignedProgramId },
+            })
+        })
 
         revalidatePath(`/students/${studentId}`)
         return { success: true }

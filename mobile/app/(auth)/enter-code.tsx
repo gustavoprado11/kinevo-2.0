@@ -65,13 +65,13 @@ export default function EnterCodeScreen() {
             setLoading(false);
 
             if (verifyError) {
-                console.error("[EnterCode] Erro ao verificar OTP:", verifyError.message);
+                if (__DEV__) console.error("[EnterCode] Erro ao verificar OTP:", verifyError.message);
                 setError("Código inválido ou expirado. Tente novamente.");
                 setCode("");
                 return;
             }
 
-            console.log("[EnterCode] E-mail verificado com sucesso!");
+            if (__DEV__) console.log("[EnterCode] E-mail verificado com sucesso!");
             router.replace("/");
         },
         [code, email, otpType, router]
@@ -87,7 +87,7 @@ export default function EnterCodeScreen() {
         });
 
         if (resendError) {
-            console.error("[EnterCode] Erro ao reenviar:", resendError.message);
+            if (__DEV__) console.error("[EnterCode] Erro ao reenviar:", resendError.message);
             Alert.alert("Erro", "Não foi possível reenviar o código.");
             return;
         }

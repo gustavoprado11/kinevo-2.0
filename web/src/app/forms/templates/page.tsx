@@ -9,8 +9,9 @@ export default async function TemplatesPage() {
 
     const { data: templates } = await supabase
         .from('form_templates')
-        .select('id, title, description, category, version, is_active, created_source, schema_json, created_at, updated_at')
-        .eq('trainer_id', trainer.id)
+        .select('id, title, description, category, version, is_active, created_source, schema_json, created_at, updated_at, trainer_id')
+        .or(`trainer_id.eq.${trainer.id},trainer_id.is.null`)
+        .or('system_key.is.null,system_key.neq.prescription_questionnaire')
         .order('created_at', { ascending: false })
 
     // Count responses per template

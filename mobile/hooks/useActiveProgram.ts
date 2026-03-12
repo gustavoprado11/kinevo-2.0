@@ -73,7 +73,7 @@ export function useActiveProgram() {
                 .order("started_at", { ascending: false });
 
             if (sessionsError) {
-                console.error("[useActiveProgram] fetchRange error:", sessionsError);
+                if (__DEV__) console.error("[useActiveProgram] fetchRange error:", sessionsError);
                 return;
             }
 
@@ -95,7 +95,7 @@ export function useActiveProgram() {
                 return next;
             });
         } catch (err) {
-            console.error("[useActiveProgram] fetchRange exception:", err);
+            if (__DEV__) console.error("[useActiveProgram] fetchRange exception:", err);
         }
     }, []);
 
@@ -172,7 +172,7 @@ export function useActiveProgram() {
                     .order("started_at", { ascending: false });
 
                 if (sessionsError) {
-                    console.error("[useActiveProgram] Error fetching sessions:", sessionsError);
+                    console.error("[useActiveProgram] Error fetching sessions:", __DEV__ ? sessionsError : '');
                 }
 
                 const sessions: WorkoutSession[] = sessionsData || [];
@@ -219,7 +219,7 @@ export function useActiveProgram() {
                 setSessionsMap(new Map());
             }
         } catch (err: any) {
-            console.error("[useActiveProgram] Error:", err);
+            if (__DEV__) console.error("[useActiveProgram] Error:", err);
             setError(err.message || "Erro ao carregar programa.");
         } finally {
             setIsLoading(false);

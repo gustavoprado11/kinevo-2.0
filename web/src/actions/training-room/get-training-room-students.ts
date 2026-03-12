@@ -7,6 +7,7 @@ export interface WorkoutOption {
     id: string
     name: string
     isToday: boolean // true if scheduled for today
+    lastCompletedAt: string | null // ISO date of last completed session
 }
 
 export interface TrainingRoomStudent {
@@ -75,6 +76,25 @@ export async function getTrainingRoomStudents(): Promise<{
             .order('name')
         : { data: [] as any[] }
 
+    // Fetch last completed session per student+workout
+    const { data: lastSessions } = studentIds.length > 0
+        ? await supabase
+            .from('workout_sessions')
+            .select('student_id, assigned_workout_id, completed_at')
+            .in('student_id', studentIds)
+            .eq('status', 'completed')
+            .order('completed_at', { ascending: false })
+        : { data: [] as any[] }
+
+    // Build lookup: student_id:workout_id → latest completed_at
+    const lastSessionMap = new Map<string, string>()
+    for (const s of lastSessions || []) {
+        const key = `${s.student_id}:${s.assigned_workout_id}`
+        if (!lastSessionMap.has(key)) {
+            lastSessionMap.set(key, s.completed_at)
+        }
+    }
+
     // Build response
     const today = new Date()
     const result: TrainingRoomStudent[] = students.map((student) => {
@@ -103,6 +123,7 @@ export async function getTrainingRoomStudents(): Promise<{
             id: w.id,
             name: w.name,
             isToday: todayIds.has(w.id),
+            lastCompletedAt: lastSessionMap.get(`${student.id}:${w.id}`) || null,
         }))
 
         const todayWorkouts = workoutOptions.filter((w) => w.isToday)

@@ -231,7 +231,7 @@ export function ShareWorkoutModal({ visible, onClose, data, sessionId }: ShareWo
                 ...(Platform.OS === 'ios' ? { UTI: 'public.png' } : {}),
             });
         } catch (error) {
-            console.error("Error sharing:", error);
+            if (__DEV__) console.error("Error sharing:", error);
             Alert.alert("Erro", "Não foi possível compartilhar a imagem.");
         } finally {
             setIsSharing(false);
@@ -469,15 +469,8 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         paddingVertical: 16,
-        borderRadius: 16,
+        borderRadius: 14,
         gap: 8,
-        shadowColor: '#7c3aed',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.3,
-        shadowRadius: 16,
-        elevation: 8,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.15)',
     },
     shareText: {
         color: 'white',

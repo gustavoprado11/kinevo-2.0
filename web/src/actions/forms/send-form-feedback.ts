@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { sendStudentPush } from '@/lib/push-notifications'
 
 interface SendFormFeedbackInput {
     submissionId: string
@@ -23,6 +24,13 @@ export async function sendFormFeedback(input: SendFormFeedbackInput) {
         return { success: false, error: 'Digite um feedback antes de enviar' }
     }
 
+    // Fetch student_id before RPC (needed for push)
+    const { data: submission } = await supabase
+        .from('form_submissions')
+        .select('student_id')
+        .eq('id', input.submissionId)
+        .single()
+
     const { data, error } = await supabase.rpc('send_submission_feedback', {
         p_submission_id: input.submissionId,
         p_feedback: {
@@ -34,14 +42,26 @@ export async function sendFormFeedback(input: SendFormFeedbackInput) {
 
     if (error) {
         console.error('[sendFormFeedback] error:', error)
-        return { success: false, error: error.message || 'Erro ao enviar feedback' }
+        return { success: false, error: 'Erro ao enviar feedback.' }
+    }
+
+    const feedbackInboxItemId = data?.feedback_inbox_item_id ?? null
+
+    // Fire-and-forget: send push to student
+    if (submission?.student_id && feedbackInboxItemId) {
+        sendStudentPush({
+            studentId: submission.student_id,
+            title: 'Feedback do treinador',
+            body: 'Seu treinador comentou sua avaliação.',
+            inboxItemId: feedbackInboxItemId,
+            data: { type: 'feedback', inbox_item_id: feedbackInboxItemId },
+        })
     }
 
     revalidatePath('/forms')
 
     return {
         success: true,
-        feedbackInboxItemId: data?.feedback_inbox_item_id ?? null,
+        feedbackInboxItemId,
     }
 }
-

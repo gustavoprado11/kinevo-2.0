@@ -69,7 +69,7 @@ export function InfoTooltip({ content, side = 'top' }: InfoTooltipProps) {
                 <span
                     ref={tooltipRef}
                     style={coords ? { top: coords.top, left: coords.left, opacity: 1 } : { top: 0, left: -9999, opacity: 0 }}
-                    className="fixed w-64 px-3 py-2 text-[11px] leading-relaxed text-k-text-secondary bg-surface-card border border-k-border-primary rounded-xl shadow-xl z-[100] pointer-events-none transition-opacity duration-150"
+                    className="fixed w-64 px-3 py-2 text-[11px] leading-relaxed text-k-text-secondary bg-surface-card border border-k-border-primary rounded-xl shadow-xl z-tooltip pointer-events-none transition-opacity duration-150"
                 >
                     {content}
                 </span>,

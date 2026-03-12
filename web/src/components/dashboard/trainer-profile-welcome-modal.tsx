@@ -23,7 +23,7 @@ export function TrainerProfileWelcomeModal() {
     if (!isOpen) return null
 
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-float flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={handleDismiss} />
             <div className="relative bg-surface-card border border-k-border-primary rounded-2xl p-8 max-w-md w-full shadow-2xl">
                 {/* Close button */}

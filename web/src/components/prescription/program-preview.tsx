@@ -109,7 +109,7 @@ export function ProgramPreview({
 
                     {/* Source + Mode badges */}
                     <div className="flex gap-2 flex-shrink-0">
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full border ${
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold rounded-full border ${
                             source === 'llm'
                                 ? 'bg-violet-500/10 text-violet-400 border-violet-500/20'
                                 : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
@@ -117,7 +117,7 @@ export function ProgramPreview({
                             {source === 'llm' ? <Brain className="w-3 h-3" /> : <Zap className="w-3 h-3" />}
                             {source === 'llm' ? 'IA' : 'Heurístico'}
                         </span>
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full border bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold rounded-full border bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
                             <Shield className="w-3 h-3" />
                             {aiMode === 'auto' ? 'Auto' : aiMode === 'copilot' ? 'Copiloto' : 'Assistente'}
                         </span>
@@ -180,7 +180,7 @@ export function ProgramPreview({
             <div className="bg-glass-bg backdrop-blur-md rounded-2xl border border-k-border-primary p-6">
                 {showRejectInput && (
                     <div className="mb-4">
-                        <label className="mb-1.5 block text-[11px] font-bold text-k-text-tertiary uppercase tracking-widest">
+                        <label className="mb-1.5 block text-[11px] font-bold text-k-text-tertiary">
                             Motivo da rejeição (opcional)
                         </label>
                         <textarea
@@ -291,7 +291,7 @@ function WorkoutCard({ workout, expanded, onToggle, editingItem, onEditItem, onU
                         {muscleGroups.slice(0, 3).map(mg => (
                             <span
                                 key={mg}
-                                className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded bg-violet-500/10 text-violet-400 border border-violet-500/20"
+                                className="px-2 py-0.5 text-[10px] font-bold rounded bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20"
                             >
                                 {mg}
                             </span>
@@ -391,7 +391,7 @@ function ExerciseRow({ item, index, isEditing, onEdit, onCancel, onSave }: Exerc
 
                 <div className="grid grid-cols-3 gap-3">
                     <div>
-                        <label className="block text-[10px] font-bold text-k-text-tertiary uppercase tracking-wider mb-1">Séries</label>
+                        <label className="block text-[10px] font-bold text-k-text-tertiary mb-1">Séries</label>
                         <input
                             type="number"
                             min={1}
@@ -402,7 +402,7 @@ function ExerciseRow({ item, index, isEditing, onEdit, onCancel, onSave }: Exerc
                         />
                     </div>
                     <div>
-                        <label className="block text-[10px] font-bold text-k-text-tertiary uppercase tracking-wider mb-1">Reps</label>
+                        <label className="block text-[10px] font-bold text-k-text-tertiary mb-1">Reps</label>
                         <input
                             type="text"
                             value={reps}
@@ -412,7 +412,7 @@ function ExerciseRow({ item, index, isEditing, onEdit, onCancel, onSave }: Exerc
                         />
                     </div>
                     <div>
-                        <label className="block text-[10px] font-bold text-k-text-tertiary uppercase tracking-wider mb-1">Descanso (s)</label>
+                        <label className="block text-[10px] font-bold text-k-text-tertiary mb-1">Descanso (s)</label>
                         <input
                             type="number"
                             min={15}
@@ -426,7 +426,7 @@ function ExerciseRow({ item, index, isEditing, onEdit, onCancel, onSave }: Exerc
                 </div>
 
                 <div className="mt-3">
-                    <label className="block text-[10px] font-bold text-k-text-tertiary uppercase tracking-wider mb-1">Notas</label>
+                    <label className="block text-[10px] font-bold text-k-text-tertiary mb-1">Notas</label>
                     <input
                         type="text"
                         value={notes}

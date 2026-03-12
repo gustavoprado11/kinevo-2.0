@@ -46,7 +46,7 @@ export function useStudentSubscription(): StudentSubscriptionResult {
                 .maybeSingle();
 
             if (error) {
-                console.error("[useStudentSubscription] Error:", error);
+                if (__DEV__) console.error("[useStudentSubscription] Error:", error);
                 setContract(null);
                 return;
             }
@@ -73,7 +73,7 @@ export function useStudentSubscription(): StudentSubscriptionResult {
                 setContract(null);
             }
         } catch (err) {
-            console.error("[useStudentSubscription] Error:", err);
+            if (__DEV__) console.error("[useStudentSubscription] Error:", err);
             setContract(null);
         } finally {
             setIsLoading(false);

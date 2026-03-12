@@ -15,6 +15,8 @@ interface GetSessionsTonnageResult {
     error?: string
 }
 
+const MAX_SESSION_IDS = 50
+
 async function getSessionTonnage(supabase: any, sessionId: string): Promise<number> {
     const { data: logs } = await supabase
         .from('set_logs')
@@ -32,11 +34,16 @@ export async function getSessionsTonnage(
     const supabase = await createClient()
 
     try {
-        // Get all the sessions we need info for (to find their assigned_workout_id)
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return { success: false, error: 'Não autorizado' }
+
+        // Limit array size to prevent resource exhaustion
+        const safeIds = sessionIds.slice(0, MAX_SESSION_IDS)
+
         const { data: sessions, error: sessionsError } = await supabase
             .from('workout_sessions')
             .select('id, assigned_workout_id, completed_at')
-            .in('id', sessionIds)
+            .in('id', safeIds)
 
         if (sessionsError) throw sessionsError
         if (!sessions || sessions.length === 0) return { success: true, data: {} }
@@ -46,7 +53,6 @@ export async function getSessionsTonnage(
         for (const session of sessions) {
             const tonnage = await getSessionTonnage(supabase, session.id)
 
-            // Find the previous session for the same workout
             const { data: prevSessions } = await supabase
                 .from('workout_sessions')
                 .select('id')

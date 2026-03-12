@@ -33,7 +33,7 @@ export async function getNextWorkoutForWatch(
       .maybeSingle();
 
   if (studentError || !student) {
-    console.log('[getNextWorkoutForWatch] Student not found:', studentError?.message);
+    if (__DEV__) console.log('[getNextWorkoutForWatch] Student not found:', studentError?.message);
     return null;
   }
 
@@ -47,7 +47,7 @@ export async function getNextWorkoutForWatch(
       .maybeSingle();
 
   if (programError || !program) {
-    console.log('[getNextWorkoutForWatch] No active program:', programError?.message);
+    if (__DEV__) console.log('[getNextWorkoutForWatch] No active program:', programError?.message);
     return null;
   }
 
@@ -60,7 +60,7 @@ export async function getNextWorkoutForWatch(
       .order('order_index');
 
   if (workoutsError || !workouts?.length) {
-    console.log('[getNextWorkoutForWatch] No workouts found:', workoutsError?.message);
+    if (__DEV__) console.log('[getNextWorkoutForWatch] No workouts found:', workoutsError?.message);
     return null;
   }
 
@@ -103,14 +103,14 @@ export async function getNextWorkoutForWatch(
       // There are workouts scheduled for today
       if (scheduledToday.every((w: any) => completedToday.has(w.id))) {
         // All scheduled workouts for today are done
-        console.log('[getNextWorkoutForWatch] All scheduled workouts completed for today');
+        if (__DEV__) console.log('[getNextWorkoutForWatch] All scheduled workouts completed for today');
         return null;
       }
       // Pick the first scheduled workout not yet completed
       targetWorkout = scheduledToday.find((w: any) => !completedToday.has(w.id)) || null;
     } else {
       // No workouts scheduled for today (rest day)
-      console.log('[getNextWorkoutForWatch] No workouts scheduled for today (rest day)');
+      if (__DEV__) console.log('[getNextWorkoutForWatch] No workouts scheduled for today (rest day)');
       return null;
     }
   } else {
@@ -120,7 +120,7 @@ export async function getNextWorkoutForWatch(
   }
 
   if (!targetWorkout) {
-    console.log('[getNextWorkoutForWatch] No pending workout found');
+    if (__DEV__) console.log('[getNextWorkoutForWatch] No pending workout found');
     return null;
   }
 
@@ -134,7 +134,7 @@ export async function getNextWorkoutForWatch(
       .order('order_index');
 
   if (itemsError) {
-    console.error('[getNextWorkoutForWatch] Error fetching items:', itemsError);
+    console.error('[getNextWorkoutForWatch] Error fetching items:', __DEV__ ? itemsError : '');
     return null;
   }
 
@@ -158,7 +158,7 @@ export async function getNextWorkoutForWatch(
     updatedAt: new Date().toISOString(),
   };
 
-  console.log(
+  if (__DEV__) console.log(
     `[getNextWorkoutForWatch] Next workout: "${targetWorkout.name}" (${payload.exercises.length} exercises)`,
   );
 

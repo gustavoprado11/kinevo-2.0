@@ -35,7 +35,8 @@ export async function updateTheme(theme: string): Promise<UpdateThemeResult> {
         .eq('auth_user_id', user.id)
 
     if (error) {
-        return { success: false, message: error.message }
+        console.error('[updateTheme] Error:', error)
+        return { success: false, message: 'Erro ao atualizar tema.' }
     }
 
     revalidatePath('/settings')

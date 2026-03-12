@@ -406,6 +406,10 @@ public class WatchConnectivityModule: Module {
       self.syncWorkoutToWatch(workoutJSON: workoutJSON)
     }
 
+    Function("syncProgramToWatch") { (programJSON: String) in
+      self.syncProgramToWatch(programJSON: programJSON)
+    }
+
     // Backward-compatible alias while React Native migrates callsites.
     Function("sendWorkoutState") { (payload: [String: Any]) in
       self.syncWorkoutToWatch(payload: payload)
@@ -473,6 +477,31 @@ public class WatchConnectivityModule: Module {
     self.sendApplicationContext(context: self.makeEnvelope(with: payload))
   }
 
+  private func syncProgramToWatch(programJSON: String) {
+    guard let payloadData = programJSON.data(using: .utf8) else {
+      NSLog("[WatchConnectivity] ❌ Invalid program JSON encoding")
+      return
+    }
+
+    do {
+      let jsonObject = try JSONSerialization.jsonObject(with: payloadData, options: [])
+
+      if jsonObject is NSNull {
+        self.sendApplicationContext(context: self.makeProgramEnvelope(with: nil))
+        return
+      }
+
+      guard let program = jsonObject as? [String: Any] else {
+        NSLog("[WatchConnectivity] ❌ programJSON root must be an object or null")
+        return
+      }
+
+      self.sendApplicationContext(context: self.makeProgramEnvelope(with: program))
+    } catch {
+      NSLog("[WatchConnectivity] ❌ Failed to parse programJSON: \(error)")
+    }
+  }
+
   private func makeEnvelope(with workout: [String: Any]?) -> [String: Any] {
     var envelope: [String: Any] = [
       "schemaVersion": 1,
@@ -482,6 +511,20 @@ public class WatchConnectivityModule: Module {
 
     if let workout {
       envelope["workout"] = workout
+    }
+
+    return envelope
+  }
+
+  private func makeProgramEnvelope(with program: [String: Any]?) -> [String: Any] {
+    var envelope: [String: Any] = [
+      "schemaVersion": 2,
+      "syncedAt": isoFormatter.string(from: Date()),
+      "hasProgram": program != nil
+    ]
+
+    if let program {
+      envelope["program"] = program
     }
 
     return envelope

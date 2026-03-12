@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { logContractEvent } from '@/lib/contract-events'
 import { insertTrainerNotification } from '@/lib/trainer-notifications'
+import { sendTrainerPush } from '@/lib/push-notifications'
 
 export async function GET(request: NextRequest) {
     // Verify CRON_SECRET to prevent external calls
@@ -24,7 +25,7 @@ export async function GET(request: NextRequest) {
 
         if (fetchError) {
             console.error('[cron] Failed to fetch overdue contracts:', fetchError)
-            return NextResponse.json({ error: fetchError.message }, { status: 500 })
+            return NextResponse.json({ error: 'Erro ao buscar contratos.' }, { status: 500 })
         }
 
         if (!overdueContracts || overdueContracts.length === 0) {
@@ -69,7 +70,7 @@ export async function GET(request: NextRequest) {
             const studentName = student?.name ?? 'Aluno'
 
             // Notify trainer
-            await insertTrainerNotification({
+            const overdueNotifId = await insertTrainerNotification({
                 trainerId: contract.trainer_id,
                 type: 'financial_alert',
                 title: 'Pagamento manual vencido',
@@ -79,6 +80,15 @@ export async function GET(request: NextRequest) {
                     contract_id: contract.id,
                     days_overdue: daysOverdue,
                 },
+            })
+
+            sendTrainerPush({
+                trainerId: contract.trainer_id,
+                type: 'payment_overdue',
+                title: 'Pagamento manual vencido',
+                body: `${studentName} tem pagamento manual vencido há ${daysOverdue} dia${daysOverdue !== 1 ? 's' : ''}.`,
+                notificationId: overdueNotifId ?? undefined,
+                data: { type: 'payment_overdue', student_id: contract.student_id, contract_id: contract.id },
             })
             notifiedCount++
         }

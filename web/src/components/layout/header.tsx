@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { LogOut } from 'lucide-react'
+import { NotificationBell } from './notification-bell'
 
 interface HeaderProps {
     trainerName: string
@@ -31,15 +32,18 @@ export function Header({ trainerName, trainerEmail, trainerAvatarUrl }: HeaderPr
         .slice(0, 2)
 
     return (
-        <header className="h-16 bg-background backdrop-blur-sm border-b border-border flex items-center justify-between px-6 sticky top-0 z-20">
+        <header className="h-16 bg-white/80 dark:bg-background backdrop-blur-sm border-b border-[#E8E8ED] dark:border-border flex items-center justify-between px-6 sticky top-0 z-header">
             {/* Left side - can add breadcrumbs or page title later */}
             <div />
 
             {/* Right side - User menu */}
             <div className="flex items-center gap-4">
+                {/* Notifications */}
+                <NotificationBell />
+
                 <div className="flex items-center gap-3">
                     {/* Avatar */}
-                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-violet-600 to-blue-600 flex items-center justify-center ring-2 ring-border">
+                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-violet-600 to-blue-600 flex items-center justify-center ring-2 ring-[#E8E8ED] dark:ring-border">
                         {trainerAvatarUrl ? (
                             <Image
                                 src={trainerAvatarUrl}
@@ -56,9 +60,9 @@ export function Header({ trainerName, trainerEmail, trainerAvatarUrl }: HeaderPr
 
                     {/* Name & Email */}
                     <div className="hidden sm:block">
-                        <p className="text-sm font-medium text-foreground leading-tight">{trainerName}</p>
+                        <p className="text-sm font-medium text-[#1D1D1F] dark:text-foreground leading-tight">{trainerName}</p>
                         {trainerEmail && (
-                            <p className="text-xs text-muted-foreground leading-tight">{trainerEmail}</p>
+                            <p className="text-xs text-[#86868B] dark:text-muted-foreground leading-tight">{trainerEmail}</p>
                         )}
                     </div>
                 </div>
@@ -68,7 +72,7 @@ export function Header({ trainerName, trainerEmail, trainerAvatarUrl }: HeaderPr
                     variant="ghost"
                     size="sm"
                     onClick={handleLogout}
-                    className="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 gap-2"
+                    className="text-[#86868B] dark:text-slate-400 hover:text-[#FF3B30] dark:hover:text-slate-100 gap-2"
                 >
                     <LogOut className="w-4 h-4" />
                     <span className="hidden sm:inline">Sair</span>

@@ -1,11 +1,14 @@
 import React from "react";
 import { Stack, usePathname, useRouter } from "expo-router";
 import { Alert, Platform } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AuthProvider } from "../contexts/AuthContext";
+import { RoleModeProvider, useRoleMode } from "../contexts/RoleModeContext";
+import { usePushNotifications } from "../hooks/usePushNotifications";
 import "../global.css";
 
-console.log("[Layout] Iniciando RootLayout");
+if (__DEV__) console.log("[Layout] Iniciando RootLayout");
 
 // ── Premium iOS-like spring transition spec ──
 const PREMIUM_SPRING = {
@@ -27,10 +30,10 @@ function WatchBridge() {
 
     const { useWatchConnectivity } = require("../hooks/useWatchConnectivity");
     const { finishWorkoutFromWatch, watchFinishState, processPendingWatchWorkouts } = require("../lib/finishWorkoutFromWatch");
-    const { sendAckToWatch, syncWorkoutToWatch } = require("../modules/watch-connectivity");
+    const { sendAckToWatch, syncProgramToWatch } = require("../modules/watch-connectivity");
     const { appEvents, WORKOUT_COMPLETED } = require("../lib/events");
     const { supabase } = require("../lib/supabase");
-    const { getNextWorkoutForWatch } = require("../lib/getNextWorkoutForWatch");
+    const { getProgramSnapshotForWatch } = require("../lib/getProgramSnapshotForWatch");
     const router = useRouter();
     const pathname = usePathname();
     const lastStartRef = React.useRef<{ workoutId: string; ts: number } | null>(null);
@@ -47,7 +50,7 @@ function WatchBridge() {
 
             lastStartRef.current = { workoutId, ts: now };
 
-            console.log(`[Layout] Watch requested START_WORKOUT: ${workoutId}`);
+            if (__DEV__) console.log(`[Layout] Watch requested START_WORKOUT: ${workoutId}`);
 
             // Pre-create workout_session (in_progress) so data survives even if
             // the app is killed before the workout screen mounts.
@@ -91,17 +94,17 @@ function WatchBridge() {
                                 .single();
 
                             if (error) {
-                                console.error('[Layout] Failed to pre-create session:', error);
+                                if (__DEV__) console.error('[Layout] Failed to pre-create session:', error);
                             } else {
-                                console.log(`[Layout] Pre-created in_progress session: ${session.id}`);
+                                if (__DEV__) console.log(`[Layout] Pre-created in_progress session: ${session.id}`);
                             }
                         } else {
-                            console.log(`[Layout] Session already exists for ${workoutId}: ${existing.id}`);
+                            if (__DEV__) console.log(`[Layout] Session already exists for ${workoutId}: ${existing.id}`);
                         }
                     }
                 }
             } catch (e: any) {
-                console.warn(`[Layout] Non-critical: pre-create session failed: ${e?.message}`);
+                if (__DEV__) console.warn(`[Layout] Non-critical: pre-create session failed: ${e?.message}`);
             }
 
             const targetPath = `/workout/${workoutId}`;
@@ -131,7 +134,7 @@ function WatchBridge() {
             }
             lastFinishRef.current = { workoutId, ts: now };
 
-            console.log(`[Layout] Watch requested FINISH_WORKOUT: ${workoutId}`);
+            if (__DEV__) console.log(`[Layout] Watch requested FINISH_WORKOUT: ${workoutId}`);
 
             try {
                 const sessionId = await finishWorkoutFromWatch({
@@ -142,7 +145,7 @@ function WatchBridge() {
                 });
 
                 if (sessionId) {
-                    console.log(`[Layout] Workout saved from watch: session ${sessionId}. Sending ACK.`);
+                    if (__DEV__) console.log(`[Layout] Workout saved from watch: session ${sessionId}. Sending ACK.`);
 
                     // Notify useActiveProgram to refresh (works even if user is already on Home tab)
                     appEvents.emit(WORKOUT_COMPLETED);
@@ -150,21 +153,21 @@ function WatchBridge() {
                     // Send SYNC_SUCCESS ACK to Watch so it clears the pending finish entry.
                     try {
                         sendAckToWatch(workoutId);
-                        console.log(`[Layout] SYNC_SUCCESS ACK sent for ${workoutId}`);
+                        if (__DEV__) console.log(`[Layout] SYNC_SUCCESS ACK sent for ${workoutId}`);
                     } catch (ackError: any) {
-                        console.warn(`[Layout] Failed to send ACK (non-critical): ${ackError?.message}`);
+                        if (__DEV__) console.warn(`[Layout] Failed to send ACK (non-critical): ${ackError?.message}`);
                     }
 
-                    // Re-sync: send the NEXT pending workout to Watch (or null if all done).
+                    // Re-sync: send updated program snapshot to Watch (with completion status).
                     try {
                         const { data: { user } } = await supabase.auth.getUser();
                         if (user) {
-                            const nextPayload = await getNextWorkoutForWatch(user.id);
-                            syncWorkoutToWatch(nextPayload);
-                            console.log(`[Layout] Re-synced next workout after completion: ${nextPayload?.workoutName ?? 'none'}`);
+                            const programPayload = await getProgramSnapshotForWatch(user.id);
+                            syncProgramToWatch(programPayload);
+                            if (__DEV__) console.log(`[Layout] Re-synced program after completion: ${programPayload?.programName ?? 'none'}`);
                         }
                     } catch (syncError: any) {
-                        console.warn(`[Layout] Failed to re-sync next workout (non-critical): ${syncError?.message}`);
+                        if (__DEV__) console.warn(`[Layout] Failed to re-sync program (non-critical): ${syncError?.message}`);
                     }
 
                     Alert.alert(
@@ -177,19 +180,50 @@ function WatchBridge() {
                     Alert.alert("Erro", "Não foi possível salvar o treino do Apple Watch.");
                 }
             } catch (error) {
-                console.error('[Layout] Error finishing workout from watch:', error);
+                console.error('[Layout] Error finishing workout from watch:', __DEV__ ? error : '');
                 Alert.alert("Erro", "Falha ao salvar o treino do Apple Watch.");
             }
         },
         [router]
     );
 
-    useWatchConnectivity({ onWatchStartWorkout, onWatchFinishWorkout });
+    const onWatchDiscardWorkout = React.useCallback(
+        async ({ workoutId }: { workoutId: string }) => {
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) return;
+                const { data: student }: { data: any } = await supabase
+                    .from('students')
+                    .select('id')
+                    .eq('auth_user_id', user.id)
+                    .maybeSingle();
+                if (!student) return;
+
+                const { error } = await supabase
+                    .from('workout_sessions')
+                    .update({ status: 'abandoned' })
+                    .eq('assigned_workout_id', workoutId)
+                    .eq('student_id', student.id)
+                    .eq('status', 'in_progress');
+
+                if (error) {
+                    if (__DEV__) console.error('[Layout] Failed to mark session as abandoned:', error);
+                } else {
+                    if (__DEV__) console.log(`[Layout] Marked session for ${workoutId} as abandoned (Watch discard)`);
+                }
+            } catch (e: any) {
+                if (__DEV__) console.warn(`[Layout] Discard cleanup failed: ${e?.message}`);
+            }
+        },
+        []
+    );
+
+    useWatchConnectivity({ onWatchStartWorkout, onWatchFinishWorkout, onWatchDiscardWorkout });
 
     // Lifecycle log for debugging Watch → iPhone data flow
     React.useEffect(() => {
-        console.log('[WatchBridge] 🚀 MOUNTED');
-        return () => console.log('[WatchBridge] 💀 UNMOUNTED');
+        if (__DEV__) console.log('[WatchBridge] MOUNTED');
+        return () => { if (__DEV__) console.log('[WatchBridge] UNMOUNTED'); };
     }, []);
 
     // Cleanup stale in_progress sessions (>24h old → abandoned)
@@ -213,10 +247,10 @@ function WatchBridge() {
                     .lt('started_at', cutoff)
                     .select('id');
                 if (stale && stale.length > 0) {
-                    console.log(`[WatchBridge] Cleaned up ${stale.length} stale in_progress session(s)`);
+                    if (__DEV__) console.log(`[WatchBridge] Cleaned up ${stale.length} stale in_progress session(s)`);
                 }
             } catch (e: any) {
-                console.warn(`[WatchBridge] Stale session cleanup failed: ${e?.message}`);
+                if (__DEV__) console.warn(`[WatchBridge] Stale session cleanup failed: ${e?.message}`);
             }
         }
         cleanupStaleSessions();
@@ -230,45 +264,45 @@ function WatchBridge() {
         return () => clearTimeout(timer);
     }, []);
 
-    // Auto-sync: send today's next pending workout to Watch on app launch.
+    // Auto-sync: send full program snapshot to Watch on app launch.
     // Multiple retries with increasing delays — auth may still be loading on cold start.
     React.useEffect(() => {
         let synced = false;
 
-        async function trySyncNextWorkout() {
+        async function trySyncProgram() {
             if (synced) return;
             try {
                 const { data: { user } } = await supabase.auth.getUser();
                 if (!user) return;
 
-                const payload = await getNextWorkoutForWatch(user.id);
-                syncWorkoutToWatch(payload); // null clears the Watch (hasWorkout: false)
+                const payload = await getProgramSnapshotForWatch(user.id);
+                syncProgramToWatch(payload); // null clears the Watch (hasProgram: false)
                 synced = true;
-                console.log(`[WatchBridge] Auto-synced workout to Watch: ${payload?.workoutName ?? 'none (all done or rest day)'}`);
+                if (__DEV__) console.log(`[WatchBridge] Auto-synced program to Watch: ${payload?.programName ?? 'none (no active program)'}`);
             } catch (e: any) {
-                console.warn(`[WatchBridge] Failed to auto-sync workout: ${e?.message}`);
+                if (__DEV__) console.warn(`[WatchBridge] Failed to auto-sync program: ${e?.message}`);
             }
         }
 
-        trySyncNextWorkout();
-        const t1 = setTimeout(trySyncNextWorkout, 3000);
-        const t2 = setTimeout(trySyncNextWorkout, 8000);
-        const t3 = setTimeout(trySyncNextWorkout, 15000);
+        trySyncProgram();
+        const t1 = setTimeout(trySyncProgram, 3000);
+        const t2 = setTimeout(trySyncProgram, 8000);
+        const t3 = setTimeout(trySyncProgram, 15000);
         return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
     }, []);
 
     // Re-sync Watch when account changes (sign in / sign out).
     // signOut already clears Watch via AuthContext; this handles the new account sync.
     React.useEffect(() => {
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: string, session: any) => {
             if (event === 'SIGNED_IN' && session?.user) {
-                console.log(`[WatchBridge] Auth SIGNED_IN detected — syncing Watch for new user`);
+                if (__DEV__) console.log(`[WatchBridge] Auth SIGNED_IN detected — syncing Watch for new user`);
                 try {
-                    const payload = await getNextWorkoutForWatch(session.user.id);
-                    syncWorkoutToWatch(payload);
-                    console.log(`[WatchBridge] Re-synced Watch after account switch: ${payload?.workoutName ?? 'none'}`);
+                    const payload = await getProgramSnapshotForWatch(session.user.id);
+                    syncProgramToWatch(payload);
+                    if (__DEV__) console.log(`[WatchBridge] Re-synced Watch after account switch: ${payload?.programName ?? 'none'}`);
                 } catch (e: any) {
-                    console.warn(`[WatchBridge] Failed to re-sync Watch on SIGNED_IN: ${e?.message}`);
+                    if (__DEV__) console.warn(`[WatchBridge] Failed to re-sync Watch on SIGNED_IN: ${e?.message}`);
                 }
             }
         });
@@ -278,31 +312,37 @@ function WatchBridge() {
     return null;
 }
 
+/** Activates push notifications for both trainer and student modes. */
+function PushNotificationBridge() {
+    const { role } = useRoleMode();
+    usePushNotifications(role);
+    return null;
+}
+
 export default function RootLayout() {
-    console.log("[Layout] Renderizando Provider Wrapper");
+    if (__DEV__) console.log("[Layout] Renderizando Provider Wrapper");
     return (
-        <>
+        <GestureHandlerRootView style={{ flex: 1 }}>
             {/* WatchBridge MUST be outside AuthProvider so it mounts immediately,
                 even while auth is still loading. It doesn't use useAuth() — all
                 auth checks are done via supabase.auth.getUser() internally. */}
             {Platform.OS === 'ios' && <WatchBridge />}
             <AuthProvider>
-                <SafeAreaProvider>
-                    <Stack
-                        screenOptions={{
-                            headerShown: false,
-                            contentStyle: { backgroundColor: '#F2F2F7' },
-                            gestureEnabled: true,
-                            gestureDirection: 'horizontal',
-                            animation: 'slide_from_right',
-                            transitionSpec: {
-                                open: PREMIUM_SPRING,
-                                close: PREMIUM_SPRING,
-                            },
-                        }}
-                    />
-                </SafeAreaProvider>
+                <RoleModeProvider>
+                    <PushNotificationBridge />
+                    <SafeAreaProvider>
+                        <Stack
+                            screenOptions={{
+                                headerShown: false,
+                                contentStyle: { backgroundColor: '#F2F2F7' },
+                                gestureEnabled: true,
+                                gestureDirection: 'horizontal',
+                                animation: 'slide_from_right',
+                            }}
+                        />
+                    </SafeAreaProvider>
+                </RoleModeProvider>
             </AuthProvider>
-        </>
+        </GestureHandlerRootView>
     );
 }

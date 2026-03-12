@@ -26,9 +26,28 @@ import {
     CircleDot,
     Camera,
     MessageSquarePlus,
+    Smartphone,
 } from 'lucide-react'
+import { EvaluationPreview } from '@/components/previews/evaluation-preview/evaluation-preview'
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
 import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
+import {
+    DndContext,
+    closestCenter,
+    PointerSensor,
+    TouchSensor,
+    useSensor,
+    useSensors,
+    type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+    SortableContext,
+    useSortable,
+    verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { arrayMove } from '@dnd-kit/sortable'
+import { Z } from '@/lib/z-index'
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -51,6 +70,7 @@ interface ExistingTemplate {
     schema_json?: Record<string, unknown> | null
     created_at: string
     updated_at: string
+    trainer_id: string | null
 }
 
 interface Question {
@@ -115,8 +135,21 @@ function parseQuestionsFromSchema(schema: Record<string, unknown> | null | undef
         type: q.type || 'short_text',
         label: q.label || '',
         required: q.required ?? true,
-        options: q.options || undefined,
-        scale: q.scale || undefined,
+        options: q.options
+            ? q.options.map((opt: any, i: number) =>
+                typeof opt === 'string'
+                    ? { value: `opt_${i + 1}`, label: opt }
+                    : opt
+            )
+            : undefined,
+        scale: q.scale
+            ? {
+                min: q.scale.min,
+                max: q.scale.max,
+                min_label: q.scale.min_label || q.scale.minLabel,
+                max_label: q.scale.max_label || q.scale.maxLabel,
+            }
+            : undefined,
     }))
 }
 
@@ -152,21 +185,21 @@ function StepIndicator({ step, isEditing }: { step: BuilderStep; isEditing: bool
                     <div
                         className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold transition-all duration-300 ${
                             i < currentIndex
-                                ? 'bg-emerald-500 text-white'
+                                ? 'bg-[#34C759] text-white dark:bg-emerald-500'
                                 : i === currentIndex
-                                    ? 'bg-violet-600 text-white'
-                                    : 'bg-surface-elevated text-k-text-quaternary'
+                                    ? 'bg-[#007AFF] text-white dark:bg-violet-600'
+                                    : 'bg-[#E8E8ED] text-[#AEAEB2] dark:bg-surface-elevated dark:text-k-text-quaternary'
                         }`}
                     >
                         {i < currentIndex ? <Check size={12} /> : i + 1}
                     </div>
                     <span className={`text-xs font-medium transition-colors ${
-                        i <= currentIndex ? 'text-k-text-primary' : 'text-k-text-quaternary'
+                        i <= currentIndex ? 'text-[#1D1D1F] dark:text-k-text-primary' : 'text-[#AEAEB2] dark:text-k-text-quaternary'
                     }`}>
                         {s.label}
                     </span>
                     {i < STEP_LABELS.length - 1 && (
-                        <div className={`w-8 h-px ml-1 ${i < currentIndex ? 'bg-emerald-500' : 'bg-surface-elevated'}`} />
+                        <div className={`w-8 h-px ml-1 ${i < currentIndex ? 'bg-[#007AFF] dark:bg-emerald-500' : 'bg-[#E8E8ED] dark:bg-surface-elevated'}`} />
                     )}
                 </div>
             ))}
@@ -175,6 +208,28 @@ function StepIndicator({ step, isEditing }: { step: BuilderStep; isEditing: bool
 }
 
 // ─── Main Component ─────────────────────────────────────────────
+
+// ─── Sortable wrapper for question cards ─────────────────────
+function SortableQuestionWrapper({ id, children }: { id: string; children: (props: { dragHandleProps: Record<string, unknown>; isDragging: boolean; style: React.CSSProperties; ref: (node: HTMLElement | null) => void }) => React.ReactNode }) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id })
+
+    const style: React.CSSProperties = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.4 : 1,
+        zIndex: isDragging ? Z.MODAL : 'auto',
+        position: 'relative',
+    }
+
+    return <>{children({ dragHandleProps: { ...attributes, ...listeners }, isDragging, style, ref: setNodeRef })}</>
+}
 
 export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps) {
     const router = useRouter()
@@ -212,6 +267,9 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
 
     // Add question dropdown
     const [showAddMenu, setShowAddMenu] = useState(false)
+
+    // Preview
+    const [showPreview, setShowPreview] = useState(true)
 
     // Track unsaved changes
     const hasUnsavedChanges = useMemo(() => {
@@ -278,6 +336,23 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
             const opts = (q.options || []).filter((_, oi) => oi !== optIndex)
             return { ...q, options: opts }
         }))
+    }, [])
+
+    // ─── Drag-and-drop for question reordering ───────────────────
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+        useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
+    )
+
+    const handleQuestionDragEnd = useCallback((event: DragEndEvent) => {
+        const { active, over } = event
+        if (!over || active.id === over.id) return
+        setQuestions((prev) => {
+            const oldIndex = prev.findIndex((q) => q.id === active.id)
+            const newIndex = prev.findIndex((q) => q.id === over.id)
+            if (oldIndex === -1 || newIndex === -1) return prev
+            return arrayMove(prev, oldIndex, newIndex)
+        })
     }, [])
 
     // ─── Save handler ───────────────────────────────────────────
@@ -396,17 +471,20 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                     <div className="mb-8">
                         <Link
                             href="/forms/templates"
-                            className="inline-flex items-center gap-1.5 text-xs text-k-text-secondary hover:text-violet-400 transition-colors mb-3"
+                            className="inline-flex items-center gap-1.5 text-xs text-[#007AFF] hover:text-[#0056B3] transition-colors mb-3 dark:text-k-text-secondary dark:hover:text-violet-400"
                         >
                             <ArrowLeft size={14} />
                             Voltar para Templates
                         </Link>
-                        <h1 className="text-3xl font-bold tracking-tighter bg-gradient-to-br from-[var(--gradient-text-from)] to-[var(--gradient-text-to)] bg-clip-text text-transparent">
+                        <h1 className="text-2xl font-bold tracking-tight text-[#1D1D1F] dark:text-3xl dark:tracking-tighter dark:bg-gradient-to-br dark:from-[var(--gradient-text-from)] dark:to-[var(--gradient-text-to)] dark:bg-clip-text dark:text-transparent">
                             {isEditing ? 'Editar Template' : 'Criar Template'}
                         </h1>
                         {isEditing && (
                             <p className="mt-1 text-sm text-muted-foreground/60">
-                                Editando &quot;{existingTemplate?.title}&quot; (v{existingTemplate?.version})
+                                {existingTemplate?.trainer_id === null
+                                    ? <>Template Kinevo &mdash; ao salvar, uma cópia editável será criada para você</>
+                                    : <>Editando &quot;{existingTemplate?.title}&quot; (v{existingTemplate?.version})</>
+                                }
                             </p>
                         )}
                     </div>
@@ -423,7 +501,7 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                         {step === 'choose' && (
                             <motion.div key="choose" {...stepAnimation}>
                                 <div className="max-w-2xl mx-auto">
-                                    <p className="text-center text-lg font-semibold text-k-text-primary mb-6">
+                                    <p className="text-center text-lg font-semibold text-[#1D1D1F] mb-6 dark:text-k-text-primary">
                                         Como deseja criar seu template?
                                     </p>
 
@@ -434,15 +512,15 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                                 setDraftSource('ai_assisted')
                                                 setStep('ai_setup')
                                             }}
-                                            className="group text-left rounded-xl border border-k-border-primary bg-surface-card p-5 hover:border-violet-500/30 hover:bg-glass-bg cursor-pointer transition-all duration-200"
+                                            className="group text-left rounded-xl border border-[#D2D2D7] bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.08)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.12)] hover:border-[#007AFF] cursor-pointer transition-all duration-200 dark:border-k-border-primary dark:bg-surface-card dark:shadow-none dark:hover:border-violet-500/30 dark:hover:bg-glass-bg"
                                         >
-                                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-elevated group-hover:bg-violet-500/10 mb-3 transition-colors">
-                                                <Sparkles size={20} className="text-violet-400" strokeWidth={1.5} />
+                                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F5F5F7] group-hover:bg-[#007AFF]/10 mb-3 transition-colors dark:bg-surface-elevated dark:group-hover:bg-violet-500/10">
+                                                <Sparkles size={20} className="text-[#AEAEB2] group-hover:text-[#007AFF] dark:text-violet-400" strokeWidth={1.5} />
                                             </div>
-                                            <h3 className="text-sm font-semibold text-k-text-primary mb-1 group-hover:text-violet-300 transition-colors">
+                                            <h3 className="text-sm font-semibold text-[#1D1D1F] mb-1 dark:text-k-text-primary dark:group-hover:text-violet-300 transition-colors">
                                                 Criar com IA
                                             </h3>
-                                            <p className="text-xs text-k-text-quaternary leading-relaxed">
+                                            <p className="text-xs text-[#86868B] leading-relaxed dark:text-k-text-quaternary">
                                                 Descreva o objetivo e a IA gera as perguntas para revisar.
                                             </p>
                                         </button>
@@ -453,15 +531,15 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                                 setDraftSource('manual')
                                                 setStep('editor')
                                             }}
-                                            className="group text-left rounded-xl border border-k-border-primary bg-surface-card p-5 hover:border-blue-500/30 hover:bg-glass-bg cursor-pointer transition-all duration-200"
+                                            className="group text-left rounded-xl border border-[#D2D2D7] bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.08)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.12)] hover:border-[#007AFF] cursor-pointer transition-all duration-200 dark:border-k-border-primary dark:bg-surface-card dark:shadow-none dark:hover:border-blue-500/30 dark:hover:bg-glass-bg"
                                         >
-                                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-elevated group-hover:bg-blue-500/10 mb-3 transition-colors">
-                                                <Pencil size={20} className="text-blue-400" strokeWidth={1.5} />
+                                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F5F5F7] group-hover:bg-[#007AFF]/10 mb-3 transition-colors dark:bg-surface-elevated dark:group-hover:bg-blue-500/10">
+                                                <Pencil size={20} className="text-[#AEAEB2] group-hover:text-[#007AFF] dark:text-blue-400" strokeWidth={1.5} />
                                             </div>
-                                            <h3 className="text-sm font-semibold text-k-text-primary mb-1 group-hover:text-blue-300 transition-colors">
+                                            <h3 className="text-sm font-semibold text-[#1D1D1F] mb-1 dark:text-k-text-primary dark:group-hover:text-blue-300 transition-colors">
                                                 Criar Manualmente
                                             </h3>
-                                            <p className="text-xs text-k-text-quaternary leading-relaxed">
+                                            <p className="text-xs text-[#86868B] leading-relaxed dark:text-k-text-quaternary">
                                                 Monte do zero, escolhendo cada tipo de pergunta.
                                             </p>
                                         </button>
@@ -476,32 +554,32 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                         {step === 'ai_setup' && (
                             <motion.div key="ai_setup" {...stepAnimation}>
                                 <div className="max-w-xl mx-auto">
-                                    <div className="rounded-2xl border border-k-border-primary bg-surface-card p-8 shadow-xl space-y-6">
+                                    <div className="rounded-2xl border border-[#D2D2D7] bg-white p-8 shadow-[0_1px_3px_rgba(0,0,0,0.08)] space-y-6 dark:border-k-border-primary dark:bg-surface-card dark:shadow-xl">
                                         {/* Header */}
                                         <div className="flex items-center gap-3">
-                                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/10">
-                                                <Sparkles size={20} className="text-violet-400" />
+                                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#007AFF]/10 dark:bg-violet-500/10">
+                                                <Sparkles size={20} className="text-[#007AFF] dark:text-violet-400" />
                                             </div>
                                             <div>
-                                                <h2 className="text-lg font-bold text-k-text-primary">Assistente IA</h2>
-                                                <p className="text-xs text-k-text-secondary">Configure e gere seu formulário automaticamente</p>
+                                                <h2 className="text-lg font-semibold text-[#1D1D1F] dark:font-bold dark:text-k-text-primary">Assistente IA</h2>
+                                                <p className="text-xs text-[#86868B] dark:text-k-text-secondary">Configure e gere seu formulário automaticamente</p>
                                             </div>
                                         </div>
 
                                         {/* Category — Segmented Control */}
                                         <div>
-                                            <label className="mb-2 block text-xs font-medium text-k-text-tertiary">
+                                            <label className="mb-2 block text-sm font-medium text-[#1D1D1F] dark:text-xs dark:text-k-text-tertiary">
                                                 Categoria
                                             </label>
-                                            <div className="grid grid-cols-3 gap-1 bg-surface-inset p-1 rounded-xl">
+                                            <div className="grid grid-cols-3 gap-1 bg-[#F5F5F7] p-1 rounded-lg dark:bg-surface-inset dark:rounded-xl">
                                                 {CATEGORY_OPTIONS.map((opt) => (
                                                     <label
                                                         key={opt.value}
                                                         className={`
-                                                            flex items-center justify-center rounded-lg px-3 py-2.5 cursor-pointer transition-all duration-200
+                                                            flex items-center justify-center rounded-md px-3 py-2.5 cursor-pointer transition-all duration-200
                                                             ${category === opt.value
-                                                                ? 'bg-glass-bg-active text-k-text-primary shadow-sm ring-1 ring-k-border-subtle'
-                                                                : 'text-k-text-tertiary hover:text-k-text-secondary hover:bg-glass-bg'}
+                                                                ? 'bg-white text-[#1D1D1F] shadow-[0_1px_3px_rgba(0,0,0,0.1)] dark:bg-glass-bg-active dark:text-k-text-primary dark:shadow-sm dark:ring-1 dark:ring-k-border-subtle'
+                                                                : 'text-[#6E6E73] hover:text-[#1D1D1F] dark:text-k-text-tertiary dark:hover:text-k-text-secondary dark:hover:bg-glass-bg'}
                                                         `}
                                                     >
                                                         <input
@@ -520,28 +598,28 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
 
                                         {/* Goal */}
                                         <div>
-                                            <label className="mb-1.5 block text-xs font-medium text-k-text-tertiary">
-                                                Objetivo <span className="text-red-400">*</span>
+                                            <label className="mb-1.5 block text-sm font-medium text-[#1D1D1F] dark:text-xs dark:text-k-text-tertiary">
+                                                Objetivo <span className="text-[#FF3B30] dark:text-red-400">*</span>
                                             </label>
                                             <input
                                                 type="text"
                                                 placeholder={category === 'anamnese' ? 'Ex: coleta completa de dados do novo aluno' : category === 'checkin' ? 'Ex: acompanhamento semanal do aluno' : 'Ex: questionário de satisfação com o treino'}
                                                 value={aiGoal}
                                                 onChange={(e) => setAiGoal(e.target.value)}
-                                                className="w-full rounded-xl border border-k-border-subtle bg-glass-bg px-4 py-3 text-sm text-k-text-primary placeholder:text-k-text-quaternary outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/10 transition-all"
+                                                className="w-full rounded-lg border border-[#D2D2D7] bg-white px-4 py-3 text-sm text-[#1D1D1F] placeholder:text-[#AEAEB2] outline-none focus:border-[#007AFF] focus:ring-1 focus:ring-[#007AFF]/20 transition-all dark:rounded-xl dark:border-k-border-subtle dark:bg-glass-bg dark:text-k-text-primary dark:placeholder:text-k-text-quaternary dark:focus:border-violet-500/50 dark:focus:ring-2 dark:focus:ring-violet-500/10"
                                             />
                                         </div>
 
                                         {/* Context */}
                                         <div>
-                                            <label className="mb-1.5 block text-xs font-medium text-k-text-tertiary">
-                                                Contexto adicional <span className="font-normal text-k-text-quaternary">(opcional)</span>
+                                            <label className="mb-1.5 block text-sm font-medium text-[#1D1D1F] dark:text-xs dark:text-k-text-tertiary">
+                                                Contexto adicional <span className="font-normal text-[#86868B] dark:text-k-text-quaternary">(opcional)</span>
                                             </label>
                                             <textarea
                                                 placeholder="Descreva o perfil dos alunos, restrições, foco do treinamento..."
                                                 value={aiStudentContext}
                                                 onChange={(e) => setAiStudentContext(e.target.value)}
-                                                className="min-h-[100px] w-full rounded-xl border border-k-border-subtle bg-glass-bg px-4 py-3 text-sm text-k-text-primary placeholder:text-k-text-quaternary outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/10 resize-none transition-all"
+                                                className="min-h-[100px] w-full rounded-lg border border-[#D2D2D7] bg-white px-4 py-3 text-sm text-[#1D1D1F] placeholder:text-[#AEAEB2] outline-none focus:border-[#007AFF] focus:ring-1 focus:ring-[#007AFF]/20 resize-none transition-all dark:rounded-xl dark:border-k-border-subtle dark:bg-glass-bg dark:text-k-text-primary dark:placeholder:text-k-text-quaternary dark:focus:border-violet-500/50 dark:focus:ring-2 dark:focus:ring-violet-500/10"
                                             />
                                         </div>
 
@@ -551,7 +629,7 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                     <div className="flex items-center justify-between mt-6">
                                         <button
                                             onClick={() => setStep('choose')}
-                                            className="flex items-center gap-1.5 text-sm font-medium text-k-text-secondary hover:text-k-text-primary transition-colors px-4 py-2.5 rounded-xl hover:bg-glass-bg"
+                                            className="flex items-center gap-1.5 text-sm font-medium text-[#007AFF] hover:text-[#0056B3] transition-colors px-4 py-2.5 rounded-xl dark:text-k-text-secondary dark:hover:text-k-text-primary dark:hover:bg-glass-bg"
                                         >
                                             <ChevronLeft size={16} />
                                             Voltar
@@ -559,7 +637,7 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                         <button
                                             onClick={handleGenerateAI}
                                             disabled={isGeneratingAI || !aiGoal.trim()}
-                                            className="h-11 px-8 bg-violet-600 hover:bg-violet-500 text-white rounded-xl font-semibold text-sm shadow-lg shadow-violet-600/20 transition-all disabled:opacity-50 flex items-center gap-2"
+                                            className="h-11 px-8 bg-[#007AFF] hover:bg-[#0066D6] text-white rounded-full font-medium text-sm transition-all disabled:opacity-50 flex items-center gap-2 dark:bg-violet-600 dark:hover:bg-violet-500 dark:rounded-xl dark:font-semibold dark:shadow-lg dark:shadow-violet-600/20"
                                         >
                                             {isGeneratingAI ? (
                                                 <>
@@ -583,22 +661,22 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                         ════════════════════════════════════════════════ */}
                         {step === 'editor' && (
                             <motion.div key="editor" {...stepAnimation}>
-                                <div className="max-w-3xl mx-auto pb-24">
+                                <div className={`pb-24 ${showPreview ? 'flex gap-8 items-start' : 'max-w-3xl mx-auto'}`}>
 
                                     {/* Left Column — Form */}
-                                    <div className="space-y-6">
+                                    <div className={`space-y-6 ${showPreview ? 'flex-1 min-w-0' : ''}`}>
 
                                         {/* Card: Configuração */}
-                                        <div className="rounded-xl border border-k-border-subtle bg-surface-card p-4 space-y-3">
+                                        <div className="rounded-xl border border-[#D2D2D7] bg-white p-4 space-y-3 shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:border-k-border-subtle dark:bg-surface-card dark:shadow-none">
                                             <div className="flex items-start gap-4">
                                                 <input
                                                     type="text"
                                                     placeholder="Título do Formulário"
                                                     value={title}
                                                     onChange={(e) => setTitle(e.target.value)}
-                                                    className="flex-1 bg-transparent text-base font-semibold text-k-text-primary placeholder:text-k-text-quaternary outline-none border-b border-transparent focus:border-violet-500/50 pb-1 transition-all"
+                                                    className="flex-1 bg-transparent text-base font-semibold text-[#1D1D1F] placeholder:text-[#AEAEB2] outline-none border-b border-transparent focus:border-[#007AFF]/50 pb-1 transition-all dark:text-k-text-primary dark:placeholder:text-k-text-quaternary dark:focus:border-violet-500/50"
                                                 />
-                                                <div className="flex bg-surface-elevated rounded-lg p-0.5 shrink-0">
+                                                <div className="flex bg-[#F5F5F7] rounded-lg p-0.5 shrink-0 dark:bg-surface-elevated">
                                                     {CATEGORY_OPTIONS.map((opt) => (
                                                         <button
                                                             key={opt.value}
@@ -606,8 +684,8 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                                             onClick={() => setCategory(opt.value)}
                                                             className={`px-3 py-1 text-xs rounded-md transition-all ${
                                                                 category === opt.value
-                                                                    ? 'bg-glass-bg-active text-k-text-primary shadow-sm'
-                                                                    : 'text-k-text-quaternary hover:text-k-text-secondary'
+                                                                    ? 'bg-white text-[#1D1D1F] shadow-[0_1px_3px_rgba(0,0,0,0.1)] dark:bg-glass-bg-active dark:text-k-text-primary dark:shadow-sm'
+                                                                    : 'text-[#AEAEB2] hover:text-[#1D1D1F] dark:text-k-text-quaternary dark:hover:text-k-text-secondary'
                                                             }`}
                                                         >
                                                             {opt.label}
@@ -615,7 +693,7 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                                     ))}
                                                 </div>
                                                 {draftSource === 'ai_assisted' && (
-                                                    <span className="flex items-center gap-1 rounded-full bg-violet-500/10 px-2 py-0.5 text-[10px] font-bold text-violet-400 border border-violet-500/20 shrink-0">
+                                                    <span className="flex items-center gap-1 rounded-full bg-[#007AFF]/10 px-2 py-0.5 text-[10px] font-bold text-[#007AFF] border border-[#007AFF]/20 shrink-0 dark:bg-violet-500/10 dark:text-violet-400 dark:border-violet-500/20">
                                                         <Sparkles size={10} strokeWidth={2} />
                                                         IA
                                                     </span>
@@ -630,19 +708,32 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                         </div>
 
                                         {/* Card: Perguntas */}
-                                        <div className="rounded-2xl border border-k-border-primary bg-surface-card p-6 shadow-xl space-y-4">
+                                        <div className="rounded-2xl border border-[#D2D2D7] bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.08)] space-y-4 dark:border-k-border-primary dark:bg-surface-card dark:shadow-xl">
                                             <div className="flex items-center justify-between">
-                                                <h2 className="text-sm font-semibold text-k-text-secondary">
+                                                <h2 className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-secondary">
                                                     Perguntas ({questions.length})
                                                 </h2>
-                                                <button
-                                                    onClick={handleAuditAI}
-                                                    disabled={isAuditingAI || questions.length === 0}
-                                                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-k-border-subtle bg-transparent hover:bg-glass-bg text-k-text-secondary hover:text-violet-400 transition-all disabled:opacity-40"
-                                                >
-                                                    <Sparkles size={12} />
-                                                    {isAuditingAI ? 'Auditando...' : 'Auditar Qualidade'}
-                                                </button>
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        onClick={() => setShowPreview(!showPreview)}
+                                                        className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full border transition-all ${
+                                                            showPreview
+                                                                ? 'border-violet-300 bg-violet-50 text-violet-600 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-400'
+                                                                : 'border-[#007AFF] bg-[#007AFF]/5 hover:bg-[#007AFF]/10 text-[#007AFF] dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-400 dark:hover:bg-violet-500/20'
+                                                        } dark:rounded-lg`}
+                                                    >
+                                                        <Smartphone size={12} />
+                                                        {showPreview ? 'Preview' : 'Abrir Preview'}
+                                                    </button>
+                                                    <button
+                                                        onClick={handleAuditAI}
+                                                        disabled={isAuditingAI || questions.length === 0}
+                                                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full border border-[#D2D2D7] bg-transparent hover:bg-[#F5F5F7] text-[#007AFF] transition-all disabled:opacity-40 dark:rounded-lg dark:border-k-border-subtle dark:hover:bg-glass-bg dark:text-k-text-secondary dark:hover:text-violet-400"
+                                                    >
+                                                        <Sparkles size={12} />
+                                                        {isAuditingAI ? 'Auditando...' : 'Auditar Qualidade'}
+                                                    </button>
+                                                </div>
                                             </div>
 
                                             {/* Quality Alerts — inline */}
@@ -657,7 +748,7 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                                         <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 mb-2">
                                                             <div className="mb-2 flex items-center gap-2 text-amber-500">
                                                                 <AlertTriangle size={14} strokeWidth={2} />
-                                                                <p className="text-[11px] font-bold uppercase tracking-widest">Atenção</p>
+                                                                <p className="text-[11px] font-bold">Atenção</p>
                                                             </div>
                                                             <ul className="space-y-1 pl-1">
                                                                 {aiQualityReport.risk_flags.map((risk) => (
@@ -681,12 +772,12 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                                         exit={{ opacity: 0, height: 0 }}
                                                         className="overflow-hidden"
                                                     >
-                                                        <div className="rounded-xl border border-k-border-subtle bg-surface-elevated/50 p-4 mb-2">
-                                                            <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-k-text-secondary">Sugestões de Revisão</p>
+                                                        <div className="rounded-lg border border-[#E8E8ED] bg-[#F5F5F7] p-4 mb-2 dark:rounded-xl dark:border-k-border-subtle dark:bg-surface-elevated/50">
+                                                            <p className="mb-2 text-[11px] font-bold text-[#1D1D1F] dark:text-k-text-secondary">Sugestões de Revisão</p>
                                                             <ul className="space-y-1">
                                                                 {aiChecklist.map((item) => (
-                                                                    <li key={item} className="flex items-start gap-2 text-xs text-k-text-secondary">
-                                                                        <span className="mt-1.5 block h-1 w-1 rounded-full bg-violet-400 shrink-0" />
+                                                                    <li key={item} className="flex items-start gap-2 text-xs text-[#6E6E73] dark:text-k-text-secondary">
+                                                                        <span className="mt-1.5 block h-1 w-1 rounded-full bg-[#007AFF] dark:bg-violet-400 shrink-0" />
                                                                         {item}
                                                                     </li>
                                                                 ))}
@@ -717,14 +808,18 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                             )}
 
                                             {/* Question Cards */}
+                                            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleQuestionDragEnd}>
+                                            <SortableContext items={questions.map((q) => q.id)} strategy={verticalListSortingStrategy}>
                                             {questions.map((q, index) => {
                                                 const typeLabel = QUESTION_TYPES.find((t) => t.value === q.type)?.label || q.type
 
                                                 return (
-                                                    <div key={q.id} className="rounded-xl border border-k-border-subtle bg-surface-elevated/50 p-4 space-y-3">
+                                                    <SortableQuestionWrapper key={q.id} id={q.id}>
+                                                        {({ dragHandleProps, style, ref }) => (
+                                                    <div ref={ref} style={style} className="rounded-xl border border-[#E8E8ED] bg-white p-4 space-y-3 dark:border-k-border-subtle dark:bg-surface-elevated/50">
                                                         <div className="flex items-start gap-3">
-                                                            <div className="flex items-center gap-1 pt-1">
-                                                                <GripVertical size={14} className="text-k-text-secondary opacity-40" />
+                                                            <div className="flex items-center gap-1 pt-1 cursor-grab active:cursor-grabbing" {...dragHandleProps}>
+                                                                <GripVertical size={14} className="text-k-text-secondary opacity-60 hover:opacity-100 transition-opacity" />
                                                                 <span className="text-[10px] font-bold text-k-text-secondary bg-surface-elevated px-1.5 py-0.5 rounded">
                                                                     {index + 1}
                                                                 </span>
@@ -735,10 +830,10 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                                                     placeholder="Texto da pergunta..."
                                                                     value={q.label}
                                                                     onChange={(e) => updateQuestion(index, { label: e.target.value })}
-                                                                    className="w-full rounded-lg border border-k-border-subtle bg-glass-bg px-3 py-2 text-sm text-k-text-primary outline-none focus:border-violet-500/50 transition-all"
+                                                                    className="w-full rounded-lg border border-[#E8E8ED] bg-[#F5F5F7] px-3 py-2 text-sm text-[#1D1D1F] outline-none focus:border-[#007AFF] focus:bg-white transition-all dark:border-k-border-subtle dark:bg-glass-bg dark:text-k-text-primary dark:focus:border-violet-500/50"
                                                                 />
                                                                 <div className="flex items-center gap-3">
-                                                                    <span className="px-2 py-0.5 text-[10px] font-medium rounded-md border bg-surface-elevated text-k-text-tertiary border-k-border-subtle">
+                                                                    <span className="px-2 py-0.5 text-[10px] font-medium rounded-full bg-[#F5F5F7] text-[#6E6E73] dark:rounded-md dark:border dark:bg-surface-elevated dark:text-k-text-tertiary dark:border-k-border-subtle">
                                                                         {typeLabel}
                                                                     </span>
                                                                     <label className="flex items-center gap-1.5 cursor-pointer">
@@ -746,15 +841,15 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                                                             type="checkbox"
                                                                             checked={q.required ?? true}
                                                                             onChange={(e) => updateQuestion(index, { required: e.target.checked })}
-                                                                            className="h-3.5 w-3.5 rounded border-k-border-subtle text-violet-600 accent-violet-600"
+                                                                            className="h-3.5 w-3.5 rounded border-[#D2D2D7] text-[#007AFF] accent-[#007AFF] dark:border-k-border-subtle dark:text-violet-600 dark:accent-violet-600"
                                                                         />
-                                                                        <span className="text-[11px] text-k-text-secondary">Obrigatório</span>
+                                                                        <span className="text-[11px] text-[#6E6E73] dark:text-k-text-secondary">Obrigatório</span>
                                                                     </label>
                                                                 </div>
                                                             </div>
                                                             <button
                                                                 onClick={() => removeQuestion(index)}
-                                                                className="text-k-text-secondary hover:text-red-400 p-1.5 rounded-lg hover:bg-glass-bg transition-all shrink-0"
+                                                                className="text-[#AEAEB2] hover:text-[#FF3B30] p-1.5 rounded-lg hover:bg-[#F5F5F7] transition-all shrink-0 dark:text-k-text-secondary dark:hover:text-red-400 dark:hover:bg-glass-bg"
                                                             >
                                                                 <Trash2 size={14} />
                                                             </button>
@@ -771,7 +866,7 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                                                             placeholder={`Opção ${optIdx + 1}`}
                                                                             value={opt.label}
                                                                             onChange={(e) => updateOption(index, optIdx, e.target.value)}
-                                                                            className="flex-1 rounded-lg border border-k-border-subtle bg-glass-bg px-3 py-1.5 text-xs text-k-text-primary outline-none focus:border-violet-500/50 transition-all"
+                                                                            className="flex-1 rounded-lg border border-[#E8E8ED] bg-[#F5F5F7] px-3 py-1.5 text-xs text-[#1D1D1F] outline-none focus:border-[#007AFF] focus:bg-white transition-all dark:border-k-border-subtle dark:bg-glass-bg dark:text-k-text-primary dark:focus:border-violet-500/50"
                                                                         />
                                                                         {(q.options || []).length > 2 && (
                                                                             <button
@@ -785,7 +880,7 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                                                 ))}
                                                                 <button
                                                                     onClick={() => addOption(index)}
-                                                                    className="text-[11px] font-semibold text-violet-400 hover:text-violet-300 transition-colors pl-6"
+                                                                    className="text-[11px] font-semibold text-[#007AFF] hover:text-[#0056B3] transition-colors pl-6 dark:text-violet-400 dark:hover:text-violet-300"
                                                                 >
                                                                     + Adicionar opção
                                                                 </button>
@@ -816,21 +911,25 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                                             </div>
                                                         )}
                                                     </div>
+                                                        )}
+                                                    </SortableQuestionWrapper>
                                                 )
                                             })}
+                                            </SortableContext>
+                                            </DndContext>
 
                                             {/* Add Question Button */}
                                             <div data-onboarding="form-question-types" className="relative">
                                                 <button
                                                     onClick={() => setShowAddMenu(!showAddMenu)}
-                                                    className="w-full h-11 border-2 border-dashed border-k-border-subtle hover:border-violet-500/30 rounded-xl text-sm font-semibold text-k-text-secondary hover:text-violet-400 transition-all flex items-center justify-center gap-2"
+                                                    className="w-full h-11 border-2 border-dashed border-[#D2D2D7] hover:border-[#007AFF]/30 rounded-xl text-sm font-semibold text-[#6E6E73] hover:text-[#007AFF] transition-all flex items-center justify-center gap-2 dark:border-k-border-subtle dark:hover:border-violet-500/30 dark:text-k-text-secondary dark:hover:text-violet-400"
                                                 >
                                                     <Plus size={16} />
                                                     Adicionar Pergunta
                                                 </button>
 
                                                 {showAddMenu && (
-                                                    <div className="absolute top-full left-0 right-0 mt-2 rounded-xl border border-k-border-primary bg-surface-card shadow-2xl z-10 overflow-hidden p-1">
+                                                    <div className="absolute top-full left-0 right-0 mt-2 rounded-xl border border-k-border-primary bg-surface-card shadow-2xl z-sticky overflow-hidden p-1">
                                                         {QUESTION_TYPES.map((qt) => {
                                                             const Icon = qt.icon
                                                             return (
@@ -855,6 +954,28 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                         </div>
                                     </div>
 
+                                    {/* Right Column — Mobile Preview */}
+                                    {showPreview && (
+                                        <div className="w-[390px] shrink-0 sticky top-8">
+                                            <div className="flex items-center justify-between mb-3">
+                                                <span className="text-xs font-medium text-[#86868B] dark:text-k-text-quaternary">Como o aluno verá no app</span>
+                                                <button
+                                                    onClick={() => setShowPreview(false)}
+                                                    className="text-xs text-[#AEAEB2] hover:text-[#6E6E73] dark:text-k-text-quaternary dark:hover:text-k-text-secondary transition-colors"
+                                                >
+                                                    Ocultar
+                                                </button>
+                                            </div>
+                                            <div className="flex justify-center bg-[#F5F5F7] dark:bg-surface-elevated/30 rounded-2xl pt-4 pb-6 border border-[#E8E8ED] dark:border-k-border-subtle">
+                                                <EvaluationPreview
+                                                    title={title}
+                                                    description={description}
+                                                    questions={questions}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+
                                 </div>
                             </motion.div>
                         )}
@@ -864,16 +985,16 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
 
             {/* Sticky Save Footer — only on editor step */}
             {step === 'editor' && (
-                <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-k-border-subtle bg-surface-card/95 backdrop-blur-sm">
+                <div className="fixed bottom-0 left-0 right-0 z-sidebar border-t border-[#E8E8ED] bg-white/95 backdrop-blur-sm dark:border-k-border-subtle dark:bg-surface-card/95">
                     <div className="max-w-3xl mx-auto px-8 py-3 flex items-center justify-between">
-                        <div className="text-xs text-k-text-quaternary flex items-center gap-2">
+                        <div className="text-xs text-[#86868B] flex items-center gap-2 dark:text-k-text-quaternary">
                             <span>{questions.length} pergunta{questions.length !== 1 ? 's' : ''}</span>
-                            <span className="text-k-text-quaternary/50">&middot;</span>
+                            <span className="text-[#86868B]/50 dark:text-k-text-quaternary/50">&middot;</span>
                             <span>~{Math.max(1, Math.ceil(questions.length * 0.8))} min</span>
                             {hasUnsavedChanges && (
                                 <>
-                                    <span className="text-k-text-quaternary/50">&middot;</span>
-                                    <span className="text-yellow-500">Alterações não salvas</span>
+                                    <span className="text-[#86868B]/50 dark:text-k-text-quaternary/50">&middot;</span>
+                                    <span className="text-[#FF9500] dark:text-yellow-500">Alterações não salvas</span>
                                 </>
                             )}
                         </div>
@@ -885,14 +1006,14 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                     }
                                     router.push('/forms/templates')
                                 }}
-                                className="text-sm text-k-text-quaternary hover:text-k-text-primary transition-colors"
+                                className="text-sm text-[#6E6E73] hover:text-[#1D1D1F] font-medium transition-colors dark:text-k-text-quaternary dark:hover:text-k-text-primary"
                             >
                                 Cancelar
                             </button>
                             <button
                                 onClick={handleSave}
                                 disabled={isSaving || questions.length === 0 || !title.trim()}
-                                className="px-5 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                className="px-5 py-2 bg-[#007AFF] hover:bg-[#0066D6] text-white text-sm font-medium rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 dark:bg-violet-600 dark:hover:bg-violet-500 dark:rounded-xl"
                             >
                                 {isSaving ? (
                                     <>
@@ -900,7 +1021,9 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                         Salvando...
                                     </>
                                 ) : (
-                                    isEditing ? 'Salvar Alterações' : 'Salvar Template'
+                                    isEditing
+                                        ? (existingTemplate?.trainer_id === null ? 'Salvar como Meu Template' : 'Salvar Alterações')
+                                        : 'Salvar Template'
                                 )}
                             </button>
                         </div>

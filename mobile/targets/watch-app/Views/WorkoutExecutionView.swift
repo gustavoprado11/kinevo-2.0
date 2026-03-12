@@ -7,37 +7,6 @@ private enum CrownInputFocus: Hashable {
   case reps
 }
 
-private struct EditableSet: Identifiable {
-  let id = UUID()
-  var reps: Int
-  var weight: Double
-  var isCompleted: Bool
-}
-
-private struct EditableExercise: Identifiable {
-  let id: String
-  let name: String
-  let restTime: Int
-  let targetReps: String?  // Prescribed rep range, e.g. "8-12"
-  var sets: [EditableSet]
-
-  init(snapshot: WatchExerciseSnapshot) {
-    self.id = snapshot.id
-    self.name = snapshot.name
-    self.restTime = snapshot.restTime
-    self.targetReps = snapshot.targetReps
-
-    let initialWeight = snapshot.weight ?? 0
-    self.sets = (0..<snapshot.sets).map { index in
-      EditableSet(
-        reps: snapshot.reps,
-        weight: initialWeight,
-        isCompleted: index < snapshot.completedSets
-      )
-    }
-  }
-}
-
 private struct RestTimerState: Identifiable {
   let id = UUID()
   let seconds: Int
@@ -46,119 +15,39 @@ private struct RestTimerState: Identifiable {
   let startedAt: Date
 }
 
-private enum WatchDateParser {
-  static func parseISO8601(_ raw: String?) -> Date? {
-    guard let raw, !raw.isEmpty else { return nil }
-
-    let formatterWithFractions = ISO8601DateFormatter()
-    formatterWithFractions.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-    if let parsed = formatterWithFractions.date(from: raw) {
-      return parsed
-    }
-
-    let formatter = ISO8601DateFormatter()
-    formatter.formatOptions = [.withInternetDateTime]
-    return formatter.date(from: raw)
-  }
-}
-
 struct WorkoutExecutionView: View {
   @EnvironmentObject private var sessionManager: WatchSessionManager
   @EnvironmentObject private var healthKitManager: HealthKitManager
+  @EnvironmentObject private var workoutStore: WorkoutExecutionStore
+  @Environment(\.dismiss) private var dismiss
   let workout: WatchWorkoutSnapshot
 
-  @State private var exerciseIndex: Int
-  @State private var editableExercises: [EditableExercise]
   @State private var restTimerState: RestTimerState?
-  @State private var hasStarted: Bool
   @State private var isFinishingWorkout = false
   @State private var workoutRpe: Double = 5
   @State private var hasFinishedWorkout = false
-
-  private let workoutStartDate: Date
-
-  init(workout: WatchWorkoutSnapshot) {
-    self.workout = workout
-    let editable = workout.exercises.map { EditableExercise(snapshot: $0) }
-    _editableExercises = State(initialValue: editable)
-    _hasStarted = State(initialValue: workout.isActive)
-
-    let maxIndex = max(0, editable.count - 1)
-    let startIndex = min(max(workout.currentExerciseIndex, 0), maxIndex)
-    _exerciseIndex = State(initialValue: startIndex)
-
-    self.workoutStartDate = WatchDateParser.parseISO8601(workout.startedAt)
-      ?? WatchDateParser.parseISO8601(workout.updatedAt)
-      ?? Date()
-
-    NSLog("[KinevoWatch] WorkoutExecutionView.init — exercises=%d, isActive=%d, startIndex=%d", editable.count, workout.isActive ? 1 : 0, startIndex)
-  }
+  @State private var showDiscardConfirmation = false
+  @State private var carouselPage: Int = 0
 
   var body: some View {
-    // ✅ Capture @EnvironmentObject as local variable BEFORE any closures
-    // This ensures closures in ForEach/TabView use a direct reference,
-    // not the @EnvironmentObject property wrapper (which fails in nested closures on watchOS)
     let sm = sessionManager
     let hk = healthKitManager
+    let store = workoutStore
 
     ZStack {
       Color.black.edgesIgnoringSafeArea(.all)
 
       Group {
-        if !hasStarted {
-          startView(sm: sm, hk: hk)
-        } else if editableExercises.isEmpty {
-          emptyView
-        } else {
-          TabView {
-            // Page 0: Exercise carousel (horizontal swipe between exercises)
-            TabView(selection: $exerciseIndex) {
-              ForEach(Array(editableExercises.indices), id: \.self) { index in
-                ExerciseExecutionPage(
-                  exercise: $editableExercises[index],
-                  exerciseNumber: index + 1,
-                  totalExercises: editableExercises.count,
-                  workoutStartDate: workoutStartDate,
-                  onSetLogged: { setIndex, reps, weight in
-                    guard index < editableExercises.count else { return }
-                    let exerciseId = editableExercises[index].id
-                    NSLog("[KinevoWatch] onSetLogged: sendSetCompletion — exerciseId=%@, set=%d", exerciseId, setIndex)
-                    sm.sendSetCompletion(
-                      workoutId: workout.workoutId,
-                      exerciseIndex: index,
-                      exerciseId: exerciseId,
-                      setIndex: setIndex,
-                      reps: reps,
-                      weight: weight
-                    )
-                  },
-                  onRestTimerRequested: { setIndex, restTime in
-                    guard index < editableExercises.count else { return }
-                    let exerciseName = editableExercises[index].name
-                    NSLog("[KinevoWatch] onRestTimerRequested: %ds for %@", restTime, exerciseName)
-                    restTimerState = RestTimerState(
-                      seconds: restTime,
-                      exerciseName: exerciseName,
-                      setNumber: setIndex + 1,
-                      startedAt: Date()
-                    )
-                  },
-                  onFinishWorkout: {
-                    isFinishingWorkout = true
-                  }
-                )
-                .tag(index)
-              }
-            }
-            .tabViewStyle(.page(indexDisplayMode: .never))
-
-            // Page 1: Workout dashboard (elapsed time + heart rate)
-            WorkoutDashboardView(workoutStartDate: workoutStartDate)
-
-            // Page 2: Media controls (Now Playing)
-            KinevoNowPlayingView()
+        if let state = store.state {
+          if !state.hasStarted {
+            startView(sm: sm, hk: hk, store: store)
+          } else if state.exercises.isEmpty {
+            emptyView
+          } else {
+            workoutContent(state: state, sm: sm, store: store)
           }
-          .tabViewStyle(.verticalPage)
+        } else {
+          emptyView
         }
       }
     }
@@ -169,21 +58,139 @@ struct WorkoutExecutionView: View {
       if hasFinishedWorkout {
         successFinishView
       } else {
-        pseSelectionView(sm: sm, hk: hk)
+        pseSelectionView(sm: sm, hk: hk, store: store)
       }
     }
-    .onChange(of: workout.isActive) { _, isActive in
-      hasStarted = isActive
-    }
-    .onDisappear {
-      if hk.isWorkoutActive {
-        hk.endWorkout()
+    .confirmationDialog(
+      "Abandonar treino?",
+      isPresented: $showDiscardConfirmation,
+      titleVisibility: .visible
+    ) {
+      Button("Abandonar", role: .destructive) {
+        discardCurrentWorkout()
       }
+      Button("Cancelar", role: .cancel) { }
+    } message: {
+      Text("Seu progresso neste treino será perdido.")
+    }
+    .onAppear {
+      // Load workout into store if not already present
+      if store.state == nil || store.state?.workoutId != workout.workoutId {
+        store.loadWorkout(from: workout)
+      }
+      // Sync carousel page with exercise index
+      carouselPage = store.state?.exerciseIndex ?? 0
     }
     .navigationBarTitleDisplayMode(.inline)
   }
 
-  private func startView(sm: WatchSessionManager, hk: HealthKitManager) -> some View {
+  // MARK: - Workout Content
+
+  private func workoutContent(state: WorkoutExecutionState, sm: WatchSessionManager, store: WorkoutExecutionStore) -> some View {
+    let totalCarouselPages = state.exercises.count + workout.cardioItems.count
+
+    let carouselIndexBinding = Binding<Int>(
+      get: { carouselPage },
+      set: { newValue in
+        carouselPage = newValue
+        if newValue < state.exercises.count {
+          store.setExerciseIndex(newValue)
+        }
+      }
+    )
+
+    return TabView {
+      // Page 0: Exercise + Cardio carousel
+      TabView(selection: carouselIndexBinding) {
+        ForEach(Array(state.exercises.indices), id: \.self) { index in
+          ExerciseExecutionPage(
+            store: store,
+            exerciseIndex: index,
+            totalExercises: state.exercises.count,
+            totalCarouselPages: totalCarouselPages,
+            workoutStartDate: state.startedAt,
+            hasCardioAfter: !workout.cardioItems.isEmpty,
+            onSetLogged: { setIndex, reps, weight in
+              guard index < (store.state?.exercises.count ?? 0) else { return }
+              let exerciseId = state.exercises[index].id
+              NSLog("[KinevoWatch] onSetLogged: sendSetCompletion — exerciseId=%@, set=%d", exerciseId, setIndex)
+              sm.sendSetCompletion(
+                workoutId: state.workoutId,
+                exerciseIndex: index,
+                exerciseId: exerciseId,
+                setIndex: setIndex,
+                reps: reps,
+                weight: weight
+              )
+            },
+            onRestTimerRequested: { setIndex, restTime in
+              guard index < (store.state?.exercises.count ?? 0) else { return }
+              let exerciseName = state.exercises[index].name
+              NSLog("[KinevoWatch] onRestTimerRequested: %ds for %@", restTime, exerciseName)
+              restTimerState = RestTimerState(
+                seconds: restTime,
+                exerciseName: exerciseName,
+                setNumber: setIndex + 1,
+                startedAt: Date()
+              )
+            },
+            onFinishWorkout: {
+              isFinishingWorkout = true
+            },
+            onDismissRestTimer: {
+              restTimerState = nil
+            }
+          )
+          .tag(index)
+        }
+
+        // Cardio pages (after exercises)
+        ForEach(Array(workout.cardioItems.enumerated()), id: \.element.id) { cardioIdx, item in
+          let pageTag = state.exercises.count + cardioIdx
+          let isLastPage = pageTag == (totalCarouselPages - 1)
+          let isCardioCompleted = state.cardioStates.first(where: { $0.itemId == item.id })?.isCompleted ?? false
+
+          ZStack(alignment: .bottom) {
+            CardioExecutionView(item: item) { elapsedSeconds in
+              store.markCardioCompleted(itemId: item.id, elapsedSeconds: elapsedSeconds)
+              sm.sendCardioCompletion(
+                workoutId: state.workoutId,
+                itemId: item.id,
+                elapsedSeconds: elapsedSeconds
+              )
+            }
+
+            // Show "Finalizar Treino" when this is the last page and cardio is done
+            if isLastPage && isCardioCompleted && state.exercises.allSatisfy({ ex in ex.sets.allSatisfy(\.isCompleted) }) {
+              Button("Finalizar Treino") {
+                isFinishingWorkout = true
+              }
+              .font(.caption)
+              .buttonStyle(.borderedProminent)
+              .tint(.green)
+              .padding(.bottom, 8)
+            }
+          }
+          .tag(pageTag)
+        }
+      }
+      .tabViewStyle(.page(indexDisplayMode: .never))
+
+      // Page 1: Workout dashboard
+      WorkoutDashboardView(
+        workoutStartDate: state.startedAt,
+        onDiscardWorkout: { showDiscardConfirmation = true }
+      )
+
+      // Page 2: Media controls
+      KinevoNowPlayingView()
+    }
+    .tabViewStyle(.verticalPage)
+  }
+
+  // MARK: - Start View
+
+  private func startView(sm: WatchSessionManager, hk: HealthKitManager, store: WorkoutExecutionStore) -> some View {
     VStack(spacing: 12) {
       Image(systemName: "figure.run")
         .font(.title2)
@@ -192,20 +199,31 @@ struct WorkoutExecutionView: View {
         .font(.headline)
         .foregroundStyle(.white)
         .multilineTextAlignment(.center)
-      Text("\(workout.exercises.count) exercícios")
+        .lineLimit(2)
+        .minimumScaleFactor(0.75)
+      Text(workoutItemsSummary)
         .font(.caption2)
         .foregroundStyle(.secondary)
       Button("Iniciar treino") {
-        NSLog("[KinevoWatch] 🏋️ Iniciar treino tapped — workoutId=%@, exercises=%d", workout.workoutId, workout.exercises.count)
+        NSLog("[KinevoWatch] Iniciar treino tapped — workoutId=%@, exercises=%d", workout.workoutId, workout.exercises.count)
         hk.startWorkout()
         sm.sendStartWorkout(workoutId: workout.workoutId)
-        hasStarted = true
+        store.markStarted()
         WKInterfaceDevice.current().play(.start)
       }
       .buttonStyle(.borderedProminent)
       .tint(Color.kinevoViolet)
     }
     .padding()
+  }
+
+  private var workoutItemsSummary: String {
+    let exCount = workout.exercises.count
+    let cardioCount = workout.cardioItems.count
+    if cardioCount > 0 {
+      return "\(exCount) exercícios • \(cardioCount) aeróbio\(cardioCount > 1 ? "s" : "")"
+    }
+    return "\(exCount) exercícios"
   }
 
   private var emptyView: some View {
@@ -221,7 +239,9 @@ struct WorkoutExecutionView: View {
     .padding()
   }
 
-  private func pseSelectionView(sm: WatchSessionManager, hk: HealthKitManager) -> some View {
+  // MARK: - Finish Workout
+
+  private func pseSelectionView(sm: WatchSessionManager, hk: HealthKitManager, store: WorkoutExecutionStore) -> some View {
     VStack(spacing: 8) {
       Text("Como foi o treino?")
         .font(.headline)
@@ -253,27 +273,20 @@ struct WorkoutExecutionView: View {
         )
 
       Button("Finalizar Treino") {
-        // Build exercises payload from editableExercises (all reps/weight/completion data)
-        let exercisesPayload: [[String: Any]] = editableExercises.map { ex in
-          let setsPayload: [[String: Any]] = ex.sets.enumerated().map { idx, set in
-            [
-              "setIndex": idx,
-              "reps": set.reps,
-              "weight": set.weight,
-              "completed": set.isCompleted
-            ]
-          }
-          return [
-            "id": ex.id,
-            "sets": setsPayload
-          ]
-        }
+        guard let state = store.state else { return }
+
+        let exercisesPayload = state.buildFinishPayload()
+        let cardioPayload = state.buildCardioPayload()
+
+        // Mark as pending BEFORE sending — persists so it survives app termination
+        store.markFinishPending()
 
         sm.sendFinishWorkout(
-          workoutId: workout.workoutId,
+          workoutId: state.workoutId,
           rpe: Int(workoutRpe),
-          startedAt: workoutStartDate,
-          exercises: exercisesPayload
+          startedAt: state.startedAt,
+          exercises: exercisesPayload,
+          cardio: cardioPayload
         )
         hk.endWorkout()
         hasFinishedWorkout = true
@@ -303,134 +316,165 @@ struct WorkoutExecutionView: View {
     .padding()
     .background(Color.black.edgesIgnoringSafeArea(.all))
   }
+
+  // MARK: - Discard Workout
+
+  private func discardCurrentWorkout() {
+    guard let state = workoutStore.state else { return }
+
+    NSLog("[KinevoWatch] Discarding workout %@", state.workoutId)
+
+    // 1. Notify iPhone to clean up the pre-created session
+    sessionManager.sendDiscardWorkout(workoutId: state.workoutId)
+
+    // 2. End HealthKit session WITHOUT saving to Apple Health
+    healthKitManager.discardWorkout()
+
+    // 3. Clear local workout state (deletes persisted file)
+    workoutStore.clearWorkout()
+
+    // 4. Haptic feedback
+    WKInterfaceDevice.current().play(.failure)
+
+    // 5. Navigate back to workout list
+    dismiss()
+  }
 }
 
 // MARK: - Exercise Execution Page
 
 private struct ExerciseExecutionPage: View {
-  @Binding var exercise: EditableExercise
-  let exerciseNumber: Int
+  @ObservedObject var store: WorkoutExecutionStore
+  let exerciseIndex: Int
   let totalExercises: Int
+  let totalCarouselPages: Int
   let workoutStartDate: Date
+  let hasCardioAfter: Bool
   let onSetLogged: (_ setIndex: Int, _ reps: Int, _ weight: Double) -> Void
   let onRestTimerRequested: (_ setIndex: Int, _ restTime: Int) -> Void
   let onFinishWorkout: () -> Void
+  let onDismissRestTimer: () -> Void
 
-  @State private var currentSetIndex: Int
   @State private var showSwipeHint = false
+  @State private var undoBannerDismissTask: Task<Void, Never>?
+  @State private var showUndoBanner = false
+  @State private var showPrBadge = false
+  @State private var prBadgeDismissTask: Task<Void, Never>?
   @FocusState private var focusedInput: CrownInputFocus?
 
-  init(
-    exercise: Binding<EditableExercise>,
-    exerciseNumber: Int,
-    totalExercises: Int,
-    workoutStartDate: Date,
-    onSetLogged: @escaping (_ setIndex: Int, _ reps: Int, _ weight: Double) -> Void,
-    onRestTimerRequested: @escaping (_ setIndex: Int, _ restTime: Int) -> Void,
-    onFinishWorkout: @escaping () -> Void
-  ) {
-    self._exercise = exercise
-    self.exerciseNumber = exerciseNumber
-    self.totalExercises = totalExercises
-    self.workoutStartDate = workoutStartDate
-    self.onSetLogged = onSetLogged
-    self.onRestTimerRequested = onRestTimerRequested
-    self.onFinishWorkout = onFinishWorkout
+  private var exercise: WorkoutExecutionState.ExerciseState? {
+    guard let state = store.state, exerciseIndex < state.exercises.count else { return nil }
+    return state.exercises[exerciseIndex]
+  }
 
-    let sets = exercise.wrappedValue.sets
-    let firstIncomplete = sets.firstIndex(where: { !$0.isCompleted }) ?? max(sets.count - 1, 0)
-    _currentSetIndex = State(initialValue: firstIncomplete)
+  private var currentSetIndex: Int {
+    exercise?.currentSetIndex ?? 0
   }
 
   var body: some View {
     GeometryReader { proxy in
       let compact = proxy.size.height < 170
 
-      VStack(spacing: 0) {
-        headerView(compact: compact)
+      if let exercise {
+        ZStack(alignment: .top) {
+          VStack(spacing: 0) {
+            headerView(exercise: exercise, compact: compact)
 
-        Spacer(minLength: 4)
+            Spacer(minLength: 4)
 
-        HStack(spacing: compact ? 4 : 6) {
-          CrownInputCard(
-            title: "Carga",
-            value: String(format: "%.1f", currentWeight),
-            unit: "kg",
-            isFocused: focusedInput == .weight,
-            compact: compact
-          )
-          .focusable(true)
-          .focused($focusedInput, equals: .weight)
-          .digitalCrownRotation(
-            weightBinding,
-            from: 0,
-            through: 400,
-            by: 0.5,
-            sensitivity: .medium,
-            isContinuous: true,
-            isHapticFeedbackEnabled: true
-          )
-          .onTapGesture {
-            focusedInput = .weight
+            HStack(spacing: compact ? 4 : 6) {
+              CrownInputCard(
+                title: "Carga",
+                value: String(format: "%.1f", currentWeight(exercise)),
+                unit: "kg",
+                isFocused: focusedInput == .weight,
+                compact: compact
+              )
+              .focusable(true)
+              .focused($focusedInput, equals: .weight)
+              .digitalCrownRotation(
+                store.weightBinding(exerciseIndex: exerciseIndex, setIndex: currentSetIndex),
+                from: 0,
+                through: 400,
+                by: 0.5,
+                sensitivity: .medium,
+                isContinuous: true,
+                isHapticFeedbackEnabled: true
+              )
+              .onTapGesture {
+                focusedInput = .weight
+              }
+
+              CrownInputCard(
+                title: "Reps",
+                value: "\(currentReps(exercise))",
+                unit: "rep",
+                subtitle: exercise.targetReps.map { "Meta: \($0)" },
+                isFocused: focusedInput == .reps,
+                compact: compact
+              )
+              .focusable(true)
+              .focused($focusedInput, equals: .reps)
+              .digitalCrownRotation(
+                store.repsBinding(exerciseIndex: exerciseIndex, setIndex: currentSetIndex),
+                from: 0,
+                through: 100,
+                by: 1,
+                sensitivity: .medium,
+                isContinuous: true,
+                isHapticFeedbackEnabled: true
+              )
+              .onTapGesture {
+                focusedInput = .reps
+              }
+            }
+
+            Spacer(minLength: 4)
+
+            // Bottom area: action button or navigation hint
+            if isExerciseCompleted(exercise) && isLastExercise {
+              Button("Finalizar Treino") {
+                onFinishWorkout()
+              }
+              .font(compact ? .subheadline : .headline)
+              .buttonStyle(.borderedProminent)
+              .tint(.green)
+              .frame(maxWidth: .infinity)
+              .frame(minHeight: compact ? 36 : 40)
+              .padding(.bottom, proxy.safeAreaInsets.bottom > 0 ? 0 : 4)
+            } else if isExerciseCompleted(exercise) {
+              SwipeHintView(isVisible: $showSwipeHint)
+                .frame(minHeight: compact ? 36 : 40)
+                .padding(.bottom, proxy.safeAreaInsets.bottom > 0 ? 0 : 4)
+            } else {
+              Button("Concluir Série") {
+                NSLog("[KinevoWatch] Button TAP: Concluir Série — exercise=%@, setIndex=%d", exercise.name, currentSetIndex)
+                completeCurrentSet(exercise: exercise)
+              }
+              .font(compact ? .subheadline : .headline)
+              .buttonStyle(.borderedProminent)
+              .tint(Color.kinevoViolet)
+              .frame(maxWidth: .infinity)
+              .frame(minHeight: compact ? 36 : 40)
+              .padding(.bottom, proxy.safeAreaInsets.bottom > 0 ? 0 : 4)
+            }
           }
+          .padding(.horizontal, 8)
+          .padding(.top, proxy.safeAreaInsets.top > 0 ? 0 : 4)
 
-          CrownInputCard(
-            title: "Reps",
-            value: "\(currentReps)",
-            unit: "rep",
-            subtitle: exercise.targetReps.map { "Meta: \($0)" },
-            isFocused: focusedInput == .reps,
-            compact: compact
-          )
-          .focusable(true)
-          .focused($focusedInput, equals: .reps)
-          .digitalCrownRotation(
-            repsBinding,
-            from: 0,
-            through: 100,
-            by: 1,
-            sensitivity: .medium,
-            isContinuous: true,
-            isHapticFeedbackEnabled: true
-          )
-          .onTapGesture {
-            focusedInput = .reps
+          // Undo banner + PR badge overlay
+          VStack(spacing: 4) {
+            if showPrBadge {
+              prBadgeView
+                .transition(.scale.combined(with: .opacity))
+            }
+            if showUndoBanner, let last = store.lastCompletedSet, last.exerciseIndex == exerciseIndex {
+              undoBannerView(last: last)
+                .transition(.move(edge: .top).combined(with: .opacity))
+            }
           }
-        }
-
-        Spacer(minLength: 4)
-
-        // Bottom area: action button or navigation hint
-        if isExerciseCompleted && isLastExercise {
-          Button("Finalizar Treino") {
-            onFinishWorkout()
-          }
-          .font(compact ? .subheadline : .headline)
-          .buttonStyle(.borderedProminent)
-          .tint(.green)
-          .frame(maxWidth: .infinity)
-          .frame(minHeight: compact ? 36 : 40)
-          .padding(.bottom, proxy.safeAreaInsets.bottom > 0 ? 0 : 4)
-        } else if isExerciseCompleted {
-          // Swipe hint — replaces the disabled button
-          SwipeHintView(isVisible: $showSwipeHint)
-            .frame(minHeight: compact ? 36 : 40)
-            .padding(.bottom, proxy.safeAreaInsets.bottom > 0 ? 0 : 4)
-        } else {
-          Button("Concluir Série") {
-            NSLog("[KinevoWatch] 🔘 Button TAP: Concluir Série — exercise=%@, setIndex=%d", exercise.name, currentSetIndex)
-            completeCurrentSet()
-          }
-          .font(compact ? .subheadline : .headline)
-          .buttonStyle(.borderedProminent)
-          .tint(Color.kinevoViolet)
-          .frame(maxWidth: .infinity)
-          .frame(minHeight: compact ? 36 : 40)
-          .padding(.bottom, proxy.safeAreaInsets.bottom > 0 ? 0 : 4)
         }
       }
-      .padding(.horizontal, 8)
-      .padding(.top, proxy.safeAreaInsets.top > 0 ? 0 : 4)
     }
     .foregroundStyle(.white)
     .background(Color.black.edgesIgnoringSafeArea(.all))
@@ -441,7 +485,7 @@ private struct ExerciseExecutionPage: View {
     }
   }
 
-  private func headerView(compact: Bool) -> some View {
+  private func headerView(exercise: WorkoutExecutionState.ExerciseState, compact: Bool) -> some View {
     VStack(alignment: .leading, spacing: 3) {
       HStack {
         HStack(spacing: 4) {
@@ -470,42 +514,58 @@ private struct ExerciseExecutionPage: View {
         .lineLimit(1)
         .minimumScaleFactor(0.8)
 
-      Text("Série \(currentSetNumber) de \(totalSets) • Exercício \(exerciseNumber) de \(totalExercises)")
-        .font(compact ? .system(size: 10, weight: .regular) : .caption2)
-        .foregroundStyle(.secondary)
-        .lineLimit(1)
+      if let lw = exercise.lastWeight, let lr = exercise.lastReps {
+        HStack(spacing: 4) {
+          Text("Anterior \(String(format: "%.0f", lw)) × \(lr)")
+            .font(.system(size: compact ? 9 : 10, weight: .medium))
+            .foregroundStyle(.gray.opacity(0.7))
+            .lineLimit(1)
+
+          if let progressText = progressLabel(exercise: exercise) {
+            Text(progressText)
+              .font(.system(size: compact ? 9 : 10, weight: .bold))
+              .foregroundStyle(.green)
+              .lineLimit(1)
+          }
+        }
         .minimumScaleFactor(0.7)
+      }
+
+      HStack(spacing: 0) {
+        Text("Série \(currentSetNumber(exercise)) de \(totalSets(exercise)) • Exercício \(exerciseIndex + 1) de \(totalExercises)")
+          .font(compact ? .system(size: 10, weight: .regular) : .caption2)
+          .foregroundStyle(.secondary)
+          .lineLimit(1)
+          .minimumScaleFactor(0.7)
+
+        Spacer(minLength: 6)
+
+        setProgressDots(exercise: exercise, compact: compact)
+      }
     }
   }
 
-  private func completeCurrentSet() {
-    NSLog("[KinevoWatch] completeCurrentSet called — currentSetIndex: %d, exercise: %@", currentSetIndex, exercise.name)
+  private func completeCurrentSet(exercise: WorkoutExecutionState.ExerciseState) {
+    let setIndex = currentSetIndex
+
+    NSLog("[KinevoWatch] completeCurrentSet called — currentSetIndex: %d, exercise: %@", setIndex, exercise.name)
 
     guard !exercise.sets.isEmpty else { return }
-    guard currentSetIndex >= 0 && currentSetIndex < exercise.sets.count else { return }
-    guard !exercise.sets[currentSetIndex].isCompleted else { return }
+    guard setIndex >= 0 && setIndex < exercise.sets.count else { return }
+    guard !exercise.sets[setIndex].isCompleted else { return }
 
-    // Capture ALL values BEFORE mutating @Binding
-    let setIndex = currentSetIndex
+    // Capture values BEFORE mutation
     let reps = exercise.sets[setIndex].reps
     let weight = exercise.sets[setIndex].weight
     let restTime = exercise.restTime
     let hasNextSet = setIndex < (exercise.sets.count - 1)
 
-    // ✅ SYNC: Send set completion BEFORE mutating (sessionManager accessible via parent)
+    // Send set completion to iPhone
     NSLog("[KinevoWatch] onSetLogged SYNC — setIndex=%d, reps=%d, weight=%.1f", setIndex, reps, weight)
     onSetLogged(setIndex, reps, weight)
 
-    // Mutate @Binding (triggers SwiftUI re-render)
-    exercise.sets[setIndex].isCompleted = true
-
-    // Copy weight/reps to subsequent incomplete sets
-    for i in (setIndex + 1)..<exercise.sets.count {
-      if !exercise.sets[i].isCompleted {
-        exercise.sets[i].reps = reps
-        exercise.sets[i].weight = weight
-      }
-    }
+    // Mutate via store (persists immediately)
+    store.completeSet(exerciseIndex: exerciseIndex, setIndex: setIndex)
 
     // Haptics
     if !hasNextSet {
@@ -517,7 +577,7 @@ private struct ExerciseExecutionPage: View {
       WKInterfaceDevice.current().play(.success)
     }
 
-    // ✅ ASYNC: Rest timer AFTER mutation (no @EnvironmentObject needed — only @State)
+    // Rest timer
     if hasNextSet && restTime > 0 {
       NSLog("[KinevoWatch] scheduling rest timer — %ds, asyncAfter 0.15s", restTime)
       DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
@@ -525,62 +585,200 @@ private struct ExerciseExecutionPage: View {
       }
     }
 
-    // Advance to next set
+    // Focus reps for next set
     if hasNextSet {
-      currentSetIndex = setIndex + 1
       focusedInput = .reps
     }
-    NSLog("[KinevoWatch] completeCurrentSet END — new currentSetIndex=%d", currentSetIndex)
+
+    // Show undo banner
+    undoBannerDismissTask?.cancel()
+    showPrBadge = false
+    // Check for PR before showing banner
+    if let lw = exercise.lastWeight, weight > lw {
+      showPrBadge = true
+      prBadgeDismissTask?.cancel()
+      prBadgeDismissTask = Task { @MainActor in
+        try? await Task.sleep(for: .seconds(2))
+        guard !Task.isCancelled else { return }
+        withAnimation(.easeOut(duration: 0.25)) {
+          showPrBadge = false
+        }
+      }
+    }
+    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+      showUndoBanner = true
+    }
+    undoBannerDismissTask = Task { @MainActor in
+      try? await Task.sleep(for: .seconds(3))
+      guard !Task.isCancelled else { return }
+      withAnimation(.easeOut(duration: 0.25)) {
+        showUndoBanner = false
+      }
+    }
+
+    NSLog("[KinevoWatch] completeCurrentSet END — new currentSetIndex=%d", store.state?.exercises[exerciseIndex].currentSetIndex ?? -1)
   }
 
-  private var totalSets: Int {
+  private func undoBannerView(last: WorkoutExecutionStore.LastCompletedSet) -> some View {
+    HStack(spacing: 8) {
+      VStack(alignment: .leading, spacing: 1) {
+        HStack(spacing: 4) {
+          Image(systemName: "checkmark.circle.fill")
+            .font(.system(size: 11))
+            .foregroundStyle(.green)
+          Text("Série concluída")
+            .font(.system(size: 11, weight: .semibold))
+            .lineLimit(1)
+        }
+        Text("\(String(format: "%.1f", last.weight))kg × \(last.reps)")
+          .font(.system(size: 10))
+          .foregroundStyle(.secondary)
+          .lineLimit(1)
+          .minimumScaleFactor(0.7)
+      }
+
+      Spacer()
+
+      Button {
+        performUndo()
+      } label: {
+        Text("Desfazer")
+          .font(.system(size: 11, weight: .semibold))
+          .foregroundStyle(Color.kinevoViolet)
+          .lineLimit(1)
+      }
+      .buttonStyle(.plain)
+    }
+    .padding(.horizontal, 10)
+    .padding(.vertical, 6)
+    .background(
+      RoundedRectangle(cornerRadius: 10, style: .continuous)
+        .fill(Color.gray.opacity(0.2))
+    )
+    .padding(.horizontal, 8)
+    .padding(.top, 2)
+  }
+
+  private var prBadgeView: some View {
+    HStack(spacing: 4) {
+      Text("\u{1F3C6}")
+        .font(.system(size: 12))
+      Text("Novo recorde!")
+        .font(.system(size: 11, weight: .bold))
+        .foregroundStyle(.yellow)
+        .lineLimit(1)
+    }
+    .padding(.horizontal, 10)
+    .padding(.vertical, 4)
+    .background(
+      Capsule()
+        .fill(Color.yellow.opacity(0.15))
+    )
+  }
+
+  private func performUndo() {
+    undoBannerDismissTask?.cancel()
+    prBadgeDismissTask?.cancel()
+    withAnimation(.easeOut(duration: 0.25)) {
+      showUndoBanner = false
+      showSwipeHint = false
+      showPrBadge = false
+    }
+    store.undoLastCompletedSet()
+    onDismissRestTimer()
+    focusedInput = .reps
+    WKInterfaceDevice.current().play(.click)
+    NSLog("[KinevoWatch] Undo performed for exercise %d", exerciseIndex)
+  }
+
+  // MARK: - Set Progress Dots
+
+  private func setProgressDots(exercise: WorkoutExecutionState.ExerciseState, compact: Bool) -> some View {
+    let dotSize: CGFloat = compact ? 5 : 6
+    let spacing: CGFloat = compact ? 3 : 4
+    return HStack(spacing: spacing) {
+      ForEach(0..<exercise.sets.count, id: \.self) { i in
+        if exercise.sets[i].isCompleted {
+          // Completed: filled violet
+          Circle()
+            .fill(Color.kinevoViolet)
+            .frame(width: dotSize, height: dotSize)
+        } else if i == currentSetIndex {
+          // Current: hollow with thick violet stroke
+          Circle()
+            .fill(Color.clear)
+            .frame(width: dotSize, height: dotSize)
+            .overlay(
+              Circle()
+                .stroke(Color.kinevoViolet, lineWidth: 2)
+            )
+        } else {
+          // Future: hollow with thin gray stroke
+          Circle()
+            .fill(Color.clear)
+            .frame(width: dotSize, height: dotSize)
+            .overlay(
+              Circle()
+                .stroke(Color.gray.opacity(0.5), lineWidth: 1)
+            )
+        }
+      }
+    }
+  }
+
+  // MARK: - Progress Comparison
+
+  /// Returns a label like "+5 kg" or "+1 rep" when current set values exceed previous performance.
+  private func progressLabel(exercise: WorkoutExecutionState.ExerciseState) -> String? {
+    let weight = currentWeight(exercise)
+    let reps = currentReps(exercise)
+
+    if let lw = exercise.lastWeight, weight > lw {
+      let diff = weight - lw
+      let formatted = diff.truncatingRemainder(dividingBy: 1) == 0
+        ? String(format: "%.0f", diff)
+        : String(format: "%.1f", diff)
+      return "+\(formatted) kg"
+    }
+
+    if let lr = exercise.lastReps, reps > lr {
+      let diff = reps - lr
+      return "+\(diff) rep"
+    }
+
+    return nil
+  }
+
+  // MARK: - Computed Helpers
+
+  private func totalSets(_ exercise: WorkoutExecutionState.ExerciseState) -> Int {
     max(exercise.sets.count, 1)
   }
 
-  private var currentSetNumber: Int {
-    min(currentSetIndex + 1, totalSets)
+  private func currentSetNumber(_ exercise: WorkoutExecutionState.ExerciseState) -> Int {
+    min(currentSetIndex + 1, totalSets(exercise))
   }
 
-  private var isExerciseCompleted: Bool {
+  private func isExerciseCompleted(_ exercise: WorkoutExecutionState.ExerciseState) -> Bool {
     exercise.sets.allSatisfy(\.isCompleted)
   }
 
+  /// True when this is the last exercise AND there are no cardio pages after it.
+  /// If cardio pages exist, the "Finalizar Treino" button moves to the last cardio page.
   private var isLastExercise: Bool {
-    exerciseNumber == totalExercises
+    (exerciseIndex + 1) == totalExercises && !hasCardioAfter
   }
 
-  private var currentReps: Int {
+  private func currentReps(_ exercise: WorkoutExecutionState.ExerciseState) -> Int {
     guard !exercise.sets.isEmpty else { return 0 }
     let index = min(max(currentSetIndex, 0), exercise.sets.count - 1)
     return exercise.sets[index].reps
   }
 
-  private var currentWeight: Double {
+  private func currentWeight(_ exercise: WorkoutExecutionState.ExerciseState) -> Double {
     guard !exercise.sets.isEmpty else { return 0 }
     let index = min(max(currentSetIndex, 0), exercise.sets.count - 1)
     return exercise.sets[index].weight
-  }
-
-  private var repsBinding: Binding<Double> {
-    Binding<Double>(
-      get: { Double(currentReps) },
-      set: { newValue in
-        guard !exercise.sets.isEmpty else { return }
-        let index = min(max(currentSetIndex, 0), exercise.sets.count - 1)
-        exercise.sets[index].reps = max(0, Int(newValue.rounded()))
-      }
-    )
-  }
-
-  private var weightBinding: Binding<Double> {
-    Binding<Double>(
-      get: { currentWeight },
-      set: { newValue in
-        guard !exercise.sets.isEmpty else { return }
-        let index = min(max(currentSetIndex, 0), exercise.sets.count - 1)
-        exercise.sets[index].weight = max(0, newValue)
-      }
-    )
   }
 }
 
@@ -606,10 +804,14 @@ private struct CrownInputCard: View {
         Text(subtitle)
           .font(.system(size: compact ? 9 : 10, weight: .medium))
           .foregroundStyle(Color.kinevoViolet.opacity(0.9))
+          .lineLimit(1)
+          .minimumScaleFactor(0.7)
       } else {
         Text(title.lowercased() == "reps" ? "Repetições" : "\(title) (\(unit))")
           .font(.caption2)
           .foregroundStyle(.gray)
+          .lineLimit(1)
+          .minimumScaleFactor(0.7)
       }
     }
     .frame(maxWidth: .infinity, minHeight: compact ? 60 : 70)
@@ -636,6 +838,8 @@ private struct SwipeHintView: View {
       Text("Próximo exercício")
         .font(.system(size: 13, weight: .semibold))
         .foregroundStyle(.white.opacity(0.85))
+        .lineLimit(1)
+        .minimumScaleFactor(0.75)
 
       Image(systemName: "chevron.right")
         .font(.system(size: 12, weight: .bold))
@@ -682,6 +886,8 @@ private struct RestTimerSheet: View {
           .font(.caption2)
           .foregroundStyle(.secondary)
           .multilineTextAlignment(.center)
+          .lineLimit(2)
+          .minimumScaleFactor(0.7)
 
         ZStack {
           Circle()

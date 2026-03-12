@@ -5,6 +5,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { WorkoutItemCard } from './workout-item-card'
 import type { WorkoutItem } from './program-builder-client'
 import type { Exercise } from '@/types/exercise'
+import { Z } from '@/lib/z-index'
 
 interface SortableWorkoutItemProps {
     item: WorkoutItem
@@ -25,9 +26,23 @@ interface SortableWorkoutItemProps {
     onAddToSuperset?: (supersetId: string) => void
     onRemoveFromSuperset?: (childId: string) => void
     onDissolveSuperset?: () => void
+    readonly?: boolean
 }
 
 export function SortableWorkoutItem(props: SortableWorkoutItemProps) {
+    // In readonly mode, skip DnD entirely — render a plain div
+    if (props.readonly) {
+        return (
+            <div style={{ position: 'relative' }}>
+                <WorkoutItemCard {...props} readonly />
+            </div>
+        )
+    }
+
+    return <DraggableSortableItem {...props} />
+}
+
+function DraggableSortableItem(props: SortableWorkoutItemProps) {
     const {
         attributes,
         listeners,
@@ -41,8 +56,7 @@ export function SortableWorkoutItem(props: SortableWorkoutItemProps) {
         transform: CSS.Transform.toString(transform),
         transition,
         opacity: isDragging ? 0.4 : 1,
-        // Ensure z-index is higher while dragging
-        zIndex: isDragging ? 50 : 'auto',
+        zIndex: isDragging ? Z.MODAL : 'auto',
         position: 'relative' as const,
     }
 

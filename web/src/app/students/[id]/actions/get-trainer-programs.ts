@@ -2,12 +2,19 @@
 
 import { createClient } from '@/lib/supabase/server'
 
+export interface WorkoutTemplateInfo {
+    id: string
+    name: string
+    frequency: string[] | null
+}
+
 export interface ProgramTemplate {
     id: string
     name: string
     description: string | null
     duration_weeks: number | null
     workout_count: number
+    workouts: WorkoutTemplateInfo[]
 }
 
 export async function getTrainerPrograms(): Promise<{ success: boolean; data?: ProgramTemplate[]; error?: string }> {
@@ -38,7 +45,7 @@ export async function getTrainerPrograms(): Promise<{ success: boolean; data?: P
                 name,
                 description,
                 duration_weeks,
-                workout_templates(id)
+                workout_templates(id, name, frequency)
             `)
             .eq('trainer_id', trainer.id)
             .eq('is_archived', false)
@@ -56,7 +63,10 @@ export async function getTrainerPrograms(): Promise<{ success: boolean; data?: P
             name: p.name,
             description: p.description,
             duration_weeks: p.duration_weeks,
-            workout_count: Array.isArray(p.workout_templates) ? p.workout_templates.length : 0
+            workout_count: Array.isArray(p.workout_templates) ? p.workout_templates.length : 0,
+            workouts: Array.isArray(p.workout_templates)
+                ? p.workout_templates.map((wt: any) => ({ id: wt.id, name: wt.name, frequency: wt.frequency }))
+                : []
         }))
 
         return { success: true, data: formattedPrograms }

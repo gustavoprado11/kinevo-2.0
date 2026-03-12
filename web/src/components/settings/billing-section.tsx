@@ -130,7 +130,7 @@ export function BillingSection({
                         <AlertTriangle size={20} className="text-amber-400" strokeWidth={1.5} />
                     </div>
                     <div className="flex-1">
-                        <h3 className="text-amber-400 font-bold text-[11px] uppercase tracking-widest">Cancelamento agendado</h3>
+                        <h3 className="text-amber-600 dark:text-amber-400 font-bold text-[11px]">Cancelamento agendado</h3>
                         <p className="mt-1 text-sm text-k-text-tertiary">
                             Sua assinatura será encerrada em <strong className="text-k-text-primary">{formatDate(subscription.current_period_end)}</strong>.
                             Você mantém acesso total até essa data. Para reativar, clique em &quot;Gerenciar assinatura&quot; abaixo.
@@ -152,7 +152,7 @@ export function BillingSection({
                                 <p className="mt-0.5 text-sm text-k-text-tertiary">Visão financeira da sua assinatura.</p>
                             </div>
                         </div>
-                        <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border ${badge.color}`}>
+                        <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold border ${badge.color}`}>
                             {badge.label}
                         </span>
                     </div>
@@ -160,7 +160,7 @@ export function BillingSection({
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {/* Plan card */}
                         <div className="rounded-xl border border-k-border-subtle bg-glass-bg p-4">
-                            <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-k-text-tertiary">
+                            <div className="mb-2 flex items-center gap-2 text-[10px] font-bold text-k-text-tertiary">
                                 <Wallet size={12} strokeWidth={2} />
                                 Plano
                             </div>
@@ -189,7 +189,7 @@ export function BillingSection({
 
                         {/* Date card */}
                         <div className="rounded-xl border border-k-border-subtle bg-glass-bg p-4">
-                            <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-k-text-tertiary">
+                            <div className="mb-2 flex items-center gap-2 text-[10px] font-bold text-k-text-tertiary">
                                 <CalendarDays size={12} strokeWidth={2} />
                                 {subscription.cancel_at_period_end
                                     ? 'Acesso até'
@@ -198,7 +198,7 @@ export function BillingSection({
                                         : 'Próxima cobrança'}
                             </div>
                             <p className="font-bold text-k-text-primary">{formatDate(subscription.current_period_end)}</p>
-                            <p className="mt-0.5 text-[10px] font-bold text-k-text-quaternary uppercase tracking-widest">Data de referência</p>
+                            <p className="mt-0.5 text-[10px] font-bold text-k-text-quaternary">Data de referência</p>
                         </div>
                     </div>
 

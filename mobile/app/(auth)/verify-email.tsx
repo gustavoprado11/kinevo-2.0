@@ -52,7 +52,7 @@ export default function VerifyEmailScreen() {
         setLoading(false);
 
         if (error) {
-            console.error("[VerifyEmail] Erro ao enviar OTP:", error.message);
+            if (__DEV__) console.error("[VerifyEmail] Erro ao enviar OTP:", error.message);
             Alert.alert("Erro", "Não foi possível enviar o código. Tente novamente.");
             return;
         }
@@ -81,7 +81,7 @@ export default function VerifyEmailScreen() {
 
         if (authError) {
             setLoading(false);
-            console.error("[VerifyEmail] Erro ao atualizar e-mail Auth:", authError.message);
+            if (__DEV__) console.error("[VerifyEmail] Erro ao atualizar e-mail Auth:", authError.message);
             Alert.alert("Erro", authError.message);
             return;
         }
@@ -93,7 +93,7 @@ export default function VerifyEmailScreen() {
             .eq("user_id", user!.id);
 
         if (dbError) {
-            console.error("[VerifyEmail] Erro ao atualizar students:", dbError.message);
+            if (__DEV__) console.error("[VerifyEmail] Erro ao atualizar students:", dbError.message);
             // Não bloqueia o fluxo - auth email é a fonte de verdade
         }
 

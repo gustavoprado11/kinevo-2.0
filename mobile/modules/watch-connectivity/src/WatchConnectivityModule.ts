@@ -1,6 +1,8 @@
 import { requireNativeModule, type EventSubscription } from 'expo-modules-core';
+import { Platform } from 'react-native';
 import type {
   WatchWorkoutPayload,
+  WatchProgramPayload,
   WatchMessageEvent,
 } from './WatchConnectivityModule.types';
 
@@ -8,15 +10,20 @@ import type {
 // NativeModulesProxy (legacy bridge) does NOT trigger OnStartObserving/OnStopObserving,
 // which means hasJSListeners stays false and ALL watch events get buffered but never delivered.
 // In Expo SDK 52+, NativeModule extends EventEmitter — the module IS the emitter.
-const WatchConnectivityModule = requireNativeModule('WatchConnectivityModule');
+//
+// Guard: only load native module on iOS — no Android implementation exists,
+// and requireNativeModule would crash at import time on Android.
+const WatchConnectivityModule = Platform.OS === 'ios'
+  ? requireNativeModule('WatchConnectivityModule')
+  : null;
 
 /**
  * Sync the latest workout snapshot to Apple Watch.
  * Uses updateApplicationContext (last-write-wins state channel).
  */
 export function syncWorkoutToWatch(workout: WatchWorkoutPayload | null): void {
-  console.log('[WatchConnectivityModule.ts] Module exists:', !!WatchConnectivityModule);
-  console.log('[WatchConnectivityModule.ts] syncWorkoutToWatch function exists:', !!WatchConnectivityModule?.syncWorkoutToWatch);
+  if (__DEV__) console.log('[WatchConnectivityModule.ts] Module exists:', !!WatchConnectivityModule);
+  if (__DEV__) console.log('[WatchConnectivityModule.ts] syncWorkoutToWatch function exists:', !!WatchConnectivityModule?.syncWorkoutToWatch);
 
   if (!WatchConnectivityModule || !WatchConnectivityModule.syncWorkoutToWatch) {
     console.error('[WatchConnectivityModule.ts] Native module or function not found!');
@@ -25,6 +32,20 @@ export function syncWorkoutToWatch(workout: WatchWorkoutPayload | null): void {
 
   const workoutJSON = JSON.stringify(workout);
   return WatchConnectivityModule.syncWorkoutToWatch(workoutJSON);
+}
+
+/**
+ * Sync the full program snapshot to Apple Watch (schemaVersion 2).
+ * Uses updateApplicationContext (last-write-wins state channel).
+ */
+export function syncProgramToWatch(program: WatchProgramPayload | null): void {
+  if (!WatchConnectivityModule || !WatchConnectivityModule.syncProgramToWatch) {
+    console.error('[WatchConnectivityModule.ts] syncProgramToWatch not available');
+    return;
+  }
+
+  const programJSON = JSON.stringify(program);
+  return WatchConnectivityModule.syncProgramToWatch(programJSON);
 }
 
 /**
@@ -39,16 +60,21 @@ export function sendWorkoutState(payload: WatchWorkoutPayload): void {
  * Uses sendMessage (expects reply, may fail if watch unreachable)
  */
 export function sendMessage(message: any): Promise<any> {
+  if (!WatchConnectivityModule) return Promise.resolve(null);
   return WatchConnectivityModule.sendMessage(message);
 }
 
 /**
  * Subscribe to messages from Apple Watch.
  * NativeModule extends EventEmitter — addListener directly triggers OnStartObserving.
+ * Returns a no-op subscription on Android.
  */
 export function addWatchMessageListener(
   listener: (event: WatchMessageEvent) => void
 ): EventSubscription {
+  if (!WatchConnectivityModule) {
+    return { remove: () => {} } as EventSubscription;
+  }
   return WatchConnectivityModule.addListener('onWatchMessage', listener);
 }
 
@@ -61,7 +87,7 @@ export function sendAckToWatch(workoutId: string): void {
     console.error('[WatchConnectivityModule.ts] sendAckToWatch not available on native module');
     return;
   }
-  console.log(`[WatchConnectivityModule.ts] Sending SYNC_SUCCESS ACK for workoutId: ${workoutId}`);
+  if (__DEV__) console.log(`[WatchConnectivityModule.ts] Sending SYNC_SUCCESS ACK for workoutId: ${workoutId}`);
   return WatchConnectivityModule.sendAckToWatch(workoutId);
 }
 

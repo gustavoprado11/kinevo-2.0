@@ -58,7 +58,7 @@ export function ThemeSelector({ initialTheme = 'system' }: ThemeSelectorProps) {
                     <h2 className="text-xl font-semibold text-k-text-primary">Aparência</h2>
                     <p className="text-sm text-k-text-tertiary mt-1">Escolha como o sistema será exibido.</p>
                 </div>
-                <div className="w-9 h-9 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400">
+                <div className="w-9 h-9 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-600 dark:text-violet-400">
                     {selectedTheme === 'light' ? <Sun size={18} strokeWidth={1.5} /> :
                         selectedTheme === 'dark' ? <Moon size={18} strokeWidth={1.5} /> :
                             <Monitor size={18} strokeWidth={1.5} />}
@@ -86,12 +86,12 @@ export function ThemeSelector({ initialTheme = 'system' }: ThemeSelectorProps) {
                 })}
             </div>
 
-            <p className="text-[10px] uppercase tracking-widest font-bold text-k-text-quaternary mt-4">
+            <p className="text-[10px] font-bold text-k-text-quaternary mt-4">
                 {isPending ? 'Salvando preferência...' : 'Sua escolha é salva no navegador e na sua conta.'}
             </p>
 
             {error && (
-                <div className="mt-3 rounded-xl border border-red-500/30 bg-red-500/10 text-red-300 px-3 py-2 text-sm">
+                <div className="mt-3 rounded-xl border border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-300 px-3 py-2 text-sm">
                     {error}
                 </div>
             )}

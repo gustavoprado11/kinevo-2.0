@@ -40,12 +40,37 @@ export async function updateFormTemplate(input: UpdateFormTemplateInput) {
     // Validate ownership and get current version
     const { data: existing } = await supabaseAdmin
         .from('form_templates')
-        .select('id, version')
+        .select('id, version, trainer_id')
         .eq('id', input.templateId)
-        .eq('trainer_id', trainer.id)
+        .or(`trainer_id.eq.${trainer.id},trainer_id.is.null`)
         .single()
 
     if (!existing) return { success: false, error: 'Template não encontrado' }
+
+    // System templates: clone as trainer-owned instead of editing in place
+    if (existing.trainer_id === null) {
+        const { data: cloned, error: cloneErr } = await supabaseAdmin
+            .from('form_templates')
+            .insert({
+                trainer_id: trainer.id,
+                title,
+                description: input.description?.trim() || null,
+                category: input.category,
+                schema_json: parsedSchema,
+                created_source: 'manual',
+            })
+            .select('id')
+            .single()
+
+        if (cloneErr) {
+            console.error('[updateFormTemplate] clone error:', cloneErr)
+            return { success: false, error: 'Erro ao salvar cópia do template' }
+        }
+
+        revalidatePath('/forms')
+        revalidatePath('/forms/templates')
+        return { success: true, clonedId: cloned.id }
+    }
 
     const { error } = await supabaseAdmin
         .from('form_templates')

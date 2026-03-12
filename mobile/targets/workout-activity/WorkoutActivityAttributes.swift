@@ -19,5 +19,26 @@ struct WorkoutActivityAttributes: ActivityAttributes {
         let totalSetsCompleted: Int
         let totalSetsOverall: Int
         let workoutStartTimestamp: Double   // Unix ms — for elapsed timer
+
+        // Item type: "exercise" | "warmup" | "cardio"
+        let currentItemType: String?
+
+        // Timer fields (warmup & cardio active timers)
+        let timerEndTimestamp: Double?      // Unix ms — target end for native countdown
+        let timerTotalSeconds: Int?
+
+        // Warmup-specific
+        let warmupType: String?            // "Mobilidade", "Livre", etc.
+
+        // Cardio-specific
+        let cardioEquipment: String?       // "Bicicleta", "Esteira", etc.
+        let cardioIntensity: String?       // "Zona 2", "RPE 6", etc.
+        let cardioMode: String?            // "continuous" | "interval"
+        let intervalPhase: String?         // "work" | "rest"
+        let intervalCurrentRound: Int?
+        let intervalTotalRounds: Int?
+
+        // Unique ID per update — forces SwiftUI to recreate timer Text views
+        let updateId: String?
     }
 }

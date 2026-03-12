@@ -19,6 +19,9 @@ import { updateTrainerNotes } from './actions/update-trainer-notes'
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
 import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
 import { getProgramWeek } from '@kinevo/shared/utils/schedule-projection'
+import { FinancialSidebarCard } from '@/components/students/financial-sidebar-card'
+import { AssessmentSidebarCard } from '@/components/students/assessment-sidebar-card'
+import type { DisplayStatus } from '@/types/financial'
 
 interface Student {
     id: string
@@ -98,6 +101,35 @@ interface StudentDetailClientProps {
     calendarInitialSessions: CalendarSession[]
     weeklyAdherence?: { week: number; rate: number }[]
     tonnageMap?: Record<string, { tonnage: number; previousTonnage: number | null; percentChange: number | null }>
+    sidebarContract: {
+        id: string
+        billing_type: string
+        amount: number | null
+        current_period_end: string | null
+        cancel_at_period_end: boolean | null
+        plan_title: string | null
+        plan_interval: string | null
+    } | null
+    displayStatus: DisplayStatus
+    lastSubmission: {
+        id: string
+        templateTitle: string
+        templateCategory: string
+        submittedAt: string
+    } | null
+    pendingForms: {
+        id: string
+        title: string
+        status: string
+        createdAt: string
+    }[]
+    bodyMetrics: {
+        weight: string | null
+        bodyFat: string | null
+        updatedAt: string | null
+    } | null
+    formTemplates: { id: string; title: string; category: string }[]
+    formSchedules?: any[]
 }
 
 export function StudentDetailClient({
@@ -110,7 +142,14 @@ export function StudentDetailClient({
     calendarInitialSessions = [],
     completedPrograms,
     weeklyAdherence = [],
-    tonnageMap = {}
+    tonnageMap = {},
+    sidebarContract,
+    displayStatus,
+    lastSubmission,
+    pendingForms,
+    bodyMetrics,
+    formTemplates,
+    formSchedules = [],
 }: StudentDetailClientProps) {
     console.log('StudentDetailClient Rendered. Scheduled:', scheduledPrograms) // DEBUG LOG
     const router = useRouter()
@@ -357,16 +396,16 @@ export function StudentDetailClient({
                     {/* Right Column: Notes → Queue → History */}
                     <div className="space-y-6 lg:col-span-1">
                         {/* Trainer Notes — First (most frequently used) */}
-                        <div className="bg-glass-bg backdrop-blur-md rounded-2xl border border-k-border-primary p-6">
+                        <div className="bg-white dark:bg-glass-bg backdrop-blur-md rounded-2xl border border-[#E5E5EA] dark:border-k-border-primary p-6">
                             <div className="flex items-center justify-between mb-3">
-                                <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                                <h3 className="text-sm font-semibold text-[#1C1C1E] dark:text-white flex items-center gap-2">
                                     Observações
-                                    <span className="px-2 py-0.5 rounded bg-glass-bg text-[10px] text-k-text-tertiary font-bold uppercase tracking-widest border border-k-border-subtle">
+                                    <span className="px-2 py-0.5 rounded bg-glass-bg text-[10px] text-k-text-tertiary font-bold border border-k-border-subtle">
                                         Notas
                                     </span>
                                 </h3>
                                 {notesSaving && (
-                                    <span className="text-[10px] font-bold uppercase tracking-widest text-k-text-quaternary animate-pulse">
+                                    <span className="text-[10px] font-bold text-k-text-quaternary animate-pulse">
                                         Salvando...
                                     </span>
                                 )}
@@ -380,11 +419,11 @@ export function StudentDetailClient({
                         </div>
 
                         {/* Scheduled Programs — Compact */}
-                        <div className="bg-glass-bg backdrop-blur-md rounded-2xl border border-k-border-primary p-6">
+                        <div className="bg-white dark:bg-glass-bg backdrop-blur-md rounded-2xl border border-[#E5E5EA] dark:border-k-border-primary p-6">
                             <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                                <h3 className="text-sm font-semibold text-[#1C1C1E] dark:text-white flex items-center gap-2">
                                     Próximos Programas
-                                    <span className="px-2 py-0.5 rounded bg-glass-bg text-[10px] text-k-text-tertiary font-bold uppercase tracking-widest border border-k-border-subtle">
+                                    <span className="px-2 py-0.5 rounded bg-glass-bg text-[10px] text-k-text-tertiary font-bold border border-k-border-subtle">
                                         Fila
                                     </span>
                                 </h3>
@@ -453,9 +492,9 @@ export function StudentDetailClient({
                                     {scheduledPrograms.map(program => (
                                         <div key={program.id} className="bg-glass-bg rounded-xl p-4 border border-k-border-subtle hover:border-violet-500/30 transition-all group relative overflow-hidden">
                                             <div className="flex justify-between items-start">
-                                                <div className="relative z-10">
-                                                    <h4 className="font-bold text-white text-sm group-hover:text-violet-300 transition-colors">{program.name}</h4>
-                                                    <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-widest text-k-text-quaternary mt-1">
+                                                <div className="relative z-sticky">
+                                                    <h4 className="font-bold text-[#1C1C1E] dark:text-white text-sm group-hover:text-violet-300 transition-colors">{program.name}</h4>
+                                                    <div className="flex items-center gap-3 text-[10px] font-bold text-k-text-quaternary mt-1">
                                                         {program.duration_weeks && <span>{program.duration_weeks} sem</span>}
                                                         {program.scheduled_start_date && (
                                                             <span className="text-violet-400">
@@ -464,7 +503,7 @@ export function StudentDetailClient({
                                                         )}
                                                     </div>
                                                 </div>
-                                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all relative z-10">
+                                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all relative z-sticky">
                                                     <button onClick={() => handleActivateScheduled(program.id)} disabled={!!processingId} className="p-1.5 text-violet-400 hover:text-white hover:bg-violet-600 rounded-lg transition-all">
                                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /></svg>
                                                     </button>
@@ -482,6 +521,24 @@ export function StudentDetailClient({
                                 </div>
                             )}
                         </div>
+
+                        {/* Financial Card */}
+                        <FinancialSidebarCard
+                            studentId={student.id}
+                            contract={sidebarContract}
+                            displayStatus={displayStatus}
+                            onViewHistory={() => router.push(`/financial?student=${student.id}`)}
+                        />
+
+                        {/* Assessments Card */}
+                        <AssessmentSidebarCard
+                            studentId={student.id}
+                            lastSubmission={lastSubmission}
+                            pendingForms={pendingForms}
+                            bodyMetrics={bodyMetrics}
+                            formTemplates={formTemplates}
+                            formSchedules={formSchedules}
+                        />
 
                         <ProgramHistorySection programs={completedPrograms} />
                     </div>

@@ -80,7 +80,7 @@ export function BlockedClient({ trainerName, state }: BlockedClientProps) {
             <div className="fixed top-0 -left-1/4 w-1/2 h-1/2 bg-violet-600/5 blur-[120px] rounded-full pointer-events-none" />
             <div className="fixed bottom-0 -right-1/4 w-1/2 h-1/2 bg-indigo-500/5 blur-[120px] rounded-full pointer-events-none" />
 
-            <div className="relative z-10 w-full max-w-md text-center">
+            <div className="relative z-sticky w-full max-w-md text-center">
                 {/* Logo */}
                 <div className="flex items-center justify-center gap-3 mb-10">
                     <Image
@@ -113,7 +113,7 @@ export function BlockedClient({ trainerName, state }: BlockedClientProps) {
                     <button
                         onClick={handleAction}
                         disabled={loading}
-                        className="w-full py-3 px-4 bg-violet-600 hover:bg-violet-500 disabled:bg-violet-600/50 disabled:cursor-not-allowed text-white text-[11px] font-black uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-violet-600/20 hover:shadow-violet-500/30"
+                        className="w-full py-3 px-4 bg-violet-600 hover:bg-violet-500 disabled:bg-violet-600/50 disabled:cursor-not-allowed text-white text-[11px] font-black rounded-xl transition-all shadow-lg shadow-violet-600/20 hover:shadow-violet-500/30"
                     >
                         {loading ? 'Processando...' : config.buttonText}
                     </button>

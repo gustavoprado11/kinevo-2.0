@@ -75,7 +75,7 @@ function StepWelcome({ onNext }: { onNext: () => void }) {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
                 <div className="rounded-2xl bg-surface-card border border-k-border-primary p-5 text-left">
                     <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-violet-500/10 mb-3">
-                        <CreditCard size={20} className="text-violet-400" />
+                        <CreditCard size={20} className="text-violet-600 dark:text-violet-400" />
                     </div>
                     <h3 className="text-sm font-semibold text-k-text-primary mb-1">Stripe</h3>
                     <p className="text-xs text-k-text-secondary leading-relaxed">
@@ -85,7 +85,7 @@ function StepWelcome({ onNext }: { onNext: () => void }) {
 
                 <div className="rounded-2xl bg-surface-card border border-k-border-primary p-5 text-left">
                     <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-500/10 mb-3">
-                        <HandCoins size={20} className="text-blue-400" />
+                        <HandCoins size={20} className="text-blue-600 dark:text-blue-400" />
                     </div>
                     <h3 className="text-sm font-semibold text-k-text-primary mb-1">Manual</h3>
                     <p className="text-xs text-k-text-secondary leading-relaxed">
@@ -95,7 +95,7 @@ function StepWelcome({ onNext }: { onNext: () => void }) {
 
                 <div className="rounded-2xl bg-surface-card border border-k-border-primary p-5 text-left">
                     <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-emerald-500/10 mb-3">
-                        <Heart size={20} className="text-emerald-400" />
+                        <Heart size={20} className="text-emerald-600 dark:text-emerald-400" />
                     </div>
                     <h3 className="text-sm font-semibold text-k-text-primary mb-1">Cortesia</h3>
                     <p className="text-xs text-k-text-secondary leading-relaxed">
@@ -138,7 +138,7 @@ function StepConnect({
 
             <div className="rounded-2xl bg-surface-card border border-k-border-primary p-8 mb-8 max-w-md mx-auto">
                 <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-violet-500/10 mx-auto mb-4">
-                    <ExternalLink size={24} className="text-violet-400" />
+                    <ExternalLink size={24} className="text-violet-600 dark:text-violet-400" />
                 </div>
                 <h3 className="text-base font-semibold text-k-text-primary mb-2">
                     Pagamentos automáticos
@@ -251,14 +251,14 @@ function StepCreatePlan({
 
             <div className="rounded-2xl bg-surface-card border border-k-border-primary p-6 max-w-md mx-auto text-left">
                 {error && (
-                    <div className="mb-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-red-400">
+                    <div className="mb-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-red-600 dark:text-red-400">
                         {error}
                     </div>
                 )}
 
                 <div className="space-y-4">
                     <div>
-                        <label className="block text-xs font-medium text-k-text-secondary uppercase tracking-wider mb-1.5">
+                        <label className="block text-xs font-medium text-k-text-secondary mb-1.5">
                             Título do Plano
                         </label>
                         <input
@@ -271,7 +271,7 @@ function StepCreatePlan({
                     </div>
 
                     <div>
-                        <label className="block text-xs font-medium text-k-text-secondary uppercase tracking-wider mb-1.5">
+                        <label className="block text-xs font-medium text-k-text-secondary mb-1.5">
                             Preço (R$)
                         </label>
                         <input
@@ -284,7 +284,7 @@ function StepCreatePlan({
                     </div>
 
                     <div>
-                        <label className="block text-xs font-medium text-k-text-secondary uppercase tracking-wider mb-1.5">
+                        <label className="block text-xs font-medium text-k-text-secondary mb-1.5">
                             Intervalo
                         </label>
                         <select

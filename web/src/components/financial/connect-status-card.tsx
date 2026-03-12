@@ -99,7 +99,7 @@ export function ConnectStatusCard({
             <div className="rounded-2xl border border-k-border-primary bg-surface-card p-6">
                 <div className="flex items-start gap-4">
                     <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-violet-500/10">
-                        <ExternalLink size={20} className="text-violet-400" />
+                        <ExternalLink size={20} className="text-violet-600 dark:text-violet-400" />
                     </div>
                     <div className="flex-1">
                         <h3 className="text-base font-semibold text-k-text-primary">
@@ -132,7 +132,7 @@ export function ConnectStatusCard({
             <div className="rounded-2xl border border-amber-500/20 bg-surface-card p-6">
                 <div className="flex items-start gap-4">
                     <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-amber-500/10">
-                        <AlertCircle size={20} className="text-amber-400" />
+                        <AlertCircle size={20} className="text-amber-600 dark:text-amber-400" />
                     </div>
                     <div className="flex-1">
                         <h3 className="text-base font-semibold text-k-text-primary">
@@ -164,20 +164,20 @@ export function ConnectStatusCard({
         <div className="rounded-2xl border border-k-border-primary bg-surface-card px-5 py-4">
             <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                    <CheckCircle2 size={16} className="text-emerald-400 flex-shrink-0" />
+                    <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
                     <span className="text-sm font-medium text-k-text-primary">Stripe conectado</span>
                     {balanceLoading ? (
                         <Loader2 size={12} className="animate-spin text-k-text-quaternary" />
                     ) : balance ? (
                         <div className="flex items-center gap-3 ml-2 text-xs text-k-text-secondary">
                             <span className="flex items-center gap-1">
-                                <Wallet size={12} className="text-emerald-400" />
+                                <Wallet size={12} className="text-emerald-600 dark:text-emerald-400" />
                                 {formatBalance(balance.available)}
                                 <InfoTooltip content="Saldo disponível para transferência na sua conta Stripe." />
                             </span>
                             {balance.pending > 0 && (
                                 <span className="flex items-center gap-1">
-                                    <Clock size={12} className="text-amber-400" />
+                                    <Clock size={12} className="text-amber-600 dark:text-amber-400" />
                                     {formatCurrency(balance.pending)} pendente
                                     <InfoTooltip content="Valor em processamento pelo Stripe. Ficará disponível para transferência em alguns dias." />
                                 </span>
@@ -188,7 +188,7 @@ export function ConnectStatusCard({
                 <button
                     onClick={handleOpenDashboard}
                     disabled={dashboardLoading}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-glass-bg hover:bg-violet-500/10 text-k-text-secondary hover:text-violet-400 transition-colors disabled:opacity-50 flex-shrink-0"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-glass-bg hover:bg-violet-500/10 text-k-text-secondary hover:text-violet-600 dark:hover:text-violet-400 transition-colors disabled:opacity-50 flex-shrink-0"
                 >
                     {dashboardLoading ? (
                         <Loader2 size={12} className="animate-spin" />

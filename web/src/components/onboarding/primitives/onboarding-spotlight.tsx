@@ -35,7 +35,7 @@ export function OnboardingSpotlight({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.25 }}
-            className="fixed inset-0 z-[70]"
+            className="fixed inset-0 z-onboarding"
             style={{ pointerEvents: 'all' }}
           >
             {/* Semi-transparent overlay with cutout via box-shadow */}

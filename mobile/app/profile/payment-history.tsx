@@ -58,7 +58,7 @@ export default function PaymentHistoryScreen() {
                 .order("created_at", { ascending: false });
 
             if (error) {
-                console.error("[payment-history] Error:", error);
+                if (__DEV__) console.error("[payment-history] Error:", error);
                 return;
             }
 
@@ -76,7 +76,7 @@ export default function PaymentHistoryScreen() {
                 );
             }
         } catch (err) {
-            console.error("[payment-history] Error:", err);
+            if (__DEV__) console.error("[payment-history] Error:", err);
         } finally {
             setIsLoading(false);
         }

@@ -60,18 +60,16 @@ export default function HomeScreen() {
     const handleShareWorkout = useCallback(async (workout: any) => {
         if (!workout) return;
 
-        const sessionDate = selectedDate;
-        const session = sessions.find(s => {
-            const sDate = new Date(s.started_at);
-            return s.assigned_workout_id === workout.id &&
-                s.status === 'completed' &&
-                sDate.getDate() === sessionDate.getDate() &&
-                sDate.getMonth() === sessionDate.getMonth() &&
-                sDate.getFullYear() === sessionDate.getFullYear();
-        });
+        // Use sessionsMap (indexed by completed_at ?? started_at) for consistent lookup
+        const selectedKey = toDateKey(selectedDate);
+        const daySessions = sessionsMap.get(selectedKey) || [];
+        const session = daySessions.find(s =>
+            s.status === 'completed' &&
+            s.assigned_workout_id === workout.id
+        ) || daySessions.find(s => s.status === 'completed');
 
         if (!session) {
-            console.log("No completed session found for sharing");
+            if (__DEV__) console.log("No completed session found for sharing");
             return;
         }
 
@@ -94,7 +92,7 @@ export default function HomeScreen() {
         });
         setShareModalVisible(true);
         setShareSessionId(session.id);
-    }, [sessions, selectedDate, profile]);
+    }, [sessionsMap, selectedDate, profile]);
 
     const onRefresh = useCallback(async () => {
         setRefreshing(true);

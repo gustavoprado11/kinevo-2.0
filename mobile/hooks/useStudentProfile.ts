@@ -9,6 +9,7 @@ export interface StudentProfile {
     phone: string | null;
     avatar_url: string | null;
     status: string;
+    coach_id: string | null;
     coach?: {
         name: string;
         avatar_url: string | null;
@@ -27,7 +28,7 @@ export function useStudentProfile() {
         try {
             const { data, error }: { data: any; error: any } = await supabase
                 .from("students" as any)
-                .select("id, name, email, phone, avatar_url, status, trainers:coach_id (name, avatar_url)")
+                .select("id, name, email, phone, avatar_url, status, coach_id, trainers:coach_id (name, avatar_url)")
                 .eq("auth_user_id", user.id)
                 .maybeSingle();
 
@@ -41,6 +42,7 @@ export function useStudentProfile() {
                     phone: data.phone,
                     avatar_url: data.avatar_url,
                     status: data.status,
+                    coach_id: data.coach_id || null,
                     coach: data.trainers ? {
                         name: data.trainers.name,
                         avatar_url: data.trainers.avatar_url
@@ -48,7 +50,7 @@ export function useStudentProfile() {
                 });
             }
         } catch (err) {
-            console.error("[useStudentProfile] Error fetching profile:", err);
+            if (__DEV__) console.error("[useStudentProfile] Error fetching profile:", err);
         } finally {
             setIsLoading(false);
         }
@@ -100,7 +102,7 @@ export function useStudentProfile() {
             // Update local state
             setProfile(prev => prev ? { ...prev, avatar_url: publicUrl } : null);
         } catch (err) {
-            console.error("[useStudentProfile] Error uploading avatar:", err);
+            if (__DEV__) console.error("[useStudentProfile] Error uploading avatar:", err);
             throw err;
         } finally {
             setIsUploading(false);
@@ -113,7 +115,7 @@ export function useStudentProfile() {
             if (error) throw error;
             await signOut();
         } catch (err) {
-            console.error("[useStudentProfile] Error deleting account:", err);
+            if (__DEV__) console.error("[useStudentProfile] Error deleting account:", err);
             throw err;
         }
     }, [signOut]);

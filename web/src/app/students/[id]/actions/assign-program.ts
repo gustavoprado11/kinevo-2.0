@@ -2,6 +2,8 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { insertStudentNotification } from '@/lib/student-notifications'
+import { sendStudentPush } from '@/lib/push-notifications'
 
 interface AssignProgramParams {
     studentId: string
@@ -191,6 +193,8 @@ export async function assignProgram({ studentId, templateId, startDate, isSchedu
                                 reps: item.reps,
                                 rest_seconds: item.rest_seconds,
                                 notes: item.notes,
+                                exercise_function: item.exercise_function || null,
+                                item_config: item.item_config || {},
                                 parent_item_id: null
                             })
                             .select('id')
@@ -234,6 +238,8 @@ export async function assignProgram({ studentId, templateId, startDate, isSchedu
                                 reps: item.reps,
                                 rest_seconds: item.rest_seconds,
                                 notes: item.notes,
+                                exercise_function: item.exercise_function || null,
+                                item_config: item.item_config || {},
                                 parent_item_id: parentAssignedId
                             })
                     }
@@ -253,6 +259,27 @@ export async function assignProgram({ studentId, templateId, startDate, isSchedu
                     updated_at: new Date().toISOString(),
                 })
                 .eq('id', prescriptionGenerationId)
+        }
+
+        // 8. Notify student (fire-and-forget)
+        if (status === 'active') {
+            const programName = template.name
+            insertStudentNotification({
+                studentId,
+                trainerId: trainer.id,
+                type: 'program_assigned',
+                title: 'Novo programa de treino!',
+                subtitle: `${programName} está disponível no seu app.`,
+                payload: { program_id: assignedProgram.id, program_name: programName },
+            }).then((inboxItemId) => {
+                sendStudentPush({
+                    studentId,
+                    title: 'Novo programa de treino!',
+                    body: `${programName} está disponível no seu app.`,
+                    inboxItemId: inboxItemId ?? undefined,
+                    data: { type: 'program_assigned', program_id: assignedProgram.id },
+                })
+            })
         }
 
         revalidatePath(`/students/${studentId}`)

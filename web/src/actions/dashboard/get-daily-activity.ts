@@ -35,17 +35,11 @@ export async function getDailyActivity(): Promise<{ success: boolean; data?: Dai
             return { success: false, error: 'Treinador não encontrado' }
         }
 
-        // Get today's range in UTC
-        // We want to fetch everything from the start of the day until now (or end of day)
-        // Since we don't have the user's timezone easily, let's fetch for the last 24 hours OR just filter by date string match if possible.
-        // Better: Let's fetch the last 24h for now to be safe, or just use `current_date` from Postgres if we trust server time.
-        // Actually, the requirement says "HOJE".
-        // Let's use a simple approach: fetch sessions completed >= today at 00:00:00.
-        // We'll use the server's today.
-
-        const today = new Date()
-        today.setHours(0, 0, 0, 0)
-        const todayIso = today.toISOString()
+        // Use Brazil timezone so "today" matches the trainer's local date
+        const TZ = 'America/Sao_Paulo'
+        const now = new Date()
+        const brDateStr = now.toLocaleDateString('en-CA', { timeZone: TZ }) // YYYY-MM-DD
+        const todayIso = startOfDayInTZ(brDateStr, TZ).toISOString()
 
         const { data: sessions, error } = await supabase
             .from('workout_sessions')
@@ -90,8 +84,23 @@ export async function getDailyActivity(): Promise<{ success: boolean; data?: Dai
 
     } catch (error: any) {
         console.error('Error in getDailyActivity:', error)
-        return { success: false, error: error.message }
+        return { success: false, error: 'Erro ao carregar atividades do dia.' }
     }
+}
+
+/** Returns the UTC instant that corresponds to 00:00 of `dateStr` (YYYY-MM-DD) in `tz`. */
+function startOfDayInTZ(dateStr: string, tz: string): Date {
+    const fmt = new Intl.DateTimeFormat('en-US', {
+        timeZone: tz,
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+        hour12: false,
+    })
+    const noon = new Date(`${dateStr}T12:00:00Z`)
+    const parts = Object.fromEntries(fmt.formatToParts(noon).map(p => [p.type, p.value]))
+    const tzHour = parseInt(parts.hour)
+    const offsetMs = (tzHour - 12) * 60 * 60 * 1000
+    return new Date(new Date(`${dateStr}T00:00:00Z`).getTime() - offsetMs)
 }
 
 function formatDuration(seconds: number | null): string {

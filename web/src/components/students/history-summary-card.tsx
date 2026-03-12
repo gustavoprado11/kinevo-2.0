@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { ClipboardCheck } from 'lucide-react'
 import { SessionDetailSheet } from './session-detail-sheet'
 
 interface HistorySummary {
@@ -91,7 +92,7 @@ export function HistorySummaryCard({ summary, recentSessions = [] }: HistorySumm
                     {/* Recent Sessions List */}
                     {recentSessions.length > 0 && (
                         <div>
-                            <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-3">Últimas Sessões</h3>
+                            <h3 className="text-sm font-medium text-muted-foreground mb-3">Últimas Sessões</h3>
                             <div className="space-y-2">
                                 {recentSessions.map((session) => (
                                     <button
@@ -110,15 +111,27 @@ export function HistorySummaryCard({ summary, recentSessions = [] }: HistorySumm
                                                 <p className="text-sm font-medium text-foreground group-hover:text-violet-300 transition-colors">
                                                     {session.assigned_workouts?.name}
                                                 </p>
-                                                <p className="text-xs text-muted-foreground">
-                                                    {new Date(session.completed_at).toLocaleDateString('pt-BR', {
-                                                        weekday: 'short',
-                                                        day: 'numeric',
-                                                        month: 'short',
-                                                        hour: '2-digit',
-                                                        minute: '2-digit'
-                                                    })}
-                                                </p>
+                                                <div className="flex items-center gap-1.5">
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {new Date(session.completed_at).toLocaleDateString('pt-BR', {
+                                                            weekday: 'short',
+                                                            day: 'numeric',
+                                                            month: 'short',
+                                                            hour: '2-digit',
+                                                            minute: '2-digit'
+                                                        })}
+                                                    </p>
+                                                    {session.pre_workout_submission_id && (
+                                                        <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded bg-violet-500/10 text-violet-500 text-[9px] font-bold" title="Check-in pré-treino respondido">
+                                                            <ClipboardCheck size={9} />Pré
+                                                        </span>
+                                                    )}
+                                                    {session.post_workout_submission_id && (
+                                                        <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded bg-emerald-500/10 text-emerald-500 text-[9px] font-bold" title="Check-in pós-treino respondido">
+                                                            <ClipboardCheck size={9} />Pós
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                         <svg className="w-4 h-4 text-muted-foreground/80 group-hover:text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">

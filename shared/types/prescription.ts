@@ -1,10 +1,11 @@
 // ============================================================================
 // Kinevo — AI Prescription Module Types
 // ============================================================================
-// These types mirror the SQL schema defined in migrations 034, 035, and 036.
+// These types mirror the SQL schema defined in migrations 034, 035, 036, and 079.
 // JSONB columns have well-defined TypeScript interfaces — no `any` or `unknown`.
 //
 // Exercise and MuscleGroup types are NOT redefined here — import from exercise.ts.
+// Warmup/Cardio config types are in workout-items.ts.
 
 // ============================================================================
 // ENUMS (union types matching SQL CHECK constraints)
@@ -20,13 +21,36 @@ export type PrescriptionGoal = 'hypertrophy' | 'weight_loss' | 'performance' | '
 export type AiMode = 'auto' | 'copilot' | 'assistant'
 
 /** prescription_generations.ai_source */
-export type AiSource = 'llm' | 'heuristic'
+export type AiSource = 'llm' | 'heuristic' | 'agent'
 
 /** prescription_generations.status */
 export type PrescriptionStatus = 'pending_review' | 'approved' | 'rejected' | 'expired'
 
 /** assigned_programs.status (extended in migration 036 to include 'draft') */
 export type AssignedProgramStatus = 'draft' | 'active' | 'scheduled' | 'completed' | 'paused'
+
+/** workout_item_templates.exercise_function / assigned_workout_items.exercise_function */
+export type ExerciseFunction = 'warmup' | 'activation' | 'main' | 'accessory' | 'conditioning'
+
+export const EXERCISE_FUNCTION_OPTIONS: readonly ExerciseFunction[] = [
+    'warmup', 'activation', 'main', 'accessory', 'conditioning',
+] as const
+
+export const EXERCISE_FUNCTION_LABELS: Record<ExerciseFunction, string> = {
+    warmup: 'Aquecimento',
+    activation: 'Ativação',
+    main: 'Principal',
+    accessory: 'Acessório',
+    conditioning: 'Condicionamento',
+}
+
+export const EXERCISE_FUNCTION_ORDER: Record<ExerciseFunction, number> = {
+    warmup: 0,
+    activation: 1,
+    main: 2,
+    accessory: 3,
+    conditioning: 4,
+}
 
 // ============================================================================
 // JSONB COLUMN INTERFACES
@@ -87,6 +111,14 @@ export interface PrescriptionExerciseRef {
     is_primary_movement: boolean
     /** Recommended position: first=heavy compounds, middle=accessories, last=light isolations/finishers */
     session_position: 'first' | 'middle' | 'last'
+    /** Biomechanical movement pattern (squat, hinge, lunge, push_h, push_v, pull_h, pull_v, isolation, core, carry) */
+    movement_pattern: string | null
+    /** Broader movement family for slot matching (knee_dominant, hip_dominant, horizontal_push, etc.) */
+    movement_pattern_family: string | null
+    /** CNS fatigue classification: high=heavy compounds, moderate=machines/cables, low=isolation */
+    fatigue_class: 'high' | 'moderate' | 'low'
+    /** Coaching context for AI: why/when to pick this exercise (only for curated exercises) */
+    prescription_notes: string | null
 }
 
 /** Performance data used for progressive overload decisions */
@@ -138,28 +170,34 @@ export interface GeneratedWorkout {
     items: GeneratedWorkoutItem[]
 }
 
-/** A single exercise in a generated workout */
+/** A single item in a generated workout (exercise, warmup, or cardio) */
 export interface GeneratedWorkoutItem {
-    /** exercise.id from the library */
-    exercise_id: string
-    /** Snapshot: exercise name at generation time */
-    exercise_name: string
-    /** Snapshot: primary muscle group */
-    exercise_muscle_group: string
-    /** Snapshot: equipment used */
-    exercise_equipment: string | null
-    /** Number of sets prescribed */
-    sets: number
-    /** Rep range or target, e.g. "8-12" or "10" */
-    reps: string
-    /** Rest between sets in seconds */
-    rest_seconds: number
+    /** Item type: 'exercise' (default), 'warmup', or 'cardio' */
+    item_type?: 'exercise' | 'warmup' | 'cardio'
+    /** exercise.id from the library (null for warmup/cardio) */
+    exercise_id?: string | null
+    /** Snapshot: exercise name at generation time (null for warmup/cardio) */
+    exercise_name?: string | null
+    /** Snapshot: primary muscle group (null for warmup/cardio) */
+    exercise_muscle_group?: string | null
+    /** Snapshot: equipment used (null for warmup/cardio) */
+    exercise_equipment?: string | null
+    /** Number of sets prescribed (null for warmup/cardio) */
+    sets?: number | null
+    /** Rep range or target, e.g. "8-12" or "10" (null for warmup/cardio) */
+    reps?: string | null
+    /** Rest between sets in seconds (null for warmup/cardio) */
+    rest_seconds?: number | null
     /** Trainer/AI notes for this exercise */
-    notes: string | null
+    notes?: string | null
     /** Pre-approved substitute exercise IDs */
-    substitute_exercise_ids: string[]
+    substitute_exercise_ids?: string[]
     /** 0-based order within the workout */
     order_index: number
+    /** Functional category of the exercise in the workout */
+    exercise_function?: ExerciseFunction | null
+    /** Configuration for warmup/cardio items (JSONB in DB) */
+    item_config?: Record<string, unknown>
 }
 
 /** AI reasoning attached to the generated program */
@@ -220,6 +258,7 @@ export interface StudentPrescriptionProfile {
     disliked_exercise_ids: string[]
     medical_restrictions: MedicalRestriction[]
     ai_mode: AiMode
+    cycle_observation?: string | null
     adherence_rate: number | null
     avg_session_duration_minutes: number | null
     last_calculated_at: string | null
@@ -247,6 +286,7 @@ export interface PrescriptionGeneration {
     rejected_at: string | null
     approval_notes: string | null
     trainer_edits_count: number
+    trainer_edits_diff: TrainerEditsDiff | null
     generation_time_ms: number | null
     confidence_score: number | null
     expires_at: string
@@ -326,3 +366,139 @@ export const EQUIPMENT_OPTIONS = [
 ] as const
 
 export type EquipmentOption = typeof EQUIPMENT_OPTIONS[number]
+
+// ============================================================================
+// AGENT PRESCRITOR TYPES (multi-turn Claude agent)
+// ============================================================================
+
+/** A question the agent asks the trainer before generating */
+export interface PrescriptionAgentQuestion {
+    /** e.g. 'q1', 'q2', 'equipment' */
+    id: string
+    /** The question text (in Portuguese, contextualized with student name) */
+    question: string
+    /** Brief explanation of why the agent is asking this */
+    context: string
+    /** Response format: single_choice (radio), multi_choice (checkbox), text (textarea) */
+    type: 'single_choice' | 'multi_choice' | 'text'
+    /** Available options for single_choice and multi_choice */
+    options?: string[]
+    /** Whether to show an additional free-text field below the options */
+    allows_text?: boolean
+    /** Placeholder for the free-text field */
+    placeholder?: string
+}
+
+/** The trainer's answer to an agent question */
+export interface PrescriptionAgentAnswer {
+    question_id: string
+    answer: string
+}
+
+/** Context analysis summary produced by the agent's first turn */
+export interface PrescriptionContextAnalysis {
+    /** Brief summary of student status and training history */
+    student_summary: string
+    /** Critical gaps identified that need clarification */
+    identified_gaps: string[]
+    /** Key insights from web search (if used during analysis) */
+    web_search_insights: string[]
+    /** Search queries the agent used */
+    web_search_queries: string[]
+}
+
+/** Extended reasoning with web search evidence and Q&A trail */
+export interface PrescriptionReasoningExtended extends PrescriptionReasoning {
+    /** Context analysis produced during the analysis phase */
+    context_analysis?: PrescriptionContextAnalysis
+    /** URLs and references from web search */
+    evidence_references?: string[]
+    /** Questions asked and trainer's answers */
+    trainer_answers?: PrescriptionAgentAnswer[]
+}
+
+/** Agent conversation state passed between server actions */
+export interface PrescriptionAgentState {
+    /** Full conversation history with Claude */
+    conversation_messages: Array<{
+        role: 'user' | 'assistant'
+        content: string
+    }>
+    /** Analysis produced in Phase 1 */
+    context_analysis: PrescriptionContextAnalysis | null
+    /** Questions generated by the agent (0-3) */
+    questions: PrescriptionAgentQuestion[]
+    /** Trainer's answers to the questions */
+    answers: PrescriptionAgentAnswer[]
+    /** Current phase of the agent */
+    phase: 'analyzing' | 'questions' | 'generating' | 'complete'
+}
+
+/** Max serialized size for agent state (50KB) */
+export const MAX_AGENT_STATE_BYTES = 50_000
+
+// ============================================================================
+// TRAINER FEEDBACK LOOP TYPES
+// ============================================================================
+
+/** Snapshot of a single exercise item for diff comparison */
+export interface TrainerEditItemSnapshot {
+    exercise_id: string
+    exercise_name: string
+    exercise_muscle_group: string
+    sets: number
+    reps: string
+    rest_seconds: number
+}
+
+/** A single edit detected between original AI output and trainer-approved version */
+export interface TrainerEditItem {
+    workout_order_index: number
+    workout_name: string
+    item_order_index: number
+    edit_type: 'replaced' | 'added' | 'removed' | 'sets_changed' | 'reps_changed' | 'rest_changed'
+    original?: TrainerEditItemSnapshot
+    final?: TrainerEditItemSnapshot
+}
+
+/** Volume change per muscle group between original and final */
+export interface VolumeChange {
+    muscle_group: string
+    original_sets: number
+    final_sets: number
+    /** Positive = trainer increased volume */
+    delta: number
+}
+
+/** Full diff stored in prescription_generations.trainer_edits_diff (JSONB) */
+export interface TrainerEditsDiff {
+    total_edits: number
+    item_edits: TrainerEditItem[]
+    volume_changes: VolumeChange[]
+    computed_at: string
+}
+
+/** A pattern detected by analyzing multiple trainer diffs */
+export interface TrainerPattern {
+    pattern_type: 'volume_adjustment' | 'exercise_preference' | 'exercise_removal' | 'group_deprioritized'
+    occurrences: number
+    total_prescriptions: number
+    frequency: number
+    /** Human-readable description for prompt injection */
+    description: string
+    context: {
+        muscle_group?: string
+        from_exercise_id?: string
+        from_exercise_name?: string
+        to_exercise_id?: string
+        to_exercise_name?: string
+        avg_volume_delta?: number
+    }
+}
+
+/** Cached pattern analysis stored in trainers.prescription_patterns (JSONB) */
+export interface TrainerPatterns {
+    patterns: TrainerPattern[]
+    analyzed_prescriptions: number
+    last_analyzed_at: string
+}

@@ -29,7 +29,7 @@ export function useStudentAccess(): StudentAccess {
                 .rpc("check_student_access" as any, { p_student_id: profile.id });
 
             if (error) {
-                console.error("[useStudentAccess] RPC error:", error);
+                if (__DEV__) console.error("[useStudentAccess] RPC error:", error);
                 // On error, allow access (safety — don't lock out)
                 setAllowed(true);
                 setReason("error");
@@ -45,7 +45,7 @@ export function useStudentAccess(): StudentAccess {
                 setReason("no_data");
             }
         } catch (err) {
-            console.error("[useStudentAccess] Error:", err);
+            if (__DEV__) console.error("[useStudentAccess] Error:", err);
             setAllowed(true);
             setReason("error");
         } finally {
