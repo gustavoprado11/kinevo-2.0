@@ -62,26 +62,28 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
         .eq('status', 'completed')
         .order('completed_at', { ascending: false })
 
-    // Calculate aggregates for completed programs
-    const completedPrograms = await Promise.all(
-        (completedProgramsRaw || []).map(async (program) => {
-            const { count: sessionsCount } = await supabase
-                .from('workout_sessions')
-                .select('id', { count: 'exact', head: true })
-                .eq('assigned_program_id', program.id)
-
-            return {
-                id: program.id,
-                name: program.name,
-                description: program.description,
-                started_at: program.started_at,
-                completed_at: program.completed_at,
-                duration_weeks: program.duration_weeks,
-                workouts_count: program.assigned_workouts?.length || 0,
-                sessions_count: sessionsCount || 0
-            }
-        })
-    )
+    // Calculate aggregates for completed programs — single batch query instead of N+1
+    const completedProgramIds = (completedProgramsRaw || []).map(p => p.id)
+    let sessionCountsByProgram = new Map<string, number>()
+    if (completedProgramIds.length > 0) {
+        const { data: sessionCounts } = await supabase
+            .from('workout_sessions')
+            .select('assigned_program_id')
+            .in('assigned_program_id', completedProgramIds)
+        for (const s of sessionCounts || []) {
+            sessionCountsByProgram.set(s.assigned_program_id, (sessionCountsByProgram.get(s.assigned_program_id) || 0) + 1)
+        }
+    }
+    const completedPrograms = (completedProgramsRaw || []).map(program => ({
+        id: program.id,
+        name: program.name,
+        description: program.description,
+        started_at: program.started_at,
+        completed_at: program.completed_at,
+        duration_weeks: program.duration_weeks,
+        workouts_count: program.assigned_workouts?.length || 0,
+        sessions_count: sessionCountsByProgram.get(program.id) || 0,
+    }))
 
     // Get workout sessions summary — use completed_at as canonical timestamp
     const { data: sessions } = await supabase

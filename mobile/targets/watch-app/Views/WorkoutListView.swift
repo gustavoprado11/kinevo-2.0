@@ -85,7 +85,7 @@ struct WorkoutListView: View {
         let isToday = workout.isScheduledToday || snapshot.scheduleMode == .flexible
         let isCompleted = workout.isCompletedToday
 
-        return NavigationLink(destination: WorkoutExecutionView(workout: workout.toWorkoutSnapshot())) {
+        return NavigationLink(value: workout.toWorkoutSnapshot()) {
             HStack(spacing: 10) {
                 // Status icon
                 ZStack {
@@ -146,7 +146,7 @@ struct WorkoutListView: View {
         let totalSets = state.exercises.reduce(0) { $0 + $1.sets.count }
         let snapshot = buildSnapshotForResume(state: state)
 
-        return NavigationLink(destination: WorkoutExecutionView(workout: snapshot)) {
+        return NavigationLink(value: snapshot) {
             HStack(spacing: 10) {
                 ZStack {
                     Circle()

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { router } from 'expo-router';
@@ -896,6 +897,22 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
             }
 
             if (__DEV__) console.log(`[useWorkoutSession] Workout finished. Session: ${currentSessionId}, sets: ${setLogs.length}`);
+
+            // Notify Watch that workout was finished from iPhone
+            if (Platform.OS === 'ios') {
+              try {
+                const { sendMessage } = require('../modules/watch-connectivity/src/WatchConnectivityModule');
+                await sendMessage({
+                  type: 'WORKOUT_FINISHED_FROM_PHONE',
+                  payload: { workoutId },
+                });
+                if (__DEV__) console.log('[useWorkoutSession] Notified Watch of finish');
+              } catch (e: any) {
+                // Watch may not be reachable — not critical
+                if (__DEV__) console.log('[useWorkoutSession] Could not notify Watch:', e?.message);
+              }
+            }
+
             return currentSessionId;
 
         } catch (error: any) {

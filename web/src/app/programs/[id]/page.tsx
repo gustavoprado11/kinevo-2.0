@@ -1,7 +1,12 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { getTrainerWithSubscription } from '@/lib/auth/get-trainer'
-import { ProgramBuilderClient, type Exercise } from '@/components/programs'
+import dynamic from 'next/dynamic'
+import type { Exercise } from '@/components/programs'
+
+const ProgramBuilderClient = dynamic(
+    () => import('@/components/programs').then(mod => mod.ProgramBuilderClient),
+)
 import { getFormTemplatesForTriggers } from '@/actions/programs/get-form-templates-for-triggers'
 
 export default async function EditProgramPage({ params }: { params: Promise<{ id: string }> }) {

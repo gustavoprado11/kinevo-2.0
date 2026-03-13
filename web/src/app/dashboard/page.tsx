@@ -37,9 +37,10 @@ export default async function DashboardPage({
 
     const { trainer } = await getTrainerWithSubscription()
 
-    // Fetch students for StudentModal callback + self profile detection
+    // Fetch dashboard data, students, and templates in parallel
     const supabase = await createClient()
-    const [studentsResult, templatesResult] = await Promise.all([
+    const [data, studentsResult, templatesResult] = await Promise.all([
+        getDashboardData(trainer.id),
         supabase
             .from('students')
             .select('id, name, email, phone, status, created_at, is_trainer_profile')
@@ -61,9 +62,6 @@ export default async function DashboardPage({
     }))
 
     const selfStudent = students?.find(s => (s as any).is_trainer_profile) ?? null
-
-    // All dashboard data (cached 60s)
-    const data = await getDashboardData(trainer.id)
 
     return (
         <DashboardClient

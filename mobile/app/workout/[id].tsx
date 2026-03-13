@@ -171,6 +171,7 @@ export default function WorkoutPlayerScreen() {
     // Send workout data to Apple Watch when loaded
     const lastWatchPayloadRef = useRef<any>(null);
     const workoutStartedAtRef = useRef<string>(new Date().toISOString());
+    const watchStartSentRef = useRef(false);
 
     useEffect(() => {
         if (!isLoading && exercises.length > 0 && workoutName && profile?.name) {
@@ -198,6 +199,18 @@ export default function WorkoutPlayerScreen() {
             if (__DEV__) console.log('[WorkoutScreen] Sending workout to watch:', watchPayload);
             lastWatchPayloadRef.current = watchPayload;
             sendWorkoutToWatch(watchPayload);
+
+            // Notify Watch to auto-start this workout (once per screen mount)
+            if (!watchStartSentRef.current && Platform.OS === 'ios') {
+                watchStartSentRef.current = true;
+                const { sendMessage } = require('../../modules/watch-connectivity/src/WatchConnectivityModule');
+                sendMessage({
+                    type: 'START_WORKOUT_FROM_PHONE',
+                    payload: { workoutId: id as string },
+                }).catch((e: any) => {
+                    if (__DEV__) console.log('[WorkoutScreen] Could not notify Watch to start:', e?.message);
+                });
+            }
         }
     }, [isLoading, exercises, workoutName, profile, id, sendWorkoutToWatch]);
 

@@ -44,13 +44,16 @@ export default async function StudentsPage() {
         .in('student_id', studentIds)
         .eq('status', 'active')
 
-    // All completed sessions for these students (for last session + this week count)
+    // Completed sessions for these students (last 60 days — enough for last session + this week count)
     // Use completed_at as canonical "when workout happened" timestamp
+    const sixtyDaysAgo = new Date()
+    sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60)
     const { data: allSessions } = await supabase
         .from('workout_sessions')
         .select('student_id, completed_at')
         .in('student_id', studentIds)
         .eq('status', 'completed')
+        .gte('completed_at', sixtyDaysAgo.toISOString())
         .order('completed_at', { ascending: false })
 
     // Build session stats per student

@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   transpilePackages: ["@kinevo/shared"],
-  reactCompiler: false,
+  reactCompiler: true,
   turbopack: {},
   images: {
     remotePatterns: [

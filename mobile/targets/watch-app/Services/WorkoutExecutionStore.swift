@@ -1,12 +1,15 @@
 import Foundation
 import SwiftUI
 import Combine
+import WatchKit
 
 /// Central state owner for workout execution.
 /// Lives as @StateObject on KinevoWatchApp — survives view recreation.
 /// Persists to disk on every meaningful mutation for crash resilience.
 class WorkoutExecutionStore: ObservableObject {
     @Published private(set) var state: WorkoutExecutionState?
+    /// Set when iPhone requests a remote start — drives programmatic navigation.
+    @Published var remoteStartWorkoutId: String?
 
     /// Tracks the last completed set for undo support.
     struct LastCompletedSet: Equatable {
@@ -117,6 +120,50 @@ class WorkoutExecutionStore: ObservableObject {
 
         print("[WorkoutStore] SYNC_SUCCESS received for \(workoutId) — clearing workout")
         clearWorkout()
+    }
+
+    /// Handle workout finished from iPhone — clear state if matching workout is active.
+    func handleRemoteFinish(workoutId: String) {
+        guard let current = state else {
+            print("[WorkoutStore] handleRemoteFinish ignored — no active state")
+            return
+        }
+
+        guard current.workoutId == workoutId else {
+            print("[WorkoutStore] handleRemoteFinish ignored — workoutId mismatch (current: \(current.workoutId), remote: \(workoutId))")
+            return
+        }
+
+        print("[WorkoutStore] WORKOUT_FINISHED_FROM_PHONE for \(workoutId) — clearing workout")
+        WKInterfaceDevice.current().play(.success)
+        clearWorkout()
+    }
+
+    /// Handle workout started from iPhone — find workout in program cache and start it.
+    func handleRemoteStart(workoutId: String, programSnapshot: WatchProgramSnapshot?) {
+        // Guard: if already in a workout, ignore
+        if let existing = state {
+            if existing.workoutId == workoutId {
+                print("[WorkoutStore] handleRemoteStart — same workout \(workoutId) already active, ignoring")
+            } else {
+                print("[WorkoutStore] handleRemoteStart — different workout \(existing.workoutId) active, ignoring remote start for \(workoutId)")
+            }
+            return
+        }
+
+        // Find workout in the synced program snapshot
+        guard let snapshot = programSnapshot,
+              let workoutSummary = snapshot.workouts.first(where: { $0.workoutId == workoutId })
+        else {
+            print("[WorkoutStore] handleRemoteStart — workout \(workoutId) not found in program cache")
+            return
+        }
+
+        let workoutSnapshot = workoutSummary.toWorkoutSnapshot()
+        startWorkout(from: workoutSnapshot)
+        WKInterfaceDevice.current().play(.start)
+        remoteStartWorkoutId = workoutId
+        print("[WorkoutStore] handleRemoteStart — started workout \(workoutId) from iPhone")
     }
 
     /// Clear workout state (finished or discarded). Deletes persisted file.

@@ -77,7 +77,7 @@ struct WatchExercise {
 // MARK: - Snapshot Types (used by WorkoutExecutionView)
 
 /// Extended exercise model with targetReps for the execution UI.
-struct WatchExerciseSnapshot: Identifiable {
+struct WatchExerciseSnapshot: Identifiable, Hashable {
     let id: String
     let name: String
     let sets: Int
@@ -123,7 +123,7 @@ struct WatchExerciseSnapshot: Identifiable {
 }
 
 /// Extended workout model with timestamps for the execution UI.
-struct WatchWorkoutSnapshot {
+struct WatchWorkoutSnapshot: Hashable {
     let workoutId: String
     let workoutName: String
     let studentName: String
@@ -133,6 +133,14 @@ struct WatchWorkoutSnapshot {
     let isActive: Bool
     let startedAt: String?
     let updatedAt: String?
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(workoutId)
+    }
+
+    static func == (lhs: WatchWorkoutSnapshot, rhs: WatchWorkoutSnapshot) -> Bool {
+        lhs.workoutId == rhs.workoutId
+    }
 
     static func from(_ workout: WatchWorkout) -> WatchWorkoutSnapshot {
         WatchWorkoutSnapshot(
@@ -395,12 +403,12 @@ struct WatchProgramWorkoutSummary: Identifiable {
 
 // MARK: - Cardio Item (Watch)
 
-struct WatchCardioItem: Codable, Identifiable {
+struct WatchCardioItem: Codable, Identifiable, Hashable {
     let id: String
     let orderIndex: Int
     let config: CardioConfig
 
-    struct CardioConfig: Codable {
+    struct CardioConfig: Codable, Hashable {
         let mode: String        // "continuous" | "interval"
         let equipment: String?
         let equipmentLabel: String?

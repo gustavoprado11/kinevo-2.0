@@ -339,6 +339,78 @@ export async function finishWorkoutFromWatch(
     if (__DEV__) console.warn('[finishWorkoutFromWatch] Step 7: No exercise data from watch — session saved with RPE only');
   }
 
+  // 8. Upsert cardio set_logs (mirrors useWorkoutSession logic for cardio items)
+  const watchCardio = payload.cardio;
+  if (watchCardio && watchCardio.length > 0) {
+    if (__DEV__) console.log(`[finishWorkoutFromWatch] Step 8: Processing ${watchCardio.length} cardio item(s)`);
+
+    // Fetch item_config from assigned_workout_items for each cardio item
+    const cardioItemIds = watchCardio.map((c) => c.itemId);
+    const { data: cardioItems, error: cardioItemsError }: { data: any; error: any } = await supabase
+      .from('assigned_workout_items' as any)
+      .select('id, exercise_id, item_config')
+      .in('id', cardioItemIds);
+
+    if (cardioItemsError) {
+      if (__DEV__) console.error('[finishWorkoutFromWatch] Step 8a FAILED: Fetch cardio items error:', cardioItemsError.message);
+    }
+
+    const cardioItemMap = new Map<string, any>(
+      (cardioItems || []).map((item: any) => [item.id, item])
+    );
+
+    const cardioSetLogs: any[] = [];
+    const now = new Date();
+
+    for (const cardio of watchCardio) {
+      const item = cardioItemMap.get(cardio.itemId);
+      const config = item?.item_config || {};
+
+      const notesJson = JSON.stringify({
+        mode: config.mode || 'continuous',
+        equipment: config.equipment,
+        duration_minutes: config.duration_minutes,
+        distance_km: config.distance_km,
+        intensity: config.intensity,
+        intervals: config.intervals,
+        actual_duration_seconds: cardio.elapsedSeconds,
+        completed_rounds: config.completed_rounds,
+      });
+
+      cardioSetLogs.push({
+        workout_session_id: sessionId,
+        assigned_workout_item_id: cardio.itemId,
+        planned_exercise_id: item?.exercise_id || null,
+        executed_exercise_id: item?.exercise_id || null,
+        swap_source: 'none',
+        exercise_id: item?.exercise_id || null,
+        set_number: 1,
+        weight: 0,
+        reps_completed: 1,
+        is_completed: true,
+        completed_at: now.toISOString(),
+        weight_unit: 'kg',
+        notes: notesJson,
+      });
+    }
+
+    if (cardioSetLogs.length > 0) {
+      if (__DEV__) console.log(`[finishWorkoutFromWatch] Step 8b: Upserting ${cardioSetLogs.length} cardio set_logs`);
+
+      const { error: cardioLogsError } = await supabase
+        .from('set_logs' as any)
+        .upsert(cardioSetLogs, {
+          onConflict: 'workout_session_id,assigned_workout_item_id,set_number',
+        });
+
+      if (cardioLogsError) {
+        if (__DEV__) console.error('[finishWorkoutFromWatch] Step 8b FAILED: Upsert cardio set_logs error:', cardioLogsError.message, cardioLogsError.details);
+      } else {
+        if (__DEV__) console.log(`[finishWorkoutFromWatch] Step 8b: Upserted ${cardioSetLogs.length} cardio set_logs OK`);
+      }
+    }
+  }
+
   watchFinishState.markFinished(workoutId);
   if (__DEV__) console.log(`[finishWorkoutFromWatch] DONE — session ${sessionId} saved for workout ${workoutId}`);
   return sessionId;

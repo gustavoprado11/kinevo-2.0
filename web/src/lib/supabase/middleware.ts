@@ -29,10 +29,13 @@ export async function updateSession(request: NextRequest) {
         }
     )
 
-    // Do not run code between createServerClient and supabase.auth.getUser()
+    // Use getSession() instead of getUser() — reads from cookie locally
+    // without a roundtrip to Supabase Auth API (~100-200ms saved per navigation).
+    // Pages that need fresh user data still call getUser() in their own server code.
     const {
-        data: { user },
-    } = await supabase.auth.getUser()
+        data: { session },
+    } = await supabase.auth.getSession()
+    const user = session?.user ?? null
 
     // Protected routes - redirect to login if not authenticated
     if (

@@ -13,6 +13,8 @@ class WatchSessionManager: NSObject, ObservableObject {
   /// Callback invoked when SYNC_SUCCESS is received from iPhone.
   /// Set by KinevoWatchApp to forward acknowledgements to WorkoutExecutionStore.
   var onSyncSuccess: ((_ workoutId: String) -> Void)?
+  var onRemoteFinish: ((_ workoutId: String) -> Void)?
+  var onRemoteStartWorkout: ((_ workoutId: String) -> Void)?
 
   private var wcSession: WCSession?
 
@@ -415,6 +417,32 @@ extension WatchSessionManager: WCSessionDelegate {
       print("[WatchSessionManager] SYNC_SUCCESS for workoutId: \(workoutId)")
       DispatchQueue.main.async {
         self.onSyncSuccess?(workoutId)
+      }
+
+    case "START_WORKOUT_FROM_PHONE":
+      guard let payload = message["payload"] as? [String: Any],
+            let workoutId = payload["workoutId"] as? String
+      else {
+        print("[WatchSessionManager] START_WORKOUT_FROM_PHONE received but missing workoutId")
+        return
+      }
+
+      print("[WatchSessionManager] START_WORKOUT_FROM_PHONE for workoutId: \(workoutId)")
+      DispatchQueue.main.async {
+        self.onRemoteStartWorkout?(workoutId)
+      }
+
+    case "WORKOUT_FINISHED_FROM_PHONE":
+      guard let payload = message["payload"] as? [String: Any],
+            let workoutId = payload["workoutId"] as? String
+      else {
+        print("[WatchSessionManager] WORKOUT_FINISHED_FROM_PHONE received but missing workoutId")
+        return
+      }
+
+      print("[WatchSessionManager] WORKOUT_FINISHED_FROM_PHONE for workoutId: \(workoutId)")
+      DispatchQueue.main.async {
+        self.onRemoteFinish?(workoutId)
       }
 
     default:
