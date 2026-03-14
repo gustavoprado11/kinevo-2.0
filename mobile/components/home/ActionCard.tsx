@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { View, Text, Pressable } from "react-native";
-import { Dumbbell, ChevronRight, Coffee, Check, Play } from "lucide-react-native";
+import { Dumbbell, ChevronRight, Coffee, Check, Play, AlertCircle, PartyPopper, RotateCcw } from "lucide-react-native";
 import Animated, {
     useSharedValue,
     useAnimatedStyle,
@@ -12,6 +12,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { PressableScale } from "../shared/PressableScale";
 import * as Haptics from "expo-haptics";
+import type { PendingWorkout, WeeklyProgress } from "@kinevo/shared/utils/schedule-projection";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -21,7 +22,6 @@ function BreatheShareButton({ onPress }: { onPress: () => void }) {
     const isPressed = useSharedValue(false);
 
     useEffect(() => {
-        // Start breathe loop
         scale.value = withRepeat(
             withTiming(1.04, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
             -1,
@@ -42,7 +42,6 @@ function BreatheShareButton({ onPress }: { onPress: () => void }) {
 
     const handlePressOut = () => {
         isPressed.value = false;
-        // Return to 1.0 then restart breathe
         scale.value = withSpring(1, { damping: 12, stiffness: 200 }, (finished) => {
             if (finished) {
                 scale.value = withRepeat(
@@ -84,10 +83,30 @@ function BreatheShareButton({ onPress }: { onPress: () => void }) {
 type TimeContext = 'today' | 'past' | 'future';
 
 interface ActionCardProps {
-    workout?: {
+    /** Workout scheduled for today (may be null if rest day) */
+    todayWorkout?: {
         id: string;
         name: string;
-        items?: { length: number };
+        items?: { length: number } | any[];
+        notes?: string;
+    } | null;
+    /** Session completed today for the scheduled workout */
+    todaySession?: {
+        id: string;
+        started_at: string;
+        completed_at?: string;
+        rpe?: number | null;
+    } | null;
+    /** Full weekly progress data */
+    weeklyProgress?: WeeklyProgress | null;
+    /** Callbacks */
+    onStartWorkout?: (workoutId: string) => void;
+    onShare?: () => void;
+    /** Legacy props for past/future date viewing */
+    selectedWorkout?: {
+        id: string;
+        name: string;
+        items?: { length: number } | any[];
         notes?: string;
     } | null;
     isCompleted?: boolean;
@@ -95,101 +114,263 @@ interface ActionCardProps {
     title?: string;
     timeContext?: TimeContext;
     onPress?: () => void;
-    onShare?: () => void;
 }
 
-const BADGE_CONFIG: Record<string, { label: string; bg: string; text: string }> = {
-    scheduled: { label: 'AGENDADO', bg: '#f1f5f9', text: '#64748b' },
-    predicted: { label: 'PREVISTO', bg: 'rgba(99,102,241,0.15)', text: '#818cf8' },
-    completed: { label: 'REALIZADO', bg: 'rgba(16,185,129,0.15)', text: '#10b981' },
-    missed: { label: 'PERDIDO', bg: 'rgba(239,68,68,0.15)', text: '#ef4444' },
-};
+export function ActionCard({
+    todayWorkout,
+    todaySession,
+    weeklyProgress,
+    onStartWorkout,
+    onShare,
+    // Legacy/past-date props
+    selectedWorkout,
+    isCompleted,
+    isMissed,
+    title,
+    timeContext = 'today',
+    onPress,
+}: ActionCardProps) {
+    // ─── Non-today view: keep legacy behavior for past/future dates ───
+    if (timeContext !== 'today') {
+        const workout = selectedWorkout;
+        const sectionTitle = title || "Hoje";
 
-export function ActionCard({ workout, isCompleted, isMissed, title, timeContext = 'today', onPress, onShare }: ActionCardProps) {
-    const sectionTitle = title || "Hoje";
-
-    if (!workout) {
-        // ── Rest Day Card ──
-        return (
-            <View style={{ marginBottom: 32 }}>
-                <Text style={styles.sectionTitle}>{sectionTitle}</Text>
-                <View style={styles.cardShell}>
-                    <View style={styles.cardInner}>
-                        <View style={[styles.iconBadge, { backgroundColor: 'rgba(16, 185, 129, 0.08)' }]}>
-                            <Coffee size={24} color="#10b981" strokeWidth={1.5} />
-                        </View>
-                        <View style={{ flex: 1 }}>
-                            <Text style={styles.cardTitle}>Descanso Merecido</Text>
-                            <Text style={styles.cardSubtitle}>
-                                Recupere suas energias para o próximo treino.
-                            </Text>
+        if (!workout) {
+            return (
+                <View style={{ marginBottom: 32 }}>
+                    <Text style={styles.sectionTitle}>{sectionTitle}</Text>
+                    <View style={styles.cardShell}>
+                        <View style={styles.cardInner}>
+                            <View style={[styles.iconBadge, { backgroundColor: 'rgba(16, 185, 129, 0.08)' }]}>
+                                <Coffee size={24} color="#10b981" strokeWidth={1.5} />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.cardTitle}>Descanso Merecido</Text>
+                                <Text style={styles.cardSubtitle}>
+                                    Recupere suas energias para o próximo treino.
+                                </Text>
+                            </View>
                         </View>
                     </View>
                 </View>
+            );
+        }
+
+        if (isCompleted) {
+            return (
+                <View style={{ marginBottom: 28 }}>
+                    <Text style={styles.sectionTitle}>{sectionTitle}</Text>
+                    <PressableScale onPress={onPress} pressScale={0.96} style={styles.completedShell}>
+                        <View style={styles.completedInner}>
+                            <View style={styles.checkIcon}>
+                                <Check size={22} color="#16a34a" strokeWidth={2.5} />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.cardTitle}>{workout.name}</Text>
+                                <Text style={{ fontSize: 12, fontWeight: '600', color: '#16a34a' }}>
+                                    Concluído com sucesso!
+                                </Text>
+                            </View>
+                            {onShare && <BreatheShareButton onPress={onShare} />}
+                        </View>
+                    </PressableScale>
+                </View>
+            );
+        }
+
+        if (isMissed) {
+            return (
+                <View style={{ marginBottom: 28 }}>
+                    <Text style={styles.sectionTitle}>{sectionTitle}</Text>
+                    <PressableScale onPress={onPress} pressScale={0.96} style={styles.cardShell}>
+                        <View style={[styles.cardInner, { borderColor: 'rgba(239, 68, 68, 0.15)' }]}>
+                            <View style={[styles.iconBadge, { backgroundColor: 'rgba(239, 68, 68, 0.08)' }]}>
+                                <Text style={{ fontSize: 20, color: '#ef4444', fontWeight: 'bold' }}>✕</Text>
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.cardTitle}>{workout.name}</Text>
+                                <Text style={{ fontSize: 12, fontWeight: '500', color: '#ef4444' }}>
+                                    Treino não realizado
+                                </Text>
+                            </View>
+                        </View>
+                    </PressableScale>
+                </View>
+            );
+        }
+
+        // Future
+        return (
+            <View style={{ marginBottom: 32 }}>
+                <Text style={styles.sectionTitle}>{sectionTitle}</Text>
+                <PressableScale pressScale={0.96} style={[styles.cardShell, { opacity: 0.7 }]}>
+                    <View style={styles.heroCardInner}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+                            <View style={styles.heroIcon}>
+                                <Dumbbell size={20} color="#7c3aed" />
+                            </View>
+                            <View style={styles.badge}>
+                                <Text style={styles.badgeText}>PREVISTO</Text>
+                            </View>
+                        </View>
+                        <Text style={styles.heroTitle}>{workout.name}</Text>
+                        {workout.notes && (
+                            <Text style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }} numberOfLines={1}>
+                                {workout.notes}
+                            </Text>
+                        )}
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 }}>
+                            <Text style={{ fontSize: 14, fontWeight: '500', color: '#64748b' }}>
+                                {(Array.isArray(workout.items) ? workout.items.length : workout.items?.length) || 0} exercícios
+                            </Text>
+                        </View>
+                    </View>
+                </PressableScale>
             </View>
         );
     }
 
-    if (isCompleted) {
-        // ── Completed Workout Card — Success Glow + Breathe Share ──
+    // ─── TODAY view: new state machine ───
+    const pending = weeklyProgress?.pendingWorkouts || [];
+    const isWeekComplete = weeklyProgress?.isWeekComplete || false;
+    const remaining = (weeklyProgress?.expectedCount || 0) - (weeklyProgress?.completedCount || 0);
+    const hasTodaySession = !!todaySession;
+
+    // STATE 1: Scheduled today + not done yet
+    if (todayWorkout && !hasTodaySession) {
+        return (
+            <View style={{ marginBottom: 32 }}>
+                <Text style={styles.sectionTitle}>Treino de Hoje</Text>
+                <PressableScale
+                    onPress={() => onStartWorkout?.(todayWorkout.id)}
+                    pressScale={0.96}
+                    style={styles.cardShell}
+                >
+                    <View style={styles.heroCardInner}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+                            <View style={styles.heroIcon}>
+                                <Dumbbell size={20} color="#7c3aed" />
+                            </View>
+                            <View style={styles.badge}>
+                                <Text style={styles.badgeText}>AGENDADO</Text>
+                            </View>
+                        </View>
+                        <Text style={styles.heroTitle}>{todayWorkout.name}</Text>
+                        {todayWorkout.notes && (
+                            <Text style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }} numberOfLines={1}>
+                                {todayWorkout.notes}
+                            </Text>
+                        )}
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 }}>
+                            <Text style={{ fontSize: 14, fontWeight: '500', color: '#64748b' }}>
+                                {(Array.isArray(todayWorkout.items) ? todayWorkout.items.length : todayWorkout.items?.length) || 0} exercícios
+                            </Text>
+                            <View style={styles.startButton}>
+                                <Play size={16} color="white" fill="white" />
+                                <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 14 }}>Iniciar</Text>
+                            </View>
+                        </View>
+                    </View>
+                </PressableScale>
+            </View>
+        );
+    }
+
+    // STATE 2: Done today + still has pending workouts this week
+    if (hasTodaySession && remaining > 0) {
+        const nextPending = pending[0];
+        const startDate = new Date(todaySession!.started_at);
+        const endDate = todaySession!.completed_at ? new Date(todaySession!.completed_at) : new Date();
+        const durationMin = Math.floor((endDate.getTime() - startDate.getTime()) / 60000);
+        const durationStr = durationMin >= 60
+            ? `${Math.floor(durationMin / 60)}h ${durationMin % 60}min`
+            : `${durationMin}min`;
+
         return (
             <View style={{ marginBottom: 28 }}>
-                <Text style={styles.sectionTitle}>{sectionTitle}</Text>
-                <PressableScale
-                    onPress={onPress}
-                    pressScale={0.96}
-                    style={{
-                        borderRadius: 24,
-                        overflow: 'hidden',
-                        shadowColor: '#10b981',
-                        shadowOffset: { width: 0, height: 4 },
-                        shadowOpacity: 0.1,
-                        shadowRadius: 16,
-                        elevation: 4,
-                    }}
-                >
-                    <View
-                        style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            paddingVertical: 18,
-                            paddingHorizontal: 20,
-                            borderRadius: 24,
-                            borderWidth: 1,
-                            borderColor: 'rgba(16, 185, 129, 0.15)',
-                            // Emerald glow gradient simulation — white to emerald-50
-                            backgroundColor: '#f0fdf9',
-                        }}
-                    >
-                        {/* Check icon — elevated medal */}
-                        <View
-                            style={{
-                                height: 48,
-                                width: 48,
-                                borderRadius: 24,
-                                backgroundColor: '#dcfce7',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                marginRight: 16,
-                                shadowColor: '#10b981',
-                                shadowOffset: { width: 0, height: 4 },
-                                shadowOpacity: 0.25,
-                                shadowRadius: 8,
-                                elevation: 4,
-                            }}
-                        >
+                <Text style={styles.sectionTitle}>Treino de Hoje</Text>
+
+                {/* Completed summary */}
+                <PressableScale onPress={onPress} pressScale={0.96} style={styles.completedShell}>
+                    <View style={styles.completedInner}>
+                        <View style={styles.checkIcon}>
                             <Check size={22} color="#16a34a" strokeWidth={2.5} />
                         </View>
-
-                        {/* Content */}
                         <View style={{ flex: 1 }}>
-                            <Text style={styles.cardTitle}>{workout.name}</Text>
-                            <Text style={{ fontSize: 12, fontWeight: '600', color: '#16a34a' }}>
-                                Concluído com sucesso!
+                            <Text style={styles.cardTitle}>
+                                {todayWorkout?.name || 'Treino concluído'}
+                            </Text>
+                            <Text style={{ fontSize: 12, fontWeight: '500', color: '#16a34a' }}>
+                                {durationStr}{todaySession!.rpe ? ` • PSE ${todaySession!.rpe}` : ''}
                             </Text>
                         </View>
+                        {onShare && <BreatheShareButton onPress={onShare} />}
+                    </View>
+                </PressableScale>
 
-                        {/* Breathe share button */}
+                {/* Pending workout suggestion */}
+                {nextPending && (
+                    <View style={{ marginTop: 16 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                            <AlertCircle size={14} color="#f59e0b" strokeWidth={2} />
+                            <Text style={{ fontSize: 13, fontWeight: '600', color: '#92400e', marginLeft: 6 }}>
+                                {remaining === 1 ? 'Resta 1 treino esta semana' : `Restam ${remaining} treinos esta semana`}
+                            </Text>
+                        </View>
+                        <PressableScale
+                            onPress={() => onStartWorkout?.(nextPending.assignedWorkoutId)}
+                            pressScale={0.97}
+                            style={styles.cardShell}
+                        >
+                            <View style={[styles.cardInner, { borderColor: 'rgba(245, 158, 11, 0.15)' }]}>
+                                <View style={[styles.iconBadge, { backgroundColor: 'rgba(245, 158, 11, 0.08)' }]}>
+                                    <Dumbbell size={20} color="#f59e0b" strokeWidth={1.5} />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.cardTitle}>{nextPending.workoutName}</Text>
+                                    <Text style={styles.cardSubtitle}>
+                                        era para {nextPending.originalDay} ({nextPending.missedDate})
+                                    </Text>
+                                </View>
+                                <ChevronRight size={18} color="#f59e0b" strokeWidth={1.5} />
+                            </View>
+                        </PressableScale>
+                        {pending.length > 1 && (
+                            <Text style={{ fontSize: 12, color: '#94a3b8', marginTop: 8, textAlign: 'center' }}>
+                                e mais {pending.length - 1} treino{pending.length - 1 > 1 ? 's' : ''}
+                            </Text>
+                        )}
+                    </View>
+                )}
+            </View>
+        );
+    }
+
+    // STATE 3: Done today + week complete
+    if (hasTodaySession && isWeekComplete) {
+        const startDate = new Date(todaySession!.started_at);
+        const endDate = todaySession!.completed_at ? new Date(todaySession!.completed_at) : new Date();
+        const durationMin = Math.floor((endDate.getTime() - startDate.getTime()) / 60000);
+        const durationStr = durationMin >= 60
+            ? `${Math.floor(durationMin / 60)}h ${durationMin % 60}min`
+            : `${durationMin}min`;
+
+        return (
+            <View style={{ marginBottom: 28 }}>
+                <Text style={styles.sectionTitle}>Treino de Hoje</Text>
+                <PressableScale onPress={onPress} pressScale={0.96} style={styles.completedShell}>
+                    <View style={styles.completedInner}>
+                        <View style={styles.checkIcon}>
+                            <Check size={22} color="#16a34a" strokeWidth={2.5} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.cardTitle}>
+                                {todayWorkout?.name || 'Treino concluído'}
+                            </Text>
+                            <Text style={{ fontSize: 12, fontWeight: '500', color: '#16a34a' }}>
+                                {durationStr}{todaySession!.rpe ? ` • PSE ${todaySession!.rpe}` : ''} — Semana completa!
+                            </Text>
+                        </View>
                         {onShare && <BreatheShareButton onPress={onShare} />}
                     </View>
                 </PressableScale>
@@ -197,132 +378,102 @@ export function ActionCard({ workout, isCompleted, isMissed, title, timeContext 
         );
     }
 
-    if (isMissed) {
-        // ── Missed Workout Card with Squish ──
+    // STATE 4: No workout scheduled today + has pending workouts
+    if (!todayWorkout && !hasTodaySession && pending.length > 0) {
+        const nextPending = pending[0];
         return (
-            <View style={{ marginBottom: 28 }}>
-                <Text style={styles.sectionTitle}>{sectionTitle}</Text>
+            <View style={{ marginBottom: 32 }}>
+                <Text style={styles.sectionTitle}>Treino de Hoje</Text>
+
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
+                    <AlertCircle size={16} color="#f59e0b" strokeWidth={2} />
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: '#92400e', marginLeft: 8 }}>
+                        {pending.length === 1
+                            ? 'Você tem 1 treino pendente'
+                            : `Você tem ${pending.length} treinos pendentes`}
+                    </Text>
+                </View>
+
                 <PressableScale
-                    onPress={onPress}
+                    onPress={() => onStartWorkout?.(nextPending.assignedWorkoutId)}
                     pressScale={0.96}
                     style={styles.cardShell}
                 >
-                    <View
-                        style={[
-                            styles.cardInner,
-                            { borderColor: 'rgba(239, 68, 68, 0.15)' },
-                        ]}
-                    >
-                        <View style={[styles.iconBadge, { backgroundColor: 'rgba(239, 68, 68, 0.08)' }]}>
-                            <Text style={{ fontSize: 20, color: '#ef4444', fontWeight: 'bold' }}>✕</Text>
+                    <View style={styles.heroCardInner}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+                            <View style={[styles.heroIcon, { backgroundColor: 'rgba(245, 158, 11, 0.08)' }]}>
+                                <Dumbbell size={20} color="#f59e0b" />
+                            </View>
+                            <View style={[styles.badge, { backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
+                                <Text style={[styles.badgeText, { color: '#f59e0b' }]}>PENDENTE</Text>
+                            </View>
                         </View>
-                        <View style={{ flex: 1 }}>
-                            <Text style={styles.cardTitle}>{workout.name}</Text>
-                            <Text style={{ fontSize: 12, fontWeight: '500', color: '#ef4444' }}>
-                                Treino não realizado
+                        <Text style={styles.heroTitle}>{nextPending.workoutName}</Text>
+                        <Text style={{ fontSize: 13, color: '#92400e', marginBottom: 16 }}>
+                            era para {nextPending.originalDay} ({nextPending.missedDate})
+                        </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 }}>
+                            <Text style={{ fontSize: 14, fontWeight: '500', color: '#64748b' }}>
+                                {nextPending.exerciseCount} exercícios
                             </Text>
+                            <View style={[styles.startButton, { backgroundColor: '#f59e0b' }]}>
+                                <Play size={16} color="white" fill="white" />
+                                <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 14 }}>Compensar</Text>
+                            </View>
                         </View>
                     </View>
                 </PressableScale>
+
+                {pending.length > 1 && (
+                    <Text style={{ fontSize: 12, color: '#94a3b8', marginTop: 10, textAlign: 'center' }}>
+                        e mais {pending.length - 1} treino{pending.length - 1 > 1 ? 's' : ''} pendente{pending.length - 1 > 1 ? 's' : ''}
+                    </Text>
+                )}
             </View>
         );
     }
 
-    // ── Active / Future Workout Card with Squish ──
-    const badgeKey = timeContext === 'future' ? 'predicted' : 'scheduled';
-    const badge = BADGE_CONFIG[badgeKey];
-    const isDisabledFuture = timeContext === 'future';
-
-    return (
-        <View style={{ marginBottom: 32 }}>
-            <Text style={styles.sectionTitle}>{title || "Treino de Hoje"}</Text>
-            <PressableScale
-                onPress={isDisabledFuture ? undefined : onPress}
-                disabled={isDisabledFuture}
-                pressScale={0.96}
-                style={[
-                    styles.cardShell,
-                    { opacity: isDisabledFuture ? 0.7 : 1 },
-                ]}
-            >
-                <View style={styles.heroCardInner}>
-                    {/* Top row: Icon + Tag */}
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-                        <View
-                            style={{
-                                height: 44,
-                                width: 44,
-                                borderRadius: 22,
-                                backgroundColor: 'rgba(124, 58, 237, 0.08)',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                            }}
-                        >
-                            <Dumbbell size={20} color="#7c3aed" />
+    // STATE 5: No workout today + week complete (all done!)
+    if (!todayWorkout && !hasTodaySession && isWeekComplete) {
+        return (
+            <View style={{ marginBottom: 32 }}>
+                <Text style={styles.sectionTitle}>Treino de Hoje</Text>
+                <View style={styles.cardShell}>
+                    <View style={[styles.cardInner, { borderColor: 'rgba(16, 185, 129, 0.15)' }]}>
+                        <View style={[styles.iconBadge, { backgroundColor: 'rgba(16, 185, 129, 0.08)' }]}>
+                            <PartyPopper size={24} color="#10b981" strokeWidth={1.5} />
                         </View>
-                        <View
-                            style={{
-                                backgroundColor: badge.bg,
-                                paddingHorizontal: 12,
-                                paddingVertical: 5,
-                                borderRadius: 20,
-                            }}
-                        >
-                            <Text
-                                style={{
-                                    color: badge.text,
-                                    fontSize: 9,
-                                    fontWeight: '700',
-                                    textTransform: 'uppercase',
-                                    letterSpacing: 2.5,
-                                }}
-                            >
-                                {badge.label}
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.cardTitle}>Semana completa! 🎉</Text>
+                            <Text style={styles.cardSubtitle}>
+                                Todos os {weeklyProgress?.expectedCount || 0} treinos foram concluídos.
                             </Text>
                         </View>
                     </View>
+                </View>
+            </View>
+        );
+    }
 
-                    {/* Title */}
-                    <Text style={{ fontSize: 24, fontWeight: '800', color: '#0f172a', marginBottom: 6 }}>
-                        {workout.name}
-                    </Text>
-
-                    {/* Notes */}
-                    {workout.notes && (
-                        <Text style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }} numberOfLines={1}>
-                            {workout.notes}
+    // STATE 6: Rest day — no workout, no pending, week not complete (future days have workouts)
+    return (
+        <View style={{ marginBottom: 32 }}>
+            <Text style={styles.sectionTitle}>Treino de Hoje</Text>
+            <View style={styles.cardShell}>
+                <View style={styles.cardInner}>
+                    <View style={[styles.iconBadge, { backgroundColor: 'rgba(16, 185, 129, 0.08)' }]}>
+                        <Coffee size={24} color="#10b981" strokeWidth={1.5} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                        <Text style={styles.cardTitle}>Descanso Merecido</Text>
+                        <Text style={styles.cardSubtitle}>
+                            {remaining > 0
+                                ? `${remaining} treino${remaining > 1 ? 's' : ''} restante${remaining > 1 ? 's' : ''} esta semana.`
+                                : 'Recupere suas energias para o próximo treino.'}
                         </Text>
-                    )}
-
-                    {/* Bottom row: Exercise count + Arrow/Button */}
-                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 }}>
-                        <Text style={{ fontSize: 14, fontWeight: '500', color: '#64748b' }}>
-                            {workout.items?.length || 0} exercícios
-                        </Text>
-                        {!isDisabledFuture && (
-                            <View
-                                style={{
-                                    flexDirection: 'row',
-                                    alignItems: 'center',
-                                    backgroundColor: '#7c3aed',
-                                    paddingHorizontal: 16,
-                                    paddingVertical: 10,
-                                    borderRadius: 16,
-                                    shadowColor: '#8b5cf6',
-                                    shadowOffset: { width: 0, height: 4 },
-                                    shadowOpacity: 0.2,
-                                    shadowRadius: 8,
-                                    elevation: 4,
-                                    gap: 6,
-                                }}
-                            >
-                                <Play size={16} color="white" fill="white" />
-                                <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 14 }}>Iniciar</Text>
-                            </View>
-                        )}
                     </View>
                 </View>
-            </PressableScale>
+            </View>
         </View>
     );
 }
@@ -362,6 +513,39 @@ const styles = {
         borderWidth: 1,
         borderColor: 'rgba(0, 0, 0, 0.04)',
     },
+    completedShell: {
+        borderRadius: 24,
+        overflow: 'hidden' as const,
+        shadowColor: '#10b981',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 16,
+        elevation: 4,
+    },
+    completedInner: {
+        flexDirection: 'row' as const,
+        alignItems: 'center' as const,
+        paddingVertical: 18,
+        paddingHorizontal: 20,
+        borderRadius: 24,
+        borderWidth: 1,
+        borderColor: 'rgba(16, 185, 129, 0.15)',
+        backgroundColor: '#f0fdf9',
+    },
+    checkIcon: {
+        height: 48,
+        width: 48,
+        borderRadius: 24,
+        backgroundColor: '#dcfce7',
+        alignItems: 'center' as const,
+        justifyContent: 'center' as const,
+        marginRight: 16,
+        shadowColor: '#10b981',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 8,
+        elevation: 4,
+    },
     iconBadge: {
         height: 48,
         width: 48,
@@ -369,6 +553,47 @@ const styles = {
         alignItems: 'center' as const,
         justifyContent: 'center' as const,
         marginRight: 16,
+    },
+    heroIcon: {
+        height: 44,
+        width: 44,
+        borderRadius: 22,
+        backgroundColor: 'rgba(124, 58, 237, 0.08)',
+        alignItems: 'center' as const,
+        justifyContent: 'center' as const,
+    },
+    badge: {
+        backgroundColor: '#f1f5f9',
+        paddingHorizontal: 12,
+        paddingVertical: 5,
+        borderRadius: 20,
+    },
+    badgeText: {
+        color: '#64748b',
+        fontSize: 9,
+        fontWeight: '700' as const,
+        textTransform: 'uppercase' as const,
+        letterSpacing: 2.5,
+    },
+    heroTitle: {
+        fontSize: 24,
+        fontWeight: '800' as const,
+        color: '#0f172a',
+        marginBottom: 6,
+    },
+    startButton: {
+        flexDirection: 'row' as const,
+        alignItems: 'center' as const,
+        backgroundColor: '#7c3aed',
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 16,
+        shadowColor: '#8b5cf6',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        elevation: 4,
+        gap: 6,
     },
     cardTitle: {
         fontSize: 15,

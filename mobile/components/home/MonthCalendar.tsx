@@ -22,6 +22,7 @@ const DAY_NAMES = ["D", "S", "T", "Q", "Q", "S", "S"];
 const STATUS_DOT_COLORS: Record<CalendarDay["status"], string | null> = {
     done: "#7c3aed",
     missed: "#ef4444",
+    compensated: "#94a3b8",
     scheduled: "#94a3b8",
     rest: null,
     out_of_program: null,

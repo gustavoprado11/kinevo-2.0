@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
-import { getWeekRange, toDateKey } from "@kinevo/shared/utils/schedule-projection";
+import { getWeekRange, toDateKey, calculateWeeklyProgress, type WeeklyProgress, type WorkoutWithMeta } from "@kinevo/shared/utils/schedule-projection";
 import { appEvents, WORKOUT_COMPLETED } from "../lib/events";
 
 interface AssignedWorkout {
@@ -38,6 +38,7 @@ interface ActiveProgramData {
         totalSessions: number;
         targetSessions: number;
     };
+    weeklyProgressFull?: WeeklyProgress;
     [key: string]: any;
 }
 
@@ -187,30 +188,21 @@ export function useActiveProgram() {
                 }
                 setSessionsMap(newMap);
 
-                // Calculate Progress
-                const completedSessionsCount = sessions.filter(s => s.status === 'completed').length;
-
-                let targetSessions = 0;
-                let hasSchedules = false;
-
-                programData.workouts.forEach((w: AssignedWorkout) => {
-                    if (w.scheduled_days && w.scheduled_days.length > 0) {
-                        hasSchedules = true;
-                        targetSessions += w.scheduled_days.length;
-                    }
-                });
-
-                if (!hasSchedules) {
-                    targetSessions = programData.workouts.length > 0 ? 3 : 0;
-                }
+                // Calculate weekly progress with pending workouts
+                const weeklyProgressData = calculateWeeklyProgress(
+                    programData.workouts as WorkoutWithMeta[],
+                    sessions,
+                    weekRange.start,
+                );
 
                 const formattedData: ActiveProgramData = {
                     ...programData,
                     program: { name: programData.name },
                     weeklyProgress: {
-                        totalSessions: completedSessionsCount,
-                        targetSessions,
-                    }
+                        totalSessions: weeklyProgressData.completedCount,
+                        targetSessions: weeklyProgressData.expectedCount,
+                    },
+                    weeklyProgressFull: weeklyProgressData,
                 };
 
                 setData(formattedData);
@@ -281,6 +273,7 @@ export function useActiveProgram() {
         sessions: allSessions,
         sessionsMap,
         weeklyProgress: data?.weeklyProgress,
+        weeklyProgressFull: data?.weeklyProgressFull || null,
         studentName,
         programStartedAt: data?.started_at || null,
         programDurationWeeks: data?.duration_weeks || null,

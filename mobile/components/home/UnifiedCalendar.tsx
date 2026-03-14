@@ -16,7 +16,7 @@ import Animated, {
     interpolate,
     Extrapolation,
 } from "react-native-reanimated";
-import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react-native";
+import { ChevronDown, ChevronLeft, ChevronRight, Check } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import {
     generateCalendarDays,
@@ -45,6 +45,7 @@ const MONTH_DAY_HEADER_HEIGHT = 26; // D S T Q Q S S row
 const STATUS_COLORS: Record<CalendarDay["status"], string> = {
     done: "#22c55e",
     missed: "#ef4444",
+    compensated: "#94a3b8",
     scheduled: "#94a3b8",
     rest: "transparent",
     out_of_program: "transparent",
@@ -53,6 +54,7 @@ const STATUS_COLORS: Record<CalendarDay["status"], string> = {
 const STATUS_DOT_COLORS: Record<CalendarDay["status"], string | null> = {
     done: "#7c3aed",
     missed: "#ef4444",
+    compensated: "#94a3b8",
     scheduled: "#94a3b8",
     rest: null,
     out_of_program: null,
@@ -140,15 +142,21 @@ function WeekRow({
                                 </Text>
                             </View>
 
-                            <View
-                                style={{
-                                    marginTop: 6,
-                                    height: 5,
-                                    width: 5,
-                                    borderRadius: 3,
-                                    backgroundColor: STATUS_COLORS[day.status] || "transparent",
-                                }}
-                            />
+                            {day.status === 'compensated' ? (
+                                <View style={{ marginTop: 4, height: 8, width: 8, alignItems: 'center', justifyContent: 'center' }}>
+                                    <Check size={8} color="#94a3b8" strokeWidth={3} />
+                                </View>
+                            ) : (
+                                <View
+                                    style={{
+                                        marginTop: 6,
+                                        height: 5,
+                                        width: 5,
+                                        borderRadius: 3,
+                                        backgroundColor: STATUS_COLORS[day.status] || "transparent",
+                                    }}
+                                />
+                            )}
                         </View>
                     </TouchableOpacity>
                 );
@@ -501,7 +509,11 @@ export function UnifiedCalendar({
                                     </Text>
                                 </View>
 
-                                {dotColor && isCurrentMonth && (
+                                {day.status === 'compensated' && isCurrentMonth ? (
+                                    <View style={{ position: "absolute", bottom: 1, alignItems: 'center', justifyContent: 'center' }}>
+                                        <Check size={7} color="#94a3b8" strokeWidth={3} />
+                                    </View>
+                                ) : dotColor && isCurrentMonth ? (
                                     <View
                                         style={{
                                             position: "absolute",
@@ -512,7 +524,7 @@ export function UnifiedCalendar({
                                             backgroundColor: dotColor,
                                         }}
                                     />
-                                )}
+                                ) : null}
                             </TouchableOpacity>
                         );
                     })}

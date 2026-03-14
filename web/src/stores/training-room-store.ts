@@ -70,6 +70,9 @@ export interface ActiveSession {
     postWorkoutTrigger?: FormTriggerData | null
     preWorkoutSubmissionId?: string | null
     postWorkoutSubmissionId?: string | null
+    scheduledDays?: number[] | null
+    weeklyCompleted?: number
+    weeklyExpected?: number
 }
 
 export interface SessionSetupData {
@@ -83,6 +86,9 @@ export interface SessionSetupData {
     workoutNotes: WorkoutNote[]
     preWorkoutTrigger?: FormTriggerData | null
     postWorkoutTrigger?: FormTriggerData | null
+    scheduledDays?: number[] | null
+    weeklyCompleted?: number
+    weeklyExpected?: number
 }
 
 interface TrainingRoomStore {
@@ -178,6 +184,9 @@ export const useTrainingRoomStore = create<TrainingRoomStore>()(
                             postWorkoutTrigger: data.postWorkoutTrigger ?? null,
                             preWorkoutSubmissionId: null,
                             postWorkoutSubmissionId: null,
+                            scheduledDays: data.scheduledDays ?? null,
+                            weeklyCompleted: data.weeklyCompleted ?? 0,
+                            weeklyExpected: data.weeklyExpected ?? 0,
                         },
                     },
                     activeStudentId: studentId,

@@ -54,6 +54,11 @@ const STATUS_CONFIG: Record<CalendarDay['status'], { bg: string; ring?: string; 
         bg: 'bg-transparent',
         text: 'text-k-text-quaternary/30',
     },
+    compensated: {
+        bg: 'bg-slate-500/15 border border-slate-500/30',
+        text: 'text-slate-400',
+        icon: 'check',
+    },
 }
 
 // ---------------------------------------------------------------------------
@@ -68,9 +73,9 @@ function DayLabel({ text }: { text: string }) {
     )
 }
 
-function CheckIcon() {
+function CheckIcon({ className = 'w-4 h-4 text-white' }: { className?: string }) {
     return (
-        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
         </svg>
     )
@@ -140,6 +145,8 @@ function WeekView({
                                 >
                                     {day.status === 'done' ? (
                                         <CheckIcon />
+                                    ) : day.status === 'compensated' ? (
+                                        <CheckIcon className="w-4 h-4 text-slate-400" />
                                     ) : cfg.icon === 'x' ? (
                                         <XIcon />
                                     ) : (
@@ -155,6 +162,10 @@ function WeekView({
                                 <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-surface-card border border-k-border-primary rounded-lg text-xs font-medium text-k-text-primary opacity-0 group-hover/day:opacity-100 transition-opacity pointer-events-none z-header whitespace-nowrap shadow-xl">
                                     {day.status === 'done' ? (
                                         <span>Realizado{day.completedSessions[0]?.rpe != null ? ` · PSE ${day.completedSessions[0].rpe}` : ''}</span>
+                                    ) : day.status === 'compensated' ? (
+                                        <span className="text-slate-400">
+                                            Compensado em outro dia
+                                        </span>
                                     ) : day.status === 'missed' ? (
                                         <span className="text-red-400">
                                             Faltou: {day.scheduledWorkouts[0]?.name || 'Treino'}
@@ -231,9 +242,11 @@ function MonthView({
                                             ? (day.completedSessions[0]?.rpe != null
                                                 ? (day.completedSessions[0].rpe! >= 10 ? 'bg-red-400' : day.completedSessions[0].rpe! >= 8 ? 'bg-yellow-400' : day.completedSessions[0].rpe! >= 6 ? 'bg-emerald-400' : 'bg-white/40')
                                                 : 'bg-violet-500')
-                                            : day.status === 'missed'
-                                                ? 'bg-red-400'
-                                                : 'bg-k-text-quaternary/50'
+                                            : day.status === 'compensated'
+                                                ? 'bg-slate-400'
+                                                : day.status === 'missed'
+                                                    ? 'bg-red-400'
+                                                    : 'bg-k-text-quaternary/50'
                                     }`}
                                 />
                             )}
@@ -256,16 +269,16 @@ function MetricsPanel({ days }: { days: CalendarDay[] }) {
 
         const relevant = days.filter(d => d.isInProgram && d.date <= today)
         const scheduledPast = relevant.filter(d => d.scheduledWorkouts.length > 0).length
-        const completedPast = relevant.filter(d => d.status === 'done').length
-        const rate = scheduledPast > 0 ? Math.round((completedPast / scheduledPast) * 100) : 0
+        const fulfilledPast = relevant.filter(d => d.status === 'done' || d.status === 'compensated').length
+        const rate = scheduledPast > 0 ? Math.round((fulfilledPast / scheduledPast) * 100) : 0
 
-        // Simple streak: consecutive completed days going backwards from last completed
+        // Streak: consecutive completed/compensated days going backwards
         let streak = 0
         const sorted = [...relevant].filter(d => d.scheduledWorkouts.length > 0).sort(
             (a, b) => b.date.getTime() - a.date.getTime()
         )
         for (const d of sorted) {
-            if (d.status === 'done') streak++
+            if (d.status === 'done' || d.status === 'compensated') streak++
             else break
         }
 

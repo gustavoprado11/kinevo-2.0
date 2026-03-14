@@ -32,9 +32,7 @@ function timeAgo(dateStr: string): string {
 
 function getExpectedPerWeek(workouts?: Array<{ scheduled_days: number[] }>): number {
     if (!workouts || workouts.length === 0) return 0
-    const uniqueDays = new Set<number>()
-    workouts.forEach(w => w.scheduled_days?.forEach(d => uniqueDays.add(d)))
-    return uniqueDays.size
+    return workouts.reduce((sum, w) => sum + (w.scheduled_days?.length || 0), 0)
 }
 
 // ── Compact item renderer for expanded session accordion ──

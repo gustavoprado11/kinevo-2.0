@@ -127,6 +127,9 @@ export function StudentPickerModal({ isOpen, onClose, trainerId }: StudentPicker
             workoutNotes: result.data.workoutNotes,
             preWorkoutTrigger,
             postWorkoutTrigger,
+            scheduledDays: selectedStudent.workoutOptions.find((w) => w.id === selectedWorkoutId)?.scheduledDays ?? null,
+            weeklyCompleted: selectedStudent.weeklyCompleted,
+            weeklyExpected: selectedStudent.weeklyExpected,
         }
 
         addStudent(selectedStudent.id, setupData)
@@ -221,9 +224,22 @@ export function StudentPickerModal({ isOpen, onClose, trainerId }: StudentPicker
                                                 </p>
                                             </div>
 
+                                            {/* Weekly progress badge */}
+                                            {student.program && student.weeklyExpected > 0 && (
+                                                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md shrink-0 ${
+                                                    student.weeklyCompleted >= student.weeklyExpected
+                                                        ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400'
+                                                        : student.pendingCount > 0
+                                                            ? 'bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400'
+                                                            : 'bg-slate-50 text-slate-500 dark:bg-white/5 dark:text-muted-foreground'
+                                                }`}>
+                                                    {student.weeklyCompleted}/{student.weeklyExpected}
+                                                </span>
+                                            )}
+
                                             {/* Status indicator */}
                                             {student.program && (
-                                                <div className={`h-2 w-2 rounded-full ${student.todayWorkouts.length > 0 ? 'bg-[#34C759] dark:bg-emerald-400' : 'bg-[#AEAEB2] dark:bg-muted-foreground/30'}`} />
+                                                <div className={`h-2 w-2 rounded-full shrink-0 ${student.todayWorkouts.length > 0 ? 'bg-[#34C759] dark:bg-emerald-400' : student.pendingCount > 0 ? 'bg-amber-400 dark:bg-amber-400' : 'bg-[#AEAEB2] dark:bg-muted-foreground/30'}`} />
                                             )}
 
                                             <ChevronRight size={16} className="text-[#AEAEB2] dark:text-muted-foreground/40 transition-transform group-hover:translate-x-0.5" />
@@ -257,10 +273,24 @@ export function StudentPickerModal({ isOpen, onClose, trainerId }: StudentPicker
                                         {selectedStudent.name.charAt(0).toUpperCase()}
                                     </div>
                                 )}
-                                <div>
+                                <div className="flex-1">
                                     <p className="text-sm font-semibold text-[#1D1D1F] dark:text-foreground">{selectedStudent.name}</p>
                                     <p className="text-xs text-[#86868B] dark:text-muted-foreground">{selectedStudent.program?.name || 'Programa'}</p>
                                 </div>
+                                {selectedStudent.weeklyExpected > 0 && (
+                                    <div className="text-right">
+                                        <p className={`text-xs font-semibold ${
+                                            selectedStudent.weeklyCompleted >= selectedStudent.weeklyExpected
+                                                ? 'text-emerald-600 dark:text-emerald-400'
+                                                : 'text-[#1D1D1F] dark:text-foreground'
+                                        }`}>
+                                            {selectedStudent.weeklyCompleted}/{selectedStudent.weeklyExpected}
+                                        </p>
+                                        <p className="text-[10px] text-[#86868B] dark:text-muted-foreground">
+                                            semana
+                                        </p>
+                                    </div>
+                                )}
                             </div>
 
                             {!selectedStudent.program ? (
@@ -292,15 +322,36 @@ export function StudentPickerModal({ isOpen, onClose, trainerId }: StudentPicker
                                         </div>
                                     )}
 
-                                    {/* All workouts section */}
-                                    {selectedStudent.workoutOptions.filter((w) => !w.isToday).length > 0 && (
-                                        <div>
-                                            <p className="text-[11px] font-semibold text-[#86868B] dark:text-muted-foreground/60 mb-2">
-                                                {selectedStudent.todayWorkouts.length > 0 ? 'Outros treinos' : 'Escolher treino'}
+                                    {/* Pending section */}
+                                    {selectedStudent.workoutOptions.filter((w) => !w.isToday && w.isPending).length > 0 && (
+                                        <div className="mb-4">
+                                            <p className="text-[11px] font-semibold text-amber-500 dark:text-amber-400/80 mb-2">
+                                                Pendentes da semana
                                             </p>
                                             <div className="space-y-1">
                                                 {selectedStudent.workoutOptions
-                                                    .filter((w) => !w.isToday)
+                                                    .filter((w) => !w.isToday && w.isPending)
+                                                    .map((wo) => (
+                                                        <WorkoutOptionButton
+                                                            key={wo.id}
+                                                            workout={wo}
+                                                            isSelected={selectedWorkoutId === wo.id}
+                                                            onSelect={() => setSelectedWorkoutId(wo.id)}
+                                                        />
+                                                    ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Other workouts section */}
+                                    {selectedStudent.workoutOptions.filter((w) => !w.isToday && !w.isPending).length > 0 && (
+                                        <div>
+                                            <p className="text-[11px] font-semibold text-[#86868B] dark:text-muted-foreground/60 mb-2">
+                                                {selectedStudent.todayWorkouts.length > 0 || selectedStudent.pendingCount > 0 ? 'Outros treinos' : 'Escolher treino'}
+                                            </p>
+                                            <div className="space-y-1">
+                                                {selectedStudent.workoutOptions
+                                                    .filter((w) => !w.isToday && !w.isPending)
                                                     .map((wo) => (
                                                         <WorkoutOptionButton
                                                             key={wo.id}
@@ -355,6 +406,9 @@ function WorkoutOptionButton({
     isSelected: boolean
     onSelect: () => void
 }) {
+    const isFullyDone = workout.weeklyExpected > 0 && workout.weeklyCompleted >= workout.weeklyExpected
+    const isPartial = workout.weeklyExpected > 0 && workout.weeklyCompleted > 0 && workout.weeklyCompleted < workout.weeklyExpected
+
     return (
         <button
             onClick={onSelect}
@@ -362,23 +416,61 @@ function WorkoutOptionButton({
                 w-full flex items-center gap-3 rounded-xl p-3 text-left transition-all
                 ${isSelected
                     ? 'bg-[#007AFF]/5 dark:bg-violet-600/20 border-2 border-[#007AFF] dark:border-violet-500/40'
-                    : 'bg-white dark:bg-glass-bg border border-[#E8E8ED] dark:border-transparent hover:bg-[#F5F5F7] dark:hover:bg-glass-bg-hover hover:border-[#D2D2D7]'
+                    : workout.isPending
+                        ? 'bg-amber-50/50 dark:bg-amber-500/5 border border-amber-200 dark:border-amber-500/20 hover:bg-amber-50 dark:hover:bg-amber-500/10'
+                        : 'bg-white dark:bg-glass-bg border border-[#E8E8ED] dark:border-transparent hover:bg-[#F5F5F7] dark:hover:bg-glass-bg-hover hover:border-[#D2D2D7]'
                 }
             `}
         >
-            <div className={`flex h-8 w-8 items-center justify-center rounded-lg shrink-0 ${isSelected ? 'bg-[#007AFF]/10 dark:bg-violet-600/30' : 'bg-[#F5F5F7] dark:bg-glass-bg'}`}>
-                <Dumbbell size={16} className={isSelected ? 'text-[#007AFF] dark:text-violet-400' : 'text-[#AEAEB2] dark:text-muted-foreground'} />
-            </div>
-            <div className="flex-1 min-w-0">
-                <span className={`text-sm font-medium block truncate ${isSelected ? 'text-[#007AFF] dark:text-violet-300' : 'text-[#1D1D1F] dark:text-foreground'}`}>
-                    {workout.name}
-                </span>
-                {workout.lastCompletedAt && (
-                    <span className="text-[11px] text-[#86868B] dark:text-muted-foreground/60">
-                        Último: {formatRelativeDate(workout.lastCompletedAt)}
-                    </span>
+            <div className={`flex h-8 w-8 items-center justify-center rounded-lg shrink-0 ${
+                isSelected ? 'bg-[#007AFF]/10 dark:bg-violet-600/30'
+                    : isFullyDone ? 'bg-emerald-50 dark:bg-emerald-500/15'
+                    : workout.isPending ? 'bg-amber-50 dark:bg-amber-500/15'
+                    : 'bg-[#F5F5F7] dark:bg-glass-bg'
+            }`}>
+                {isFullyDone ? (
+                    <svg className="h-4 w-4 text-emerald-500 dark:text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                ) : (
+                    <Dumbbell size={16} className={
+                        isSelected ? 'text-[#007AFF] dark:text-violet-400'
+                            : workout.isPending ? 'text-amber-500 dark:text-amber-400'
+                            : 'text-[#AEAEB2] dark:text-muted-foreground'
+                    } />
                 )}
             </div>
+            <div className="flex-1 min-w-0">
+                <span className={`text-sm font-medium block truncate ${
+                    isSelected ? 'text-[#007AFF] dark:text-violet-300'
+                        : isFullyDone ? 'text-[#86868B] dark:text-muted-foreground'
+                        : 'text-[#1D1D1F] dark:text-foreground'
+                }`}>
+                    {workout.name}
+                </span>
+                <div className="flex items-center gap-2">
+                    {workout.isPending && workout.pendingFromDay && (
+                        <span className="text-[11px] font-medium text-amber-600 dark:text-amber-400">
+                            Pendente — era {workout.pendingFromDay}
+                        </span>
+                    )}
+                    {!workout.isPending && workout.lastCompletedAt && (
+                        <span className="text-[11px] text-[#86868B] dark:text-muted-foreground/60">
+                            Último: {formatRelativeDate(workout.lastCompletedAt)}
+                        </span>
+                    )}
+                </div>
+            </div>
+            {/* Weekly progress badge */}
+            {workout.weeklyExpected > 0 && (
+                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md shrink-0 ${
+                    isFullyDone
+                        ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400'
+                        : isPartial
+                            ? 'bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400'
+                            : 'bg-slate-50 text-slate-500 dark:bg-white/5 dark:text-muted-foreground'
+                }`}>
+                    {workout.weeklyCompleted}/{workout.weeklyExpected}
+                </span>
+            )}
             {isSelected && (
                 <div className="ml-auto h-2 w-2 rounded-full bg-[#007AFF] dark:bg-violet-400 shrink-0" />
             )}

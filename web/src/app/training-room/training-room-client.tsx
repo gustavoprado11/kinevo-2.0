@@ -101,6 +101,7 @@ export function TrainingRoomClient({ trainerId }: TrainingRoomClientProps) {
             feedback,
             preWorkoutSubmissionId: activeSession.preWorkoutSubmissionId || null,
             postWorkoutSubmissionId: activeSession.postWorkoutSubmissionId || null,
+            scheduledDays: activeSession.scheduledDays ?? null,
         })
 
         setIsSubmitting(false)
@@ -311,6 +312,31 @@ export function TrainingRoomClient({ trainerId }: TrainingRoomClientProps) {
                                         </p>
                                     </div>
                                 </div>
+                                {/* Weekly progress */}
+                                {(activeSession.weeklyExpected ?? 0) > 0 && (
+                                    <div className="flex items-center gap-2">
+                                        <div className="flex flex-col items-end gap-1">
+                                            <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400 dark:text-muted-foreground">
+                                                Semana
+                                            </span>
+                                            <span className="text-xs font-semibold text-slate-700 dark:text-foreground">
+                                                {activeSession.weeklyCompleted ?? 0}/{activeSession.weeklyExpected} treinos
+                                            </span>
+                                        </div>
+                                        <div className="w-16 h-1.5 rounded-full bg-slate-100 dark:bg-white/10 overflow-hidden">
+                                            <div
+                                                className={`h-full rounded-full transition-all ${
+                                                    (activeSession.weeklyCompleted ?? 0) >= (activeSession.weeklyExpected ?? 0)
+                                                        ? 'bg-emerald-500'
+                                                        : 'bg-violet-500'
+                                                }`}
+                                                style={{
+                                                    width: `${Math.min(100, Math.round(((activeSession.weeklyCompleted ?? 0) / (activeSession.weeklyExpected ?? 1)) * 100))}%`,
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
 
                                 <div className="flex items-center gap-2">
                                     {activeSession.status === 'in_progress' && activeSession.startedAt && (

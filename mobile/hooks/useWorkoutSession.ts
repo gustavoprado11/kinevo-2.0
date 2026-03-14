@@ -70,6 +70,7 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
     const [sessionId, setSessionId] = useState<string | null>(null);
     const preSubmissionIdRef = useRef<string | null>(null);
     const [assignedProgramId, setAssignedProgramId] = useState<string | null>(null);
+    const scheduledDaysRef = useRef<number[] | null>(null);
     const [startTime] = useState(() => Date.now());
     const [elapsed, setElapsed] = useState(0);
     const [workoutName, setWorkoutName] = useState('');
@@ -299,7 +300,7 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                 // 1. Get Workout Details
                 const { data: workout, error: workoutError }: { data: any; error: any } = await supabase
                     .from('assigned_workouts' as any)
-                    .select('name, assigned_program_id')
+                    .select('name, assigned_program_id, scheduled_days')
                     .eq('id', workoutId)
                     .single();
 
@@ -307,6 +308,7 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                 if (mounted) {
                     setWorkoutName(workout.name);
                     setAssignedProgramId(workout.assigned_program_id || null);
+                    scheduledDaysRef.current = workout.scheduled_days || null;
                 }
 
                 // 1b. Find or create workout_session (in_progress)
@@ -333,6 +335,11 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                         .eq('id', currentStudentId)
                         .single();
 
+                    // Determine scheduled_date: set to today if this workout is scheduled for today's day-of-week
+                    const todayDow = new Date().getDay();
+                    const isScheduledToday = workout.scheduled_days?.includes(todayDow);
+                    const scheduledDate = isScheduledToday ? new Date().toISOString().split('T')[0] : null;
+
                     const { data: newSession, error: sessionError }: { data: any; error: any } = await supabase
                         .from('workout_sessions' as any)
                         .insert({
@@ -343,6 +350,7 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                             status: 'in_progress',
                             started_at: new Date().toISOString(),
                             sync_status: 'synced',
+                            scheduled_date: scheduledDate,
                         })
                         .select('id')
                         .single();
@@ -713,6 +721,11 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                 .eq('id', studentId)
                 .single();
 
+            // Determine scheduled_date: set to today if this workout is scheduled for today's day-of-week
+            const todayDow = new Date().getDay();
+            const isScheduledToday = scheduledDaysRef.current?.includes(todayDow);
+            const scheduledDate = isScheduledToday ? new Date().toISOString().split('T')[0] : null;
+
             const insertPayload: Record<string, any> = {
                 student_id: studentId,
                 trainer_id: studentFull?.coach_id,
@@ -721,6 +734,7 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                 status: 'in_progress',
                 started_at: new Date().toISOString(),
                 sync_status: 'synced',
+                scheduled_date: scheduledDate,
             };
             if (preWorkoutSubmissionId) {
                 insertPayload.pre_workout_submission_id = preWorkoutSubmissionId;

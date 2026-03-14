@@ -15,6 +15,7 @@ interface FinishPayload {
     feedback: string | null
     preWorkoutSubmissionId: string | null
     postWorkoutSubmissionId: string | null
+    scheduledDays?: number[] | null // workout's scheduled_days for scheduled_date calculation
 }
 
 interface FinishResult {
@@ -49,6 +50,11 @@ export async function finishTrainingRoomWorkout(payload: FinishPayload): Promise
         return { sessionId: null, error: 'Aluno não encontrado' }
     }
 
+    // Determine scheduled_date: set to today if this workout is scheduled for today's day-of-week
+    const todayDow = new Date().getDay()
+    const isScheduledToday = payload.scheduledDays?.includes(todayDow)
+    const scheduledDate = isScheduledToday ? new Date().toISOString().split('T')[0] : null
+
     // 1. Insert workout_sessions via supabaseAdmin (bypasses RLS)
     const { data: session, error: sessionError } = await supabaseAdmin
         .from('workout_sessions')
@@ -66,6 +72,7 @@ export async function finishTrainingRoomWorkout(payload: FinishPayload): Promise
             feedback: payload.feedback,
             pre_workout_submission_id: payload.preWorkoutSubmissionId,
             post_workout_submission_id: payload.postWorkoutSubmissionId,
+            scheduled_date: scheduledDate,
         })
         .select('id')
         .single()
