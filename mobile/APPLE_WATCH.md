@@ -67,16 +67,18 @@ mobile/
 │       ├── Info.plist                  # Configurações do Watch app
 │       ├── KinevoWatch.entitlements   # HealthKit entitlements
 │       ├── Assets.xcassets/           # Ícones do Watch (todos os tamanhos)
+│       ├── Models/
+│       │   └── WorkoutExecutionState.swift  # Estado persistente de execução
 │       ├── Services/
-│       │   ├── WatchSessionManager.swift  # Gerencia WatchConnectivity
-│       │   └── HealthKitManager.swift     # Gerencia HealthKit
+│       │   ├── WatchSessionManager.swift    # Gerencia WatchConnectivity
+│       │   ├── HealthKitManager.swift       # Gerencia HealthKit
+│       │   ├── WorkoutExecutionStore.swift  # Store central (ObservableObject)
+│       │   └── WorkoutStatePersistence.swift # Persistência atômica JSON
 │       ├── Views/
-│       │   ├── WorkoutListView.swift      # Lista de treinos
-│       │   ├── ActiveWorkoutView.swift    # Treino ativo (TabView)
-│       │   ├── SetLoggerView.swift        # Card de exercício
-│       │   └── RestTimerView.swift        # Timer de descanso
-│       ├── KinevoTheme.swift          # Cores do tema
-│       └── WorkoutModels.swift        # Modelos de dados
+│       │   ├── WorkoutListView.swift        # Lista de treinos
+│       │   └── WorkoutExecutionView.swift   # Execução de treino (ExerciseExecutionPage, RestTimerSheet, CrownInputCard)
+│       ├── KinevoTheme.swift            # Cores do tema
+│       └── WorkoutModels.swift          # Modelos de dados (WatchWorkoutSnapshot)
 ├── modules/
 │   └── watch-connectivity/
 │       ├── ios/

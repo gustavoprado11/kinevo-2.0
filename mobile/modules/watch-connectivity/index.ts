@@ -1,5 +1,6 @@
 export {
   syncWorkoutToWatch,
+  syncProgramToWatch,
   sendWorkoutState,
   sendMessage,
   sendAckToWatch,
@@ -12,6 +13,9 @@ export {
 export type {
   WatchWorkoutPayload,
   WatchWorkoutExercise,
+  WatchProgramPayload,
+  WatchProgramWorkout,
+  WatchProgramExercise,
   WatchSetCompletionEvent,
   WatchStartWorkoutEvent,
   WatchMessageEvent,

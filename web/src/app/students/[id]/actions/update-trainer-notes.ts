@@ -13,7 +13,7 @@ export async function updateTrainerNotes(studentId: string, notes: string) {
             .from('students')
             .select('id')
             .eq('id', studentId)
-            .eq('trainer_id', trainer.id)
+            .eq('coach_id', trainer.id)
             .single()
 
         if (!student) {

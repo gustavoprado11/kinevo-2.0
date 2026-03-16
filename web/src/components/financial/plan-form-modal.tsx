@@ -129,7 +129,7 @@ export function PlanFormModal({
     if (!isOpen) return null
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-modal flex items-center justify-center p-4">
             {/* Backdrop */}
             <div
                 className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300"
@@ -141,7 +141,7 @@ export function PlanFormModal({
                 {/* Header */}
                 <div className="flex items-center justify-between border-b border-k-border-subtle bg-surface-inset px-8 py-6">
                     <div>
-                        <h2 className="text-xl font-bold text-white tracking-tight">
+                        <h2 className="text-xl font-bold text-k-text-primary tracking-tight">
                             {isEdit ? 'Editar Plano' : 'Novo Plano'}
                         </h2>
                         <p className="text-xs text-k-text-secondary mt-1">
@@ -159,7 +159,7 @@ export function PlanFormModal({
                 {/* Form */}
                 <form onSubmit={handleSubmit} className="p-8 space-y-6">
                     {error && (
-                        <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl text-sm flex items-start gap-3">
+                        <div className="bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl text-sm flex items-start gap-3">
                             <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
                             {error}
                         </div>
@@ -172,7 +172,7 @@ export function PlanFormModal({
                                 Título do plano <span className="text-violet-500">*</span>
                             </label>
                             <div className="relative group">
-                                <FileText className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-k-text-quaternary group-focus-within:text-violet-400 transition-colors" strokeWidth={1.5} />
+                                <FileText className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-k-text-quaternary group-focus-within:text-violet-600 dark:group-focus-within:text-violet-400 transition-colors" strokeWidth={1.5} />
                                 <input
                                     type="text"
                                     value={title}
@@ -189,7 +189,7 @@ export function PlanFormModal({
                                 Preço <span className="text-violet-500">*</span>
                             </label>
                             <div className="relative group">
-                                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-medium text-k-text-quaternary group-focus-within:text-violet-400 transition-colors">R$</span>
+                                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-medium text-k-text-quaternary group-focus-within:text-violet-600 dark:group-focus-within:text-violet-400 transition-colors">R$</span>
                                 <input
                                     type="text"
                                     value={price}

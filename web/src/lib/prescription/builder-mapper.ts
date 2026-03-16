@@ -37,6 +37,8 @@ export interface BuilderProgramData {
             reps: string | null
             rest_seconds: number | null
             notes: string | null
+            exercise_function?: string | null
+            item_config?: Record<string, unknown>
         }>
     }>
 }
@@ -103,17 +105,19 @@ export function mapAiOutputToBuilderData(
                 .filter(Boolean),
             workout_item_templates: workout.items.map(item => ({
                 id: tempId(),
-                item_type: 'exercise' as const,
+                item_type: (item.item_type || 'exercise') as string,
                 order_index: item.order_index,
                 parent_item_id: null,
-                exercise_id: item.exercise_id,
-                substitute_exercise_ids: item.substitute_exercise_ids.length > 0
+                exercise_id: item.exercise_id ?? null,
+                substitute_exercise_ids: (item.substitute_exercise_ids && item.substitute_exercise_ids.length > 0)
                     ? item.substitute_exercise_ids
                     : null,
-                sets: item.sets,
-                reps: item.reps,
-                rest_seconds: item.rest_seconds,
-                notes: item.notes,
+                sets: item.sets ?? null,
+                reps: item.reps ?? null,
+                rest_seconds: item.rest_seconds ?? null,
+                notes: item.notes ?? null,
+                exercise_function: item.exercise_function ?? null,
+                item_config: item.item_config ?? undefined,
             })),
         })),
     }

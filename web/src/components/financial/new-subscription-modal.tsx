@@ -161,7 +161,7 @@ export function NewSubscriptionModal({
     }
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-modal flex items-center justify-center p-4">
             {/* Backdrop */}
             <div
                 className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300"
@@ -173,7 +173,7 @@ export function NewSubscriptionModal({
                 {/* Header */}
                 <div className="flex items-center justify-between border-b border-k-border-subtle bg-surface-inset px-8 py-6">
                     <div>
-                        <h2 className="text-xl font-bold text-white tracking-tight">
+                        <h2 className="text-xl font-bold text-k-text-primary tracking-tight">
                             {step === 'type' ? 'Nova Assinatura' : typeTitle[billingType!]}
                         </h2>
                         <p className="text-xs text-k-text-secondary mt-1">
@@ -203,7 +203,7 @@ export function NewSubscriptionModal({
                         >
                             <div className="flex items-start gap-3">
                                 <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-violet-500/10">
-                                    <CreditCard size={20} className="text-violet-400" />
+                                    <CreditCard size={20} className="text-violet-600 dark:text-violet-400" />
                                 </div>
                                 <div className="flex-1">
                                     <h3 className="text-sm font-semibold text-k-text-primary">
@@ -213,7 +213,7 @@ export function NewSubscriptionModal({
                                         Gera um link de pagamento automático. O aluno paga online.
                                     </p>
                                     {!hasStripeConnect && (
-                                        <p className="text-xs text-amber-400 mt-1">
+                                        <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
                                             Conecte o Stripe para usar esta opção
                                         </p>
                                     )}
@@ -228,7 +228,7 @@ export function NewSubscriptionModal({
                         >
                             <div className="flex items-start gap-3">
                                 <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-500/10">
-                                    <HandCoins size={20} className="text-blue-400" />
+                                    <HandCoins size={20} className="text-blue-600 dark:text-blue-400" />
                                 </div>
                                 <div className="flex-1">
                                     <h3 className="text-sm font-semibold text-k-text-primary">
@@ -248,7 +248,7 @@ export function NewSubscriptionModal({
                         >
                             <div className="flex items-start gap-3">
                                 <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-emerald-500/10">
-                                    <Heart size={20} className="text-emerald-400" />
+                                    <Heart size={20} className="text-emerald-600 dark:text-emerald-400" />
                                 </div>
                                 <div className="flex-1">
                                     <h3 className="text-sm font-semibold text-k-text-primary">
@@ -267,7 +267,7 @@ export function NewSubscriptionModal({
                 {step === 'details' && !checkoutUrl && (
                     <form onSubmit={handleSubmit} className="p-8 space-y-6">
                         {error && (
-                            <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl text-sm flex items-start gap-3">
+                            <div className="bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl text-sm flex items-start gap-3">
                                 <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
                                 {error}
                             </div>
@@ -323,7 +323,7 @@ export function NewSubscriptionModal({
                             {/* Courtesy explanation */}
                             {billingType === 'courtesy' && (
                                 <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
-                                    <p className="text-xs text-emerald-400">
+                                    <p className="text-xs text-emerald-600 dark:text-emerald-400">
                                         O aluno terá acesso completo sem nenhuma cobrança. Ideal para familiares, parceiros ou períodos de teste.
                                     </p>
                                 </div>
@@ -394,7 +394,7 @@ export function NewSubscriptionModal({
                     <div className="p-8 space-y-5">
                         <div className="text-center">
                             <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-emerald-500/10 mx-auto mb-3">
-                                <Check size={22} className="text-emerald-400" />
+                                <Check size={22} className="text-emerald-600 dark:text-emerald-400" />
                             </div>
                             <h3 className="text-base font-semibold text-k-text-primary mb-1">
                                 Link de pagamento pronto
@@ -415,7 +415,7 @@ export function NewSubscriptionModal({
                                 title="Copiar link"
                             >
                                 {copied ? (
-                                    <Check size={14} className="text-emerald-400" />
+                                    <Check size={14} className="text-emerald-600 dark:text-emerald-400" />
                                 ) : (
                                     <Copy size={14} className="text-k-text-quaternary" />
                                 )}

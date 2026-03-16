@@ -18,6 +18,7 @@ class HealthKitManager: NSObject, ObservableObject {
 
     override init() {
         super.init()
+        recoverActiveWorkoutSession()
     }
 
     // MARK: - Authorization
@@ -49,11 +50,52 @@ class HealthKitManager: NSObject, ObservableObject {
         }
     }
 
+    // MARK: - Crash Recovery
+
+    /// Attempt to recover an active workout session after app relaunch.
+    /// Called on init — if watchOS killed the app while a workout was running,
+    /// this reclaims the HKWorkoutSession so HR/calories tracking continues.
+    private func recoverActiveWorkoutSession() {
+        guard HKHealthStore.isHealthDataAvailable() else { return }
+
+        healthStore.recoverActiveWorkoutSession { [weak self] session, error in
+            guard let self else { return }
+
+            if let error {
+                print("[HealthKit] No active session to recover: \(error.localizedDescription)")
+                return
+            }
+
+            guard let session else {
+                print("[HealthKit] recoverActiveWorkoutSession returned nil session")
+                return
+            }
+
+            print("[HealthKit] Recovered active workout session — state: \(session.state.rawValue)")
+
+            self.workoutSession = session
+            self.builder = session.associatedWorkoutBuilder()
+
+            session.delegate = self
+            self.builder?.delegate = self
+
+            DispatchQueue.main.async {
+                self.isWorkoutActive = (session.state == .running)
+            }
+        }
+    }
+
     // MARK: - Workout Session
 
     func startWorkout() {
         guard HKHealthStore.isHealthDataAvailable() else {
             print("[HealthKit] Health data not available")
+            return
+        }
+
+        // Don't start a new session if one is already active
+        if workoutSession != nil {
+            print("[HealthKit] Workout session already active — skipping startWorkout")
             return
         }
 
@@ -95,6 +137,40 @@ class HealthKitManager: NSObject, ObservableObject {
         }
     }
 
+    /// End the workout session WITHOUT saving to Apple Health.
+    /// Used when the user abandons/discards a workout from the Watch.
+    func discardWorkout() {
+        guard let session = workoutSession, let builder = builder else {
+            print("[HealthKit] No active workout to discard")
+            return
+        }
+
+        session.end()
+        let endDate = Date()
+
+        builder.endCollection(withEnd: endDate) { [weak self] _, error in
+            if let error = error {
+                print("[HealthKit] Failed to end collection for discard: \(error)")
+            }
+            Task {
+                do {
+                    try await builder.discardWorkout()
+                    print("[HealthKit] Workout discarded (not saved to Health)")
+                } catch {
+                    print("[HealthKit] Failed to discard workout: \(error)")
+                }
+                await MainActor.run {
+                    self?.isWorkoutActive = false
+                    self?.activeCalories = 0.0
+                    self?.heartRate = 0.0
+                }
+            }
+        }
+
+        workoutSession = nil
+        self.builder = nil
+    }
+
     func endWorkout() {
         guard let session = workoutSession, let builder = builder else {
             print("[HealthKit] No active workout to end")
@@ -107,23 +183,25 @@ class HealthKitManager: NSObject, ObservableObject {
 
         // Critical order: endCollection FIRST, then finishWorkout.
         // Without finishWorkout(), the workout won't appear in Apple Health.
-        builder.endCollection(withEnd: endDate) { [weak self] success, error in
+        builder.endCollection(withEnd: endDate) { [weak self] _, error in
             if let error = error {
                 print("[HealthKit] Failed to end collection: \(error)")
             } else {
                 print("[HealthKit] Workout collection ended — saving to HealthKit...")
             }
 
-            builder.finishWorkout { workout, error in
-                if let error = error {
-                    print("[HealthKit] ❌ Failed to save workout to HealthKit: \(error)")
-                } else if let workout = workout {
-                    let duration = workout.duration
-                    let calories = workout.totalEnergyBurned?.doubleValue(for: .kilocalorie()) ?? 0
-                    print("[HealthKit] ✅ Workout saved to HealthKit — duration: \(Int(duration))s, calories: \(Int(calories)) kcal")
+            Task {
+                do {
+                    if let workout = try await builder.finishWorkout() {
+                        let duration = workout.duration
+                        let calories = workout.totalEnergyBurned?.doubleValue(for: .kilocalorie()) ?? 0
+                        print("[HealthKit] Workout saved to HealthKit — duration: \(Int(duration))s, calories: \(Int(calories)) kcal")
+                    }
+                } catch {
+                    print("[HealthKit] Failed to save workout to HealthKit: \(error)")
                 }
 
-                DispatchQueue.main.async {
+                await MainActor.run {
                     self?.isWorkoutActive = false
                     self?.activeCalories = 0.0
                     self?.heartRate = 0.0

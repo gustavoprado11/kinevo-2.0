@@ -7,15 +7,31 @@ export default async function StudentsPage() {
     const { trainer } = await getTrainerWithSubscription()
 
     const supabase = await createClient()
-    const { data: students } = await supabase
-        .from('students')
-        .select('id, name, email, phone, status, modality, avatar_url, created_at, is_trainer_profile')
-        .order('created_at', { ascending: false })
+    const [studentsResult, templatesResult] = await Promise.all([
+        supabase
+            .from('students')
+            .select('id, name, email, phone, status, modality, avatar_url, created_at, is_trainer_profile')
+            .order('created_at', { ascending: false }),
+        supabase
+            .from('form_templates')
+            .select('id, title, trainer_id')
+            .or(`trainer_id.eq.${trainer.id},trainer_id.is.null`)
+            .or('system_key.is.null,system_key.neq.prescription_questionnaire')
+            .eq('is_active', true)
+            .order('created_at', { ascending: false }),
+    ])
+
+    const students = studentsResult.data
+    const formTemplates = (templatesResult.data || []).map(t => ({
+        id: t.id,
+        title: t.title,
+        trainer_id: t.trainer_id,
+    }))
 
     const studentIds = students?.map(s => s.id) || []
 
     if (studentIds.length === 0) {
-        return <StudentsClient trainer={trainer} initialStudents={[]} />
+        return <StudentsClient trainer={trainer} initialStudents={[]} formTemplates={formTemplates} />
     }
 
     // Active programs with scheduled days for expected-per-week calculation
@@ -28,13 +44,16 @@ export default async function StudentsPage() {
         .in('student_id', studentIds)
         .eq('status', 'active')
 
-    // All completed sessions for these students (for last session + this week count)
+    // Completed sessions for these students (last 60 days — enough for last session + this week count)
     // Use completed_at as canonical "when workout happened" timestamp
+    const sixtyDaysAgo = new Date()
+    sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60)
     const { data: allSessions } = await supabase
         .from('workout_sessions')
         .select('student_id, completed_at')
         .in('student_id', studentIds)
         .eq('status', 'completed')
+        .gte('completed_at', sixtyDaysAgo.toISOString())
         .order('completed_at', { ascending: false })
 
     // Build session stats per student
@@ -75,5 +94,5 @@ export default async function StudentsPage() {
         }
     })
 
-    return <StudentsClient trainer={trainer} initialStudents={enrichedStudents} />
+    return <StudentsClient trainer={trainer} initialStudents={enrichedStudents} formTemplates={formTemplates} />
 }

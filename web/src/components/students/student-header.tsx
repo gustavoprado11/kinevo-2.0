@@ -90,7 +90,7 @@ export function StudentHeader({ student, onEdit, onDelete, children }: StudentHe
 
     return (
         <>
-            <div className="bg-glass-bg backdrop-blur-md rounded-2xl border border-k-border-primary p-5">
+            <div className="bg-white dark:bg-glass-bg backdrop-blur-md rounded-2xl border border-[#E5E5EA] dark:border-k-border-primary p-5">
                 <div className="flex items-center gap-5">
                     {/* Back button */}
                     <Link
@@ -124,22 +124,22 @@ export function StudentHeader({ student, onEdit, onDelete, children }: StudentHe
                     {/* Info */}
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3 mb-1">
-                            <h1 className="text-2xl font-black text-white tracking-tight truncate">{student.name}</h1>
+                            <h1 className="text-2xl font-black text-[#1C1C1E] dark:text-white tracking-tight truncate">{student.name}</h1>
                             <div className="flex items-center gap-2">
                                 {student.is_trainer_profile && (
-                                    <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded bg-violet-500/10 text-violet-300 border border-violet-500/20">
+                                    <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-violet-500/10 text-violet-600 dark:text-violet-300 border border-violet-500/20">
                                         Meu Perfil
                                     </span>
                                 )}
-                                <span className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded border ${statusConfig.classes}`}>
+                                <span className={`px-2 py-0.5 text-[10px] font-bold rounded border ${statusConfig.classes}`}>
                                     {statusConfig.label}
                                 </span>
                                 {student.modality === 'presential' ? (
-                                    <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded bg-violet-500/10 text-violet-300 border border-violet-500/30 flex items-center gap-1">
+                                    <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-violet-500/10 text-violet-600 dark:text-violet-300 border border-violet-500/30 flex items-center gap-1">
                                         Presencial
                                     </span>
                                 ) : (
-                                    <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded bg-glass-bg text-k-text-tertiary border border-k-border-primary flex items-center gap-1">
+                                    <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-glass-bg text-k-text-tertiary border border-k-border-primary flex items-center gap-1">
                                         Online
                                     </span>
                                 )}
@@ -147,14 +147,14 @@ export function StudentHeader({ student, onEdit, onDelete, children }: StudentHe
                         </div>
 
                         <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-xs font-medium">
-                            <div className="flex items-center gap-2 text-k-text-quaternary">
+                            <div className="flex items-center gap-2 text-[#8E8E93] dark:text-k-text-quaternary">
                                 <svg className="w-3.5 h-3.5 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                                 </svg>
                                 <span className="hover:text-k-text-secondary transition-colors cursor-default">{student.email}</span>
                             </div>
 
-                            <div className="flex items-center gap-2 text-k-text-quaternary">
+                            <div className="flex items-center gap-2 text-[#8E8E93] dark:text-k-text-quaternary">
                                 <svg className="w-3.5 h-3.5 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                 </svg>
@@ -169,7 +169,7 @@ export function StudentHeader({ student, onEdit, onDelete, children }: StudentHe
                     <div data-onboarding="student-header-actions" className="flex items-center gap-2 flex-shrink-0">
                         <button
                             onClick={onEdit}
-                            className="px-4 py-2 text-[11px] font-bold uppercase tracking-widest text-k-text-tertiary hover:text-k-text-primary hover:bg-glass-bg rounded-xl transition-all flex items-center gap-2 border border-k-border-subtle"
+                            className="px-4 py-2 text-[11px] font-bold text-k-text-tertiary hover:text-k-text-primary hover:bg-glass-bg rounded-xl transition-all flex items-center gap-2 border border-k-border-subtle"
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -185,7 +185,7 @@ export function StudentHeader({ student, onEdit, onDelete, children }: StudentHe
                                         setResetError(null)
                                         setShowResetConfirm(true)
                                     }}
-                                    className="px-4 py-2 text-[11px] font-bold uppercase tracking-widest text-k-text-tertiary hover:text-violet-400 hover:bg-violet-400/10 rounded-xl transition-all flex items-center gap-2 border border-k-border-subtle hover:border-violet-400/20"
+                                    className="px-4 py-2 text-[11px] font-bold text-k-text-tertiary hover:text-violet-600 dark:hover:text-violet-400 hover:bg-violet-400/10 rounded-xl transition-all flex items-center gap-2 border border-k-border-subtle hover:border-violet-400/20"
                                     title="Gerar Nova Senha"
                                 >
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -218,7 +218,7 @@ export function StudentHeader({ student, onEdit, onDelete, children }: StudentHe
             {/* Confirmation Modal — outside backdrop-blur container to avoid stacking context issues */}
             {
                 showDeleteConfirm && (
-                    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                    <div className="fixed inset-0 z-float flex items-center justify-center p-4">
                         <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowDeleteConfirm(false)} />
                         <div className="relative bg-background border border-border rounded-2xl p-6 max-w-sm w-full shadow-2xl">
                             <div className="w-12 h-12 bg-red-500/10 rounded-full flex items-center justify-center mb-4 mx-auto">
@@ -255,7 +255,7 @@ export function StudentHeader({ student, onEdit, onDelete, children }: StudentHe
             {/* Reset Password Modal */}
             {
                 showResetConfirm && (
-                    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                    <div className="fixed inset-0 z-float flex items-center justify-center p-4">
                         <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => !isResetting && setShowResetConfirm(false)} />
                         <div className="relative bg-[#09090b] border border-[#1f1f22] rounded-3xl p-8 max-w-md w-full shadow-2xl">
                             {!newPassword ? (

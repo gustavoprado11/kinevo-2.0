@@ -16,7 +16,7 @@ export default async function EditProgramPage({ params }: PageProps) {
     const { trainer } = await getTrainerWithSubscription()
     const supabase = await createClient()
 
-    // Get the assigned program with its workouts and items
+    // Get the assigned program with its workouts, items, and source template
     const { data: program } = await supabase
         .from('assigned_programs')
         .select(`
@@ -26,6 +26,7 @@ export default async function EditProgramPage({ params }: PageProps) {
             duration_weeks,
             started_at,
             scheduled_start_date,
+            source_template_id,
             assigned_workouts (
                 id,
                 name,
@@ -41,7 +42,8 @@ export default async function EditProgramPage({ params }: PageProps) {
                     sets,
                     reps,
                     rest_seconds,
-                    notes
+                    notes,
+                    item_config
                 )
             )
         `)
@@ -90,12 +92,43 @@ export default async function EditProgramPage({ params }: PageProps) {
         updated_at: new Date().toISOString()
     }))
 
+    // Fetch form triggers from source template (read-only)
+    let formTriggers: { preWorkout: any; postWorkout: any } | undefined
+    const sourceTemplateId = (program as any).source_template_id
+
+    if (sourceTemplateId) {
+        const { data: triggers } = await supabase
+            .from('program_form_triggers')
+            .select('trigger_type, form_template_id, form_templates(title, category)')
+            .eq('program_template_id', sourceTemplateId)
+            .eq('is_active', true)
+
+        if (triggers && triggers.length > 0) {
+            const pre = triggers.find((t: any) => t.trigger_type === 'pre_workout')
+            const post = triggers.find((t: any) => t.trigger_type === 'post_workout')
+
+            formTriggers = {
+                preWorkout: pre ? {
+                    formTemplateId: pre.form_template_id,
+                    formTitle: (pre as any).form_templates?.title || '',
+                    formCategory: (pre as any).form_templates?.category || '',
+                } : null,
+                postWorkout: post ? {
+                    formTemplateId: post.form_template_id,
+                    formTitle: (post as any).form_templates?.title || '',
+                    formCategory: (post as any).form_templates?.category || '',
+                } : null,
+            }
+        }
+    }
+
     return (
         <EditAssignedProgramClient
             trainer={trainer}
             program={program as any}
             exercises={mappedExercises}
             studentId={studentId}
+            formTriggers={formTriggers}
         />
     )
 }

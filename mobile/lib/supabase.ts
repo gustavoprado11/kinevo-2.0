@@ -27,9 +27,11 @@ const ExpoSecureStoreAdapter = {
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
-// Debug solicitado para diagnóstico
-console.log('Supabase Config:', supabaseUrl ? 'URL Found' : 'URL Missing');
-console.log('Supabase Key:', supabaseAnonKey ? 'Key Found' : 'Key Missing');
+// Debug solicitado para diagnóstico (somente em dev)
+if (__DEV__) {
+    console.log('Supabase Config:', supabaseUrl ? 'URL Found' : 'URL Missing');
+    console.log('Supabase Key:', supabaseAnonKey ? 'Key Found' : 'Key Missing');
+}
 
 if (!supabaseUrl || !supabaseAnonKey) {
     console.error(

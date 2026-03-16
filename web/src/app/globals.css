@@ -12,52 +12,52 @@
    ═══════════════════════════════════════════════════════════════════ */
 
 :root {
-  /* ── Existing shadcn/ui variables (Light) ── */
-  --background: #F2F2F7;
-  --foreground: #0f172a;
+  /* ── Existing shadcn/ui variables (Light — Apple HIG palette) ── */
+  --background: #F5F5F7;
+  --foreground: #1D1D1F;
   --card: #ffffff;
-  --card-foreground: #0f172a;
+  --card-foreground: #1D1D1F;
   --popover: #ffffff;
-  --popover-foreground: #0f172a;
-  --primary: #7C3AED;
+  --popover-foreground: #1D1D1F;
+  --primary: #007AFF;
   --primary-foreground: #ffffff;
-  --muted: #f1f5f9;
-  --muted-foreground: #64748b;
-  --accent: #f1f5f9;
-  --accent-foreground: #7C3AED;
-  --border: #e2e8f0;
-  --input: #e2e8f0;
-  --ring: #7C3AED;
-  --destructive: #dc2626;
+  --muted: #F5F5F7;
+  --muted-foreground: #6E6E73;
+  --accent: #F5F5F7;
+  --accent-foreground: #007AFF;
+  --border: #D2D2D7;
+  --input: #D2D2D7;
+  --ring: #007AFF;
+  --destructive: #FF3B30;
   --destructive-foreground: #ffffff;
   color-scheme: light;
 
-  /* ── Kinevo Semantic Surfaces (Light) ── */
-  --surface-primary: #F2F2F7;
-  --surface-canvas: #F2F2F7;
+  /* ── Kinevo Semantic Surfaces (Light — Apple HIG) ── */
+  --surface-primary: #F5F5F7;
+  --surface-canvas: #F5F5F7;
   --surface-card: #FFFFFF;
   --surface-sidebar: #FFFFFF;
   --surface-elevated: #FFFFFF;
-  --surface-inset: rgba(0, 0, 0, 0.03);
+  --surface-inset: #F5F5F7;
 
-  /* ── Kinevo Semantic Text (Light) ── */
-  --text-primary: #09090B;
-  --text-secondary: rgba(15, 23, 42, 0.7);
-  --text-tertiary: rgba(15, 23, 42, 0.5);
-  --text-quaternary: rgba(15, 23, 42, 0.25);
+  /* ── Kinevo Semantic Text (Light — Apple HIG) ── */
+  --text-primary: #1D1D1F;
+  --text-secondary: #6E6E73;
+  --text-tertiary: #86868B;
+  --text-quaternary: #AEAEB2;
 
-  /* ── Kinevo Semantic Borders (Light) ── */
-  --border-primary: rgba(0, 0, 0, 0.1);
-  --border-subtle: rgba(0, 0, 0, 0.06);
+  /* ── Kinevo Semantic Borders (Light — Apple HIG) ── */
+  --border-primary: #D2D2D7;
+  --border-subtle: #E8E8ED;
 
   /* ── Kinevo Glass / Overlay (Light) ── */
-  --glass-bg: rgba(0, 0, 0, 0.03);
-  --glass-bg-active: rgba(0, 0, 0, 0.06);
-  --glass-bg-hover: rgba(0, 0, 0, 0.04);
+  --glass-bg: #F5F5F7;
+  --glass-bg-active: #ECECF0;
+  --glass-bg-hover: #F0F0F4;
 
   /* ── Kinevo Gradient Text (Light) ── */
-  --gradient-text-from: #0F172A;
-  --gradient-text-to: #64748b;
+  --gradient-text-from: #1D1D1F;
+  --gradient-text-to: #86868B;
 }
 
 .dark {
@@ -152,6 +152,24 @@
   --color-glass-bg: var(--glass-bg);
   --color-glass-bg-active: var(--glass-bg-active);
   --color-glass-bg-hover: var(--glass-bg-hover);
+
+  /* Font families */
+  --font-family-jakarta: var(--font-jakarta), "Plus Jakarta Sans", system-ui, sans-serif;
+
+  /* Z-Index Design Tokens — semantic stacking layers
+     Usage: z-sticky, z-header, z-sidebar, z-dropdown, z-modal, etc. */
+  --z-index-content: 0;
+  --z-index-raised: 1;
+  --z-index-sticky: 10;
+  --z-index-header: 20;
+  --z-index-sidebar: 30;
+  --z-index-dropdown: 40;
+  --z-index-backdrop: 45;
+  --z-index-modal: 50;
+  --z-index-float: 60;
+  --z-index-onboarding: 70;
+  --z-index-tooltip: 100;
+  --z-index-topmost: 110;
 }
 
 /* ── Base Resets ── */
@@ -170,9 +188,12 @@ body {
 
   /* Apple-style soft shadow for Light Mode cards */
   .shadow-apple-card {
-    box-shadow:
-      0 1px 3px rgba(0, 0, 0, 0.05),
-      0 1px 2px rgba(0, 0, 0, 0.03);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  }
+
+  /* Apple-style hover shadow for interactive cards */
+  .shadow-apple-hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
   }
 
   /* Apple-style elevated shadow for modals/sheets */
@@ -264,7 +285,7 @@ body {
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
   background-repeat: repeat;
   pointer-events: none;
-  z-index: 1;
+  z-index: var(--z-index-raised);
 }
 
 /* Animated gradient border */
@@ -364,6 +385,24 @@ body {
 
 .animate-pulse-soft {
   animation: pulse-soft 2s ease-in-out infinite;
+}
+
+/* Smooth scroll for anchor navigation */
+html {
+  scroll-behavior: smooth;
+}
+
+[id] {
+  scroll-margin-top: 5rem;
+}
+
+/* Hide scrollbar but keep scroll functionality */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
 /* Shake animation for validation errors */

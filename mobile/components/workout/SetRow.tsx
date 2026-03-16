@@ -11,6 +11,8 @@ interface SetRowProps {
     onWeightChange: (value: string) => void;
     onRepsChange: (value: string) => void;
     onToggleComplete: () => void;
+    previousWeight?: number;
+    previousReps?: number;
 }
 
 export function SetRow({
@@ -21,60 +23,149 @@ export function SetRow({
     onWeightChange,
     onRepsChange,
     onToggleComplete,
+    previousWeight,
+    previousReps,
 }: SetRowProps) {
 
     const handleToggle = () => {
-        // Feedback tátil
         if (!isCompleted) {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         } else {
             Haptics.selectionAsync();
         }
         onToggleComplete();
-    }
+    };
+
+    const hasPrevious = previousWeight !== undefined && previousReps !== undefined;
 
     return (
-        <View className="flex-row items-center justify-between mb-3">
+        <View style={[
+            {
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingVertical: 5,
+                paddingHorizontal: 4,
+                borderRadius: 10,
+                marginBottom: 4,
+            },
+            isCompleted && { backgroundColor: 'rgba(124, 58, 237, 0.06)' },
+        ]}>
             {/* Set Number */}
-            <View className="w-8 h-8 rounded-full bg-slate-100 items-center justify-center mr-3">
-                <Text className="text-slate-500 font-medium text-sm">{index + 1}</Text>
+            <View style={[
+                {
+                    width: 26,
+                    height: 26,
+                    borderRadius: 13,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginRight: 6,
+                },
+                isCompleted
+                    ? { backgroundColor: 'rgba(124, 58, 237, 0.15)' }
+                    : { backgroundColor: '#f1f5f9' },
+            ]}>
+                <Text style={[
+                    { fontSize: 12, fontWeight: '600' },
+                    isCompleted ? { color: '#7c3aed' } : { color: '#64748b' },
+                ]}>
+                    {index + 1}
+                </Text>
+            </View>
+
+            {/* Previous set data */}
+            <View style={{ width: 58, alignItems: 'center', marginRight: 6 }}>
+                <Text style={{
+                    fontSize: 12,
+                    fontWeight: '500',
+                    color: '#94a3b8',
+                    fontVariant: ['tabular-nums'],
+                }}>
+                    {hasPrevious
+                        ? `${Number.isInteger(previousWeight) ? previousWeight : previousWeight!.toFixed(1)}×${previousReps}`
+                        : '—'}
+                </Text>
             </View>
 
             {/* Weight Input */}
-            <View className="flex-1 mr-3">
-                <TextInput
-                    className={`bg-white/60 text-slate-900 border border-white/40 p-3 rounded-xl text-center font-bold text-lg shadow-sm ${isCompleted ? 'opacity-50 bg-slate-100/50' : ''}`}
-                    placeholder="kg"
-                    placeholderTextColor="#94a3b8"
-                    keyboardType="numeric"
-                    value={weight}
-                    onChangeText={onWeightChange}
-                    editable={!isCompleted}
-                />
-            </View>
+            <TextInput
+                style={[
+                    {
+                        flex: 1,
+                        height: 38,
+                        backgroundColor: '#f5f5f7',
+                        borderRadius: 10,
+                        textAlign: 'center',
+                        fontWeight: '600',
+                        fontSize: 15,
+                        color: '#0f172a',
+                        marginRight: 6,
+                        fontVariant: ['tabular-nums'],
+                    },
+                    isCompleted && { backgroundColor: 'rgba(124, 58, 237, 0.08)', color: '#7c3aed' },
+                ]}
+                placeholder={hasPrevious ? String(previousWeight) : 'kg'}
+                placeholderTextColor={hasPrevious ? '#94a3b8' : '#cbd5e1'}
+                keyboardType="decimal-pad"
+                returnKeyType="next"
+                value={weight}
+                onChangeText={onWeightChange}
+                editable={!isCompleted}
+            />
 
             {/* Reps Input */}
-            <View className="flex-1 mr-3">
-                <TextInput
-                    className={`bg-white/60 text-slate-900 border border-white/40 p-3 rounded-xl text-center font-bold text-lg shadow-sm ${isCompleted ? 'opacity-50 bg-slate-100/50' : ''}`}
-                    placeholder="Reps"
-                    placeholderTextColor="#94a3b8"
-                    keyboardType="numeric"
-                    value={reps}
-                    onChangeText={onRepsChange}
-                    editable={!isCompleted}
-                />
-            </View>
+            <TextInput
+                style={[
+                    {
+                        flex: 1,
+                        height: 38,
+                        backgroundColor: '#f5f5f7',
+                        borderRadius: 10,
+                        textAlign: 'center',
+                        fontWeight: '600',
+                        fontSize: 15,
+                        color: '#0f172a',
+                        marginRight: 6,
+                        fontVariant: ['tabular-nums'],
+                    },
+                    isCompleted && { backgroundColor: 'rgba(124, 58, 237, 0.08)', color: '#7c3aed' },
+                ]}
+                placeholder={hasPrevious ? String(previousReps) : ''}
+                placeholderTextColor={hasPrevious ? '#94a3b8' : '#cbd5e1'}
+                keyboardType="number-pad"
+                returnKeyType="done"
+                value={reps}
+                onChangeText={onRepsChange}
+                editable={!isCompleted}
+            />
 
-            {/* Check Button */}
+            {/* Check Button — circular, gray → violet */}
             <TouchableOpacity
                 onPress={handleToggle}
-                className={`w-12 h-12 rounded-xl items-center justify-center border-2 shadow-sm ${isCompleted
-                    ? 'bg-emerald-500 border-emerald-400 shadow-emerald-500/30'
-                    : 'bg-white/60 border-white/40'
-                    }`}
+                activeOpacity={0.7}
+                style={[
+                    {
+                        width: 40,
+                        height: 40,
+                        borderRadius: 20,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                    },
+                    isCompleted
+                        ? { backgroundColor: '#7c3aed' }
+                        : { backgroundColor: '#e8e8ed' },
+                ]}
             >
-                {isCompleted && <Check size={20} color="#fff" />}
+                {isCompleted ? (
+                    <Check size={18} color="#fff" strokeWidth={3} />
+                ) : (
+                    <View style={{
+                        width: 18,
+                        height: 18,
+                        borderRadius: 9,
+                        borderWidth: 2,
+                        borderColor: '#c7c7cc',
+                    }} />
+                )}
             </TouchableOpacity>
         </View>
     );

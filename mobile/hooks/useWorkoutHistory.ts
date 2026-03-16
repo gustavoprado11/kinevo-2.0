@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
 
+export type HistoryItemType = 'exercise' | 'warmup' | 'cardio' | 'note' | 'superset';
+
 export interface HistorySession {
     id: string;
     started_at: string;
@@ -11,6 +13,22 @@ export interface HistorySession {
     volume_load: number;
     is_intense: boolean;
     exercises: HistoryExercise[];
+    workoutItems: HistoryWorkoutItem[];
+    has_pre_checkin: boolean;
+    has_post_checkin: boolean;
+}
+
+export interface HistoryWorkoutItem {
+    id: string;
+    itemType: HistoryItemType;
+    orderIndex: number;
+    exerciseName?: string;
+    notes?: string;
+    itemConfig?: Record<string, any>;
+    parentItemId?: string | null;
+    setLogs: HistorySet[];
+    children?: HistoryWorkoutItem[];
+    cardioResult?: Record<string, any> | null;
 }
 
 export interface HistoryExercise {
@@ -72,7 +90,7 @@ export function useWorkoutHistory() {
                 return;
             }
 
-            // Fetch sessions with logs
+            // Fetch sessions with logs and workout items
             const { data, error } = await supabase
                 .from('workout_sessions')
                 .select(`
@@ -81,14 +99,24 @@ export function useWorkoutHistory() {
                     completed_at,
                     duration_seconds,
                     status,
-                    assigned_workout:assigned_workouts(name),
+                    pre_workout_submission_id,
+                    post_workout_submission_id,
+                    assigned_workout:assigned_workouts(
+                        name,
+                        items:assigned_workout_items(
+                            id, item_type, order_index, exercise_name, notes, item_config, parent_item_id,
+                            exercises(name)
+                        )
+                    ),
                     logs:set_logs(
                         id,
+                        assigned_workout_item_id,
                         executed_exercise_id,
                         exercise_id,
                         weight,
                         reps_completed,
                         is_completed,
+                        notes,
                         executed_exercise:exercises!set_logs_executed_exercise_id_fkey(name),
                         legacy_exercise:exercises!set_logs_exercise_id_fkey(name)
                     )
@@ -112,8 +140,15 @@ export function useWorkoutHistory() {
                 let sessionVol = 0;
                 const exerciseMap = new Map<string, HistoryExercise>();
 
+                // Index logs by assigned_workout_item_id
+                const logsByItem = new Map<string, any[]>();
                 session.logs?.forEach((log: any) => {
                     if (!log.is_completed) return;
+                    const itemId = log.assigned_workout_item_id;
+                    if (itemId) {
+                        if (!logsByItem.has(itemId)) logsByItem.set(itemId, []);
+                        logsByItem.get(itemId)!.push(log);
+                    }
 
                     const weight = Number(log.weight) || 0;
                     const reps = Number(log.reps_completed) || 0;
@@ -152,6 +187,22 @@ export function useWorkoutHistory() {
                     }
                 });
 
+                // Build structured workout items
+                const rawItems: any[] = session.assigned_workout?.items || [];
+                const topLevel = rawItems.filter((i: any) => !i.parent_item_id).sort((a: any, b: any) => a.order_index - b.order_index);
+                const childItems = rawItems.filter((i: any) => i.parent_item_id);
+
+                const workoutItems: HistoryWorkoutItem[] = topLevel.map((item: any) => {
+                    const builtItem = buildHistoryItem(item, logsByItem);
+                    if (item.item_type === 'superset') {
+                        builtItem.children = childItems
+                            .filter((c: any) => c.parent_item_id === item.id)
+                            .sort((a: any, b: any) => a.order_index - b.order_index)
+                            .map((c: any) => buildHistoryItem(c, logsByItem));
+                    }
+                    return builtItem;
+                });
+
                 totalVol += sessionVol;
                 totalSecs += session.duration_seconds ?? 0;
 
@@ -163,7 +214,10 @@ export function useWorkoutHistory() {
                     workout_name: session.assigned_workout?.name || 'Treino Sem Nome',
                     volume_load: sessionVol,
                     is_intense: sessionVol > 8000,
-                    exercises: Array.from(exerciseMap.values())
+                    exercises: Array.from(exerciseMap.values()),
+                    workoutItems,
+                    has_pre_checkin: !!session.pre_workout_submission_id,
+                    has_post_checkin: !!session.post_workout_submission_id,
                 });
             });
 
@@ -186,7 +240,7 @@ export function useWorkoutHistory() {
             setHistory(sessions);
 
         } catch (err) {
-            console.error('Error fetching history:', err);
+            if (__DEV__) console.error('Error fetching history:', err);
         } finally {
             setIsLoading(false);
         }
@@ -197,4 +251,41 @@ export function useWorkoutHistory() {
     }, [fetchHistory]);
 
     return { history, stats, isLoading, refetch: fetchHistory };
+}
+
+// ── Helpers ──
+
+function buildHistoryItem(item: any, logsByItem: Map<string, any[]>): HistoryWorkoutItem {
+    const itemType = item.item_type as HistoryItemType;
+    const exerciseName = item.exercises?.name || item.exercise_name || undefined;
+    const itemLogs = logsByItem.get(item.id) || [];
+
+    const result: HistoryWorkoutItem = {
+        id: item.id,
+        itemType,
+        orderIndex: item.order_index,
+        exerciseName,
+        notes: item.notes || undefined,
+        itemConfig: item.item_config || undefined,
+        parentItemId: item.parent_item_id || null,
+        setLogs: [],
+        cardioResult: null,
+    };
+
+    if (itemType === 'exercise') {
+        result.setLogs = itemLogs.map((log: any) => ({
+            id: log.id,
+            weight: Number(log.weight) || 0,
+            reps: Number(log.reps_completed) || 0,
+            completed: !!log.is_completed,
+        }));
+    }
+
+    if (itemType === 'cardio' && itemLogs[0]?.notes) {
+        try {
+            result.cardioResult = JSON.parse(itemLogs[0].notes);
+        } catch { /* ignore parse error */ }
+    }
+
+    return result;
 }

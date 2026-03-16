@@ -5,12 +5,19 @@ import { assignProgram } from '@/app/students/[id]/actions/assign-program'
 import { getTrainerPrograms } from '@/app/students/[id]/actions/get-trainer-programs'
 import { useOnboardingStore } from '@/stores/onboarding-store'
 
+interface WorkoutTemplateInfo {
+    id: string
+    name: string
+    frequency: string[] | null
+}
+
 interface ProgramTemplate {
     id: string
     name: string
     description: string | null
     duration_weeks: number | null
     workout_count: number
+    workouts: WorkoutTemplateInfo[]
 }
 
 interface AssignProgramModalProps {
@@ -142,7 +149,7 @@ export function AssignProgramModal({
     const { Calendar, Dumbbell, ChevronRight, X, AlertCircle, Loader2 } = require('lucide-react')
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-modal flex items-center justify-center p-4">
             {/* Backdrop */}
             <div
                 className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
@@ -185,7 +192,7 @@ export function AssignProgramModal({
                             {loading ? (
                                 <div className="flex flex-col items-center justify-center py-20 gap-4">
                                     <Loader2 className="w-8 h-8 text-violet-500 animate-spin" />
-                                    <p className="text-xs font-bold text-k-text-quaternary uppercase tracking-widest">Carregando Programas</p>
+                                    <p className="text-xs font-bold text-k-text-quaternary ">Carregando Programas</p>
                                 </div>
                             ) : templates.length === 0 ? (
                                 <div className="text-center py-16 border border-dashed border-k-border-subtle rounded-3xl">
@@ -193,7 +200,7 @@ export function AssignProgramModal({
                                         <Dumbbell className="text-k-text-quaternary" size={24} strokeWidth={1.5} />
                                     </div>
                                     <p className="text-k-text-tertiary text-sm font-medium mb-1">Nenhum programa disponível</p>
-                                    <p className="text-[10px] text-k-text-quaternary uppercase tracking-widest font-bold">Crie um programa na biblioteca</p>
+                                    <p className="text-[10px] text-k-text-quaternary font-bold">Crie um programa na biblioteca</p>
                                 </div>
                             ) : (
                                 <div className="space-y-3">
@@ -218,12 +225,12 @@ export function AssignProgramModal({
 
                                                     <div className="flex items-center gap-4">
                                                         {template.duration_weeks && (
-                                                            <div className="text-[10px] font-bold text-k-text-tertiary uppercase tracking-widest flex items-center gap-1.5">
+                                                            <div className="text-[10px] font-bold text-k-text-tertiary flex items-center gap-1.5">
                                                                 <Calendar size={12} strokeWidth={1.5} className="opacity-50" />
                                                                 {template.duration_weeks} semanas
                                                             </div>
                                                         )}
-                                                        <div className="text-[10px] font-bold text-k-text-quaternary dark:text-white/40 uppercase tracking-widest flex items-center gap-1.5">
+                                                        <div className="text-[10px] font-bold text-k-text-quaternary flex items-center gap-1.5">
                                                             <Dumbbell size={12} strokeWidth={1.5} className="opacity-50" />
                                                             {template.workout_count} treinos
                                                         </div>
@@ -246,17 +253,37 @@ export function AssignProgramModal({
                                 <h3 className="font-bold text-white text-lg mb-1">{selectedTemplate.name}</h3>
                                 <div className="flex items-center gap-4 mt-2">
                                     {selectedTemplate.duration_weeks && (
-                                        <div className="text-[10px] font-bold text-k-text-tertiary uppercase tracking-widest flex items-center gap-1.5">
+                                        <div className="text-[10px] font-bold text-k-text-tertiary flex items-center gap-1.5">
                                             <Calendar size={12} strokeWidth={1.5} />
                                             {selectedTemplate.duration_weeks} semanas
                                         </div>
                                     )}
-                                    <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest flex items-center gap-1.5">
+                                    <div className="text-[10px] font-bold text-k-text-quaternary flex items-center gap-1.5">
                                         <Dumbbell size={12} strokeWidth={1.5} />
                                         {selectedTemplate.workout_count} treinos
                                     </div>
                                 </div>
                             </div>
+
+                            {/* Missing frequency warning */}
+                            {selectedTemplate.workouts.some(w => !w.frequency || w.frequency.length === 0) && (
+                                <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 flex gap-3">
+                                    <AlertCircle className="text-amber-400 shrink-0 mt-0.5" size={18} strokeWidth={1.5} />
+                                    <div>
+                                        <p className="text-sm font-bold text-amber-300 mb-1">Treino sem dia agendado</p>
+                                        <p className="text-xs text-amber-200/60 leading-relaxed font-medium">
+                                            {(() => {
+                                                const missing = selectedTemplate.workouts.filter(w => !w.frequency || w.frequency.length === 0)
+                                                const total = selectedTemplate.workouts.length
+                                                const visible = total - missing.length
+                                                return missing.length === 1
+                                                    ? `O treino "${missing[0].name}" não tem dia da semana. ${studentName} verá ${visible} de ${total} treinos no calendário.`
+                                                    : `${missing.length} treinos sem dia da semana. ${studentName} verá ${visible} de ${total} treinos no calendário.`
+                                            })()}
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Apple-style Info Alert */}
                             <div className="bg-amber-500/5 border border-amber-500/10 rounded-2xl p-4 flex gap-4">
@@ -273,7 +300,7 @@ export function AssignProgramModal({
 
                             {/* Scheduling Section */}
                             <div className="space-y-4 pt-4 border-t border-k-border-subtle">
-                                <h4 className="text-[10px] font-black text-k-text-quaternary uppercase tracking-[0.2em]">Configuração de Início</h4>
+                                <h4 className="text-[10px] font-black text-k-text-quaternary ">Configuração de Início</h4>
 
                                 <div className="grid grid-cols-1 gap-3">
                                     <button
@@ -305,7 +332,7 @@ export function AssignProgramModal({
 
                                         {assignmentType === 'scheduled' && (
                                             <div className="pl-8 pt-2 animate-in slide-in-from-top-2 duration-300">
-                                                <label className="block text-[10px] font-black text-violet-400 uppercase tracking-widest mb-2">Data de Início Prevista</label>
+                                                <label className="block text-[10px] font-black text-violet-600 dark:text-violet-400 mb-2">Data de Início Prevista</label>
                                                 <input
                                                     type="date"
                                                     value={startDate}
@@ -326,7 +353,7 @@ export function AssignProgramModal({
                     {step === 'select' ? (
                         <button
                             onClick={handleClose}
-                            className="flex-1 py-4 text-[11px] font-black uppercase tracking-[0.2em] text-k-text-tertiary hover:text-k-text-primary transition-colors border border-k-border-subtle rounded-2xl bg-glass-bg"
+                            className="flex-1 py-4 text-[11px] font-black text-k-text-tertiary hover:text-k-text-primary transition-colors border border-k-border-subtle rounded-2xl bg-glass-bg"
                         >
                             Cancelar
                         </button>
@@ -335,14 +362,14 @@ export function AssignProgramModal({
                             <button
                                 onClick={handleBack}
                                 disabled={assigning}
-                                className="flex-1 py-4 text-[11px] font-black uppercase tracking-[0.2em] text-k-text-tertiary hover:text-k-text-primary transition-colors border border-k-border-subtle rounded-2xl bg-glass-bg disabled:opacity-50"
+                                className="flex-1 py-4 text-[11px] font-black text-k-text-tertiary hover:text-k-text-primary transition-colors border border-k-border-subtle rounded-2xl bg-glass-bg disabled:opacity-50"
                             >
                                 Voltar
                             </button>
                             <button
                                 onClick={handleConfirm}
                                 disabled={assigning}
-                                className="flex-[1.5] py-4 bg-violet-600 hover:bg-violet-500 text-white text-[11px] font-black uppercase tracking-[0.2em] rounded-2xl transition-all shadow-lg shadow-violet-500/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:bg-glass-bg-active disabled:shadow-none"
+                                className="flex-[1.5] py-4 bg-violet-600 hover:bg-violet-500 text-white text-[11px] font-black rounded-2xl transition-all shadow-lg shadow-violet-500/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:bg-glass-bg-active disabled:shadow-none"
                             >
                                 {assigning ? (
                                     <>

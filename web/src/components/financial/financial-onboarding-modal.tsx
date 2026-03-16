@@ -31,7 +31,7 @@ const STEPS: Step[] = [
         ],
         icon: <Heart size={24} />,
         accent: 'bg-emerald-500/10',
-        accentText: 'text-emerald-400',
+        accentText: 'text-emerald-600 dark:text-emerald-400',
     },
     {
         title: 'Duas formas de cobrar',
@@ -44,7 +44,7 @@ const STEPS: Step[] = [
         ],
         icon: <CreditCard size={24} />,
         accent: 'bg-violet-500/10',
-        accentText: 'text-violet-400',
+        accentText: 'text-violet-600 dark:text-violet-400',
     },
     {
         title: 'Links de pagamento',
@@ -57,7 +57,7 @@ const STEPS: Step[] = [
         ],
         icon: <Link2 size={24} />,
         accent: 'bg-blue-500/10',
-        accentText: 'text-blue-400',
+        accentText: 'text-blue-600 dark:text-blue-400',
     },
     {
         title: 'Cancelamento pelo app',
@@ -71,7 +71,7 @@ const STEPS: Step[] = [
         ],
         icon: <BellRing size={24} />,
         accent: 'bg-amber-500/10',
-        accentText: 'text-amber-400',
+        accentText: 'text-amber-600 dark:text-amber-400',
     },
     {
         title: 'Controle de inadimplência',
@@ -85,7 +85,7 @@ const STEPS: Step[] = [
         ],
         icon: <ShieldCheck size={24} />,
         accent: 'bg-red-500/10',
-        accentText: 'text-red-400',
+        accentText: 'text-red-600 dark:text-red-400',
     },
 ]
 
@@ -132,7 +132,7 @@ export function FinancialOnboardingModal() {
     return (
         <AnimatePresence>
             {isOpen && (
-                <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-onboarding flex items-center justify-center p-4">
                     {/* Backdrop */}
                     <motion.div
                         initial={{ opacity: 0 }}
@@ -156,7 +156,7 @@ export function FinancialOnboardingModal() {
 
                         {/* Header bar */}
                         <div className="relative flex items-center justify-between px-8 pt-6">
-                            <span className="text-[10px] font-semibold tracking-widest uppercase text-k-text-quaternary">
+                            <span className="text-[10px] font-semibold text-k-text-quaternary">
                                 Como funciona o Financeiro
                             </span>
                             <button

@@ -18,7 +18,7 @@ export const TOUR_STEPS: Record<string, TourStep[]> = {
       targetSelector: '[data-onboarding="sidebar-exercises"]',
       title: 'Biblioteca de Exercícios',
       description:
-        'Mais de 200 exercícios do sistema com vídeo demonstrativo. Crie exercícios personalizados quando precisar.',
+        'Mais de 400 exercícios do sistema com vídeo demonstrativo. Crie exercícios personalizados quando precisar.',
       placement: 'right',
     },
     {
@@ -31,6 +31,14 @@ export const TOUR_STEPS: Record<string, TourStep[]> = {
     },
     {
       id: 'welcome-4',
+      targetSelector: '[data-onboarding="sidebar-forms"]',
+      title: 'Avaliações e Formulários',
+      description:
+        'Envie anamneses, check-ins semanais e formulários personalizados. Receba respostas e dê feedback direto pela plataforma.',
+      placement: 'right',
+    },
+    {
+      id: 'welcome-5',
       targetSelector: '[data-onboarding="sidebar-financial"]',
       title: 'Financeiro',
       description:
@@ -38,7 +46,15 @@ export const TOUR_STEPS: Record<string, TourStep[]> = {
       placement: 'right',
     },
     {
-      id: 'welcome-5',
+      id: 'welcome-6',
+      targetSelector: '[data-onboarding="sidebar-settings"]',
+      title: 'Configurações',
+      description:
+        'Personalize seu perfil, escolha tema claro ou escuro e gerencie sua assinatura.',
+      placement: 'right',
+    },
+    {
+      id: 'welcome-7',
       targetSelector: '[data-onboarding="dashboard-new-student"]',
       title: 'Primeiro Passo: Cadastre um Aluno',
       description:
@@ -46,9 +62,9 @@ export const TOUR_STEPS: Record<string, TourStep[]> = {
       placement: 'bottom',
     },
     {
-      id: 'welcome-6',
+      id: 'welcome-8',
       targetSelector: '[data-onboarding="dashboard-training-room"]',
-      title: 'Treino Presencial',
+      title: 'Sala de Treino',
       description:
         'Quando treinar presencialmente com seus alunos, use a Sala de Treino para registrar cargas e séries em tempo real.',
       placement: 'bottom',

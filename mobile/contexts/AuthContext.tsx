@@ -38,15 +38,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    console.log("[AuthProvider] Renderizando, isLoading:", isLoading);
+    if (__DEV__) console.log("[AuthProvider] Renderizando, isLoading:", isLoading);
 
     useEffect(() => {
-        console.log("[AuthProvider] useEffect - Buscando sessão...");
+        if (__DEV__) console.log("[AuthProvider] useEffect - Buscando sessão...");
 
         supabase.auth
             .getSession()
             .then(({ data: { session }, error }) => {
-                console.log("[AuthProvider] getSession resultado:", {
+                if (__DEV__) console.log("[AuthProvider] getSession resultado:", {
                     hasSession: !!session,
                     error: error?.message,
                 });
@@ -57,7 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 setIsLoading(false);
             })
             .catch((err) => {
-                console.error("[AuthProvider] Erro ao buscar sessão:", err);
+                console.error("[AuthProvider] Erro ao buscar sessão:", __DEV__ ? err : '');
                 setError(err.message);
                 setIsLoading(false);
             });
@@ -66,7 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const {
             data: { subscription },
         } = supabase.auth.onAuthStateChange((_event, session) => {
-            console.log("[AuthProvider] onAuthStateChange:", _event);
+            if (__DEV__) console.log("[AuthProvider] onAuthStateChange:", _event);
             setSession(session);
         });
 
@@ -87,9 +87,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             try {
                 const { syncWorkoutToWatch } = require("../modules/watch-connectivity");
                 syncWorkoutToWatch(null);
-                console.log("[AuthContext] Cleared Watch workout on sign out");
+                if (__DEV__) console.log("[AuthContext] Cleared Watch workout on sign out");
             } catch (e: any) {
-                console.warn("[AuthContext] Failed to clear Watch (non-critical):", e?.message);
+                if (__DEV__) console.warn("[AuthContext] Failed to clear Watch (non-critical):", e?.message);
             }
         }
         await supabase.auth.signOut();

@@ -22,6 +22,27 @@ struct WorkoutActivityAttributes: ActivityAttributes {
         let totalSetsCompleted: Int
         let totalSetsOverall: Int
         let workoutStartTimestamp: Double
+
+        // Item type: "exercise" | "warmup" | "cardio"
+        let currentItemType: String?
+
+        // Timer fields (warmup & cardio active timers)
+        let timerEndTimestamp: Double?
+        let timerTotalSeconds: Int?
+
+        // Warmup-specific
+        let warmupType: String?
+
+        // Cardio-specific
+        let cardioEquipment: String?
+        let cardioIntensity: String?
+        let cardioMode: String?
+        let intervalPhase: String?
+        let intervalCurrentRound: Int?
+        let intervalTotalRounds: Int?
+
+        // Unique ID per update — forces SwiftUI to recreate timer Text views
+        let updateId: String?
     }
 }
 
@@ -76,7 +97,18 @@ public class LiveActivityControllerModule: Module {
                 restEndTimestamp: nil,
                 totalSetsCompleted: 0,
                 totalSetsOverall: params["totalSetsOverall"] as? Int ?? 0,
-                workoutStartTimestamp: workoutStartTimestamp
+                workoutStartTimestamp: workoutStartTimestamp,
+                currentItemType: params["currentItemType"] as? String ?? "exercise",
+                timerEndTimestamp: nil,
+                timerTotalSeconds: nil,
+                warmupType: nil,
+                cardioEquipment: nil,
+                cardioIntensity: nil,
+                cardioMode: nil,
+                intervalPhase: nil,
+                intervalCurrentRound: nil,
+                intervalTotalRounds: nil,
+                updateId: nil
             )
 
             let content = ActivityContent(state: initialState, staleDate: nil)
@@ -107,7 +139,18 @@ public class LiveActivityControllerModule: Module {
                 restEndTimestamp: state["restEndTimestamp"] as? Double,
                 totalSetsCompleted: state["totalSetsCompleted"] as? Int ?? 0,
                 totalSetsOverall: state["totalSetsOverall"] as? Int ?? 0,
-                workoutStartTimestamp: state["workoutStartTimestamp"] as? Double ?? Date().timeIntervalSince1970 * 1000
+                workoutStartTimestamp: state["workoutStartTimestamp"] as? Double ?? Date().timeIntervalSince1970 * 1000,
+                currentItemType: state["currentItemType"] as? String,
+                timerEndTimestamp: state["timerEndTimestamp"] as? Double,
+                timerTotalSeconds: state["timerTotalSeconds"] as? Int,
+                warmupType: state["warmupType"] as? String,
+                cardioEquipment: state["cardioEquipment"] as? String,
+                cardioIntensity: state["cardioIntensity"] as? String,
+                cardioMode: state["cardioMode"] as? String,
+                intervalPhase: state["intervalPhase"] as? String,
+                intervalCurrentRound: state["intervalCurrentRound"] as? Int,
+                intervalTotalRounds: state["intervalTotalRounds"] as? Int,
+                updateId: state["updateId"] as? String
             )
 
             let content = ActivityContent(state: contentState, staleDate: nil)

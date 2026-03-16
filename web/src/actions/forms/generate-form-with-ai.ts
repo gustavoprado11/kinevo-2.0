@@ -2,6 +2,53 @@
 
 import { createClient } from '@/lib/supabase/server'
 
+// ─────────────────────────────────────────────────────────────────────────────
+// In-memory rate limiter for AI form generation
+// Limits: 5 requests/minute, 20 requests/day per trainer
+// ─────────────────────────────────────────────────────────────────────────────
+const RATE_LIMIT_PER_MINUTE = 5
+const RATE_LIMIT_PER_DAY = 20
+const ONE_MINUTE_MS = 60 * 1000
+const ONE_DAY_MS = 24 * 60 * 60 * 1000
+
+const trainerRequestTimestamps = new Map<string, number[]>()
+
+function cleanupOldTimestamps(trainerId: string): void {
+    const timestamps = trainerRequestTimestamps.get(trainerId)
+    if (!timestamps) return
+    const cutoff = Date.now() - ONE_DAY_MS
+    const filtered = timestamps.filter((t) => t > cutoff)
+    if (filtered.length === 0) {
+        trainerRequestTimestamps.delete(trainerId)
+    } else {
+        trainerRequestTimestamps.set(trainerId, filtered)
+    }
+}
+
+function checkRateLimit(trainerId: string): { allowed: boolean; error?: string } {
+    cleanupOldTimestamps(trainerId)
+    const timestamps = trainerRequestTimestamps.get(trainerId) || []
+    const now = Date.now()
+
+    const recentMinute = timestamps.filter((t) => t > now - ONE_MINUTE_MS)
+    if (recentMinute.length >= RATE_LIMIT_PER_MINUTE) {
+        return { allowed: false, error: 'Limite de gerações por minuto atingido. Aguarde um momento.' }
+    }
+
+    const recentDay = timestamps.filter((t) => t > now - ONE_DAY_MS)
+    if (recentDay.length >= RATE_LIMIT_PER_DAY) {
+        return { allowed: false, error: 'Limite diário de gerações atingido (20/dia). Tente novamente amanhã.' }
+    }
+
+    return { allowed: true }
+}
+
+function recordRequest(trainerId: string): void {
+    const timestamps = trainerRequestTimestamps.get(trainerId) || []
+    timestamps.push(Date.now())
+    trainerRequestTimestamps.set(trainerId, timestamps)
+}
+
 type FormCategory = 'anamnese' | 'checkin' | 'survey'
 type QuestionType = 'short_text' | 'long_text' | 'single_choice' | 'scale' | 'photo'
 
@@ -444,6 +491,12 @@ export async function generateFormDraftWithAI(input: GenerateFormWithAIInput) {
 
     if (!trainer) return { success: false, error: 'Treinador não encontrado.' }
 
+    // Rate limiting: 5/min, 20/day per trainer
+    const rateLimitResult = checkRateLimit(trainer.id)
+    if (!rateLimitResult.allowed) {
+        return { success: false, error: rateLimitResult.error }
+    }
+
     const goal = input.goal?.trim()
     if (!goal) return { success: false, error: 'Defina o objetivo do formulário.' }
 
@@ -471,6 +524,9 @@ export async function generateFormDraftWithAI(input: GenerateFormWithAIInput) {
             model: llmResult.model,
         })
     }
+
+    // Record the request for rate limiting (after successful generation)
+    recordRequest(trainer.id)
 
     const schema: DraftSchema = {
         schema_version: '1.0',

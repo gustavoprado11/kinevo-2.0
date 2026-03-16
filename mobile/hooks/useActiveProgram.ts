@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
-import { getWeekRange, toDateKey } from "@kinevo/shared/utils/schedule-projection";
+import { getWeekRange, toDateKey, calculateWeeklyProgress, type WeeklyProgress, type WorkoutWithMeta } from "@kinevo/shared/utils/schedule-projection";
 import { appEvents, WORKOUT_COMPLETED } from "../lib/events";
 
 interface AssignedWorkout {
@@ -38,6 +38,7 @@ interface ActiveProgramData {
         totalSessions: number;
         targetSessions: number;
     };
+    weeklyProgressFull?: WeeklyProgress;
     [key: string]: any;
 }
 
@@ -55,14 +56,41 @@ export function useActiveProgram() {
     // Keep programId in ref for fetchRange
     const programIdRef = useRef<string | null>(null);
 
+    /**
+     * Merge fetched sessions into the cache for a specific date range.
+     * Clears all date keys within [start, end] first (so deleted/edited
+     * sessions are reflected), then inserts fresh data.
+     */
+    const mergeSessionsForRange = useCallback((sessions: WorkoutSession[], start: Date, end: Date) => {
+        setSessionsMap((prev) => {
+            const merged = new Map(prev);
+
+            // Clear every date key inside the fetched range
+            const cursor = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+            const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+            while (cursor <= endDay) {
+                merged.delete(toDateKey(cursor));
+                cursor.setDate(cursor.getDate() + 1);
+            }
+
+            // Insert fresh sessions
+            for (const s of sessions) {
+                const key = toDateKey(new Date(s.completed_at ?? s.started_at));
+                const arr = merged.get(key) || [];
+                arr.push(s);
+                merged.set(key, arr);
+            }
+
+            return merged;
+        });
+    }, []);
+
     // Fetch sessions for an arbitrary date range and merge into cache
     const fetchRange = useCallback(async (start: Date, end: Date) => {
         const pid = programIdRef.current;
         if (!pid) return;
 
         try {
-            // Fetch sessions where started_at OR completed_at falls within the range
-            // This catches sessions started in a previous period but completed in this one
             const rangeStart = start.toISOString();
             const rangeEnd = end.toISOString();
             const { data: sessionsData, error: sessionsError }: { data: any; error: any } = await supabase
@@ -73,31 +101,15 @@ export function useActiveProgram() {
                 .order("started_at", { ascending: false });
 
             if (sessionsError) {
-                console.error("[useActiveProgram] fetchRange error:", sessionsError);
+                if (__DEV__) console.error("[useActiveProgram] fetchRange error:", sessionsError);
                 return;
             }
 
-            const sessions: WorkoutSession[] = sessionsData || [];
-
-            setSessionsMap((prev) => {
-                const next = new Map(prev);
-                // Index new sessions by date key (use completed_at when available)
-                for (const s of sessions) {
-                    const key = toDateKey(new Date(s.completed_at ?? s.started_at));
-                    const existing = next.get(key) || [];
-                    // Avoid duplicates by id
-                    const ids = new Set(existing.map(e => e.id));
-                    if (!ids.has(s.id)) {
-                        existing.push(s);
-                    }
-                    next.set(key, existing);
-                }
-                return next;
-            });
+            mergeSessionsForRange(sessionsData || [], start, end);
         } catch (err) {
-            console.error("[useActiveProgram] fetchRange exception:", err);
+            if (__DEV__) console.error("[useActiveProgram] fetchRange exception:", err);
         }
-    }, []);
+    }, [mergeSessionsForRange]);
 
     const fetchActiveProgram = useCallback(async () => {
         if (!user) return;
@@ -172,45 +184,29 @@ export function useActiveProgram() {
                     .order("started_at", { ascending: false });
 
                 if (sessionsError) {
-                    console.error("[useActiveProgram] Error fetching sessions:", sessionsError);
+                    console.error("[useActiveProgram] Error fetching sessions:", __DEV__ ? sessionsError : '');
                 }
 
                 const sessions: WorkoutSession[] = sessionsData || [];
 
-                // Populate sessions cache
-                const newMap = new Map<string, WorkoutSession[]>();
-                for (const s of sessions) {
-                    const key = toDateKey(new Date(s.completed_at ?? s.started_at));
-                    const arr = newMap.get(key) || [];
-                    arr.push(s);
-                    newMap.set(key, arr);
-                }
-                setSessionsMap(newMap);
+                // Merge current-week sessions into cache (preserves past weeks)
+                mergeSessionsForRange(sessions, weekRange.start, weekRange.end);
 
-                // Calculate Progress
-                const completedSessionsCount = sessions.filter(s => s.status === 'completed').length;
-
-                let targetSessions = 0;
-                let hasSchedules = false;
-
-                programData.workouts.forEach((w: AssignedWorkout) => {
-                    if (w.scheduled_days && w.scheduled_days.length > 0) {
-                        hasSchedules = true;
-                        targetSessions += w.scheduled_days.length;
-                    }
-                });
-
-                if (!hasSchedules) {
-                    targetSessions = programData.workouts.length > 0 ? 3 : 0;
-                }
+                // Calculate weekly progress with pending workouts
+                const weeklyProgressData = calculateWeeklyProgress(
+                    programData.workouts as WorkoutWithMeta[],
+                    sessions,
+                    weekRange.start,
+                );
 
                 const formattedData: ActiveProgramData = {
                     ...programData,
                     program: { name: programData.name },
                     weeklyProgress: {
-                        totalSessions: completedSessionsCount,
-                        targetSessions,
-                    }
+                        totalSessions: weeklyProgressData.completedCount,
+                        targetSessions: weeklyProgressData.expectedCount,
+                    },
+                    weeklyProgressFull: weeklyProgressData,
                 };
 
                 setData(formattedData);
@@ -219,12 +215,12 @@ export function useActiveProgram() {
                 setSessionsMap(new Map());
             }
         } catch (err: any) {
-            console.error("[useActiveProgram] Error:", err);
+            if (__DEV__) console.error("[useActiveProgram] Error:", err);
             setError(err.message || "Erro ao carregar programa.");
         } finally {
             setIsLoading(false);
         }
-    }, [user]);
+    }, [user, mergeSessionsForRange]);
 
     // Listen for workout-completed events (fired by Watch finish handler in _layout.tsx)
     useEffect(() => {
@@ -281,6 +277,7 @@ export function useActiveProgram() {
         sessions: allSessions,
         sessionsMap,
         weeklyProgress: data?.weeklyProgress,
+        weeklyProgressFull: data?.weeklyProgressFull || null,
         studentName,
         programStartedAt: data?.started_at || null,
         programDurationWeeks: data?.duration_weeks || null,

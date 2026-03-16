@@ -1,7 +1,6 @@
-import { View, Text, Alert, Switch, Linking, ScrollView } from "react-native";
-import { Stack } from "expo-router";
-import { useState } from "react";
-import { Bell, KeyRound, Info, Heart, ExternalLink } from "lucide-react-native";
+import { View, Text, Alert, Linking, ScrollView } from "react-native";
+import { Stack, useRouter } from "expo-router";
+import { Bell, KeyRound, Info, Heart, ExternalLink, ChevronRight } from "lucide-react-native";
 import Constants from "expo-constants";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../contexts/AuthContext";
@@ -9,7 +8,7 @@ import { TouchableOpacity } from "react-native";
 
 export default function SettingsScreen() {
     const { user } = useAuth();
-    const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+    const router = useRouter();
     const appVersion = Constants.expoConfig?.version ?? "1.0.0";
 
     const handleResetPassword = () => {
@@ -59,7 +58,9 @@ export default function SettingsScreen() {
                     }}
                 >
                     {/* Notifications */}
-                    <View
+                    <TouchableOpacity
+                        onPress={() => router.push("/profile/notifications")}
+                        activeOpacity={0.6}
                         style={{
                             flexDirection: "row",
                             alignItems: "center",
@@ -83,13 +84,8 @@ export default function SettingsScreen() {
                         <Text style={{ fontSize: 14, fontWeight: "500", color: "#0f172a", flex: 1 }}>
                             Notificações
                         </Text>
-                        <Switch
-                            value={notificationsEnabled}
-                            onValueChange={setNotificationsEnabled}
-                            trackColor={{ false: "#e2e8f0", true: "#7c3aed" }}
-                            thumbColor="#fff"
-                        />
-                    </View>
+                        <ChevronRight size={18} color="#94a3b8" strokeWidth={1.5} />
+                    </TouchableOpacity>
 
                     <View style={{ height: 1, backgroundColor: "#f1f5f9", marginHorizontal: 20 }} />
 
@@ -121,6 +117,7 @@ export default function SettingsScreen() {
                             Alterar Senha
                         </Text>
                     </TouchableOpacity>
+
                 </View>
 
                 {/* Apple Health Integration */}

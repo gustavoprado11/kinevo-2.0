@@ -9,40 +9,64 @@ import {
     Platform,
     ScrollView,
     StyleSheet,
-    SafeAreaView,
 } from 'react-native';
-import { X, Check, Zap } from 'lucide-react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { X, Clock, Dumbbell, Target, TrendingUp } from 'lucide-react-native';
+import * as Haptics from 'expo-haptics';
+
+interface WorkoutSummaryData {
+    duration: string;
+    exerciseCount: number;
+    completedSets: number;
+    totalSets: number;
+    totalVolume: number;
+}
 
 interface WorkoutFeedbackModalProps {
     visible: boolean;
     onClose: () => void;
     onConfirm: (rpe: number, feedback: string) => void;
+    summary?: WorkoutSummaryData;
 }
 
-// Semantic color map for each RPE level
-const RPE_CONFIG: Record<
-    number,
-    { bg: string; shadow: string; label: string; emoji: string }
-> = {
-    1: { bg: '#34d399', shadow: 'rgba(52, 211, 153, 0.35)', label: 'Muito Leve', emoji: '😴' },
-    2: { bg: '#34d399', shadow: 'rgba(52, 211, 153, 0.35)', label: 'Muito Leve', emoji: '😴' },
-    3: { bg: '#10b981', shadow: 'rgba(16, 185, 129, 0.35)', label: 'Leve', emoji: '🙂' },
-    4: { bg: '#10b981', shadow: 'rgba(16, 185, 129, 0.35)', label: 'Leve', emoji: '🙂' },
-    5: { bg: '#f59e0b', shadow: 'rgba(245, 158, 11, 0.35)', label: 'Moderado', emoji: '😐' },
-    6: { bg: '#f59e0b', shadow: 'rgba(245, 158, 11, 0.35)', label: 'Moderado', emoji: '😐' },
-    7: { bg: '#f97316', shadow: 'rgba(249, 115, 22, 0.35)', label: 'Intenso', emoji: '😤' },
-    8: { bg: '#f97316', shadow: 'rgba(249, 115, 22, 0.35)', label: 'Intenso', emoji: '😤' },
-    9: { bg: '#ef4444', shadow: 'rgba(239, 68, 68, 0.35)', label: 'Muito Intenso', emoji: '🥵' },
-    10: { bg: '#dc2626', shadow: 'rgba(220, 38, 38, 0.4)', label: 'Exaustivo', emoji: '💀' },
+const RPE_CONFIG: Record<number, { color: string; label: string }> = {
+    1: { color: '#34c759', label: 'Muito leve' },
+    2: { color: '#34c759', label: 'Muito leve' },
+    3: { color: '#34c759', label: 'Leve' },
+    4: { color: '#34c759', label: 'Leve' },
+    5: { color: '#ff9f0a', label: 'Moderado' },
+    6: { color: '#ff9f0a', label: 'Moderado' },
+    7: { color: '#ff6b35', label: 'Intenso' },
+    8: { color: '#ff6b35', label: 'Intenso' },
+    9: { color: '#ff3b30', label: 'Máximo' },
+    10: { color: '#ff3b30', label: 'Máximo' },
 };
 
-export function WorkoutFeedbackModal({ visible, onClose, onConfirm }: WorkoutFeedbackModalProps) {
+function formatVolume(kg: number): string {
+    if (kg >= 1000) {
+        return `${(kg / 1000).toFixed(1).replace('.0', '')} t`;
+    }
+    return `${Math.round(kg)} kg`;
+}
+
+function SummaryItem({ icon, value, label }: { icon: React.ReactNode; value: string; label: string }) {
+    return (
+        <View style={styles.summaryItem}>
+            {icon}
+            <Text style={styles.summaryValue}>{value}</Text>
+            <Text style={styles.summaryLabel}>{label}</Text>
+        </View>
+    );
+}
+
+export function WorkoutFeedbackModal({ visible, onClose, onConfirm, summary }: WorkoutFeedbackModalProps) {
     const [rpe, setRpe] = useState<number | null>(null);
     const [feedback, setFeedback] = useState('');
     const [isFocused, setIsFocused] = useState(false);
 
     const handleConfirm = () => {
         if (rpe === null) return;
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         onConfirm(rpe, feedback);
         setRpe(null);
         setFeedback('');
@@ -57,25 +81,20 @@ export function WorkoutFeedbackModal({ visible, onClose, onConfirm }: WorkoutFee
             transparent={true}
             onRequestClose={onClose}
         >
-            {/* Backdrop */}
             <View style={styles.backdrop}>
                 <KeyboardAvoidingView
                     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                     style={styles.kavContainer}
                 >
-                    {/* Sheet */}
                     <View style={styles.sheet}>
                         {/* Drag handle */}
                         <View style={styles.handle} />
 
                         {/* Header */}
                         <View style={styles.header}>
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.title}>Como foi o treino?</Text>
-                                <Text style={styles.subtitle}>Avalie seu esforço e deixe observações.</Text>
-                            </View>
-                            <TouchableOpacity onPress={onClose} style={styles.closeBtn} activeOpacity={0.7}>
-                                <X size={18} color="#64748B" strokeWidth={2.5} />
+                            <Text style={styles.title}>Como foi o treino?</Text>
+                            <TouchableOpacity onPress={onClose} style={styles.closeBtn} hitSlop={12} activeOpacity={0.7}>
+                                <X size={18} color="#aeaeb2" strokeWidth={2.5} />
                             </TouchableOpacity>
                         </View>
 
@@ -84,42 +103,86 @@ export function WorkoutFeedbackModal({ visible, onClose, onConfirm }: WorkoutFee
                             keyboardShouldPersistTaps="handled"
                             contentContainerStyle={{ paddingBottom: 12 }}
                         >
-                            {/* ── RPE Card ── */}
-                            <View style={styles.card}>
-                                <View style={styles.rpeHeaderRow}>
-                                    <Zap size={14} color="#7c3aed" strokeWidth={2.5} />
-                                    <Text style={styles.cardLabel}>PERCEPÇÃO DE ESFORÇO (PSE)</Text>
+                            {/* Workout Summary */}
+                            {summary && (
+                                <View style={styles.summaryGrid}>
+                                    <SummaryItem
+                                        icon={<Clock size={15} color="#7c3aed" strokeWidth={2} />}
+                                        value={summary.duration}
+                                        label="Duração"
+                                    />
+                                    <SummaryItem
+                                        icon={<Dumbbell size={15} color="#7c3aed" strokeWidth={2} />}
+                                        value={String(summary.exerciseCount)}
+                                        label="Exercícios"
+                                    />
+                                    <SummaryItem
+                                        icon={<Target size={15} color="#7c3aed" strokeWidth={2} />}
+                                        value={`${summary.completedSets}/${summary.totalSets}`}
+                                        label="Séries"
+                                    />
+                                    <SummaryItem
+                                        icon={<TrendingUp size={15} color="#7c3aed" strokeWidth={2} />}
+                                        value={formatVolume(summary.totalVolume)}
+                                        label="Volume"
+                                    />
+                                </View>
+                            )}
+
+                            {/* Intensity Section */}
+                            <View style={styles.intensitySection}>
+                                <Text style={styles.intensityTitle}>Intensidade</Text>
+
+                                {/* Selected value display */}
+                                <View style={styles.intensityValueRow}>
+                                    {selectedConfig ? (
+                                        <>
+                                            <Text style={[styles.intensityValue, { color: selectedConfig.color }]}>
+                                                {rpe}
+                                            </Text>
+                                            <Text style={styles.intensityOf}>/10</Text>
+                                            <View style={[styles.intensityBadge, { backgroundColor: selectedConfig.color + '18' }]}>
+                                                <Text style={[styles.intensityBadgeText, { color: selectedConfig.color }]}>
+                                                    {selectedConfig.label}
+                                                </Text>
+                                            </View>
+                                        </>
+                                    ) : (
+                                        <Text style={styles.intensityPlaceholder}>
+                                            Toque para avaliar seu esforço
+                                        </Text>
+                                    )}
                                 </View>
 
-                                {/* Number Grid */}
-                                <View style={styles.rpeGrid}>
+                                {/* Single row of 1-10 buttons */}
+                                <View style={styles.buttonsRow}>
                                     {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((value) => {
                                         const isSelected = rpe === value;
                                         const cfg = RPE_CONFIG[value];
                                         return (
                                             <TouchableOpacity
                                                 key={value}
-                                                onPress={() => setRpe(value)}
+                                                onPress={() => {
+                                                    setRpe(value);
+                                                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                                }}
                                                 activeOpacity={0.75}
                                                 style={[
                                                     styles.rpeBtn,
-                                                    isSelected
-                                                        ? {
-                                                            backgroundColor: cfg.bg,
-                                                            borderColor: cfg.bg,
-                                                            shadowColor: cfg.bg,
-                                                            shadowOpacity: 0.4,
-                                                            shadowOffset: { width: 0, height: 4 },
-                                                            shadowRadius: 8,
-                                                            elevation: 6,
-                                                        }
-                                                        : styles.rpeBtnInactive,
+                                                    isSelected && {
+                                                        backgroundColor: cfg.color,
+                                                        shadowColor: cfg.color,
+                                                        shadowOpacity: 0.4,
+                                                        shadowOffset: { width: 0, height: 3 },
+                                                        shadowRadius: 6,
+                                                        elevation: 4,
+                                                    },
                                                 ]}
                                             >
                                                 <Text
                                                     style={[
                                                         styles.rpeBtnText,
-                                                        { color: isSelected ? '#fff' : '#64748b' },
+                                                        isSelected && { color: '#fff', fontWeight: '700' },
                                                     ]}
                                                 >
                                                     {value}
@@ -129,42 +192,29 @@ export function WorkoutFeedbackModal({ visible, onClose, onConfirm }: WorkoutFee
                                     })}
                                 </View>
 
-                                {/* Semantic label */}
-                                <View style={styles.rpeLabelRow}>
-                                    {selectedConfig ? (
-                                        <View style={styles.rpeLabelPill}>
-                                            <Text style={styles.rpeLabelEmoji}>{selectedConfig.emoji}</Text>
-                                            <Text style={[styles.rpeLabelText, { color: selectedConfig.bg }]}>
-                                                {selectedConfig.label}
-                                            </Text>
-                                        </View>
-                                    ) : (
-                                        <Text style={styles.rpePlaceholder}>
-                                            Selecione um número para avaliar seu esforço
-                                        </Text>
-                                    )}
-                                </View>
-
-                                {/* Scale extremes */}
-                                <View style={styles.rpeExtremes}>
-                                    <Text style={styles.rpeExtreme}>😴 Muito Leve</Text>
-                                    <Text style={styles.rpeExtreme}>💀 Exaustivo</Text>
+                                {/* Anchors */}
+                                <View style={styles.anchorsRow}>
+                                    <Text style={styles.anchorText}>Leve</Text>
+                                    <Text style={styles.anchorText}>Máximo</Text>
                                 </View>
                             </View>
 
-                            {/* ── Notes Card ── */}
-                            <View style={styles.card}>
-                                <Text style={styles.notesLabel}>Observações</Text>
-                                <Text style={styles.notesSubLabel}>Opcional — descreva como se sentiu</Text>
+                            {/* Observations */}
+                            <View style={styles.observationsSection}>
+                                <Text style={styles.observationsTitle}>
+                                    Observações{' '}
+                                    <Text style={styles.optional}>(opcional)</Text>
+                                </Text>
                                 <TextInput
                                     style={[
                                         styles.textarea,
                                         isFocused && styles.textareaFocused,
                                     ]}
-                                    placeholder="Senti dor no joelho? Carga estava leve? Escreva aqui..."
-                                    placeholderTextColor="#94a3b8"
+                                    placeholder="Como você se sentiu?"
+                                    placeholderTextColor="#c7c7cc"
                                     multiline
                                     textAlignVertical="top"
+                                    maxLength={500}
                                     value={feedback}
                                     onChangeText={setFeedback}
                                     onFocus={() => setIsFocused(true)}
@@ -173,27 +223,22 @@ export function WorkoutFeedbackModal({ visible, onClose, onConfirm }: WorkoutFee
                             </View>
                         </ScrollView>
 
-                        {/* ── Fixed Submit Button ── */}
+                        {/* Submit Button */}
                         <SafeAreaView edges={['bottom']} style={styles.footerSafe}>
                             <TouchableOpacity
                                 onPress={handleConfirm}
                                 disabled={rpe === null}
-                                activeOpacity={0.85}
+                                activeOpacity={0.8}
                                 style={[
                                     styles.submitBtn,
                                     rpe === null && styles.submitBtnDisabled,
-                                    rpe !== null && {
-                                        shadowColor: '#7c3aed',
-                                        shadowOffset: { width: 0, height: 8 },
-                                        shadowOpacity: 0.35,
-                                        shadowRadius: 16,
-                                        elevation: 8,
-                                    },
                                 ]}
                             >
-                                <Check size={20} color={rpe !== null ? '#fff' : '#94A3B8'} strokeWidth={2.5} />
-                                <Text style={[styles.submitText, { color: rpe !== null ? '#fff' : '#94a3b8' }]}>
-                                    Salvar e Finalizar
+                                <Text style={[
+                                    styles.submitText,
+                                    rpe === null && styles.submitTextDisabled,
+                                ]}>
+                                    Finalizar Treino
                                 </Text>
                             </TouchableOpacity>
                         </SafeAreaView>
@@ -207,7 +252,7 @@ export function WorkoutFeedbackModal({ visible, onClose, onConfirm }: WorkoutFee
 const styles = StyleSheet.create({
     backdrop: {
         flex: 1,
-        backgroundColor: 'rgba(15, 23, 42, 0.5)',
+        backgroundColor: 'rgba(0, 0, 0, 0.4)',
         justifyContent: 'flex-end',
     },
     kavContainer: {
@@ -215,184 +260,206 @@ const styles = StyleSheet.create({
     },
     sheet: {
         backgroundColor: '#F2F2F7',
-        borderTopLeftRadius: 32,
-        borderTopRightRadius: 32,
+        borderTopLeftRadius: 28,
+        borderTopRightRadius: 28,
         paddingTop: 12,
         paddingHorizontal: 16,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: -6 },
-        shadowOpacity: 0.12,
-        shadowRadius: 20,
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 16,
         elevation: 14,
         maxHeight: '90%',
     },
     handle: {
-        width: 40,
-        height: 4,
-        backgroundColor: '#d1d5db',
-        borderRadius: 2,
+        width: 36,
+        height: 5,
+        backgroundColor: '#d1d1d6',
+        borderRadius: 2.5,
         alignSelf: 'center',
-        marginBottom: 20,
+        marginBottom: 18,
     },
     header: {
         flexDirection: 'row',
-        alignItems: 'flex-start',
+        alignItems: 'center',
+        justifyContent: 'space-between',
         marginBottom: 20,
         paddingHorizontal: 4,
     },
     title: {
-        fontSize: 24,
+        fontSize: 22,
         fontWeight: '700',
-        color: '#0f172a',
+        color: '#1c1c1e',
         letterSpacing: -0.3,
     },
-    subtitle: {
-        fontSize: 14,
-        color: '#64748b',
-        marginTop: 4,
-    },
     closeBtn: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        backgroundColor: '#e2e8f0',
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: '#e5e5ea',
         alignItems: 'center',
         justifyContent: 'center',
-        marginTop: 4,
     },
-    card: {
+
+    // Summary
+    summaryGrid: {
+        flexDirection: 'row',
         backgroundColor: '#ffffff',
-        borderRadius: 24,
-        padding: 20,
-        marginBottom: 12,
+        borderRadius: 14,
+        padding: 14,
+        marginBottom: 20,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.04,
-        shadowRadius: 4,
-        elevation: 2,
+        shadowRadius: 3,
+        elevation: 1,
     },
-    rpeHeaderRow: {
-        flexDirection: 'row',
+    summaryItem: {
+        flex: 1,
         alignItems: 'center',
-        gap: 6,
-        marginBottom: 16,
+        gap: 4,
     },
-    cardLabel: {
-        fontSize: 11,
-        fontWeight: '700',
-        color: '#94a3b8',
-        letterSpacing: 1.5,
-        textTransform: 'uppercase',
-    },
-    rpeGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-        marginBottom: 12,
-    },
-    rpeBtn: {
-        width: '17%',
-        aspectRatio: 1,
-        borderRadius: 14,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 1.5,
-    },
-    rpeBtnInactive: {
-        backgroundColor: '#f8fafc',
-        borderColor: '#e2e8f0',
-    },
-    rpeBtnText: {
+    summaryValue: {
         fontSize: 17,
         fontWeight: '700',
+        color: '#1c1c1e',
+        fontVariant: ['tabular-nums'],
     },
-    rpeLabelRow: {
-        alignItems: 'center',
-        marginBottom: 12,
-        minHeight: 36,
-        justifyContent: 'center',
+    summaryLabel: {
+        fontSize: 11,
+        color: '#8e8e93',
+        fontWeight: '500',
     },
-    rpeLabelPill: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        backgroundColor: '#f8fafc',
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 20,
+
+    // Intensity
+    intensitySection: {
+        marginBottom: 20,
+        paddingHorizontal: 4,
     },
-    rpeLabelEmoji: {
-        fontSize: 18,
-    },
-    rpeLabelText: {
+    intensityTitle: {
         fontSize: 15,
+        fontWeight: '600',
+        color: '#1c1c1e',
+        marginBottom: 10,
+    },
+    intensityValueRow: {
+        flexDirection: 'row',
+        alignItems: 'baseline',
+        gap: 4,
+        marginBottom: 14,
+        minHeight: 40,
+    },
+    intensityValue: {
+        fontSize: 34,
         fontWeight: '700',
+        fontVariant: ['tabular-nums'],
     },
-    rpePlaceholder: {
+    intensityOf: {
+        fontSize: 17,
+        color: '#8e8e93',
+        fontWeight: '500',
+    },
+    intensityBadge: {
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 8,
+        marginLeft: 8,
+    },
+    intensityBadgeText: {
         fontSize: 13,
-        color: '#94a3b8',
-        textAlign: 'center',
+        fontWeight: '600',
     },
-    rpeExtremes: {
+    intensityPlaceholder: {
+        fontSize: 14,
+        color: '#aeaeb2',
+    },
+    buttonsRow: {
+        flexDirection: 'row',
+        gap: 6,
+        marginBottom: 8,
+    },
+    rpeBtn: {
+        flex: 1,
+        aspectRatio: 1,
+        borderRadius: 10,
+        backgroundColor: '#ffffff',
+        alignItems: 'center',
+        justifyContent: 'center',
+        maxHeight: 38,
+    },
+    rpeBtnText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#3a3a3c',
+        fontVariant: ['tabular-nums'],
+    },
+    anchorsRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
+        paddingHorizontal: 2,
     },
-    rpeExtreme: {
+    anchorText: {
         fontSize: 11,
-        fontWeight: '600',
-        color: '#94a3b8',
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
+        color: '#aeaeb2',
+        fontWeight: '500',
     },
-    notesLabel: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#0f172a',
-        marginBottom: 2,
+
+    // Observations
+    observationsSection: {
+        marginBottom: 8,
+        paddingHorizontal: 4,
     },
-    notesSubLabel: {
-        fontSize: 13,
-        color: '#94a3b8',
-        marginBottom: 12,
+    observationsTitle: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#1c1c1e',
+        marginBottom: 8,
+    },
+    optional: {
+        fontWeight: '400',
+        color: '#aeaeb2',
     },
     textarea: {
-        backgroundColor: '#f8fafc',
-        borderWidth: 1.5,
-        borderColor: '#e2e8f0',
-        borderRadius: 16,
+        backgroundColor: '#ffffff',
+        borderRadius: 12,
         padding: 14,
-        minHeight: 100,
+        minHeight: 80,
+        maxHeight: 120,
         fontSize: 15,
-        color: '#0f172a',
+        color: '#1c1c1e',
         lineHeight: 22,
     },
     textareaFocused: {
-        borderColor: '#7c3aed',
-        backgroundColor: '#faf5ff',
+        shadowColor: '#7c3aed',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.15,
+        shadowRadius: 6,
+        elevation: 2,
     },
+
+    // Footer
     footerSafe: {
         paddingTop: 12,
         paddingBottom: 8,
     },
     submitBtn: {
-        flexDirection: 'row',
+        height: 52,
+        borderRadius: 14,
+        backgroundColor: '#7c3aed',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 10,
-        backgroundColor: '#7c3aed',
-        borderRadius: 18,
-        paddingVertical: 18,
         marginHorizontal: 4,
         marginBottom: 4,
     },
     submitBtnDisabled: {
-        backgroundColor: '#e2e8f0',
-        shadowOpacity: 0,
-        elevation: 0,
+        backgroundColor: '#e5e5ea',
     },
     submitText: {
         fontSize: 17,
-        fontWeight: '700',
-        letterSpacing: -0.2,
+        fontWeight: '600',
+        color: '#fff',
+    },
+    submitTextDisabled: {
+        color: '#aeaeb2',
     },
 });

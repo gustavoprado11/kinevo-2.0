@@ -1,10 +1,14 @@
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef, useCallback, useMemo } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform, Alert, StyleSheet, AppState } from 'react-native';
 import { useLocalSearchParams, Stack, useRouter, useNavigation } from 'expo-router';
-import { BlurView } from 'expo-blur';
-import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Haptics from 'expo-haptics';
 import { ScreenWrapper } from '../../components/ScreenWrapper';
 import { ExerciseCard } from '../../components/workout/ExerciseCard';
+import { SupersetGroup } from '../../components/workout/SupersetGroup';
+import { WorkoutNoteCard } from '../../components/workout/WorkoutNoteCard';
+import { WarmupCard } from '../../components/workout/WarmupCard';
+import { CardioCard } from '../../components/workout/CardioCard';
 import { useWorkoutSession } from '../../hooks/useWorkoutSession';
 import { useLiveActivity } from '../../hooks/useLiveActivity';
 import { useStudentProfile } from '../../hooks/useStudentProfile';
@@ -12,11 +16,15 @@ import { useWatchConnectivity } from '../../hooks/useWatchConnectivity';
 import { ChevronLeft } from 'lucide-react-native';
 import { WorkoutFeedbackModal } from '../../components/workout/WorkoutFeedbackModal';
 import { WorkoutSuccessModal } from '../../components/workout/WorkoutSuccessModal';
-import { WorkoutCelebration } from '../../components/workout/WorkoutCelebration';
+import { WorkoutCelebration, CelebrationData } from '../../components/workout/WorkoutCelebration';
 import { ExerciseVideoModal } from '../../components/workout/ExerciseVideoModal';
 import { RestTimerOverlay } from '../../components/workout/RestTimerOverlay';
 import { ExerciseSwapModal } from '../../components/workout/ExerciseSwapModal';
-import type { ExerciseSubstituteOption } from '../../hooks/useWorkoutSession';
+import { PreWorkoutFormSheet } from '../../components/workout/PreWorkoutFormSheet';
+import { PostWorkoutFormSheet } from '../../components/workout/PostWorkoutFormSheet';
+import { useWorkoutFormTriggers } from '../../hooks/useWorkoutFormTriggers';
+import { supabase } from '../../lib/supabase';
+import type { ExerciseSubstituteOption, ExerciseData, WorkoutNote } from '../../hooks/useWorkoutSession';
 import { ShareableCardProps } from '../../components/workout/sharing/types';
 import { watchFinishState } from '../../lib/finishWorkoutFromWatch';
 
@@ -26,17 +34,49 @@ export default function WorkoutPlayerScreen() {
     const { profile } = useStudentProfile();
 
     // Live Activity rest timer trigger
-    const liveActivityRef = useRef<{ startRestTimer: (exerciseIndex: number, seconds: number) => void } | null>(null);
+    const liveActivityRef = useRef<{
+        startRestTimer: (exerciseIndex: number, seconds: number) => void;
+        updateTimerState: (data: import('../../hooks/useLiveActivity').TimerUpdateData) => void;
+        clearTimerState: () => void;
+    } | null>(null);
 
     const onSetComplete = useCallback((exerciseIndex: number, _setIndex: number) => {
         const exercise = exercisesRef.current[exerciseIndex];
-        if (exercise && exercise.rest_seconds > 0) {
-            // Check if there are remaining incomplete sets
+        if (!exercise) return;
+
+        // Superset logic: only trigger rest after the last exercise in the round
+        if (exercise.supersetId) {
+            const supersetExercises = exercisesRef.current.filter(
+                (e) => e.supersetId === exercise.supersetId
+            );
+            const isLastInGroup = supersetExercises[supersetExercises.length - 1]?.id === exercise.id;
+
+            if (!isLastInGroup) {
+                // Not the last exercise in superset round — no rest timer
+                return;
+            }
+
+            // Last exercise in superset — use supersetRestSeconds
+            const restSeconds = exercise.supersetRestSeconds || exercise.rest_seconds || 60;
+            const hasRemainingRounds = supersetExercises.some(
+                (e) => e.setsData.some((s, i) => i > _setIndex && !s.completed)
+            );
+            if (hasRemainingRounds && restSeconds > 0) {
+                liveActivityRef.current?.startRestTimer(exerciseIndex, restSeconds);
+                setRestTimer({
+                    endTime: Date.now() + restSeconds * 1000,
+                    totalSeconds: restSeconds,
+                    exerciseName: 'Superset',
+                });
+            }
+            return;
+        }
+
+        // Normal exercise: original behavior
+        if (exercise.rest_seconds > 0) {
             const hasRemainingSets = exercise.setsData.some((s, i) => i > _setIndex && !s.completed);
             if (hasRemainingSets) {
-                // Trigger Live Activity rest timer (if available)
                 liveActivityRef.current?.startRestTimer(exerciseIndex, exercise.rest_seconds);
-                // Show on-screen rest timer
                 setRestTimer({
                     endTime: Date.now() + exercise.rest_seconds * 1000,
                     totalSeconds: exercise.rest_seconds,
@@ -50,6 +90,7 @@ export default function WorkoutPlayerScreen() {
         isLoading,
         workoutName,
         exercises,
+        workoutNotes,
         duration,
         handleSetChange,
         handleToggleSetComplete,
@@ -58,15 +99,47 @@ export default function WorkoutPlayerScreen() {
         searchSubstituteOptions,
         swapExercise,
         finishWorkout,
+        createSession,
+        assignedProgramId,
+        toggleCardioComplete,
         isSubmitting
-    } = useWorkoutSession(id as string, { onSetComplete });
+    } = useWorkoutSession(id as string, { onSetComplete, deferSessionCreation: true });
+
+    // Form triggers for pre/post workout check-in
+    const {
+        preWorkoutTrigger,
+        postWorkoutTrigger,
+        isLoading: triggersLoading,
+    } = useWorkoutFormTriggers(assignedProgramId);
+
+    // Pre/post checkin state
+    const [preCheckinState, setPreCheckinState] = React.useState<'pending' | 'showing' | 'completed' | 'skipped'>('pending');
+    const [postCheckinState, setPostCheckinState] = React.useState<'idle' | 'showing' | 'completed' | 'skipped'>('idle');
+    const [preSubmissionId, setPreSubmissionId] = React.useState<string | null>(null);
+    const [postSubmissionId, setPostSubmissionId] = React.useState<string | null>(null);
+    // Stash feedback data while post-checkin is showing
+    const pendingFeedbackRef = React.useRef<{ rpe: number; feedback: string } | null>(null);
+
+    // Auto-show pre-checkin or create session when triggers are resolved
+    const sessionCreatedRef = React.useRef(false);
+    React.useEffect(() => {
+        if (isLoading || triggersLoading || sessionCreatedRef.current) return;
+
+        if (preWorkoutTrigger && preCheckinState === 'pending') {
+            setPreCheckinState('showing');
+        } else if (!preWorkoutTrigger && preCheckinState === 'pending') {
+            // No pre-workout trigger — create session immediately
+            sessionCreatedRef.current = true;
+            createSession();
+        }
+    }, [isLoading, triggersLoading, preWorkoutTrigger, preCheckinState]);
 
     // Keep a ref to exercises for the onSetComplete callback
     const exercisesRef = useRef(exercises);
     exercisesRef.current = exercises;
 
     // Live Activity hook
-    const { startRestTimer, stopActivity } = useLiveActivity({
+    const { startRestTimer, updateTimerState, clearTimerState, stopActivity } = useLiveActivity({
         workoutName,
         workoutId: id as string,
         exercises,
@@ -76,8 +149,8 @@ export default function WorkoutPlayerScreen() {
 
     // Expose startRestTimer to onSetComplete callback via ref
     useEffect(() => {
-        liveActivityRef.current = { startRestTimer };
-    }, [startRestTimer]);
+        liveActivityRef.current = { startRestTimer, updateTimerState, clearTimerState };
+    }, [startRestTimer, updateTimerState, clearTimerState]);
 
     // Apple Watch connectivity
     // Note: FINISH_WORKOUT is handled at root level (_layout.tsx → finishWorkoutFromWatch)
@@ -88,7 +161,7 @@ export default function WorkoutPlayerScreen() {
                 return;
             }
 
-            console.log(
+            if (__DEV__) console.log(
                 `[WorkoutScreen] Watch reported set complete: exercise ${exerciseIndex}, set ${setIndex}, reps ${reps ?? '-'}, weight ${weight ?? '-'}`
             );
             applyWatchSetCompletion(exerciseIndex, setIndex, reps, weight);
@@ -98,6 +171,7 @@ export default function WorkoutPlayerScreen() {
     // Send workout data to Apple Watch when loaded
     const lastWatchPayloadRef = useRef<any>(null);
     const workoutStartedAtRef = useRef<string>(new Date().toISOString());
+    const watchStartSentRef = useRef(false);
 
     useEffect(() => {
         if (!isLoading && exercises.length > 0 && workoutName && profile?.name) {
@@ -122,9 +196,21 @@ export default function WorkoutPlayerScreen() {
                 updatedAt: new Date().toISOString(),
             };
 
-            console.log('[WorkoutScreen] Sending workout to watch:', watchPayload);
+            if (__DEV__) console.log('[WorkoutScreen] Sending workout to watch:', watchPayload);
             lastWatchPayloadRef.current = watchPayload;
             sendWorkoutToWatch(watchPayload);
+
+            // Notify Watch to auto-start this workout (once per screen mount)
+            if (!watchStartSentRef.current && Platform.OS === 'ios') {
+                watchStartSentRef.current = true;
+                const { sendMessage } = require('../../modules/watch-connectivity/src/WatchConnectivityModule');
+                sendMessage({
+                    type: 'START_WORKOUT_FROM_PHONE',
+                    payload: { workoutId: id as string },
+                }).catch((e: any) => {
+                    if (__DEV__) console.log('[WorkoutScreen] Could not notify Watch to start:', e?.message);
+                });
+            }
         }
     }, [isLoading, exercises, workoutName, profile, id, sendWorkoutToWatch]);
 
@@ -132,7 +218,7 @@ export default function WorkoutPlayerScreen() {
     useEffect(() => {
         const subscription = AppState.addEventListener('change', (nextState) => {
             if (nextState === 'active' && lastWatchPayloadRef.current) {
-                console.log('[WorkoutScreen] App became active, re-syncing workout to watch');
+                if (__DEV__) console.log('[WorkoutScreen] App became active, re-syncing workout to watch');
                 sendWorkoutToWatch(lastWatchPayloadRef.current);
             }
         });
@@ -144,6 +230,7 @@ export default function WorkoutPlayerScreen() {
     const isFinishingRef = useRef(false);
     const [isFeedbackVisible, setIsFeedbackVisible] = React.useState(false);
     const [showCelebration, setShowCelebration] = React.useState(false);
+    const [celebrationData, setCelebrationData] = React.useState<CelebrationData | undefined>(undefined);
     const [showSuccessModal, setShowSuccessModal] = React.useState(false);
     const [videoModalUrl, setVideoModalUrl] = React.useState<string | null>(null);
     const [swapModalVisible, setSwapModalVisible] = React.useState(false);
@@ -159,6 +246,20 @@ export default function WorkoutPlayerScreen() {
         exerciseName: string;
     } | null>(null);
 
+    const insets = useSafeAreaInsets();
+
+    const { completedSets, totalSets } = useMemo(() => {
+        let completed = 0;
+        let total = 0;
+        exercises.forEach(ex => {
+            total += ex.setsData.length;
+            completed += ex.setsData.filter(s => s.completed).length;
+        });
+        return { completedSets: completed, totalSets: total };
+    }, [exercises]);
+
+    const allSetsCompleted = totalSets > 0 && completedSets === totalSets;
+
     const openSwapModal = async (exerciseIndex: number) => {
         setActiveSwapIndex(exerciseIndex);
         setSwapModalVisible(true);
@@ -172,7 +273,7 @@ export default function WorkoutPlayerScreen() {
             const options = await loadSubstituteOptions(exerciseIndex);
             setSwapOptions(options);
         } catch (error) {
-            console.error('Error loading substitute options:', error);
+            if (__DEV__) console.error('Error loading substitute options:', error);
             Alert.alert('Erro', 'Nao foi possivel carregar as opcoes de troca.');
         } finally {
             setSwapModalLoading(false);
@@ -228,7 +329,7 @@ export default function WorkoutPlayerScreen() {
                 setSwapSearchResults(results.filter((option) => !suggestionIds.has(option.id)));
             } catch (error) {
                 if (!cancelled) {
-                    console.error('Error searching substitute options:', error);
+                    if (__DEV__) console.error('Error searching substitute options:', error);
                     setSwapSearchResults([]);
                 }
             } finally {
@@ -274,6 +375,103 @@ export default function WorkoutPlayerScreen() {
         return unsubscribe;
     }, [navigation, isSubmitting]);
 
+    // ── Pre-workout check-in handlers ──
+    const handlePreCheckinSubmit = useCallback(async (answers: Record<string, any>) => {
+        if (!preWorkoutTrigger || !assignedProgramId || !profile?.id || !profile?.coach_id) return;
+
+        try {
+            const { data, error }: { data: any; error: any } = await supabase.rpc(
+                'submit_inline_form' as any,
+                {
+                    p_form_template_id: preWorkoutTrigger.formTemplateId,
+                    p_student_id: profile.id,
+                    p_trainer_id: profile.coach_id,
+                    p_answers_json: { answers },
+                    p_trigger_context: 'pre_workout',
+                }
+            );
+
+            if (error) throw error;
+            const result = data as { ok: boolean; submission_id: string };
+            if (!result?.ok) throw new Error('Submission failed');
+
+            setPreSubmissionId(result.submission_id);
+            setPreCheckinState('completed');
+            sessionCreatedRef.current = true;
+            await createSession(result.submission_id);
+        } catch (err: any) {
+            if (__DEV__) console.error('[PreCheckin] Submit error:', err?.message);
+            // Don't block the workout — skip and continue
+            Alert.alert('Erro ao enviar', 'O check-in falhou. Continuando o treino.', [
+                {
+                    text: 'OK',
+                    onPress: () => {
+                        setPreCheckinState('skipped');
+                        sessionCreatedRef.current = true;
+                        createSession();
+                    },
+                },
+            ]);
+        }
+    }, [preWorkoutTrigger, assignedProgramId, createSession, profile]);
+
+    const handlePreCheckinSkip = useCallback(() => {
+        setPreCheckinState('skipped');
+        sessionCreatedRef.current = true;
+        createSession();
+    }, [createSession]);
+
+    // ── Post-workout check-in handlers ──
+    // Use a ref-based approach to avoid circular dependency with handleConfirmFinish
+    const executeFinishRef = useRef<(rpe: number, feedback: string, pSubmissionId?: string) => void>(undefined);
+
+    const handlePostCheckinSubmit = useCallback(async (answers: Record<string, any>) => {
+        if (!postWorkoutTrigger || !profile?.id || !profile?.coach_id) return;
+
+        try {
+            const { data, error }: { data: any; error: any } = await supabase.rpc(
+                'submit_inline_form' as any,
+                {
+                    p_form_template_id: postWorkoutTrigger.formTemplateId,
+                    p_student_id: profile.id,
+                    p_trainer_id: profile.coach_id,
+                    p_answers_json: { answers },
+                    p_trigger_context: 'post_workout',
+                }
+            );
+
+            if (error) throw error;
+            const result = data as { ok: boolean; submission_id: string };
+            if (!result?.ok) throw new Error('Submission failed');
+
+            setPostSubmissionId(result.submission_id);
+            setPostCheckinState('completed');
+
+            if (pendingFeedbackRef.current) {
+                const { rpe, feedback } = pendingFeedbackRef.current;
+                pendingFeedbackRef.current = null;
+                executeFinishRef.current?.(rpe, feedback, result.submission_id);
+            }
+        } catch (err: any) {
+            if (__DEV__) console.error('[PostCheckin] Submit error:', err?.message);
+            setPostCheckinState('skipped');
+            if (pendingFeedbackRef.current) {
+                const { rpe, feedback } = pendingFeedbackRef.current;
+                pendingFeedbackRef.current = null;
+                executeFinishRef.current?.(rpe, feedback);
+            }
+        }
+    }, [postWorkoutTrigger, profile]);
+
+    const handlePostCheckinSkip = useCallback(() => {
+        setPostCheckinState('skipped');
+        if (pendingFeedbackRef.current) {
+            const { rpe, feedback } = pendingFeedbackRef.current;
+            pendingFeedbackRef.current = null;
+            executeFinishRef.current?.(rpe, feedback);
+        }
+    }, []);
+
     const handleFinish = () => {
         // Open feedback modal instead of alert
         setIsFeedbackVisible(true);
@@ -281,31 +479,36 @@ export default function WorkoutPlayerScreen() {
 
     const [successData, setSuccessData] = React.useState<ShareableCardProps & { sessionId?: string } | undefined>(undefined);
 
-    const handleConfirmFinish = async (rpe: number, feedback: string) => {
+    // Core finish logic — called directly or via post-checkin flow
+    const executeFinish = async (rpe: number, feedback: string, pSubmissionId?: string) => {
         try {
-            setIsFeedbackVisible(false);
-            const success = await finishWorkout(rpe, feedback);
+            const success = await finishWorkout(rpe, feedback, pSubmissionId || postSubmissionId || undefined);
             if (success) {
                 // Stop Live Activity immediately
                 stopActivity();
 
                 // Calculate Stats for Shareable Card
+                // Only 'main' exercises count towards volume (or all if no functions set)
                 let totalVolume = 0;
                 let completedExercisesCount = 0;
+                const hasAnyFunction = exercises.some(ex => ex.exerciseFunction);
 
                 exercises.forEach(ex => {
                     // Check if at least one set is completed
                     const hasCompletedSet = ex.setsData.some(s => s.completed);
                     if (hasCompletedSet) completedExercisesCount++;
 
-                    // Calculate volume for completed sets
-                    ex.setsData.forEach(s => {
-                        if (s.completed) {
-                            const weight = parseFloat(s.weight) || 0;
-                            const reps = parseInt(s.reps) || 0;
-                            totalVolume += weight * reps;
-                        }
-                    });
+                    // Calculate volume only for 'main' exercises (or all if no functions defined)
+                    const countsForVolume = !hasAnyFunction || ex.exerciseFunction === 'main';
+                    if (countsForVolume) {
+                        ex.setsData.forEach(s => {
+                            if (s.completed) {
+                                const weight = parseFloat(s.weight) || 0;
+                                const reps = parseInt(s.reps) || 0;
+                                totalVolume += weight * reps;
+                            }
+                        });
+                    }
                 });
 
                 // Calculate Max Loads for Sharing
@@ -365,9 +568,21 @@ export default function WorkoutPlayerScreen() {
                     date: new Date().toLocaleDateString('pt-BR'),
                     studentName: profile?.name || 'Aluno Kinevo',
                     coach: profile?.coach || null,
+                    completedSets,
+                    totalSets,
+                    rpe,
                     maxLoads: maxLoads,
                     exerciseDetails: exerciseDetails,
                     sessionId: success
+                });
+
+                // Set celebration data (summary for the celebration screen)
+                setCelebrationData({
+                    duration,
+                    completedSets,
+                    totalSets,
+                    totalVolume,
+                    rpe,
                 });
 
                 // Show full-screen celebration animation first
@@ -378,6 +593,24 @@ export default function WorkoutPlayerScreen() {
         } catch (error: any) {
             Alert.alert("Erro", error.message || "Falha ao finalizar.");
         }
+    };
+
+    // Register the finish function so post-checkin handlers can call it
+    executeFinishRef.current = executeFinish;
+
+    // Wrapper called from FeedbackModal — may intercept to show post-checkin
+    const handleConfirmFinish = async (rpe: number, feedback: string) => {
+        setIsFeedbackVisible(false);
+
+        // If there's a post-workout trigger we haven't shown yet, intercept
+        if (postWorkoutTrigger && postCheckinState === 'idle') {
+            pendingFeedbackRef.current = { rpe, feedback };
+            setPostCheckinState('showing');
+            return;
+        }
+
+        // No post-checkin needed — proceed directly
+        executeFinish(rpe, feedback);
     };
 
     const handleCelebrationComplete = useCallback(() => {
@@ -412,26 +645,27 @@ export default function WorkoutPlayerScreen() {
             />
 
             {/* Header */}
-            <View className="flex-row items-center justify-between px-5 py-4 border-b border-slate-200 bg-white">
-                <TouchableOpacity onPress={() => router.back()} className="p-2 -ml-2">
-                    <ChevronLeft size={24} color="#0f172a" />
-                </TouchableOpacity>
-
-                <View className="items-center">
-                    <Text className="text-slate-900 font-bold text-lg">{workoutName}</Text>
-                    <Text className="text-slate-500 font-mono text-sm">{duration}</Text>
+            <View style={{ backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e2e8f0', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12 }}>
+                {/* Top row: back | name+timer | spacer */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <TouchableOpacity onPress={() => router.back()} style={{ padding: 8, marginLeft: -8 }} hitSlop={12}>
+                        <ChevronLeft size={24} color="#0f172a" />
+                    </TouchableOpacity>
+                    <View style={{ alignItems: 'center' }}>
+                        <Text style={{ color: '#0f172a', fontWeight: '700', fontSize: 17 }}>{workoutName}</Text>
+                        <Text style={{ color: '#64748b', fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', fontSize: 13 }}>{duration}</Text>
+                    </View>
+                    <View style={{ width: 40 }} />
                 </View>
-
-                <TouchableOpacity
-                    onPress={handleFinish}
-                    disabled={isSubmitting}
-                >
-                    {isSubmitting ? (
-                        <ActivityIndicator size="small" color="#8b5cf6" />
-                    ) : (
-                        <Text className="text-violet-500 font-bold text-base">Finalizar</Text>
-                    )}
-                </TouchableOpacity>
+                {/* Progress bar */}
+                <View style={{ marginTop: 12 }}>
+                    <View style={{ height: 3, backgroundColor: '#e2e8f0', borderRadius: 2, overflow: 'hidden' }}>
+                        <View style={{ height: '100%', width: `${totalSets > 0 ? (completedSets / totalSets) * 100 : 0}%`, backgroundColor: '#7c3aed', borderRadius: 2 }} />
+                    </View>
+                    <Text style={{ color: '#94a3b8', fontSize: 11, marginTop: 4, textAlign: 'right' }}>
+                        {completedSets}/{totalSets} séries
+                    </Text>
+                </View>
             </View>
 
             <KeyboardAvoidingView
@@ -441,26 +675,193 @@ export default function WorkoutPlayerScreen() {
             >
                 <ScrollView
                     className="flex-1 px-4 pt-4 bg-slate-50"
-                    contentContainerStyle={{ paddingBottom: restTimer ? 260 : 100 }}
+                    contentContainerStyle={{ paddingBottom: restTimer ? 260 : 24 }}
                     showsVerticalScrollIndicator={false}
                 >
-                    {exercises.map((exercise, index) => (
-                        <ExerciseCard
-                            key={exercise.id}
-                            exerciseName={exercise.name}
-                            sets={exercise.sets}
-                            reps={exercise.reps}
-                            restSeconds={exercise.rest_seconds}
-                            videoUrl={exercise.video_url}
-                            previousLoad={exercise.previousLoad}
-                            setsData={exercise.setsData}
-                            onSetChange={(setIndex, field, value) => handleSetChange(index, setIndex, field, value)}
-                            onToggleSetComplete={(setIndex) => handleToggleSetComplete(index, setIndex)}
-                            onVideoPress={(url) => setVideoModalUrl(url)}
-                            onSwapPress={() => openSwapModal(index)}
-                            isSwapped={exercise.swap_source !== 'none'}
-                        />
-                    ))}
+                    {(() => {
+                        // Build unified render list ordered by order_index
+                        type RenderItem =
+                            | { type: 'exercise'; exercise: ExerciseData; globalIndex: number; orderIndex: number }
+                            | { type: 'superset'; exercises: ExerciseData[]; supersetId: string; supersetRestSeconds: number; globalIndexOffset: number; orderIndex: number }
+                            | { type: 'note'; note: WorkoutNote; orderIndex: number }
+                            | { type: 'section_header'; label: string; orderIndex: number }
+                            | { type: 'warmup_cardio'; exercise: ExerciseData; orderIndex: number };
+
+                        const FUNCTION_LABELS: Record<string, string> = {
+                            warmup: 'AQUECIMENTO',
+                            activation: 'ATIVAÇÃO',
+                            main: 'PRINCIPAL',
+                            accessory: 'ACESSÓRIO',
+                            conditioning: 'CONDICIONAMENTO',
+                        };
+
+                        const renderItems: RenderItem[] = [];
+                        const processedSupersets = new Set<string>();
+
+                        exercises.forEach((exercise, globalIndex) => {
+                            // Warmup/Cardio items — render as special cards
+                            if (exercise.item_type === 'warmup' || exercise.item_type === 'cardio') {
+                                renderItems.push({
+                                    type: 'warmup_cardio',
+                                    exercise,
+                                    orderIndex: exercise.order_index,
+                                });
+                                return;
+                            }
+
+                            if (exercise.supersetId) {
+                                if (processedSupersets.has(exercise.supersetId)) return;
+                                processedSupersets.add(exercise.supersetId);
+
+                                const group = exercises
+                                    .map((e, i) => ({ ...e, _globalIndex: i }))
+                                    .filter((e) => e.supersetId === exercise.supersetId);
+
+                                // Use the first child's order_index - 1 to approximate parent superset position
+                                // (superset parent always comes before its children in order_index)
+                                const groupOrderIndex = Math.min(...group.map((e) => e.order_index)) - 0.5;
+
+                                renderItems.push({
+                                    type: 'superset',
+                                    exercises: group,
+                                    supersetId: exercise.supersetId,
+                                    supersetRestSeconds: exercise.supersetRestSeconds || 60,
+                                    globalIndexOffset: group[0]._globalIndex,
+                                    orderIndex: groupOrderIndex,
+                                });
+                            } else {
+                                renderItems.push({
+                                    type: 'exercise',
+                                    exercise,
+                                    globalIndex,
+                                    orderIndex: exercise.order_index,
+                                });
+                            }
+                        });
+
+                        // Add workout notes into the unified list
+                        workoutNotes.forEach((note) => {
+                            renderItems.push({ type: 'note', note, orderIndex: note.order_index });
+                        });
+
+                        // Sort by order_index so items appear in the trainer-defined order
+                        renderItems.sort((a, b) => a.orderIndex - b.orderIndex);
+
+                        // Insert section headers when exercise_function changes between consecutive items
+                        const hasAnyFunction = exercises.some(e => e.exerciseFunction);
+                        const finalItems: RenderItem[] = [];
+
+                        if (hasAnyFunction) {
+                            let lastFunction: string | null | undefined = undefined;
+                            for (const item of renderItems) {
+                                // Determine this item's exercise function
+                                let itemFunction: string | null | undefined = null;
+                                if (item.type === 'exercise') {
+                                    itemFunction = item.exercise.exerciseFunction;
+                                } else if (item.type === 'superset') {
+                                    // Use first child's function for the superset
+                                    itemFunction = item.exercises[0]?.exerciseFunction;
+                                }
+
+                                // Insert header if function changed (skip notes — they don't change the function)
+                                if (item.type !== 'note' && itemFunction && itemFunction !== lastFunction) {
+                                    finalItems.push({
+                                        type: 'section_header',
+                                        label: FUNCTION_LABELS[itemFunction] || itemFunction.toUpperCase(),
+                                        orderIndex: item.orderIndex - 0.1,
+                                    });
+                                    lastFunction = itemFunction;
+                                }
+
+                                finalItems.push(item);
+                            }
+                        } else {
+                            finalItems.push(...renderItems);
+                        }
+
+                        return (
+                            <>
+                                {finalItems.map((item) => {
+                                    if (item.type === 'section_header') {
+                                        return (
+                                            <View key={`header-${item.label}`} style={{ marginTop: 20, marginBottom: 8, paddingHorizontal: 4 }}>
+                                                <Text style={{ fontSize: 11, fontWeight: '700', letterSpacing: 2, color: 'rgba(0,0,0,0.40)' }}>
+                                                    {item.label}
+                                                </Text>
+                                            </View>
+                                        );
+                                    }
+                                    if (item.type === 'warmup_cardio') {
+                                        if (item.exercise.item_type === 'warmup') {
+                                            return (
+                                                <WarmupCard
+                                                    key={item.exercise.id}
+                                                    exercise={item.exercise}
+                                                    onTimerStart={(endTs, totalSecs, warmupType) => {
+                                                        liveActivityRef.current?.updateTimerState({
+                                                            itemType: 'warmup',
+                                                            timerEndTimestamp: endTs,
+                                                            timerTotalSeconds: totalSecs,
+                                                            warmupType,
+                                                        });
+                                                    }}
+                                                    onTimerStop={() => liveActivityRef.current?.clearTimerState()}
+                                                />
+                                            );
+                                        }
+                                        return (
+                                            <CardioCard
+                                                key={item.exercise.id}
+                                                exercise={item.exercise}
+                                                onCardioToggle={toggleCardioComplete}
+                                                onTimerUpdate={(data) => liveActivityRef.current?.updateTimerState(data)}
+                                                onTimerStop={() => liveActivityRef.current?.clearTimerState()}
+                                            />
+                                        );
+                                    }
+                                    if (item.type === 'note') {
+                                        return <WorkoutNoteCard key={item.note.id} note={item.note.notes} />;
+                                    }
+                                    if (item.type === 'superset') {
+                                        return (
+                                            <SupersetGroup
+                                                key={item.supersetId}
+                                                exercises={item.exercises}
+                                                supersetRestSeconds={item.supersetRestSeconds}
+                                                onSetChange={(gi, si, field, value) => handleSetChange(gi, si, field, value)}
+                                                onToggleSetComplete={(gi, si) => handleToggleSetComplete(gi, si)}
+                                                onVideoPress={(url) => setVideoModalUrl(url)}
+                                                onSwapPress={(gi) => openSwapModal(gi)}
+                                                globalIndexOffset={item.globalIndexOffset}
+                                            />
+                                        );
+                                    }
+                                    if (item.type === 'exercise') {
+                                        return (
+                                            <ExerciseCard
+                                                key={item.exercise.id}
+                                                exerciseName={item.exercise.name}
+                                                sets={item.exercise.sets}
+                                                reps={item.exercise.reps}
+                                                restSeconds={item.exercise.rest_seconds}
+                                                videoUrl={item.exercise.video_url}
+                                                previousLoad={item.exercise.previousLoad}
+                                                previousSets={item.exercise.previousSets}
+                                                setsData={item.exercise.setsData}
+                                                onSetChange={(setIndex, field, value) => handleSetChange(item.globalIndex, setIndex, field, value)}
+                                                onToggleSetComplete={(setIndex) => handleToggleSetComplete(item.globalIndex, setIndex)}
+                                                onVideoPress={(url) => setVideoModalUrl(url)}
+                                                onSwapPress={() => openSwapModal(item.globalIndex)}
+                                                isSwapped={item.exercise.swap_source !== 'none'}
+                                                notes={item.exercise.notes}
+                                            />
+                                        );
+                                    }
+                                    return null;
+                                })}
+                            </>
+                        );
+                    })()}
 
                     {exercises.length === 0 && (
                         <View className="items-center justify-center py-20">
@@ -468,33 +869,80 @@ export default function WorkoutPlayerScreen() {
                         </View>
                     )}
 
-                    <TouchableOpacity
-                        className="mx-5 mb-8 mt-6 rounded-2xl overflow-hidden shadow-lg shadow-violet-500/40"
-                        onPress={handleFinish}
-                        disabled={isSubmitting}
-                        activeOpacity={0.8}
-                    >
-                        <BlurView intensity={80} tint="light" className="bg-violet-600/85">
-                            <View className="border border-white/20 rounded-2xl overflow-hidden">
-                                <LinearGradient
-                                    colors={['rgba(139, 92, 246, 0.5)', 'rgba(109, 40, 217, 0.5)']}
-                                    className="h-14 flex-row items-center justify-center space-x-2"
-                                >
-                                    <Text className="text-white font-bold text-lg text-center">
-                                        Finalizar Treino
-                                    </Text>
-                                </LinearGradient>
-                            </View>
-                        </BlurView>
-                    </TouchableOpacity>
-
                 </ScrollView>
             </KeyboardAvoidingView>
+
+            {/* Fixed Finalizar button */}
+            <View style={{
+                paddingHorizontal: 20,
+                paddingTop: 12,
+                paddingBottom: Math.max(insets.bottom, 16),
+                backgroundColor: '#f8fafc',
+                borderTopWidth: StyleSheet.hairlineWidth,
+                borderTopColor: '#e2e8f0',
+            }}>
+                <TouchableOpacity
+                    onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+                        if (allSetsCompleted) {
+                            handleFinish();
+                        } else {
+                            Alert.alert(
+                                'Finalizar treino incompleto?',
+                                `Você completou ${completedSets} de ${totalSets} séries. Deseja finalizar mesmo assim?`,
+                                [
+                                    { text: 'Continuar Treinando', style: 'cancel' },
+                                    { text: 'Finalizar', style: 'destructive', onPress: handleFinish },
+                                ]
+                            );
+                        }
+                    }}
+                    disabled={isSubmitting}
+                    activeOpacity={0.8}
+                    style={{
+                        backgroundColor: allSetsCompleted ? '#7c3aed' : '#e2e8f0',
+                        borderRadius: 16,
+                        height: 52,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                    }}
+                >
+                    {isSubmitting ? (
+                        <ActivityIndicator size="small" color={allSetsCompleted ? '#fff' : '#64748b'} />
+                    ) : (
+                        <Text style={{
+                            color: allSetsCompleted ? '#fff' : '#64748b',
+                            fontWeight: '700',
+                            fontSize: 16,
+                        }}>
+                            {allSetsCompleted ? 'Finalizar Treino' : `Finalizar (${completedSets}/${totalSets})`}
+                        </Text>
+                    )}
+                </TouchableOpacity>
+            </View>
             {/* Feedback Modal */}
             <WorkoutFeedbackModal
                 visible={isFeedbackVisible}
                 onClose={() => setIsFeedbackVisible(false)}
                 onConfirm={handleConfirmFinish}
+                summary={{
+                    duration,
+                    exerciseCount: exercises.filter(ex => ex.setsData.some(s => s.completed)).length || exercises.length,
+                    completedSets,
+                    totalSets,
+                    totalVolume: (() => {
+                        const anyFunc = exercises.some(ex => ex.exerciseFunction);
+                        return exercises.reduce((acc, ex) => {
+                            if (anyFunc && ex.exerciseFunction !== 'main') return acc;
+                            ex.setsData.forEach(s => {
+                                if (s.completed) {
+                                    acc += (parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0);
+                                }
+                            });
+                            return acc;
+                        }, 0);
+                    })(),
+                }}
             />
             {/* Success Modal */}
             <WorkoutSuccessModal
@@ -524,6 +972,7 @@ export default function WorkoutPlayerScreen() {
             <WorkoutCelebration
                 visible={showCelebration}
                 onComplete={handleCelebrationComplete}
+                data={celebrationData}
             />
             {/* Rest Timer Overlay */}
             {restTimer && (
@@ -546,6 +995,24 @@ export default function WorkoutPlayerScreen() {
                             };
                         });
                     }}
+                />
+            )}
+            {/* Pre-workout check-in sheet */}
+            {preWorkoutTrigger && (
+                <PreWorkoutFormSheet
+                    visible={preCheckinState === 'showing'}
+                    trigger={preWorkoutTrigger}
+                    onSubmit={handlePreCheckinSubmit}
+                    onSkip={handlePreCheckinSkip}
+                />
+            )}
+            {/* Post-workout check-in sheet */}
+            {postWorkoutTrigger && (
+                <PostWorkoutFormSheet
+                    visible={postCheckinState === 'showing'}
+                    trigger={postWorkoutTrigger}
+                    onSubmit={handlePostCheckinSubmit}
+                    onSkip={handlePostCheckinSkip}
                 />
             )}
         </ScreenWrapper>

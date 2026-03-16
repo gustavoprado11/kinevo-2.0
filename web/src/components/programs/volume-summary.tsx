@@ -59,12 +59,12 @@ export function VolumeSummary({ workouts }: VolumeSummaryProps) {
     }
 
     return (
-        <div className="w-full bg-surface-primary border-b border-k-border-subtle px-8 py-2.5 flex-shrink-0 z-20">
+        <div className="w-full bg-surface-primary border-b border-k-border-subtle px-8 py-2.5 flex-shrink-0 z-header">
             <div className="flex items-start gap-6">
                 {/* Master Label Group */}
                 <div className="flex items-center gap-2 shrink-0 border-r border-k-border-primary pr-6 py-0.5">
                     <Dumbbell size={14} className="text-violet-400" strokeWidth={2.5} />
-                    <span className="text-[10px] font-bold text-k-text-quaternary uppercase tracking-[0.2em] whitespace-nowrap">
+                    <span className="text-[10px] font-bold text-k-text-quaternary whitespace-nowrap">
                         Volume Semanal <span className="text-k-text-quaternary">(Séries)</span>
                     </span>
                 </div>
@@ -76,7 +76,7 @@ export function VolumeSummary({ workouts }: VolumeSummaryProps) {
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 exit={{ opacity: 0 }}
-                                className="text-[10px] font-bold text-k-text-quaternary uppercase tracking-widest"
+                                className="text-[10px] font-bold text-k-text-quaternary"
                             >
                                 Aguardando exercícios...
                             </motion.div>
@@ -91,7 +91,7 @@ export function VolumeSummary({ workouts }: VolumeSummaryProps) {
                                     transition={{ duration: 0.3, ease: "easeOut" }}
                                     className="flex items-center whitespace-nowrap"
                                 >
-                                    <span className="text-[11px] font-semibold text-k-text-tertiary uppercase tracking-wider">
+                                    <span className="text-[11px] font-semibold text-k-text-tertiary">
                                         {group}
                                     </span>
                                     <span className={`text-sm font-black ml-2 ${getVolumeColor(volume)}`} title={getVolumeHint(volume)}>

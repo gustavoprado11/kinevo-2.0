@@ -12,6 +12,9 @@ export async function getProgramSessions(programId: string): Promise<GetProgramS
     const supabase = await createClient()
 
     try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return { success: false, error: 'Não autorizado' }
+
         const { data, error } = await supabase
             .from('workout_sessions')
             .select(`

@@ -7,11 +7,13 @@ export default async function FormsPage() {
     const { trainer } = await getTrainerWithSubscription()
     const supabase = await createClient()
 
-    // Templates
+    // Templates (trainer-owned + visible system templates)
     const { data: templates } = await supabase
         .from('form_templates')
-        .select('id, title, category, version, schema_json, created_at')
-        .eq('trainer_id', trainer.id)
+        .select('id, title, category, version, schema_json, created_at, trainer_id')
+        .or(`trainer_id.eq.${trainer.id},trainer_id.is.null`)
+        .or('system_key.is.null,system_key.neq.prescription_questionnaire')
+        .eq('is_active', true)
         .order('created_at', { ascending: false })
 
     // All submissions (submitted + reviewed)
@@ -82,6 +84,7 @@ export default async function FormsPage() {
         category: t.category as string,
         responseCount: responseCounts.get(t.id) || 0,
         questionCount: (t.schema_json as any)?.questions?.length || 0,
+        trainer_id: t.trainer_id,
     }))
 
     // For AssignFormModal

@@ -10,11 +10,19 @@ export async function deleteProgram(programId: string) {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) throw new Error('Unauthorized')
 
-        // Get program to know student_id for revalidation
+        const { data: trainer } = await supabase
+            .from('trainers')
+            .select('id')
+            .eq('auth_user_id', user.id)
+            .single()
+        if (!trainer) throw new Error('Unauthorized')
+
+        // Get program and verify trainer ownership
         const { data: program } = await supabase
             .from('assigned_programs')
-            .select('student_id, status')
+            .select('student_id, status, trainer_id')
             .eq('id', programId)
+            .eq('trainer_id', trainer.id)
             .single()
 
         if (!program) throw new Error('Program not found')
@@ -24,6 +32,7 @@ export async function deleteProgram(programId: string) {
             .from('assigned_programs')
             .delete()
             .eq('id', programId)
+            .eq('trainer_id', trainer.id)
 
         if (error) throw error
 

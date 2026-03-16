@@ -28,6 +28,7 @@ export interface SessionRef {
 export type CalendarDayStatus =
   | 'done'
   | 'missed'
+  | 'compensated'
   | 'scheduled'
   | 'rest'
   | 'out_of_program'
@@ -47,6 +48,25 @@ export interface CalendarDay {
 export interface DateRange {
   start: Date
   end: Date
+}
+
+export interface PendingWorkout {
+  assignedWorkoutId: string
+  workoutName: string
+  originalDay: string       // "Quarta"
+  missedDate: string        // "12/03"
+  exerciseCount: number
+  notes?: string
+}
+
+export interface WeeklyProgress {
+  expectedCount: number
+  completedCount: number
+  pendingWorkouts: PendingWorkout[]
+  isWeekComplete: boolean
+  completionPercentage: number
+  /** Per-workout: how many completed vs expected this week */
+  workoutCounts: Map<string, { expected: number; completed: number }>
 }
 
 // ---------------------------------------------------------------------------
@@ -142,6 +162,198 @@ export function getScheduledWorkoutsForDate(
 }
 
 // ---------------------------------------------------------------------------
+// Weekly Progress
+// ---------------------------------------------------------------------------
+
+const WEEK_DAYS_PT = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
+
+export interface WorkoutWithMeta extends ScheduledWorkoutRef {
+  items?: { id: string }[]
+  notes?: string
+}
+
+/**
+ * Calculate weekly progress: expected vs completed, with pending workout details.
+ * Counts by OCCURRENCE: if Treino A is scheduled 3 days, the student needs 3 sessions.
+ */
+export function calculateWeeklyProgress(
+  workouts: WorkoutWithMeta[],
+  sessions: SessionRef[],
+  weekStart: Date,
+): WeeklyProgress {
+  const wkStart = startOfDay(weekStart)
+  const wkEnd = addDays(wkStart, 6)
+  const today = startOfDay(new Date())
+
+  // Count completed sessions per workout this week
+  const completedByWorkout = new Map<string, number>()
+  for (const s of sessions) {
+    if (s.status !== 'completed') continue
+    const d = startOfDay(new Date(s.completed_at ?? s.started_at))
+    if (d >= wkStart && d <= wkEnd) {
+      completedByWorkout.set(
+        s.assigned_workout_id,
+        (completedByWorkout.get(s.assigned_workout_id) || 0) + 1,
+      )
+    }
+  }
+
+  // Build expected occurrences per workout and total
+  let expectedCount = 0
+  let hasSchedules = false
+  const workoutCounts = new Map<string, { expected: number; completed: number }>()
+
+  // Track each scheduled occurrence for pending calculation
+  interface ScheduledOccurrence {
+    workoutId: string
+    workoutName: string
+    dayOfWeek: number
+    date: Date
+    exerciseCount: number
+    notes?: string
+  }
+  const allOccurrences: ScheduledOccurrence[] = []
+
+  for (const w of workouts) {
+    if (w.scheduled_days && w.scheduled_days.length > 0) {
+      hasSchedules = true
+      const expected = w.scheduled_days.length
+      const completed = completedByWorkout.get(w.id) || 0
+      workoutCounts.set(w.id, { expected, completed })
+      expectedCount += expected
+
+      // Build individual occurrences for this workout
+      for (const dow of w.scheduled_days) {
+        // Find the actual date for this day-of-week within the week
+        const daysFromStart = ((dow - wkStart.getDay()) + 7) % 7
+        const occDate = addDays(wkStart, daysFromStart)
+        allOccurrences.push({
+          workoutId: w.id,
+          workoutName: w.name,
+          dayOfWeek: dow,
+          date: occDate,
+          exerciseCount: w.items?.length || 0,
+          notes: w.notes,
+        })
+      }
+    }
+  }
+
+  if (!hasSchedules) {
+    expectedCount = workouts.length > 0 ? 3 : 0
+  }
+
+  const completedCount = Array.from(completedByWorkout.values()).reduce((a, b) => a + b, 0)
+
+  // Determine pending workouts: for each workout, if completed < expected,
+  // find the oldest missed occurrence(s)
+  const pendingWorkouts: PendingWorkout[] = []
+
+  if (hasSchedules) {
+    // Sort occurrences by date ascending
+    allOccurrences.sort((a, b) => a.date.getTime() - b.date.getTime())
+
+    // Group by workout
+    const occByWorkout = new Map<string, ScheduledOccurrence[]>()
+    for (const occ of allOccurrences) {
+      const arr = occByWorkout.get(occ.workoutId) || []
+      arr.push(occ)
+      occByWorkout.set(occ.workoutId, arr)
+    }
+
+    for (const [workoutId, occs] of occByWorkout) {
+      const counts = workoutCounts.get(workoutId)
+      if (!counts) continue
+      const deficit = counts.expected - counts.completed
+      if (deficit <= 0) continue
+
+      // Pick the oldest past occurrences as "missed"
+      // Only consider occurrences whose date has passed (or is today)
+      let pendingCount = 0
+      for (const occ of occs) {
+        if (pendingCount >= deficit) break
+        if (occ.date <= today) {
+          pendingWorkouts.push({
+            assignedWorkoutId: occ.workoutId,
+            workoutName: occ.workoutName,
+            originalDay: WEEK_DAYS_PT[occ.dayOfWeek],
+            missedDate: `${String(occ.date.getDate()).padStart(2, '0')}/${String(occ.date.getMonth() + 1).padStart(2, '0')}`,
+            exerciseCount: occ.exerciseCount,
+            notes: occ.notes,
+          })
+          pendingCount++
+        }
+      }
+
+      // If there are still pending but no past dates (all future), add future ones
+      const remaining = deficit - pendingCount
+      if (remaining > 0) {
+        for (const occ of occs) {
+          if (pendingCount >= deficit) break
+          if (occ.date > today) {
+            // Future occurrence — not missed yet, but counts toward expected
+            // Don't add to pendingWorkouts (they haven't missed it yet)
+          }
+        }
+      }
+    }
+  }
+
+  // Sort pending by date ascending (oldest missed first)
+  pendingWorkouts.sort((a, b) => {
+    const [dA, mA] = a.missedDate.split('/').map(Number)
+    const [dB, mB] = b.missedDate.split('/').map(Number)
+    return mA !== mB ? mA - mB : dA - dB
+  })
+
+  return {
+    expectedCount,
+    completedCount,
+    pendingWorkouts,
+    isWeekComplete: completedCount >= expectedCount,
+    completionPercentage: expectedCount > 0 ? Math.min((completedCount / expectedCount) * 100, 100) : 0,
+    workoutCounts,
+  }
+}
+
+/**
+ * Build a compensation map for a given week: for each workout, how many
+ * sessions have been completed vs expected. Used by calendar to determine
+ * if a "missed" day has been compensated.
+ */
+export function getWeekCompensationMap(
+  workouts: ScheduledWorkoutRef[],
+  sessions: SessionRef[],
+  weekStart: Date,
+): Map<string, { expected: number; completed: number }> {
+  const wkStart = startOfDay(weekStart)
+  const wkEnd = addDays(wkStart, 6)
+
+  const completedByWorkout = new Map<string, number>()
+  for (const s of sessions) {
+    if (s.status !== 'completed') continue
+    const d = startOfDay(new Date(s.completed_at ?? s.started_at))
+    if (d >= wkStart && d <= wkEnd) {
+      completedByWorkout.set(
+        s.assigned_workout_id,
+        (completedByWorkout.get(s.assigned_workout_id) || 0) + 1,
+      )
+    }
+  }
+
+  const result = new Map<string, { expected: number; completed: number }>()
+  for (const w of workouts) {
+    if (w.scheduled_days && w.scheduled_days.length > 0) {
+      result.set(w.id, {
+        expected: w.scheduled_days.length,
+        completed: completedByWorkout.get(w.id) || 0,
+      })
+    }
+  }
+  return result
+}
+
+// ---------------------------------------------------------------------------
 // Calendar Generation
 // ---------------------------------------------------------------------------
 
@@ -174,6 +386,17 @@ export function generateCalendarDays(
     sessionsByDate.set(key, arr)
   }
 
+  // Pre-compute compensation maps per week (keyed by week start dateKey)
+  const compensationCache = new Map<string, Map<string, { expected: number; completed: number }>>()
+  function getCompensation(date: Date) {
+    const weekRange = getWeekRange(date)
+    const wkKey = toDateKey(weekRange.start)
+    if (!compensationCache.has(wkKey)) {
+      compensationCache.set(wkKey, getWeekCompensationMap(workouts, sessions, weekRange.start))
+    }
+    return compensationCache.get(wkKey)!
+  }
+
   const days: CalendarDay[] = []
   let cursor = new Date(start)
 
@@ -202,7 +425,13 @@ export function generateCalendarDays(
       status = 'done'
     } else if (scheduled.length > 0) {
       if (d < today) {
-        status = 'missed'
+        // Missed day — check if all scheduled workouts were compensated elsewhere in the week
+        const comp = getCompensation(d)
+        const allCompensated = scheduled.every((sw) => {
+          const c = comp.get(sw.id)
+          return c ? c.completed >= c.expected : false
+        })
+        status = allCompensated ? 'compensated' : 'missed'
       } else {
         status = 'scheduled' // today or future
       }
@@ -232,11 +461,14 @@ export function generateCalendarDays(
 // Week / Month Navigation
 // ---------------------------------------------------------------------------
 
-/** Get the Sunday–Saturday range containing `date`. Optionally timezone-aware. */
+/** Get the Sunday–Saturday range containing `date`. Optionally timezone-aware.
+ *  `end` is set to 23:59:59.999 of Saturday so that timestamp-based comparisons
+ *  (Supabase `.lte()`, `d <= end`) include the entire last day of the week. */
 export function getWeekRange(date: Date, timeZone?: string): DateRange {
   const d = timeZone ? startOfDayTz(date, timeZone) : startOfDay(date)
-  const start = addDays(d, -d.getDay()) // Sunday
-  const end = addDays(start, 6) // Saturday
+  const start = addDays(d, -d.getDay()) // Sunday 00:00
+  const end = addDays(start, 6) // Saturday 00:00
+  end.setHours(23, 59, 59, 999) // Saturday 23:59:59.999
   return { start, end }
 }
 
@@ -244,6 +476,7 @@ export function getWeekRange(date: Date, timeZone?: string): DateRange {
 export function getMonthRange(date: Date): DateRange {
   const start = new Date(date.getFullYear(), date.getMonth(), 1)
   const end = new Date(date.getFullYear(), date.getMonth() + 1, 0) // last day
+  end.setHours(23, 59, 59, 999)
   return { start, end }
 }
 
@@ -261,9 +494,11 @@ export function shiftMonth(date: Date, direction: -1 | 1): Date {
 
 /** Get the full calendar grid for a month (includes leading/trailing days to fill weeks). */
 export function getMonthGridRange(date: Date): DateRange {
-  const { start: monthStart, end: monthEnd } = getMonthRange(date)
+  const { start: monthStart } = getMonthRange(date)
+  const monthEnd = new Date(date.getFullYear(), date.getMonth() + 1, 0) // last day at midnight
   // Extend to full weeks
   const start = addDays(monthStart, -monthStart.getDay()) // back to Sunday
   const end = addDays(monthEnd, 6 - monthEnd.getDay()) // forward to Saturday
+  end.setHours(23, 59, 59, 999)
   return { start, end }
 }

@@ -5,6 +5,7 @@ import type {
     StudentPrescriptionProfile,
     PrescriptionExerciseRef,
 } from '@kinevo/shared/types/prescription'
+import { PRESCRIPTION_QUESTIONNAIRE_KEY } from '@/lib/prescription/questionnaire-constants'
 
 // ============================================================================
 // Response types (exported so prescribe/page.tsx can reuse)
@@ -29,12 +30,22 @@ export interface RecentSession {
     assigned_program_id: string
 }
 
+export interface QuestionnaireSubmissionData {
+    id: string
+    answers_json: Record<string, any>
+    submitted_at: string
+}
+
 export interface PrescriptionData {
     profile: StudentPrescriptionProfile | null
     exercises: PrescriptionExerciseRef[]
     recentSessions: RecentSession[]
     activeProgram: ActiveProgram | null
     aiEnabled: boolean
+    previousProgramCount: number
+    lastFormSubmissionDate: string | null
+    questionnaireSubmission: QuestionnaireSubmissionData | null
+    questionnaireTemplateId: string | null
 }
 
 interface GetPrescriptionDataResult {
@@ -86,11 +97,14 @@ export async function getPrescriptionData(
     const aiEnabled = !!trainer.ai_prescriptions_enabled
 
     // 4. Fetch all data in parallel
-    const [profileResult, exercisesResult, sessionsResult, programResult] = await Promise.all([
+    const [profileResult, exercisesResult, sessionsResult, programResult, prevProgramCount, lastFormDate, questionnaireResult] = await Promise.all([
         fetchPrescriptionProfile(supabase, studentId),
         fetchExercises(supabase),
         fetchRecentSessions(supabase, studentId),
         fetchActiveProgram(supabase, studentId),
+        fetchPreviousProgramCount(supabase, studentId),
+        fetchLastFormSubmissionDate(supabase, studentId),
+        fetchQuestionnaireSubmission(supabase, studentId),
     ])
 
     return {
@@ -101,6 +115,10 @@ export async function getPrescriptionData(
             recentSessions: sessionsResult,
             activeProgram: programResult,
             aiEnabled,
+            previousProgramCount: prevProgramCount,
+            lastFormSubmissionDate: lastFormDate,
+            questionnaireSubmission: questionnaireResult.submission,
+            questionnaireTemplateId: questionnaireResult.templateId,
         },
     }
 }
@@ -129,11 +147,14 @@ export async function fetchPrescriptionDataDirect(
     // @ts-ignore — ai_prescriptions_enabled from migration 036
     const aiEnabled = !!trainerRow?.ai_prescriptions_enabled
 
-    const [profileResult, exercisesResult, sessionsResult, programResult] = await Promise.all([
+    const [profileResult, exercisesResult, sessionsResult, programResult, prevProgramCount, lastFormDate, questionnaireResult] = await Promise.all([
         fetchPrescriptionProfile(supabase, studentId),
         fetchExercises(supabase),
         fetchRecentSessions(supabase, studentId),
         fetchActiveProgram(supabase, studentId),
+        fetchPreviousProgramCount(supabase, studentId),
+        fetchLastFormSubmissionDate(supabase, studentId),
+        fetchQuestionnaireSubmission(supabase, studentId),
     ])
 
     return {
@@ -142,6 +163,10 @@ export async function fetchPrescriptionDataDirect(
         recentSessions: sessionsResult,
         activeProgram: programResult,
         aiEnabled,
+        previousProgramCount: prevProgramCount,
+        lastFormSubmissionDate: lastFormDate,
+        questionnaireSubmission: questionnaireResult.submission,
+        questionnaireTemplateId: questionnaireResult.templateId,
     }
 }
 
@@ -188,6 +213,9 @@ async function fetchExercises(
             difficulty_level,
             is_primary_movement,
             session_position,
+            movement_pattern,
+            movement_pattern_family,
+            fatigue_class,
             exercise_muscle_groups (
                 muscle_groups (
                     id,
@@ -220,6 +248,10 @@ async function fetchExercises(
             difficulty_level: e.difficulty_level || 'intermediate',
             is_primary_movement: e.is_primary_movement || false,
             session_position: e.session_position || 'middle',
+            movement_pattern: e.movement_pattern || null,
+            movement_pattern_family: e.movement_pattern_family || null,
+            fatigue_class: e.fatigue_class || 'moderate',
+            prescription_notes: e.prescription_notes || null,
         } satisfies PrescriptionExerciseRef
     })
 }
@@ -286,4 +318,96 @@ async function fetchActiveProgram(
     }
 
     return data as ActiveProgram | null
+}
+
+/**
+ * Count total assigned programs for a student (all statuses).
+ */
+async function fetchPreviousProgramCount(
+    supabase: SupabaseClient,
+    studentId: string,
+): Promise<number> {
+    const { count, error } = await supabase
+        .from('assigned_programs')
+        .select('id', { count: 'exact', head: true })
+        .eq('student_id', studentId)
+
+    if (error) {
+        console.error('[getPrescriptionData] program count error:', error)
+        return 0
+    }
+
+    return count || 0
+}
+
+/**
+ * Fetch the most recent form submission date for a student.
+ * Used as a proxy for "last assessment date" in the context card.
+ */
+async function fetchLastFormSubmissionDate(
+    supabase: SupabaseClient,
+    studentId: string,
+): Promise<string | null> {
+    const { data, error } = await supabase
+        .from('form_submissions')
+        .select('submitted_at')
+        .eq('student_id', studentId)
+        .eq('status', 'submitted')
+        .order('submitted_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+    if (error) {
+        console.error('[getPrescriptionData] form submission date error:', error)
+        return null
+    }
+
+    return (data as any)?.submitted_at || null
+}
+
+/**
+ * Fetch the most recent prescription questionnaire submission for a student.
+ */
+async function fetchQuestionnaireSubmission(
+    supabase: SupabaseClient,
+    studentId: string,
+): Promise<{ submission: QuestionnaireSubmissionData | null; templateId: string | null }> {
+    // Find the system template
+    // @ts-ignore — system_key from migration 062
+    const { data: template } = await supabase
+        .from('form_templates')
+        .select('id')
+        .eq('system_key', PRESCRIPTION_QUESTIONNAIRE_KEY)
+        .eq('is_active', true)
+        .maybeSingle()
+
+    if (!template) {
+        return { submission: null, templateId: null }
+    }
+
+    const { data, error } = await supabase
+        .from('form_submissions')
+        .select('id, answers_json, submitted_at')
+        .eq('form_template_id', template.id)
+        .eq('student_id', studentId)
+        .eq('status', 'submitted')
+        .order('submitted_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+    if (error) {
+        console.error('[getPrescriptionData] questionnaire error:', error)
+        return { submission: null, templateId: template.id }
+    }
+
+    return {
+        submission: data
+            ? {
+                id: data.id as string,
+                answers_json: data.answers_json as Record<string, any>,
+                submitted_at: data.submitted_at as string,
+            }
+            : null,
+        templateId: template.id,
+    }
 }

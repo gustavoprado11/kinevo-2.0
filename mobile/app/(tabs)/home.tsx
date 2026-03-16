@@ -32,6 +32,7 @@ export default function HomeScreen() {
         sessions,
         sessionsMap,
         weeklyProgress,
+        weeklyProgressFull,
         studentName,
         programStartedAt,
         programDurationWeeks,
@@ -60,18 +61,16 @@ export default function HomeScreen() {
     const handleShareWorkout = useCallback(async (workout: any) => {
         if (!workout) return;
 
-        const sessionDate = selectedDate;
-        const session = sessions.find(s => {
-            const sDate = new Date(s.started_at);
-            return s.assigned_workout_id === workout.id &&
-                s.status === 'completed' &&
-                sDate.getDate() === sessionDate.getDate() &&
-                sDate.getMonth() === sessionDate.getMonth() &&
-                sDate.getFullYear() === sessionDate.getFullYear();
-        });
+        // Use sessionsMap (indexed by completed_at ?? started_at) for consistent lookup
+        const selectedKey = toDateKey(selectedDate);
+        const daySessions = sessionsMap.get(selectedKey) || [];
+        const session = daySessions.find(s =>
+            s.status === 'completed' &&
+            s.assigned_workout_id === workout.id
+        ) || daySessions.find(s => s.status === 'completed');
 
         if (!session) {
-            console.log("No completed session found for sharing");
+            if (__DEV__) console.log("No completed session found for sharing");
             return;
         }
 
@@ -94,7 +93,7 @@ export default function HomeScreen() {
         });
         setShareModalVisible(true);
         setShareSessionId(session.id);
-    }, [sessions, selectedDate, profile]);
+    }, [sessionsMap, selectedDate, profile]);
 
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
@@ -127,6 +126,11 @@ export default function HomeScreen() {
         const daySessions = sessionsMap.get(selectedKey) || [];
         const isCompleted = daySessions.some(s => s.status === 'completed');
 
+        // Today's session (completed, for the scheduled workout or any)
+        const todaySession = daySessions.find(s =>
+            s.status === 'completed' && workout && s.assigned_workout_id === workout.id
+        ) || daySessions.find(s => s.status === 'completed') || null;
+
         // Time context
         const today = new Date();
         const todayNoTime = new Date(today.getFullYear(), today.getMonth(), today.getDate());
@@ -141,7 +145,7 @@ export default function HomeScreen() {
         type TimeContext = 'today' | 'past' | 'future';
         const timeContext: TimeContext = isToday ? 'today' : isPast ? 'past' : 'future';
 
-        // Contextual title
+        // Contextual title (used for non-today views)
         const weekDays = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
         const dayName = weekDays[selectedDayIndex];
         const dateStr = `${selectedDate.getDate().toString().padStart(2, '0')}/${(selectedDate.getMonth() + 1).toString().padStart(2, '0')}`;
@@ -159,10 +163,21 @@ export default function HomeScreen() {
             title = `Treino de ${dayName} (${dateStr})`;
         }
 
-        return { workout, isCompleted, isMissed, title, timeContext };
+        return { workout, isCompleted, isMissed, title, timeContext, todaySession };
     }, [workouts, sessionsMap, selectedDate]);
 
 
+
+    // Compute today's completed workout IDs for WorkoutList badges
+    const todayCompletedWorkoutIds = useMemo(() => {
+        const todayKey = toDateKey(new Date());
+        const todaySessions = sessionsMap.get(todayKey) || [];
+        const ids = new Set<string>();
+        for (const s of todaySessions) {
+            if (s.status === 'completed') ids.add(s.assigned_workout_id);
+        }
+        return ids;
+    }, [sessionsMap]);
 
     // Block access if student has unpaid subscription
     if (!accessLoading && !allowed) {
@@ -282,17 +297,21 @@ export default function HomeScreen() {
                             entering={FadeInUp.delay(300).springify().damping(SPRING_ENTER.damping).stiffness(SPRING_ENTER.stiffness).mass(SPRING_ENTER.mass)}
                         >
                             <ActionCard
-                                workout={selectedWorkoutData.workout}
-                                isCompleted={selectedWorkoutData.isCompleted}
-                                isMissed={selectedWorkoutData.isMissed}
-                                title={selectedWorkoutData.title}
-                                timeContext={selectedWorkoutData.timeContext}
+                                todayWorkout={selectedWorkoutData.timeContext === 'today' ? selectedWorkoutData.workout : undefined}
+                                todaySession={selectedWorkoutData.timeContext === 'today' ? selectedWorkoutData.todaySession : undefined}
+                                weeklyProgress={weeklyProgressFull}
+                                onStartWorkout={(id) => router.push(`/workout/${id}`)}
                                 onPress={() => {
                                     if (selectedWorkoutData.workout?.id) {
                                         router.push(`/workout/${selectedWorkoutData.workout.id}`);
                                     }
                                 }}
                                 onShare={selectedWorkoutData.isCompleted ? () => handleShareWorkout(selectedWorkoutData.workout) : undefined}
+                                selectedWorkout={selectedWorkoutData.workout}
+                                isCompleted={selectedWorkoutData.isCompleted}
+                                isMissed={selectedWorkoutData.isMissed}
+                                title={selectedWorkoutData.title}
+                                timeContext={selectedWorkoutData.timeContext}
                             />
                         </Animated.View>
 
@@ -305,6 +324,8 @@ export default function HomeScreen() {
                                 <WorkoutList
                                     workouts={workouts}
                                     onWorkoutPress={(id) => router.push(`/workout/${id}`)}
+                                    weeklyProgress={weeklyProgressFull}
+                                    todayCompletedIds={todayCompletedWorkoutIds}
                                 />
                             ) : (
                                 <View className="items-center py-6">

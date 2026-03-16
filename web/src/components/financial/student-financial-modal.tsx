@@ -37,26 +37,26 @@ interface StudentFinancialModalProps {
 }
 
 const statusConfig: Record<DisplayStatus, { label: string; className: string }> = {
-    courtesy: { label: 'Cortesia', className: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
-    awaiting_payment: { label: 'Aguardando', className: 'bg-sky-500/10 text-sky-400 border-sky-500/20' },
-    active: { label: 'Ativo', className: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
-    grace_period: { label: 'Vence hoje', className: 'bg-orange-500/10 text-orange-400 border-orange-500/20' },
-    canceling: { label: 'Cancelando', className: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
-    overdue: { label: 'Inadimplente', className: 'bg-red-500/10 text-red-400 border-red-500/20' },
-    canceled: { label: 'Encerrado', className: 'bg-gray-500/10 text-gray-400 border-gray-500/20' },
+    courtesy: { label: 'Cortesia', className: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20' },
+    awaiting_payment: { label: 'Aguardando', className: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20' },
+    active: { label: 'Ativo', className: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' },
+    grace_period: { label: 'Vence hoje', className: 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20' },
+    canceling: { label: 'Cancelando', className: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20' },
+    overdue: { label: 'Inadimplente', className: 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20' },
+    canceled: { label: 'Encerrado', className: 'bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-500/20' },
 }
 
 const eventConfig: Record<string, { icon: React.ElementType; color: string; label: string }> = {
-    student_registered: { icon: UserPlus, color: 'text-gray-400', label: 'Aluno cadastrado' },
-    contract_created: { icon: DollarSign, color: 'text-blue-400', label: 'Contrato criado' },
-    contract_migrated: { icon: ArrowRightLeft, color: 'text-blue-400', label: 'Migração' },
-    payment_received: { icon: CheckCircle, color: 'text-emerald-400', label: 'Pagamento recebido' },
-    payment_failed: { icon: XCircle, color: 'text-red-400', label: 'Pagamento falhou' },
-    contract_canceled: { icon: Ban, color: 'text-gray-400', label: 'Contrato cancelado' },
-    contract_overdue: { icon: AlertTriangle, color: 'text-orange-400', label: 'Vencimento detectado' },
-    plan_changed: { icon: ArrowRightLeft, color: 'text-gray-400', label: 'Plano alterado' },
-    access_blocked: { icon: Lock, color: 'text-red-400', label: 'Bloqueio ativado' },
-    access_unblocked: { icon: Unlock, color: 'text-emerald-400', label: 'Bloqueio desativado' },
+    student_registered: { icon: UserPlus, color: 'text-gray-600 dark:text-gray-400', label: 'Aluno cadastrado' },
+    contract_created: { icon: DollarSign, color: 'text-blue-600 dark:text-blue-400', label: 'Contrato criado' },
+    contract_migrated: { icon: ArrowRightLeft, color: 'text-blue-600 dark:text-blue-400', label: 'Migração' },
+    payment_received: { icon: CheckCircle, color: 'text-emerald-600 dark:text-emerald-400', label: 'Pagamento recebido' },
+    payment_failed: { icon: XCircle, color: 'text-red-600 dark:text-red-400', label: 'Pagamento falhou' },
+    contract_canceled: { icon: Ban, color: 'text-gray-600 dark:text-gray-400', label: 'Contrato cancelado' },
+    contract_overdue: { icon: AlertTriangle, color: 'text-orange-600 dark:text-orange-400', label: 'Vencimento detectado' },
+    plan_changed: { icon: ArrowRightLeft, color: 'text-gray-600 dark:text-gray-400', label: 'Plano alterado' },
+    access_blocked: { icon: Lock, color: 'text-red-600 dark:text-red-400', label: 'Bloqueio ativado' },
+    access_unblocked: { icon: Unlock, color: 'text-emerald-600 dark:text-emerald-400', label: 'Bloqueio desativado' },
 }
 
 const formatCurrency = (value: number) =>
@@ -263,7 +263,7 @@ export function StudentFinancialModal({
     }
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-modal flex items-center justify-center p-4">
             <div
                 className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300"
                 onClick={onClose}
@@ -290,7 +290,7 @@ export function StudentFinancialModal({
                             )}
                         </div>
                         <div>
-                            <h2 className="text-base font-bold text-white tracking-tight">
+                            <h2 className="text-base font-bold text-k-text-primary tracking-tight">
                                 {s.student_name}
                             </h2>
                             <div className="flex items-center gap-2 mt-0.5">
@@ -365,7 +365,7 @@ export function StudentFinancialModal({
                             {/* Status-specific content */}
                             {s.display_status === 'courtesy' && (
                                 <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 px-4 py-3">
-                                    <p className="text-xs text-blue-400">
+                                    <p className="text-xs text-blue-600 dark:text-blue-400">
                                         Sem cobrança configurada. Este aluno tem acesso gratuito.
                                     </p>
                                     <button
@@ -380,7 +380,7 @@ export function StudentFinancialModal({
 
                             {s.display_status === 'awaiting_payment' && (
                                 <div className="rounded-xl border border-sky-500/20 bg-sky-500/5 px-4 py-3">
-                                    <p className="text-xs text-sky-400 mb-3">
+                                    <p className="text-xs text-sky-600 dark:text-sky-400 mb-3">
                                         Aguardando pagamento do aluno.
                                     </p>
 
@@ -399,7 +399,7 @@ export function StudentFinancialModal({
                                                     href={whatsappUrl}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-600/20 transition-colors"
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-600/20 transition-colors"
                                                 >
                                                     <MessageCircle size={12} />
                                                     Contatar
@@ -418,7 +418,7 @@ export function StudentFinancialModal({
                                                     className="flex-shrink-0 p-1.5 rounded-md hover:bg-glass-bg-active transition-colors"
                                                 >
                                                     {copied ? (
-                                                        <Check size={12} className="text-emerald-400" />
+                                                        <Check size={12} className="text-emerald-600 dark:text-emerald-400" />
                                                     ) : (
                                                         <Copy size={12} className="text-k-text-quaternary" />
                                                     )}
@@ -452,8 +452,8 @@ export function StudentFinancialModal({
                             {s.display_status === 'grace_period' && (
                                 <div className="rounded-xl border border-orange-500/20 bg-orange-500/5 px-4 py-3">
                                     <div className="flex items-center gap-2 mb-2">
-                                        <AlertTriangle size={14} className="text-orange-400" />
-                                        <p className="text-xs font-semibold text-orange-400">
+                                        <AlertTriangle size={14} className="text-orange-600 dark:text-orange-400" />
+                                        <p className="text-xs font-semibold text-orange-600 dark:text-orange-400">
                                             Pagamento venceu há {daysOverdue(s.current_period_end)} dia{daysOverdue(s.current_period_end) !== 1 ? 's' : ''}
                                         </p>
                                     </div>
@@ -461,7 +461,7 @@ export function StudentFinancialModal({
                                         <button
                                             onClick={handleMarkPaid}
                                             disabled={actionLoading}
-                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors disabled:opacity-50"
+                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors disabled:opacity-50"
                                         >
                                             {actionLoading ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle size={12} />}
                                             Marcar pago
@@ -471,7 +471,7 @@ export function StudentFinancialModal({
                                                 href={whatsappUrl}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-600/20 transition-colors"
+                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-600/20 transition-colors"
                                             >
                                                 <MessageCircle size={12} />
                                                 Contatar
@@ -484,8 +484,8 @@ export function StudentFinancialModal({
                             {s.display_status === 'canceling' && (
                                 <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3">
                                     <div className="flex items-center gap-2 mb-1">
-                                        <Clock size={14} className="text-amber-400" />
-                                        <p className="text-xs font-semibold text-amber-400">
+                                        <Clock size={14} className="text-amber-600 dark:text-amber-400" />
+                                        <p className="text-xs font-semibold text-amber-600 dark:text-amber-400">
                                             Aluno cancelou a assinatura
                                         </p>
                                     </div>
@@ -501,8 +501,8 @@ export function StudentFinancialModal({
                             {s.display_status === 'overdue' && (
                                 <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3">
                                     <div className="flex items-center gap-2 mb-2">
-                                        <AlertCircle size={14} className="text-red-400" />
-                                        <p className="text-xs font-semibold text-red-400">
+                                        <AlertCircle size={14} className="text-red-600 dark:text-red-400" />
+                                        <p className="text-xs font-semibold text-red-600 dark:text-red-400">
                                             Inadimplente desde {formatDate(s.current_period_end)}
                                         </p>
                                     </div>
@@ -511,7 +511,7 @@ export function StudentFinancialModal({
                                             <button
                                                 onClick={handleMarkPaid}
                                                 disabled={actionLoading}
-                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors disabled:opacity-50"
+                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors disabled:opacity-50"
                                             >
                                                 {actionLoading ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle size={12} />}
                                                 Marcar pago
@@ -522,7 +522,7 @@ export function StudentFinancialModal({
                                                 href={whatsappUrl}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-600/20 transition-colors"
+                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-600/20 transition-colors"
                                             >
                                                 <MessageCircle size={12} />
                                                 Contatar
@@ -537,7 +537,7 @@ export function StudentFinancialModal({
                                     <button
                                         onClick={handleMarkPaid}
                                         disabled={actionLoading}
-                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors disabled:opacity-50"
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors disabled:opacity-50"
                                     >
                                         {actionLoading ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle size={12} />}
                                         Marcar pago
@@ -547,7 +547,7 @@ export function StudentFinancialModal({
 
                             {s.display_status === 'canceled' && (
                                 <div className="rounded-xl border border-gray-500/20 bg-gray-500/5 px-4 py-3">
-                                    <p className="text-xs text-gray-400">
+                                    <p className="text-xs text-gray-600 dark:text-gray-400">
                                         Contrato encerrado{s.canceled_at ? ` em ${formatDate(s.canceled_at)}` : ''}.
                                     </p>
                                     <button
@@ -594,7 +594,7 @@ export function StudentFinancialModal({
                                     {/* Block confirm popover */}
                                     {blockConfirm && (
                                         <div className="mt-3 p-3 rounded-lg border border-amber-500/20 bg-amber-500/5">
-                                            <p className="text-xs text-amber-400 mb-2">
+                                            <p className="text-xs text-amber-600 dark:text-amber-400 mb-2">
                                                 Bloquear acesso de {s.student_name} se inadimplente?
                                             </p>
                                             <div className="flex gap-2">
@@ -621,7 +621,7 @@ export function StudentFinancialModal({
                             {hasContract && onMigrate && s.display_status !== 'courtesy' && s.display_status !== 'canceled' && s.display_status !== 'canceling' && (
                                 <button
                                     onClick={handleMigrateBilling}
-                                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-xl border border-k-border-primary bg-glass-bg hover:bg-violet-500/10 text-k-text-secondary hover:text-violet-400 transition-all"
+                                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-xl border border-k-border-primary bg-glass-bg hover:bg-violet-500/10 text-k-text-secondary hover:text-violet-600 dark:hover:text-violet-400 transition-all"
                                 >
                                     <ArrowRightLeft size={14} />
                                     Alterar tipo de cobrança
@@ -634,13 +634,13 @@ export function StudentFinancialModal({
                                     {!cancelConfirm ? (
                                         <button
                                             onClick={() => setCancelConfirm(true)}
-                                            className="text-xs font-medium text-red-400/70 hover:text-red-400 transition-colors"
+                                            className="text-xs font-medium text-red-600/70 dark:text-red-400/70 hover:text-red-600 dark:hover:text-red-400 transition-colors"
                                         >
                                             Cancelar contrato
                                         </button>
                                     ) : (
                                         <div className="p-3 rounded-xl border border-red-500/20 bg-red-500/5">
-                                            <p className="text-xs text-red-400 mb-2">
+                                            <p className="text-xs text-red-600 dark:text-red-400 mb-2">
                                                 Cancelar contrato de {s.student_name}? Esta ação não pode ser desfeita.
                                             </p>
                                             <div className="flex gap-2">
@@ -683,7 +683,7 @@ export function StudentFinancialModal({
                                         {events.map((event) => {
                                             const config = eventConfig[event.event_type] || {
                                                 icon: Clock,
-                                                color: 'text-gray-400',
+                                                color: 'text-gray-600 dark:text-gray-400',
                                                 label: event.event_type,
                                             }
                                             const Icon = config.icon
@@ -691,7 +691,7 @@ export function StudentFinancialModal({
 
                                             return (
                                                 <div key={event.id} className="flex items-start gap-3 relative">
-                                                    <div className={`flex-shrink-0 w-[22px] h-[22px] rounded-full bg-surface-card border border-k-border-subtle flex items-center justify-center z-10 ${config.color}`}>
+                                                    <div className={`flex-shrink-0 w-[22px] h-[22px] rounded-full bg-surface-card border border-k-border-subtle flex items-center justify-center z-sticky ${config.color}`}>
                                                         <Icon size={11} strokeWidth={2} />
                                                     </div>
                                                     <div className="flex-1 min-w-0">

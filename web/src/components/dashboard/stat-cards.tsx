@@ -27,7 +27,11 @@ function Sparkline({ data }: { data: number[] }) {
             {data.map((v, i) => (
                 <div
                     key={i}
-                    className="flex-1 rounded-sm bg-violet-500/30 hover:bg-violet-500/50 transition-colors cursor-default"
+                    className={`flex-1 rounded-sm transition-colors cursor-default ${
+                        v > 0
+                            ? 'bg-[#007AFF] dark:bg-violet-500/30 hover:bg-[#0056B3] dark:hover:bg-violet-500/50'
+                            : 'bg-[#E8E8ED] dark:bg-violet-500/30'
+                    }`}
                     style={{ height: `${Math.max(10, (v / max) * 100)}%` }}
                     title={`${DAY_LABELS[i]}: ${v} treino${v !== 1 ? 's' : ''}`}
                 />
@@ -52,31 +56,33 @@ export function StatCards({ stats }: StatCardsProps) {
         })
     }
 
+    const cardClass = "rounded-xl border border-[#D2D2D7] dark:border-k-border-primary bg-white dark:bg-surface-card p-4 shadow-apple-card dark:shadow-none"
+
     return (
         <div className={`grid gap-4 mb-6 ${showAdherence ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-1 sm:grid-cols-3'}`}>
             {/* Active students */}
-            <div className="rounded-2xl border border-k-border-primary bg-surface-card p-4">
+            <div className={cardClass}>
                 <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-medium text-k-text-secondary">Alunos ativos</span>
-                    <Users size={16} className="text-k-text-quaternary" />
+                    <span className="text-sm text-[#6E6E73] dark:text-k-text-secondary">Alunos ativos</span>
+                    <Users size={16} className="text-[#AEAEB2] dark:text-k-text-quaternary" />
                 </div>
-                <p className="text-2xl font-bold text-k-text-primary">{stats.activeStudentsCount}</p>
+                <p className="text-3xl font-bold tracking-tight text-[#1D1D1F] dark:text-k-text-primary">{stats.activeStudentsCount}</p>
             </div>
 
             {/* Sessions this week */}
-            <div className="rounded-2xl border border-k-border-primary bg-surface-card p-4">
+            <div className={cardClass}>
                 <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-medium text-k-text-secondary">Treinos esta semana</span>
-                    <Activity size={16} className="text-k-text-quaternary" />
+                    <span className="text-sm text-[#6E6E73] dark:text-k-text-secondary">Treinos esta semana</span>
+                    <Activity size={16} className="text-[#AEAEB2] dark:text-k-text-quaternary" />
                 </div>
                 <div className="flex items-baseline gap-1">
-                    <p className="text-2xl font-bold text-k-text-primary">{stats.sessionsThisWeek}</p>
+                    <p className="text-3xl font-bold tracking-tight text-[#1D1D1F] dark:text-k-text-primary">{stats.sessionsThisWeek}</p>
                     {stats.expectedSessionsThisWeek > 0 && (
-                        <span className="text-sm text-k-text-quaternary">/{stats.expectedSessionsThisWeek}</span>
+                        <span className="text-base text-[#86868B] dark:text-k-text-quaternary">/{stats.expectedSessionsThisWeek}</span>
                     )}
                 </div>
                 {stats.expectedSessionsThisWeek > 0 && (
-                    <p className="text-[10px] text-k-text-quaternary mt-0.5">
+                    <p className="text-xs text-[#86868B] dark:text-k-text-quaternary mt-0.5">
                         {Math.round((stats.sessionsThisWeek / stats.expectedSessionsThisWeek) * 100)}% concluído
                     </p>
                 )}
@@ -84,26 +90,26 @@ export function StatCards({ stats }: StatCardsProps) {
             </div>
 
             {/* MRR */}
-            <div className="rounded-2xl border border-k-border-primary bg-surface-card p-4">
+            <div className={cardClass}>
                 <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-medium text-k-text-secondary">Receita mensal</span>
-                    <button onClick={toggleMrr} className="text-k-text-quaternary hover:text-k-text-secondary transition-colors">
+                    <span className="text-sm text-[#6E6E73] dark:text-k-text-secondary">Receita mensal</span>
+                    <button onClick={toggleMrr} className="text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#6E6E73] dark:hover:text-k-text-secondary transition-colors">
                         {mrrVisible ? <Eye size={16} /> : <EyeOff size={16} />}
                     </button>
                 </div>
-                <p className="text-2xl font-bold text-k-text-primary">
+                <p className="text-3xl font-bold tracking-tight text-[#1D1D1F] dark:text-k-text-primary">
                     {mrrVisible ? formatCurrency(stats.mrr) : 'R$ •••••'}
                 </p>
             </div>
 
             {/* Adherence — hidden when no active programs */}
             {showAdherence && (
-                <div className="rounded-2xl border border-k-border-primary bg-surface-card p-4">
+                <div className={cardClass}>
                     <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-medium text-k-text-secondary">Aderência geral</span>
-                        <Target size={16} className="text-k-text-quaternary" />
+                        <span className="text-sm text-[#6E6E73] dark:text-k-text-secondary">Aderência geral</span>
+                        <Target size={16} className="text-[#AEAEB2] dark:text-k-text-quaternary" />
                     </div>
-                    <p className="text-2xl font-bold text-k-text-primary">{stats.adherencePercent}%</p>
+                    <p className="text-3xl font-bold tracking-tight text-[#1D1D1F] dark:text-k-text-primary">{stats.adherencePercent}%</p>
                 </div>
             )}
         </div>

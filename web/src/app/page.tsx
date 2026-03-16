@@ -1,29 +1,37 @@
-import { Navbar } from "@/components/landing/navbar";
-import { Hero } from "@/components/landing/hero";
-import { StatsBar } from "@/components/landing/stats-bar";
-import { StudentMetrics } from "@/components/landing/student-metrics";
-import { TrainerManagement } from "@/components/landing/trainer-management";
-import { StudentExperience } from "@/components/landing/student-experience";
-import { BentoFeatures } from "@/components/landing/bento-features";
-import { Philosophy } from "@/components/landing/philosophy";
-import { Footer } from "@/components/landing/footer";
+import { Navbar } from '@/components/landing/navbar'
+import { LandingHero } from '@/components/landing/landing-hero'
+import { LandingSocialProof } from '@/components/landing/landing-social-proof'
+import { LandingProblem } from '@/components/landing/landing-problem'
+import { LandingPillars } from '@/components/landing/landing-pillars'
+import { LandingStudentApp } from '@/components/landing/landing-student-app'
+import { LandingPricing } from '@/components/landing/landing-pricing'
+import { LandingFaq } from '@/components/landing/landing-faq'
+import { LandingCtaFooter } from '@/components/landing/landing-cta-footer'
 
 export default function Home() {
-  return (
-    <div className="min-h-screen bg-white selection:bg-violet-500/20 selection:text-violet-700">
-      <Navbar />
+    return (
+        <div className="min-h-screen bg-white selection:bg-[#007AFF]/20 selection:text-[#007AFF]">
+            <Navbar />
 
-      <main>
-        <Hero />
-        <StatsBar />
-        <StudentMetrics />
-        <TrainerManagement />
-        <StudentExperience />
-        <BentoFeatures />
-        <Philosophy />
-      </main>
+            <main>
+                <LandingHero />
+                <LandingSocialProof />
+                <LandingProblem />
+                <div id="como-funciona">
+                    <LandingPillars />
+                </div>
+                <div id="app-aluno">
+                    <LandingStudentApp />
+                </div>
+                <div id="precos">
+                    <LandingPricing />
+                </div>
+                <div id="faq">
+                    <LandingFaq />
+                </div>
+            </main>
 
-      <Footer />
-    </div>
-  );
+            <LandingCtaFooter />
+        </div>
+    )
 }

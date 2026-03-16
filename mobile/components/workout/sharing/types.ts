@@ -6,6 +6,9 @@ export interface ShareableCardProps {
     date: string;
     studentName: string;
     coach: { name: string; avatar_url: string | null } | null;
+    completedSets?: number;
+    totalSets?: number;
+    rpe?: number;
     // For Photo Template
     backgroundImageUri?: string;
     // For Max Loads Template

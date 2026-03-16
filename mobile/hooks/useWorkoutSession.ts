@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { router } from 'expo-router';
@@ -10,8 +11,15 @@ export interface WorkoutSetData {
     completed: boolean;
 }
 
+export interface PreviousSetData {
+    set_number: number;
+    weight: number;
+    reps: number;
+}
+
 export interface ExerciseData {
     id: string; // assigned_workout_item_id
+    item_type?: 'exercise' | 'warmup' | 'cardio';
     planned_exercise_id: string;
     exercise_id: string;
     name: string;
@@ -23,6 +31,19 @@ export interface ExerciseData {
     swap_source: 'none' | 'manual' | 'auto';
     setsData: WorkoutSetData[];
     previousLoad?: string;
+    previousSets?: PreviousSetData[];
+    notes?: string | null;
+    supersetId?: string | null;
+    supersetRestSeconds?: number;
+    order_index: number;
+    exerciseFunction?: string | null;
+    item_config?: Record<string, any>;
+}
+
+export interface WorkoutNote {
+    id: string;
+    notes: string;
+    order_index: number;
 }
 
 export interface ExerciseSubstituteOption {
@@ -36,18 +57,29 @@ export interface ExerciseSubstituteOption {
 
 interface UseWorkoutSessionOptions {
     onSetComplete?: (exerciseIndex: number, setIndex: number) => void;
+    /** When true, the session is NOT created on mount. Call createSession() manually. */
+    deferSessionCreation?: boolean;
 }
 
 export function useWorkoutSession(workoutId: string, options?: UseWorkoutSessionOptions) {
     const { user } = useAuth();
     const [isLoading, setIsLoading] = useState(true);
     const [exercises, setExercises] = useState<ExerciseData[]>([]);
+    const [workoutNotes, setWorkoutNotes] = useState<WorkoutNote[]>([]);
     const [studentId, setStudentId] = useState<string | null>(null);
     const [sessionId, setSessionId] = useState<string | null>(null);
+    const preSubmissionIdRef = useRef<string | null>(null);
+    const [assignedProgramId, setAssignedProgramId] = useState<string | null>(null);
+    const scheduledDaysRef = useRef<number[] | null>(null);
     const [startTime] = useState(() => Date.now());
     const [elapsed, setElapsed] = useState(0);
     const [workoutName, setWorkoutName] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Guard: prevent re-fetching workout data when auth session refreshes.
+    // Supabase onAuthStateChange fires on TOKEN_REFRESHED, creating a new `user`
+    // reference which would re-trigger the fetchWorkout effect and wipe exercise state.
+    const hasLoadedRef = useRef(false);
 
     const mapExerciseToSubstituteOption = (
         exercise: any,
@@ -79,9 +111,30 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
         return `${normalized}kg`;
     };
 
-    const fetchLastExerciseLoad = async (targetStudentId: string, exerciseId: string): Promise<string | undefined> => {
-        if (!targetStudentId || !exerciseId) return undefined;
+    const fetchPreviousSets = async (
+        targetStudentId: string,
+        exerciseId: string
+    ): Promise<{ previousSets: PreviousSetData[]; previousLoad?: string }> => {
+        if (!targetStudentId || !exerciseId) return { previousSets: [] };
 
+        // Try per-set RPC first
+        const { data: sets, error: setsError }: { data: any; error: any } = await supabase
+            .rpc('get_previous_exercise_sets' as any, {
+                p_student_id: targetStudentId,
+                p_exercise_id: exerciseId,
+            });
+
+        if (!setsError && Array.isArray(sets) && sets.length > 0) {
+            const previousSets: PreviousSetData[] = sets.map((s: any) => ({
+                set_number: s.set_number,
+                weight: Number(s.weight) || 0,
+                reps: Number(s.reps) || 0,
+            }));
+            const maxWeight = Math.max(...previousSets.map(s => s.weight));
+            return { previousSets, previousLoad: formatLoadLabel(maxWeight) };
+        }
+
+        // Fallback: aggregated RPC
         const { data: metrics, error: rpcError }: { data: any; error: any } = await supabase
             .rpc('get_last_exercise_metrics' as any, {
                 p_student_id: targetStudentId,
@@ -89,10 +142,10 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
             });
 
         if (!rpcError && Array.isArray(metrics) && metrics.length > 0) {
-            return formatLoadLabel(metrics[0]?.max_weight);
+            return { previousSets: [], previousLoad: formatLoadLabel(metrics[0]?.max_weight) };
         }
 
-        // Fallback for environments where RPC has not been applied yet.
+        // Final fallback: direct query
         const { data: legacyHistory }: { data: any; error: any } = await supabase
             .from('set_logs' as any)
             .select('weight, weight_unit')
@@ -102,10 +155,10 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
             .maybeSingle();
 
         if (legacyHistory?.weight !== undefined && legacyHistory?.weight !== null) {
-            return `${legacyHistory.weight}${legacyHistory.weight_unit || 'kg'}`;
+            return { previousSets: [], previousLoad: `${legacyHistory.weight}${legacyHistory.weight_unit || 'kg'}` };
         }
 
-        return undefined;
+        return { previousSets: [] };
     };
 
     const fetchExerciseIdsBySharedMuscleGroups = async (exerciseId: string): Promise<string[]> => {
@@ -206,12 +259,12 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                 });
 
             if (error) {
-                console.error(`[useWorkoutSession] persistSetLog error: ${error.message}`);
+                if (__DEV__) console.error(`[useWorkoutSession] persistSetLog error: ${error.message}`);
             } else {
-                console.log(`[useWorkoutSession] Set persisted: exercise=${exercise.name}, set=${setIndex + 1}, ${repsCompleted}reps x ${weight}kg`);
+                if (__DEV__) console.log(`[useWorkoutSession] Set persisted: exercise=${exercise.name}, set=${setIndex + 1}, ${repsCompleted}reps x ${weight}kg`);
             }
         } catch (err: any) {
-            console.error(`[useWorkoutSession] persistSetLog exception: ${err?.message}`);
+            if (__DEV__) console.error(`[useWorkoutSession] persistSetLog exception: ${err?.message}`);
         }
     };
 
@@ -225,6 +278,8 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
 
     // Fetch Workout Data
     useEffect(() => {
+        if (hasLoadedRef.current) return;
+
         let mounted = true;
 
         async function fetchWorkout() {
@@ -245,14 +300,20 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                 // 1. Get Workout Details
                 const { data: workout, error: workoutError }: { data: any; error: any } = await supabase
                     .from('assigned_workouts' as any)
-                    .select('name, assigned_program_id')
+                    .select('name, assigned_program_id, scheduled_days')
                     .eq('id', workoutId)
                     .single();
 
                 if (workoutError) throw workoutError;
-                if (mounted) setWorkoutName(workout.name);
+                if (mounted) {
+                    setWorkoutName(workout.name);
+                    setAssignedProgramId(workout.assigned_program_id || null);
+                    scheduledDaysRef.current = workout.scheduled_days || null;
+                }
 
                 // 1b. Find or create workout_session (in_progress)
+                // When deferSessionCreation is true, skip creating a new session.
+                // An existing in_progress session is still reattached.
                 const { data: existingSession }: { data: any; error: any } = await supabase
                     .from('workout_sessions' as any)
                     .select('id')
@@ -264,15 +325,20 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                     .maybeSingle();
 
                 if (existingSession) {
-                    console.log(`[useWorkoutSession] Found existing in_progress session: ${existingSession.id}`);
+                    if (__DEV__) console.log(`[useWorkoutSession] Found existing in_progress session: ${existingSession.id}`);
                     if (mounted) setSessionId(existingSession.id);
-                } else {
+                } else if (!options?.deferSessionCreation) {
                     // Get trainer_id from student
                     const { data: studentFull }: { data: any; error: any } = await supabase
                         .from('students' as any)
                         .select('coach_id')
                         .eq('id', currentStudentId)
                         .single();
+
+                    // Determine scheduled_date: set to today if this workout is scheduled for today's day-of-week
+                    const todayDow = new Date().getDay();
+                    const isScheduledToday = workout.scheduled_days?.includes(todayDow);
+                    const scheduledDate = isScheduledToday ? new Date().toISOString().split('T')[0] : null;
 
                     const { data: newSession, error: sessionError }: { data: any; error: any } = await supabase
                         .from('workout_sessions' as any)
@@ -284,48 +350,74 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                             status: 'in_progress',
                             started_at: new Date().toISOString(),
                             sync_status: 'synced',
+                            scheduled_date: scheduledDate,
                         })
                         .select('id')
                         .single();
 
                     if (sessionError) {
-                        console.error('[useWorkoutSession] Failed to create session:', sessionError);
+                        console.error('[useWorkoutSession] Failed to create session:', __DEV__ ? sessionError : '');
                     } else {
-                        console.log(`[useWorkoutSession] Created new in_progress session: ${newSession.id}`);
+                        if (__DEV__) console.log(`[useWorkoutSession] Created new in_progress session: ${newSession.id}`);
                         if (mounted) setSessionId(newSession.id);
                     }
+                } else {
+                    if (__DEV__) console.log('[useWorkoutSession] Session creation deferred — waiting for createSession()');
                 }
 
-                // 2. Get Workout Items (Exercises)
+                // 2. Get ALL Workout Items (exercises, supersets, notes)
                 const { data: items, error: itemsError }: { data: any; error: any } = await supabase
                     .from('assigned_workout_items' as any)
                     .select(`
-                        id, 
-                        exercise_id, 
-                        exercise_name, 
-                        sets, 
-                        reps, 
-                        rest_seconds, 
+                        id,
+                        exercise_id,
+                        exercise_name,
+                        sets,
+                        reps,
+                        rest_seconds,
                         substitute_exercise_ids,
-                        item_type, 
+                        item_type,
                         order_index,
+                        parent_item_id,
+                        notes,
+                        exercise_function,
+                        item_config,
                         exercises ( id, video_url )
                     `)
                     .eq('assigned_workout_id', workoutId)
-                    .eq('item_type', 'exercise') // Only exercises
                     .order('order_index');
 
                 if (itemsError) throw itemsError;
 
-                // 3. Initialize State and Fetch History
-                const exercisesData: ExerciseData[] = await Promise.all(items.map(async (item: any) => {
-                    let previousLoad = undefined;
-                    if (item.exercise_id && currentStudentId) {
-                        previousLoad = await fetchLastExerciseLoad(currentStudentId, item.exercise_id);
+                // 3. Build superset map and extract notes
+                const supersetMap = new Map<string, { rest_seconds: number; order_index: number }>();
+                const noteItems: WorkoutNote[] = [];
+
+                for (const item of items) {
+                    if (item.item_type === 'superset') {
+                        supersetMap.set(item.id, { rest_seconds: item.rest_seconds || 60, order_index: item.order_index });
+                    } else if (item.item_type === 'note' && item.notes?.trim()) {
+                        noteItems.push({ id: item.id, notes: item.notes, order_index: item.order_index });
                     }
+                }
+
+                // 4. Initialize exercise state and fetch history
+                const exerciseItems = items.filter((item: any) => item.item_type === 'exercise');
+                const warmupCardioItems = items.filter((item: any) => item.item_type === 'warmup' || item.item_type === 'cardio');
+                const exercisesData: ExerciseData[] = await Promise.all(exerciseItems.map(async (item: any) => {
+                    let previousLoad: string | undefined = undefined;
+                    let previousSets: PreviousSetData[] | undefined = undefined;
+                    if (item.exercise_id && currentStudentId) {
+                        const result = await fetchPreviousSets(currentStudentId, item.exercise_id);
+                        previousLoad = result.previousLoad;
+                        previousSets = result.previousSets.length > 0 ? result.previousSets : undefined;
+                    }
+
+                    const parentSuperset = item.parent_item_id ? supersetMap.get(item.parent_item_id) : null;
 
                     return {
                         id: item.id,
+                        item_type: 'exercise' as const,
                         planned_exercise_id: item.exercise_id,
                         exercise_id: item.exercise_id,
                         name: item.exercise_name,
@@ -336,14 +428,45 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                         substitute_exercise_ids: item.substitute_exercise_ids || [],
                         swap_source: 'none',
                         setsData: createInitialSets(item.sets || 3),
-                        previousLoad
+                        previousLoad,
+                        previousSets,
+                        notes: item.notes || null,
+                        supersetId: item.parent_item_id || null,
+                        supersetRestSeconds: parentSuperset?.rest_seconds,
+                        order_index: item.order_index,
+                        exerciseFunction: item.exercise_function || null,
+                        item_config: item.item_config || {},
                     };
                 }));
 
-                if (mounted) setExercises(exercisesData);
+                // Add warmup/cardio items — no set tracking
+                for (const item of warmupCardioItems) {
+                    exercisesData.push({
+                        id: item.id,
+                        item_type: item.item_type as 'warmup' | 'cardio',
+                        planned_exercise_id: '',
+                        exercise_id: '',
+                        name: item.notes || (item.item_type === 'warmup' ? 'Aquecimento' : 'Aeróbio'),
+                        sets: 0,
+                        reps: '0',
+                        rest_seconds: 0,
+                        substitute_exercise_ids: [],
+                        swap_source: 'none',
+                        setsData: [],
+                        order_index: item.order_index,
+                        exerciseFunction: item.exercise_function || null,
+                        item_config: item.item_config || {},
+                    });
+                }
+
+                if (mounted) {
+                    setExercises(exercisesData);
+                    setWorkoutNotes(noteItems);
+                    hasLoadedRef.current = true;
+                }
 
             } catch (error) {
-                console.error("Error fetching workout:", error);
+                if (__DEV__) console.error("Error fetching workout:", error);
                 Alert.alert("Erro", "Falha ao carregar o treino.");
             } finally {
                 if (mounted) setIsLoading(false);
@@ -558,8 +681,11 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
         }
 
         let nextPreviousLoad: string | undefined = undefined;
+        let nextPreviousSets: PreviousSetData[] | undefined = undefined;
         if (studentId) {
-            nextPreviousLoad = await fetchLastExerciseLoad(studentId, substitute.id);
+            const result = await fetchPreviousSets(studentId, substitute.id);
+            nextPreviousLoad = result.previousLoad;
+            nextPreviousSets = result.previousSets.length > 0 ? result.previousSets : undefined;
         }
 
         setExercises((prev) => prev.map((exercise, index) => {
@@ -571,6 +697,7 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                 name: substitute.name,
                 video_url: substitute.video_url ?? exercise.video_url ?? undefined,
                 previousLoad: nextPreviousLoad,
+                previousSets: nextPreviousSets,
                 swap_source: substitute.source === 'search' ? 'manual' : substitute.source,
                 setsData: createInitialSets(exercise.sets),
             };
@@ -579,7 +706,62 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
         return { success: true };
     };
 
-    const finishWorkout = async (rpe?: number, feedback?: string) => {
+    /**
+     * Manually create the workout_session. Used when deferSessionCreation is true.
+     * Returns the new session ID, or null on failure.
+     */
+    const createSession = async (preWorkoutSubmissionId?: string): Promise<string | null> => {
+        if (sessionId) return sessionId; // Already exists
+        if (!user || !studentId) return null;
+
+        try {
+            const { data: studentFull }: { data: any; error: any } = await supabase
+                .from('students' as any)
+                .select('coach_id')
+                .eq('id', studentId)
+                .single();
+
+            // Determine scheduled_date: set to today if this workout is scheduled for today's day-of-week
+            const todayDow = new Date().getDay();
+            const isScheduledToday = scheduledDaysRef.current?.includes(todayDow);
+            const scheduledDate = isScheduledToday ? new Date().toISOString().split('T')[0] : null;
+
+            const insertPayload: Record<string, any> = {
+                student_id: studentId,
+                trainer_id: studentFull?.coach_id,
+                assigned_workout_id: workoutId,
+                assigned_program_id: assignedProgramId,
+                status: 'in_progress',
+                started_at: new Date().toISOString(),
+                sync_status: 'synced',
+                scheduled_date: scheduledDate,
+            };
+            if (preWorkoutSubmissionId) {
+                insertPayload.pre_workout_submission_id = preWorkoutSubmissionId;
+                preSubmissionIdRef.current = preWorkoutSubmissionId;
+            }
+
+            const { data: newSession, error: sessionError }: { data: any; error: any } = await supabase
+                .from('workout_sessions' as any)
+                .insert(insertPayload)
+                .select('id')
+                .single();
+
+            if (sessionError) {
+                console.error('[useWorkoutSession] createSession error:', __DEV__ ? sessionError : '');
+                return null;
+            }
+
+            if (__DEV__) console.log(`[useWorkoutSession] Session created via createSession(): ${newSession.id}`);
+            setSessionId(newSession.id);
+            return newSession.id;
+        } catch (err: any) {
+            if (__DEV__) console.error('[useWorkoutSession] createSession exception:', err?.message);
+            return null;
+        }
+    };
+
+    const finishWorkout = async (rpe?: number, feedback?: string, postWorkoutSubmissionId?: string) => {
         if (isSubmitting || !user) return;
 
         setIsSubmitting(true);
@@ -592,7 +774,7 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
             let currentSessionId = sessionId;
 
             if (!currentSessionId) {
-                console.warn('[useWorkoutSession] No sessionId at finish — creating session now');
+                if (__DEV__) console.warn('[useWorkoutSession] No sessionId at finish — creating session now');
 
                 const { data: student }: { data: any; error: any } = await supabase
                     .from('students' as any)
@@ -608,21 +790,29 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                     .eq('id', workoutId)
                     .single();
 
+                const fallbackPayload: Record<string, any> = {
+                    student_id: student.id,
+                    trainer_id: student.coach_id,
+                    assigned_workout_id: workoutId,
+                    assigned_program_id: workout?.assigned_program_id,
+                    status: 'completed',
+                    started_at: new Date(startTime).toISOString(),
+                    completed_at: now,
+                    duration_seconds: durationSeconds,
+                    sync_status: 'synced',
+                    rpe: rpe || null,
+                    feedback: feedback || null,
+                };
+                if (preSubmissionIdRef.current) {
+                    fallbackPayload.pre_workout_submission_id = preSubmissionIdRef.current;
+                }
+                if (postWorkoutSubmissionId) {
+                    fallbackPayload.post_workout_submission_id = postWorkoutSubmissionId;
+                }
+
                 const { data: newSession, error: sessionError }: { data: any; error: any } = await supabase
                     .from('workout_sessions' as any)
-                    .insert({
-                        student_id: student.id,
-                        trainer_id: student.coach_id,
-                        assigned_workout_id: workoutId,
-                        assigned_program_id: workout?.assigned_program_id,
-                        status: 'completed',
-                        started_at: new Date(startTime).toISOString(),
-                        completed_at: now,
-                        duration_seconds: durationSeconds,
-                        sync_status: 'synced',
-                        rpe: rpe || null,
-                        feedback: feedback || null,
-                    })
+                    .insert(fallbackPayload)
                     .select('id')
                     .single();
 
@@ -630,16 +820,21 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                 currentSessionId = newSession.id;
             } else {
                 // Update existing in_progress session to completed
+                const updatePayload: Record<string, any> = {
+                    status: 'completed',
+                    started_at: new Date(startTime).toISOString(), // Correct to actual workout start
+                    completed_at: now,
+                    duration_seconds: durationSeconds,
+                    rpe: rpe || null,
+                    feedback: feedback || null,
+                };
+                if (postWorkoutSubmissionId) {
+                    updatePayload.post_workout_submission_id = postWorkoutSubmissionId;
+                }
+
                 const { error: updateError } = await supabase
                     .from('workout_sessions' as any)
-                    .update({
-                        status: 'completed',
-                        started_at: new Date(startTime).toISOString(), // Correct to actual workout start
-                        completed_at: now,
-                        duration_seconds: durationSeconds,
-                        rpe: rpe || null,
-                        feedback: feedback || null,
-                    })
+                    .update(updatePayload)
                     .eq('id', currentSessionId);
 
                 if (updateError) throw updateError;
@@ -648,6 +843,40 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
             // Upsert any remaining set_logs (catch-up for sets that may not have been persisted)
             const setLogs: any[] = [];
             for (const exercise of exercises) {
+                // Cardio items: persist a single set_log with config data in notes
+                if (exercise.item_type === 'cardio' && exercise.setsData.length > 0 && exercise.setsData[0].completed) {
+                    const config = exercise.item_config || {};
+                    const notesJson = JSON.stringify({
+                        mode: config.mode || 'continuous',
+                        equipment: config.equipment,
+                        duration_minutes: config.duration_minutes,
+                        distance_km: config.distance_km,
+                        intensity: config.intensity,
+                        intervals: config.intervals,
+                        actual_duration_seconds: config.actual_duration_seconds,
+                        completed_rounds: config.completed_rounds,
+                    });
+                    setLogs.push({
+                        workout_session_id: currentSessionId,
+                        assigned_workout_item_id: exercise.id,
+                        planned_exercise_id: exercise.planned_exercise_id || exercise.exercise_id,
+                        executed_exercise_id: exercise.exercise_id,
+                        swap_source: exercise.swap_source || 'none',
+                        exercise_id: exercise.exercise_id,
+                        set_number: 1,
+                        weight: 0,
+                        reps_completed: 1,
+                        is_completed: true,
+                        completed_at: now,
+                        weight_unit: 'kg',
+                        notes: notesJson,
+                    });
+                    continue;
+                }
+
+                // Warmup items: visual-only, no persistence
+                if (exercise.item_type === 'warmup') continue;
+
                 for (let i = 0; i < exercise.setsData.length; i++) {
                     const set = exercise.setsData[i];
                     if (set.completed) {
@@ -677,19 +906,56 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                     });
 
                 if (logsError) {
-                    console.error('[useWorkoutSession] Error upserting set_logs at finish:', logsError);
+                    console.error('[useWorkoutSession] Error upserting set_logs at finish:', __DEV__ ? logsError : '');
                 }
             }
 
-            console.log(`[useWorkoutSession] Workout finished. Session: ${currentSessionId}, sets: ${setLogs.length}`);
+            if (__DEV__) console.log(`[useWorkoutSession] Workout finished. Session: ${currentSessionId}, sets: ${setLogs.length}`);
+
+            // Notify Watch that workout was finished from iPhone
+            if (Platform.OS === 'ios') {
+              try {
+                const { sendMessage } = require('../modules/watch-connectivity/src/WatchConnectivityModule');
+                await sendMessage({
+                  type: 'WORKOUT_FINISHED_FROM_PHONE',
+                  payload: { workoutId },
+                });
+                if (__DEV__) console.log('[useWorkoutSession] Notified Watch of finish');
+              } catch (e: any) {
+                // Watch may not be reachable — not critical
+                if (__DEV__) console.log('[useWorkoutSession] Could not notify Watch:', e?.message);
+              }
+            }
+
             return currentSessionId;
 
         } catch (error: any) {
-            console.error("Error finishing workout:", error);
+            if (__DEV__) console.error("Error finishing workout:", error);
             throw error;
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    const toggleCardioComplete = (exerciseId: string, completed: boolean, extraData?: Record<string, any>) => {
+        setExercises(prev => {
+            const newExercises = [...prev];
+            const idx = newExercises.findIndex(e => e.id === exerciseId);
+            if (idx === -1) return prev;
+
+            const exercise = { ...newExercises[idx] };
+            if (completed) {
+                exercise.setsData = [{ weight: '0', reps: '1', completed: true }];
+                // Store actual execution data for serialization at finishWorkout
+                if (extraData) {
+                    exercise.item_config = { ...(exercise.item_config || {}), ...extraData };
+                }
+            } else {
+                exercise.setsData = [];
+            }
+            newExercises[idx] = exercise;
+            return newExercises;
+        });
     };
 
     const formatTime = (seconds: number) => {
@@ -702,6 +968,7 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
         isLoading,
         workoutName,
         exercises,
+        workoutNotes,
         duration: formatTime(elapsed),
         handleSetChange,
         handleToggleSetComplete,
@@ -710,6 +977,9 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
         searchSubstituteOptions,
         swapExercise,
         finishWorkout,
+        createSession,
+        assignedProgramId,
+        toggleCardioComplete,
         isSubmitting
     };
 }

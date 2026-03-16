@@ -87,6 +87,7 @@ interface FormTemplate {
     created_at: string
     updated_at: string
     responseCount: number
+    trainer_id: string | null
 }
 
 interface TemplatesClientProps {
@@ -95,9 +96,9 @@ interface TemplatesClientProps {
 }
 
 const CATEGORY_CONFIG: Record<string, { label: string; icon: typeof FileText; color: string; bgColor: string }> = {
-    anamnese: { label: 'Anamnese', icon: ClipboardCheck, color: 'text-blue-400', bgColor: 'bg-blue-500/10' },
-    checkin: { label: 'Check-in', icon: CheckCircle2, color: 'text-emerald-400', bgColor: 'bg-emerald-500/10' },
-    survey: { label: 'Pesquisa', icon: MessageSquare, color: 'text-amber-400', bgColor: 'bg-amber-500/10' },
+    anamnese: { label: 'Anamnese', icon: ClipboardCheck, color: 'text-blue-600 dark:text-blue-400', bgColor: 'bg-blue-500/10' },
+    checkin: { label: 'Check-in', icon: CheckCircle2, color: 'text-emerald-600 dark:text-emerald-400', bgColor: 'bg-emerald-500/10' },
+    survey: { label: 'Pesquisa', icon: MessageSquare, color: 'text-amber-600 dark:text-amber-400', bgColor: 'bg-amber-500/10' },
 }
 
 // --- Actions Menu ---
@@ -106,6 +107,7 @@ function ActionsMenu({ template, onDelete }: { template: FormTemplate; onDelete:
     const [open, setOpen] = useState(false)
     const ref = useRef<HTMLDivElement>(null)
     const router = useRouter()
+    const isSystem = template.trainer_id === null
 
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
@@ -119,31 +121,37 @@ function ActionsMenu({ template, onDelete }: { template: FormTemplate; onDelete:
         <div ref={ref} className="relative">
             <button
                 onClick={(e) => { e.stopPropagation(); setOpen(!open) }}
-                className="p-1.5 rounded-lg text-k-text-quaternary hover:text-k-text-secondary hover:bg-glass-bg transition-all opacity-0 group-hover:opacity-100"
+                className="p-1.5 rounded-lg text-[#AEAEB2] hover:text-[#6E6E73] hover:bg-[#F5F5F7] transition-all opacity-0 group-hover:opacity-100 dark:text-k-text-quaternary dark:hover:text-k-text-secondary dark:hover:bg-glass-bg"
             >
                 <MoreVertical size={16} />
             </button>
             {open && (
-                <div className="absolute right-0 top-8 z-20 w-44 rounded-xl border border-k-border-primary bg-surface-card shadow-xl py-1">
-                    <button
-                        onClick={(e) => { e.stopPropagation(); setOpen(false); router.push(`/forms/templates/new?edit=${template.id}`) }}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-k-text-secondary hover:bg-glass-bg transition-colors"
-                    >
-                        <Pencil size={14} /> Editar
-                    </button>
+                <div className="absolute right-0 top-8 z-header w-44 rounded-xl border border-[#D2D2D7] bg-white shadow-[0_2px_8px_rgba(0,0,0,0.12)] py-1 dark:border-k-border-primary dark:bg-surface-card dark:shadow-xl">
+                    {!isSystem && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); setOpen(false); router.push(`/forms/templates/new?edit=${template.id}`) }}
+                            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-[#1D1D1F] hover:bg-[#F5F5F7] transition-colors dark:text-k-text-secondary dark:hover:bg-glass-bg"
+                        >
+                            <Pencil size={14} /> Editar
+                        </button>
+                    )}
                     <button
                         onClick={(e) => { e.stopPropagation(); setOpen(false); router.push(`/forms?assign=${template.id}`) }}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-k-text-secondary hover:bg-glass-bg transition-colors"
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-[#1D1D1F] hover:bg-[#F5F5F7] transition-colors dark:text-k-text-secondary dark:hover:bg-glass-bg"
                     >
                         <Send size={14} /> Enviar para aluno
                     </button>
-                    <div className="my-1 border-t border-k-border-subtle" />
-                    <button
-                        onClick={(e) => { e.stopPropagation(); setOpen(false); onDelete(template.id) }}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-400 hover:bg-glass-bg transition-colors"
-                    >
-                        <Trash2 size={14} /> Excluir
-                    </button>
+                    {!isSystem && (
+                        <>
+                            <div className="my-1 border-t border-[#E8E8ED] dark:border-k-border-subtle" />
+                            <button
+                                onClick={(e) => { e.stopPropagation(); setOpen(false); onDelete(template.id) }}
+                                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-[#FF3B30] hover:bg-[#F5F5F7] transition-colors dark:text-red-400 dark:hover:bg-glass-bg"
+                            >
+                                <Trash2 size={14} /> Excluir
+                            </button>
+                        </>
+                    )}
                 </div>
             )}
         </div>
@@ -189,20 +197,20 @@ export function TemplatesClient({ trainer, templates: initialTemplates }: Templa
                 <div className="flex items-center gap-3">
                     <button
                         onClick={() => router.push('/forms')}
-                        className="p-1.5 rounded-lg text-k-text-quaternary hover:text-k-text-secondary hover:bg-glass-bg transition-all"
+                        className="p-1.5 rounded-lg text-[#007AFF] hover:text-[#0056B3] hover:bg-[#F5F5F7] transition-all dark:text-k-text-quaternary dark:hover:text-k-text-secondary dark:hover:bg-glass-bg"
                     >
                         <ArrowLeft size={18} />
                     </button>
-                    <h1 className="text-2xl font-bold tracking-tight text-white">Templates</h1>
+                    <h1 className="text-2xl font-bold tracking-tight text-[#1D1D1F] dark:text-k-text-primary">Templates</h1>
                     {templates.length > 0 && (
-                        <span className="px-2 py-0.5 rounded-md bg-glass-bg text-xs font-bold text-k-text-tertiary border border-k-border-subtle">
+                        <span className="px-2.5 py-0.5 rounded-full bg-[#F5F5F7] text-sm text-[#6E6E73] dark:bg-glass-bg dark:text-k-text-tertiary dark:border dark:border-k-border-subtle">
                             {templates.length}
                         </span>
                     )}
                 </div>
                 <button
                     onClick={() => router.push('/forms/templates/new')}
-                    className="flex items-center gap-2 rounded-full border border-k-border-primary bg-glass-bg hover:bg-glass-bg-active text-k-text-secondary px-4 py-2 text-sm font-medium transition-all"
+                    className="flex items-center gap-2 rounded-full border border-[#D2D2D7] bg-white hover:bg-[#F5F5F7] text-[#6E6E73] hover:text-[#1D1D1F] px-4 py-2 text-sm font-medium transition-all dark:border-k-border-primary dark:bg-glass-bg dark:hover:bg-glass-bg-active dark:text-k-text-secondary"
                 >
                     <Plus size={14} />
                     Criar Template
@@ -212,13 +220,13 @@ export function TemplatesClient({ trainer, templates: initialTemplates }: Templa
             {/* Search */}
             {templates.length > 0 && (
                 <div className="relative mb-6">
-                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-k-text-quaternary" />
+                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#AEAEB2] dark:text-k-text-quaternary" />
                     <input
                         type="text"
                         placeholder="Buscar templates..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full rounded-xl border border-k-border-subtle bg-glass-bg pl-10 pr-4 py-2.5 text-sm text-k-text-primary placeholder:text-k-text-quaternary outline-none focus:border-violet-500/50 transition-all"
+                        className="w-full rounded-lg border border-[#D2D2D7] bg-white pl-10 pr-4 py-2.5 text-sm text-[#1D1D1F] placeholder:text-[#AEAEB2] outline-none focus:border-[#007AFF] focus:ring-1 focus:ring-[#007AFF]/20 transition-all dark:rounded-xl dark:border-k-border-subtle dark:bg-glass-bg dark:text-k-text-primary dark:placeholder:text-k-text-quaternary dark:focus:border-violet-500/50 dark:focus:ring-0"
                     />
                 </div>
             )}
@@ -234,13 +242,13 @@ export function TemplatesClient({ trainer, templates: initialTemplates }: Templa
                 ) : (
                     <div className="text-center py-16">
                         <FileText className="w-10 h-10 text-k-text-quaternary mx-auto mb-3" strokeWidth={1} />
-                        <p className="text-sm font-semibold text-white mb-1">Nenhum template criado</p>
+                        <p className="text-sm font-semibold text-k-text-primary mb-1">Nenhum template criado</p>
                         <p className="text-xs text-k-text-quaternary max-w-sm mx-auto mb-5">
                             Templates são formulários para coletar informações dos alunos: anamnese, check-ins semanais, avaliações físicas.
                         </p>
                         <button
                             onClick={() => router.push('/forms/templates/new')}
-                            className="text-xs font-medium text-violet-400 hover:text-violet-300 transition-colors"
+                            className="text-xs font-medium text-[#007AFF] hover:text-[#0056B3] dark:text-violet-400 dark:hover:text-violet-300 transition-colors"
                         >
                             Criar primeiro template
                         </button>
@@ -253,15 +261,16 @@ export function TemplatesClient({ trainer, templates: initialTemplates }: Templa
                         const Icon = config.icon
                         const questions = (template.schema_json as any)?.questions || []
                         const questionsCount = questions.length
+                        const isSystem = template.trainer_id === null
 
                         return (
                             <div
                                 key={template.id}
                                 onClick={() => router.push(`/forms/templates/new?edit=${template.id}`)}
-                                className="group relative bg-surface-card border border-k-border-subtle rounded-xl p-4 hover:border-k-border-primary hover:bg-glass-bg transition-all cursor-pointer"
+                                className="group relative bg-white border border-[#D2D2D7] rounded-xl p-4 shadow-[0_1px_3px_rgba(0,0,0,0.08)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.12)] hover:bg-[#F5F5F7] transition-all cursor-pointer dark:bg-surface-card dark:border-k-border-subtle dark:shadow-none dark:hover:border-k-border-primary dark:hover:bg-glass-bg"
                             >
                                 {deleting === template.id && (
-                                    <div className="absolute inset-0 flex items-center justify-center bg-surface-card/80 rounded-xl z-10">
+                                    <div className="absolute inset-0 flex items-center justify-center bg-surface-card/80 rounded-xl z-sticky">
                                         <Loader2 size={20} className="animate-spin text-k-text-quaternary" />
                                     </div>
                                 )}
@@ -273,23 +282,29 @@ export function TemplatesClient({ trainer, templates: initialTemplates }: Templa
                                             <Icon size={16} className={config.color} />
                                         </div>
                                         <div className="min-w-0">
-                                            <h3 className="text-sm font-semibold text-k-text-primary group-hover:text-white transition-colors truncate">
+                                            <h3 className="text-sm font-semibold text-[#1D1D1F] group-hover:text-[#007AFF] dark:text-k-text-primary dark:group-hover:text-violet-400 transition-colors truncate">
                                                 {cleanTemplateName(template.title)}
                                             </h3>
                                             <div className="flex items-center gap-2 mt-0.5">
-                                                <span className="text-xs text-k-text-quaternary">
+                                                <span className="text-xs text-[#86868B] dark:text-k-text-quaternary">
                                                     {questionsCount} {questionsCount === 1 ? 'pergunta' : 'perguntas'} · {config.label}
                                                 </span>
+                                                {isSystem && (
+                                                    <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-[#5856D6]/10 text-[#5856D6] border border-[#5856D6]/20 dark:bg-violet-500/10 dark:text-violet-400 dark:border-violet-500/20">
+                                                        Kinevo
+                                                    </span>
+                                                )}
                                                 {template.created_source === 'ai_assisted' && (
-                                                    <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-violet-500/10 text-violet-400 border border-violet-500/20">
+                                                    <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-[#007AFF]/10 text-[#007AFF] border border-[#007AFF]/20 dark:bg-violet-500/10 dark:text-violet-400 dark:border-violet-500/20">
                                                         IA
                                                     </span>
                                                 )}
-                                                <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded ${
+                                                <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-bold rounded ${
                                                     template.is_active
-                                                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                                        ? 'text-[#34C759] dark:text-emerald-400'
                                                         : 'bg-surface-elevated text-k-text-quaternary border border-k-border-subtle'
                                                 }`}>
+                                                    {template.is_active && <span className="w-1.5 h-1.5 rounded-full bg-[#34C759] dark:bg-emerald-400 inline-block" />}
                                                     {template.is_active ? 'Ativo' : 'Inativo'}
                                                 </span>
                                             </div>
@@ -303,13 +318,13 @@ export function TemplatesClient({ trainer, templates: initialTemplates }: Templa
                                     <div className="ml-11 space-y-1 mb-3">
                                         {questions.slice(0, 3).map((q: any, i: number) => (
                                             <div key={q.id || i} className="flex items-center gap-2 text-xs">
-                                                <span className="text-k-text-quaternary w-4 shrink-0">{i + 1}.</span>
-                                                <span className="text-k-text-tertiary truncate">{q.label || q.title}</span>
-                                                <span className="text-k-text-quaternary shrink-0 text-[10px]">({getTypeLabel(q.type)})</span>
+                                                <span className="text-[#AEAEB2] dark:text-k-text-quaternary w-4 shrink-0">{i + 1}.</span>
+                                                <span className="text-[#6E6E73] dark:text-k-text-tertiary truncate">{q.label || q.title}</span>
+                                                <span className="text-[#AEAEB2] dark:text-k-text-quaternary shrink-0 text-[10px]">({getTypeLabel(q.type)})</span>
                                             </div>
                                         ))}
                                         {questions.length > 3 && (
-                                            <span className="text-[10px] text-k-text-quaternary pl-6">
+                                            <span className="text-[10px] text-[#007AFF] font-medium pl-6 dark:text-k-text-quaternary dark:font-normal">
                                                 +{questions.length - 3} mais...
                                             </span>
                                         )}
@@ -317,8 +332,8 @@ export function TemplatesClient({ trainer, templates: initialTemplates }: Templa
                                 )}
 
                                 {/* Footer */}
-                                <div className="ml-11 flex items-center justify-between pt-2 border-t border-k-border-subtle/50 text-[11px]">
-                                    <span className="text-k-text-quaternary">
+                                <div className="ml-11 flex items-center justify-between pt-2 border-t border-[#E8E8ED] dark:border-k-border-subtle/50 text-[11px]">
+                                    <span className="text-[#AEAEB2] dark:text-k-text-quaternary">
                                         {template.responseCount} {template.responseCount === 1 ? 'resposta' : 'respostas'}
                                         {' · '}v{template.version}
                                         {' · '}{timeAgo(template.created_at)}
@@ -328,7 +343,7 @@ export function TemplatesClient({ trainer, templates: initialTemplates }: Templa
                                             e.stopPropagation()
                                             router.push(`/forms?assign=${template.id}`)
                                         }}
-                                        className="text-violet-400 hover:text-violet-300 opacity-0 group-hover:opacity-100 transition-all font-medium"
+                                        className="text-[#007AFF] hover:text-[#0056B3] dark:text-violet-400 dark:hover:text-violet-300 opacity-0 group-hover:opacity-100 transition-all font-medium"
                                     >
                                         Enviar para aluno →
                                     </button>

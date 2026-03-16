@@ -17,11 +17,17 @@ interface WatchExerciseData {
   sets: WatchSetData[];
 }
 
+interface WatchCardioData {
+  itemId: string;
+  elapsedSeconds: number;
+}
+
 export interface WatchFinishPayload {
   workoutId: string;
   rpe: number;
   startedAt?: string;
   exercises?: WatchExerciseData[];
+  cardio?: WatchCardioData[];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -53,9 +59,9 @@ async function savePendingWorkout(payload: WatchFinishPayload): Promise<void> {
     const pending: (WatchFinishPayload & { queuedAt: string })[] = raw ? JSON.parse(raw) : [];
     pending.push({ ...payload, queuedAt: new Date().toISOString() });
     await SecureStore.setItemAsync(PENDING_KEY, JSON.stringify(pending));
-    console.log(`[finishWorkoutFromWatch] Saved to pending queue. Total: ${pending.length}`);
+    if (__DEV__) console.log(`[finishWorkoutFromWatch] Saved to pending queue. Total: ${pending.length}`);
   } catch (e: any) {
-    console.error('[finishWorkoutFromWatch] Failed to save to pending queue:', e?.message);
+    if (__DEV__) console.error('[finishWorkoutFromWatch] Failed to save to pending queue:', e?.message);
   }
 }
 
@@ -71,12 +77,12 @@ export async function processPendingWatchWorkouts(): Promise<void> {
     const pending: (WatchFinishPayload & { queuedAt: string })[] = JSON.parse(raw);
     if (pending.length === 0) return;
 
-    console.log(`[finishWorkoutFromWatch] Processing ${pending.length} pending workout(s)`);
+    if (__DEV__) console.log(`[finishWorkoutFromWatch] Processing ${pending.length} pending workout(s)`);
 
     // Check if auth is available before attempting
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      console.log('[finishWorkoutFromWatch] Auth not ready — will retry later');
+      if (__DEV__) console.log('[finishWorkoutFromWatch] Auth not ready — will retry later');
       return;
     }
 
@@ -87,12 +93,12 @@ export async function processPendingWatchWorkouts(): Promise<void> {
         const { queuedAt, ...payload } = entry;
         const sessionId = await finishWorkoutFromWatch(payload);
         if (sessionId) {
-          console.log(`[finishWorkoutFromWatch] Pending workout processed: ${sessionId}`);
+          if (__DEV__) console.log(`[finishWorkoutFromWatch] Pending workout processed: ${sessionId}`);
         } else {
           remaining.push(entry);
         }
       } catch (e: any) {
-        console.error(`[finishWorkoutFromWatch] Pending workout failed: ${e?.message}`);
+        if (__DEV__) console.error(`[finishWorkoutFromWatch] Pending workout failed: ${e?.message}`);
         remaining.push(entry);
       }
     }
@@ -103,9 +109,9 @@ export async function processPendingWatchWorkouts(): Promise<void> {
       await SecureStore.deleteItemAsync(PENDING_KEY);
     }
 
-    console.log(`[finishWorkoutFromWatch] Pending queue: ${remaining.length} remaining`);
+    if (__DEV__) console.log(`[finishWorkoutFromWatch] Pending queue: ${remaining.length} remaining`);
   } catch (e: any) {
-    console.error('[finishWorkoutFromWatch] processPendingWatchWorkouts error:', e?.message);
+    if (__DEV__) console.error('[finishWorkoutFromWatch] processPendingWatchWorkouts error:', e?.message);
   }
 }
 
@@ -120,16 +126,16 @@ export async function finishWorkoutFromWatch(
 ): Promise<string | null> {
   const { workoutId, rpe, startedAt, exercises: watchExercises } = payload;
 
-  console.log(`[finishWorkoutFromWatch] Step 1: Starting for workout ${workoutId}, RPE ${rpe}, exercises: ${watchExercises?.length ?? 'NONE'}`);
+  if (__DEV__) console.log(`[finishWorkoutFromWatch] Step 1: Starting for workout ${workoutId}, RPE ${rpe}, exercises: ${watchExercises?.length ?? 'NONE'}`);
 
   // 1. Refresh auth token (may be expired after long workout)
   try {
     const { error: refreshError } = await supabase.auth.refreshSession();
     if (refreshError) {
-      console.warn('[finishWorkoutFromWatch] Step 1a: Token refresh failed:', refreshError.message);
+      if (__DEV__) console.warn('[finishWorkoutFromWatch] Step 1a: Token refresh failed:', refreshError.message);
     }
   } catch (e: any) {
-    console.warn('[finishWorkoutFromWatch] Step 1a: Token refresh exception:', e?.message);
+    if (__DEV__) console.warn('[finishWorkoutFromWatch] Step 1a: Token refresh exception:', e?.message);
   }
 
   // 2. Authenticated user
@@ -143,7 +149,7 @@ export async function finishWorkoutFromWatch(
     return null;
   }
 
-  console.log(`[finishWorkoutFromWatch] Step 2: Auth OK — user ${user.id}`);
+  if (__DEV__) console.log(`[finishWorkoutFromWatch] Step 2: Auth OK — user ${user.id}`);
 
   // 3. Student row
   const { data: student, error: studentError }: { data: any; error: any } = await supabase
@@ -153,11 +159,11 @@ export async function finishWorkoutFromWatch(
     .single();
 
   if (studentError || !student) {
-    console.error('[finishWorkoutFromWatch] Step 3 FAILED: Student not found:', studentError?.message, studentError?.details, studentError?.hint);
+    if (__DEV__) console.error('[finishWorkoutFromWatch] Step 3 FAILED: Student not found:', studentError?.message, studentError?.details, studentError?.hint);
     return null;
   }
 
-  console.log(`[finishWorkoutFromWatch] Step 3: Student ${student.id}`);
+  if (__DEV__) console.log(`[finishWorkoutFromWatch] Step 3: Student ${student.id}`);
 
   // 4. Workout metadata
   const { data: workout, error: workoutError }: { data: any; error: any } = await supabase
@@ -167,11 +173,11 @@ export async function finishWorkoutFromWatch(
     .single();
 
   if (workoutError || !workout) {
-    console.error('[finishWorkoutFromWatch] Step 4 FAILED: Workout not found:', workoutError?.message, workoutError?.details);
+    if (__DEV__) console.error('[finishWorkoutFromWatch] Step 4 FAILED: Workout not found:', workoutError?.message, workoutError?.details);
     return null;
   }
 
-  console.log(`[finishWorkoutFromWatch] Step 4: Workout "${workout.name}"`);
+  if (__DEV__) console.log(`[finishWorkoutFromWatch] Step 4: Workout "${workout.name}"`);
 
   // 5. Parse timestamps — use Watch's actual startedAt when available
   const now = new Date();
@@ -199,7 +205,7 @@ export async function finishWorkoutFromWatch(
   if (existingSession) {
     // Update existing session to completed
     sessionId = existingSession.id;
-    console.log(`[finishWorkoutFromWatch] Step 6a: Found in_progress session ${sessionId} — updating to completed`);
+    if (__DEV__) console.log(`[finishWorkoutFromWatch] Step 6a: Found in_progress session ${sessionId} — updating to completed`);
 
     const { error: updateError } = await supabase
       .from('workout_sessions' as any)
@@ -214,7 +220,7 @@ export async function finishWorkoutFromWatch(
       .eq('id', sessionId);
 
     if (updateError) {
-      console.error('[finishWorkoutFromWatch] Step 6a FAILED: Update session error:', updateError.message, updateError.details);
+      if (__DEV__) console.error('[finishWorkoutFromWatch] Step 6a FAILED: Update session error:', updateError.message, updateError.details);
       return null;
     }
   } else {
@@ -233,10 +239,10 @@ export async function finishWorkoutFromWatch(
 
     if (recentCompleted) {
       sessionId = recentCompleted.id;
-      console.log(`[finishWorkoutFromWatch] Step 6b: Found recently completed session ${sessionId} — reusing (dedup)`);
+      if (__DEV__) console.log(`[finishWorkoutFromWatch] Step 6b: Found recently completed session ${sessionId} — reusing (dedup)`);
     } else {
       // 6c. No existing session — create a new completed one
-      console.log('[finishWorkoutFromWatch] Step 6c: No existing session — creating new completed session');
+      if (__DEV__) console.log('[finishWorkoutFromWatch] Step 6c: No existing session — creating new completed session');
 
       const { data: newSession, error: sessionError }: { data: any; error: any } =
         await supabase
@@ -258,7 +264,7 @@ export async function finishWorkoutFromWatch(
           .single();
 
       if (sessionError || !newSession) {
-        console.error('[finishWorkoutFromWatch] Step 6c FAILED: Create session error:', sessionError?.message, sessionError?.details, sessionError?.hint);
+        if (__DEV__) console.error('[finishWorkoutFromWatch] Step 6c FAILED: Create session error:', sessionError?.message, sessionError?.details, sessionError?.hint);
         return null;
       }
 
@@ -266,7 +272,7 @@ export async function finishWorkoutFromWatch(
     }
   }
 
-  console.log(`[finishWorkoutFromWatch] Step 6: Session ready — ${sessionId}`);
+  if (__DEV__) console.log(`[finishWorkoutFromWatch] Step 6: Session ready — ${sessionId}`);
 
   // 7. Upsert completed sets (idempotent — safe for duplicates)
   if (watchExercises && watchExercises.length > 0) {
@@ -277,7 +283,7 @@ export async function finishWorkoutFromWatch(
       .in('id', itemIds);
 
     if (itemsError) {
-      console.error('[finishWorkoutFromWatch] Step 7a FAILED: Fetch items error:', itemsError.message);
+      if (__DEV__) console.error('[finishWorkoutFromWatch] Step 7a FAILED: Fetch items error:', itemsError.message);
     }
 
     const itemMap = new Map<string, string>(
@@ -289,13 +295,11 @@ export async function finishWorkoutFromWatch(
     for (const exercise of watchExercises) {
       const exerciseId = itemMap.get(exercise.id);
       if (!exerciseId) {
-        console.warn(`[finishWorkoutFromWatch] Step 7: Could not resolve exercise_id for item ${exercise.id}`);
+        if (__DEV__) console.warn(`[finishWorkoutFromWatch] Step 7: Could not resolve exercise_id for item ${exercise.id}`);
         continue;
       }
 
       for (const set of exercise.sets) {
-        if (!set.completed) continue;
-
         setLogs.push({
           workout_session_id: sessionId,
           assigned_workout_item_id: exercise.id,
@@ -306,15 +310,16 @@ export async function finishWorkoutFromWatch(
           set_number: set.setIndex + 1,
           weight: set.weight || 0,
           reps_completed: set.reps || 0,
-          is_completed: true,
-          completed_at: now.toISOString(),
+          is_completed: set.completed === true,
+          completed_at: set.completed ? now.toISOString() : null,
           weight_unit: 'kg',
         });
       }
     }
 
     if (setLogs.length > 0) {
-      console.log(`[finishWorkoutFromWatch] Step 7b: Upserting ${setLogs.length} set_logs`);
+      const completedCount = setLogs.filter(s => s.is_completed).length;
+      if (__DEV__) console.log(`[finishWorkoutFromWatch] Step 7b: Upserting ${setLogs.length} set_logs (${completedCount} completed, ${setLogs.length - completedCount} incomplete)`);
 
       const { error: logsError } = await supabase
         .from('set_logs' as any)
@@ -323,18 +328,90 @@ export async function finishWorkoutFromWatch(
         });
 
       if (logsError) {
-        console.error('[finishWorkoutFromWatch] Step 7b FAILED: Upsert set_logs error:', logsError.message, logsError.details, logsError.hint);
+        if (__DEV__) console.error('[finishWorkoutFromWatch] Step 7b FAILED: Upsert set_logs error:', logsError.message, logsError.details, logsError.hint);
       } else {
-        console.log(`[finishWorkoutFromWatch] Step 7b: Upserted ${setLogs.length} set_logs OK`);
+        if (__DEV__) console.log(`[finishWorkoutFromWatch] Step 7b: Upserted ${setLogs.length} set_logs OK`);
       }
     } else {
-      console.warn('[finishWorkoutFromWatch] Step 7: No completed sets to upsert');
+      if (__DEV__) console.warn('[finishWorkoutFromWatch] Step 7: No set_logs to upsert');
     }
   } else {
-    console.warn('[finishWorkoutFromWatch] Step 7: No exercise data from watch — session saved with RPE only');
+    if (__DEV__) console.warn('[finishWorkoutFromWatch] Step 7: No exercise data from watch — session saved with RPE only');
+  }
+
+  // 8. Upsert cardio set_logs (mirrors useWorkoutSession logic for cardio items)
+  const watchCardio = payload.cardio;
+  if (watchCardio && watchCardio.length > 0) {
+    if (__DEV__) console.log(`[finishWorkoutFromWatch] Step 8: Processing ${watchCardio.length} cardio item(s)`);
+
+    // Fetch item_config from assigned_workout_items for each cardio item
+    const cardioItemIds = watchCardio.map((c) => c.itemId);
+    const { data: cardioItems, error: cardioItemsError }: { data: any; error: any } = await supabase
+      .from('assigned_workout_items' as any)
+      .select('id, exercise_id, item_config')
+      .in('id', cardioItemIds);
+
+    if (cardioItemsError) {
+      if (__DEV__) console.error('[finishWorkoutFromWatch] Step 8a FAILED: Fetch cardio items error:', cardioItemsError.message);
+    }
+
+    const cardioItemMap = new Map<string, any>(
+      (cardioItems || []).map((item: any) => [item.id, item])
+    );
+
+    const cardioSetLogs: any[] = [];
+    const now = new Date();
+
+    for (const cardio of watchCardio) {
+      const item = cardioItemMap.get(cardio.itemId);
+      const config = item?.item_config || {};
+
+      const notesJson = JSON.stringify({
+        mode: config.mode || 'continuous',
+        equipment: config.equipment,
+        duration_minutes: config.duration_minutes,
+        distance_km: config.distance_km,
+        intensity: config.intensity,
+        intervals: config.intervals,
+        actual_duration_seconds: cardio.elapsedSeconds,
+        completed_rounds: config.completed_rounds,
+      });
+
+      cardioSetLogs.push({
+        workout_session_id: sessionId,
+        assigned_workout_item_id: cardio.itemId,
+        planned_exercise_id: item?.exercise_id || null,
+        executed_exercise_id: item?.exercise_id || null,
+        swap_source: 'none',
+        exercise_id: item?.exercise_id || null,
+        set_number: 1,
+        weight: 0,
+        reps_completed: 1,
+        is_completed: true,
+        completed_at: now.toISOString(),
+        weight_unit: 'kg',
+        notes: notesJson,
+      });
+    }
+
+    if (cardioSetLogs.length > 0) {
+      if (__DEV__) console.log(`[finishWorkoutFromWatch] Step 8b: Upserting ${cardioSetLogs.length} cardio set_logs`);
+
+      const { error: cardioLogsError } = await supabase
+        .from('set_logs' as any)
+        .upsert(cardioSetLogs, {
+          onConflict: 'workout_session_id,assigned_workout_item_id,set_number',
+        });
+
+      if (cardioLogsError) {
+        if (__DEV__) console.error('[finishWorkoutFromWatch] Step 8b FAILED: Upsert cardio set_logs error:', cardioLogsError.message, cardioLogsError.details);
+      } else {
+        if (__DEV__) console.log(`[finishWorkoutFromWatch] Step 8b: Upserted ${cardioSetLogs.length} cardio set_logs OK`);
+      }
+    }
   }
 
   watchFinishState.markFinished(workoutId);
-  console.log(`[finishWorkoutFromWatch] DONE — session ${sessionId} saved for workout ${workoutId}`);
+  if (__DEV__) console.log(`[finishWorkoutFromWatch] DONE — session ${sessionId} saved for workout ${workoutId}`);
   return sessionId;
 }

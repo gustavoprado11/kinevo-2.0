@@ -54,6 +54,11 @@ const STATUS_CONFIG: Record<CalendarDay['status'], { bg: string; ring?: string; 
         bg: 'bg-transparent',
         text: 'text-k-text-quaternary/30',
     },
+    compensated: {
+        bg: 'bg-slate-500/15 border border-slate-500/30',
+        text: 'text-slate-400',
+        icon: 'check',
+    },
 }
 
 // ---------------------------------------------------------------------------
@@ -62,15 +67,15 @@ const STATUS_CONFIG: Record<CalendarDay['status'], { bg: string; ring?: string; 
 
 function DayLabel({ text }: { text: string }) {
     return (
-        <span className="text-[10px] font-bold uppercase tracking-widest text-k-text-quaternary">
+        <span className="text-[10px] font-bold text-k-text-quaternary">
             {text}
         </span>
     )
 }
 
-function CheckIcon() {
+function CheckIcon({ className = 'w-4 h-4 text-white' }: { className?: string }) {
     return (
-        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
         </svg>
     )
@@ -140,6 +145,8 @@ function WeekView({
                                 >
                                     {day.status === 'done' ? (
                                         <CheckIcon />
+                                    ) : day.status === 'compensated' ? (
+                                        <CheckIcon className="w-4 h-4 text-slate-400" />
                                     ) : cfg.icon === 'x' ? (
                                         <XIcon />
                                     ) : (
@@ -152,9 +159,13 @@ function WeekView({
 
                             {/* Tooltip */}
                             {isClickable && (
-                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-surface-card border border-k-border-primary rounded-lg text-xs font-medium text-k-text-primary opacity-0 group-hover/day:opacity-100 transition-opacity pointer-events-none z-20 whitespace-nowrap shadow-xl">
+                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-surface-card border border-k-border-primary rounded-lg text-xs font-medium text-k-text-primary opacity-0 group-hover/day:opacity-100 transition-opacity pointer-events-none z-header whitespace-nowrap shadow-xl">
                                     {day.status === 'done' ? (
                                         <span>Realizado{day.completedSessions[0]?.rpe != null ? ` · PSE ${day.completedSessions[0].rpe}` : ''}</span>
+                                    ) : day.status === 'compensated' ? (
+                                        <span className="text-slate-400">
+                                            Compensado em outro dia
+                                        </span>
                                     ) : day.status === 'missed' ? (
                                         <span className="text-red-400">
                                             Faltou: {day.scheduledWorkouts[0]?.name || 'Treino'}
@@ -231,9 +242,11 @@ function MonthView({
                                             ? (day.completedSessions[0]?.rpe != null
                                                 ? (day.completedSessions[0].rpe! >= 10 ? 'bg-red-400' : day.completedSessions[0].rpe! >= 8 ? 'bg-yellow-400' : day.completedSessions[0].rpe! >= 6 ? 'bg-emerald-400' : 'bg-white/40')
                                                 : 'bg-violet-500')
-                                            : day.status === 'missed'
-                                                ? 'bg-red-400'
-                                                : 'bg-k-text-quaternary/50'
+                                            : day.status === 'compensated'
+                                                ? 'bg-slate-400'
+                                                : day.status === 'missed'
+                                                    ? 'bg-red-400'
+                                                    : 'bg-k-text-quaternary/50'
                                     }`}
                                 />
                             )}
@@ -256,16 +269,16 @@ function MetricsPanel({ days }: { days: CalendarDay[] }) {
 
         const relevant = days.filter(d => d.isInProgram && d.date <= today)
         const scheduledPast = relevant.filter(d => d.scheduledWorkouts.length > 0).length
-        const completedPast = relevant.filter(d => d.status === 'done').length
-        const rate = scheduledPast > 0 ? Math.round((completedPast / scheduledPast) * 100) : 0
+        const fulfilledPast = relevant.filter(d => d.status === 'done' || d.status === 'compensated').length
+        const rate = scheduledPast > 0 ? Math.round((fulfilledPast / scheduledPast) * 100) : 0
 
-        // Simple streak: consecutive completed days going backwards from last completed
+        // Streak: consecutive completed/compensated days going backwards
         let streak = 0
         const sorted = [...relevant].filter(d => d.scheduledWorkouts.length > 0).sort(
             (a, b) => b.date.getTime() - a.date.getTime()
         )
         for (const d of sorted) {
-            if (d.status === 'done') streak++
+            if (d.status === 'done' || d.status === 'compensated') streak++
             else break
         }
 
@@ -275,20 +288,20 @@ function MetricsPanel({ days }: { days: CalendarDay[] }) {
     return (
         <div className="flex items-center gap-10">
             <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-k-text-quaternary mb-1">
+                <p className="text-[10px] font-bold text-[#8E8E93] dark:text-k-text-quaternary mb-1">
                     Taxa de Adesão
                 </p>
                 <div className="flex items-baseline gap-1">
-                    <span className="text-2xl font-black text-white">{metrics.rate}%</span>
+                    <span className="text-2xl font-black text-[#1C1C1E] dark:text-white">{metrics.rate}%</span>
                 </div>
             </div>
             <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-k-text-quaternary mb-1">
+                <p className="text-[10px] font-bold text-[#8E8E93] dark:text-k-text-quaternary mb-1">
                     Sequência
                 </p>
                 <div className="flex items-baseline gap-1">
                     <span className="text-2xl font-black text-violet-400">{metrics.streak}</span>
-                    <span className="text-[10px] font-bold text-k-text-tertiary uppercase tracking-widest">treinos</span>
+                    <span className="text-[10px] font-bold text-[#8E8E93] dark:text-k-text-tertiary">treinos</span>
                 </div>
             </div>
         </div>
@@ -302,7 +315,7 @@ function MetricsPanel({ days }: { days: CalendarDay[] }) {
 function NavLabel({ anchorDate, viewMode }: { anchorDate: Date; viewMode: 'week' | 'month' }) {
     if (viewMode === 'month') {
         return (
-            <span className="text-xs font-bold uppercase tracking-widest text-k-text-secondary min-w-[120px] text-center">
+            <span className="text-xs font-bold text-k-text-secondary min-w-[120px] text-center">
                 {anchorDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric', timeZone: 'America/Sao_Paulo' })}
             </span>
         )
@@ -312,7 +325,7 @@ function NavLabel({ anchorDate, viewMode }: { anchorDate: Date; viewMode: 'week'
     const { start, end } = getWeekRange(anchorDate)
     const fmt = (d: Date) => d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', timeZone: 'America/Sao_Paulo' }).replace('.', '')
     return (
-        <span className="text-xs font-bold uppercase tracking-widest text-k-text-secondary min-w-[160px] text-center">
+        <span className="text-xs font-bold text-k-text-secondary min-w-[160px] text-center">
             {fmt(start)} — {fmt(end)}
         </span>
     )
@@ -441,7 +454,7 @@ export function ProgramCalendar({
                     {!viewIncludesToday && (
                         <button
                             onClick={goToToday}
-                            className="ml-2 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-violet-400 border border-violet-500/30 rounded-md hover:bg-violet-500/10 transition-colors"
+                            className="ml-2 px-2 py-0.5 text-[9px] font-bold text-violet-600 dark:text-violet-400 border border-violet-500/30 rounded-md hover:bg-violet-500/10 transition-colors"
                         >
                             Hoje
                         </button>

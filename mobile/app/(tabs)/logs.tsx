@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { View, Text, ScrollView, Pressable, LayoutAnimation, Platform, UIManager } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-    Calendar, Trophy, ChevronDown, Flame, Check, Clock, Dumbbell, Repeat,
+    Calendar, Trophy, ChevronDown, Flame, Check, Clock, Dumbbell, Repeat, ClipboardCheck,
 } from 'lucide-react-native';
 import Animated, {
     useSharedValue,
@@ -16,7 +16,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { useFocusEffect } from 'expo-router';
-import { useWorkoutHistory, HistorySession, HistoryStats } from '../../hooks/useWorkoutHistory';
+import { useWorkoutHistory, HistorySession, HistoryStats, HistoryWorkoutItem } from '../../hooks/useWorkoutHistory';
+import { WARMUP_TYPE_LABELS, CARDIO_EQUIPMENT_LABELS, type WarmupType, type CardioEquipment, type CardioConfig } from '@kinevo/shared/types/workout-items';
 import { PressableScale } from '../../components/shared/PressableScale';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -303,9 +304,23 @@ function HistoryCard({ session }: { session: HistorySession }) {
                                 </View>
                             )}
                         </View>
-                        <Text style={{ fontSize: 12, color: '#94a3b8', fontWeight: '600', marginTop: 4, textTransform: 'uppercase' }}>
-                            {dateStr}
-                        </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                            <Text style={{ fontSize: 12, color: '#94a3b8', fontWeight: '600', textTransform: 'uppercase' }}>
+                                {dateStr}
+                            </Text>
+                            {session.has_pre_checkin && (
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2, backgroundColor: 'rgba(124,58,237,0.08)', paddingHorizontal: 5, paddingVertical: 2, borderRadius: 4 }}>
+                                    <ClipboardCheck size={9} color="#7c3aed" />
+                                    <Text style={{ fontSize: 9, fontWeight: '700', color: '#7c3aed' }}>Pré</Text>
+                                </View>
+                            )}
+                            {session.has_post_checkin && (
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2, backgroundColor: 'rgba(16,185,129,0.08)', paddingHorizontal: 5, paddingVertical: 2, borderRadius: 4 }}>
+                                    <ClipboardCheck size={9} color="#10b981" />
+                                    <Text style={{ fontSize: 9, fontWeight: '700', color: '#10b981' }}>Pós</Text>
+                                </View>
+                            )}
+                        </View>
                     </View>
                     <Animated.View style={chevronStyle}>
                         <ChevronDown size={18} color="#cbd5e1" />
@@ -350,58 +365,162 @@ function HistoryCard({ session }: { session: HistorySession }) {
                     entering={FadeInUp.duration(200)}
                     style={{ paddingHorizontal: 20, paddingBottom: 20 }}
                 >
-                    {session.exercises.map((exercise, idx) => (
-                        <View
-                            key={exercise.id}
-                            style={{
-                                marginTop: idx === 0 ? 0 : 12,
-                                paddingTop: idx === 0 ? 0 : 12,
-                                borderTopWidth: idx === 0 ? 0 : 1,
-                                borderTopColor: '#f1f5f9',
-                            }}
-                        >
-                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-                                <View
-                                    style={{
-                                        width: 3, height: 16, backgroundColor: '#7c3aed',
-                                        borderRadius: 2, marginRight: 10,
-                                    }}
-                                />
-                                <Text style={{ fontSize: 14, fontWeight: '500', color: '#64748b', flex: 1 }}>
-                                    {exercise.name}
-                                </Text>
+                    {session.workoutItems.length > 0 ? (
+                        session.workoutItems.map((item, idx) => (
+                            <HistoryItemRenderer key={item.id} item={item} isFirst={idx === 0} />
+                        ))
+                    ) : (
+                        session.exercises.map((exercise, idx) => (
+                            <View
+                                key={exercise.id}
+                                style={{
+                                    marginTop: idx === 0 ? 0 : 12,
+                                    paddingTop: idx === 0 ? 0 : 12,
+                                    borderTopWidth: idx === 0 ? 0 : 1,
+                                    borderTopColor: '#f1f5f9',
+                                }}
+                            >
+                                <ExerciseSetsView name={exercise.name} sets={exercise.sets} />
                             </View>
-                            <View style={{ gap: 6, paddingLeft: 13 }}>
-                                {exercise.sets.map((set, setIdx) => (
-                                    <View
-                                        key={set.id}
-                                        style={{
-                                            flexDirection: 'row', alignItems: 'center',
-                                            justifyContent: 'space-between', backgroundColor: '#f8fafc',
-                                            paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10,
-                                        }}
-                                    >
-                                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#94a3b8', width: 28 }}>
-                                            #{setIdx + 1}
-                                        </Text>
-                                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#0f172a', width: 72, textAlign: 'center' }}>
-                                            {set.weight}kg
-                                        </Text>
-                                        <Text style={{ fontSize: 12, color: '#64748b', width: 56, textAlign: 'right' }}>
-                                            {set.reps} reps
-                                        </Text>
-                                        <View style={{ width: 20, alignItems: 'flex-end' }}>
-                                            {set.completed && <Check size={14} color="#34d399" strokeWidth={2.5} />}
-                                        </View>
-                                    </View>
-                                ))}
-                            </View>
-                        </View>
-                    ))}
+                        ))
+                    )}
                 </Animated.View>
             )}
         </PressableScale>
     );
+}
+
+/* ─── Workout Item Renderers ─── */
+
+function ExerciseSetsView({ name, sets }: { name: string; sets: { id: string; weight: number; reps: number; completed: boolean }[] }) {
+    return (
+        <>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                <View style={{ width: 3, height: 16, backgroundColor: '#7c3aed', borderRadius: 2, marginRight: 10 }} />
+                <Text style={{ fontSize: 14, fontWeight: '500', color: '#64748b', flex: 1 }}>{name}</Text>
+            </View>
+            <View style={{ gap: 6, paddingLeft: 13 }}>
+                {sets.map((set, setIdx) => (
+                    <View
+                        key={set.id}
+                        style={{
+                            flexDirection: 'row', alignItems: 'center',
+                            justifyContent: 'space-between', backgroundColor: '#f8fafc',
+                            paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10,
+                        }}
+                    >
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#94a3b8', width: 28 }}>#{setIdx + 1}</Text>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#0f172a', width: 72, textAlign: 'center' }}>{set.weight}kg</Text>
+                        <Text style={{ fontSize: 12, color: '#64748b', width: 56, textAlign: 'right' }}>{set.reps} reps</Text>
+                        <View style={{ width: 20, alignItems: 'flex-end' }}>
+                            {set.completed && <Check size={14} color="#34d399" strokeWidth={2.5} />}
+                        </View>
+                    </View>
+                ))}
+            </View>
+        </>
+    );
+}
+
+function HistoryItemRenderer({ item, isFirst }: { item: HistoryWorkoutItem; isFirst: boolean }) {
+    const separator = !isFirst ? { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#f1f5f9' } : {};
+
+    if (item.itemType === 'warmup') {
+        const config = item.itemConfig as { warmup_type?: WarmupType; duration_minutes?: number; description?: string } | undefined;
+        const label = config?.warmup_type ? (WARMUP_TYPE_LABELS[config.warmup_type] || 'Aquecimento') : 'Aquecimento';
+        return (
+            <View style={{ ...separator as any }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff7ed', borderRadius: 12, padding: 12, gap: 10 }}>
+                    <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: 'rgba(234,88,12,0.1)', alignItems: 'center', justifyContent: 'center' }}>
+                        <Flame size={16} color="#ea580c" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: '#0f172a' }}>{label}</Text>
+                        {(config?.duration_minutes || config?.description) && (
+                            <Text style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>
+                                {config?.duration_minutes ? `${config.duration_minutes} min` : ''}{config?.duration_minutes && config?.description ? ' · ' : ''}{config?.description || ''}
+                            </Text>
+                        )}
+                    </View>
+                </View>
+            </View>
+        );
+    }
+
+    if (item.itemType === 'cardio') {
+        const config = item.itemConfig as CardioConfig | undefined;
+        const result = item.cardioResult;
+        const equipment = (result?.equipment || config?.equipment) as CardioEquipment | undefined;
+        const equipLabel = equipment ? (CARDIO_EQUIPMENT_LABELS[equipment] || 'Aeróbio') : 'Aeróbio';
+        const mode = result?.mode || config?.mode;
+        const details: string[] = [];
+        if (result?.duration_minutes || config?.duration_minutes) details.push(`${result?.duration_minutes || config?.duration_minutes} min`);
+        if (result?.distance_km || config?.distance_km) details.push(`${result?.distance_km || config?.distance_km} km`);
+        if (result?.intensity || config?.intensity) details.push(result?.intensity || config?.intensity || '');
+
+        return (
+            <View style={{ ...separator as any }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#eff6ff', borderRadius: 12, padding: 12, gap: 10 }}>
+                    <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: 'rgba(59,130,246,0.1)', alignItems: 'center', justifyContent: 'center' }}>
+                        <Dumbbell size={16} color="#3b82f6" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: '#0f172a' }}>
+                            {equipLabel}
+                            {mode ? <Text style={{ fontSize: 12, fontWeight: '400', color: '#94a3b8' }}> · {mode === 'continuous' ? 'Contínuo' : 'Intervalado'}</Text> : null}
+                        </Text>
+                        {details.length > 0 && (
+                            <Text style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>{details.join(' · ')}</Text>
+                        )}
+                    </View>
+                </View>
+            </View>
+        );
+    }
+
+    if (item.itemType === 'note' && item.notes) {
+        return (
+            <View style={{ ...separator as any }}>
+                <View style={{ backgroundColor: '#f8fafc', borderRadius: 10, padding: 10 }}>
+                    <Text style={{ fontSize: 12, color: '#64748b', fontStyle: 'italic' }}>{item.notes}</Text>
+                </View>
+            </View>
+        );
+    }
+
+    if (item.itemType === 'superset') {
+        return (
+            <View style={{ ...separator as any }}>
+                <View style={{ borderLeftWidth: 2, borderLeftColor: '#7c3aed', borderRadius: 8, paddingLeft: 10 }}>
+                    <Text style={{ fontSize: 10, fontWeight: '700', color: '#7c3aed', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
+                        {(item.children?.length || 0) <= 2 ? 'Bi-set' : 'Tri-set'}
+                    </Text>
+                    {(item.children || []).map((child, idx) => (
+                        <View key={child.id} style={idx > 0 ? { marginTop: 10 } : {}}>
+                            <ExerciseSetsView
+                                name={child.exerciseName || 'Exercício'}
+                                sets={child.setLogs}
+                            />
+                        </View>
+                    ))}
+                </View>
+            </View>
+        );
+    }
+
+    // Exercise
+    if (item.itemType === 'exercise') {
+        return (
+            <View style={{ ...separator as any }}>
+                <ExerciseSetsView
+                    name={item.exerciseName || 'Exercício'}
+                    sets={item.setLogs}
+                />
+            </View>
+        );
+    }
+
+    return null;
 }
 
 /* ─── Performance Tab with Count-Up ─── */

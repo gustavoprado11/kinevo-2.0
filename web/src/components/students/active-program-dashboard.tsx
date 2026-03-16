@@ -4,6 +4,9 @@ import { useState } from 'react'
 import { SessionDetailSheet } from './session-detail-sheet'
 import { ProgramCalendar } from './program-calendar'
 import { getProgramWeek, getProgramEndDate } from '@kinevo/shared/utils/schedule-projection'
+import { Flame, Activity, ArrowUpRight } from 'lucide-react'
+import { WARMUP_TYPE_LABELS, CARDIO_EQUIPMENT_LABELS } from '@kinevo/shared/types/workout-items'
+import type { SessionItem } from '@/app/students/[id]/actions/get-session-details'
 import type { RangeSession } from '@/app/students/[id]/actions/get-sessions-for-range'
 
 // --- Helpers ---
@@ -29,9 +32,82 @@ function timeAgo(dateStr: string): string {
 
 function getExpectedPerWeek(workouts?: Array<{ scheduled_days: number[] }>): number {
     if (!workouts || workouts.length === 0) return 0
-    const uniqueDays = new Set<number>()
-    workouts.forEach(w => w.scheduled_days?.forEach(d => uniqueDays.add(d)))
-    return uniqueDays.size
+    return workouts.reduce((sum, w) => sum + (w.scheduled_days?.length || 0), 0)
+}
+
+// ── Compact item renderer for expanded session accordion ──
+
+function ExpandedSessionItem({ item }: { item: SessionItem }) {
+    if (item.itemType === 'warmup') {
+        const cfg = item.itemConfig as any
+        const label = cfg?.warmup_type ? (WARMUP_TYPE_LABELS as any)[cfg.warmup_type] || cfg.warmup_type : 'Aquecimento'
+        const duration = cfg?.duration_minutes ? `${cfg.duration_minutes} min` : null
+        return (
+            <div className="flex items-center gap-2 text-sm py-1">
+                <Flame size={13} className="text-orange-400 shrink-0" />
+                <span className="text-k-text-secondary font-medium truncate flex-1">{label}</span>
+                {duration && <span className="text-k-text-quaternary text-xs shrink-0">{duration}</span>}
+            </div>
+        )
+    }
+
+    if (item.itemType === 'cardio') {
+        const cfg = item.itemConfig as any
+        const equipment = cfg?.equipment ? (CARDIO_EQUIPMENT_LABELS as any)[cfg.equipment] || cfg.equipment : 'Cardio'
+        const duration = cfg?.duration_minutes ? `${cfg.duration_minutes} min` : null
+        const mode = cfg?.mode === 'interval' ? 'Intervalado' : null
+        return (
+            <div className="flex items-center gap-2 text-sm py-1">
+                <Activity size={13} className="text-blue-400 shrink-0" />
+                <span className="text-k-text-secondary font-medium truncate flex-1">
+                    {equipment}{mode ? ` — ${mode}` : ''}
+                </span>
+                {duration && <span className="text-k-text-quaternary text-xs shrink-0">{duration}</span>}
+            </div>
+        )
+    }
+
+    if (item.itemType === 'note') {
+        return (
+            <div className="flex items-center gap-2 text-sm py-1">
+                <span className="text-k-text-quaternary text-xs">●</span>
+                <span className="text-k-text-quaternary italic text-xs truncate flex-1">{item.notes || 'Nota'}</span>
+            </div>
+        )
+    }
+
+    if (item.itemType === 'superset') {
+        return (
+            <div className="py-1">
+                <div className="flex items-center gap-2 text-sm mb-1">
+                    <span className="text-violet-400 text-xs">●</span>
+                    <span className="text-violet-400 text-xs font-bold">Superset</span>
+                </div>
+                {item.children?.map(child => (
+                    <ExpandedSessionItem key={child.id} item={child} />
+                ))}
+            </div>
+        )
+    }
+
+    // exercise (default)
+    return (
+        <div className="flex items-center justify-between text-sm py-1">
+            <span className="text-k-text-secondary font-medium truncate flex-1 mr-4">{item.exerciseName || 'Exercício'}</span>
+            <div className="flex items-center gap-3 text-k-text-quaternary text-xs shrink-0">
+                {item.setLogs.length > 0 ? (
+                    <>
+                        <span className="font-bold">{item.setLogs.length}×{item.setLogs[0]?.reps ?? '-'}</span>
+                        {item.setLogs[0]?.weight > 0 && (
+                            <span className="text-k-text-tertiary">@ {item.setLogs[0].weight}kg</span>
+                        )}
+                    </>
+                ) : item.setsPrescribed ? (
+                    <span className="font-bold">{item.setsPrescribed}×{item.repsPrescribed || '-'}</span>
+                ) : null}
+            </div>
+        </div>
+    )
 }
 
 interface AssignedProgram {
@@ -168,47 +244,37 @@ export function ActiveProgramDashboard({
 
     if (!program) {
         return (
-            <div className="bg-glass-bg backdrop-blur-md rounded-2xl border border-k-border-primary p-8 h-full flex flex-col">
-                <div className="flex items-center justify-between mb-8">
-                    <div>
-                        <h3 className="text-xl font-black text-white tracking-tight">Programa Atual</h3>
-                        <p className="text-sm text-k-text-tertiary mt-1">Nenhum programa ativo no momento</p>
-                    </div>
+            <div className="bg-white dark:bg-glass-bg backdrop-blur-md rounded-2xl border border-[#E5E5EA] dark:border-k-border-primary p-6">
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-semibold text-[#1C1C1E] dark:text-white flex items-center gap-2">
+                        Programa Atual
+                        <span className="px-2 py-0.5 rounded bg-glass-bg text-[10px] text-k-text-tertiary font-bold border border-k-border-subtle">
+                            Ativo
+                        </span>
+                    </h3>
                 </div>
 
-                <div className="flex-1 text-center py-10 border border-dashed border-k-border-primary rounded-2xl flex flex-col items-center justify-center">
-                    <div className="w-16 h-16 rounded-full bg-glass-bg flex items-center justify-center mx-auto mb-6">
-                        <svg className="w-8 h-8 text-k-text-quaternary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                        </svg>
-                    </div>
-                    <p className="text-k-text-tertiary font-medium mb-8">Nenhum programa ativo no momento.</p>
-
-                    <div className="flex items-center justify-center gap-4">
+                <div className="text-center py-4">
+                    <p className="text-sm text-k-text-quaternary mb-3">Nenhum programa ativo no momento.</p>
+                    <div className="flex items-center justify-center gap-2">
                         <button
                             onClick={onCreateProgram}
-                            className="px-6 py-3 bg-violet-600 hover:bg-violet-500 text-white text-[11px] font-black uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-violet-600/20 flex items-center gap-2"
+                            className="px-3 py-1.5 text-xs font-bold bg-violet-600 hover:bg-violet-500 text-white rounded-lg transition-all"
                         >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                            </svg>
-                            Criar Novo
+                            + Criar Novo
                         </button>
                         <button
                             onClick={onAssignProgram}
-                            className="px-6 py-3 bg-transparent hover:bg-glass-bg text-k-text-secondary hover:text-k-text-primary text-[11px] font-black uppercase tracking-widest rounded-xl transition-all border border-k-border-primary flex items-center gap-2"
+                            className="px-3 py-1.5 text-xs font-bold text-k-text-tertiary hover:text-k-text-primary border border-k-border-subtle rounded-lg transition-all"
                         >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                            </svg>
                             Atribuir
                         </button>
                         {onPrescribeAI && (
                             <button
                                 onClick={onPrescribeAI}
-                                className="px-6 py-3 bg-gradient-to-r from-violet-600 to-indigo-500 hover:from-violet-500 hover:to-indigo-400 text-white text-[11px] font-black uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-indigo-600/20 flex items-center gap-2"
+                                className="px-3 py-1.5 text-xs font-bold text-violet-400 hover:text-violet-300 border border-violet-500/30 rounded-lg transition-all"
                             >
-                                Prescrever com IA
+                                Novo com IA
                             </button>
                         )}
                     </div>
@@ -235,8 +301,8 @@ export function ActiveProgramDashboard({
                 {/* Header */}
                 <div className="mb-6">
                     <div className="flex items-center gap-3 mb-1">
-                        <h2 className="text-2xl font-black text-white tracking-tight">{program.name}</h2>
-                        <span className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded border ${statusConfig.classes}`}>
+                        <h2 className="text-2xl font-black text-[#1C1C1E] dark:text-white tracking-tight">{program.name}</h2>
+                        <span className={`px-2 py-0.5 text-[10px] font-bold rounded border ${statusConfig.classes}`}>
                             {statusConfig.label}
                         </span>
                     </div>
@@ -247,28 +313,28 @@ export function ActiveProgramDashboard({
                     <div className="flex items-center gap-2 mt-3">
                         <button
                             onClick={onEditProgram}
-                            className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-k-text-tertiary hover:text-k-text-primary hover:bg-glass-bg-active rounded-lg transition-all border border-k-border-subtle"
+                            className="px-3 py-1.5 text-[10px] font-bold text-k-text-tertiary hover:text-k-text-primary hover:bg-glass-bg-active rounded-lg transition-all border border-k-border-subtle"
                         >
                             Editar
                         </button>
                         {program.status === 'active' && (
                             <button
                                 onClick={onCompleteProgram}
-                                className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-k-text-tertiary hover:text-k-text-primary hover:bg-glass-bg-active rounded-lg transition-all border border-k-border-subtle"
+                                className="px-3 py-1.5 text-[10px] font-bold text-k-text-tertiary hover:text-k-text-primary hover:bg-glass-bg-active rounded-lg transition-all border border-k-border-subtle"
                             >
                                 Concluir
                             </button>
                         )}
                         <button
                             onClick={onAssignProgram}
-                            className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-k-text-tertiary hover:text-k-text-primary hover:bg-glass-bg-active rounded-lg transition-all border border-k-border-subtle"
+                            className="px-3 py-1.5 text-[10px] font-bold text-k-text-tertiary hover:text-k-text-primary hover:bg-glass-bg-active rounded-lg transition-all border border-k-border-subtle"
                         >
                             Trocar
                         </button>
                         {onPrescribeAI && (
                             <button
                                 onClick={onPrescribeAI}
-                                className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-indigo-300 hover:text-white hover:bg-gradient-to-r hover:from-violet-600 hover:to-indigo-500 rounded-lg transition-all border border-indigo-500/20"
+                                className="px-3 py-1.5 text-[10px] font-bold text-indigo-600 dark:text-indigo-300 hover:text-white hover:bg-gradient-to-r hover:from-violet-600 hover:to-indigo-500 rounded-lg transition-all border border-indigo-500/20"
                             >
                                 Novo com IA
                             </button>
@@ -310,13 +376,13 @@ export function ActiveProgramDashboard({
                 <div data-onboarding="student-history-summary" className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10">
                     {/* Total Sessions */}
                     <div className="relative group">
-                        <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-k-text-quaternary">
+                        <div className="mb-2 flex items-center gap-2 text-[10px] font-bold text-[#8E8E93] dark:text-k-text-quaternary">
                             <svg className="w-3.5 h-3.5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                             </svg>
                             Treinos totais
                         </div>
-                        <p className="text-4xl font-black text-white tracking-tighter">{summary.totalSessions}</p>
+                        <p className="text-4xl font-black text-[#1C1C1E] dark:text-white tracking-tighter">{summary.totalSessions}</p>
                         {summary.completedThisWeek > 0 && (
                             <p className="text-[11px] font-semibold text-k-text-quaternary mt-1">
                                 +{summary.completedThisWeek} esta semana
@@ -331,13 +397,13 @@ export function ActiveProgramDashboard({
                         const remaining = Math.max(0, expected - completed)
                         return (
                             <div className="relative group">
-                                <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-k-text-quaternary">
+                                <div className="mb-2 flex items-center gap-2 text-[10px] font-bold text-[#8E8E93] dark:text-k-text-quaternary">
                                     <svg className="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
                                     Esta semana
                                 </div>
-                                <p className="text-4xl font-black text-white tracking-tighter">
+                                <p className="text-4xl font-black text-[#1C1C1E] dark:text-white tracking-tighter">
                                     {expected > 0 ? `${completed}/${expected}` : completed}
                                 </p>
                                 {expected > 0 && (
@@ -361,13 +427,13 @@ export function ActiveProgramDashboard({
 
                     {/* Last Session */}
                     <div className="relative group">
-                        <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-k-text-quaternary">
+                        <div className="mb-2 flex items-center gap-2 text-[10px] font-bold text-[#8E8E93] dark:text-k-text-quaternary">
                             <svg className="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                             Último treino
                         </div>
-                        <p className="text-4xl font-black text-white tracking-tighter leading-none">
+                        <p className="text-4xl font-black text-[#1C1C1E] dark:text-white tracking-tighter leading-none">
                             {summary.lastSessionDate ? timeAgo(summary.lastSessionDate) : '-'}
                         </p>
                         {summary.lastSessionDate && (
@@ -382,7 +448,7 @@ export function ActiveProgramDashboard({
                 {weeklyAdherence.length > 1 && (
                     <div className="mb-8 bg-glass-bg rounded-xl p-4 border border-k-border-subtle">
                         <div className="flex items-center justify-between mb-3">
-                            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-k-text-quaternary">
+                            <p className="text-[10px] font-bold text-k-text-quaternary">
                                 Adesão por semana
                             </p>
                             <p className="text-[10px] font-bold text-k-text-quaternary">
@@ -430,9 +496,9 @@ export function ActiveProgramDashboard({
 
                 {/* Recent Sessions List - Compact Feed */}
                 <div>
-                    <h3 className="text-sm font-semibold text-white mb-6 flex items-center gap-2">
+                    <h3 className="text-sm font-semibold text-[#1C1C1E] dark:text-white mb-6 flex items-center gap-2">
                         Últimas Sessões
-                        <span className="px-2 py-0.5 rounded bg-glass-bg text-[10px] text-k-text-tertiary font-bold uppercase tracking-widest border border-k-border-subtle">
+                        <span className="px-2 py-0.5 rounded bg-glass-bg text-[10px] text-k-text-tertiary font-bold border border-k-border-subtle">
                             Recentes
                         </span>
                     </h3>
@@ -509,41 +575,32 @@ export function ActiveProgramDashboard({
                                             <div className="px-4 pb-4 pt-1 bg-glass-bg rounded-b-xl border-x border-b border-k-border-subtle space-y-3">
                                                 {isLoading ? (
                                                     <div className="text-center py-4 text-k-text-quaternary text-xs font-medium animate-pulse">
-                                                        Carregando exercícios...
+                                                        Carregando detalhes...
                                                     </div>
-                                                ) : details?.exercises?.length > 0 ? (
+                                                ) : details?.items?.length > 0 ? (
                                                     <>
                                                         {/* Summary stats */}
-                                                        <div className="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-k-text-quaternary pb-2 border-b border-k-border-subtle">
-                                                            {details.duration_seconds > 0 && (
+                                                        <div className="flex items-center gap-4 text-[10px] font-bold text-k-text-quaternary pb-2 border-b border-k-border-subtle">
+                                                            {details.stats?.durationSeconds > 0 && (
                                                                 <span>
-                                                                    {Math.floor(details.duration_seconds / 3600) > 0
-                                                                        ? `${Math.floor(details.duration_seconds / 3600)}h ${Math.floor((details.duration_seconds % 3600) / 60)}m`
-                                                                        : `${Math.floor(details.duration_seconds / 60)}m`
+                                                                    {Math.floor(details.stats.durationSeconds / 3600) > 0
+                                                                        ? `${Math.floor(details.stats.durationSeconds / 3600)}h ${Math.floor((details.stats.durationSeconds % 3600) / 60)}m`
+                                                                        : `${Math.floor(details.stats.durationSeconds / 60)}m`
                                                                     }
                                                                 </span>
                                                             )}
-                                                            <span>
-                                                                {details.exercises.reduce((t: number, ex: any) => t + ex.sets.length, 0)} séries
-                                                            </span>
-                                                            {(() => {
-                                                                const tonnage = details.exercises.reduce((t: number, ex: any) =>
-                                                                    t + ex.sets.reduce((s: number, set: any) => s + ((set.weight || 0) * (set.reps || 0)), 0), 0)
-                                                                return tonnage > 0 ? <span>{tonnage.toLocaleString('pt-BR')}kg volume</span> : null
-                                                            })()}
+                                                            {details.stats?.completedSets > 0 && (
+                                                                <span>{details.stats.completedSets} séries</span>
+                                                            )}
+                                                            {details.stats?.totalTonnage > 0 && (
+                                                                <span>{details.stats.totalTonnage.toLocaleString('pt-BR')}kg volume</span>
+                                                            )}
+                                                            <span>{details.items.length} itens</span>
                                                         </div>
 
-                                                        {/* Exercise list */}
-                                                        {details.exercises.map((ex: any) => (
-                                                            <div key={ex.exercise_id} className="flex items-center justify-between text-sm py-1">
-                                                                <span className="text-k-text-secondary font-medium truncate flex-1 mr-4">{ex.name}</span>
-                                                                <div className="flex items-center gap-3 text-k-text-quaternary text-xs shrink-0">
-                                                                    <span className="font-bold">{ex.sets.length}×{ex.sets[0]?.reps ?? '-'}</span>
-                                                                    {ex.sets[0]?.weight > 0 && (
-                                                                        <span className="text-k-text-tertiary">@ {ex.sets[0].weight}kg</span>
-                                                                    )}
-                                                                </div>
-                                                            </div>
+                                                        {/* Item list — all types */}
+                                                        {details.items.map((item: SessionItem) => (
+                                                            <ExpandedSessionItem key={item.id} item={item} />
                                                         ))}
 
                                                         {/* Feedback */}
@@ -555,9 +612,18 @@ export function ActiveProgramDashboard({
                                                                 &ldquo;{session.feedback}&rdquo;
                                                             </p>
                                                         )}
+
+                                                        {/* Open full detail modal */}
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); handleSessionClick(session.id) }}
+                                                            className="w-full mt-1 pt-2 border-t border-k-border-subtle flex items-center justify-center gap-1.5 text-[11px] font-bold text-k-text-tertiary hover:text-violet-400 transition-colors"
+                                                        >
+                                                            Ver detalhes
+                                                            <ArrowUpRight size={12} />
+                                                        </button>
                                                     </>
                                                 ) : (
-                                                    <p className="text-xs text-k-text-quaternary italic py-2">Nenhum exercício registrado.</p>
+                                                    <p className="text-xs text-k-text-quaternary italic py-2">Nenhum item registrado.</p>
                                                 )}
                                             </div>
                                         )}

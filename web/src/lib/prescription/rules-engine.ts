@@ -7,6 +7,7 @@
 import type {
     TrainingLevel,
     AiMode,
+    ExerciseFunction,
     StudentPrescriptionProfile,
     PrescriptionExerciseRef,
     PrescriptionOutputSnapshot,
@@ -16,6 +17,10 @@ import type {
     PrescriptionPerformanceContext,
 } from '@kinevo/shared/types/prescription'
 
+import type { PrescriptionConstraints } from './constraints-engine'
+
+import { EXERCISE_FUNCTION_ORDER } from '@kinevo/shared/types/prescription'
+
 import {
     VOLUME_RANGES,
     FREQUENCY_STRUCTURE,
@@ -24,6 +29,7 @@ import {
     SMALL_MUSCLE_GROUPS,
     SMALL_GROUP_EXERCISE_LIMITS,
 } from './constants'
+
 
 // ============================================================================
 // Types
@@ -117,9 +123,14 @@ export function validateOutput(
     generated: PrescriptionOutputSnapshot,
     profile: StudentPrescriptionProfile,
     exerciseMap: Map<string, PrescriptionExerciseRef>,
+    constraints?: PrescriptionConstraints | null,
 ): OutputValidationResult {
     const violations: RulesViolation[] = []
     const level = profile.training_level
+
+    // Helper: filter to exercise items only (skip warmup/cardio)
+    const getExerciseItems = (items: GeneratedWorkoutItem[]) =>
+        items.filter(item => (item.item_type || 'exercise') === 'exercise')
 
     // ---- Rule: Medical restrictions ----
     const restrictedExerciseIds = new Set(
@@ -130,8 +141,8 @@ export function validateOutput(
     )
 
     for (const workout of generated.workouts) {
-        for (const item of workout.items) {
-            if (restrictedExerciseIds.has(item.exercise_id)) {
+        for (const item of getExerciseItems(workout.items)) {
+            if (item.exercise_id && restrictedExerciseIds.has(item.exercise_id)) {
                 violations.push({
                     rule_id: 'restricted_exercise',
                     description: `Exercício "${item.exercise_name}" está bloqueado por restrição médica.`,
@@ -143,7 +154,7 @@ export function validateOutput(
                     },
                 })
             }
-            if (restrictedMuscleGroups.has(item.exercise_muscle_group)) {
+            if (item.exercise_muscle_group && restrictedMuscleGroups.has(item.exercise_muscle_group)) {
                 violations.push({
                     rule_id: 'restricted_muscle_group',
                     description: `Grupo muscular "${item.exercise_muscle_group}" está restrito por condição médica.`,
@@ -151,8 +162,26 @@ export function validateOutput(
                     auto_fixed: false,
                     context: {
                         workout_index: workout.order_index,
-                        exercise_id: item.exercise_id,
+                        exercise_id: item.exercise_id ?? undefined,
                         muscle_group: item.exercise_muscle_group,
+                    },
+                })
+            }
+        }
+    }
+
+    // ---- Rule: Exercise must exist in provided pool ----
+    for (const workout of generated.workouts) {
+        for (const item of getExerciseItems(workout.items)) {
+            if (item.exercise_id && !exerciseMap.has(item.exercise_id)) {
+                violations.push({
+                    rule_id: 'exercise_not_in_pool',
+                    description: `Exercício "${item.exercise_name}" (${item.exercise_id}) não está no pool disponível.`,
+                    severity: 'error',
+                    auto_fixed: false,
+                    context: {
+                        workout_index: workout.order_index,
+                        exercise_id: item.exercise_id,
                     },
                 })
             }
@@ -161,15 +190,15 @@ export function validateOutput(
 
     // ---- Rule: At least 1 compound per workout (PRD §2.5) ----
     for (const workout of generated.workouts) {
-        const compoundsInWorkout = workout.items.filter(item => {
-            const ref = exerciseMap.get(item.exercise_id)
+        const compoundsInWorkout = getExerciseItems(workout.items).filter(item => {
+            const ref = item.exercise_id ? exerciseMap.get(item.exercise_id) : undefined
             return ref?.is_compound === true
         })
         if (compoundsInWorkout.length < PRESCRIPTION_CONSTRAINTS.min_compounds_per_day) {
             violations.push({
                 rule_id: 'missing_compound',
                 description: `Treino "${workout.name}" não tem exercício composto.`,
-                severity: 'error',
+                severity: 'warning',
                 auto_fixed: false,
                 context: {
                     workout_index: workout.order_index,
@@ -183,25 +212,29 @@ export function validateOutput(
         }
     }
 
-    // ---- Rule: Volume per PRIMARY muscle group within level range (PRD §2.2) ----
-    // Volume ranges apply ONLY to primary groups. Small groups are limited by exercise count.
-    const weeklyVolume = computeWeeklyVolumePerMuscle(generated.workouts)
-    const range = VOLUME_RANGES[level]
+    // ---- Rule: Volume per PRIMARY muscle group within budget (PRD §2.2) ----
+    // When constraints are provided, use the per-group volume_budget (post-cap).
+    // Otherwise fall back to the fixed VOLUME_RANGES by level.
+    const weeklyVolume = computeWeeklyVolumePerMuscle(generated.workouts, exerciseMap)
+    const fallbackRange = VOLUME_RANGES[level]
 
     for (const [muscleGroup, totalSets] of Object.entries(weeklyVolume)) {
         // Only enforce volume caps on primary muscle groups
         if (!PRIMARY_MUSCLE_GROUPS.includes(muscleGroup)) continue
 
-        if (totalSets > range.max) {
+        const groupBudget = constraints?.volume_budget?.[muscleGroup]
+        const effectiveMax = groupBudget?.max ?? fallbackRange.max
+
+        if (totalSets > effectiveMax) {
             violations.push({
                 rule_id: 'volume_exceeds_max',
-                description: `Volume semanal de "${muscleGroup}" (${totalSets} séries) excede o máximo de ${range.max} para nível ${level}.`,
-                severity: 'error',
+                description: `Volume semanal de "${muscleGroup}" (${totalSets} séries) excede o máximo de ${effectiveMax}${groupBudget ? ' (budget)' : ` para nível ${level}`}.`,
+                severity: level === 'advanced' ? 'warning' : 'error',
                 auto_fixed: false,
                 context: {
                     muscle_group: muscleGroup,
                     actual_value: totalSets,
-                    expected_range: { min: range.min, max: range.max },
+                    expected_range: { min: groupBudget?.min ?? fallbackRange.min, max: effectiveMax },
                 },
             })
         }
@@ -215,8 +248,8 @@ export function validateOutput(
         const sessionSmallGroupCount: Record<string, number> = {}
         const freq = Math.max(1, workout.scheduled_days.length)
 
-        for (const item of workout.items) {
-            const group = item.exercise_muscle_group
+        for (const item of getExerciseItems(workout.items)) {
+            const group = item.exercise_muscle_group || ''
             if (SMALL_MUSCLE_GROUPS.includes(group)) {
                 sessionSmallGroupCount[group] = (sessionSmallGroupCount[group] || 0) + 1
                 weeklySmallGroupCount[group] = (weeklySmallGroupCount[group] || 0) + freq
@@ -261,18 +294,18 @@ export function validateOutput(
 
     // ---- Rule: Minimum rest for compound exercises (PRD §2.5) ----
     for (const workout of generated.workouts) {
-        for (const item of workout.items) {
-            const ref = exerciseMap.get(item.exercise_id)
-            if (ref?.is_compound && item.rest_seconds < PRESCRIPTION_CONSTRAINTS.min_rest_seconds_compound) {
+        for (const item of getExerciseItems(workout.items)) {
+            const ref = item.exercise_id ? exerciseMap.get(item.exercise_id) : undefined
+            if (ref?.is_compound && (item.rest_seconds ?? 0) < PRESCRIPTION_CONSTRAINTS.min_rest_seconds_compound) {
                 violations.push({
                     rule_id: 'rest_too_low_compound',
-                    description: `Exercício composto "${item.exercise_name}" com descanso de ${item.rest_seconds}s (mínimo ${PRESCRIPTION_CONSTRAINTS.min_rest_seconds_compound}s).`,
+                    description: `Exercício composto "${item.exercise_name}" com descanso de ${item.rest_seconds ?? 0}s (mínimo ${PRESCRIPTION_CONSTRAINTS.min_rest_seconds_compound}s).`,
                     severity: 'warning',
                     auto_fixed: false,
                     context: {
                         workout_index: workout.order_index,
-                        exercise_id: item.exercise_id,
-                        actual_value: item.rest_seconds,
+                        exercise_id: item.exercise_id ?? undefined,
+                        actual_value: item.rest_seconds ?? undefined,
                         expected_range: {
                             min: PRESCRIPTION_CONSTRAINTS.min_rest_seconds_compound,
                             max: 300,
@@ -280,6 +313,161 @@ export function validateOutput(
                     },
                 })
             }
+        }
+    }
+
+    // ---- Rule 8: Scheduled days match available days ----
+    for (const workout of generated.workouts) {
+        for (const day of workout.scheduled_days) {
+            if (!profile.available_days.includes(day)) {
+                violations.push({
+                    rule_id: 'scheduled_days_mismatch',
+                    description: `Treino "${workout.name}" agendado para dia ${day}, que não está nos dias disponíveis [${profile.available_days.join(',')}].`,
+                    severity: 'warning',
+                    auto_fixed: false,
+                    context: {
+                        workout_index: workout.order_index,
+                    },
+                })
+            }
+        }
+    }
+
+    // ---- Rule 9: No duplicate exercises across program ----
+    const seenExercises = new Map<string, string>() // exerciseId → workoutName
+    for (const workout of generated.workouts) {
+        for (const item of getExerciseItems(workout.items)) {
+            if (item.exercise_id && seenExercises.has(item.exercise_id)) {
+                violations.push({
+                    rule_id: 'duplicate_exercise',
+                    description: `"${item.exercise_name}" aparece em "${seenExercises.get(item.exercise_id)}" e "${workout.name}".`,
+                    severity: 'warning',
+                    auto_fixed: false,
+                    context: {
+                        workout_index: workout.order_index,
+                        exercise_id: item.exercise_id,
+                    },
+                })
+            } else if (item.exercise_id) {
+                seenExercises.set(item.exercise_id, workout.name)
+            }
+        }
+    }
+
+    // ---- Rule 10: Movement pattern diversity per workout ----
+    for (const workout of generated.workouts) {
+        const patternCount = new Map<string, string[]>()
+        for (const item of getExerciseItems(workout.items)) {
+            const pattern = item.exercise_id ? exerciseMap.get(item.exercise_id)?.movement_pattern : undefined
+            if (!pattern || pattern === 'isolation' || pattern === 'core') continue
+            if (!patternCount.has(pattern)) patternCount.set(pattern, [])
+            patternCount.get(pattern)!.push(item.exercise_name ?? '')
+        }
+        for (const [pattern, names] of patternCount) {
+            if (names.length >= 3) {
+                violations.push({
+                    rule_id: 'duplicate_movement_pattern',
+                    description: `"${workout.name}" tem ${names.length} exercícios do padrão "${pattern}": ${names.join(', ')}.`,
+                    severity: 'warning',
+                    auto_fixed: false,
+                    context: {
+                        workout_index: workout.order_index,
+                        muscle_group: pattern,
+                    },
+                })
+            }
+        }
+    }
+
+    // ---- Rule 11: Exercise function ordering ----
+    for (const workout of generated.workouts) {
+        let lastOrder = -1
+        for (const item of getExerciseItems(workout.items)) {
+            const fn = (item.exercise_function || 'accessory') as ExerciseFunction
+            const currentOrder = EXERCISE_FUNCTION_ORDER[fn] ?? 3
+            if (currentOrder < lastOrder) {
+                violations.push({
+                    rule_id: 'function_ordering',
+                    description: `"${workout.name}": "${item.exercise_name}" (${fn}) está depois de um exercício de ordem superior.`,
+                    severity: 'warning',
+                    auto_fixed: false,
+                    context: {
+                        workout_index: workout.order_index,
+                        exercise_id: item.exercise_id ?? undefined,
+                    },
+                })
+                break // 1 violation per workout is sufficient
+            }
+            lastOrder = currentOrder
+        }
+    }
+
+    // ---- Rule 12: Session duration estimate ----
+    const SETUP_TIME_PER_EXERCISE = 1.5 // minutes to switch exercises
+    const AVG_REP_DURATION = 4 // seconds per rep (average)
+    for (const workout of generated.workouts) {
+        let totalMinutes = 0
+        for (const item of workout.items) {
+            const itemType = item.item_type || 'exercise'
+            if (itemType === 'warmup') {
+                // Estimate warmup duration from item_config
+                totalMinutes += (item.item_config as any)?.duration_minutes ?? 5
+                continue
+            }
+            if (itemType === 'cardio') {
+                // Estimate cardio duration from item_config
+                const cfg = item.item_config as any
+                if (cfg?.mode === 'interval' && cfg?.intervals) {
+                    const { work_seconds = 30, rest_seconds: restSec = 15, rounds = 8 } = cfg.intervals
+                    totalMinutes += ((work_seconds * rounds) + (restSec * (rounds - 1))) / 60
+                } else {
+                    totalMinutes += cfg?.duration_minutes ?? 15
+                }
+                continue
+            }
+            const reps = parseInt(item.reps || '10') || 10
+            const repTime = ((item.sets ?? 0) * reps * AVG_REP_DURATION) / 60
+            const restTime = ((item.sets ?? 0) * (item.rest_seconds ?? 60)) / 60
+            totalMinutes += repTime + restTime + SETUP_TIME_PER_EXERCISE
+        }
+        if (totalMinutes > profile.session_duration_minutes * 1.2) {
+            violations.push({
+                rule_id: 'session_duration_exceeded',
+                description: `"${workout.name}" estimado em ${Math.round(totalMinutes)}min (limite: ${profile.session_duration_minutes}min).`,
+                severity: 'warning',
+                auto_fixed: false,
+                context: {
+                    workout_index: workout.order_index,
+                    actual_value: Math.round(totalMinutes),
+                    expected_range: { min: 0, max: profile.session_duration_minutes },
+                },
+            })
+        }
+    }
+
+    // ---- Rule 13: Volume below minimum for primary groups ----
+    // Reuse weeklyVolume from computeWeeklyVolumePerMuscle() (same source as Rule 4)
+    // to ensure consistent counting with frequency multiplication and secondary contributions.
+    for (const group of PRIMARY_MUSCLE_GROUPS) {
+        const totalSets = weeklyVolume[group] || 0
+        if (totalSets === 0) continue
+
+        const groupBudget = constraints?.volume_budget?.[group]
+        const effectiveMin = groupBudget?.min ?? fallbackRange.min
+        const effectiveMax = groupBudget?.max ?? fallbackRange.max
+
+        if (totalSets < effectiveMin) {
+            violations.push({
+                rule_id: 'volume_below_minimum',
+                description: `"${group}" com ${totalSets} séries/semana — mínimo é ${effectiveMin}${groupBudget ? ' (budget)' : ` para nível ${level}`}.`,
+                severity: 'warning',
+                auto_fixed: false,
+                context: {
+                    muscle_group: group,
+                    actual_value: totalSets,
+                    expected_range: { min: effectiveMin, max: effectiveMax },
+                },
+            })
         }
     }
 
@@ -312,8 +500,9 @@ export function fixViolations(
         let wasFixed = false
 
         switch (violation.rule_id) {
+            case 'exercise_not_in_pool':
             case 'restricted_exercise': {
-                // Remove the restricted exercise from the workout
+                // Remove the exercise from the workout
                 const wi = violation.context.workout_index
                 const eid = violation.context.exercise_id
                 if (wi !== undefined && eid) {
@@ -333,7 +522,7 @@ export function fixViolations(
                 const mg = violation.context.muscle_group
                 const expectedMax = violation.context.expected_range?.max
                 if (mg && expectedMax) {
-                    reduceVolumeForMuscleGroup(fixed.workouts, mg, expectedMax)
+                    reduceVolumeForMuscleGroup(fixed.workouts, mg, expectedMax, exerciseMap)
                     wasFixed = true
                 }
                 break
@@ -354,6 +543,39 @@ export function fixViolations(
                 break
             }
 
+            case 'duplicate_exercise': {
+                // Remove the second occurrence of the duplicate exercise
+                const wi = violation.context.workout_index
+                const eid = violation.context.exercise_id
+                if (wi !== undefined && eid) {
+                    const workout = findWorkoutByIndex(fixed.workouts, wi)
+                    if (workout) {
+                        workout.items = workout.items.filter(item => item.exercise_id !== eid)
+                        workout.items.forEach((item, i) => { item.order_index = i })
+                        wasFixed = true
+                    }
+                }
+                break
+            }
+
+            case 'function_ordering': {
+                // Reorder items by exercise_function order
+                const wi = violation.context.workout_index
+                if (wi !== undefined) {
+                    const workout = findWorkoutByIndex(fixed.workouts, wi)
+                    if (workout) {
+                        workout.items.sort((a, b) => {
+                            const orderA = EXERCISE_FUNCTION_ORDER[(a.exercise_function || 'accessory') as ExerciseFunction] ?? 3
+                            const orderB = EXERCISE_FUNCTION_ORDER[(b.exercise_function || 'accessory') as ExerciseFunction] ?? 3
+                            return orderA - orderB
+                        })
+                        workout.items.forEach((item, i) => { item.order_index = i })
+                        wasFixed = true
+                    }
+                }
+                break
+            }
+
             default:
                 break
         }
@@ -366,6 +588,13 @@ export function fixViolations(
     }
 
     return { fixed, appliedFixes, remainingViolations }
+}
+
+/**
+ * Finds a workout by its order_index (robust lookup instead of direct array access).
+ */
+function findWorkoutByIndex(workouts: GeneratedWorkout[], orderIndex: number): GeneratedWorkout | undefined {
+    return workouts.find(w => w.order_index === orderIndex) ?? workouts[orderIndex]
 }
 
 // ============================================================================
@@ -413,21 +642,30 @@ export function resolveAiMode(
 /**
  * Computes total weekly sets per muscle group across all workouts.
  * Accounts for workout frequency (scheduled_days.length).
+ * When exerciseMap is provided, also counts secondary muscle group volume
+ * for compound exercises using the contribution matrix.
  */
 export function computeWeeklyVolumePerMuscle(
     workouts: GeneratedWorkout[],
+    exerciseMap?: Map<string, PrescriptionExerciseRef>,
 ): Record<string, number> {
     const volume: Record<string, number> = {}
 
     for (const workout of workouts) {
-        // Frequency: how many times per week this workout is done
         const frequency = Math.max(1, workout.scheduled_days.length)
 
         for (const item of workout.items) {
-            const group = item.exercise_muscle_group
-            if (!group) continue
-            const weeklySets = item.sets * frequency
-            volume[group] = (volume[group] || 0) + weeklySets
+            // Skip warmup/cardio items — they don't contribute to muscle volume
+            if ((item.item_type || 'exercise') !== 'exercise') continue
+            const weeklySets = (item.sets ?? 0) * frequency
+            const ref = item.exercise_id ? exerciseMap?.get(item.exercise_id) : undefined
+            const groups = ref?.muscle_group_names
+                ?? (item.exercise_muscle_group ? [item.exercise_muscle_group] : [])
+
+            for (const group of groups) {
+                if (!PRIMARY_MUSCLE_GROUPS.includes(group) && !SMALL_MUSCLE_GROUPS.includes(group)) continue
+                volume[group] = (volume[group] || 0) + weeklySets
+            }
         }
     }
 
@@ -442,34 +680,48 @@ function reduceVolumeForMuscleGroup(
     workouts: GeneratedWorkout[],
     muscleGroup: string,
     maxSets: number,
+    exerciseMap?: Map<string, PrescriptionExerciseRef>,
 ): void {
-    // Collect all items for this muscle group with their workout frequency
-    const entries: { workout: GeneratedWorkout; item: GeneratedWorkoutItem; frequency: number }[] = []
+    // Collect all exercises that train this muscle group
+    const entries: {
+        workout: GeneratedWorkout
+        item: GeneratedWorkoutItem
+        frequency: number
+        isCompound: boolean
+    }[] = []
+
     for (const workout of workouts) {
         const frequency = Math.max(1, workout.scheduled_days.length)
         for (const item of workout.items) {
-            if (item.exercise_muscle_group === muscleGroup) {
-                entries.push({ workout, item, frequency })
+            if (!item.exercise_id || item.sets == null) continue
+            const ref = exerciseMap?.get(item.exercise_id)
+            const groups = ref?.muscle_group_names ?? [item.exercise_muscle_group ?? '']
+            if (groups.includes(muscleGroup)) {
+                entries.push({ workout, item, frequency, isCompound: ref?.is_compound ?? false })
             }
         }
     }
 
-    // Sort by sets descending (reduce the biggest contributors first)
-    entries.sort((a, b) => b.item.sets - a.item.sets)
+    // Reduce isolations first, then compounds. Biggest contributors first.
+    entries.sort((a, b) => {
+        const aPriority = a.isCompound ? 1 : 0
+        if (aPriority !== (b.isCompound ? 1 : 0)) return aPriority - (b.isCompound ? 1 : 0)
+        return ((b.item.sets ?? 0) * b.frequency) - ((a.item.sets ?? 0) * a.frequency)
+    })
 
     let currentTotal = entries.reduce(
-        (sum, e) => sum + e.item.sets * e.frequency, 0,
+        (sum, e) => sum + (e.item.sets ?? 0) * e.frequency, 0,
     )
 
     for (const entry of entries) {
         if (currentTotal <= maxSets) break
         const excess = currentTotal - maxSets
         const canReduce = Math.min(
-            entry.item.sets - 1, // Never reduce below 1 set
+            (entry.item.sets ?? 0) - 1,
             Math.ceil(excess / entry.frequency),
         )
         if (canReduce > 0) {
-            entry.item.sets -= canReduce
+            entry.item.sets = (entry.item.sets ?? 0) - canReduce
             currentTotal -= canReduce * entry.frequency
         }
     }
