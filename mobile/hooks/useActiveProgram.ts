@@ -56,14 +56,41 @@ export function useActiveProgram() {
     // Keep programId in ref for fetchRange
     const programIdRef = useRef<string | null>(null);
 
+    /**
+     * Merge fetched sessions into the cache for a specific date range.
+     * Clears all date keys within [start, end] first (so deleted/edited
+     * sessions are reflected), then inserts fresh data.
+     */
+    const mergeSessionsForRange = useCallback((sessions: WorkoutSession[], start: Date, end: Date) => {
+        setSessionsMap((prev) => {
+            const merged = new Map(prev);
+
+            // Clear every date key inside the fetched range
+            const cursor = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+            const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+            while (cursor <= endDay) {
+                merged.delete(toDateKey(cursor));
+                cursor.setDate(cursor.getDate() + 1);
+            }
+
+            // Insert fresh sessions
+            for (const s of sessions) {
+                const key = toDateKey(new Date(s.completed_at ?? s.started_at));
+                const arr = merged.get(key) || [];
+                arr.push(s);
+                merged.set(key, arr);
+            }
+
+            return merged;
+        });
+    }, []);
+
     // Fetch sessions for an arbitrary date range and merge into cache
     const fetchRange = useCallback(async (start: Date, end: Date) => {
         const pid = programIdRef.current;
         if (!pid) return;
 
         try {
-            // Fetch sessions where started_at OR completed_at falls within the range
-            // This catches sessions started in a previous period but completed in this one
             const rangeStart = start.toISOString();
             const rangeEnd = end.toISOString();
             const { data: sessionsData, error: sessionsError }: { data: any; error: any } = await supabase
@@ -78,27 +105,11 @@ export function useActiveProgram() {
                 return;
             }
 
-            const sessions: WorkoutSession[] = sessionsData || [];
-
-            setSessionsMap((prev) => {
-                const next = new Map(prev);
-                // Index new sessions by date key (use completed_at when available)
-                for (const s of sessions) {
-                    const key = toDateKey(new Date(s.completed_at ?? s.started_at));
-                    const existing = next.get(key) || [];
-                    // Avoid duplicates by id
-                    const ids = new Set(existing.map(e => e.id));
-                    if (!ids.has(s.id)) {
-                        existing.push(s);
-                    }
-                    next.set(key, existing);
-                }
-                return next;
-            });
+            mergeSessionsForRange(sessionsData || [], start, end);
         } catch (err) {
             if (__DEV__) console.error("[useActiveProgram] fetchRange exception:", err);
         }
-    }, []);
+    }, [mergeSessionsForRange]);
 
     const fetchActiveProgram = useCallback(async () => {
         if (!user) return;
@@ -178,15 +189,8 @@ export function useActiveProgram() {
 
                 const sessions: WorkoutSession[] = sessionsData || [];
 
-                // Populate sessions cache
-                const newMap = new Map<string, WorkoutSession[]>();
-                for (const s of sessions) {
-                    const key = toDateKey(new Date(s.completed_at ?? s.started_at));
-                    const arr = newMap.get(key) || [];
-                    arr.push(s);
-                    newMap.set(key, arr);
-                }
-                setSessionsMap(newMap);
+                // Merge current-week sessions into cache (preserves past weeks)
+                mergeSessionsForRange(sessions, weekRange.start, weekRange.end);
 
                 // Calculate weekly progress with pending workouts
                 const weeklyProgressData = calculateWeeklyProgress(
@@ -216,7 +220,7 @@ export function useActiveProgram() {
         } finally {
             setIsLoading(false);
         }
-    }, [user]);
+    }, [user, mergeSessionsForRange]);
 
     // Listen for workout-completed events (fired by Watch finish handler in _layout.tsx)
     useEffect(() => {

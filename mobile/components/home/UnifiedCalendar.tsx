@@ -236,14 +236,18 @@ export function UnifiedCalendar({
                 const newAnchor = shiftWeek(anchorDate, -1);
                 setAnchorDate(newAnchor);
                 onWeekChange?.(getWeekRange(newAnchor).start);
-                const prevRange = getWeekRange(shiftWeek(newAnchor, -1));
-                fetchRange?.(prevRange.start, prevRange.end);
+                // Fetch visible week + adjacent week (pre-buffer) in one range
+                const bufferStart = getWeekRange(shiftWeek(newAnchor, -1)).start;
+                const visibleEnd = getWeekRange(newAnchor).end;
+                fetchRange?.(bufferStart, visibleEnd);
             } else if (page === 2) {
                 const newAnchor = shiftWeek(anchorDate, 1);
                 setAnchorDate(newAnchor);
                 onWeekChange?.(getWeekRange(newAnchor).start);
-                const nextRange = getWeekRange(shiftWeek(newAnchor, 1));
-                fetchRange?.(nextRange.start, nextRange.end);
+                // Fetch visible week + adjacent week (pre-buffer) in one range
+                const visibleStart = getWeekRange(newAnchor).start;
+                const bufferEnd = getWeekRange(shiftWeek(newAnchor, 1)).end;
+                fetchRange?.(visibleStart, bufferEnd);
             }
 
             setTimeout(() => {

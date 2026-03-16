@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useMemo } from 'react'
-import { PlayCircle, Plus, Search, X } from 'lucide-react'
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
+import { ChevronLeft, ChevronRight, PlayCircle, Plus, Search, X } from 'lucide-react'
 import { FloatingExercisePlayer } from '@/components/exercises/floating-exercise-player'
 import { ExerciseFormModal } from '@/components/exercises/exercise-form-modal'
 
@@ -17,6 +17,72 @@ function splitExerciseName(name: string): [string, string?] {
     if (parenMatch) return [parenMatch[1], parenMatch[2]]
 
     return [name]
+}
+
+function ScrollableChips({ children }: { children: React.ReactNode }) {
+    const scrollRef = useRef<HTMLDivElement>(null)
+    const [showLeft, setShowLeft] = useState(false)
+    const [showRight, setShowRight] = useState(false)
+
+    const checkArrows = useCallback(() => {
+        const el = scrollRef.current
+        if (!el) return
+        setShowLeft(el.scrollLeft > 0)
+        setShowRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 1)
+    }, [])
+
+    useEffect(() => {
+        checkArrows()
+        const el = scrollRef.current
+        if (!el) return
+        el.addEventListener('scroll', checkArrows, { passive: true })
+        const observer = new ResizeObserver(checkArrows)
+        observer.observe(el)
+        return () => {
+            el.removeEventListener('scroll', checkArrows)
+            observer.disconnect()
+        }
+    }, [checkArrows, children])
+
+    const scroll = (direction: 'left' | 'right') => {
+        scrollRef.current?.scrollBy({ left: direction === 'left' ? -150 : 150, behavior: 'smooth' })
+    }
+
+    return (
+        <div className="relative px-3 pb-2">
+            {showLeft && (
+                <button
+                    onClick={() => scroll('left')}
+                    className="absolute left-1 top-0 z-10 h-[26px] flex items-center pl-0.5 pr-1 bg-gradient-to-r from-white via-white/90 to-transparent dark:from-surface-primary dark:via-surface-primary/90"
+                >
+                    <ChevronLeft className="w-3.5 h-3.5 text-[#8E8E93] dark:text-k-text-quaternary" />
+                </button>
+            )}
+
+            <div
+                ref={scrollRef}
+                onWheel={(e) => {
+                    if (scrollRef.current && e.deltaY !== 0) {
+                        e.preventDefault()
+                        scrollRef.current.scrollLeft += e.deltaY
+                    }
+                }}
+                className="flex gap-1 overflow-x-auto pb-0.5"
+                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            >
+                {children}
+            </div>
+
+            {showRight && (
+                <button
+                    onClick={() => scroll('right')}
+                    className="absolute right-1 top-0 z-10 h-[26px] flex items-center pr-0.5 pl-1 bg-gradient-to-l from-white via-white/90 to-transparent dark:from-surface-primary dark:via-surface-primary/90"
+                >
+                    <ChevronRight className="w-3.5 h-3.5 text-[#8E8E93] dark:text-k-text-quaternary" />
+                </button>
+            )}
+        </div>
+    )
 }
 
 interface ExerciseLibraryPanelProps {
@@ -106,35 +172,33 @@ export function ExerciseLibraryPanel({
                     </div>
                 </div>
 
-                {/* Scrollable filter pills */}
+                {/* Scrollable filter pills with arrow navigation */}
                 {muscleGroups.length > 0 && (
-                    <div className="px-3 pb-2">
-                        <div className="flex gap-1 overflow-x-auto no-scrollbar pb-0.5">
+                    <ScrollableChips>
+                        <button
+                            onClick={() => setSelectedGroup(null)}
+                            className={`px-3 py-1 rounded-full text-[10px] font-bold whitespace-nowrap transition-colors shrink-0 ${
+                                !selectedGroup
+                                    ? 'bg-[#007AFF] dark:bg-violet-600 text-white'
+                                    : 'bg-[#F5F5F7] dark:bg-glass-bg text-[#6E6E73] dark:text-k-text-tertiary hover:text-[#1D1D1F] dark:hover:text-k-text-secondary'
+                            }`}
+                        >
+                            Todos
+                        </button>
+                        {muscleGroups.map(group => (
                             <button
-                                onClick={() => setSelectedGroup(null)}
+                                key={group}
+                                onClick={() => setSelectedGroup(prev => prev === group ? null : group)}
                                 className={`px-3 py-1 rounded-full text-[10px] font-bold whitespace-nowrap transition-colors shrink-0 ${
-                                    !selectedGroup
+                                    selectedGroup === group
                                         ? 'bg-[#007AFF] dark:bg-violet-600 text-white'
                                         : 'bg-[#F5F5F7] dark:bg-glass-bg text-[#6E6E73] dark:text-k-text-tertiary hover:text-[#1D1D1F] dark:hover:text-k-text-secondary'
                                 }`}
                             >
-                                Todos
+                                {group}
                             </button>
-                            {muscleGroups.map(group => (
-                                <button
-                                    key={group}
-                                    onClick={() => setSelectedGroup(prev => prev === group ? null : group)}
-                                    className={`px-3 py-1 rounded-full text-[10px] font-bold whitespace-nowrap transition-colors shrink-0 ${
-                                        selectedGroup === group
-                                            ? 'bg-[#007AFF] dark:bg-violet-600 text-white'
-                                            : 'bg-[#F5F5F7] dark:bg-glass-bg text-[#6E6E73] dark:text-k-text-tertiary hover:text-[#1D1D1F] dark:hover:text-k-text-secondary'
-                                    }`}
-                                >
-                                    {group}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
+                        ))}
+                    </ScrollableChips>
                 )}
 
                 {/* Result count */}
