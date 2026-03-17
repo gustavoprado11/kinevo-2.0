@@ -103,6 +103,33 @@ export function PrescriptionRationalePanel({ reasoning }: PrescriptionRationaleP
                         </Section>
                     )}
 
+                    {/* Exercise Choices */}
+                    {reasoning.exercise_choices && (
+                        <Section title="🏋️ Escolha de Exercícios">
+                            <p className="text-sm text-k-text-secondary leading-relaxed">
+                                {reasoning.exercise_choices}
+                            </p>
+                        </Section>
+                    )}
+
+                    {/* Form Data Used */}
+                    {reasoning.form_data_used && reasoning.form_data_used !== 'Sem formulários respondidos' && (
+                        <Section title="📝 Dados do Aluno">
+                            <p className="text-sm text-k-text-secondary leading-relaxed">
+                                {reasoning.form_data_used}
+                            </p>
+                        </Section>
+                    )}
+
+                    {/* Adaptations */}
+                    {reasoning.adaptations && reasoning.adaptations !== 'Primeiro programa — sem dados de performance' && (
+                        <Section title="⚙️ Adaptações">
+                            <p className="text-sm text-k-text-secondary leading-relaxed">
+                                {reasoning.adaptations}
+                            </p>
+                        </Section>
+                    )}
+
                     {/* Workout Notes — grid of mini-rows */}
                     {reasoning.workout_notes.length > 0 && (
                         <Section title="📋 Detalhes por sessão">

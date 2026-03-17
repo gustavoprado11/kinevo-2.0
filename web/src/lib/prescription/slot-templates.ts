@@ -53,11 +53,30 @@ const PUSH_SLOTS: WorkoutSlot[] = [
     { movement_pattern: 'isolation', target_group: 'Tríceps', function: 'accessory', min_sets: 2, max_sets: 3, priority: 6, optional: true, prefer_compound: false },
 ]
 
+// ALT: vertical push first, horizontal second, tríceps higher priority
+const PUSH_SLOTS_ALT: WorkoutSlot[] = [
+    { movement_pattern: 'push_vertical', target_group: 'Ombros', function: 'main', min_sets: 3, max_sets: 4, priority: 1, optional: false, prefer_compound: true },
+    { movement_pattern: 'push_horizontal', target_group: 'Peito', function: 'main', min_sets: 3, max_sets: 4, priority: 2, optional: false, prefer_compound: true },
+    { movement_pattern: 'isolation', target_group: 'Tríceps', function: 'accessory', min_sets: 2, max_sets: 3, priority: 3, optional: false, prefer_compound: false },
+    { movement_pattern: ['push_horizontal', 'isolation'], target_group: 'Peito', function: 'accessory', min_sets: 2, max_sets: 3, priority: 4, optional: true, prefer_compound: false },
+    { movement_pattern: 'isolation', target_group: 'Ombros', function: 'accessory', min_sets: 2, max_sets: 3, priority: 5, optional: true, prefer_compound: false },
+    { movement_pattern: 'isolation', target_group: 'Tríceps', function: 'accessory', min_sets: 2, max_sets: 3, priority: 6, optional: true, prefer_compound: false },
+]
+
 const PULL_SLOTS: WorkoutSlot[] = [
     { movement_pattern: 'pull_vertical', target_group: 'Costas', function: 'main', min_sets: 3, max_sets: 4, priority: 1, optional: false, prefer_compound: true },
     { movement_pattern: 'pull_horizontal', target_group: 'Costas', function: 'main', min_sets: 3, max_sets: 4, priority: 2, optional: false, prefer_compound: true },
     { movement_pattern: ['pull_horizontal', 'pull_vertical'], target_group: 'Costas', function: 'accessory', min_sets: 2, max_sets: 3, priority: 3, optional: true, prefer_compound: false },
     { movement_pattern: 'isolation', target_group: 'Bíceps', function: 'accessory', min_sets: 2, max_sets: 3, priority: 4, optional: true, prefer_compound: false },
+    { movement_pattern: 'isolation', target_group: 'Trapézio', function: 'accessory', min_sets: 2, max_sets: 3, priority: 5, optional: true, prefer_compound: false },
+]
+
+// ALT: horizontal pull first, vertical second
+const PULL_SLOTS_ALT: WorkoutSlot[] = [
+    { movement_pattern: 'pull_horizontal', target_group: 'Costas', function: 'main', min_sets: 3, max_sets: 4, priority: 1, optional: false, prefer_compound: true },
+    { movement_pattern: 'pull_vertical', target_group: 'Costas', function: 'main', min_sets: 3, max_sets: 4, priority: 2, optional: false, prefer_compound: true },
+    { movement_pattern: 'isolation', target_group: 'Bíceps', function: 'accessory', min_sets: 2, max_sets: 3, priority: 3, optional: true, prefer_compound: false },
+    { movement_pattern: ['pull_horizontal', 'pull_vertical'], target_group: 'Costas', function: 'accessory', min_sets: 2, max_sets: 3, priority: 4, optional: true, prefer_compound: false },
     { movement_pattern: 'isolation', target_group: 'Trapézio', function: 'accessory', min_sets: 2, max_sets: 3, priority: 5, optional: true, prefer_compound: false },
 ]
 
@@ -86,6 +105,17 @@ const UPPER_SLOTS: WorkoutSlot[] = [
     { movement_pattern: 'pull_vertical', target_group: 'Costas', function: 'accessory', min_sets: 2, max_sets: 3, priority: 4, optional: true, prefer_compound: false },
     { movement_pattern: 'isolation', target_group: 'Bíceps', function: 'accessory', min_sets: 2, max_sets: 3, priority: 5, optional: true, prefer_compound: false },
     { movement_pattern: 'isolation', target_group: 'Tríceps', function: 'accessory', min_sets: 2, max_sets: 3, priority: 6, optional: true, prefer_compound: false },
+    { movement_pattern: 'isolation', target_group: 'Trapézio', function: 'accessory', min_sets: 2, max_sets: 3, priority: 7, optional: true, prefer_compound: false },
+]
+
+// ALT: pull before push, vertical pull promoted to main
+const UPPER_SLOTS_ALT: WorkoutSlot[] = [
+    { movement_pattern: 'pull_vertical', target_group: 'Costas', function: 'main', min_sets: 3, max_sets: 4, priority: 1, optional: false, prefer_compound: true },
+    { movement_pattern: 'push_vertical', target_group: 'Ombros', function: 'main', min_sets: 3, max_sets: 4, priority: 2, optional: false, prefer_compound: true },
+    { movement_pattern: 'pull_horizontal', target_group: 'Costas', function: 'main', min_sets: 3, max_sets: 4, priority: 3, optional: false, prefer_compound: true },
+    { movement_pattern: 'push_horizontal', target_group: 'Peito', function: 'accessory', min_sets: 2, max_sets: 3, priority: 4, optional: true, prefer_compound: true },
+    { movement_pattern: 'isolation', target_group: 'Tríceps', function: 'accessory', min_sets: 2, max_sets: 3, priority: 5, optional: true, prefer_compound: false },
+    { movement_pattern: 'isolation', target_group: 'Bíceps', function: 'accessory', min_sets: 2, max_sets: 3, priority: 6, optional: true, prefer_compound: false },
     { movement_pattern: 'isolation', target_group: 'Trapézio', function: 'accessory', min_sets: 2, max_sets: 3, priority: 7, optional: true, prefer_compound: false },
 ]
 
@@ -129,22 +159,22 @@ export const SLOT_TEMPLATES: Record<string, Record<string, WorkoutSlot[]>> = {
     upper_lower: {
         'Upper A': UPPER_SLOTS,
         'Lower A': LEGS_A_SLOTS,
-        'Upper B': UPPER_SLOTS,
+        'Upper B': UPPER_SLOTS_ALT,
         'Lower B': LEGS_B_SLOTS,
     },
     ppl_plus: {
         'Push': PUSH_SLOTS,
         'Pull': PULL_SLOTS,
         'Legs A': LEGS_A_SLOTS,
-        'Upper': UPPER_SLOTS,
+        'Upper': UPPER_SLOTS_ALT,
         'Legs B': LEGS_B_SLOTS,
     },
     ppl_complete: {
         'Push A': PUSH_SLOTS,
         'Pull A': PULL_SLOTS,
         'Legs A': LEGS_A_SLOTS,
-        'Push B': PUSH_SLOTS,
-        'Pull B': PULL_SLOTS,
+        'Push B': PUSH_SLOTS_ALT,
+        'Pull B': PULL_SLOTS_ALT,
         'Legs B': LEGS_B_SLOTS,
     },
 }

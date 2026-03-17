@@ -9,6 +9,7 @@ import { PrescriptionProfileForm } from '@/components/prescription/prescription-
 import { GenerationStatus } from '@/components/prescription/generation-status'
 import { AgentQuestionsPanel } from '@/components/prescription/agent-questions-panel'
 import { QuestionnairePromptCard } from '@/components/prescription/questionnaire-prompt-card'
+import { FormSubmissionsCard } from '@/components/prescription/form-submissions-card'
 import { QuestionnaireBadge } from '@/components/prescription/questionnaire-badge'
 import { PrescriptionStepper } from '@/components/prescription/prescription-stepper'
 
@@ -82,6 +83,16 @@ export function PrescribeClient({ trainer, student, prescriptionData }: Prescrib
 
     const [questionnaireDismissed, setQuestionnaireDismissed] = useState(false)
 
+    // Form submissions selection state (all pre-selected)
+    const [selectedFormIds, setSelectedFormIds] = useState<string[]>(
+        () => prescriptionData.formSubmissions.map(s => s.id),
+    )
+    const handleToggleForm = useCallback((id: string) => {
+        setSelectedFormIds(prev =>
+            prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id],
+        )
+    }, [])
+
     const handleSendQuestionnaire = useCallback(async () => {
         const result = await sendPrescriptionQuestionnaire(student.id)
         if (!result.success) {
@@ -97,7 +108,7 @@ export function PrescribeClient({ trainer, student, prescriptionData }: Prescrib
 
     // ── Execute generation (shared by both paths) ──
     const executeGeneration = useCallback(async (state: PrescriptionAgentState | null) => {
-        const result = await generateProgram(student.id, state)
+        const result = await generateProgram(student.id, state, selectedFormIds)
 
         if (!result.success || !result.generationId) {
             setError(result.error || 'Erro ao gerar programa.')
@@ -116,7 +127,7 @@ export function PrescribeClient({ trainer, student, prescriptionData }: Prescrib
         setError(null)
 
         // Phase 1: Analyze context with Claude agent
-        const analysisResult = await analyzeStudentContext(student.id)
+        const analysisResult = await analyzeStudentContext(student.id, selectedFormIds)
 
         if (!analysisResult.success) {
             setError(analysisResult.error || 'Erro na análise.')
@@ -141,7 +152,7 @@ export function PrescribeClient({ trainer, student, prescriptionData }: Prescrib
         // No questions needed — proceed to generation
         setPageState('generating')
         await executeGeneration(analysisResult.agentState || null)
-    }, [student.id, executeGeneration])
+    }, [student.id, selectedFormIds, executeGeneration])
 
     // ── Answer questions and generate ──
     const handleAnswersSubmit = useCallback(async () => {
@@ -235,6 +246,15 @@ export function PrescribeClient({ trainer, student, prescriptionData }: Prescrib
                 {/* State 1: Anamnese / Form */}
                 {pageState === 'anamnese' && (
                     <div data-onboarding="prescription-profile">
+                        {/* Form submissions selector */}
+                        {prescriptionData.formSubmissions.length > 0 && (
+                            <FormSubmissionsCard
+                                submissions={prescriptionData.formSubmissions}
+                                selectedIds={selectedFormIds}
+                                onToggle={handleToggleForm}
+                            />
+                        )}
+
                         {/* Questionnaire badge (if answered) */}
                         {questionnaireData && prescriptionData.questionnaireSubmission && (
                             <QuestionnaireBadge
@@ -244,7 +264,7 @@ export function PrescribeClient({ trainer, student, prescriptionData }: Prescrib
                         )}
 
                         {/* Questionnaire prompt card (if not answered and not dismissed) */}
-                        {!prescriptionData.questionnaireSubmission && !questionnaireDismissed && profile && (
+                        {!prescriptionData.questionnaireSubmission && !questionnaireDismissed && profile && selectedFormIds.length === 0 && (
                             <QuestionnairePromptCard
                                 studentName={student.name}
                                 onSend={handleSendQuestionnaire}
@@ -255,12 +275,14 @@ export function PrescribeClient({ trainer, student, prescriptionData }: Prescrib
                         <PrescriptionProfileForm
                             studentId={student.id}
                             existingProfile={profile}
+                            questionnaireData={questionnaireData}
                             onSaved={handleProfileSaved}
                             recentSessions={prescriptionData.recentSessions}
                             activeProgram={prescriptionData.activeProgram}
                             previousProgramCount={prescriptionData.previousProgramCount}
                             lastFormSubmissionDate={prescriptionData.lastFormSubmissionDate}
                             onGenerate={handleGenerate}
+                            compactMode={selectedFormIds.length > 0}
                         />
                     </div>
                 )}

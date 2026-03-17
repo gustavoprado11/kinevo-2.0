@@ -374,13 +374,13 @@ async function fetchPreviousExerciseIds(
     supabase: SupabaseClient,
     studentId: string,
 ): Promise<string[]> {
-    // Get last 2 program IDs
+    // Get last 5 program IDs for broader novelty scoring
     const { data: programs } = await supabase
         .from('assigned_programs')
         .select('id')
         .eq('student_id', studentId)
         .order('created_at', { ascending: false })
-        .limit(2)
+        .limit(5)
 
     if (!programs || programs.length === 0) return []
 

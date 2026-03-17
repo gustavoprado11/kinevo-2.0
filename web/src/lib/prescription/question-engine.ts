@@ -29,6 +29,7 @@ interface ConditionalQuestion {
         context: EnrichedStudentContext,
         tradeoff?: VolumeTradeoffInfo,
         questionnaire?: QuestionnaireData | null,
+        hasFormContext?: boolean,
     ) => boolean
     /** Builds the question (allows interpolation of student data) */
     build: (
@@ -188,7 +189,19 @@ export const QUESTION_POOL: ConditionalQuestion[] = [
     {
         id: 'first_program',
         priority: 5,
-        condition: (_profile, context) => {
+        condition: (_profile, context, _tradeoff, questionnaire, hasFormContext) => {
+            // Form submissions already provide rich context about the student
+            if (hasFormContext) return false
+            // If questionnaire was answered, it already covers exercise preferences,
+            // disliked exercises, training style, and previous experience
+            if (questionnaire && (
+                questionnaire.favorite_exercises_text ||
+                questionnaire.disliked_exercises_text ||
+                questionnaire.previous_experience ||
+                questionnaire.training_style_preferences.length > 0
+            )) {
+                return false
+            }
             return (
                 !context.previous_programs ||
                 context.previous_programs.length === 0
@@ -207,7 +220,13 @@ export const QUESTION_POOL: ConditionalQuestion[] = [
     {
         id: 'cardio_inclusion',
         priority: 6,
-        condition: (profile) => {
+        condition: (profile, _context, _tradeoff, questionnaire, hasFormContext) => {
+            // Form submissions already provide rich context about the student
+            if (hasFormContext) return false
+            // If questionnaire was answered, it already includes cardio/training style preference
+            if (questionnaire && questionnaire.training_style_preferences.length > 0) {
+                return false
+            }
             return profile.goal === 'weight_loss'
         },
         build: (_profile, context) => ({
@@ -228,9 +247,13 @@ export const QUESTION_POOL: ConditionalQuestion[] = [
     {
         id: 'muscle_emphasis',
         priority: 7,
-        condition: (_profile, _context, _tradeoff, questionnaire) => {
-            if (questionnaire && questionnaire.emphasized_groups.length > 0) {
-                return false // Questionnaire already provided emphasis
+        condition: (_profile, _context, _tradeoff, questionnaire, hasFormContext) => {
+            // Form submissions already provide rich context about the student
+            if (hasFormContext) return false
+            // If questionnaire was answered, the student already responded about muscle emphasis
+            // (even if they chose "equilibrado" / no emphasis — that IS the answer)
+            if (questionnaire) {
+                return false
             }
             return true // Always eligible otherwise, but only appears if slot available
         },
@@ -352,6 +375,7 @@ export function selectConditionalQuestions(
     context: EnrichedStudentContext,
     tradeoff?: VolumeTradeoffInfo,
     questionnaire?: QuestionnaireData | null,
+    hasFormContext?: boolean,
 ): PrescriptionAgentQuestion[] {
     // Build the full pool: static questions + dynamic divergence questions
     const pool = [...QUESTION_POOL]
@@ -361,7 +385,7 @@ export function selectConditionalQuestions(
     }
 
     const triggered = pool
-        .filter((q) => q.condition(profile, context, tradeoff, questionnaire))
+        .filter((q) => q.condition(profile, context, tradeoff, questionnaire, hasFormContext))
         .sort((a, b) => a.priority - b.priority)
 
     return triggered

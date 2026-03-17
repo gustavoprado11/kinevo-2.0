@@ -16,6 +16,7 @@ import type {
 
 import type { EnrichedStudentContext } from './context-enricher'
 import type { PrescriptionConstraints } from './constraints-engine'
+import type { QuestionnaireData } from './questionnaire-mapper'
 import { buildConditionInstructions } from './condition-mappings'
 
 import {
@@ -48,11 +49,72 @@ export function buildPromptPair(
     profile: StudentPrescriptionProfile,
     exercises: PrescriptionExerciseRef[],
     performanceContext: PrescriptionPerformanceContext | null,
+    studentNarrative?: string | null,
 ): PromptPair {
     return {
         system: buildSystemPrompt(),
-        user: buildUserPrompt(profile, exercises, performanceContext),
+        user: buildUserPrompt(profile, exercises, performanceContext, studentNarrative),
     }
+}
+
+/**
+ * Transforms questionnaire data into a narrative text for AI prompts.
+ * Only includes sections that have at least one filled field.
+ * Returns null if no qualitative field has a value.
+ */
+export function buildStudentNarrative(questionnaireData: QuestionnaireData | null | undefined): string | null {
+    if (!questionnaireData) return null
+
+    const sections: string[] = []
+
+    // Experiência anterior
+    if (questionnaireData.previous_experience) {
+        sections.push(`EXPERIÊNCIA ANTERIOR:\n${questionnaireData.previous_experience}`)
+    }
+
+    // Lesões e limitações
+    const injuryLines: string[] = []
+    if (questionnaireData.injury_description) {
+        injuryLines.push(`- Descrição: ${questionnaireData.injury_description}`)
+    }
+    if (questionnaireData.painful_activities.length > 0) {
+        injuryLines.push(`- Atividades dolorosas: ${questionnaireData.painful_activities.join(', ')}`)
+    }
+    if (questionnaireData.medical_followup) {
+        injuryLines.push(`- Acompanhamento médico: ${questionnaireData.medical_followup}`)
+    }
+    if (injuryLines.length > 0) {
+        sections.push(`LESÕES E LIMITAÇÕES:\n${injuryLines.join('\n')}`)
+    }
+
+    // Preferências de treino
+    const prefLines: string[] = []
+    if (questionnaireData.training_style_preferences.length > 0) {
+        prefLines.push(`- Estilo preferido: ${questionnaireData.training_style_preferences.join(', ')}`)
+    }
+    if (questionnaireData.motivation) {
+        prefLines.push(`- Motivação principal: ${questionnaireData.motivation}`)
+    }
+    if (questionnaireData.emphasized_groups.length > 0) {
+        prefLines.push(`- Grupos musculares enfatizados: ${questionnaireData.emphasized_groups.join(', ')}`)
+    }
+    if (prefLines.length > 0) {
+        sections.push(`PREFERÊNCIAS DE TREINO:\n${prefLines.join('\n')}`)
+    }
+
+    // Contexto de vida
+    if (questionnaireData.activity_level) {
+        sections.push(`CONTEXTO DE VIDA:\n- Nível de atividade fora da academia: ${questionnaireData.activity_level}`)
+    }
+
+    // Observações adicionais
+    if (questionnaireData.additional_info) {
+        sections.push(`OBSERVAÇÕES ADICIONAIS:\n${questionnaireData.additional_info}`)
+    }
+
+    if (sections.length === 0) return null
+
+    return `=== CONTEXTO DO ALUNO (questionário respondido) ===\n\n${sections.join('\n\n')}`
 }
 
 // ============================================================================
@@ -77,7 +139,17 @@ function buildSection1_Role(): string {
     return `# PAPEL
 Você é o motor de prescrição Kinevo — um sistema especializado em gerar programas de treino personalizados.
 Você NÃO é um chatbot. Retorne APENAS o JSON solicitado, sem texto, markdown ou explicações.
-Sua prescrição será revisada por um treinador credenciado antes de chegar ao aluno.`
+Sua prescrição será revisada por um treinador credenciado antes de chegar ao aluno.
+
+REGRA CRÍTICA SOBRE REASONING:
+O treinador LEVA O REASONING A SÉRIO. Ele lê para decidir se confia no programa.
+- PROIBIDO texto genérico. "Programa adequado ao nível do aluno" = LIXO. Apague e reescreva.
+- OBRIGATÓRIO nomear exercícios, citar dados dos formulários, mencionar restrições respeitadas.
+- OBRIGATÓRIO ser CURTO e DIRETO. Cada campo do reasoning tem limite de 2-3 frases.
+- Se não tem informação relevante para um campo, escreva "N/A" — não invente texto vago.
+- exercise_choices: Nomeie os compostos âncora e explique por que foram escolhidos. Se excluiu exercícios por restrição, cite quais e o motivo.
+- form_data_used: Cite respostas específicas dos formulários. Se nenhum, escreva "Nenhum".
+- adaptations: Cite dados de performance concretos (estagnação X semanas, aderência Y%). Se primeiro programa, escreva "Primeiro programa".`
 }
 
 /**
@@ -174,6 +246,11 @@ function buildSection3_Constraints(): string {
 - JAMAIS incluir exercícios listados nas restrições médicas do aluno.
 - JAMAIS incluir exercícios que o aluno marcou como "não gosto".
 - Priorizar exercícios marcados como favoritos pelo aluno.
+- Se o campo student_questionnaire_context ou contexto_aluno estiver presente, ANALISE-O CUIDADOSAMENTE buscando:
+  • Exercícios que o aluno NÃO PODE fazer (dor, lesão, desconforto, proibição médica)
+  • Exercícios que causam desconforto ou medo
+  • Restrições de equipamento ou local de treino
+  Trate exercícios mencionados como impossíveis/dolorosos com a MESMA PRIORIDADE que medical_restrictions (P1 — inviolável). JAMAIS os inclua no programa.
 
 # FUNÇÃO DO EXERCÍCIO (exercise_function)
 Cada item deve ter um exercise_function baseado em sua característica:
@@ -216,10 +293,13 @@ Retorne exatamente este JSON (sem campos extras, sem texto fora do JSON):
     }
   ],
   "reasoning": {
-    "structure_rationale": "string — justificativa da estrutura",
-    "volume_rationale": "string — justificativa do volume",
+    "structure_rationale": "string CURTA (max 2 frases). Diga: qual split foi escolhido e POR QUE para ESTE aluno. Exemplo bom: 'Upper/Lower 4x porque a aluna tem 4 dias e prefere treinos curtos (50min). Treinos A focam em compostos pesados, B em acessórios e volume.' Exemplo RUIM: 'Programa estruturado em Upper/Lower para maximizar a hipertrofia.'",
+    "volume_rationale": "string CURTA (max 2 frases). Diga: quantos sets/semana por grupo E se ajustou algo por aderência, RPE ou restrição. Exemplo bom: 'Peito 12 sets/sem (3x4), Costas 14 sets/sem (4+3+4+3). Reduzi volume de posterior porque aluna reportou desconforto no joelho.' Exemplo RUIM: 'Volume adequado ao nível intermediário seguindo as diretrizes.'",
+    "exercise_choices": "string (max 3 frases). NOMEIE os exercícios principais e diga POR QUE foram escolhidos. Se excluiu algo por restrição, diga. Exemplo bom: 'Supino reto como push horizontal principal. Substituí mesa flexora por cadeira flexora — aluna reportou desconforto. Hip thrust como acessório de glúteo por ênfase pedida pelo treinador.' Exemplo RUIM: 'Exercícios selecionados considerando o perfil e preferências da aluna.'",
+    "form_data_used": "string (max 2 frases). O QUE dos formulários influenciou o programa. Se nenhum formulário, escreva 'Nenhum'. Exemplo bom: 'Aluna informou: não pode mesa flexora (joelho), prefere treinar com halteres, academia tem Smith mas não tem barra livre.' Exemplo RUIM: 'Formulários do aluno foram considerados na prescrição.'",
+    "adaptations": "string (max 2 frases). Ajustes por performance passada, aderência ou observações. Se primeiro programa, escreva 'Primeiro programa'. Exemplo bom: 'Aderência em 55% — reduzi de 5x para 4x/semana. Supino reto estagnado há 4 semanas — troquei para supino inclinado com halteres.' Exemplo RUIM: 'Ajustes feitos com base no histórico do aluno.'",
     "workout_notes": ["string — nota por treino"],
-    "attention_flags": ["string — alertas para o treinador"],
+    "attention_flags": ["string — alertas ESPECÍFICOS para o treinador revisar. Ex: 'Aluna tem aderência de 55% — considere reduzir para 3x/semana', 'Supino reto pode ser desconfortável pelo histórico de ombro — acompanhe nas primeiras sessões'"],
     "confidence_score": number (0.0 a 1.0)
   }
 }
@@ -340,6 +420,7 @@ function buildUserPrompt(
     profile: StudentPrescriptionProfile,
     exercises: PrescriptionExerciseRef[],
     performanceContext: PrescriptionPerformanceContext | null,
+    studentNarrative?: string | null,
 ): string {
     const useCompact = process.env.ENABLE_COMPACT_EXERCISE_POOL !== 'false'
     const exercisesSummary = exercises.map(e => {
@@ -388,6 +469,14 @@ function buildUserPrompt(
             recent_avg_rpe: performanceContext.recent_avg_rpe,
             stalled_exercise_ids: performanceContext.stalled_exercise_ids,
             previous_program: performanceContext.previous_program,
+            instrucao_performance: 'Se stalled_exercise_ids > 3, priorize trocar exercícios estagnados. Se recent_adherence_rate < 70, prefira exercícios mais simples. Se recent_avg_rpe > 8.5, considere reduzir volume.',
+        }
+    }
+
+    if (studentNarrative) {
+        payload.student_questionnaire_context = {
+            instrucao: 'LEITURA OBRIGATÓRIA. Respostas do aluno. Se o aluno mencionou que NÃO PODE fazer um exercício ou sente dor/desconforto, JAMAIS inclua esse exercício no programa. Trate como restrição de segurança absoluta.',
+            respostas: studentNarrative,
         }
     }
 
@@ -531,6 +620,9 @@ export function parseAiResponse(rawJson: string): PrescriptionOutputSnapshot | n
             confidence_score: typeof parsed.reasoning.confidence_score === 'number'
                 ? Math.max(0, Math.min(1, parsed.reasoning.confidence_score))
                 : 0.5,
+            exercise_choices: typeof parsed.reasoning.exercise_choices === 'string' ? parsed.reasoning.exercise_choices : '',
+            form_data_used: typeof parsed.reasoning.form_data_used === 'string' ? parsed.reasoning.form_data_used : '',
+            adaptations: typeof parsed.reasoning.adaptations === 'string' ? parsed.reasoning.adaptations : '',
         },
     }
 
@@ -683,7 +775,7 @@ Siga estas 9 regras em TODAS as decisões de prescrição, na ordem apresentada.
 
 ### DF-1. HIERARQUIA DE PRIORIDADES
 Ao tomar qualquer decisão, respeite esta ordem estrita:
-  P1 (inviolável): Segurança articular / condição clínica
+  P1 (inviolável): Segurança articular / condição clínica / restrições de exercício mencionadas pelo aluno nos formulários
   P2: Objetivo primário do ciclo
   P3: Aderência (programa viável > programa ótimo)
   P4: Preferências do aluno (favoritos, aversões)
@@ -1016,6 +1108,7 @@ export function buildAgentContextMessage(
     _exercises: PrescriptionExerciseRef[],
     enrichedContext: EnrichedStudentContext,
     serverQuestions?: PrescriptionAgentQuestion[],
+    studentNarrative?: string | null,
 ): string {
     // Analysis phase: NO exercise list — agent doesn't need exercises to formulate questions
     const payload = {
@@ -1070,6 +1163,36 @@ export function buildAgentContextMessage(
         }
     }
 
+    // Performance data from load progression
+    const stalledExercises = enrichedContext.load_progression
+        .filter(l => l.trend === 'stalled' || l.weeks_at_current >= 3)
+    const regressingExercises = enrichedContext.load_progression
+        .filter(l => l.trend === 'regressing')
+
+    if (stalledExercises.length > 0 || regressingExercises.length > 0) {
+        payload.performance_aluno = {
+            instrucao: 'Dados de performance do aluno. Exercícios estagnados devem ser substituídos por variações. Exercícios em regressão precisam de atenção — considere reduzir carga ou trocar.',
+            exercicios_estagnados: stalledExercises.map(l => ({
+                nome: l.exercise_name,
+                semanas_estagnado: l.weeks_at_current,
+            })),
+            exercicios_regredindo: regressingExercises.map(l => l.exercise_name),
+        }
+    }
+
+    if (studentNarrative) {
+        payload.contexto_questionario_aluno = {
+            instrucao: `ATENÇÃO — LEITURA OBRIGATÓRIA. O aluno respondeu formulários. Analise TODAS as respostas com cuidado:
+
+1. RESTRIÇÕES DE EXERCÍCIO (P1 — Segurança): Se o aluno mencionou que NÃO PODE fazer um exercício, sente dor, desconforto, ou tem restrição médica para algum movimento, trate como RESTRIÇÃO ABSOLUTA. JAMAIS inclua esse exercício no programa. Exemplos: "não posso fazer mesa flexora", "dói o joelho no leg press", "médico proibiu agachamento".
+
+2. PREFERÊNCIAS E CONTEXTO: Local de treino, equipamentos disponíveis, dias preferidos, objetivos pessoais, experiência prévia. Use para personalizar o programa.
+
+3. PERGUNTAS: NÃO pergunte ao treinador algo que o aluno já respondeu nos formulários. Se o aluno já informou seus dias disponíveis, objetivo, ou restrições, use essas informações diretamente.`,
+            respostas: studentNarrative,
+        }
+    }
+
     return JSON.stringify(payload)
 }
 
@@ -1089,6 +1212,7 @@ const MP_READABLE: Record<string, string> = {
 export function buildAgentGenerationMessage(
     answers: PrescriptionAgentAnswer[],
     exercises: PrescriptionExerciseRef[],
+    studentNarrative?: string | null,
 ): string {
     // Compact exercise list — Tier 1 optimization strips fields the LLM doesn't use
     const useCompact = process.env.ENABLE_COMPACT_EXERCISE_POOL !== 'false'
@@ -1151,6 +1275,13 @@ export function buildAgentGenerationMessage(
         }))
     } else {
         payload.nota = 'Nenhuma pergunta foi necessária — o contexto é suficiente. Gere o programa diretamente.'
+    }
+
+    if (studentNarrative) {
+        payload.contexto_aluno = {
+            instrucao: 'LEITURA OBRIGATÓRIA. Respostas do aluno abaixo. Se o aluno mencionou que NÃO PODE ou NÃO QUER fazer um exercício, JAMAIS o inclua no programa. Trate como restrição P1 (Segurança).',
+            respostas: studentNarrative,
+        }
     }
 
     const serialized = JSON.stringify(payload)

@@ -4,7 +4,7 @@
 // Multi-turn Claude agent with web search for evidence-based prescription.
 // Two phases: analyze (context + questions) and generate (program + rationale).
 
-import Anthropic from '@anthropic-ai/sdk'
+// OpenAI API called via fetch (no SDK dependency)
 
 import type {
     StudentPrescriptionProfile,
@@ -26,7 +26,7 @@ import { parseAiResponse } from './prompt-builder'
 // Config
 // ============================================================================
 
-const CLAUDE_MODEL = 'claude-sonnet-4-6'
+const OPENAI_MODEL = 'gpt-4.1-mini'
 
 // Phase-specific limits
 const ANALYSIS_MAX_TOKENS = 2048
@@ -35,9 +35,9 @@ const ANALYSIS_TIMEOUT_MS = 30_000
 const GENERATION_MAX_TOKENS = 8000
 const GENERATION_TIMEOUT_MS = 120_000
 
-// Sonnet input/output cost per 1M tokens (USD)
-const COST_PER_1M_INPUT = 3.0
-const COST_PER_1M_OUTPUT = 15.0
+// GPT-4.1-mini input/output cost per 1M tokens (USD)
+const COST_PER_1M_INPUT = 0.40
+const COST_PER_1M_OUTPUT = 1.60
 
 // ============================================================================
 // Types
@@ -76,9 +76,10 @@ export async function analyzeContextAndAsk(
     exercises: PrescriptionExerciseRef[],
     enrichedContext: EnrichedStudentContext,
     serverQuestions?: PrescriptionAgentQuestion[],
+    studentNarrative?: string | null,
 ): Promise<AnalyzeResult> {
     console.log('[AgentePrescitor] analyzeContextAndAsk chamado')
-    const apiKey = process.env.ANTHROPIC_API_KEY
+    const apiKey = process.env.OPENAI_API_KEY
     if (!apiKey) {
         return {
             analysis: emptyAnalysis(),
@@ -88,42 +89,64 @@ export async function analyzeContextAndAsk(
         }
     }
 
-    const client = new Anthropic({ apiKey })
     const systemPrompt = buildAgentSystemPrompt()
-    const userMessage = buildAgentContextMessage(profile, exercises, enrichedContext, serverQuestions)
+    const userMessage = buildAgentContextMessage(profile, exercises, enrichedContext, serverQuestions, studentNarrative)
 
     try {
-        const response = await client.messages.create({
-            model: CLAUDE_MODEL,
-            max_tokens: ANALYSIS_MAX_TOKENS,
-            system: systemPrompt,
-            messages: [
-                { role: 'user', content: userMessage },
-            ],
-        }, {
-            timeout: ANALYSIS_TIMEOUT_MS,
+        const controller = new AbortController()
+        const timeout = setTimeout(() => controller.abort(), ANALYSIS_TIMEOUT_MS)
+
+        const fetchResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${apiKey}`,
+            },
+            signal: controller.signal,
+            body: JSON.stringify({
+                model: OPENAI_MODEL,
+                max_tokens: ANALYSIS_MAX_TOKENS,
+                temperature: 0.4,
+                response_format: { type: 'json_object' },
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userMessage },
+                ],
+            }),
         })
+        clearTimeout(timeout)
 
-        logTokenUsage('analysis', response)
+        if (!fetchResponse.ok) {
+            console.error('[AgentePrescitor] OpenAI API error:', fetchResponse.status)
+            return {
+                analysis: emptyAnalysis(),
+                questions: [],
+                conversationMessages: [],
+                status: 'http_error',
+            }
+        }
 
-        if (response.stop_reason === 'max_tokens') {
+        const payload = await fetchResponse.json()
+        logTokenUsage('analysis', payload)
+
+        const textContent = payload?.choices?.[0]?.message?.content
+        if (!textContent || typeof textContent !== 'string') {
+            return {
+                analysis: emptyAnalysis(),
+                questions: [],
+                conversationMessages: [],
+                status: 'invalid_response',
+            }
+        }
+
+        // Check finish reason
+        if (payload?.choices?.[0]?.finish_reason === 'length') {
             console.warn('[AgentePrescitor] Analysis output truncated')
             return {
                 analysis: emptyAnalysis(),
                 questions: [],
                 conversationMessages: [],
                 status: 'agent_truncated',
-            }
-        }
-
-        // Extract text content from response
-        const textContent = extractTextFromResponse(response)
-        if (!textContent) {
-            return {
-                analysis: emptyAnalysis(),
-                questions: [],
-                conversationMessages: [],
-                status: 'invalid_response',
             }
         }
 
@@ -144,7 +167,7 @@ export async function analyzeContextAndAsk(
         }
     } catch (err: any) {
         console.error('[AgentePrescitor] Analysis failed:', err?.message || err)
-        const status: AgentLLMStatus = err?.message?.includes('timeout') ? 'timeout' : 'network_error'
+        const status: AgentLLMStatus = err?.name === 'AbortError' ? 'timeout' : 'network_error'
         return {
             analysis: emptyAnalysis(),
             questions: [],
@@ -165,63 +188,75 @@ export async function generateWithAgent(
     enrichedContext: EnrichedStudentContext,
     constraints: PrescriptionConstraints,
     trainerPatterns?: TrainerPatterns | null,
+    studentNarrative?: string | null,
 ): Promise<GenerateWithAgentResult> {
-    const apiKey = process.env.ANTHROPIC_API_KEY
+    const apiKey = process.env.OPENAI_API_KEY
     if (!apiKey) {
-        return { output: null, reasoning: null, status: 'missing_api_key', model: CLAUDE_MODEL }
+        return { output: null, reasoning: null, status: 'missing_api_key', model: OPENAI_MODEL }
     }
 
-    const client = new Anthropic({ apiKey })
     const systemPrompt = buildAgentSystemPrompt(constraints, trainerPatterns)
 
     // Build messages: conversation history + generation instruction (with exercises)
-    const generationMessage = buildAgentGenerationMessage(agentState.answers, exercises)
+    const generationMessage = buildAgentGenerationMessage(agentState.answers, exercises, studentNarrative)
 
-    const messages: Anthropic.MessageParam[] = [
+    const messages = [
         ...agentState.conversation_messages.map(m => ({
             role: m.role as 'user' | 'assistant',
             content: m.content,
         })),
-        { role: 'user', content: generationMessage },
+        { role: 'user' as const, content: generationMessage },
     ]
 
     // ── Diagnostic: estimate input size ──
     const systemPromptChars = systemPrompt.length
     const messagesChars = messages.reduce((sum, m) => sum + (typeof m.content === 'string' ? m.content.length : 0), 0)
     const totalChars = systemPromptChars + messagesChars
-    const estimatedTokens = Math.round(totalChars / 4) // rough 4 chars/token estimate
+    const estimatedTokens = Math.round(totalChars / 4)
     console.log(
         `[AgentePrescitor] Generation input — system: ${systemPromptChars} chars, messages: ${messagesChars} chars, total: ${totalChars} chars, ~${estimatedTokens} tokens`
     )
 
     try {
-        // Use streaming to avoid HeadersTimeoutError (undici closes connection
-        // if no headers arrive within ~30s). Streaming sends tokens immediately.
-        const stream = client.messages.stream({
-            model: CLAUDE_MODEL,
-            max_tokens: GENERATION_MAX_TOKENS,
-            system: systemPrompt,
-            messages,
+        const controller = new AbortController()
+        const timeout = setTimeout(() => controller.abort(), GENERATION_TIMEOUT_MS)
+
+        const fetchResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${apiKey}`,
+            },
+            signal: controller.signal,
+            body: JSON.stringify({
+                model: OPENAI_MODEL,
+                max_tokens: GENERATION_MAX_TOKENS,
+                temperature: 0.3,
+                response_format: { type: 'json_object' },
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    ...messages,
+                ],
+            }),
         })
+        clearTimeout(timeout)
 
-        // Await final message with manual timeout guard
-        const response = await Promise.race([
-            stream.finalMessage(),
-            new Promise<never>((_, reject) =>
-                setTimeout(() => reject(new Error('Generation timeout')), GENERATION_TIMEOUT_MS)
-            ),
-        ])
-
-        logTokenUsage('generation', response)
-
-        if (response.stop_reason === 'max_tokens') {
-            console.warn('[AgentePrescitor] Generation output truncated — triggering fallback')
-            return { output: null, reasoning: null, status: 'agent_truncated', model: CLAUDE_MODEL, fallback: true }
+        if (!fetchResponse.ok) {
+            console.error('[AgentePrescitor] OpenAI API error:', fetchResponse.status)
+            return { output: null, reasoning: null, status: 'http_error', model: OPENAI_MODEL, fallback: true }
         }
 
-        const textContent = extractTextFromResponse(response)
-        if (!textContent) {
-            return { output: null, reasoning: null, status: 'invalid_response', model: CLAUDE_MODEL }
+        const payload = await fetchResponse.json()
+        logTokenUsage('generation', payload)
+
+        if (payload?.choices?.[0]?.finish_reason === 'length') {
+            console.warn('[AgentePrescitor] Generation output truncated — triggering fallback')
+            return { output: null, reasoning: null, status: 'agent_truncated', model: OPENAI_MODEL, fallback: true }
+        }
+
+        const textContent = payload?.choices?.[0]?.message?.content
+        if (!textContent || typeof textContent !== 'string') {
+            return { output: null, reasoning: null, status: 'invalid_response', model: OPENAI_MODEL }
         }
 
         // Extract JSON from the response (may contain markdown code blocks)
@@ -230,14 +265,14 @@ export async function generateWithAgent(
 
         if (!output) {
             console.warn('[AgentePrescitor] Failed to parse agent generation response')
-            return { output: null, reasoning: null, status: 'invalid_response', model: CLAUDE_MODEL }
+            return { output: null, reasoning: null, status: 'invalid_response', model: OPENAI_MODEL }
         }
 
         // Build extended reasoning
         const reasoning: PrescriptionReasoningExtended = {
             ...output.reasoning,
             context_analysis: agentState.context_analysis || undefined,
-            evidence_references: extractWebSearchUrls(response),
+            evidence_references: [],
             trainer_answers: agentState.answers.length > 0 ? agentState.answers : undefined,
         }
 
@@ -245,14 +280,12 @@ export async function generateWithAgent(
             output: { ...output, reasoning },
             reasoning,
             status: 'agent_used',
-            model: CLAUDE_MODEL,
+            model: OPENAI_MODEL,
         }
     } catch (err: any) {
         console.error('[AgentePrescitor] Generation failed:', err?.message || err)
-        const status: AgentLLMStatus = err?.message?.includes('timeout')
-            || err?.code === 'UND_ERR_HEADERS_TIMEOUT'
-            ? 'timeout' : 'network_error'
-        return { output: null, reasoning: null, status, model: CLAUDE_MODEL, fallback: true }
+        const status: AgentLLMStatus = err?.name === 'AbortError' ? 'timeout' : 'network_error'
+        return { output: null, reasoning: null, status, model: OPENAI_MODEL, fallback: true }
     }
 }
 
@@ -260,12 +293,13 @@ export async function generateWithAgent(
 // Helpers
 // ============================================================================
 
-function logTokenUsage(phase: string, response: Anthropic.Message): void {
-    const input = response.usage?.input_tokens ?? 0
-    const output = response.usage?.output_tokens ?? 0
+function logTokenUsage(phase: string, payload: any): void {
+    const input = payload?.usage?.prompt_tokens ?? 0
+    const output = payload?.usage?.completion_tokens ?? 0
     const costUsd = (input / 1_000_000) * COST_PER_1M_INPUT + (output / 1_000_000) * COST_PER_1M_OUTPUT
+    const finishReason = payload?.choices?.[0]?.finish_reason ?? 'unknown'
     console.log(
-        `[AgentePrescitor] ${phase} tokens — input: ${input}, output: ${output}, cost: $${costUsd.toFixed(4)}, stop: ${response.stop_reason}`
+        `[AgentePrescitor] ${phase} tokens — input: ${input}, output: ${output}, cost: $${costUsd.toFixed(4)}, stop: ${finishReason}`
     )
 }
 
@@ -276,30 +310,6 @@ function emptyAnalysis(): PrescriptionContextAnalysis {
         web_search_insights: [],
         web_search_queries: [],
     }
-}
-
-function extractTextFromResponse(response: Anthropic.Message): string | null {
-    const textBlocks = response.content.filter(
-        (block): block is Anthropic.TextBlock => block.type === 'text'
-    )
-    if (textBlocks.length === 0) return null
-    return textBlocks.map(b => b.text).join('\n')
-}
-
-function extractWebSearchUrls(response: Anthropic.Message): string[] {
-    const urls: string[] = []
-    for (const block of response.content) {
-        // Web search results appear as tool_use blocks with URLs in the response
-        if (block.type === 'text' && block.text) {
-            // Extract URLs from citations in the text
-            const urlRegex = /https?:\/\/[^\s\])"']+/g
-            const matches = block.text.match(urlRegex)
-            if (matches) {
-                urls.push(...matches)
-            }
-        }
-    }
-    return [...new Set(urls)]
 }
 
 function extractJsonFromText(text: string): string {

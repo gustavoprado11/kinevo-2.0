@@ -28,9 +28,9 @@ interface ScoreWeights {
 // ============================================================================
 
 const DEFAULT_WEIGHTS: ScoreWeights = {
-    safety: 0.35,
-    novelty: 0.25,
-    difficulty: 0.20,
+    safety: 0.30,
+    novelty: 0.35,
+    difficulty: 0.15,
     preference: 0.20,
 }
 
@@ -54,20 +54,20 @@ const SMART_GROUP_LIMITS_ORIGINAL: Record<string, number> = {
 
 /** Tier 1 compact limits — sized to typical program needs + 1-2 alternatives */
 const SMART_GROUP_LIMITS_COMPACT: Record<string, number> = {
-    'Peito': 4,
-    'Costas': 4,
-    'Ombros': 3,
-    'Quadríceps': 4,
-    'Glúteo': 3,
-    'Posterior de Coxa': 3,
-    'Bíceps': 2,
-    'Tríceps': 2,
-    'Panturrilha': 2,
-    'Abdominais': 2,
-    'Oblíquos': 1,
-    'Adutores': 1,
-    'Trapézio': 1,
-    'Antebraço': 1,
+    'Peito': 6,
+    'Costas': 6,
+    'Ombros': 5,
+    'Quadríceps': 6,
+    'Glúteo': 5,
+    'Posterior de Coxa': 5,
+    'Bíceps': 4,
+    'Tríceps': 4,
+    'Panturrilha': 3,
+    'Abdominais': 4,
+    'Oblíquos': 2,
+    'Adutores': 2,
+    'Trapézio': 2,
+    'Antebraço': 2,
 }
 
 function getSmartGroupLimits(): Record<string, number> {
@@ -92,7 +92,7 @@ export function computeAdequacyScore(
     const safetyScore = isProhibited ? 0 : isRestrictedGroup ? 30 : 100
 
     // --- NOVELTY (0-100, weight 0.25) ---
-    const noveltyScore = previousExerciseIds.has(exercise.id) ? 40 : 100
+    const noveltyScore = previousExerciseIds.has(exercise.id) ? 20 : 100
 
     // --- DIFFICULTY MATCH (0-100, weight 0.20) ---
     const levelMap: Record<string, number> = { beginner: 0, intermediate: 1, advanced: 2 }

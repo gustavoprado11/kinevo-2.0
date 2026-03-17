@@ -8,8 +8,6 @@
 // Feature flag: ENABLE_AI_OPTIMIZER (default: true, set false to skip)
 // ============================================================================
 
-import Anthropic from '@anthropic-ai/sdk'
-
 import type {
     PrescriptionExerciseRef,
     PrescriptionOutputSnapshot,
@@ -73,6 +71,13 @@ interface ContextSummary {
     emphasized_groups: string[]
     trainer_answers: Array<{ question: string; answer: string }>
     previous_program_count: number
+    previous_exercise_names: string[]
+    performance_insights?: {
+        adherence_percentage: number
+        dropout_workouts: string[]
+        stalled_count: number
+        regressing_count: number
+    }
 }
 
 interface SwapCandidate {
@@ -85,11 +90,11 @@ interface SwapCandidate {
 // Constants
 // ============================================================================
 
-const OPTIMIZER_MODEL = 'claude-haiku-4-5-20251001'
+const OPTIMIZER_MODEL = 'gpt-4.1-mini'
 const OPTIMIZER_MAX_TOKENS = 1024
 const OPTIMIZER_TIMEOUT_MS = 10_000
-const MAX_SWAPS = 2
-const MAX_SET_ADJUSTMENTS = 2
+const MAX_SWAPS = 8
+const MAX_SET_ADJUSTMENTS = 5
 
 // ============================================================================
 // shouldOptimize — Determines if optimizer should run
@@ -98,25 +103,26 @@ const MAX_SET_ADJUSTMENTS = 2
 export function shouldOptimize(
     profile: StudentPrescriptionProfile,
     enrichedContext: EnrichedStudentContext,
+    studentNarrative?: string | null,
 ): boolean {
-    // Skip for beginners — builder output is already optimal
-    if (profile.training_level === 'beginner') return false
+    // ALWAYS optimize if student narrative is present (form responses)
+    if (studentNarrative && studentNarrative.trim().length > 0) {
+        console.log('[Optimizer] Running: student narrative present')
+        return true
+    }
 
-    // Skip if insufficient exercise history (< 8 completed sessions)
+    // ALWAYS optimize if trainer observation is present
+    if (profile.cycle_observation && profile.cycle_observation.trim().length > 0) {
+        console.log('[Optimizer] Running: trainer observation present')
+        return true
+    }
+
+    // For students without extra context: relaxed threshold (4 sessions instead of 8)
     const completedSessions = enrichedContext.session_patterns.completed_sessions_4w ?? 0
     const totalFromPrograms = enrichedContext.previous_programs.reduce(
         (sum, p) => sum + (p.workouts?.length ?? 0), 0,
     )
-    if (completedSessions + totalFromPrograms < 8) return false
-
-    // Skip if low adherence — keep things simple
-    const adherence = profile.adherence_rate ?? enrichedContext.session_patterns.completed_sessions_4w
-        ? Math.round(
-            (enrichedContext.session_patterns.completed_sessions_4w /
-                Math.max(1, enrichedContext.session_patterns.total_sessions_4w)) * 100,
-        )
-        : 100
-    if (adherence < 60) return false
+    if (completedSessions + totalFromPrograms < 4) return false
 
     return true
 }
@@ -137,6 +143,33 @@ export function buildContextSummary(
 
     const adherence = constraints.adherence_percentage
 
+    // Collect exercise names from previous programs for variety context
+    const previousExerciseNames: string[] = []
+    for (const prog of enrichedContext.previous_programs) {
+        if (prog.workouts) {
+            for (const w of prog.workouts) {
+                if (w.exercise_names) {
+                    for (const name of w.exercise_names) {
+                        if (name && !previousExerciseNames.includes(name)) {
+                            previousExerciseNames.push(name)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Collect performance insights
+    const dropoutWorkouts: string[] = []
+    if (enrichedContext.session_patterns.dropout_rate_by_workout) {
+        for (const [name, rate] of Object.entries(enrichedContext.session_patterns.dropout_rate_by_workout)) {
+            if (rate > 0.4) dropoutWorkouts.push(name)
+        }
+    }
+
+    const stalledCount = enrichedContext.load_progression.filter(lp => lp.trend === 'stalled').length
+    const regressingCount = enrichedContext.load_progression.filter(lp => lp.trend === 'regressing').length
+
     return {
         student_name: enrichedContext.student_name,
         level: profile.training_level,
@@ -151,6 +184,13 @@ export function buildContextSummary(
             answer: a.answer,
         })),
         previous_program_count: enrichedContext.previous_programs.length,
+        previous_exercise_names: previousExerciseNames.slice(0, 30),
+        performance_insights: {
+            adherence_percentage: constraints.adherence_percentage,
+            dropout_workouts: dropoutWorkouts,
+            stalled_count: stalledCount,
+            regressing_count: regressingCount,
+        },
     }
 }
 
@@ -200,7 +240,7 @@ async function buildSwapCandidates(
 function buildOptimizerSystemPrompt(): string {
     return `You are a training program reviewer for Kinevo.
 You receive a COMPLETE program generated by the Kinevo builder.
-Your job: make 0-2 small improvements based on the student context.
+Your job: make 0-${MAX_SWAPS} small improvements based on the student context.
 
 RULES:
 - Swap up to ${MAX_SWAPS} exercises. ONLY use IDs from swap_candidates.
@@ -212,6 +252,20 @@ RULES:
 - Do NOT change reps, rest, or scheduled days.
 - If no improvements needed, return empty swaps/adjustments arrays.
 - If trainer_preferences are provided, incorporate them when possible (prefer swaps and set adjustments that align with the trainer's historical patterns). NEVER violate absolute constraints or volume limits to satisfy a preference.
+- If student_context is provided, consider the student's preferences, motivation, and training style when choosing swaps. For example, if the student prefers heavy compound movements, prefer swaps toward barbell/free-weight exercises. If the student emphasizes specific muscle groups, favor swaps that maintain or improve coverage of those groups.
+- EMPHASIS: If emphasized_groups is present and non-empty, PRIORITIZE swapping generic exercises for ones that specifically isolate the emphasized group. Example: if "Glúteos" is emphasized, prefer hip thrust, glute bridge, bulgarian split squat over generic squats. If "Costas" is emphasized, prefer pull-ups, rows, face pulls over generic lat pulldowns.
+
+PERFORMANCE: If performance_insights is present in context:
+- stalled_count > 3: prioritize swapping stalled exercises for variations
+- dropout_workouts has entries: those workouts may be too long or hard — consider simplifying
+- adherence_percentage < 70: prefer simpler, familiar exercises to maintain motivation
+- regressing_count > 0: flag regressing exercises in attention_flags and consider swapping
+
+VARIETY PRIORITY:
+- If previous_exercise_names is provided in context, PRIORITIZE swapping exercises that appear in that list.
+- The goal is to introduce novelty: the student should feel a fresh stimulus each new program.
+- When choosing between swap candidates, prefer the one that is NOT in previous_exercise_names.
+- Exercises that are staples for the student's goal (e.g., Agachamento for hypertrophy) may be kept even if repeated.
 
 OUTPUT: Return ONLY valid JSON matching this schema:
 {
@@ -240,6 +294,7 @@ function buildOptimizerUserPrompt(
     constraints: PrescriptionConstraints,
     swapCandidates: SwapCandidate[],
     trainerPatterns?: TrainerPatterns | null,
+    studentNarrative?: string | null,
 ): string {
     // Compact program representation
     const compactWorkouts = builderOutput.workouts.map(w => ({
@@ -272,6 +327,10 @@ function buildOptimizerUserPrompt(
 
     if (trainerPreferenceText) {
         payload.trainer_preferences = trainerPreferenceText
+    }
+
+    if (studentNarrative) {
+        payload.student_context = studentNarrative
     }
 
     return JSON.stringify(payload)
@@ -425,6 +484,7 @@ export async function optimizeWithAI(
     exercises: PrescriptionExerciseRef[],
     trainerAnswers?: PrescriptionAgentAnswer[],
     trainerPatterns?: TrainerPatterns | null,
+    studentNarrative?: string | null,
 ): Promise<OptimizerResult> {
     const skipResult: OptimizerResult = {
         output: builderOutput,
@@ -443,15 +503,15 @@ export async function optimizeWithAI(
     }
 
     // Check if optimization is warranted
-    if (!shouldOptimize(profile, enrichedContext)) {
+    if (!shouldOptimize(profile, enrichedContext, studentNarrative)) {
         console.log('[BuilderFirst] Optimizer skipped (beginner, low history, or low adherence)')
         return skipResult
     }
 
     // Check API key
-    const apiKey = process.env.ANTHROPIC_API_KEY
+    const apiKey = process.env.OPENAI_API_KEY
     if (!apiKey) {
-        console.warn('[BuilderFirst] Optimizer skipped — missing ANTHROPIC_API_KEY')
+        console.warn('[BuilderFirst] Optimizer skipped — missing OPENAI_API_KEY')
         return skipResult
     }
 
@@ -466,39 +526,67 @@ export async function optimizeWithAI(
 
         // Build prompt
         const systemPrompt = buildOptimizerSystemPrompt()
-        const userPrompt = buildOptimizerUserPrompt(builderOutput, contextSummary, constraints, swapCandidates, trainerPatterns)
+        const userPrompt = buildOptimizerUserPrompt(builderOutput, contextSummary, constraints, swapCandidates, trainerPatterns, studentNarrative)
 
         const estimatedTokens = Math.round((systemPrompt.length + userPrompt.length) / 4)
         console.log(`[BuilderFirst] Optimizer prompt: ~${estimatedTokens} tokens`)
 
-        // Call Claude Haiku
-        const client = new Anthropic({ apiKey })
+        // Call GPT-4.1-mini via OpenAI API
+        const controller = new AbortController()
+        const timeout = setTimeout(() => controller.abort(), OPTIMIZER_TIMEOUT_MS)
 
-        const response = await Promise.race([
-            client.messages.create({
-                model: OPTIMIZER_MODEL,
-                max_tokens: OPTIMIZER_MAX_TOKENS,
-                system: systemPrompt,
-                messages: [{ role: 'user', content: userPrompt }],
-            }),
-            new Promise<never>((_, reject) =>
-                setTimeout(() => reject(new Error('Optimizer timeout')), OPTIMIZER_TIMEOUT_MS),
-            ),
-        ])
+        let fetchResponse: Response
+        try {
+            fetchResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${apiKey}`,
+                },
+                signal: controller.signal,
+                body: JSON.stringify({
+                    model: OPTIMIZER_MODEL,
+                    max_tokens: OPTIMIZER_MAX_TOKENS,
+                    temperature: 0.3,
+                    response_format: { type: 'json_object' },
+                    messages: [
+                        { role: 'system', content: systemPrompt },
+                        { role: 'user', content: userPrompt },
+                    ],
+                }),
+            })
+        } catch (err: any) {
+            clearTimeout(timeout)
+            if (err?.name === 'AbortError') {
+                console.warn('[BuilderFirst] Optimizer timeout')
+                return { ...skipResult, status: 'optimizer_failed' }
+            }
+            throw err
+        }
+        clearTimeout(timeout)
 
+        if (!fetchResponse.ok) {
+            console.error('[BuilderFirst] OpenAI API error:', fetchResponse.status)
+            return { ...skipResult, status: 'optimizer_failed' }
+        }
+
+        const payload = await fetchResponse.json()
         const elapsedMs = Date.now() - startMs
-        const inputTokens = response.usage?.input_tokens ?? 0
-        const outputTokens = response.usage?.output_tokens ?? 0
+        const inputTokens = payload?.usage?.prompt_tokens ?? 0
+        const outputTokens = payload?.usage?.completion_tokens ?? 0
+
+        const costUsd = (inputTokens / 1_000_000) * 0.40 + (outputTokens / 1_000_000) * 1.60
+        console.log(`[BuilderFirst] Optimizer completed in ${elapsedMs}ms — input: ${inputTokens}, output: ${outputTokens}, cost: $${costUsd.toFixed(4)}`)
 
         // Extract text
-        const textBlock = response.content.find((b: any) => b.type === 'text')
-        if (!textBlock || textBlock.type !== 'text') {
+        const textContent = payload?.choices?.[0]?.message?.content
+        if (!textContent || typeof textContent !== 'string') {
             console.warn('[BuilderFirst] Optimizer returned no text content')
             return { ...skipResult, status: 'optimizer_failed' }
         }
 
         // Parse response
-        const diffs = parseOptimizerResponse(textBlock.text)
+        const diffs = parseOptimizerResponse(textContent)
         if (!diffs) {
             console.warn('[BuilderFirst] Failed to parse optimizer response')
             return {
@@ -551,6 +639,31 @@ export async function optimizeWithAI(
                 tokensUsed: { input: inputTokens, output: outputTokens },
                 status: 'optimizer_failed',
             }
+        }
+
+        // Enrich reasoning.adaptations with optimizer justifications
+        const optimizerNotes = [
+            ...diffs.swaps.map(s => s.reason),
+            ...diffs.set_adjustments.map(s => s.reason),
+        ].filter(Boolean)
+
+        if (optimizerNotes.length > 0) {
+            optimized.reasoning.adaptations = (optimized.reasoning.adaptations || '') +
+                (optimized.reasoning.adaptations ? '\n' : '') +
+                'Ajustes do optimizer: ' + optimizerNotes.join('. ')
+        }
+
+        // Also surface swap reasons as attention_flags for trainer visibility
+        const swapFlags = diffs.swaps
+            .map(s => s.reason)
+            .filter(Boolean)
+            .map(r => `[Optimizer] ${r}`)
+
+        if (swapFlags.length > 0) {
+            optimized.reasoning.attention_flags = [
+                ...(optimized.reasoning.attention_flags || []),
+                ...swapFlags,
+            ]
         }
 
         const swapsApplied = diffs.swaps.length

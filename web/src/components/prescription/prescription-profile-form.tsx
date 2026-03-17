@@ -21,6 +21,7 @@ import { EQUIPMENT_OPTIONS } from '@kinevo/shared/types/prescription'
 import { matchCondition, type ConditionMatchResult } from '@/lib/prescription/condition-mappings'
 
 import type { RecentSession, ActiveProgram } from '@/actions/prescription/get-prescription-data'
+import type { QuestionnaireData } from '@/lib/prescription/questionnaire-mapper'
 
 // ============================================================================
 // Props
@@ -35,6 +36,8 @@ interface PrescriptionProfileFormProps {
     previousProgramCount: number
     lastFormSubmissionDate: string | null
     onGenerate: () => void
+    compactMode?: boolean
+    questionnaireData?: QuestionnaireData | null
 }
 
 // ============================================================================
@@ -84,6 +87,21 @@ function formatDate(dateStr: string): string {
     return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
+/**
+ * Distributes N training days evenly across the week (Mon-Sat preferred).
+ * Returns sorted array of day indices (0=Sun, 1=Mon, ..., 6=Sat).
+ */
+function distributeTrainingDays(frequency: number): number[] {
+    const COMMON_DISTRIBUTIONS: Record<number, number[]> = {
+        2: [1, 4],              // Seg, Qui
+        3: [1, 3, 5],          // Seg, Qua, Sex
+        4: [1, 2, 4, 5],      // Seg, Ter, Qui, Sex
+        5: [1, 2, 3, 4, 5],   // Seg a Sex
+        6: [1, 2, 3, 4, 5, 6], // Seg a Sáb
+    }
+    return COMMON_DISTRIBUTIONS[frequency] || [1, 3, 5]
+}
+
 // ============================================================================
 // Component
 // ============================================================================
@@ -91,28 +109,61 @@ function formatDate(dateStr: string): string {
 export function PrescriptionProfileForm({
     studentId,
     existingProfile,
+    questionnaireData = null,
     onSaved,
     recentSessions,
     activeProgram,
     previousProgramCount,
     lastFormSubmissionDate,
     onGenerate,
+    compactMode = false,
 }: PrescriptionProfileFormProps) {
     // ── Detect state ──
     const isFirstPrescription = !existingProfile || (recentSessions.length === 0 && previousProgramCount === 0)
 
-    // ── State ──
-    const [trainingLevel, setTrainingLevel] = useState<TrainingLevel>(existingProfile?.training_level || 'beginner')
-    const [goal, setGoal] = useState<PrescriptionGoal>(existingProfile?.goal || 'hypertrophy')
-    const [availableDays, setAvailableDays] = useState<number[]>(existingProfile?.available_days || [])
-    const [sessionDuration, setSessionDuration] = useState(
-        existingProfile?.session_duration_minutes
-            ? roundToStep(existingProfile.session_duration_minutes, 15)
-            : 60
+    // ── State (questionnaire values used as smart defaults) ──
+    const [trainingLevel, setTrainingLevel] = useState<TrainingLevel>(
+        existingProfile?.training_level
+        || questionnaireData?.suggested_level
+        || 'beginner'
     )
-    const [equipment, setEquipment] = useState<string[]>(existingProfile?.available_equipment || [])
+    const [goal, setGoal] = useState<PrescriptionGoal>(
+        existingProfile?.goal
+        || (questionnaireData?.goal_from_student as PrescriptionGoal | undefined)
+        || 'hypertrophy'
+    )
+    const [availableDays, setAvailableDays] = useState<number[]>(() => {
+        if (existingProfile?.available_days && existingProfile.available_days.length > 0) {
+            return existingProfile.available_days
+        }
+        if (questionnaireData?.suggested_frequency) {
+            return distributeTrainingDays(questionnaireData.suggested_frequency)
+        }
+        return []
+    })
+    const [sessionDuration, setSessionDuration] = useState(() => {
+        if (existingProfile?.session_duration_minutes) {
+            return roundToStep(existingProfile.session_duration_minutes, 15)
+        }
+        if (questionnaireData?.suggested_duration) {
+            return roundToStep(questionnaireData.suggested_duration, 15)
+        }
+        return 60
+    })
+    const [equipment, setEquipment] = useState<string[]>(() => {
+        if (existingProfile?.available_equipment && existingProfile.available_equipment.length > 0) {
+            return existingProfile.available_equipment
+        }
+        if (questionnaireData?.suggested_equipment) {
+            return [questionnaireData.suggested_equipment]
+        }
+        return []
+    })
     const [restrictions, setRestrictions] = useState<MedicalRestriction[]>(existingProfile?.medical_restrictions || [])
     const [cycleObservation, setCycleObservation] = useState(existingProfile?.cycle_observation || '')
+
+    // Track if values were auto-filled from questionnaire
+    const autoFilledFromQuestionnaire = !existingProfile && !!questionnaireData
 
     // New restriction form
     const [newRestriction, setNewRestriction] = useState('')
@@ -126,6 +177,10 @@ export function PrescriptionProfileForm({
 
     // Context card expanded state (Estado B) — collapsed by default
     const [contextExpanded, setContextExpanded] = useState(false)
+    const [formExpanded, setFormExpanded] = useState(false)
+
+    // Compact mode: show only structural fields unless trainer expands
+    const showFullForm = !compactMode || formExpanded
 
     // Reset saved indicator after 3s
     useEffect(() => {
@@ -372,14 +427,25 @@ export function PrescriptionProfileForm({
                 <div className="px-6 py-5 border-b border-k-border-subtle">
                     <h2 className="text-lg font-bold text-k-text-primary flex items-center gap-2">
                         <User className="w-5 h-5 text-violet-500" />
-                        {isFirstPrescription ? 'Anamnese do Aluno' : 'Configure o próximo ciclo'}
+                        {compactMode && !formExpanded
+                            ? 'Configuração Rápida'
+                            : isFirstPrescription ? 'Anamnese do Aluno' : 'Configure o próximo ciclo'
+                        }
                     </h2>
                     <p className="text-xs text-k-text-tertiary mt-1">
-                        {isFirstPrescription
-                            ? 'Configure o perfil do aluno. O Copiloto usará essas informações para personalizar o programa.'
-                            : 'Defina o objetivo e a frequência. A IA vai usar o histórico para personalizar.'
+                        {compactMode && !formExpanded
+                            ? 'Os formulários do aluno serão usados como contexto. Configure apenas o essencial abaixo.'
+                            : isFirstPrescription
+                                ? 'Configure o perfil do aluno. O Copiloto usará essas informações para personalizar o programa.'
+                                : 'Defina o objetivo e a frequência. A IA vai usar o histórico para personalizar.'
                         }
                     </p>
+                    {autoFilledFromQuestionnaire && (
+                        <span className="inline-flex items-center gap-1.5 mt-2 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-violet-500/10 text-violet-400 border border-violet-500/20">
+                            <Check className="w-3 h-3" />
+                            Preenchido com respostas do questionário
+                        </span>
+                    )}
                 </div>
 
                 <div className="p-6 space-y-6">
@@ -392,7 +458,7 @@ export function PrescriptionProfileForm({
                     )}
 
                     {/* ── Training Level (Estado A only) ── */}
-                    {isFirstPrescription && (
+                    {isFirstPrescription && showFullForm && (
                         <div>
                             <label className="mb-1.5 block text-[11px] font-bold text-k-text-tertiary">
                                 <Target className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />
@@ -418,6 +484,7 @@ export function PrescriptionProfileForm({
                     )}
 
                     {/* ── Goal (both states) ── */}
+                    {showFullForm && (
                     <div>
                         <label className="mb-1.5 block text-[11px] font-bold text-k-text-tertiary">
                             <Target className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />
@@ -441,9 +508,10 @@ export function PrescriptionProfileForm({
                             ))}
                         </div>
                     </div>
+                    )}
 
                     {/* ── Medical Restrictions (Estado A only) ── */}
-                    {isFirstPrescription && (
+                    {isFirstPrescription && showFullForm && (
                         <div>
                             <label className="mb-1.5 block text-[11px] font-bold text-k-text-tertiary">
                                 <ShieldAlert className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />
@@ -571,8 +639,8 @@ export function PrescriptionProfileForm({
                         </div>
                     )}
 
-                    {/* ── Equipment (Estado A only) ── */}
-                    {isFirstPrescription && (
+                    {/* ── Equipment (Estado A or compact mode) ── */}
+                    {(isFirstPrescription || compactMode) && (
                         <div>
                             <label className="mb-1.5 block text-[11px] font-bold text-k-text-tertiary">
                                 <Dumbbell className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />
@@ -598,7 +666,7 @@ export function PrescriptionProfileForm({
                     )}
 
                     {/* ── Separator for "Este Ciclo" section in Estado A ── */}
-                    {isFirstPrescription && (
+                    {isFirstPrescription && showFullForm && (
                         <div className="border-t border-k-border-subtle pt-4">
                             <span className="text-[11px] font-bold uppercase tracking-wider text-k-text-quaternary">
                                 Este Ciclo
@@ -641,8 +709,8 @@ export function PrescriptionProfileForm({
                         </div>
                     </div>
 
-                    {/* ── Session Duration (Estado A only) ── */}
-                    {isFirstPrescription && (
+                    {/* ── Session Duration (Estado A or compact mode) ── */}
+                    {(isFirstPrescription || compactMode) && (
                         <div>
                             <label className="mb-1.5 block text-[11px] font-bold text-k-text-tertiary">
                                 <Clock className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />
@@ -666,6 +734,7 @@ export function PrescriptionProfileForm({
                     )}
 
                     {/* ── Cycle Observation (both states) ── */}
+                    {showFullForm && (
                     <div>
                         <label className="mb-1.5 block text-[11px] font-bold text-k-text-tertiary">
                             <MessageSquare className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />
@@ -682,10 +751,32 @@ export function PrescriptionProfileForm({
                             (opcional) A IA vai considerar estas instruções na montagem
                         </p>
                     </div>
+                    )}
+
+                    {/* ── Toggle full form in compact mode ── */}
+                    {compactMode && (
+                        <button
+                            type="button"
+                            onClick={() => setFormExpanded(!formExpanded)}
+                            className="w-full text-center text-xs font-medium text-violet-400 hover:text-violet-300 transition-colors py-2"
+                        >
+                            {formExpanded ? (
+                                <span className="flex items-center justify-center gap-1.5">
+                                    <ChevronUp className="w-3.5 h-3.5" />
+                                    Ocultar campos adicionais
+                                </span>
+                            ) : (
+                                <span className="flex items-center justify-center gap-1.5">
+                                    <ChevronDown className="w-3.5 h-3.5" />
+                                    Personalizar nível, objetivo e restrições
+                                </span>
+                            )}
+                        </button>
+                    )}
 
                     {/* ── Actions ── */}
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center sm:justify-end gap-3 pt-2">
-                        {isFirstPrescription ? (
+                        {isFirstPrescription && !compactMode ? (
                             <>
                                 {/* Estado A: Salvar + Gerar separados */}
                                 <Button

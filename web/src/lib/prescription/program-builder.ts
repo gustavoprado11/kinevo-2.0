@@ -25,6 +25,7 @@ import type {
     GeneratedWorkoutItem,
     PrescriptionReasoning,
     ExerciseFunction,
+    TrainerPatterns,
 } from '@kinevo/shared/types/prescription'
 
 import { computeWeeklyVolumePerMuscle } from './rules-engine'
@@ -101,10 +102,12 @@ export async function buildSlotBasedProgram(
     constraints: PrescriptionConstraints,
     enrichedContext: EnrichedStudentContext,
     programIndex: number = 0,
+    studentNarrative?: string | null,
+    trainerPatterns?: TrainerPatterns | null,
 ): Promise<PrescriptionOutputSnapshot> {
     try {
         initPRNG(profile.student_id, programIndex)
-        const result = await buildWithSlots(profile, exercises, constraints, enrichedContext)
+        const result = await buildWithSlots(profile, exercises, constraints, enrichedContext, studentNarrative, trainerPatterns)
         console.log('[SlotBuilder] Program built successfully')
         return result
     } catch (err) {
@@ -139,9 +142,11 @@ function mulberry32(seed: number): () => number {
 let prng: () => number = Math.random
 
 function initPRNG(studentId: string, programIndex: number): number {
-    const seed = hashSeed(`${studentId}:${programIndex}`)
+    // Add temporal entropy so each generation produces different results
+    const dayKey = Math.floor(Date.now() / 86400000) // Changes daily
+    const seed = hashSeed(`${studentId}:${programIndex}:${dayKey}`)
     prng = mulberry32(seed)
-    console.log(`[ExerciseSelector] seed used: ${seed} (studentId=${studentId}, programIndex=${programIndex})`)
+    console.log(`[ExerciseSelector] seed used: ${seed} (studentId=${studentId}, programIndex=${programIndex}, dayKey=${dayKey})`)
     return seed
 }
 
@@ -171,12 +176,80 @@ function resolveStructure(frequency: number): StructureKey {
 }
 
 // ============================================================================
+// Narrative Restriction Parsing
+// ============================================================================
+
+/**
+ * Extracts exercise restrictions mentioned in the student's narrative responses.
+ * Looks for Portuguese patterns like "não posso fazer X", "dor no X", "evitar X", etc.
+ */
+function parseNarrativeRestrictions(narrative: string | null | undefined): Set<string> {
+    if (!narrative) return new Set()
+
+    const restrictions = new Set<string>()
+    const text = narrative.toLowerCase()
+
+    // Portuguese patterns for exercise restrictions
+    const patterns = [
+        /não\s+(?:posso|consigo|pode|devo)\s+fazer\s+(.+?)(?:[,.\n;!]|$)/g,
+        /(?:dor|dores)\s+(?:em|no|na|nos|nas|ao\s+fazer|quando\s+faço?)\s+(.+?)(?:[,.\n;!]|$)/g,
+        /desconforto\s+(?:em|no|na|nos|nas|ao\s+fazer|quando\s+faço?)\s+(.+?)(?:[,.\n;!]|$)/g,
+        /evitar\s+(.+?)(?:[,.\n;!]|$)/g,
+        /médico\s+proibiu\s+(.+?)(?:[,.\n;!]|$)/g,
+        /não\s+faço\s+(.+?)(?:[,.\n;!]|$)/g,
+        /proibid[oa]\s+(?:de\s+fazer\s+)?(.+?)(?:[,.\n;!]|$)/g,
+        /(?:lesão|lesao)\s+(?:em|no|na|nos|nas)\s+(.+?)(?:[,.\n;!]|$)/g,
+    ]
+
+    for (const pattern of patterns) {
+        let match
+        while ((match = pattern.exec(text)) !== null) {
+            const term = match[1].trim()
+            if (term.length >= 3 && term.length <= 60) {
+                restrictions.add(term)
+            }
+        }
+    }
+
+    return restrictions
+}
+
+/**
+ * Fuzzy match between an exercise name and narrative restrictions.
+ * Checks substring match in both directions and word overlap (>= 2 shared words).
+ */
+function isNarrativeRestricted(exerciseName: string, restrictions: Set<string>): boolean {
+    if (restrictions.size === 0) return false
+
+    const nameLower = exerciseName.toLowerCase()
+    const nameWords = nameLower.split(/\s+/).filter(w => w.length > 2)
+
+    for (const restriction of restrictions) {
+        // Substring match in both directions
+        if (nameLower.includes(restriction) || restriction.includes(nameLower)) {
+            return true
+        }
+
+        // Word overlap: at least 2 shared words
+        const restrictionWords = restriction.split(/\s+/).filter(w => w.length > 2)
+        const overlap = nameWords.filter(w => restrictionWords.includes(w))
+        if (overlap.length >= 2) {
+            return true
+        }
+    }
+
+    return false
+}
+
+// ============================================================================
 // Exercise Filtering
 // ============================================================================
 
 function filterExercises(
     exercises: PrescriptionExerciseRef[],
     profile: StudentPrescriptionProfile,
+    narrativeRestrictions?: Set<string>,
+    trainerExcludedIds?: Set<string>,
 ): PrescriptionExerciseRef[] {
     const restrictedIds = new Set(
         profile.medical_restrictions.flatMap(r => r.restricted_exercise_ids),
@@ -186,6 +259,14 @@ function filterExercises(
     return exercises.filter(e => {
         if (restrictedIds.has(e.id)) return false
         if (dislikedIds.has(e.id)) return false
+        if (trainerExcludedIds?.has(e.id)) {
+            console.log(`[SlotBuilder] Excluded by trainer pattern: "${e.name}"`)
+            return false
+        }
+        if (narrativeRestrictions && isNarrativeRestricted(e.name, narrativeRestrictions)) {
+            console.log(`[SlotBuilder] Excluded by narrative: "${e.name}"`)
+            return false
+        }
         return true
     })
 }
@@ -367,6 +448,50 @@ interface SlotScoringContext {
     weeklyUsedIds: Set<string>
     /** Exercise IDs used in workouts with same slot template */
     sameLabelUsedIds: Set<string>
+    /** Exercises the trainer prefers (substitutes TO) */
+    trainerPreferredIds: Set<string>
+    /** Exercises the trainer deprioritizes (substitutes FROM) */
+    trainerDeprioritizedIds: Set<string>
+}
+
+// ============================================================================
+// Trainer Pattern Adjustments
+// ============================================================================
+
+interface TrainerScoreAdjustments {
+    excludedIds: Set<string>
+    preferredIds: Set<string>
+    deprioritizedIds: Set<string>
+}
+
+function buildTrainerAdjustments(patterns: TrainerPatterns | null | undefined): TrainerScoreAdjustments {
+    const result: TrainerScoreAdjustments = {
+        excludedIds: new Set(),
+        preferredIds: new Set(),
+        deprioritizedIds: new Set(),
+    }
+    if (!patterns) return result
+
+    for (const p of patterns.patterns) {
+        // Exercise removals with frequency >= 60% → exclude from pool
+        if (p.pattern_type === 'exercise_removal' && p.frequency >= 0.6) {
+            if (p.context.from_exercise_id) {
+                result.excludedIds.add(p.context.from_exercise_id)
+            }
+        }
+
+        // Exercise substitutions → prefer destination, deprioritize origin
+        if (p.pattern_type === 'exercise_preference' && p.frequency >= 0.5) {
+            if (p.context.to_exercise_id) {
+                result.preferredIds.add(p.context.to_exercise_id)
+            }
+            if (p.context.from_exercise_id) {
+                result.deprioritizedIds.add(p.context.from_exercise_id)
+            }
+        }
+    }
+
+    return result
 }
 
 async function buildWithSlots(
@@ -374,6 +499,8 @@ async function buildWithSlots(
     exercises: PrescriptionExerciseRef[],
     constraints: PrescriptionConstraints,
     enrichedContext: EnrichedStudentContext,
+    studentNarrative?: string | null,
+    trainerPatterns?: TrainerPatterns | null,
 ): Promise<PrescriptionOutputSnapshot> {
     const frequency = profile.available_days.length
     const level = profile.training_level
@@ -381,8 +508,16 @@ async function buildWithSlots(
     const splitType = constraints.split_type
     const useVolumeV2 = process.env.ENABLE_VOLUME_V2 !== 'false'
 
-    // 1. Filter exercises by restrictions/dislikes
-    const available = filterExercises(exercises, profile)
+    // 1. Parse narrative restrictions + trainer adjustments, then filter exercises
+    const narrativeRestrictions = parseNarrativeRestrictions(studentNarrative)
+    if (narrativeRestrictions.size > 0) {
+        console.log(`[SlotBuilder] Narrative restrictions found: ${[...narrativeRestrictions].join(', ')}`)
+    }
+    const trainerAdj = buildTrainerAdjustments(trainerPatterns)
+    if (trainerAdj.excludedIds.size > 0) {
+        console.log(`[SlotBuilder] Trainer excluded exercises: ${trainerAdj.excludedIds.size}`)
+    }
+    const available = filterExercises(exercises, profile, narrativeRestrictions, trainerAdj.excludedIds)
     const exerciseMap = new Map(available.map(e => [e.id, e]))
 
     // 2. Apply graph safety filter (remove contraindicated exercises)
@@ -507,6 +642,8 @@ async function buildWithSlots(
                 highFatigueUsedInWorkout: false,
                 weeklyUsedIds,
                 sameLabelUsedIds,
+                trainerPreferredIds: trainerAdj.preferredIds,
+                trainerDeprioritizedIds: trainerAdj.deprioritizedIds,
             },
             stallReplacements,
             useVolumeV2 ? remainingOccurrences : null,
@@ -612,7 +749,7 @@ function buildSlotWorkout(
         scored.sort((a, b) => b.score - a.score)
 
         const bestScore = scored[0].score
-        const topCandidates = scored.filter(s => s.score >= bestScore - 5)
+        const topCandidates = scored.filter(s => s.score >= bestScore - 20)
         const pick = topCandidates[Math.floor(prng() * topCandidates.length)].exercise
 
         console.log(`[ExerciseSelector] candidate pool size: ${topCandidates.length} (slot: ${slot.target_group}/${slot.movement_pattern})`)
@@ -788,8 +925,11 @@ function computeSlotScore(
     // Favorites bonus (+20)
     if (ctx.favoriteIds.has(exercise.id)) score += 20
 
-    // Novelty bonus (+15 if not in previous program)
-    if (!ctx.previousIds.has(exercise.id)) score += 15
+    // Novelty bonus (+25 if not in previous program)
+    if (!ctx.previousIds.has(exercise.id)) score += 25
+
+    // Repetition penalty (-35 if exercise was in a recent program)
+    if (ctx.previousIds.has(exercise.id)) score -= 35
 
     // Stall penalty (-30 if stalled)
     if (ctx.stalledIds.has(exercise.id)) score -= 30
@@ -804,8 +944,14 @@ function computeSlotScore(
     // Compound bonus for main slots (+5)
     if (slot.function === 'main' && exercise.is_compound) score += 5
 
-    // Emphasis bonus (+10 if group is emphasized by trainer)
-    if (ctx.emphasizedGroups.has(slot.target_group)) score += 10
+    // Emphasis bonus — stronger when group is emphasized
+    if (ctx.emphasizedGroups.has(slot.target_group)) {
+        score += 20
+        // Extra bonus if exercise's PRIMARY group matches emphasis
+        if (exercise.muscle_group_names[0] === slot.target_group) {
+            score += 10
+        }
+    }
 
     // Improvement 2: Fatigue management — penalize high-fatigue if one already used
     if (exercise.fatigue_class === 'high' && exercise.is_compound && ctx.highFatigueUsedInWorkout) {
@@ -818,6 +964,10 @@ function computeSlotScore(
     if (ctx.usedPatternsInWorkout.has(patternKey)) {
         score -= 15
     }
+
+    // Trainer pattern scoring
+    if (ctx.trainerPreferredIds?.has(exercise.id)) score += 20
+    if (ctx.trainerDeprioritizedIds?.has(exercise.id)) score -= 20
 
     // Phase 5: Cross-workout stimulus diversity
     // Weekly reuse penalty — exercise used in another workout this week

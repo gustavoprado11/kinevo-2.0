@@ -36,6 +36,17 @@ export interface QuestionnaireSubmissionData {
     submitted_at: string
 }
 
+export interface FormSubmissionSummary {
+    id: string
+    form_template_id: string
+    template_title: string
+    template_category: string
+    system_key: string | null
+    submitted_at: string
+    answers_json: Record<string, any>
+    schema_snapshot_json: Record<string, any>
+}
+
 export interface PrescriptionData {
     profile: StudentPrescriptionProfile | null
     exercises: PrescriptionExerciseRef[]
@@ -46,6 +57,7 @@ export interface PrescriptionData {
     lastFormSubmissionDate: string | null
     questionnaireSubmission: QuestionnaireSubmissionData | null
     questionnaireTemplateId: string | null
+    formSubmissions: FormSubmissionSummary[]
 }
 
 interface GetPrescriptionDataResult {
@@ -97,7 +109,7 @@ export async function getPrescriptionData(
     const aiEnabled = !!trainer.ai_prescriptions_enabled
 
     // 4. Fetch all data in parallel
-    const [profileResult, exercisesResult, sessionsResult, programResult, prevProgramCount, lastFormDate, questionnaireResult] = await Promise.all([
+    const [profileResult, exercisesResult, sessionsResult, programResult, prevProgramCount, lastFormDate, questionnaireResult, formSubmissionsResult] = await Promise.all([
         fetchPrescriptionProfile(supabase, studentId),
         fetchExercises(supabase),
         fetchRecentSessions(supabase, studentId),
@@ -105,6 +117,7 @@ export async function getPrescriptionData(
         fetchPreviousProgramCount(supabase, studentId),
         fetchLastFormSubmissionDate(supabase, studentId),
         fetchQuestionnaireSubmission(supabase, studentId),
+        fetchAllFormSubmissions(supabase, studentId),
     ])
 
     return {
@@ -119,6 +132,7 @@ export async function getPrescriptionData(
             lastFormSubmissionDate: lastFormDate,
             questionnaireSubmission: questionnaireResult.submission,
             questionnaireTemplateId: questionnaireResult.templateId,
+            formSubmissions: formSubmissionsResult,
         },
     }
 }
@@ -147,7 +161,7 @@ export async function fetchPrescriptionDataDirect(
     // @ts-ignore — ai_prescriptions_enabled from migration 036
     const aiEnabled = !!trainerRow?.ai_prescriptions_enabled
 
-    const [profileResult, exercisesResult, sessionsResult, programResult, prevProgramCount, lastFormDate, questionnaireResult] = await Promise.all([
+    const [profileResult, exercisesResult, sessionsResult, programResult, prevProgramCount, lastFormDate, questionnaireResult, formSubmissionsResult] = await Promise.all([
         fetchPrescriptionProfile(supabase, studentId),
         fetchExercises(supabase),
         fetchRecentSessions(supabase, studentId),
@@ -155,6 +169,7 @@ export async function fetchPrescriptionDataDirect(
         fetchPreviousProgramCount(supabase, studentId),
         fetchLastFormSubmissionDate(supabase, studentId),
         fetchQuestionnaireSubmission(supabase, studentId),
+        fetchAllFormSubmissions(supabase, studentId),
     ])
 
     return {
@@ -167,6 +182,7 @@ export async function fetchPrescriptionDataDirect(
         lastFormSubmissionDate: lastFormDate,
         questionnaireSubmission: questionnaireResult.submission,
         questionnaireTemplateId: questionnaireResult.templateId,
+        formSubmissions: formSubmissionsResult,
     }
 }
 
@@ -410,4 +426,38 @@ async function fetchQuestionnaireSubmission(
             : null,
         templateId: template.id,
     }
+}
+
+/**
+ * Fetch all submitted form submissions for a student (most recent 10).
+ * Joins with form_templates to get title, category, and system_key.
+ */
+async function fetchAllFormSubmissions(
+    supabase: SupabaseClient,
+    studentId: string,
+): Promise<FormSubmissionSummary[]> {
+    // @ts-ignore — system_key from migration 062
+    const { data, error } = await supabase
+        .from('form_submissions')
+        .select('id, form_template_id, submitted_at, answers_json, schema_snapshot_json, form_templates(title, category, system_key)')
+        .eq('student_id', studentId)
+        .in('status', ['submitted', 'reviewed'])
+        .order('submitted_at', { ascending: false })
+        .limit(10)
+
+    if (error) {
+        console.error('[getPrescriptionData] form submissions error:', error)
+        return []
+    }
+
+    return (data || []).map((row: any) => ({
+        id: row.id,
+        form_template_id: row.form_template_id,
+        template_title: row.form_templates?.title || 'Formulário',
+        template_category: row.form_templates?.category || 'survey',
+        system_key: row.form_templates?.system_key || null,
+        submitted_at: row.submitted_at,
+        answers_json: row.answers_json || {},
+        schema_snapshot_json: row.schema_snapshot_json || {},
+    }))
 }

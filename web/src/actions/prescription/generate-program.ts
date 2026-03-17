@@ -25,6 +25,10 @@ import { buildConstraints } from '@/lib/prescription/constraints-engine'
 import { selectSmartExercises } from '@/lib/prescription/exercise-selector'
 import { getSubstitutes } from '@/lib/prescription/exercise-graph'
 import { optimizeWithAI } from '@/lib/prescription/ai-optimizer'
+import { buildFormNarratives } from '@/lib/prescription/form-narrative-builder'
+import { fetchPrescriptionQuestionnaire } from './questionnaire-actions'
+import { mapQuestionnaireToProfile, type QuestionnaireData } from '@/lib/prescription/questionnaire-mapper'
+import type { FormSubmissionSummary } from '@/actions/prescription/get-prescription-data'
 
 // ============================================================================
 // Types
@@ -110,6 +114,7 @@ function mapEquipmentAnswerToKey(answer: string | undefined): string | null {
 export async function generateProgram(
     studentId: string,
     agentState?: PrescriptionAgentState | null,
+    selectedFormIds?: string[],
 ): Promise<GenerateProgramResult> {
     const startTime = Date.now()
     const supabase = await createClient()
@@ -186,6 +191,62 @@ export async function generateProgram(
             error: `Dados insuficientes para gerar programa: ${inputValidation.errors.join('; ')}`,
         }
     }
+
+    // ── 8b. Fetch questionnaire data (direct fetch — not available via agentState) ──
+    let questionnaireData: QuestionnaireData | null = null
+    try {
+        const questionnaireResult = await fetchPrescriptionQuestionnaire(studentId)
+        if (questionnaireResult?.submission) {
+            questionnaireData = mapQuestionnaireToProfile(
+                questionnaireResult.submission.answers_json?.answers || {},
+                typedProfile,
+                exercises,
+            )
+        }
+    } catch (err) {
+        console.warn('[generateProgram] Failed to fetch questionnaire data:', err)
+    }
+    console.log('[generateProgram] QuestionnaireData available:', !!questionnaireData)
+
+    // ── 8c. Build student narrative from questionnaire ──
+    const { buildStudentNarrative } = await import('@/lib/prescription/prompt-builder')
+    const studentNarrative = questionnaireData ? buildStudentNarrative(questionnaireData) : null
+    console.log('[generateProgram] StudentNarrative available:', !!studentNarrative, studentNarrative ? `(${studentNarrative.length} chars)` : '')
+
+    // ── 8d. Fetch selected form submissions and build form narrative ──
+    let formNarrative: string | null = null
+    if (selectedFormIds && selectedFormIds.length > 0) {
+        try {
+            const { data: formRows } = await supabase
+                .from('form_submissions')
+                .select('id, form_template_id, submitted_at, answers_json, schema_snapshot_json, form_templates(title, category, system_key)')
+                .eq('student_id', studentId)
+                .in('status', ['submitted', 'reviewed'])
+                .in('id', selectedFormIds)
+                .order('submitted_at', { ascending: false })
+
+            if (formRows && formRows.length > 0) {
+                const summaries: FormSubmissionSummary[] = formRows.map((row: any) => ({
+                    id: row.id,
+                    form_template_id: row.form_template_id,
+                    template_title: row.form_templates?.title || 'Formulário',
+                    template_category: row.form_templates?.category || 'survey',
+                    system_key: row.form_templates?.system_key || null,
+                    submitted_at: row.submitted_at,
+                    answers_json: row.answers_json || {},
+                    schema_snapshot_json: row.schema_snapshot_json || {},
+                }))
+                formNarrative = buildFormNarratives(summaries)
+            }
+        } catch (err) {
+            console.warn('[generateProgram] Failed to fetch form submissions:', err)
+        }
+        console.log('[generateProgram] FormNarrative available:', !!formNarrative, formNarrative ? `(${formNarrative.length} chars)` : '')
+    }
+
+    // ── 8e. Combine narratives (questionnaire + forms) ──
+    const combinedNarrative = [studentNarrative, formNarrative].filter(Boolean).join('\n\n') || null
+    console.log('[generateProgram] CombinedNarrative available:', !!combinedNarrative, combinedNarrative ? `(${combinedNarrative.length} chars)` : '')
 
     // ── 9. Build input snapshot (for audit trail) ──
     const inputSnapshot: PrescriptionInputSnapshot = {
@@ -304,11 +365,13 @@ export async function generateProgram(
         // ── Builder-First Pipeline (feature-flagged) ──
         const useBuilderFirst = process.env.ENABLE_BUILDER_FIRST === 'true'
 
+        const programIndex = enrichedContext.previous_programs.length
+
         if (useBuilderFirst) {
             console.log('[BuilderFirst] Pipeline active — skipping agent, using slot builder + optional optimizer')
 
             // Step 1: Build program deterministically
-            outputSnapshot = await buildSlotBasedProgram(typedProfile, agentExercises, constraints, enrichedContext)
+            outputSnapshot = await buildSlotBasedProgram(typedProfile, agentExercises, constraints, enrichedContext, programIndex, combinedNarrative, trainerPatterns)
             source = 'heuristic'
             model = 'slot-builder'
             llmStatus = 'llm_disabled' as LLMStatus
@@ -322,6 +385,7 @@ export async function generateProgram(
                 agentExercises,
                 agentState.answers,
                 trainerPatterns,
+                combinedNarrative,
             )
 
             outputSnapshot = optimizerResult.output
@@ -343,7 +407,7 @@ export async function generateProgram(
                 const fixResult = fixViolations(outputSnapshot, validation.violations, agentExerciseMap)
                 if (fixResult.remainingViolations.some(v => v.severity === 'error')) {
                     console.warn('[BuilderFirst] Unfixable errors after optimization — rebuilding')
-                    outputSnapshot = await buildSlotBasedProgram(typedProfile, agentExercises, constraints, enrichedContext)
+                    outputSnapshot = await buildSlotBasedProgram(typedProfile, agentExercises, constraints, enrichedContext, programIndex, combinedNarrative, trainerPatterns)
                     source = 'heuristic'
                     model = 'slot-builder'
                     llmStatus = 'validation_failed' as LLMStatus
@@ -418,7 +482,7 @@ export async function generateProgram(
         }
 
         // ── Agent Pipeline (existing path when ENABLE_BUILDER_FIRST is not 'true') ──
-        const agentResult = await generateWithAgent(agentState, typedProfile, smartExercises, enrichedContext, constraints, trainerPatterns)
+        const agentResult = await generateWithAgent(agentState, typedProfile, smartExercises, enrichedContext, constraints, trainerPatterns, combinedNarrative)
 
         if (agentResult.output && !agentResult.fallback) {
             // Build exercise map from the exercises the agent actually received
@@ -453,7 +517,7 @@ export async function generateProgram(
                     ))
                     const useSlotBuilder = process.env.ENABLE_SLOT_BASED_BUILDER !== 'false'
                     if (useSlotBuilder) {
-                        outputSnapshot = await buildSlotBasedProgram(typedProfile, agentExercises, constraints, enrichedContext)
+                        outputSnapshot = await buildSlotBasedProgram(typedProfile, agentExercises, constraints, enrichedContext, programIndex, combinedNarrative, trainerPatterns)
                     } else {
                         outputSnapshot = buildHeuristicProgram(typedProfile, agentExercises)
                     }
@@ -569,7 +633,7 @@ export async function generateProgram(
     }
 
     // ── 10b. Try OpenAI generation (legacy path or agent fallback) ──
-    const aiResult = await tryOpenAIGeneration(typedProfile, exercises, performanceContext)
+    const aiResult = await tryOpenAIGeneration(typedProfile, exercises, performanceContext, combinedNarrative)
     llmStatus = aiResult.status
 
     if (aiResult.output) {
@@ -672,6 +736,7 @@ async function tryOpenAIGeneration(
     profile: StudentPrescriptionProfile,
     exercises: PrescriptionExerciseRef[],
     performanceContext: PrescriptionPerformanceContext | null,
+    studentNarrative?: string | null,
 ): Promise<OpenAIResult> {
     const model = resolveOpenAIModel()
     const llmEnabled = resolveLLMEnabled()
@@ -685,7 +750,7 @@ async function tryOpenAIGeneration(
         return { output: null, status: 'missing_api_key', model }
     }
 
-    const { system, user } = buildPromptPair(profile, exercises, performanceContext)
+    const { system, user } = buildPromptPair(profile, exercises, performanceContext, studentNarrative)
 
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), resolveTimeoutMs())

@@ -41,6 +41,7 @@ export default async function PrescribePage({ params }: { params: Promise<{ id: 
             lastFormSubmissionDate: null,
             questionnaireSubmission: null,
             questionnaireTemplateId: null,
+            formSubmissions: [],
         }
     }
 

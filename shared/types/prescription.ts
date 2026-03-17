@@ -212,6 +212,12 @@ export interface PrescriptionReasoning {
     attention_flags: string[]
     /** Confidence 0-1 (matches prescription_generations.confidence_score) */
     confidence_score: number
+    /** Justification of main exercise choices, restrictions respected, exercises avoided */
+    exercise_choices?: string
+    /** Which form/questionnaire data was considered and how it influenced the program */
+    form_data_used?: string
+    /** Adjustments based on performance, adherence, trainer observations, or optimizer */
+    adaptations?: string
 }
 
 /**

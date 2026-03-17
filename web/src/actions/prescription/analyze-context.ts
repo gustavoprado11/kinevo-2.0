@@ -6,7 +6,7 @@ import { analyzeContextAndAsk } from '@/lib/prescription/claude-agent'
 import { selectConditionalQuestions } from '@/lib/prescription/question-engine'
 import { detectVolumeTradeoff } from '@/lib/prescription/constraints-engine'
 import { fetchPrescriptionQuestionnaire } from './questionnaire-actions'
-import { mapQuestionnaireToProfile } from '@/lib/prescription/questionnaire-mapper'
+import { mapQuestionnaireToProfile, type QuestionnaireData } from '@/lib/prescription/questionnaire-mapper'
 
 import type {
     StudentPrescriptionProfile,
@@ -27,6 +27,8 @@ export interface AnalyzeContextResult {
     questions?: PrescriptionAgentQuestion[]
     agentState?: PrescriptionAgentState
     studentName?: string
+    questionnaireData?: QuestionnaireData
+    studentNarrative?: string
 }
 
 // ============================================================================
@@ -35,6 +37,7 @@ export interface AnalyzeContextResult {
 
 export async function analyzeStudentContext(
     studentId: string,
+    selectedFormIds: string[] = [],
 ): Promise<AnalyzeContextResult> {
     const supabase = await createClient()
 
@@ -119,6 +122,13 @@ export async function analyzeStudentContext(
         }
     }
 
+    // ── 5.2. Build student narrative from questionnaire ──
+    const { buildStudentNarrative } = await import('@/lib/prescription/prompt-builder')
+    const studentNarrative = questionnaireData ? buildStudentNarrative(questionnaireData) : null
+    if (studentNarrative) {
+        console.log('[analyzeStudentContext] Student narrative built:', studentNarrative.length, 'chars')
+    }
+
     // ── 5.5. Detect volume trade-off before question selection ──
     const tradeoff = detectVolumeTradeoff(typedProfile, enrichedContext)
     if (tradeoff.needsTradeoff) {
@@ -126,7 +136,8 @@ export async function analyzeStudentContext(
     }
 
     // ── 5.6. Server-side conditional questions (guaranteed) ──
-    const serverQuestions = selectConditionalQuestions(typedProfile, enrichedContext, tradeoff, questionnaireData)
+    const hasFormContext = selectedFormIds.length > 0
+    const serverQuestions = selectConditionalQuestions(typedProfile, enrichedContext, tradeoff, questionnaireData, hasFormContext)
     console.log(`[analyzeStudentContext] Server-side questions: ${serverQuestions.length} (${serverQuestions.map(q => q.id).join(', ')})`)
 
     // ── 6. Builder-First or Agent analysis ──
@@ -151,12 +162,14 @@ export async function analyzeStudentContext(
             questions: serverQuestions,
             agentState,
             studentName: enrichedContext.student_name,
+            questionnaireData: questionnaireData ?? undefined,
+            studentNarrative: studentNarrative ?? undefined,
         }
     }
 
     // ── 6b. Legacy Agent analysis (ENABLE_BUILDER_FIRST !== 'true') ──
     try {
-        const result = await analyzeContextAndAsk(typedProfile, exercises, enrichedContext, serverQuestions)
+        const result = await analyzeContextAndAsk(typedProfile, exercises, enrichedContext, serverQuestions, studentNarrative)
 
         if (result.status === 'missing_api_key') {
             console.error('[analyzeStudentContext] ANTHROPIC_API_KEY not configured')
@@ -175,6 +188,8 @@ export async function analyzeStudentContext(
                 questions: [],
                 agentState: undefined,
                 studentName: enrichedContext.student_name,
+                questionnaireData: questionnaireData ?? undefined,
+                studentNarrative: studentNarrative ?? undefined,
             }
         }
 
@@ -199,6 +214,8 @@ export async function analyzeStudentContext(
             questions: mergedQuestions,
             agentState,
             studentName: enrichedContext.student_name,
+            questionnaireData: questionnaireData ?? undefined,
+            studentNarrative: studentNarrative ?? undefined,
         }
     } catch (err: any) {
         console.error('[analyzeStudentContext] Unexpected error:', err)
@@ -209,6 +226,8 @@ export async function analyzeStudentContext(
             questions: [],
             agentState: undefined,
             studentName: enrichedContext.student_name,
+            questionnaireData: questionnaireData ?? undefined,
+            studentNarrative: studentNarrative ?? undefined,
         }
     }
 }
