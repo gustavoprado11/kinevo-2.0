@@ -85,6 +85,109 @@ function ScrollableChips({ children }: { children: React.ReactNode }) {
     )
 }
 
+function ExerciseRow({
+    exercise,
+    activeWorkoutId,
+    onAddExercise,
+    onPreview,
+    showBadge,
+}: {
+    exercise: Exercise
+    activeWorkoutId: string | null
+    onAddExercise: (exercise: Exercise) => void
+    onPreview: (exercise: Exercise) => void
+    showBadge: boolean
+}) {
+    const [mainName, variant] = splitExerciseName(exercise.name)
+    const allGroups = exercise.muscle_groups?.length
+        ? exercise.muscle_groups.map(g => typeof g === 'object' ? g.name : g).join(' · ')
+        : null
+
+    return (
+        <div
+            draggable={!!activeWorkoutId}
+            onDragStart={(e) => {
+                e.dataTransfer.setData('application/kinevo-exercise-id', exercise.id)
+                e.dataTransfer.effectAllowed = 'copy'
+            }}
+            className={`flex items-center gap-2 py-2 px-3 min-h-[56px] border-b border-[#E8E8ED]/50 dark:border-k-border-subtle/50 transition-colors group/item ${
+                activeWorkoutId
+                    ? 'cursor-grab hover:bg-[#F5F5F7] dark:hover:bg-glass-bg active:bg-[#ECECF0] dark:active:bg-glass-bg-active active:cursor-grabbing'
+                    : 'cursor-not-allowed opacity-50'
+            }`}
+            title={exercise.name}
+        >
+            {/* Name — uniform 2-line height */}
+            <button
+                onClick={() => {
+                    if (activeWorkoutId) onAddExercise(exercise)
+                }}
+                className="flex-1 min-w-0 text-left mr-1"
+                disabled={!activeWorkoutId}
+            >
+                {variant ? (
+                    <>
+                        <span className={`text-[13px] font-medium truncate block leading-tight transition-colors ${
+                            activeWorkoutId ? 'text-k-text-secondary group-hover/item:text-k-text-primary' : 'text-k-text-tertiary'
+                        }`}>
+                            {mainName}
+                        </span>
+                        <span className="text-[11px] text-k-text-quaternary truncate block leading-tight">
+                            {variant}
+                        </span>
+                    </>
+                ) : (
+                    <span className={`text-[13px] font-medium leading-tight line-clamp-2 transition-colors ${
+                        activeWorkoutId ? 'text-k-text-secondary group-hover/item:text-k-text-primary' : 'text-k-text-tertiary'
+                    }`}>
+                        {exercise.name}
+                    </span>
+                )}
+            </button>
+
+            {/* Badge + actions — right-aligned, vertically centered */}
+            <div className="flex items-center gap-2 shrink-0">
+                {showBadge && allGroups && (
+                    <span
+                        className="text-[9px] text-[#8E8E93] dark:text-k-text-quaternary font-bold max-w-[80px] truncate"
+                        title={allGroups}
+                    >
+                        {allGroups}
+                    </span>
+                )}
+
+                <div className="flex items-center gap-0.5 opacity-0 group-hover/item:opacity-100 transition-opacity">
+                    {exercise.video_url && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                e.preventDefault()
+                                onPreview(exercise)
+                            }}
+                            className="p-1 text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#007AFF] dark:hover:text-violet-400 transition-colors"
+                            title="Ver vídeo"
+                        >
+                            <PlayCircle className="w-4 h-4" />
+                        </button>
+                    )}
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation()
+                            e.preventDefault()
+                            if (activeWorkoutId) onAddExercise(exercise)
+                        }}
+                        className="p-1 text-k-text-quaternary hover:text-emerald-400 transition-colors"
+                        title="Adicionar ao treino"
+                        disabled={!activeWorkoutId}
+                    >
+                        <Plus className="w-4 h-4" />
+                    </button>
+                </div>
+            </div>
+        </div>
+    )
+}
+
 interface ExerciseLibraryPanelProps {
     exercises: Exercise[]
     trainerId: string
@@ -146,6 +249,35 @@ export function ExerciseLibraryPanel({
             return matchesSearch && matchesMuscle
         })
     }, [exercises, searchQuery, selectedGroup, overrideSystemIds])
+
+    // Group exercises by primary muscle group (for "Todos" mode without search)
+    const groupedExercises = useMemo(() => {
+        if (selectedGroup || searchQuery.trim()) return null
+
+        const groups = new Map<string, Exercise[]>()
+        for (const exercise of filteredExercises) {
+            const primaryGroup = exercise.muscle_groups?.[0]
+            const groupName = primaryGroup && typeof primaryGroup === 'object' ? primaryGroup.name : null
+            const key = groupName || '__outros__'
+            if (!groups.has(key)) groups.set(key, [])
+            groups.get(key)!.push(exercise)
+        }
+
+        // Sort groups alphabetically, "Outros" last
+        const sorted: { groupName: string; exercises: Exercise[] }[] = []
+        const keys = Array.from(groups.keys()).sort((a, b) => {
+            if (a === '__outros__') return 1
+            if (b === '__outros__') return -1
+            return a.localeCompare(b)
+        })
+        for (const key of keys) {
+            sorted.push({
+                groupName: key === '__outros__' ? 'Outros' : key,
+                exercises: groups.get(key)!,
+            })
+        }
+        return sorted
+    }, [filteredExercises, selectedGroup, searchQuery])
 
     return (
         <>
@@ -236,94 +368,42 @@ export function ExerciseLibraryPanel({
                                 </button>
                             )}
                         </div>
-                    ) : (
-                        filteredExercises.map(exercise => {
-                            const primaryGroup = exercise.muscle_groups?.[0]
-                            const groupName = primaryGroup ? (typeof primaryGroup === 'object' ? primaryGroup.name : primaryGroup) : null
-                            const [mainName, variant] = splitExerciseName(exercise.name)
-
-                            return (
-                                <div
-                                    key={exercise.id}
-                                    draggable={!!activeWorkoutId}
-                                    onDragStart={(e) => {
-                                        e.dataTransfer.setData('application/kinevo-exercise-id', exercise.id)
-                                        e.dataTransfer.effectAllowed = 'copy'
-                                    }}
-                                    className={`flex items-center gap-2 py-2 px-3 min-h-[56px] border-b border-[#E8E8ED]/50 dark:border-k-border-subtle/50 transition-colors group/item ${
-                                        activeWorkoutId
-                                            ? 'cursor-grab hover:bg-[#F5F5F7] dark:hover:bg-glass-bg active:bg-[#ECECF0] dark:active:bg-glass-bg-active active:cursor-grabbing'
-                                            : 'cursor-not-allowed opacity-50'
-                                    }`}
-                                    title={exercise.name}
-                                >
-                                    {/* Name — uniform 2-line height */}
-                                    <button
-                                        onClick={() => {
-                                            if (activeWorkoutId) onAddExercise(exercise)
-                                        }}
-                                        className="flex-1 min-w-0 text-left mr-1"
-                                        disabled={!activeWorkoutId}
-                                    >
-                                        {variant ? (
-                                            <>
-                                                <span className={`text-[13px] font-medium truncate block leading-tight transition-colors ${
-                                                    activeWorkoutId ? 'text-k-text-secondary group-hover/item:text-k-text-primary' : 'text-k-text-tertiary'
-                                                }`}>
-                                                    {mainName}
-                                                </span>
-                                                <span className="text-[11px] text-k-text-quaternary truncate block leading-tight">
-                                                    {variant}
-                                                </span>
-                                            </>
-                                        ) : (
-                                            <span className={`text-[13px] font-medium leading-tight line-clamp-2 transition-colors ${
-                                                activeWorkoutId ? 'text-k-text-secondary group-hover/item:text-k-text-primary' : 'text-k-text-tertiary'
-                                            }`}>
-                                                {exercise.name}
-                                            </span>
-                                        )}
-                                    </button>
-
-                                    {/* Badge + actions — right-aligned, vertically centered */}
-                                    <div className="flex items-center gap-2 shrink-0">
-                                        {groupName && (
-                                            <span className="text-[9px] text-[#8E8E93] dark:text-k-text-quaternary font-bold">
-                                                {groupName}
-                                            </span>
-                                        )}
-
-                                        <div className="flex items-center gap-0.5 opacity-0 group-hover/item:opacity-100 transition-opacity">
-                                            {exercise.video_url && (
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation()
-                                                        e.preventDefault()
-                                                        setPreviewExercise(exercise)
-                                                    }}
-                                                    className="p-1 text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#007AFF] dark:hover:text-violet-400 transition-colors"
-                                                    title="Ver vídeo"
-                                                >
-                                                    <PlayCircle className="w-4 h-4" />
-                                                </button>
-                                            )}
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation()
-                                                    e.preventDefault()
-                                                    if (activeWorkoutId) onAddExercise(exercise)
-                                                }}
-                                                className="p-1 text-k-text-quaternary hover:text-emerald-400 transition-colors"
-                                                title="Adicionar ao treino"
-                                                disabled={!activeWorkoutId}
-                                            >
-                                                <Plus className="w-4 h-4" />
-                                            </button>
-                                        </div>
-                                    </div>
+                    ) : groupedExercises ? (
+                        /* Grouped mode — "Todos" without search */
+                        groupedExercises.map(({ groupName: sectionName, exercises: sectionExercises }) => (
+                            <div key={sectionName}>
+                                <div className="sticky top-0 z-10 flex items-center justify-between px-3 py-1.5 bg-[#F5F5F7] dark:bg-glass-bg border-b border-[#E8E8ED]/50 dark:border-k-border-subtle/50">
+                                    <span className="text-[10px] font-semibold uppercase tracking-wide text-[#8E8E93] dark:text-k-text-quaternary">
+                                        {sectionName}
+                                    </span>
+                                    <span className="text-[9px] text-[#AEAEB2] dark:text-k-text-quaternary font-medium">
+                                        {sectionExercises.length}
+                                    </span>
                                 </div>
-                            )
-                        })
+                                {sectionExercises.map(exercise => (
+                                    <ExerciseRow
+                                        key={exercise.id}
+                                        exercise={exercise}
+                                        activeWorkoutId={activeWorkoutId}
+                                        onAddExercise={onAddExercise}
+                                        onPreview={setPreviewExercise}
+                                        showBadge={false}
+                                    />
+                                ))}
+                            </div>
+                        ))
+                    ) : (
+                        /* Flat mode — filtered by chip or search */
+                        filteredExercises.map(exercise => (
+                            <ExerciseRow
+                                key={exercise.id}
+                                exercise={exercise}
+                                activeWorkoutId={activeWorkoutId}
+                                onAddExercise={onAddExercise}
+                                onPreview={setPreviewExercise}
+                                showBadge
+                            />
+                        ))
                     )}
                 </div>
 

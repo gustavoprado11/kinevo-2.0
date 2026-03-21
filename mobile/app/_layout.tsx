@@ -31,7 +31,7 @@ function WatchBridge() {
     const { useWatchConnectivity } = require("../hooks/useWatchConnectivity");
     const { finishWorkoutFromWatch, watchFinishState, processPendingWatchWorkouts } = require("../lib/finishWorkoutFromWatch");
     const { sendAckToWatch, syncProgramToWatch } = require("../modules/watch-connectivity");
-    const { appEvents, WORKOUT_COMPLETED } = require("../lib/events");
+    const { appEvents, WORKOUT_COMPLETED, WATCH_WORKOUT_FINISHED } = require("../lib/events");
     const { supabase } = require("../lib/supabase");
     const { getProgramSnapshotForWatch } = require("../lib/getProgramSnapshotForWatch");
     const router = useRouter();
@@ -170,18 +170,18 @@ function WatchBridge() {
                         if (__DEV__) console.warn(`[Layout] Failed to re-sync program (non-critical): ${syncError?.message}`);
                     }
 
-                    Alert.alert(
-                        "Treino Concluído!",
-                        "Seu treino foi salvo com sucesso pelo Apple Watch.",
-                        [{ text: "OK", onPress: () => router.replace('/(tabs)/home') }]
-                    );
+                    // Notify the workout screen (if mounted) to stop timer and allow navigation.
+                    appEvents.emit(WATCH_WORKOUT_FINISHED, { workoutId });
+
+                    // Navigate directly — no Alert required. The user is on the Watch,
+                    // so a blocking Alert would go unseen. The beforeRemove guard in
+                    // workout/[id].tsx already allows navigation when watchFinishState.isFinished().
+                    router.replace('/(tabs)/home');
                 } else {
                     console.error('[Layout] finishWorkoutFromWatch returned null');
-                    Alert.alert("Erro", "Não foi possível salvar o treino do Apple Watch.");
                 }
             } catch (error) {
                 console.error('[Layout] Error finishing workout from watch:', __DEV__ ? error : '');
-                Alert.alert("Erro", "Falha ao salvar o treino do Apple Watch.");
             }
         },
         [router]

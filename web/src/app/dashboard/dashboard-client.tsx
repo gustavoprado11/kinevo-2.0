@@ -14,7 +14,9 @@ import { CompactTools } from '@/components/dashboard/compact-tools'
 import { WelcomeModal } from '@/components/onboarding/widgets/welcome-modal'
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
 import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
+import { FolderArchive, Loader2 } from 'lucide-react'
 import { markAsPaid } from '@/actions/financial/mark-as-paid'
+import { archiveStudent } from '@/actions/financial/archive-student'
 import type { OnboardingState } from '@kinevo/shared/types/onboarding'
 import type { DashboardData } from '@/lib/dashboard/get-dashboard-data'
 
@@ -54,6 +56,8 @@ export function DashboardClient({ trainer, data, initialStudents, selfStudentId,
     const router = useRouter()
     const [students, setStudents] = useState<Student[]>(initialStudents)
     const [isModalOpen, setIsModalOpen] = useState(false)
+    const [archiveConfirm, setArchiveConfirm] = useState<{ id: string; name: string } | null>(null)
+    const [archiveLoading, setArchiveLoading] = useState(false)
 
     const handleStudentCreated = (newStudent: Student) => {
         setStudents([newStudent, ...students])
@@ -65,6 +69,27 @@ export function DashboardClient({ trainer, data, initialStudents, selfStudentId,
         if (result.success) {
             router.refresh()
         }
+    }
+
+    const handleSellPlan = (studentId: string) => {
+        router.push(`/financial/subscriptions?sell=${studentId}`)
+    }
+
+    const handleArchiveStudent = (studentId: string, studentName: string) => {
+        setArchiveConfirm({ id: studentId, name: studentName })
+    }
+
+    const confirmArchive = async () => {
+        if (!archiveConfirm) return
+        setArchiveLoading(true)
+        const result = await archiveStudent({ studentId: archiveConfirm.id })
+        if (result.success) {
+            setArchiveConfirm(null)
+            router.refresh()
+        } else {
+            alert(result.error || 'Erro ao arquivar')
+        }
+        setArchiveLoading(false)
     }
 
     return (
@@ -86,8 +111,11 @@ export function DashboardClient({ trainer, data, initialStudents, selfStudentId,
                 pendingFinancial={data.pendingFinancial}
                 pendingForms={data.pendingForms}
                 inactiveStudents={data.inactiveStudents}
+                expiredPlans={data.expiredPlans}
                 activeStudentsCount={data.stats.activeStudentsCount}
                 onMarkAsPaid={handleMarkAsPaid}
+                onSellPlan={handleSellPlan}
+                onArchiveStudent={handleArchiveStudent}
             />
 
             {/* 3. Treinos de Hoje (full width) */}
@@ -115,6 +143,43 @@ export function DashboardClient({ trainer, data, initialStudents, selfStudentId,
 
             <WelcomeModal trainerName={trainer.name} />
             <TourRunner tourId="welcome" steps={TOUR_STEPS.welcome} />
+
+            {/* Archive Confirmation Modal */}
+            {archiveConfirm && (
+                <div className="fixed inset-0 z-float flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => !archiveLoading && setArchiveConfirm(null)} />
+                    <div className="relative bg-background border border-border rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+                        <div className="w-12 h-12 bg-red-500/10 rounded-full flex items-center justify-center mb-4 mx-auto">
+                            <FolderArchive className="w-6 h-6 text-red-500" />
+                        </div>
+                        <h3 className="text-lg font-bold text-foreground text-center mb-2">Arquivar Aluno?</h3>
+                        <p className="text-muted-foreground text-sm text-center mb-6">
+                            Tem certeza que deseja arquivar <span className="text-foreground font-medium">{archiveConfirm.name}</span>?
+                            O aluno será desvinculado da sua conta e contratos ativos serão cancelados. O aluno manterá acesso ao app e ao histórico de treinos.
+                        </p>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setArchiveConfirm(null)}
+                                disabled={archiveLoading}
+                                className="flex-1 px-4 py-2 bg-muted hover:bg-muted/80 text-foreground text-sm font-medium rounded-xl transition-colors disabled:opacity-50"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={confirmArchive}
+                                disabled={archiveLoading}
+                                className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                            >
+                                {archiveLoading ? (
+                                    <><Loader2 className="w-4 h-4 animate-spin" /> Arquivando...</>
+                                ) : (
+                                    'Sim, Arquivar'
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </AppLayout>
     )
 }

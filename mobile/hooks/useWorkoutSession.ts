@@ -80,6 +80,7 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
     // Supabase onAuthStateChange fires on TOKEN_REFRESHED, creating a new `user`
     // reference which would re-trigger the fetchWorkout effect and wipe exercise state.
     const hasLoadedRef = useRef(false);
+    const isFetchingRef = useRef(false);
 
     const mapExerciseToSubstituteOption = (
         exercise: any,
@@ -278,19 +279,29 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
 
     // Fetch Workout Data
     useEffect(() => {
+        // Wait for auth before anything — when the Watch starts a workout,
+        // this screen mounts before AuthProvider resolves `user`. The effect
+        // must re-run once user transitions from null → valid.
+        if (!workoutId || !user) return;
+        // Only THEN guard against duplicate fetches.
         if (hasLoadedRef.current) return;
+        // Prevent parallel invocations: if a fetchWorkout is already in-flight
+        // (e.g. TOKEN_REFRESHED fired during the initial async fetch), skip.
+        if (isFetchingRef.current) return;
 
+        // Capture for the async closure — TS can't narrow across await boundaries.
+        const currentUser = user;
         let mounted = true;
 
         async function fetchWorkout() {
-            if (!workoutId || !user) return;
+            isFetchingRef.current = true;
 
             try {
                 // Student context for logs/history RPC
                 const { data: student, error: studentError }: { data: any; error: any } = await supabase
                     .from('students' as any)
                     .select('id')
-                    .eq('auth_user_id', user.id)
+                    .eq('auth_user_id', currentUser.id)
                     .maybeSingle();
 
                 if (studentError) throw studentError;
@@ -469,13 +480,16 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                 if (__DEV__) console.error("Error fetching workout:", error);
                 Alert.alert("Erro", "Falha ao carregar o treino.");
             } finally {
-                if (mounted) setIsLoading(false);
+                if (mounted) {
+                    setIsLoading(false);
+                    isFetchingRef.current = false;
+                }
             }
         }
 
         fetchWorkout();
         return () => { mounted = false; };
-    }, [workoutId, user]);
+    }, [workoutId, user?.id]);
 
 
     const handleSetChange = (exerciseIndex: number, setIndex: number, field: 'weight' | 'reps', value: string) => {

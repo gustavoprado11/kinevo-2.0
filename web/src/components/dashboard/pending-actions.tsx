@@ -2,9 +2,9 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
-import { CheckCircle, Check } from 'lucide-react'
+import { CheckCircle, Check, FolderArchive } from 'lucide-react'
 import Link from 'next/link'
-import type { PendingFinancialItem, PendingFormItem, InactiveStudentItem } from '@/lib/dashboard/get-dashboard-data'
+import type { PendingFinancialItem, PendingFormItem, InactiveStudentItem, ExpiredPlanItem } from '@/lib/dashboard/get-dashboard-data'
 
 function ActionAvatar({ name, avatarUrl }: { name: string; avatarUrl: string | null }) {
     if (avatarUrl) {
@@ -31,8 +31,11 @@ interface PendingActionsProps {
     pendingFinancial: PendingFinancialItem[]
     pendingForms: PendingFormItem[]
     inactiveStudents: InactiveStudentItem[]
+    expiredPlans: ExpiredPlanItem[]
     activeStudentsCount: number
     onMarkAsPaid: (contractId: string) => Promise<void>
+    onSellPlan?: (studentId: string) => void
+    onArchiveStudent?: (studentId: string, studentName: string) => void
 }
 
 const formatCurrency = (value: number) => {
@@ -62,14 +65,17 @@ export function PendingActions({
     pendingFinancial,
     pendingForms,
     inactiveStudents,
+    expiredPlans,
     activeStudentsCount,
     onMarkAsPaid,
+    onSellPlan,
+    onArchiveStudent,
 }: PendingActionsProps) {
     const [markingPaid, setMarkingPaid] = useState<string | null>(null)
     const [dismissedContracts, setDismissedContracts] = useState<Set<string>>(new Set())
 
     const visibleFinancial = pendingFinancial.filter(c => !dismissedContracts.has(c.id))
-    const totalPending = visibleFinancial.length + pendingForms.length + inactiveStudents.length
+    const totalPending = visibleFinancial.length + expiredPlans.length + pendingForms.length + inactiveStudents.length
 
     const handleMarkAsPaid = async (contractId: string) => {
         setMarkingPaid(contractId)
@@ -151,6 +157,49 @@ export function PendingActions({
                             Ver contrato →
                         </Link>
                     )}
+                </div>
+            ),
+        })
+    }
+
+    // Expired plans — priority between financial and forms
+    for (const ep of expiredPlans) {
+        items.push({
+            key: `expired-${ep.studentId}`,
+            urgency: 'medium',
+            render: (isLast: boolean) => (
+                <div className={`flex items-center justify-between px-4 py-3 transition-colors hover:bg-[#F5F5F7] dark:hover:bg-glass-bg ${
+                    !isLast ? 'border-b border-[#D2D2D7]/60 dark:border-k-border-subtle' : ''
+                } dark:bg-red-500/5 dark:border-red-500/15`}>
+                    <div className="flex items-center gap-3 min-w-0">
+                        <ActionAvatar name={ep.studentName} avatarUrl={ep.studentAvatar} />
+                        <div className="min-w-0">
+                            <span className="text-sm font-medium text-[#1D1D1F] dark:text-k-text-primary block truncate">{ep.studentName}</span>
+                            <span className="text-xs text-[#6E6E73] dark:text-k-text-quaternary block">
+                                {ep.planTitle ? `${ep.planTitle} · ` : ''}Expirou em {new Date(ep.expiredAt).toLocaleDateString('pt-BR')}
+                            </span>
+                            <span className="text-[10px] text-[#86868B] dark:text-k-text-quaternary">Plano expirado</span>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                        {onSellPlan && (
+                            <button
+                                onClick={() => onSellPlan(ep.studentId)}
+                                className="text-sm font-medium text-[#007AFF] hover:text-[#0056B3] dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20 dark:px-3 dark:py-1.5 dark:rounded-lg transition-colors"
+                            >
+                                Vender novo plano →
+                            </button>
+                        )}
+                        {onArchiveStudent && (
+                            <button
+                                onClick={() => onArchiveStudent(ep.studentId, ep.studentName)}
+                                className="text-sm font-medium text-[#86868B] hover:text-[#FF3B30] dark:bg-gray-500/10 dark:text-gray-400 dark:hover:text-red-400 dark:hover:bg-red-500/10 dark:px-3 dark:py-1.5 dark:rounded-lg transition-colors flex items-center gap-1"
+                            >
+                                <FolderArchive size={13} />
+                                Arquivar
+                            </button>
+                        )}
+                    </div>
                 </div>
             ),
         })

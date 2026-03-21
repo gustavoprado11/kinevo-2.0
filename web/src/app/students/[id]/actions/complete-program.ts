@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { generateReport } from '@/lib/reports/program-report-service'
 
 export async function completeProgram(programId: string, studentId: string) {
     const supabase = await createClient()
@@ -46,7 +47,16 @@ export async function completeProgram(programId: string, studentId: string) {
             return { success: false, error: 'Programa não encontrado' }
         }
 
-        return { success: true }
+        // Auto-generate program report (async, non-blocking)
+        // Failure here should NOT prevent the program from being completed
+        let reportId: string | null = null
+        try {
+            reportId = await generateReport(supabase, programId)
+        } catch (reportError) {
+            console.error('[complete-program] Report generation failed (non-blocking):', reportError)
+        }
+
+        return { success: true, reportId }
     } catch (error) {
         console.error('Unexpected error completing program:', error)
         return { success: false, error: 'Ocorreu um erro inesperado ao concluir o programa' }

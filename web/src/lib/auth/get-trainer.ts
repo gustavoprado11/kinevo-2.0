@@ -14,11 +14,17 @@ interface TrainerRecord {
     [key: string]: any
 }
 
-export async function getTrainerWithSubscription() {
+export async function getTrainerWithSubscription(userId?: string) {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
 
-    if (!user) redirect('/login')
+    // When userId is provided the caller already validated auth via getUser(),
+    // so we skip the redundant HTTP roundtrip to Supabase Auth API (~100-300ms).
+    let authUserId = userId
+    if (!authUserId) {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) redirect('/login')
+        authUserId = user.id
+    }
 
     // Try with onboarding_state first; fall back without it if column doesn't exist yet
     let trainer: TrainerRecord | null = null
@@ -26,7 +32,7 @@ export async function getTrainerWithSubscription() {
     const { data: t1, error: e1 } = await supabase
         .from('trainers')
         .select('id, name, email, avatar_url, theme, ai_prescriptions_enabled, onboarding_state')
-        .eq('auth_user_id', user.id)
+        .eq('auth_user_id', authUserId)
         .single()
 
     if (t1) {
@@ -36,7 +42,7 @@ export async function getTrainerWithSubscription() {
         const { data: t2 } = await supabase
             .from('trainers')
             .select('id, name, email, avatar_url, theme, ai_prescriptions_enabled')
-            .eq('auth_user_id', user.id)
+            .eq('auth_user_id', authUserId)
             .single()
         trainer = t2 ? { ...t2, onboarding_state: DEFAULT_ONBOARDING_STATE } as unknown as TrainerRecord : null
     }
@@ -59,5 +65,5 @@ export async function getTrainerWithSubscription() {
         redirect('/subscription/blocked')
     }
 
-    return { user, trainer, subscription: subscription! }
+    return { trainer, subscription: subscription! }
 }

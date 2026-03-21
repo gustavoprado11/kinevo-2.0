@@ -21,6 +21,7 @@ import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
 import { getProgramWeek } from '@kinevo/shared/utils/schedule-projection'
 import { FinancialSidebarCard } from '@/components/students/financial-sidebar-card'
 import { AssessmentSidebarCard } from '@/components/students/assessment-sidebar-card'
+import { AlertCircle } from 'lucide-react'
 import type { DisplayStatus } from '@/types/financial'
 
 interface Student {
@@ -159,6 +160,7 @@ export function StudentDetailClient({
     const [isCompleteModalOpen, setIsCompleteModalOpen] = useState(false)
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
     const [processingId, setProcessingId] = useState<string | null>(null)
+    const [activationBlock, setActivationBlock] = useState<{ workoutNames: string[] } | null>(null)
     const [trainerNotes, setTrainerNotes] = useState(initialStudent.trainer_notes || '')
     const [notesSaving, setNotesSaving] = useState(false)
     const notesTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -243,6 +245,16 @@ export function StudentDetailClient({
 
     // --- Scheduled Program Actions ---
     const handleActivateScheduled = async (programId: string) => {
+        // Validate all workouts have scheduled days before activation
+        const program = scheduledPrograms.find(p => p.id === programId)
+        if (program?.assigned_workouts) {
+            const missing = program.assigned_workouts.filter(w => !w.scheduled_days || w.scheduled_days.length === 0)
+            if (missing.length > 0) {
+                setActivationBlock({ workoutNames: missing.map(w => w.name) })
+                return
+            }
+        }
+
         if (activeProgram) {
             if (!confirm('Ao ativar este programa, o programa atual será encerrado. Deseja continuar?')) return
         } else {
@@ -571,6 +583,34 @@ export function StudentDetailClient({
                 onConfirm={handleConfirmComplete}
                 programName={activeProgram?.name || ''}
             />
+
+            {/* Activation blocked — workouts without scheduled days */}
+            {activationBlock && (
+                <div className="fixed inset-0 z-modal flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setActivationBlock(null)} />
+                    <div className="relative bg-surface-card border border-k-border-primary rounded-2xl shadow-2xl p-6 max-w-md w-full animate-in zoom-in-95 fade-in duration-200">
+                        <div className="w-12 h-12 bg-amber-500/10 rounded-xl flex items-center justify-center mb-4 mx-auto">
+                            <AlertCircle className="w-6 h-6 text-amber-400" />
+                        </div>
+                        <h3 className="text-lg font-bold text-white text-center mb-2">Treinos sem dia agendado</h3>
+                        <p className="text-sm text-k-text-tertiary text-center mb-1">
+                            {activationBlock.workoutNames.length === 1
+                                ? `O treino "${activationBlock.workoutNames[0]}" não possui dias da semana atribuídos.`
+                                : `Os seguintes treinos não possuem dias da semana atribuídos: ${activationBlock.workoutNames.map(n => `"${n}"`).join(', ')}.`
+                            }
+                        </p>
+                        <p className="text-xs text-amber-400/80 text-center mb-6">
+                            Atribua pelo menos um dia a cada treino antes de ativar o programa.
+                        </p>
+                        <button
+                            onClick={() => setActivationBlock(null)}
+                            className="w-full py-3 bg-violet-600 hover:bg-violet-500 text-white text-sm font-bold rounded-full transition-colors"
+                        >
+                            Entendi
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Tour: Student Detail (auto-start on first visit) */}
             <TourRunner tourId="student_detail" steps={TOUR_STEPS.student_detail} autoStart />

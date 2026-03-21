@@ -41,6 +41,14 @@ export interface InactiveStudentItem {
     programName: string
 }
 
+export interface ExpiredPlanItem {
+    studentId: string
+    studentName: string
+    studentAvatar: string | null
+    planTitle: string | null
+    expiredAt: string
+}
+
 export interface ExpiringProgramItem {
     studentId: string
     studentName: string
@@ -74,6 +82,7 @@ export interface DashboardData {
     pendingFinancial: PendingFinancialItem[]
     pendingForms: PendingFormItem[]
     inactiveStudents: InactiveStudentItem[]
+    expiredPlans: ExpiredPlanItem[]
     expiringPrograms: ExpiringProgramItem[]
     scheduledToday: ScheduledTodayItem[]
     dailyActivity: DailyActivityItem[]
@@ -124,11 +133,12 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
     const todayStart = startOfDayInTZ(brDateStr, TZ)
     const weekRange = getWeekRange(today, TZ)
 
-    // 8 parallel queries
+    // 9 parallel queries
     const [
         studentsResult,
         activeContractsResult,
         overdueContractsResult,
+        expiredContractsResult,
         pendingFormsResult,
         activeProgramsResult,
         weekSessionsResult,
@@ -158,7 +168,18 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
             .order('current_period_end', { ascending: true })
             .limit(10),
 
-        // 4. Pending form submissions (submitted, no feedback)
+        // 4. Expired contracts (canceled + period ended)
+        supabaseAdmin
+            .from('student_contracts')
+            .select('id, student_id, plan_title, current_period_end, students!inner(name, avatar_url)')
+            .eq('trainer_id', trainerId)
+            .eq('status', 'canceled')
+            .not('current_period_end', 'is', null)
+            .lt('current_period_end', today.toISOString())
+            .order('current_period_end', { ascending: false })
+            .limit(10),
+
+        // 5. Pending form submissions (submitted, no feedback)
         // Exclude workout check-ins — they are operational data shown in session context
         supabaseAdmin
             .from('form_submissions')
@@ -170,7 +191,7 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
             .order('submitted_at', { ascending: false })
             .limit(10),
 
-        // 5. Active programs with workouts
+        // 6. Active programs with workouts
         supabaseAdmin
             .from('assigned_programs')
             .select(`
@@ -180,7 +201,7 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
             .eq('trainer_id', trainerId)
             .eq('status', 'active'),
 
-        // 6. Completed sessions this week — use completed_at as canonical timestamp
+        // 7. Completed sessions this week — use completed_at as canonical timestamp
         supabaseAdmin
             .from('workout_sessions')
             .select('id, student_id, completed_at')
@@ -189,7 +210,7 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
             .gte('completed_at', weekRange.start.toISOString())
             .lte('completed_at', weekRange.end.toISOString()),
 
-        // 7. Today's completed sessions (daily activity)
+        // 8. Today's completed sessions (daily activity)
         supabase
             .from('workout_sessions')
             .select(`
@@ -202,7 +223,7 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
             .eq('trainer_id', trainerId)
             .order('completed_at', { ascending: false }),
 
-        // 8. All completed sessions (for inactivity detection) — use completed_at
+        // 9. All completed sessions (for inactivity detection) — use completed_at
         supabaseAdmin
             .from('workout_sessions')
             .select('student_id, completed_at')
@@ -281,6 +302,19 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
         billingType: c.billing_type,
         status: c.status,
     }))
+
+    // ── Expired Plans (deduplicate students already in pendingFinancial) ──
+
+    const financialStudentIds = new Set(pendingFinancial.map(f => f.studentId))
+    const expiredPlans: ExpiredPlanItem[] = (expiredContractsResult.data ?? [])
+        .filter(c => !financialStudentIds.has(c.student_id))
+        .map(c => ({
+            studentId: c.student_id,
+            studentName: (c.students as unknown as { name: string; avatar_url: string | null })?.name || 'Aluno',
+            studentAvatar: (c.students as unknown as { name: string; avatar_url: string | null })?.avatar_url || null,
+            planTitle: c.plan_title,
+            expiredAt: c.current_period_end!,
+        }))
 
     // ── Pending Forms ──
 
@@ -406,6 +440,7 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
         pendingFinancial,
         pendingForms,
         inactiveStudents,
+        expiredPlans,
         expiringPrograms,
         dailyActivity,
         scheduledToday,
@@ -414,6 +449,6 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
 
 // ── Public export ──
 // Next.js 16 dynamic server components re-fetch on every navigation.
-// Promise.all() parallelism keeps the 8 queries fast (~50-100ms total).
+// Promise.all() parallelism keeps the 9 queries fast (~50-100ms total).
 
 export const getDashboardData = fetchDashboardData

@@ -65,8 +65,9 @@ export function ExerciseCard({
         <BlurView
             intensity={60}
             tint="light"
-            className="rounded-2xl overflow-hidden"
+            className="rounded-2xl"
             style={{
+                overflow: 'hidden',
                 backgroundColor: 'rgba(255, 255, 255, 0.7)',
                 borderWidth: 1,
                 borderColor: 'rgba(255, 255, 255, 0.6)',

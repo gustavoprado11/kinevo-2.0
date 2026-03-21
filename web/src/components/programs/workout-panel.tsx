@@ -23,6 +23,77 @@ import {
     verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 
+const DAYS = [
+    { key: 'sun', label: 'D', name: 'Domingo' },
+    { key: 'mon', label: 'S', name: 'Segunda' },
+    { key: 'tue', label: 'T', name: 'Terça' },
+    { key: 'wed', label: 'Q', name: 'Quarta' },
+    { key: 'thu', label: 'Q', name: 'Quinta' },
+    { key: 'fri', label: 'S', name: 'Sexta' },
+    { key: 'sat', label: 'S', name: 'Sábado' },
+] as const
+
+function DaySelectorButtons({
+    frequency,
+    occupiedDays,
+    onUpdateFrequency,
+    compact = false,
+}: {
+    frequency: string[]
+    occupiedDays: string[]
+    onUpdateFrequency?: (days: string[]) => void
+    compact?: boolean
+}) {
+    const scheduledDaysCount = frequency.length
+    const btnSize = compact ? 24 : 28
+    const fontSize = compact ? 10 : 12
+    const pad = compact ? 2 : 4
+
+    return (
+        <div
+            className={`flex items-center gap-1 rounded-lg transition-all duration-300 ${
+                compact
+                    ? ''
+                    : scheduledDaysCount > 0
+                        ? 'bg-white dark:bg-surface-card border border-[#E8E8ED] dark:border-k-border-subtle'
+                        : 'bg-white dark:bg-surface-card border border-dashed border-[#C7C7CC] dark:border-k-text-quaternary'
+            }`}
+            style={{ padding: pad }}
+        >
+            {DAYS.map((day) => {
+                const isSelected = frequency.includes(day.key)
+                const isOccupied = occupiedDays.includes(day.key)
+
+                let colorClass = ''
+                if (isSelected) {
+                    colorClass = "bg-[#007AFF] dark:bg-violet-600 text-white border-[#007AFF] dark:border-violet-500 shadow-sm"
+                } else if (isOccupied) {
+                    colorClass = "bg-[#E5E5EA] dark:bg-glass-bg text-[#8E8E93] dark:text-k-text-quaternary border-transparent cursor-not-allowed"
+                } else {
+                    colorClass = "bg-[#E5E5EA] dark:bg-transparent text-[#8E8E93] dark:text-k-text-tertiary border-transparent hover:bg-[#007AFF]/10 hover:text-[#007AFF] dark:hover:bg-glass-bg-active dark:hover:text-k-text-primary"
+                }
+
+                return (
+                    <button
+                        key={day.key}
+                        onClick={() => {
+                            const newDays = frequency.includes(day.key)
+                                ? frequency.filter(d => d !== day.key)
+                                : [...frequency, day.key]
+                            onUpdateFrequency?.(newDays)
+                        }}
+                        className={`flex items-center justify-center rounded-md font-bold border transition-all duration-300 ${colorClass}`}
+                        style={{ width: btnSize, height: btnSize, fontSize }}
+                        title={isOccupied && !isSelected ? "Outro treino já está agendado para este dia" : day.name}
+                    >
+                        {day.label}
+                    </button>
+                )
+            })}
+        </div>
+    )
+}
+
 interface WorkoutPanelProps {
     workout: Workout
     exercises: Exercise[]
@@ -201,7 +272,6 @@ export function WorkoutPanel({
         }
     }
 
-    const scheduledDaysCount = (workout.frequency || []).length
     const totalSets = workout.items.reduce((sum, item) => {
         if (item.item_type === 'exercise') return sum + (item.sets || 0)
         if (item.item_type === 'superset' && item.children) {
@@ -212,10 +282,11 @@ export function WorkoutPanel({
 
     return (
         <div className="space-y-6">
-            {/* Workout Header — collapses to compact bar on scroll */}
-            <div className={`sticky -top-6 z-sticky transition-[background-color,border-color,backdrop-filter] duration-300 ${isScrolled ? '-mx-6 px-6 py-2 bg-[#F5F5F7] dark:bg-surface-canvas border-b border-[#E8E8ED] dark:border-k-border-subtle' : ''}`}>
-                <div className={`flex items-center justify-between ${isScrolled ? 'gap-4' : ''}`}>
-                    <div className="flex items-center gap-3">
+            {/* Workout Header — single DOM structure, CSS-driven transitions */}
+            <div className={`sticky -top-6 z-sticky transition-[background-color,border-color,backdrop-filter,margin,padding] duration-300 ${isScrolled ? '-mx-6 px-6 py-2 bg-[#F5F5F7] dark:bg-surface-canvas border-b border-[#E8E8ED] dark:border-k-border-subtle' : ''}`}>
+                {/* Row: name + day selectors + sets */}
+                <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 min-w-0">
                         {readonly ? (
                             <span
                                 ref={titleRef as React.RefObject<HTMLSpanElement>}
@@ -250,100 +321,51 @@ export function WorkoutPanel({
                         )}
                     </div>
 
-                    <div className="flex items-center gap-4">
-                        {/* Day Selector — hidden in readonly, compact summary when scrolled */}
+                    <div className="flex items-center gap-3 shrink-0">
                         {readonly ? (
                             totalSets > 0 && (
                                 <div className="flex items-center gap-2 text-sm text-k-text-tertiary">
                                     <span className="font-medium">{totalSets} séries</span>
                                 </div>
                             )
-                        ) : isScrolled ? (
-                            <div className="flex items-center gap-2 text-xs text-k-text-tertiary">
-                                <span className="font-medium">{scheduledDaysCount > 0 ? `${scheduledDaysCount}x/sem` : 'Sem dias'}</span>
-                                {totalSets > 0 && (
-                                    <>
-                                        <span className="text-k-border-subtle">·</span>
-                                        <span className="font-medium">{totalSets} séries</span>
-                                    </>
-                                )}
-                            </div>
                         ) : (
                             <>
-                                <div className="flex flex-col gap-1.5">
-                                    <div className="flex items-center gap-1 bg-white dark:bg-surface-card p-1 rounded-lg border border-[#E8E8ED] dark:border-k-border-subtle">
-                                        {[
-                                            { key: 'sun', label: 'D', name: 'Domingo' },
-                                            { key: 'mon', label: 'S', name: 'Segunda' },
-                                            { key: 'tue', label: 'T', name: 'Terça' },
-                                            { key: 'wed', label: 'Q', name: 'Quarta' },
-                                            { key: 'thu', label: 'Q', name: 'Quinta' },
-                                            { key: 'fri', label: 'S', name: 'Sexta' },
-                                            { key: 'sat', label: 'S', name: 'Sábado' },
-                                        ].map((day) => {
-                                            const isSelected = (workout.frequency || []).includes(day.key)
-                                            const isOccupied = occupiedDays.includes(day.key)
-
-                                            let buttonClass = "w-7 h-7 flex items-center justify-center rounded-md text-xs font-bold transition-all border "
-
-                                            if (isSelected) {
-                                                buttonClass += "bg-[#007AFF] dark:bg-violet-600 text-white border-[#007AFF] dark:border-violet-500 shadow-sm"
-                                            } else if (isOccupied) {
-                                                buttonClass += "bg-[#E5E5EA] dark:bg-glass-bg text-[#8E8E93] dark:text-k-text-quaternary border-transparent cursor-not-allowed"
-                                            } else {
-                                                buttonClass += "bg-[#E5E5EA] dark:bg-transparent text-[#8E8E93] dark:text-k-text-tertiary border-transparent hover:bg-[#007AFF]/10 hover:text-[#007AFF] dark:hover:bg-glass-bg-active dark:hover:text-k-text-primary"
-                                            }
-
-                                            return (
-                                                <button
-                                                    key={day.key}
-                                                    onClick={() => {
-                                                        const currentDays = workout.frequency || []
-                                                        const newDays = currentDays.includes(day.key)
-                                                            ? currentDays.filter(d => d !== day.key)
-                                                            : [...currentDays, day.key]
-                                                        onUpdateFrequency?.(newDays)
-                                                    }}
-                                                    className={buttonClass}
-                                                    title={isOccupied && !isSelected ? "Outro treino já está agendado para este dia" : day.name}
-                                                >
-                                                    {day.label}
-                                                </button>
-                                            )
-                                        })}
-                                    </div>
-                                    {(() => {
-                                        const dayMap = [
-                                            { key: 'sun', name: 'Domingo' },
-                                            { key: 'mon', name: 'Segunda' },
-                                            { key: 'tue', name: 'Terça' },
-                                            { key: 'wed', name: 'Quarta' },
-                                            { key: 'thu', name: 'Quinta' },
-                                            { key: 'fri', name: 'Sexta' },
-                                            { key: 'sat', name: 'Sábado' },
-                                        ]
-                                        const selected = dayMap.filter(d => (workout.frequency || []).includes(d.key))
-                                        return selected.length > 0 ? (
-                                            <p className="text-[10px] text-k-text-tertiary">
-                                                No app do aluno em: <span className="text-k-text-secondary">{selected.map(d => d.name).join(', ')}</span>
-                                            </p>
-                                        ) : (
-                                            <p className="text-[10px] text-k-text-tertiary">
-                                                Selecione os dias de treino do aluno
-                                            </p>
-                                        )
-                                    })()}
-                                </div>
-
+                                <DaySelectorButtons
+                                    frequency={workout.frequency || []}
+                                    occupiedDays={occupiedDays}
+                                    onUpdateFrequency={onUpdateFrequency}
+                                    compact={isScrolled}
+                                />
                                 {totalSets > 0 && (
-                                    <div className="flex items-center gap-2 text-sm text-k-text-tertiary border-l border-k-border-primary pl-4 h-8">
-                                        <span className="font-medium">{totalSets} séries</span>
-                                    </div>
+                                    <span className="text-xs text-k-text-tertiary font-medium">{totalSets} séries</span>
                                 )}
                             </>
                         )}
                     </div>
                 </div>
+
+                {/* Collapsible helper text — visible only when not scrolled and not readonly */}
+                {!readonly && (
+                    <div
+                        className="overflow-hidden transition-[max-height,opacity] duration-300"
+                        style={{ maxHeight: isScrolled ? 0 : 40, opacity: isScrolled ? 0 : 1 }}
+                    >
+                        <div className="pt-1.5">
+                            {(() => {
+                                const selected = DAYS.filter(d => (workout.frequency || []).includes(d.key))
+                                return selected.length > 0 ? (
+                                    <p className="text-[10px] text-k-text-tertiary">
+                                        No app do aluno em: <span className="text-k-text-secondary">{selected.map(d => d.name).join(', ')}</span>
+                                    </p>
+                                ) : (
+                                    <p className="text-xs text-muted-foreground">
+                                        Selecione os dias de treino do aluno
+                                    </p>
+                                )
+                            })()}
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Items with connectors */}
@@ -354,9 +376,7 @@ export function WorkoutPanel({
                             <p className="text-[#86868B] dark:text-k-text-tertiary">Nenhum exercício neste treino</p>
                         </div>
                     ) : (
-                        <div className="text-center py-12 border border-dashed border-[#D2D2D7] dark:border-k-border-primary rounded-2xl bg-[#F9F9FB] dark:bg-glass-bg">
-                            <p className="text-[#86868B] dark:text-k-text-tertiary mb-4">Arraste exercícios da biblioteca ou pesquise abaixo</p>
-
+                        <div className="py-8 px-6 rounded-xl border border-dashed border-[#E8E8ED] dark:border-k-border-subtle space-y-4">
                             {onSearchAddExercise && (
                                 <InlineExerciseSearch
                                     exercises={exercises}
@@ -364,33 +384,35 @@ export function WorkoutPanel({
                                 />
                             )}
 
-                            <div className="flex items-center justify-center gap-2 flex-wrap">
+                            <div className="flex items-center justify-center gap-1.5 flex-wrap">
                                 {onAddWarmup && (
                                     <button
                                         onClick={onAddWarmup}
-                                        className="px-4 py-2 bg-white dark:bg-glass-bg hover:bg-orange-50 dark:hover:bg-orange-500/10 border border-[#D2D2D7] dark:border-k-border-subtle text-orange-500 dark:text-orange-400 text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+                                        className="px-3 py-1.5 text-xs text-orange-500 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-500/10 rounded-md transition-colors flex items-center gap-1.5"
                                     >
-                                        <Flame className="w-4 h-4" />
+                                        <Flame className="w-3.5 h-3.5" />
                                         Aquecimento
                                     </button>
                                 )}
                                 {onAddCardio && (
                                     <button
                                         onClick={onAddCardio}
-                                        className="px-4 py-2 bg-white dark:bg-glass-bg hover:bg-cyan-50 dark:hover:bg-cyan-500/10 border border-[#D2D2D7] dark:border-k-border-subtle text-cyan-600 dark:text-cyan-400 text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+                                        className="px-3 py-1.5 text-xs text-cyan-600 dark:text-cyan-400 hover:bg-cyan-50 dark:hover:bg-cyan-500/10 rounded-md transition-colors flex items-center gap-1.5"
                                     >
-                                        <Zap className="w-4 h-4" />
+                                        <Zap className="w-3.5 h-3.5" />
                                         Aeróbio
                                     </button>
                                 )}
                                 <button
                                     onClick={onAddNote}
-                                    className="px-4 py-2 bg-white dark:bg-glass-bg hover:bg-[#F5F5F7] dark:hover:bg-glass-bg-active border border-[#D2D2D7] dark:border-k-border-subtle text-[#1D1D1F] dark:text-k-text-primary text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+                                    className="px-3 py-1.5 text-xs text-[#6E6E73] dark:text-k-text-tertiary hover:bg-[#F5F5F7] dark:hover:bg-glass-bg-active rounded-md transition-colors flex items-center gap-1.5"
                                 >
-                                    <FileText className="w-4 h-4" />
+                                    <FileText className="w-3.5 h-3.5" />
                                     Nota
                                 </button>
                             </div>
+
+                            <p className="text-xs text-muted-foreground text-center">Arraste exercícios da biblioteca ou pesquise acima</p>
                         </div>
                     )
                 ) : readonly ? (

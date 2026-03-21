@@ -64,7 +64,7 @@ export default async function FinancialPage() {
         s.display_status === 'courtesy'
     ).length
     const attentionStudents = financialStudents.filter(s =>
-        ['overdue', 'grace_period', 'canceling'].includes(s.display_status)
+        ['overdue', 'grace_period', 'canceling', 'expired'].includes(s.display_status)
     )
 
     // Fetch recent transactions

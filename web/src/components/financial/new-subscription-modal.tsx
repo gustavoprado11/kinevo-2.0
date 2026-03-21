@@ -26,6 +26,7 @@ interface NewSubscriptionModalProps {
     students: Student[]
     plans: Plan[]
     hasStripeConnect: boolean
+    preSelectedStudentId?: string | null
 }
 
 type BillingType = 'stripe_auto' | 'manual_recurring' | 'courtesy'
@@ -37,6 +38,7 @@ export function NewSubscriptionModal({
     students,
     plans,
     hasStripeConnect,
+    preSelectedStudentId,
 }: NewSubscriptionModalProps) {
     const [step, setStep] = useState<'type' | 'details'>('type')
     const [billingType, setBillingType] = useState<BillingType | null>(null)
@@ -53,7 +55,7 @@ export function NewSubscriptionModal({
         if (isOpen) {
             setStep('type')
             setBillingType(null)
-            setStudentId('')
+            setStudentId(preSelectedStudentId || '')
             setPlanId('')
             setBlockOnFail(true)
             setLoading(false)
@@ -61,7 +63,7 @@ export function NewSubscriptionModal({
             setCheckoutUrl(null)
             setCopied(false)
         }
-    }, [isOpen])
+    }, [isOpen, preSelectedStudentId])
 
     const handleSelectType = (type: BillingType) => {
         setBillingType(type)

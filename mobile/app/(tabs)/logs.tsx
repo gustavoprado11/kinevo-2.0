@@ -1,8 +1,8 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, Text, ScrollView, Pressable, LayoutAnimation, Platform, UIManager } from 'react-native';
+import { View, Text, ScrollView, Pressable, LayoutAnimation, Platform, UIManager, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-    Calendar, Trophy, ChevronDown, Flame, Check, Clock, Dumbbell, Repeat, ClipboardCheck,
+    Calendar, Trophy, ChevronDown, Flame, Check, Clock, Dumbbell, Repeat, ClipboardCheck, FileText,
 } from 'lucide-react-native';
 import Animated, {
     useSharedValue,
@@ -15,8 +15,10 @@ import Animated, {
     runOnJS,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useWorkoutHistory, HistorySession, HistoryStats, HistoryWorkoutItem } from '../../hooks/useWorkoutHistory';
+import { useStudentProfile } from '../../hooks/useStudentProfile';
+import { supabase } from '../../lib/supabase';
 import { WARMUP_TYPE_LABELS, CARDIO_EQUIPMENT_LABELS, type WarmupType, type CardioEquipment, type CardioConfig } from '@kinevo/shared/types/workout-items';
 import { PressableScale } from '../../components/shared/PressableScale';
 
@@ -558,6 +560,66 @@ function AnimatedCounter({ value, suffix }: { value: number; suffix?: string }) 
     );
 }
 
+function PublishedReportsSection() {
+    const { profile } = useStudentProfile();
+    const router = useRouter();
+    const [reports, setReports] = useState<{ id: string; program_name: string; program_started_at: string | null; program_completed_at: string | null; status: string }[]>([]);
+
+    useEffect(() => {
+        if (!profile?.id) return;
+        (async () => {
+            const { data } = await (supabase as any)
+                .from("program_reports")
+                .select("id, program_name, program_started_at, program_completed_at, status")
+                .eq("student_id", profile.id)
+                .eq("status", "published")
+                .order("generated_at", { ascending: false });
+            if (data) setReports(data);
+        })();
+    }, [profile?.id]);
+
+    if (reports.length === 0) return null;
+
+    return (
+        <Animated.View entering={FadeInUp.delay(400).springify().damping(18)}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16, marginTop: 8, paddingHorizontal: 4 }}>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 1 }}>
+                    Relatórios de Programa
+                </Text>
+                <FileText size={14} color="#7c3aed" />
+            </View>
+            {reports.map((r) => {
+                const period = [r.program_started_at, r.program_completed_at]
+                    .filter(Boolean)
+                    .map((d) => new Date(d!).toLocaleDateString("pt-BR", { month: "short", year: "2-digit" }))
+                    .join(" — ");
+                return (
+                    <TouchableOpacity
+                        key={r.id}
+                        activeOpacity={0.7}
+                        onPress={() => router.push({ pathname: "/report/[id]", params: { id: r.id } } as any)}
+                        style={{
+                            backgroundColor: '#ffffff',
+                            borderRadius: 16,
+                            padding: 16,
+                            marginBottom: 10,
+                            borderWidth: 1,
+                            borderColor: 'rgba(0,0,0,0.04)',
+                        }}
+                    >
+                        <Text style={{ fontSize: 15, fontWeight: '600', color: '#0f172a' }} numberOfLines={1}>
+                            {r.program_name}
+                        </Text>
+                        {period ? (
+                            <Text style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>{period}</Text>
+                        ) : null}
+                    </TouchableOpacity>
+                );
+            })}
+        </Animated.View>
+    );
+}
+
 function PerformanceView({ stats }: { stats: HistoryStats }) {
     return (
         <View>
@@ -673,6 +735,9 @@ function PerformanceView({ stats }: { stats: HistoryStats }) {
                     )}
                 </View>
             </View>
+
+            {/* Published Program Reports */}
+            <PublishedReportsSection />
         </View>
     );
 }

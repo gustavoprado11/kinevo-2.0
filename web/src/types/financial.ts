@@ -26,6 +26,7 @@ export type DisplayStatus =
     | 'canceling'
     | 'overdue'
     | 'canceled'
+    | 'expired'
 
 export interface ContractEvent {
     id: string
@@ -48,3 +49,4 @@ export type ContractEventType =
     | 'plan_changed'
     | 'access_blocked'
     | 'access_unblocked'
+    | 'student_archived'

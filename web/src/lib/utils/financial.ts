@@ -14,9 +14,21 @@ interface ContractForStatus {
 export function computeDisplayStatus(contract: ContractForStatus | null): DisplayStatus {
     if (!contract) return 'courtesy'
     if (contract.billing_type === 'courtesy') return 'courtesy'
-    if (contract.status === 'canceled') return 'canceled'
+    if (contract.status === 'canceled') {
+        // Expired = period ended naturally; Canceled = deliberate cancellation before period end
+        if (contract.current_period_end && new Date(contract.current_period_end).getTime() < Date.now()) {
+            return 'expired'
+        }
+        return 'canceled'
+    }
     if (contract.status === 'pending') return 'awaiting_payment'
-    if (contract.cancel_at_period_end && contract.status !== 'canceled') return 'canceling'
+    if (contract.cancel_at_period_end && contract.status !== 'canceled') {
+        // Period already ended → expired, not "canceling"
+        if (contract.current_period_end && new Date(contract.current_period_end).getTime() < Date.now()) {
+            return 'expired'
+        }
+        return 'canceling'
+    }
     if (contract.status === 'past_due') return 'overdue'
 
     if (
@@ -45,6 +57,7 @@ export const STATUS_CONFIG: Record<DisplayStatus, { label: string; className: st
     canceling: { label: 'Cancelando', className: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20' },
     overdue: { label: 'Inadimplente', className: 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20' },
     canceled: { label: 'Encerrado', className: 'bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-500/20' },
+    expired: { label: 'Expirado', className: 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20' },
 }
 
 export const INTERVAL_LABELS: Record<string, string> = {

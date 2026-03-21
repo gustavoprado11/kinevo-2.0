@@ -49,6 +49,7 @@ interface SubscriptionsClientProps {
     students: Student[]
     plans: Plan[]
     hasStripeConnect: boolean
+    sellToStudentId?: string
 }
 
 type TabKey = 'pagantes' | 'cortesia' | 'atencao' | 'encerrados' | 'todos'
@@ -67,13 +68,13 @@ const tabs: { key: TabKey; label: string; filter: (s: FinancialStudent) => boole
     {
         key: 'atencao',
         label: 'Atenção',
-        filter: (s) => ['overdue', 'grace_period', 'canceling'].includes(s.display_status),
+        filter: (s) => ['overdue', 'grace_period', 'canceling', 'expired'].includes(s.display_status),
         badge: true,
     },
     {
         key: 'encerrados',
         label: 'Encerrados',
-        filter: (s) => s.display_status === 'canceled',
+        filter: (s) => s.display_status === 'canceled' || s.display_status === 'expired',
     },
     {
         key: 'todos',
@@ -90,6 +91,7 @@ const statusConfig: Record<DisplayStatus, { label: string; className: string }> 
     canceling: { label: 'Cancelando', className: 'bg-amber-500/10 text-amber-600 dark:text-amber-400' },
     overdue: { label: 'Inadimplente', className: 'bg-red-500/10 text-red-600 dark:text-red-400' },
     canceled: { label: 'Encerrado', className: 'bg-gray-500/10 text-gray-600 dark:text-gray-400' },
+    expired: { label: 'Expirado', className: 'bg-red-500/10 text-red-600 dark:text-red-400' },
 }
 
 const statusTooltips: Partial<Record<DisplayStatus, string>> = {
@@ -98,6 +100,7 @@ const statusTooltips: Partial<Record<DisplayStatus, string>> = {
     grace_period: 'O pagamento manual venceu, mas está dentro do período de graça de 3 dias. Após esse período, o status muda para Inadimplente.',
     canceling: 'O aluno cancelou a assinatura pelo app. O acesso continua garantido até a data indicada. Após, volta para cortesia.',
     overdue: 'Pagamento atrasado há mais de 3 dias. Se o bloqueio de acesso estiver ativado, o aluno não consegue ver os treinos no app.',
+    expired: 'O contrato expirou (período encerrado). Para continuar cobrando, configure uma nova cobrança.',
 }
 
 const formatCurrency = (value: number) =>
@@ -128,6 +131,7 @@ export function SubscriptionsClient({
     students,
     plans,
     hasStripeConnect,
+    sellToStudentId,
 }: SubscriptionsClientProps) {
     const router = useRouter()
     const [financialStudents, setFinancialStudents] = useState(initialStudents)
@@ -144,6 +148,8 @@ export function SubscriptionsClient({
     const [syncing, setSyncing] = useState(false)
     const [blockConfirmId, setBlockConfirmId] = useState<string | null>(null)
     const [howToOpen, setHowToOpen] = useState(false)
+    const [archiveTarget, setArchiveTarget] = useState<FinancialStudent | null>(null)
+    const [archiveLoading, setArchiveLoading] = useState(false)
 
     // Sync local state with server data
     useEffect(() => {
@@ -166,6 +172,13 @@ export function SubscriptionsClient({
             })
             .catch(() => {})
     }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Auto-open config modal when navigated with ?sell=<studentId>
+    useEffect(() => {
+        if (!sellToStudentId) return
+        const target = initialStudents.find(s => s.student_id === sellToStudentId)
+        handleOpenConfigModal('new', target)
+    }, [sellToStudentId]) // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleSuccess = () => {
         router.refresh()
@@ -251,6 +264,25 @@ export function SubscriptionsClient({
         })
     }
 
+    const handleArchive = async () => {
+        if (!archiveTarget) return
+        setArchiveLoading(true)
+        try {
+            const { archiveStudent } = await import('@/actions/financial/archive-student')
+            const result = await archiveStudent({ studentId: archiveTarget.student_id })
+            if (result.success) {
+                setArchiveTarget(null)
+                router.refresh()
+            } else {
+                alert(result.error || 'Erro ao arquivar')
+            }
+        } catch {
+            alert('Erro ao arquivar aluno')
+        } finally {
+            setArchiveLoading(false)
+        }
+    }
+
     // Compute tab counts
     const tabCounts: Record<TabKey, number> = {
         pagantes: 0,
@@ -280,6 +312,9 @@ export function SubscriptionsClient({
     const getStatusBadgeText = (s: FinancialStudent): string => {
         if (s.display_status === 'canceling' && s.current_period_end) {
             return `Cancela em ${formatDate(s.current_period_end)}`
+        }
+        if (s.display_status === 'expired' && s.current_period_end) {
+            return `Expirou em ${formatDate(s.current_period_end)}`
         }
         if (s.display_status === 'active') {
             return `Ativo — ${billingTypeLabel(s.billing_type)}`
@@ -587,7 +622,7 @@ export function SubscriptionsClient({
 
                                                 {/* Acesso toggle */}
                                                 <td className="px-4 py-4 whitespace-nowrap text-center" onClick={(e) => e.stopPropagation()}>
-                                                    {s.display_status !== 'courtesy' && s.display_status !== 'canceled' && s.contract_id ? (
+                                                    {s.display_status !== 'courtesy' && s.display_status !== 'canceled' && s.display_status !== 'expired' && s.contract_id ? (
                                                         <div className="relative inline-block">
                                                             <button
                                                                 type="button"
@@ -645,8 +680,8 @@ export function SubscriptionsClient({
                                                             <Loader2 className="w-4 h-4 animate-spin text-muted-foreground/50" />
                                                         ) : (
                                                             <>
-                                                                {/* Courtesy + Canceled: Configure */}
-                                                                {(s.display_status === 'courtesy' || s.display_status === 'canceled') && (
+                                                                {/* Courtesy + Canceled + Expired: Configure */}
+                                                                {(s.display_status === 'courtesy' || s.display_status === 'canceled' || s.display_status === 'expired') && (
                                                                     <button
                                                                         onClick={(e) => {
                                                                             e.stopPropagation()
@@ -656,6 +691,20 @@ export function SubscriptionsClient({
                                                                     >
                                                                         <Settings2 size={12} strokeWidth={2} />
                                                                         Configurar
+                                                                    </button>
+                                                                )}
+
+                                                                {/* Canceled + Expired: Archive */}
+                                                                {(s.display_status === 'canceled' || s.display_status === 'expired') && (
+                                                                    <button
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation()
+                                                                            setArchiveTarget(s)
+                                                                        }}
+                                                                        title="Arquivar aluno"
+                                                                        className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-gray-500/10 text-gray-500 dark:text-gray-400 hover:bg-red-500/10 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                                                                    >
+                                                                        <FolderArchive size={13} strokeWidth={2} />
                                                                     </button>
                                                                 )}
 
@@ -747,7 +796,50 @@ export function SubscriptionsClient({
                     setSelectedStudent(null)
                     handleOpenConfigModal('migrate', student)
                 }}
+                onArchive={(studentId) => {
+                    setDetailModalOpen(false)
+                    setSelectedStudent(null)
+                    const target = financialStudents.find(s => s.student_id === studentId)
+                    if (target) setArchiveTarget(target)
+                }}
             />
+
+            {/* Archive Confirmation Modal */}
+            {archiveTarget && (
+                <div className="fixed inset-0 z-float flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => !archiveLoading && setArchiveTarget(null)} />
+                    <div className="relative bg-background border border-border rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+                        <div className="w-12 h-12 bg-red-500/10 rounded-full flex items-center justify-center mb-4 mx-auto">
+                            <FolderArchive className="w-6 h-6 text-red-500" />
+                        </div>
+                        <h3 className="text-lg font-bold text-foreground text-center mb-2">Arquivar Aluno?</h3>
+                        <p className="text-muted-foreground text-sm text-center mb-6">
+                            Tem certeza que deseja arquivar <span className="text-foreground font-medium">{archiveTarget.student_name}</span>?
+                            O aluno será desvinculado da sua conta e contratos ativos serão cancelados. O aluno manterá acesso ao app e ao histórico de treinos.
+                        </p>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setArchiveTarget(null)}
+                                disabled={archiveLoading}
+                                className="flex-1 px-4 py-2 bg-muted hover:bg-muted/80 text-foreground text-sm font-medium rounded-xl transition-colors disabled:opacity-50"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleArchive}
+                                disabled={archiveLoading}
+                                className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                            >
+                                {archiveLoading ? (
+                                    <><Loader2 className="w-4 h-4 animate-spin" /> Arquivando...</>
+                                ) : (
+                                    'Sim, Arquivar'
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </AppLayout>
     )
 }

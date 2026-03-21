@@ -4,7 +4,12 @@ import { syncManualOverdue } from '@/actions/financial/sync-manual-overdue'
 import { SubscriptionsClient } from './subscriptions-client'
 import type { FinancialStudent } from '@/types/financial'
 
-export default async function SubscriptionsPage() {
+export default async function SubscriptionsPage({
+    searchParams,
+}: {
+    searchParams: Promise<{ sell?: string }>
+}) {
+    const { sell: sellToStudentId } = await searchParams
     const { trainer } = await getTrainerWithSubscription()
 
     // Sync lazy: mark manual contracts overdue past grace period
@@ -56,6 +61,7 @@ export default async function SubscriptionsPage() {
             students={students ?? []}
             plans={plans ?? []}
             hasStripeConnect={hasStripeConnect}
+            sellToStudentId={sellToStudentId}
         />
     )
 }

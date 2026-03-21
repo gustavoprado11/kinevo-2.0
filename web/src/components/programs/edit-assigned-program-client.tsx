@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useId, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, Loader2, Calendar, Edit3, AlertCircle, BookmarkPlus, Smartphone, GitCompareArrows, X, ChevronDown, ClipboardCheck } from 'lucide-react'
+import { ChevronLeft, Loader2, Calendar, Edit3, AlertCircle, Smartphone, GitCompareArrows, X, ClipboardCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { AppLayout } from '@/components/layout'
 import { createClient } from '@/lib/supabase/client'
@@ -1200,22 +1200,22 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                     </div>
 
                     {/* Center: Condensed timeline */}
-                    <div className="flex items-center gap-2 text-xs text-k-text-tertiary border-x border-k-border-subtle px-6 shrink-0">
-                        <Calendar className="w-3.5 h-3.5 text-k-text-quaternary shrink-0" strokeWidth={1.5} />
-                        <span className="text-[10px] text-k-text-quaternary font-medium">Início</span>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground border-x border-k-border-subtle px-6 shrink-0">
+                        <Calendar className="w-3.5 h-3.5 text-muted-foreground shrink-0" strokeWidth={1.5} />
+                        <span className="text-[10px] text-muted-foreground">Início</span>
                         <input
                             type="date"
                             value={startDate}
                             onChange={(e) => handleStartDateChange(e.target.value)}
-                            className="bg-transparent border-none text-xs font-bold text-k-text-primary focus:ring-0 p-0 [color-scheme:dark] w-[110px]"
+                            className="bg-transparent border-none text-xs font-medium text-k-text-secondary focus:ring-0 p-0 [color-scheme:dark] w-[110px]"
                         />
                         <span className="text-k-border-subtle">→</span>
-                        <span className="text-[10px] text-k-text-quaternary font-medium">Fim</span>
+                        <span className="text-[10px] text-muted-foreground">Fim</span>
                         <input
                             type="date"
                             value={endDate}
                             onChange={(e) => handleEndDateChange(e.target.value)}
-                            className={`bg-transparent border-none text-xs font-bold focus:ring-0 p-0 [color-scheme:dark] w-[110px] transition-colors ${isEndDateFixed ? 'text-violet-400' : 'text-k-text-primary'}`}
+                            className={`bg-transparent border-none text-xs font-medium focus:ring-0 p-0 [color-scheme:dark] w-[110px] transition-colors ${isEndDateFixed ? 'text-violet-400' : 'text-k-text-secondary'}`}
                         />
                         <span className="text-k-border-subtle">·</span>
                         <div className="flex items-center gap-1">
@@ -1224,24 +1224,23 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                                 value={durationWeeks}
                                 onChange={(e) => handleWeeksChange(e.target.value)}
                                 min="0"
-                                className="bg-transparent border-none text-xs font-black text-violet-400 focus:ring-0 p-0 w-6 text-center"
+                                className="bg-transparent border-none text-xs font-bold text-violet-400 focus:ring-0 p-0 w-6 text-center"
                             />
-                            <span className="text-k-text-quaternary font-medium">semanas</span>
+                            <span className="text-muted-foreground">semanas</span>
                         </div>
                     </div>
 
                     {/* Right: Save */}
                     <div className="flex items-center gap-3 ml-auto flex-shrink-0">
-                        {/* Terciário: Salvar Modelo — text button com ícone */}
+                        {/* Terciário: Salvar Modelo — ghost text */}
                         <button
                             onClick={() => {
                                 setTemplateName(name)
                                 setShowTemplateDialog(true)
                             }}
                             disabled={saving}
-                            className="flex items-center gap-1.5 px-3 py-2 h-9 text-sm text-k-text-quaternary hover:text-k-text-primary transition-colors disabled:opacity-50"
+                            className="px-3 py-2 h-9 text-sm text-k-text-quaternary hover:text-k-text-primary transition-colors disabled:opacity-50"
                         >
-                            <BookmarkPlus className="w-4 h-4" />
                             Salvar Modelo
                         </button>
 
@@ -1249,7 +1248,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                         <Button
                             onClick={() => saveProgram()}
                             disabled={saving}
-                            className="bg-violet-600 hover:bg-violet-500 text-white rounded-xl px-5 py-2 h-9 text-sm font-medium transition-all min-w-[160px]"
+                            className="bg-violet-600 hover:bg-violet-500 text-white rounded-full px-5 py-2 h-9 text-sm font-medium transition-all min-w-[160px]"
                         >
                             {saving ? (
                                 <Loader2 className="animate-spin w-4 h-4" />
@@ -1290,33 +1289,26 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
 
 
 
-                {/* Secondary Toolbar: Check-in trigger (left) + Preview/Compare icons (right) — always visible */}
-                <div className="flex-shrink-0 flex items-center justify-between px-6 min-h-[44px] border-b border-[#E8E8ED] dark:border-k-border-subtle bg-[#FAFAFA] dark:bg-white/[0.02]">
-                    {/* Left: Check-in trigger (read-only) */}
-                    {formTriggerCount > 0 ? (
-                        <button
-                            onClick={() => setCheckinExpanded(!checkinExpanded)}
-                            className="flex items-center gap-2 py-2.5"
-                            aria-expanded={checkinExpanded}
-                        >
-                            <ClipboardCheck className="w-4 h-4 text-[#AEAEB2] dark:text-k-text-quaternary shrink-0" />
-                            <span className="text-sm font-medium text-[#1D1D1F]/80 dark:text-k-text-primary/80">Check-in do Programa</span>
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium rounded-full text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10">
-                                <span className="w-[5px] h-[5px] rounded-full bg-emerald-500 dark:bg-emerald-400" />
-                                {formTriggerCount} formulário{formTriggerCount > 1 ? 's' : ''}
-                            </span>
-                            <ChevronDown
-                                className={`w-4 h-4 text-[#AEAEB2]/60 dark:text-k-text-quaternary/60 shrink-0 transition-transform duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] ${
-                                    checkinExpanded ? 'rotate-180' : ''
-                                }`}
-                            />
-                        </button>
-                    ) : (
-                        <div />
-                    )}
-
-                    {/* Right: Preview & Compare icons */}
+                {/* Secondary Toolbar: icon group (right-aligned) — Check-in · Preview · Compare */}
+                <div className="flex-shrink-0 flex items-center justify-end px-6 min-h-[36px] border-b border-[#E8E8ED] dark:border-k-border-subtle">
                     <div className="flex items-center gap-1">
+                        {/* Check-in (read-only) */}
+                        {formTriggerCount > 0 && (
+                            <button
+                                onClick={() => setCheckinExpanded(!checkinExpanded)}
+                                className={`relative w-8 h-8 flex items-center justify-center rounded-lg transition-colors duration-150 ${
+                                    checkinExpanded
+                                        ? 'text-violet-600 dark:text-violet-400 bg-violet-100/80 dark:bg-violet-500/[0.08]'
+                                        : 'text-[#AEAEB2] dark:text-k-text-quaternary hover:bg-[#F5F5F7]/60 dark:hover:bg-glass-bg/50 hover:text-[#1D1D1F] dark:hover:text-k-text-primary'
+                                }`}
+                                title={`Check-in: ${formTriggerCount} formulário${formTriggerCount > 1 ? 's' : ''} ativo${formTriggerCount > 1 ? 's' : ''}`}
+                                aria-expanded={checkinExpanded}
+                            >
+                                <ClipboardCheck className="w-4 h-4" />
+                                <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-emerald-500 dark:bg-emerald-400 ring-2 ring-white dark:ring-surface-primary" />
+                            </button>
+                        )}
+                        {/* Preview */}
                         <button
                             onClick={builderViewMode === 'preview' ? handleExitPreview : handleEnterPreview}
                             className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors duration-150 ${
@@ -1328,6 +1320,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                         >
                             <Smartphone className="w-4 h-4" />
                         </button>
+                        {/* Compare */}
                         <button
                             onClick={builderViewMode === 'compare' ? handleExitCompare : handleEnterCompare}
                             className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors duration-150 ${
@@ -1370,20 +1363,6 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
 
                     {/* Right Panel: Canvas */}
                     <div className="flex-1 flex flex-col min-w-0 bg-surface-canvas">
-                        {/* Missing days warning banner */}
-                        {workoutsWithoutDays.length > 0 && (
-                            <button
-                                onClick={() => setActiveWorkoutId(workoutsWithoutDays[0].id)}
-                                className="flex items-center gap-2 px-4 py-2 bg-[#FF9500]/10 dark:bg-amber-500/10 border-b border-[#FF9500]/20 dark:border-amber-500/20 text-[#FF9500] dark:text-amber-400 text-xs font-medium hover:bg-[#FF9500]/15 dark:hover:bg-amber-500/15 transition-colors"
-                            >
-                                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                                {workoutsWithoutDays.length === 1
-                                    ? `${workoutsWithoutDays[0].name} não tem dia da semana agendado`
-                                    : `${workoutsWithoutDays.length} treinos sem dia da semana agendado`
-                                }
-                            </button>
-                        )}
-
                         {/* Compare header bar (full width, above the two columns) */}
                         {builderViewMode === 'compare' && (
                             <div className="flex items-center justify-between px-4 py-2 border-b border-[#E8E8ED] dark:border-k-border-subtle bg-[#F5F5F7] dark:bg-surface-elevated flex-shrink-0">

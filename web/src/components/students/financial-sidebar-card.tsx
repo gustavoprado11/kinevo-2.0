@@ -93,11 +93,15 @@ export function FinancialSidebarCard({
                     </div>
                 )}
 
-                {/* Next due date */}
+                {/* Next due date / expiry */}
                 {contract.current_period_end && displayStatus !== 'canceled' && (
                     <div>
                         <p className="text-xs text-[#86868B] dark:text-k-text-quaternary">
-                            {displayStatus === 'canceling' ? 'Acesso até' : 'Próx. vencimento'}
+                            {displayStatus === 'expired'
+                                ? 'Expirou em'
+                                : displayStatus === 'canceling'
+                                    ? 'Acesso até'
+                                    : 'Próx. vencimento'}
                         </p>
                         <p className="text-sm font-medium text-[#1C1C1E] dark:text-k-text-secondary mt-0.5">
                             {new Date(contract.current_period_end).toLocaleDateString('pt-BR')}

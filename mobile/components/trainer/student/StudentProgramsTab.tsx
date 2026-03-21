@@ -1,6 +1,8 @@
-import React from "react";
-import { View, Text, ScrollView } from "react-native";
-import { Calendar, Sparkles } from "lucide-react-native";
+import React, { useCallback, useEffect, useState } from "react";
+import { View, Text, ScrollView, TouchableOpacity } from "react-native";
+import { Calendar, Sparkles, FileText } from "lucide-react-native";
+import { useRouter } from "expo-router";
+import { supabase } from "../../../lib/supabase";
 import type { StudentDetailData } from "../../../hooks/useStudentDetail";
 
 interface Props {
@@ -10,6 +12,37 @@ interface Props {
 const DAY_NAMES = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
 export function StudentProgramsTab({ data }: Props) {
+    const router = useRouter();
+
+    // Track which completed programs have reports
+    const [reportMap, setReportMap] = useState<Record<string, string>>({});
+
+    const completedProgramIds = data.programHistory
+        .filter((p) => p.status === "completed")
+        .map((p) => p.id);
+
+    useEffect(() => {
+        if (completedProgramIds.length === 0) return;
+        (async () => {
+            const { data: reports } = await (supabase as any)
+                .from("program_reports")
+                .select("id, assigned_program_id")
+                .in("assigned_program_id", completedProgramIds);
+            if (reports) {
+                const map: Record<string, string> = {};
+                for (const r of reports) map[r.assigned_program_id] = r.id;
+                setReportMap(map);
+            }
+        })();
+    }, [completedProgramIds.join(",")]);
+
+    const handleOpenReport = useCallback(
+        (reportId: string) => {
+            router.push({ pathname: "/report/[id]", params: { id: reportId } } as any);
+        },
+        [router]
+    );
+
     return (
         <ScrollView
             contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40 }}
@@ -88,47 +121,72 @@ export function StudentProgramsTab({ data }: Props) {
                 <>
                     <SectionLabel>Histórico</SectionLabel>
                     <View style={{ backgroundColor: "#ffffff", borderRadius: 14, overflow: "hidden" }}>
-                        {data.programHistory.map((p, idx) => (
-                            <View
-                                key={p.id}
-                                style={{
-                                    flexDirection: "row",
-                                    alignItems: "center",
-                                    paddingHorizontal: 14,
-                                    paddingVertical: 12,
-                                    borderBottomWidth: idx < data.programHistory.length - 1 ? 0.5 : 0,
-                                    borderBottomColor: "rgba(0,0,0,0.06)",
-                                }}
-                            >
-                                <View style={{ flex: 1 }}>
-                                    <Text style={{ fontSize: 14, fontWeight: "500", color: "#1a1a2e" }}>
-                                        {p.name}
-                                    </Text>
-                                    <Text style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
-                                        {p.duration_weeks ? `${p.duration_weeks} semanas` : "—"}
-                                        {p.completed_at && ` · Concluído em ${new Date(p.completed_at).toLocaleDateString("pt-BR")}`}
-                                    </Text>
-                                </View>
+                        {data.programHistory.map((p, idx) => {
+                            const reportId = reportMap[p.id];
+                            return (
                                 <View
+                                    key={p.id}
                                     style={{
-                                        paddingHorizontal: 8,
-                                        paddingVertical: 3,
-                                        borderRadius: 8,
-                                        backgroundColor: p.status === "completed" ? "#dcfce7" : "#fef3c7",
+                                        paddingHorizontal: 14,
+                                        paddingVertical: 12,
+                                        borderBottomWidth: idx < data.programHistory.length - 1 ? 0.5 : 0,
+                                        borderBottomColor: "rgba(0,0,0,0.06)",
                                     }}
                                 >
-                                    <Text
-                                        style={{
-                                            fontSize: 11,
-                                            fontWeight: "600",
-                                            color: p.status === "completed" ? "#16a34a" : "#d97706",
-                                        }}
-                                    >
-                                        {p.status === "completed" ? "Concluído" : "Pausado"}
-                                    </Text>
+                                    <View style={{ flexDirection: "row", alignItems: "center" }}>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#1a1a2e" }}>
+                                                {p.name}
+                                            </Text>
+                                            <Text style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                                                {p.duration_weeks ? `${p.duration_weeks} semanas` : "—"}
+                                                {p.completed_at && ` · Concluído em ${new Date(p.completed_at).toLocaleDateString("pt-BR")}`}
+                                            </Text>
+                                        </View>
+                                        <View
+                                            style={{
+                                                paddingHorizontal: 8,
+                                                paddingVertical: 3,
+                                                borderRadius: 8,
+                                                backgroundColor: p.status === "completed" ? "#dcfce7" : "#fef3c7",
+                                            }}
+                                        >
+                                            <Text
+                                                style={{
+                                                    fontSize: 11,
+                                                    fontWeight: "600",
+                                                    color: p.status === "completed" ? "#16a34a" : "#d97706",
+                                                }}
+                                            >
+                                                {p.status === "completed" ? "Concluído" : "Pausado"}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                    {reportId && (
+                                        <TouchableOpacity
+                                            onPress={() => handleOpenReport(reportId)}
+                                            activeOpacity={0.7}
+                                            style={{
+                                                flexDirection: "row",
+                                                alignItems: "center",
+                                                marginTop: 8,
+                                                paddingVertical: 6,
+                                                paddingHorizontal: 10,
+                                                backgroundColor: "#f3f0ff",
+                                                borderRadius: 8,
+                                                alignSelf: "flex-start",
+                                                gap: 5,
+                                            }}
+                                        >
+                                            <FileText size={13} color="#7c3aed" />
+                                            <Text style={{ fontSize: 12, fontWeight: "600", color: "#7c3aed" }}>
+                                                Ver relatório
+                                            </Text>
+                                        </TouchableOpacity>
+                                    )}
                                 </View>
-                            </View>
-                        ))}
+                            );
+                        })}
                     </View>
                 </>
             )}

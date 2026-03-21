@@ -7,7 +7,7 @@ import {
     X, Loader2, AlertCircle, CheckCircle, XCircle, Shield, ShieldOff,
     Clock, CreditCard, HandCoins, Heart, MessageCircle, Copy, Check,
     UserPlus, ArrowRightLeft, Ban, DollarSign, Lock, Unlock,
-    ExternalLink, AlertTriangle
+    ExternalLink, AlertTriangle, FolderArchive
 } from 'lucide-react'
 import type { FinancialStudent, ContractEvent, DisplayStatus } from '@/types/financial'
 import { getStudentEvents } from '@/actions/financial/get-student-events'
@@ -34,6 +34,7 @@ interface StudentFinancialModalProps {
     hasStripeConnect: boolean
     onOpenNewSubscription?: (studentId: string) => void
     onMigrate?: (student: FinancialStudent) => void
+    onArchive?: (studentId: string) => void
 }
 
 const statusConfig: Record<DisplayStatus, { label: string; className: string }> = {
@@ -44,6 +45,7 @@ const statusConfig: Record<DisplayStatus, { label: string; className: string }> 
     canceling: { label: 'Cancelando', className: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20' },
     overdue: { label: 'Inadimplente', className: 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20' },
     canceled: { label: 'Encerrado', className: 'bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-500/20' },
+    expired: { label: 'Expirado', className: 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20' },
 }
 
 const eventConfig: Record<string, { icon: React.ElementType; color: string; label: string }> = {
@@ -57,6 +59,7 @@ const eventConfig: Record<string, { icon: React.ElementType; color: string; labe
     plan_changed: { icon: ArrowRightLeft, color: 'text-gray-600 dark:text-gray-400', label: 'Plano alterado' },
     access_blocked: { icon: Lock, color: 'text-red-600 dark:text-red-400', label: 'Bloqueio ativado' },
     access_unblocked: { icon: Unlock, color: 'text-emerald-600 dark:text-emerald-400', label: 'Bloqueio desativado' },
+    student_archived: { icon: FolderArchive, color: 'text-gray-600 dark:text-gray-400', label: 'Aluno arquivado' },
 }
 
 const formatCurrency = (value: number) =>
@@ -97,6 +100,7 @@ export function StudentFinancialModal({
     hasStripeConnect,
     onOpenNewSubscription,
     onMigrate,
+    onArchive,
 }: StudentFinancialModalProps) {
     const router = useRouter()
     const [activeTab, setActiveTab] = useState<'current' | 'history'>('current')
@@ -147,9 +151,10 @@ export function StudentFinancialModal({
     if (!isOpen || !student) return null
 
     const s = student
-    const hasContract = s.contract_id !== null && s.contract_status !== 'canceled'
-    const showBlockToggle = hasContract && s.display_status !== 'courtesy' && s.display_status !== 'canceled'
-    const showCancel = s.contract_id !== null && s.contract_status !== 'canceled' && s.display_status !== 'courtesy'
+    const isTerminated = s.contract_status === 'canceled'
+    const hasContract = s.contract_id !== null && !isTerminated
+    const showBlockToggle = hasContract && s.display_status !== 'courtesy' && s.display_status !== 'canceled' && s.display_status !== 'expired'
+    const showCancel = s.contract_id !== null && !isTerminated && s.display_status !== 'courtesy'
 
     const handleToggleBlock = async (value: boolean) => {
         if (!s.contract_id) return
@@ -297,6 +302,8 @@ export function StudentFinancialModal({
                                 <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full border ${statusConfig[s.display_status].className}`}>
                                     {s.display_status === 'canceling' && s.current_period_end
                                         ? `Cancela em ${formatDate(s.current_period_end)}`
+                                        : s.display_status === 'expired' && s.current_period_end
+                                        ? `Expirou em ${formatDate(s.current_period_end)}`
                                         : statusConfig[s.display_status].label}
                                 </span>
                                 {s.billing_type && (
@@ -545,18 +552,55 @@ export function StudentFinancialModal({
                                 </div>
                             )}
 
+                            {s.display_status === 'expired' && (
+                                <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3">
+                                    <p className="text-xs text-red-600 dark:text-red-400">
+                                        Plano expirado{s.current_period_end ? ` em ${formatDate(s.current_period_end)}` : ''}. O aluno está sem plano ativo.
+                                    </p>
+                                    <div className="flex items-center gap-2 mt-3">
+                                        <button
+                                            onClick={handleConfigureBilling}
+                                            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-violet-600 hover:bg-violet-500 text-white transition-colors"
+                                        >
+                                            <CreditCard size={14} />
+                                            Configurar nova cobrança
+                                        </button>
+                                        {onArchive && (
+                                            <button
+                                                onClick={() => onArchive(s.student_id)}
+                                                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg border border-gray-500/20 bg-gray-500/5 text-gray-600 dark:text-gray-400 hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400 hover:border-red-500/20 transition-colors"
+                                            >
+                                                <FolderArchive size={14} />
+                                                Arquivar aluno
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
                             {s.display_status === 'canceled' && (
                                 <div className="rounded-xl border border-gray-500/20 bg-gray-500/5 px-4 py-3">
                                     <p className="text-xs text-gray-600 dark:text-gray-400">
                                         Contrato encerrado{s.canceled_at ? ` em ${formatDate(s.canceled_at)}` : ''}.
                                     </p>
-                                    <button
-                                        onClick={handleConfigureBilling}
-                                        className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-violet-600 hover:bg-violet-500 text-white transition-colors"
-                                    >
-                                        <CreditCard size={14} />
-                                        Configurar cobrança
-                                    </button>
+                                    <div className="flex items-center gap-2 mt-3">
+                                        <button
+                                            onClick={handleConfigureBilling}
+                                            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-violet-600 hover:bg-violet-500 text-white transition-colors"
+                                        >
+                                            <CreditCard size={14} />
+                                            Configurar cobrança
+                                        </button>
+                                        {onArchive && (
+                                            <button
+                                                onClick={() => onArchive(s.student_id)}
+                                                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg border border-gray-500/20 bg-gray-500/5 text-gray-600 dark:text-gray-400 hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400 hover:border-red-500/20 transition-colors"
+                                            >
+                                                <FolderArchive size={14} />
+                                                Arquivar aluno
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             )}
 
@@ -618,7 +662,7 @@ export function StudentFinancialModal({
                             )}
 
                             {/* Migrate billing type */}
-                            {hasContract && onMigrate && s.display_status !== 'courtesy' && s.display_status !== 'canceled' && s.display_status !== 'canceling' && (
+                            {hasContract && onMigrate && s.display_status !== 'courtesy' && s.display_status !== 'canceled' && s.display_status !== 'expired' && s.display_status !== 'canceling' && (
                                 <button
                                     onClick={handleMigrateBilling}
                                     className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-xl border border-k-border-primary bg-glass-bg hover:bg-violet-500/10 text-k-text-secondary hover:text-violet-600 dark:hover:text-violet-400 transition-all"

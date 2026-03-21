@@ -53,19 +53,29 @@ export async function getMyAttentionCount(): Promise<number> {
             .eq('cancel_at_period_end', true)
             .neq('status', 'canceled')
 
+        let expiredQuery = supabaseAdmin
+            .from('student_contracts')
+            .select('id', { count: 'exact', head: true })
+            .eq('trainer_id', trainerId)
+            .eq('status', 'canceled')
+            .not('current_period_end', 'is', null)
+            .lt('current_period_end', new Date().toISOString())
+
         if (seenAt) {
             pastDueQuery = pastDueQuery.gt('updated_at', seenAt)
             manualOverdueQuery = manualOverdueQuery.gt('current_period_end', seenAt)
             cancelingQuery = cancelingQuery.gt('updated_at', seenAt)
+            expiredQuery = expiredQuery.gt('updated_at', seenAt)
         }
 
-        const [pastDue, manualOverdue, canceling] = await Promise.all([
+        const [pastDue, manualOverdue, canceling, expired] = await Promise.all([
             pastDueQuery,
             manualOverdueQuery,
             cancelingQuery,
+            expiredQuery,
         ])
 
-        return (pastDue.count ?? 0) + (manualOverdue.count ?? 0) + (canceling.count ?? 0)
+        return (pastDue.count ?? 0) + (manualOverdue.count ?? 0) + (canceling.count ?? 0) + (expired.count ?? 0)
     } catch {
         return 0
     }

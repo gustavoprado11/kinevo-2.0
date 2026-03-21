@@ -1,6 +1,7 @@
 import { getTrainerWithSubscription } from '@/lib/auth/get-trainer'
 import { createClient } from '@/lib/supabase/server'
 import { getDashboardData } from '@/lib/dashboard/get-dashboard-data'
+import { redirect } from 'next/navigation'
 import { DashboardClient } from './dashboard-client'
 import { CheckoutPolling } from './checkout-polling'
 
@@ -11,34 +12,36 @@ export default async function DashboardPage({
 }) {
     const { checkout } = await searchParams
 
+    // Single getUser() call for the entire page — validates the JWT once via
+    // Supabase Auth API, then passes userId down to avoid redundant roundtrips.
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) redirect('/login')
+
     // Race condition: returning from Stripe checkout but webhook hasn't fired yet
     // We need to check this before getTrainerWithSubscription (which redirects if no subscription)
     if (checkout === 'success') {
-        const supabase = await createClient()
-        const { data: { user } } = await supabase.auth.getUser()
-        if (user) {
-            const { data: sub } = await supabase
-                .from('subscriptions')
-                .select('status')
-                .eq('trainer_id', user.id)
+        const { data: sub } = await supabase
+            .from('subscriptions')
+            .select('status')
+            .eq('trainer_id', user.id)
+            .single()
+        const isActive = sub?.status === 'trialing' || sub?.status === 'active'
+        if (!isActive) {
+            // Fetch trainer name for polling screen
+            const { data: t } = await supabase
+                .from('trainers')
+                .select('name')
+                .eq('auth_user_id', user.id)
                 .single()
-            const isActive = sub?.status === 'trialing' || sub?.status === 'active'
-            if (!isActive) {
-                // Fetch trainer name for polling screen
-                const { data: t } = await supabase
-                    .from('trainers')
-                    .select('name')
-                    .eq('auth_user_id', user.id)
-                    .single()
-                return <CheckoutPolling trainerName={t?.name || ''} />
-            }
+            return <CheckoutPolling trainerName={t?.name || ''} />
         }
     }
 
-    const { trainer } = await getTrainerWithSubscription()
+    const { trainer } = await getTrainerWithSubscription(user.id)
 
     // Fetch dashboard data, students, and templates in parallel
-    const supabase = await createClient()
     const [data, studentsResult, templatesResult] = await Promise.all([
         getDashboardData(trainer.id),
         supabase

@@ -81,6 +81,7 @@ const statusLabels: Record<DisplayStatus, string> = {
     canceling: 'Cancelando',
     overdue: 'Inadimplente',
     canceled: 'Encerrado',
+    expired: 'Expirado',
 }
 
 const statusColors: Record<DisplayStatus, string> = {
@@ -91,6 +92,7 @@ const statusColors: Record<DisplayStatus, string> = {
     canceling: 'text-amber-600 dark:text-amber-400',
     overdue: 'text-red-600 dark:text-red-400',
     canceled: 'text-gray-600 dark:text-gray-400',
+    expired: 'text-red-600 dark:text-red-400',
 }
 
 export function FinancialDashboardClient({
@@ -258,7 +260,7 @@ export function FinancialDashboardClient({
                                 key={s.student_id}
                                 href="/financial/subscriptions"
                                 className={`flex items-center justify-between px-4 py-3 rounded-xl border transition-colors ${
-                                    s.display_status === 'overdue'
+                                    s.display_status === 'overdue' || s.display_status === 'expired'
                                         ? 'bg-[#FF3B30]/5 dark:bg-red-500/5 border-[#FF3B30]/15 dark:border-red-500/15 hover:border-[#FF3B30]/30 dark:hover:border-red-500/30'
                                         : s.display_status === 'grace_period'
                                         ? 'bg-[#FF9500]/5 dark:bg-orange-500/5 border-[#FF9500]/15 dark:border-orange-500/15 hover:border-[#FF9500]/30 dark:hover:border-orange-500/30'
@@ -288,6 +290,8 @@ export function FinancialDashboardClient({
                                             <span className={`text-[10px] font-semibold ${statusColors[s.display_status]}`}>
                                                 {s.display_status === 'canceling' && s.current_period_end
                                                     ? `Cancela em ${formatDate(s.current_period_end)}`
+                                                    : s.display_status === 'expired' && s.current_period_end
+                                                    ? `Expirou em ${formatDate(s.current_period_end)}`
                                                     : statusLabels[s.display_status]}
                                             </span>
                                         </div>
@@ -295,6 +299,8 @@ export function FinancialDashboardClient({
                                             {s.amount ? formatCurrency(s.amount) : ''}
                                             {s.display_status === 'overdue' && s.current_period_end
                                                 ? ` · Vencido há ${daysOverdue(s.current_period_end)} dia${daysOverdue(s.current_period_end) !== 1 ? 's' : ''}`
+                                                : s.display_status === 'expired'
+                                                ? ' · Plano expirado'
                                                 : s.billing_type === 'stripe_auto' ? ' · Stripe' : ''}
                                         </span>
                                     </div>

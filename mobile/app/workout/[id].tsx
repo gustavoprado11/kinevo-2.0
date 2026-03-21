@@ -27,6 +27,7 @@ import { supabase } from '../../lib/supabase';
 import type { ExerciseSubstituteOption, ExerciseData, WorkoutNote } from '../../hooks/useWorkoutSession';
 import { ShareableCardProps } from '../../components/workout/sharing/types';
 import { watchFinishState } from '../../lib/finishWorkoutFromWatch';
+import { appEvents, WATCH_WORKOUT_FINISHED } from '../../lib/events';
 
 export default function WorkoutPlayerScreen() {
     const { id } = useLocalSearchParams();
@@ -375,6 +376,25 @@ export default function WorkoutPlayerScreen() {
         return unsubscribe;
     }, [navigation, isSubmitting]);
 
+    // Listen for Watch-initiated finish — stop timer & allow the navigation
+    // that _layout.tsx triggers via router.replace('/(tabs)/home').
+    useEffect(() => {
+        const handler = ({ workoutId }: { workoutId: string }) => {
+            if (workoutId !== (id as string)) return;
+
+            if (__DEV__) console.log(`[WorkoutScreen] WATCH_WORKOUT_FINISHED received for ${workoutId} — marking as finished`);
+
+            // Mark as finishing so the beforeRemove guard allows navigation
+            isFinishingRef.current = true;
+
+            // Stop the Live Activity
+            stopActivity();
+        };
+
+        appEvents.on(WATCH_WORKOUT_FINISHED, handler);
+        return () => { appEvents.off(WATCH_WORKOUT_FINISHED, handler); };
+    }, [id, stopActivity]);
+
     // ── Pre-workout check-in handlers ──
     const handlePreCheckinSubmit = useCallback(async (answers: Record<string, any>) => {
         if (!preWorkoutTrigger || !assignedProgramId || !profile?.id || !profile?.coach_id) return;
@@ -669,7 +689,7 @@ export default function WorkoutPlayerScreen() {
             </View>
 
             <KeyboardAvoidingView
-                behavior={Platform.OS === "ios" ? "padding" : "height"}
+                behavior="padding"
                 className="flex-1 bg-slate-50"
                 keyboardVerticalOffset={Platform.OS === "ios" ? 10 : 0}
             >
@@ -677,6 +697,7 @@ export default function WorkoutPlayerScreen() {
                     className="flex-1 px-4 pt-4 bg-slate-50"
                     contentContainerStyle={{ paddingBottom: restTimer ? 260 : 24 }}
                     showsVerticalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
                 >
                     {(() => {
                         // Build unified render list ordered by order_index

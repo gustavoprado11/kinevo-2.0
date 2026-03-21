@@ -38,10 +38,10 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
         .eq('status', 'active')
         .single()
 
-    // Get scheduled programs
+    // Get scheduled programs (include assigned_workouts for activation validation)
     const { data: scheduledPrograms } = await supabase
         .from('assigned_programs')
-        .select('id, name, description, status, duration_weeks, current_week, started_at, scheduled_start_date, created_at')
+        .select('id, name, description, status, duration_weeks, current_week, started_at, scheduled_start_date, created_at, assigned_workouts(id, name, scheduled_days)')
         .eq('student_id', id)
         .eq('status', 'scheduled')
         .order('scheduled_start_date', { ascending: true })
