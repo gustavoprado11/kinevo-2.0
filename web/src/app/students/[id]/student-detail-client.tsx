@@ -12,6 +12,7 @@ import { AssignProgramModal } from '@/components/students/assign-program-modal' 
 import { CompleteProgramModal } from '@/components/students/complete-program-modal' // Direct import
 import { StudentModal } from '@/components/student-modal'
 import { completeProgram } from './actions/complete-program'
+import { extendProgram } from './actions/extend-program'
 import { deleteStudent } from './actions/student-actions'
 import { activateProgram } from './actions/activate-program'
 import { deleteProgram } from './actions/delete-program'
@@ -211,6 +212,23 @@ export function StudentDetailClient({
         setIsCompleteModalOpen(false)
     }
 
+    const handleExtendProgram = async () => {
+        if (!activeProgram) return
+        const weeksStr = prompt('Quantas semanas deseja prorrogar? (1-12)')
+        if (!weeksStr) return
+        const weeks = parseInt(weeksStr, 10)
+        if (isNaN(weeks) || weeks < 1 || weeks > 12) {
+            alert('Informe um número entre 1 e 12.')
+            return
+        }
+        const result = await extendProgram(activeProgram.id, student.id, weeks)
+        if (result.success) {
+            router.refresh()
+        } else {
+            alert(result.error || 'Erro ao prorrogar programa')
+        }
+    }
+
     const handleProgramAssigned = () => {
         router.refresh()
     }
@@ -399,8 +417,10 @@ export function StudentDetailClient({
                             onAssignProgram={handleAssignProgram}
                             onEditProgram={handleEditProgram}
                             onCompleteProgram={handleCompleteProgram}
+                            onExtendProgram={handleExtendProgram}
                             onCreateProgram={handleCreateProgram}
                             onPrescribeAI={trainer.ai_prescriptions_enabled ? handlePrescribeAI : undefined}
+                            onViewReport={activeProgram ? () => window.open(`/reports/program/${activeProgram.id}`, '_blank') : undefined}
                             hasActiveProgram={!!activeProgram}
                         />
                     </div>
@@ -458,16 +478,18 @@ export function StudentDetailClient({
                             {!scheduledPrograms || scheduledPrograms.length === 0 ? (
                                 <div className="text-center py-4">
                                     {(() => {
-                                        const programProgress = activeProgram?.started_at && activeProgram?.duration_weeks
-                                            ? (getProgramWeek(new Date(), activeProgram.started_at, activeProgram.duration_weeks) ?? 1) / activeProgram.duration_weeks
-                                            : 0
-                                        const remainingWeeks = activeProgram?.started_at && activeProgram?.duration_weeks
-                                            ? Math.max(0, activeProgram.duration_weeks - (getProgramWeek(new Date(), activeProgram.started_at, activeProgram.duration_weeks) ?? 1))
-                                            : 0
-
                                         if (!activeProgram) {
                                             return <p className="text-sm text-k-text-quaternary mb-3">Aluno sem programa ativo.</p>
                                         }
+                                        if ((activeProgram.status as string) === 'expired') {
+                                            return <p className="text-sm text-amber-400 mb-3">Programa expirou! Conclua, prorrogue ou atribua um novo.</p>
+                                        }
+                                        const programProgress = activeProgram?.started_at && activeProgram?.duration_weeks
+                                            ? (getProgramWeek(new Date(), activeProgram.started_at, activeProgram.duration_weeks) ?? activeProgram.duration_weeks) / activeProgram.duration_weeks
+                                            : 0
+                                        const remainingWeeks = activeProgram?.started_at && activeProgram?.duration_weeks
+                                            ? Math.max(0, activeProgram.duration_weeks - (getProgramWeek(new Date(), activeProgram.started_at, activeProgram.duration_weeks) ?? activeProgram.duration_weeks))
+                                            : 0
                                         if (programProgress >= 0.75) {
                                             return <p className="text-sm text-yellow-400 mb-3">Programa termina em {remainingWeeks} semana{remainingWeeks !== 1 ? 's' : ''}! Prepare o próximo ciclo.</p>
                                         }
@@ -552,7 +574,10 @@ export function StudentDetailClient({
                             formSchedules={formSchedules}
                         />
 
-                        <ProgramHistorySection programs={completedPrograms} />
+                        <ProgramHistorySection
+                            programs={completedPrograms}
+                            onViewReport={(programId) => window.open(`/reports/program/${programId}`, '_blank')}
+                        />
                     </div>
                 </div>
             </div>

@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { router } from 'expo-router';
 import { Alert } from 'react-native';
+import { getProgramWeek } from '@kinevo/shared/utils/schedule-projection';
 
 export interface WorkoutSetData {
     weight: string;
@@ -71,6 +72,8 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
     const preSubmissionIdRef = useRef<string | null>(null);
     const [assignedProgramId, setAssignedProgramId] = useState<string | null>(null);
     const scheduledDaysRef = useRef<number[] | null>(null);
+    const programStartedAtRef = useRef<string | null>(null);
+    const programDurationWeeksRef = useRef<number | null>(null);
     const [startTime] = useState(() => Date.now());
     const [elapsed, setElapsed] = useState(0);
     const [workoutName, setWorkoutName] = useState('');
@@ -322,6 +325,23 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                     scheduledDaysRef.current = workout.scheduled_days || null;
                 }
 
+                // 1a. Fetch program dates for program_week calculation
+                let programStartedAt: string | null = null;
+                let programDurationWeeks: number | null = null;
+                if (workout.assigned_program_id) {
+                    const { data: prog }: { data: any; error: any } = await supabase
+                        .from('assigned_programs' as any)
+                        .select('started_at, duration_weeks')
+                        .eq('id', workout.assigned_program_id)
+                        .single();
+                    if (prog) {
+                        programStartedAt = prog.started_at;
+                        programDurationWeeks = prog.duration_weeks;
+                        programStartedAtRef.current = prog.started_at;
+                        programDurationWeeksRef.current = prog.duration_weeks;
+                    }
+                }
+
                 // 1b. Find or create workout_session (in_progress)
                 // When deferSessionCreation is true, skip creating a new session.
                 // An existing in_progress session is still reattached.
@@ -351,6 +371,10 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                     const isScheduledToday = workout.scheduled_days?.includes(todayDow);
                     const scheduledDate = isScheduledToday ? new Date().toISOString().split('T')[0] : null;
 
+                    const programWeek = programStartedAt
+                        ? getProgramWeek(new Date(), programStartedAt, programDurationWeeks) ?? 1
+                        : 1;
+
                     const { data: newSession, error: sessionError }: { data: any; error: any } = await supabase
                         .from('workout_sessions' as any)
                         .insert({
@@ -362,6 +386,7 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                             started_at: new Date().toISOString(),
                             sync_status: 'synced',
                             scheduled_date: scheduledDate,
+                            program_week: programWeek,
                         })
                         .select('id')
                         .single();
@@ -740,6 +765,10 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
             const isScheduledToday = scheduledDaysRef.current?.includes(todayDow);
             const scheduledDate = isScheduledToday ? new Date().toISOString().split('T')[0] : null;
 
+            const programWeek = programStartedAtRef.current
+                ? getProgramWeek(new Date(), programStartedAtRef.current, programDurationWeeksRef.current) ?? 1
+                : 1;
+
             const insertPayload: Record<string, any> = {
                 student_id: studentId,
                 trainer_id: studentFull?.coach_id,
@@ -749,6 +778,7 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                 started_at: new Date().toISOString(),
                 sync_status: 'synced',
                 scheduled_date: scheduledDate,
+                program_week: programWeek,
             };
             if (preWorkoutSubmissionId) {
                 insertPayload.pre_workout_submission_id = preWorkoutSubmissionId;

@@ -23,11 +23,11 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
         redirect('/students')
     }
 
-    // Get active program for this student
-    const { data: activeProgram } = await supabase
+    // Get active or expired program for this student (show expired to trainer for action)
+    const { data: programCandidates } = await supabase
         .from('assigned_programs')
         .select(`
-            id, name, description, status, duration_weeks, current_week, started_at, created_at,
+            id, name, description, status, duration_weeks, current_week, started_at, created_at, expires_at,
             assigned_workouts (
                 id,
                 name,
@@ -35,8 +35,10 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
             )
         `)
         .eq('student_id', id)
-        .eq('status', 'active')
-        .single()
+        .in('status', ['active', 'expired'])
+        .order('started_at', { ascending: false })
+        .limit(1)
+    const activeProgram = programCandidates?.[0] ?? null
 
     // Get scheduled programs (include assigned_workouts for activation validation)
     const { data: scheduledPrograms } = await supabase

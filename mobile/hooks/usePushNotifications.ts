@@ -132,6 +132,7 @@ export function usePushNotifications(role: "trainer" | "student" | null) {
                     }
                     break;
                 case "new_student":
+                case "program_expired":
                     if (data?.student_id) {
                         router.push({
                             pathname: "/student/[id]",

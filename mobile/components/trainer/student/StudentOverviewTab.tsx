@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, ScrollView } from "react-native";
 import { TrendingUp, Calendar, Clock, Dumbbell } from "lucide-react-native";
 import type { StudentDetailData } from "../../../hooks/useStudentDetail";
+import { getProgramWeek } from "@kinevo/shared/utils/schedule-projection";
 import { SessionHeatmap } from "./SessionHeatmap";
 
 function timeAgo(dateStr: string | null): string {
@@ -83,7 +84,11 @@ export function StudentOverviewTab({ data }: Props) {
                         </View>
                         {data.activeProgram.duration_weeks && (
                             <Text style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>
-                                {data.activeProgram.duration_weeks} semanas · Semana {data.activeProgram.current_week || 1}
+                                {data.activeProgram.duration_weeks} semanas · Semana {
+                                    data.activeProgram.started_at
+                                        ? getProgramWeek(new Date(), data.activeProgram.started_at, data.activeProgram.duration_weeks) ?? data.activeProgram.duration_weeks
+                                        : 1
+                                }
                             </Text>
                         )}
                         <Text style={{ fontSize: 13, color: "#64748b", marginTop: 2 }}>

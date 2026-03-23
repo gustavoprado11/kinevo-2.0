@@ -1,5 +1,6 @@
 import * as SecureStore from 'expo-secure-store';
 import { supabase } from './supabase';
+import { getProgramWeek } from '@kinevo/shared/utils/schedule-projection';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types for the enriched FINISH_WORKOUT payload from Apple Watch
@@ -179,6 +180,19 @@ export async function finishWorkoutFromWatch(
 
   if (__DEV__) console.log(`[finishWorkoutFromWatch] Step 4: Workout "${workout.name}"`);
 
+  // 4b. Fetch program dates for program_week
+  let computedProgramWeek = 1;
+  if (workout.assigned_program_id) {
+    const { data: prog }: { data: any; error: any } = await supabase
+      .from('assigned_programs' as any)
+      .select('started_at, duration_weeks')
+      .eq('id', workout.assigned_program_id)
+      .single();
+    if (prog?.started_at) {
+      computedProgramWeek = getProgramWeek(new Date(), prog.started_at, prog.duration_weeks) ?? 1;
+    }
+  }
+
   // 5. Parse timestamps — use Watch's actual startedAt when available
   const now = new Date();
   const parsedStartedAt = startedAt ? new Date(startedAt) : null;
@@ -259,6 +273,7 @@ export async function finishWorkoutFromWatch(
             sync_status: 'synced',
             rpe: rpe || null,
             feedback: null,
+            program_week: computedProgramWeek,
           })
           .select('id')
           .single();

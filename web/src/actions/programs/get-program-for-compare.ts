@@ -63,7 +63,7 @@ export async function getPastProgramsForStudent(
                 assigned_workouts ( id )
             `)
             .eq('student_id', studentId)
-            .in('status', ['active', 'completed', 'paused'])
+            .in('status', ['active', 'completed', 'paused', 'expired'])
             .order('started_at', { ascending: false })
             .limit(15)
 

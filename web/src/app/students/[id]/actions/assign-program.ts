@@ -60,8 +60,7 @@ export async function assignProgram({ studentId, templateId, startDate, isSchedu
             scheduledStartDate = startDate
             startedAt = null // Will be set when activated
         } else {
-            // Immediate assignment: Complete current active program
-            // Use 'completed' as requested by user logic
+            // Immediate assignment: Complete current active/expired program
             await supabase
                 .from('assigned_programs')
                 .update({
@@ -70,10 +69,15 @@ export async function assignProgram({ studentId, templateId, startDate, isSchedu
                     updated_at: new Date().toISOString()
                 })
                 .eq('student_id', studentId)
-                .eq('status', 'active')
+                .in('status', ['active', 'expired'])
         }
 
         // 5. Create Assigned Program
+        // Calculate expires_at for immediate programs with duration
+        const expiresAt = (startedAt && template.duration_weeks)
+            ? new Date(new Date(startedAt).getTime() + template.duration_weeks * 7 * 24 * 60 * 60 * 1000).toISOString()
+            : null
+
         const insertPayload: Record<string, any> = {
             student_id: studentId,
             trainer_id: trainer.id,
@@ -85,6 +89,7 @@ export async function assignProgram({ studentId, templateId, startDate, isSchedu
             started_at: startedAt,
             scheduled_start_date: scheduledStartDate,
             current_week: 1,
+            expires_at: expiresAt,
         }
 
         // AI prescription metadata (columns from migration 036)

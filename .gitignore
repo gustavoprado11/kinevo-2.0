@@ -34,3 +34,12 @@ supabase/.temp/
 
 # tmp artifacts
 tmp/
+
+# Claude Code MCP config (local per-developer)
+.mcp.json
+
+# Planning docs & prompts (personal, not code)
+*.docx
+/prompts-*.md
+/prompt-*.md
+/kinevo-*.md

@@ -26,8 +26,8 @@ export type AiSource = 'llm' | 'heuristic' | 'agent'
 /** prescription_generations.status */
 export type PrescriptionStatus = 'pending_review' | 'approved' | 'rejected' | 'expired'
 
-/** assigned_programs.status (extended in migration 036 to include 'draft') */
-export type AssignedProgramStatus = 'draft' | 'active' | 'scheduled' | 'completed' | 'paused'
+/** assigned_programs.status (extended in migration 036 to include 'draft', 086 for 'expired') */
+export type AssignedProgramStatus = 'draft' | 'active' | 'scheduled' | 'completed' | 'paused' | 'expired'
 
 /** workout_item_templates.exercise_function / assigned_workout_items.exercise_function */
 export type ExerciseFunction = 'warmup' | 'activation' | 'main' | 'accessory' | 'conditioning'

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { SessionDetailSheet } from './session-detail-sheet'
 import { ProgramCalendar } from './program-calendar'
 import { getProgramWeek, getProgramEndDate } from '@kinevo/shared/utils/schedule-projection'
-import { Flame, Activity, ArrowUpRight } from 'lucide-react'
+import { Flame, Activity, ArrowUpRight, FileText } from 'lucide-react'
 import { WARMUP_TYPE_LABELS, CARDIO_EQUIPMENT_LABELS } from '@kinevo/shared/types/workout-items'
 import type { SessionItem } from '@/app/students/[id]/actions/get-session-details'
 import type { RangeSession } from '@/app/students/[id]/actions/get-sessions-for-range'
@@ -114,11 +114,12 @@ interface AssignedProgram {
     id: string
     name: string
     description: string | null
-    status: 'active' | 'completed' | 'paused' | 'scheduled'
+    status: 'active' | 'completed' | 'paused' | 'scheduled' | 'expired'
     duration_weeks: number | null
     current_week: number | null
     started_at: string | null
     created_at: string
+    expires_at?: string | null
     assigned_workouts?: Array<{
         id: string
         name: string
@@ -142,8 +143,10 @@ interface ActiveProgramDashboardProps {
     onAssignProgram?: () => void
     onEditProgram?: () => void
     onCompleteProgram?: () => void
+    onExtendProgram?: () => void
     onCreateProgram?: () => void
     onPrescribeAI?: () => void
+    onViewReport?: () => void
     hasActiveProgram?: boolean
 }
 
@@ -157,8 +160,10 @@ export function ActiveProgramDashboard({
     onAssignProgram,
     onEditProgram,
     onCompleteProgram,
+    onExtendProgram,
     onCreateProgram,
     onPrescribeAI,
+    onViewReport,
     hasActiveProgram = false
 }: ActiveProgramDashboardProps) {
     // Sheet State (for calendar day clicks)
@@ -232,6 +237,15 @@ export function ActiveProgramDashboard({
                     </svg>
                 ),
             },
+            expired: {
+                label: 'Expirado',
+                classes: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+                icon: (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                ),
+            },
             // Fallback for unexpected 'scheduled' here, though typically not active
             scheduled: {
                 label: 'Agendado',
@@ -286,13 +300,19 @@ export function ActiveProgramDashboard({
     const statusConfig = getStatusConfig(program.status)
 
     // Calculate current week dynamically from started_at instead of static DB value
-    const currentWeek = program.started_at
-        ? getProgramWeek(new Date(), program.started_at, program.duration_weeks) ?? 1
-        : (program.current_week || 1)
+    const isExpired = program.status === 'expired'
+    const computedWeek = program.started_at
+        ? getProgramWeek(new Date(), program.started_at, program.duration_weeks)
+        : null
+    const currentWeek = isExpired
+        ? (program.duration_weeks ?? 1)
+        : (computedWeek ?? program.duration_weeks ?? 1)
 
-    const progressPercent = program.duration_weeks && currentWeek
-        ? Math.min((currentWeek / program.duration_weeks) * 100, 100)
-        : 0
+    const progressPercent = isExpired
+        ? 100
+        : (program.duration_weeks && currentWeek
+            ? Math.min((currentWeek / program.duration_weeks) * 100, 100)
+            : 0)
 
     return (
         <div className="space-y-6">
@@ -317,12 +337,20 @@ export function ActiveProgramDashboard({
                         >
                             Editar
                         </button>
-                        {program.status === 'active' && (
+                        {(program.status === 'active' || program.status === 'expired') && (
                             <button
                                 onClick={onCompleteProgram}
                                 className="px-3 py-1.5 text-[10px] font-bold text-k-text-tertiary hover:text-k-text-primary hover:bg-glass-bg-active rounded-lg transition-all border border-k-border-subtle"
                             >
                                 Concluir
+                            </button>
+                        )}
+                        {program.status === 'expired' && onExtendProgram && (
+                            <button
+                                onClick={onExtendProgram}
+                                className="px-3 py-1.5 text-[10px] font-bold text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 rounded-lg transition-all border border-amber-500/20"
+                            >
+                                Prorrogar
                             </button>
                         )}
                         <button
@@ -339,6 +367,15 @@ export function ActiveProgramDashboard({
                                 Novo com IA
                             </button>
                         )}
+                        {onViewReport && (
+                            <button
+                                onClick={onViewReport}
+                                className="px-3 py-1.5 text-[10px] font-bold text-k-text-tertiary hover:text-k-text-primary hover:bg-glass-bg-active rounded-lg transition-all border border-k-border-subtle flex items-center gap-1"
+                            >
+                                <FileText className="w-3 h-3" />
+                                Relatório
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -346,13 +383,26 @@ export function ActiveProgramDashboard({
                 {program.duration_weeks && (
                     <div className="mb-10">
                         <p className="text-sm font-semibold text-k-text-secondary mb-2">
-                            Semana {currentWeek} de {program.duration_weeks}
-                            {program.started_at && (() => {
-                                const remainingWeeks = Math.max(0, program.duration_weeks! - currentWeek)
-                                return remainingWeeks === 0
-                                    ? <span className="text-emerald-400 ml-1">— última semana!</span>
-                                    : <span className="text-k-text-quaternary ml-1">— faltam {remainingWeeks} semana{remainingWeeks > 1 ? 's' : ''}</span>
-                            })()}
+                            {isExpired ? (
+                                <>
+                                    Programa encerrado
+                                    {program.expires_at && (
+                                        <span className="text-amber-400 ml-1">
+                                            — expirou em {new Date(program.expires_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: TIMEZONE })}
+                                        </span>
+                                    )}
+                                </>
+                            ) : (
+                                <>
+                                    Semana {currentWeek} de {program.duration_weeks}
+                                    {program.started_at && (() => {
+                                        const remainingWeeks = Math.max(0, program.duration_weeks! - currentWeek)
+                                        return remainingWeeks === 0
+                                            ? <span className="text-emerald-400 ml-1">— última semana!</span>
+                                            : <span className="text-k-text-quaternary ml-1">— faltam {remainingWeeks} semana{remainingWeeks > 1 ? 's' : ''}</span>
+                                    })()}
+                                </>
+                            )}
                         </p>
                         <div className="h-2 bg-glass-bg rounded-full overflow-hidden relative">
                             <div

@@ -79,7 +79,7 @@ export async function approveProgram(
     // 4. Verify the program is still in draft status
     const { data: program } = await supabase
         .from('assigned_programs')
-        .select('id, status, name')
+        .select('id, status, name, duration_weeks')
         .eq('id', programId)
         .single()
 
@@ -91,7 +91,7 @@ export async function approveProgram(
         return { success: false, error: `Programa não está em rascunho (status: ${(program as any).status}).` }
     }
 
-    // 5. Complete existing active program for this student
+    // 5. Complete existing active/expired program for this student
     // Same pattern as activate-program.ts — avoids unique constraint violation
     const { error: completeError } = await supabase
         .from('assigned_programs')
@@ -101,7 +101,7 @@ export async function approveProgram(
             updated_at: new Date().toISOString(),
         })
         .eq('student_id', studentId)
-        .eq('status', 'active')
+        .in('status', ['active', 'expired'])
 
     if (completeError) {
         console.error('[approveProgram] failed to complete active program:', completeError)
@@ -109,12 +109,19 @@ export async function approveProgram(
     }
 
     // 6. Activate the draft program
+    const now = new Date()
+    const durationWeeks = (program as any).duration_weeks as number | null
+    const expiresAt = durationWeeks
+        ? new Date(now.getTime() + durationWeeks * 7 * 24 * 60 * 60 * 1000).toISOString()
+        : null
+
     const { error: activateError } = await supabase
         .from('assigned_programs')
         .update({
             status: 'active',
-            started_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
+            started_at: now.toISOString(),
+            updated_at: now.toISOString(),
+            expires_at: expiresAt,
         })
         .eq('id', programId)
 

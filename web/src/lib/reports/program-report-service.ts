@@ -135,10 +135,10 @@ export async function generateReport(
 
         // 3. Compute all metrics in parallel
         const [frequency, volume, rpe, progression, checkins] = await Promise.all([
-            computeFrequency(supabase, programId, duration),
+            computeFrequency(supabase, programId, ap.started_at, duration),
             computeVolume(supabase, programId, ap.student_id, ap.started_at, duration),
-            computeRPE(supabase, programId, duration),
-            computeProgression(supabase, programId, duration),
+            computeRPE(supabase, programId, ap.started_at, duration),
+            computeProgression(supabase, programId, ap.started_at, duration),
             computeCheckins(supabase, programId),
         ])
 
@@ -333,6 +333,23 @@ export async function regenerateReport(
 }
 
 // ============================================================================
+// Private: Helpers
+// ============================================================================
+
+/** Compute 1-indexed program week from session date and program start date. */
+function calcProgramWeek(sessionDate: string | null, programStartedAt: string | null): number {
+    if (!sessionDate || !programStartedAt) return 1
+    const d = new Date(sessionDate)
+    const start = new Date(programStartedAt)
+    // Reset to start of day (UTC) for consistent diff
+    d.setUTCHours(0, 0, 0, 0)
+    start.setUTCHours(0, 0, 0, 0)
+    if (d < start) return 1
+    const diffDays = Math.floor((d.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+    return Math.floor(diffDays / 7) + 1
+}
+
+// ============================================================================
 // Private: Metric Computation
 // ============================================================================
 
@@ -341,6 +358,7 @@ export async function regenerateReport(
 async function computeFrequency(
     supabase: SupabaseClient,
     programId: string,
+    programStartedAt: string | null,
     durationWeeks: number
 ): Promise<ReportFrequency> {
     // Count assigned workouts (= distinct workout types in the program)
@@ -360,18 +378,21 @@ async function computeFrequency(
 
     const completed = completedSessions ?? 0
 
-    // Weekly breakdown: sessions per week
+    // Weekly breakdown: sessions per week (calculate week from dates)
     const { data: weeklyRows } = await supabase
         .from('workout_sessions')
-        .select('program_week')
+        .select('started_at')
         .eq('assigned_program_id', programId)
         .eq('status', 'completed')
 
     const weekCounts = new Map<number, number>()
+    console.log('[program-report][DEBUG] programStartedAt:', programStartedAt, '| durationWeeks:', durationWeeks)
     for (const row of weeklyRows ?? []) {
-        const week = row.program_week ?? 1
+        const week = calcProgramWeek(row.started_at, programStartedAt)
+        console.log('[program-report][DEBUG] session started_at:', row.started_at, '→ week:', week)
         weekCounts.set(week, (weekCounts.get(week) ?? 0) + 1)
     }
+    console.log('[program-report][DEBUG] weekCounts:', Object.fromEntries(weekCounts))
 
     const weeklyBreakdown: number[] = []
     for (let w = 1; w <= durationWeeks; w++) {
@@ -416,7 +437,7 @@ async function computeVolume(
     // Total tonnage for this program
     const { data: sessionIds } = await supabase
         .from('workout_sessions')
-        .select('id, program_week')
+        .select('id, started_at')
         .eq('assigned_program_id', programId)
         .eq('status', 'completed')
 
@@ -435,10 +456,10 @@ async function computeVolume(
             .not('weight', 'is', null)
             .not('reps_completed', 'is', null)
 
-        // Build a session → week lookup
+        // Build a session → week lookup (calculated from dates)
         const sessionWeekMap = new Map<string, number>()
         for (const s of sessions) {
-            sessionWeekMap.set(s.id, s.program_week ?? 1)
+            sessionWeekMap.set(s.id, calcProgramWeek(s.started_at, programStartedAt))
         }
 
         for (const log of logs ?? []) {
@@ -508,11 +529,12 @@ async function computeVolume(
 async function computeRPE(
     supabase: SupabaseClient,
     programId: string,
+    programStartedAt: string | null,
     durationWeeks: number
 ): Promise<ReportRPE> {
     const { data: rows } = await supabase
         .from('workout_sessions')
-        .select('program_week, rpe')
+        .select('started_at, rpe')
         .eq('assigned_program_id', programId)
         .eq('status', 'completed')
         .not('rpe', 'is', null)
@@ -524,13 +546,13 @@ async function computeRPE(
         }
     }
 
-    // Group RPE values by week
+    // Group RPE values by week (calculated from dates)
     const weekRPEs = new Map<number, number[]>()
     let totalRPE = 0
     let rpeCount = 0
 
     for (const row of rows) {
-        const week = row.program_week ?? 1
+        const week = calcProgramWeek(row.started_at, programStartedAt)
         const rpeVal = row.rpe as number
         if (!weekRPEs.has(week)) weekRPEs.set(week, [])
         weekRPEs.get(week)!.push(rpeVal)
@@ -560,12 +582,13 @@ async function computeRPE(
 async function computeProgression(
     supabase: SupabaseClient,
     programId: string,
+    programStartedAt: string | null,
     durationWeeks: number
 ): Promise<{ top_exercises: ReportExerciseProgression[] }> {
     // Get all completed sessions for this program
     const { data: sessions } = await supabase
         .from('workout_sessions')
-        .select('id, program_week')
+        .select('id, started_at')
         .eq('assigned_program_id', programId)
         .eq('status', 'completed')
 
@@ -576,7 +599,7 @@ async function computeProgression(
     const sessionIds = sessions.map(s => s.id)
     const sessionWeekMap = new Map<string, number>()
     for (const s of sessions) {
-        sessionWeekMap.set(s.id, s.program_week ?? 1)
+        sessionWeekMap.set(s.id, calcProgramWeek(s.started_at, programStartedAt))
     }
 
     // Get all set_logs with weight for these sessions

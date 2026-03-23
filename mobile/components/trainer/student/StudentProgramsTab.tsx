@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity } from "react-native";
 import { Calendar, Sparkles, FileText } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { supabase } from "../../../lib/supabase";
+import { getProgramWeek } from "@kinevo/shared/utils/schedule-projection";
 import type { StudentDetailData } from "../../../hooks/useStudentDetail";
 
 interface Props {
@@ -78,7 +79,11 @@ export function StudentProgramsTab({ data }: Props) {
                                 </Text>
                             )}
                             <Text style={{ fontSize: 13, color: "#64748b" }}>
-                                Semana {data.activeProgram.current_week || 1}
+                                Semana {
+                                    data.activeProgram.started_at
+                                        ? getProgramWeek(new Date(), data.activeProgram.started_at, data.activeProgram.duration_weeks) ?? (data.activeProgram.duration_weeks || 1)
+                                        : 1
+                                }
                             </Text>
                         </View>
 
@@ -148,7 +153,7 @@ export function StudentProgramsTab({ data }: Props) {
                                                 paddingHorizontal: 8,
                                                 paddingVertical: 3,
                                                 borderRadius: 8,
-                                                backgroundColor: p.status === "completed" ? "#dcfce7" : "#fef3c7",
+                                                backgroundColor: p.status === "completed" ? "#dcfce7" : p.status === "expired" ? "#fef3c7" : "#fef3c7",
                                             }}
                                         >
                                             <Text
@@ -158,7 +163,7 @@ export function StudentProgramsTab({ data }: Props) {
                                                     color: p.status === "completed" ? "#16a34a" : "#d97706",
                                                 }}
                                             >
-                                                {p.status === "completed" ? "Concluído" : "Pausado"}
+                                                {p.status === "completed" ? "Concluído" : p.status === "expired" ? "Expirado" : "Pausado"}
                                             </Text>
                                         </View>
                                     </View>

@@ -7,6 +7,7 @@
  */
 
 import { supabase } from './supabase';
+import { getProgramWeek } from '@kinevo/shared/utils/schedule-projection';
 
 const EQUIPMENT_LABELS: Record<string, string> = {
   treadmill: 'Esteira',
@@ -42,7 +43,7 @@ export async function getProgramSnapshotForWatch(
   const { data: program, error: programError }: { data: any; error: any } =
     await supabase
       .from('assigned_programs' as any)
-      .select('id, name, current_week, duration_weeks')
+      .select('id, name, current_week, duration_weeks, started_at')
       .eq('student_id', student.id)
       .eq('status', 'active')
       .maybeSingle();
@@ -195,7 +196,9 @@ export async function getProgramSnapshotForWatch(
     schemaVersion: 2,
     programId: program.id,
     programName: program.name,
-    currentWeek: program.current_week || 1,
+    currentWeek: program.started_at
+      ? getProgramWeek(new Date(), program.started_at, program.duration_weeks) ?? (program.duration_weeks || 1)
+      : (program.current_week || 1),
     totalWeeks: program.duration_weeks || 0,
     scheduleMode: hasScheduledDays ? 'scheduled' : 'flexible',
     workouts: programWorkouts,

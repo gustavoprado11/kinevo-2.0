@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { FileText } from 'lucide-react'
 import { SessionDetailSheet } from './session-detail-sheet'
 
 interface CompletedProgram {
@@ -16,9 +17,10 @@ interface CompletedProgram {
 
 interface ProgramHistorySectionProps {
     programs: CompletedProgram[]
+    onViewReport?: (programId: string) => void
 }
 
-export function ProgramHistorySection({ programs }: ProgramHistorySectionProps) {
+export function ProgramHistorySection({ programs, onViewReport }: ProgramHistorySectionProps) {
     const [expandedProgramId, setExpandedProgramId] = useState<string | null>(null)
     const [programSessions, setProgramSessions] = useState<Record<string, any[]>>({})
     const [loadingSessions, setLoadingSessions] = useState<Record<string, boolean>>({})
@@ -110,6 +112,18 @@ export function ProgramHistorySection({ programs }: ProgramHistorySectionProps) 
                                                 <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
                                                     Concluído
                                                 </span>
+                                            )}
+                                            {program.sessions_count > 0 && onViewReport && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation()
+                                                        onViewReport(program.id)
+                                                    }}
+                                                    className="p-1 text-k-text-quaternary hover:text-violet-400 transition-colors"
+                                                    title="Ver relatório"
+                                                >
+                                                    <FileText className="w-4 h-4" />
+                                                </button>
                                             )}
                                             <svg
                                                 className={`w-4 h-4 text-k-text-quaternary transition-transform ${expandedProgramId === program.id ? 'rotate-180' : ''}`}

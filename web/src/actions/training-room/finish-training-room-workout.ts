@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { getProgramWeek } from '@kinevo/shared/utils/schedule-projection'
 import type { ExerciseData } from '@/stores/training-room-store'
 
 interface FinishPayload {
@@ -55,6 +56,19 @@ export async function finishTrainingRoomWorkout(payload: FinishPayload): Promise
     const isScheduledToday = payload.scheduledDays?.includes(todayDow)
     const scheduledDate = isScheduledToday ? new Date().toISOString().split('T')[0] : null
 
+    // Compute program_week from program dates
+    let programWeek = 1
+    if (payload.assignedProgramId) {
+        const { data: prog } = await supabaseAdmin
+            .from('assigned_programs')
+            .select('started_at, duration_weeks')
+            .eq('id', payload.assignedProgramId)
+            .single()
+        if (prog?.started_at) {
+            programWeek = getProgramWeek(new Date(), prog.started_at, prog.duration_weeks) ?? 1
+        }
+    }
+
     // 1. Insert workout_sessions via supabaseAdmin (bypasses RLS)
     const { data: session, error: sessionError } = await supabaseAdmin
         .from('workout_sessions')
@@ -73,6 +87,7 @@ export async function finishTrainingRoomWorkout(payload: FinishPayload): Promise
             pre_workout_submission_id: payload.preWorkoutSubmissionId,
             post_workout_submission_id: payload.postWorkoutSubmissionId,
             scheduled_date: scheduledDate,
+            program_week: programWeek,
         })
         .select('id')
         .single()

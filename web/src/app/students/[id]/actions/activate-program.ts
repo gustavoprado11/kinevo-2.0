@@ -24,7 +24,7 @@ export async function activateProgram(assignedProgramId: string) {
         // 2. Get program details — with trainer_id ownership filter
         const { data: program } = await supabase
             .from('assigned_programs')
-            .select('student_id, status, name, trainer_id')
+            .select('student_id, status, name, trainer_id, duration_weeks')
             .eq('id', assignedProgramId)
             .eq('trainer_id', trainer.id)
             .single()
@@ -47,7 +47,7 @@ export async function activateProgram(assignedProgramId: string) {
             .single()
         if (!student) throw new Error('Student not found')
 
-        // 4. Archive/Complete current active program (scoped to trainer)
+        // 4. Archive/Complete current active or expired program (scoped to trainer)
         await supabase
             .from('assigned_programs')
             .update({
@@ -57,15 +57,22 @@ export async function activateProgram(assignedProgramId: string) {
             })
             .eq('student_id', studentId)
             .eq('trainer_id', trainer.id)
-            .eq('status', 'active')
+            .in('status', ['active', 'expired'])
 
         // 5. Activate the new program
+        const now = new Date()
+        const durationWeeks = (program as any).duration_weeks as number | null
+        const expiresAt = durationWeeks
+            ? new Date(now.getTime() + durationWeeks * 7 * 24 * 60 * 60 * 1000).toISOString()
+            : null
+
         const { error: updateError } = await supabase
             .from('assigned_programs')
             .update({
                 status: 'active',
-                started_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
+                started_at: now.toISOString(),
+                updated_at: now.toISOString(),
+                expires_at: expiresAt,
             })
             .eq('id', assignedProgramId)
             .eq('trainer_id', trainer.id)
