@@ -99,6 +99,38 @@ export function calcExercisesPerWorkout(
 }
 
 // ============================================================================
+// Compound Secondary Volume Weights
+// ============================================================================
+
+/**
+ * When a compound exercise targets multiple muscle groups, the secondary groups
+ * receive fractional volume credit (not full 1.0).
+ *
+ * Key = primary target group (first in muscle_group_names)
+ * Value = map of secondary group → weight (0.0–1.0)
+ *
+ * Only the FIRST group in muscle_group_names gets 1.0 (full credit).
+ * All subsequent groups use the weight from this map.
+ * If a group is not listed here, it gets 0.0 (no secondary credit).
+ *
+ * Based on EMG activation research and practical coaching consensus.
+ */
+export const COMPOUND_SECONDARY_WEIGHTS: Record<string, Record<string, number>> = {
+    // Peito compounds (Supino) → moderate Ombros, low Tríceps
+    'Peito': { 'Ombros': 0.3, 'Tríceps': 0.5 },
+    // Costas compounds (Remada, Puxada) → moderate Bíceps
+    'Costas': { 'Bíceps': 0.5 },
+    // Ombros compounds (Desenvolvimento) → low Tríceps
+    'Ombros': { 'Tríceps': 0.4 },
+    // Quadríceps compounds (Agachamento, Leg Press) → moderate Glúteo
+    'Quadríceps': { 'Glúteo': 0.5 },
+    // Posterior de Coxa compounds (Stiff, Terra) → moderate Glúteo, low Costas
+    'Posterior de Coxa': { 'Glúteo': 0.5, 'Costas': 0.2 },
+    // Glúteo compounds (Hip Thrust) → low Posterior
+    'Glúteo': { 'Posterior de Coxa': 0.3 },
+}
+
+// ============================================================================
 // Compound Exercise Patterns (exact DB group names as keys)
 // ============================================================================
 

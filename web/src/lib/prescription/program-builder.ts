@@ -38,6 +38,7 @@ import {
     findVariationForStalled,
     filterBySafety,
 } from './exercise-graph'
+import { computeStimulusFactor } from './structural-optimizer'
 
 // ============================================================================
 // Difficulty Preference — maps student level to exercise difficulty preference
@@ -73,6 +74,7 @@ import {
     PRIMARY_MUSCLE_GROUPS,
     SMALL_MUSCLE_GROUPS,
     SMALL_GROUP_EXERCISE_LIMITS,
+    COMPOUND_SECONDARY_WEIGHTS,
     calcExercisesPerWorkout,
 } from './constants'
 
@@ -980,6 +982,16 @@ function computeSlotScore(
         score -= 60
     }
 
+    // Stimulus quality bonus — prefer high-stimulus exercises (compounds, high-fatigue)
+    const stimulus = computeStimulusFactor(exercise)
+    if (stimulus >= 1.0) {
+        score += 15 // High-quality: compound + high fatigue or primary movement
+    } else if (stimulus >= 0.85) {
+        score += 5  // Moderate quality
+    } else if (stimulus < 0.65) {
+        score -= 10 // Low quality isolation with low fatigue
+    }
+
     return Math.max(0, Math.min(100, score))
 }
 
@@ -1074,8 +1086,21 @@ function trackVolumeForExercise(
     weeklyGroupVolume: Record<string, number>,
 ): void {
     const weeklySets = sets * frequency
-    for (const group of exercise.muscle_group_names) {
-        weeklyGroupVolume[group] = (weeklyGroupVolume[group] || 0) + weeklySets
+    const groups = exercise.muscle_group_names
+    if (groups.length === 0) return
+
+    // Primary group gets full credit
+    weeklyGroupVolume[groups[0]] = (weeklyGroupVolume[groups[0]] || 0) + weeklySets
+
+    // Secondary groups get weighted credit
+    if (exercise.is_compound && groups.length > 1) {
+        const weights = COMPOUND_SECONDARY_WEIGHTS[groups[0]]
+        for (let i = 1; i < groups.length; i++) {
+            const weight = weights?.[groups[i]] ?? 0
+            if (weight > 0) {
+                weeklyGroupVolume[groups[i]] = (weeklyGroupVolume[groups[i]] || 0) + Math.round(weeklySets * weight)
+            }
+        }
     }
 }
 

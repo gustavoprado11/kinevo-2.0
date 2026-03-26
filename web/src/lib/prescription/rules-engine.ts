@@ -28,6 +28,7 @@ import {
     PRIMARY_MUSCLE_GROUPS,
     SMALL_MUSCLE_GROUPS,
     SMALL_GROUP_EXERCISE_LIMITS,
+    COMPOUND_SECONDARY_WEIGHTS,
 } from './constants'
 
 
@@ -662,9 +663,25 @@ export function computeWeeklyVolumePerMuscle(
             const groups = ref?.muscle_group_names
                 ?? (item.exercise_muscle_group ? [item.exercise_muscle_group] : [])
 
-            for (const group of groups) {
-                if (!PRIMARY_MUSCLE_GROUPS.includes(group) && !SMALL_MUSCLE_GROUPS.includes(group)) continue
-                volume[group] = (volume[group] || 0) + weeklySets
+            if (groups.length === 0) continue
+
+            // Primary target group (first in list) gets full credit
+            const primaryGroup = groups[0]
+            if (PRIMARY_MUSCLE_GROUPS.includes(primaryGroup) || SMALL_MUSCLE_GROUPS.includes(primaryGroup)) {
+                volume[primaryGroup] = (volume[primaryGroup] || 0) + weeklySets
+            }
+
+            // Secondary groups get weighted credit based on compound synergy
+            if (ref?.is_compound && groups.length > 1) {
+                const weights = COMPOUND_SECONDARY_WEIGHTS[primaryGroup]
+                for (let i = 1; i < groups.length; i++) {
+                    const secondaryGroup = groups[i]
+                    if (!PRIMARY_MUSCLE_GROUPS.includes(secondaryGroup) && !SMALL_MUSCLE_GROUPS.includes(secondaryGroup)) continue
+                    const weight = weights?.[secondaryGroup] ?? 0
+                    if (weight > 0) {
+                        volume[secondaryGroup] = (volume[secondaryGroup] || 0) + Math.round(weeklySets * weight)
+                    }
+                }
             }
         }
     }

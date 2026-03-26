@@ -25,6 +25,7 @@ import { buildConstraints } from '@/lib/prescription/constraints-engine'
 import { selectSmartExercises } from '@/lib/prescription/exercise-selector'
 import { getSubstitutes } from '@/lib/prescription/exercise-graph'
 import { optimizeWithAI } from '@/lib/prescription/ai-optimizer'
+import { structuralOptimizer, generateTradeoffReport, computePrescriptionQualityScore } from '@/lib/prescription/structural-optimizer'
 import { buildFormNarratives } from '@/lib/prescription/form-narrative-builder'
 import { fetchPrescriptionQuestionnaire } from './questionnaire-actions'
 import { mapQuestionnaireToProfile, type QuestionnaireData } from '@/lib/prescription/questionnaire-mapper'
@@ -376,6 +377,13 @@ export async function generateProgram(
             model = 'slot-builder'
             llmStatus = 'llm_disabled' as LLMStatus
 
+            // Step 1.5: Structural optimizer — stimulus swaps + fill time sets
+            const structResult = structuralOptimizer(outputSnapshot, typedProfile, constraints, agentExercises)
+            outputSnapshot = structResult.output
+            if (structResult.changes.length > 0) {
+                console.log(`[BuilderFirst] Structural optimizer: ${structResult.changes.length} changes`)
+            }
+
             // Step 2: Optionally optimize with AI (Haiku)
             const optimizerResult = await optimizeWithAI(
                 outputSnapshot,
@@ -415,6 +423,22 @@ export async function generateProgram(
                     outputSnapshot = fixResult.fixed
                     allViolations = [...fixResult.appliedFixes, ...fixResult.remainingViolations]
                 }
+            }
+
+            // Step 3.5: Generate trade-off report + attach optimizer metadata to reasoning
+            const agentExerciseMapForReport = new Map(agentExercises.map(e => [e.id, e]))
+            const tradeoffReport = generateTradeoffReport(outputSnapshot, constraints, typedProfile, agentExerciseMapForReport)
+
+            outputSnapshot.reasoning.optimizer_changes = structResult.changes.length > 0 ? structResult.changes : undefined
+            outputSnapshot.reasoning.tradeoff_limitations = tradeoffReport.limitations.length > 0 ? tradeoffReport.limitations : undefined
+            outputSnapshot.reasoning.tradeoff_suggestions = tradeoffReport.suggestions.length > 0 ? tradeoffReport.suggestions : undefined
+
+            // Step 3.6: Compute Prescription Quality Score
+            outputSnapshot.reasoning.quality_score = computePrescriptionQualityScore(outputSnapshot, constraints, typedProfile, agentExerciseMapForReport, tradeoffReport)
+            console.log(`[BuilderFirst] Quality Score: ${outputSnapshot.reasoning.quality_score.total}/100`)
+
+            if (tradeoffReport.limitations.length > 0) {
+                console.log(`[BuilderFirst] Trade-off report: ${tradeoffReport.limitations.length} limitations, ${tradeoffReport.suggestions.length} suggestions`)
             }
 
             // Step 4: Save
@@ -537,6 +561,25 @@ export async function generateProgram(
                 model = agentResult.model
                 llmStatus = 'llm_used'
                 allViolations = validation.violations
+            }
+
+            // Apply structural optimizer + trade-off report to agent output
+            const agentStructResult = structuralOptimizer(outputSnapshot, typedProfile, constraints, smartExercises)
+            outputSnapshot = agentStructResult.output
+
+            const agentExerciseMapForReport = new Map(smartExercises.map(e => [e.id, e]))
+            const agentTradeoffReport = generateTradeoffReport(outputSnapshot, constraints, typedProfile, agentExerciseMapForReport)
+
+            outputSnapshot.reasoning.optimizer_changes = agentStructResult.changes.length > 0 ? agentStructResult.changes : undefined
+            outputSnapshot.reasoning.tradeoff_limitations = agentTradeoffReport.limitations.length > 0 ? agentTradeoffReport.limitations : undefined
+            outputSnapshot.reasoning.tradeoff_suggestions = agentTradeoffReport.suggestions.length > 0 ? agentTradeoffReport.suggestions : undefined
+
+            // Compute Prescription Quality Score
+            outputSnapshot.reasoning.quality_score = computePrescriptionQualityScore(outputSnapshot, constraints, typedProfile, agentExerciseMapForReport, agentTradeoffReport)
+            console.log(`[AgentPipeline] Quality Score: ${outputSnapshot.reasoning.quality_score.total}/100`)
+
+            if (agentStructResult.changes.length > 0 || agentTradeoffReport.limitations.length > 0) {
+                console.log(`[AgentPipeline] Structural optimizer: ${agentStructResult.changes.length} changes, trade-off: ${agentTradeoffReport.limitations.length} limitations`)
             }
 
             const generationTimeMs = Date.now() - startTime
@@ -679,6 +722,21 @@ export async function generateProgram(
         const heuristicValidation = validateOutput(outputSnapshot, typedProfile, exerciseMap)
         allViolations = heuristicValidation.violations
     }
+
+    // Apply structural optimizer + trade-off report to legacy pipeline output
+    const legacyEnriched = await enrichStudentContext(supabase, studentId)
+    const legacyConstraints = buildConstraints(typedProfile, legacyEnriched, [])
+    const legacyStructResult = structuralOptimizer(outputSnapshot, typedProfile, legacyConstraints, exercises)
+    outputSnapshot = legacyStructResult.output
+
+    const legacyTradeoffReport = generateTradeoffReport(outputSnapshot, legacyConstraints, typedProfile, exerciseMap)
+    outputSnapshot.reasoning.optimizer_changes = legacyStructResult.changes.length > 0 ? legacyStructResult.changes : undefined
+    outputSnapshot.reasoning.tradeoff_limitations = legacyTradeoffReport.limitations.length > 0 ? legacyTradeoffReport.limitations : undefined
+    outputSnapshot.reasoning.tradeoff_suggestions = legacyTradeoffReport.suggestions.length > 0 ? legacyTradeoffReport.suggestions : undefined
+
+    // Compute Prescription Quality Score
+    outputSnapshot.reasoning.quality_score = computePrescriptionQualityScore(outputSnapshot, legacyConstraints, typedProfile, exerciseMap, legacyTradeoffReport)
+    console.log(`[Legacy] Quality Score: ${outputSnapshot.reasoning.quality_score.total}/100`)
 
     const generationTimeMs = Date.now() - startTime
 

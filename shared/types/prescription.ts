@@ -218,6 +218,43 @@ export interface PrescriptionReasoning {
     form_data_used?: string
     /** Adjustments based on performance, adherence, trainer observations, or optimizer */
     adaptations?: string
+    /** Structural optimizer changes applied (e.g. stimulus swaps, +1 set fills) */
+    optimizer_changes?: string[]
+    /** Volume trade-off limitations detected */
+    tradeoff_limitations?: Array<{
+        group: string
+        actual_volume: number
+        ideal_volume: number
+        cause: 'frequency' | 'duration' | 'split'
+        description: string
+    }>
+    /** Actionable suggestions to improve the program */
+    tradeoff_suggestions?: Array<{
+        action: string
+        impact: string
+        priority: number
+    }>
+    /** Prescription Quality Score (0–100) with breakdown */
+    quality_score?: PrescriptionQualityScore
+}
+
+/** Prescription Quality Score — multi-dimensional assessment of program quality */
+export interface PrescriptionQualityScore {
+    /** Overall score (0–100) */
+    total: number
+    /** Dimensional breakdown */
+    breakdown: {
+        /** Exercise quality based on stimulus factor (0–40) */
+        stimulus: number
+        /** Muscle group coverage completeness (0–25) */
+        coverage: number
+        /** Volume balance across muscle groups (0–20) */
+        distribution: number
+        /** Session time utilization efficiency (0–15) */
+        efficiency: number
+    }
+    /** Human-readable summary in Portuguese */
+    summary: string
 }
 
 /**
