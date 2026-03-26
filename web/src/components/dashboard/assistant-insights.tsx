@@ -9,11 +9,11 @@ import Link from 'next/link'
 
 // ── Styling maps ──
 
-const CATEGORY_CONFIG: Record<string, { label: string; dotColor: string; textColor: string; Icon: typeof AlertTriangle }> = {
-    alert: { label: 'ALERTA', dotColor: 'bg-red-500', textColor: 'text-red-600 dark:text-red-400', Icon: AlertTriangle },
-    progression: { label: 'PROGRESSAO', dotColor: 'bg-teal-500', textColor: 'text-teal-600 dark:text-teal-400', Icon: TrendingUp },
-    suggestion: { label: 'SUGESTAO', dotColor: 'bg-violet-500', textColor: 'text-violet-600 dark:text-violet-400', Icon: Lightbulb },
-    summary: { label: 'RESUMO', dotColor: 'bg-blue-500', textColor: 'text-blue-600 dark:text-blue-400', Icon: BarChart3 },
+const CATEGORY_CONFIG: Record<string, { label: string; dotColor: string; textColor: string; borderColor: string; Icon: typeof AlertTriangle }> = {
+    alert: { label: 'Alerta', dotColor: 'bg-red-500', textColor: 'text-red-600 dark:text-red-400', borderColor: 'border-l-red-500', Icon: AlertTriangle },
+    progression: { label: 'Progressão', dotColor: 'bg-teal-500', textColor: 'text-teal-600 dark:text-teal-400', borderColor: 'border-l-teal-500', Icon: TrendingUp },
+    suggestion: { label: 'Sugestão', dotColor: 'bg-violet-500', textColor: 'text-violet-600 dark:text-violet-400', borderColor: 'border-l-violet-500', Icon: Lightbulb },
+    summary: { label: 'Resumo', dotColor: 'bg-blue-500', textColor: 'text-blue-600 dark:text-blue-400', borderColor: 'border-l-blue-500', Icon: BarChart3 },
 }
 
 const ACTION_LINKS: Record<string, (meta: Record<string, any>) => string> = {
@@ -157,15 +157,16 @@ export function AssistantInsights({ initialInsights, trainerId }: AssistantInsig
                     const cardContent = (
                         <div
                             className={`
-                                relative flex gap-3 p-3 rounded-xl border transition-colors cursor-pointer
+                                relative flex gap-3 p-3 rounded-r-xl border border-l-[3px] transition-colors cursor-pointer
+                                ${config.borderColor}
                                 ${insight.status === 'new'
-                                    ? 'bg-card border-violet-500/20 hover:border-violet-500/40'
-                                    : 'bg-card border-border hover:border-border/80 opacity-90'
+                                    ? 'bg-card border-border/60 hover:bg-muted/30'
+                                    : 'bg-card border-border/40 hover:bg-muted/20 opacity-85'
                                 }
                             `}
                             onClick={() => handleInsightClick(insight)}
                         >
-                            {/* Category dot + icon */}
+                            {/* Category icon */}
                             <div className="flex-shrink-0 pt-0.5">
                                 <div className={`w-7 h-7 rounded-full ${config.dotColor}/10 flex items-center justify-center`}>
                                     <CategoryIcon className={`w-3.5 h-3.5 ${config.textColor}`} />
@@ -175,7 +176,7 @@ export function AssistantInsights({ initialInsights, trainerId }: AssistantInsig
                             {/* Content */}
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-0.5">
-                                    <span className={`text-[10px] font-bold uppercase tracking-wider ${config.textColor}`}>
+                                    <span className={`text-[10px] font-semibold tracking-wide ${config.textColor}`}>
                                         {config.label}
                                     </span>
                                     <span className="text-[10px] text-muted-foreground">{timeAgo(insight.created_at)}</span>
