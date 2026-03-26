@@ -35,8 +35,9 @@ supabase/.temp/
 # tmp artifacts
 tmp/
 
-# Claude Code MCP config (local per-developer)
+# MCP config (local per-developer)
 .mcp.json
+.vscode/mcp.json
 
 # Playwright MCP logs
 .playwright-mcp/
