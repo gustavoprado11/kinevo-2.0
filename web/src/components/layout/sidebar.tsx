@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, Users, Dumbbell, Calendar, Wallet, Settings, FileText, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import { LayoutDashboard, Users, Dumbbell, Calendar, Wallet, Settings, FileText, PanelLeftClose, PanelLeftOpen, MessageSquarePlus, Headphones } from 'lucide-react'
 import { useSidebarStore, shouldAutoCollapse } from '@/stores/sidebar-store'
+import { FeedbackModal } from '@/components/feedback/feedback-modal'
 
 interface NavItem {
     name: string
@@ -63,9 +64,12 @@ const navigation: NavItem[] = [
     },
 ]
 
+const SUPPORT_PHONE = process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP || '5531999064997'
+
 export function Sidebar({ financialBadge }: SidebarProps = {}) {
     const pathname = usePathname()
     const { isCollapsed, isAutoCollapsed, toggle, setAutoCollapse, expand } = useSidebarStore()
+    const [feedbackOpen, setFeedbackOpen] = useState(false)
 
     // Auto-collapse/expand based on route
     useEffect(() => {
@@ -152,6 +156,49 @@ export function Sidebar({ financialBadge }: SidebarProps = {}) {
                 })}
             </nav>
 
+            {/* Footer: Feedback & Support */}
+            <div className={`border-t border-[#E8E8ED] dark:border-k-border-subtle pt-2 pb-1 space-y-0.5 ${isCollapsed ? 'px-2' : 'px-4'}`}>
+                {/* Feedback */}
+                <div className="relative group/nav">
+                    <button
+                        onClick={() => setFeedbackOpen(true)}
+                        className={`flex items-center gap-3 w-full py-2 rounded-lg text-sm font-medium transition-all duration-200 ease-out text-[#6E6E73] dark:text-muted-foreground/60 hover:text-[#1D1D1F] dark:hover:text-foreground hover:bg-[#F5F5F7] dark:hover:bg-glass-bg ${
+                            isCollapsed ? 'justify-center px-0' : 'px-3'
+                        }`}
+                    >
+                        <MessageSquarePlus size={18} strokeWidth={1.5} className="shrink-0 text-[#AEAEB2] dark:text-muted-foreground/60 group-hover/nav:text-[#6E6E73] dark:group-hover/nav:text-foreground transition-colors" />
+                        <span className={`whitespace-nowrap transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0 overflow-hidden' : 'w-auto opacity-100'}`}>
+                            Feedback e Bugs
+                        </span>
+                    </button>
+                    {isCollapsed && (
+                        <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2.5 py-1 rounded-md bg-[#1D1D1F] dark:bg-white text-white dark:text-[#1D1D1F] text-xs font-medium whitespace-nowrap opacity-0 pointer-events-none group-hover/nav:opacity-100 transition-opacity duration-150 z-modal shadow-lg">
+                            Feedback e Bugs
+                        </div>
+                    )}
+                </div>
+
+                {/* Support */}
+                <div className="relative group/nav">
+                    <button
+                        onClick={() => window.open(`https://wa.me/${SUPPORT_PHONE}?text=${encodeURIComponent('Olá! Preciso de ajuda com o Kinevo.')}`, '_blank')}
+                        className={`flex items-center gap-3 w-full py-2 rounded-lg text-sm font-medium transition-all duration-200 ease-out text-[#6E6E73] dark:text-muted-foreground/60 hover:text-[#1D1D1F] dark:hover:text-foreground hover:bg-[#F5F5F7] dark:hover:bg-glass-bg ${
+                            isCollapsed ? 'justify-center px-0' : 'px-3'
+                        }`}
+                    >
+                        <Headphones size={18} strokeWidth={1.5} className="shrink-0 text-[#AEAEB2] dark:text-muted-foreground/60 group-hover/nav:text-[#6E6E73] dark:group-hover/nav:text-foreground transition-colors" />
+                        <span className={`whitespace-nowrap transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0 overflow-hidden' : 'w-auto opacity-100'}`}>
+                            Suporte
+                        </span>
+                    </button>
+                    {isCollapsed && (
+                        <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2.5 py-1 rounded-md bg-[#1D1D1F] dark:bg-white text-white dark:text-[#1D1D1F] text-xs font-medium whitespace-nowrap opacity-0 pointer-events-none group-hover/nav:opacity-100 transition-opacity duration-150 z-modal shadow-lg">
+                            Suporte
+                        </div>
+                    )}
+                </div>
+            </div>
+
             {/* Toggle Button */}
             <div className={`border-t border-[#E8E8ED] dark:border-k-border-subtle py-3 ${isCollapsed ? 'px-2' : 'px-4'}`}>
                 <button
@@ -171,6 +218,9 @@ export function Sidebar({ financialBadge }: SidebarProps = {}) {
                     )}
                 </button>
             </div>
+
+            {/* Feedback Modal */}
+            <FeedbackModal isOpen={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
         </aside>
     )
 }
