@@ -11,6 +11,7 @@ import { StatCards } from '@/components/dashboard/stat-cards'
 import { PendingActions } from '@/components/dashboard/pending-actions'
 import { ExpiringPrograms } from '@/components/dashboard/expiring-programs'
 import { CompactTools } from '@/components/dashboard/compact-tools'
+import { AssistantInsights } from '@/components/dashboard/assistant-insights'
 import { WelcomeModal } from '@/components/onboarding/widgets/welcome-modal'
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
 import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
@@ -126,10 +127,13 @@ export function DashboardClient({ trainer, data, initialStudents, selfStudentId,
             {/* 4. Stat Cards */}
             <StatCards stats={data.stats} />
 
-            {/* 5. Expiring Programs (conditional) */}
+            {/* 5. Assistant Insights */}
+            <AssistantInsights initialInsights={data.assistantInsights} trainerId={trainer.id} />
+
+            {/* 6. Expiring Programs (conditional) */}
             <ExpiringPrograms programs={data.expiringPrograms} />
 
-            {/* 6. Compact Tools */}
+            {/* 7. Compact Tools */}
             <CompactTools onNewStudent={() => setIsModalOpen(true)} />
 
             {/* Modals & Overlays */}

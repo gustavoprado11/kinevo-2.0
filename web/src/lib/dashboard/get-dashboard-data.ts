@@ -77,6 +77,21 @@ export interface ScheduledTodayItem {
     workoutName: string
 }
 
+export interface AssistantInsightItem {
+    id: string
+    student_id: string | null
+    student_name: string | null
+    category: 'alert' | 'progression' | 'suggestion' | 'summary'
+    priority: 'critical' | 'high' | 'medium' | 'low'
+    title: string
+    body: string
+    action_type: string | null
+    action_metadata: Record<string, any>
+    status: 'new' | 'read' | 'dismissed' | 'acted'
+    source: 'rules' | 'llm'
+    created_at: string
+}
+
 export interface DashboardData {
     stats: DashboardStats
     pendingFinancial: PendingFinancialItem[]
@@ -86,6 +101,7 @@ export interface DashboardData {
     expiringPrograms: ExpiringProgramItem[]
     scheduledToday: ScheduledTodayItem[]
     dailyActivity: DailyActivityItem[]
+    assistantInsights: AssistantInsightItem[]
 }
 
 // ── Helpers ──
@@ -133,7 +149,7 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
     const todayStart = startOfDayInTZ(brDateStr, TZ)
     const weekRange = getWeekRange(today, TZ)
 
-    // 9 parallel queries
+    // 10 parallel queries
     const [
         studentsResult,
         activeContractsResult,
@@ -144,6 +160,7 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
         weekSessionsResult,
         todaySessionsResult,
         allSessionsResult,
+        insightsResult,
     ] = await Promise.all([
         // 1. Students
         supabaseAdmin
@@ -230,6 +247,15 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
             .eq('trainer_id', trainerId)
             .eq('status', 'completed')
             .order('completed_at', { ascending: false }),
+
+        // 10. Assistant insights (active, non-expired)
+        supabaseAdmin
+            .from('assistant_insights')
+            .select('id, student_id, category, priority, title, body, action_type, action_metadata, status, source, created_at')
+            .eq('trainer_id', trainerId)
+            .in('status', ['new', 'read'])
+            .order('created_at', { ascending: false })
+            .limit(20),
     ])
 
     const students = studentsResult.data ?? []
@@ -427,6 +453,25 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
         }
     }
 
+    // ── Assistant Insights ──
+
+    const PRIORITY_ORDER: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 }
+    const rawInsights = insightsResult.data ?? []
+
+    // Resolve student names from already-fetched students
+    const studentNameMap = new Map(activeStudents.map(s => [s.id, s.name]))
+    const assistantInsights: AssistantInsightItem[] = rawInsights.map((row: any) => ({
+        ...row,
+        student_name: row.student_id ? (studentNameMap.get(row.student_id) || null) : null,
+        action_metadata: row.action_metadata || {},
+    }))
+    assistantInsights.sort((a, b) => {
+        const pa = PRIORITY_ORDER[a.priority] ?? 3
+        const pb = PRIORITY_ORDER[b.priority] ?? 3
+        if (pa !== pb) return pa - pb
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    })
+
     return {
         stats: {
             activeStudentsCount,
@@ -444,6 +489,7 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
         expiringPrograms,
         dailyActivity,
         scheduledToday,
+        assistantInsights,
     }
 }
 
