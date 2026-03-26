@@ -38,6 +38,12 @@ tmp/
 # Claude Code MCP config (local per-developer)
 .mcp.json
 
+# Playwright MCP logs
+.playwright-mcp/
+
+# Audit screenshots
+audit/
+
 # Planning docs & prompts (personal, not code)
 *.docx
 /prompts-*.md
