@@ -16,6 +16,7 @@ export interface InsightItem {
     action_metadata: Record<string, any>
     status: 'new' | 'read' | 'dismissed' | 'acted'
     source: 'rules' | 'llm'
+    insight_key: string
     created_at: string
 }
 
@@ -45,7 +46,7 @@ export async function getTrainerInsights(): Promise<{ insights: InsightItem[]; e
 
     const { data, error } = await supabase
         .from('assistant_insights')
-        .select('id, student_id, category, priority, title, body, action_type, action_metadata, status, source, created_at')
+        .select('id, student_id, category, priority, title, body, action_type, action_metadata, status, source, insight_key, created_at')
         .eq('trainer_id', trainer.id)
         .in('status', ['new', 'read'])
         .order('created_at', { ascending: false })

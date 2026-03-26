@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Sparkles, X, AlertTriangle, TrendingUp, Lightbulb, BarChart3, ChevronRight, Check } from 'lucide-react'
+import { Sparkles, X, AlertTriangle, TrendingUp, Lightbulb, BarChart3, Check } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { markInsightRead, dismissInsight } from '@/actions/insights'
 import type { InsightItem } from '@/actions/insights'
-import Link from 'next/link'
+import { useAssistantChatStore } from '@/stores/assistant-chat-store'
 
 // ── Styling maps ──
 
@@ -16,13 +16,6 @@ const CATEGORY_CONFIG: Record<string, { label: string; dotColor: string; textCol
     summary: { label: 'Resumo', dotColor: 'bg-blue-500', textColor: 'text-blue-600 dark:text-blue-400', borderColor: 'border-l-blue-500', Icon: BarChart3 },
 }
 
-const ACTION_LINKS: Record<string, (meta: Record<string, any>) => string> = {
-    contact_student: (m) => `/students/${m.student_id}`,
-    review_program: (m) => `/students/${m.student_id}`,
-    adjust_load: (m) => `/students/${m.student_id}`,
-    generate_program: (m) => `/students/${m.student_id}/prescribe`,
-    view_session: (m) => `/students/${m.student_id}`,
-}
 
 function timeAgo(dateStr: string): string {
     const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000)
@@ -42,22 +35,53 @@ interface AssistantInsightsProps {
     trainerId: string
 }
 
+function buildInitialMessage(insight: InsightItem): string {
+    const name = insight.student_name || 'o aluno'
+    const meta = insight.action_metadata || {}
+
+    if (insight.insight_key?.startsWith('gap_alert')) {
+        const days = meta.days_since_last || '?'
+        return `Vi que ${name} está sem treinar há ${days} dias. Como posso ajudar?`
+    }
+    if (insight.insight_key?.startsWith('stagnation')) {
+        return `Identifiquei que ${name} está estagnado em ${meta.exercise_name || 'um exercício'}. Quer analisar?`
+    }
+    if (insight.insight_key?.startsWith('ready_to_progress')) {
+        return `${name} está pronto para progredir em ${meta.exercise_name || 'um exercício'}. Quer analisar?`
+    }
+    if (insight.insight_key?.startsWith('program_expiring')) {
+        return `O programa de ${name} está encerrando. Quer que eu analise o progresso para sugerir o próximo?`
+    }
+    if (insight.insight_key?.startsWith('pain_report')) {
+        return `${name} reportou desconforto no último check-in. Quer revisar os detalhes?`
+    }
+    return `Insight sobre ${name}: ${insight.title}. Como posso ajudar?`
+}
+
 export function AssistantInsights({ initialInsights, trainerId }: AssistantInsightsProps) {
     const [insights, setInsights] = useState<InsightItem[]>(initialInsights)
     const [dismissingId, setDismissingId] = useState<string | null>(null)
+    const openChat = useAssistantChatStore(s => s.openChat)
     const MAX_VISIBLE = 5
 
     const newCount = insights.filter(i => i.status === 'new').length
     const visibleInsights = insights.slice(0, MAX_VISIBLE)
     const hasMore = insights.length > MAX_VISIBLE
 
-    // Mark as read when clicked
+    // Open chat with insight context
     const handleInsightClick = useCallback(async (insight: InsightItem) => {
         if (insight.status === 'new') {
             setInsights(prev => prev.map(i => i.id === insight.id ? { ...i, status: 'read' as const } : i))
-            await markInsightRead(insight.id)
+            markInsightRead(insight.id)
         }
-    }, [])
+
+        openChat({
+            studentId: insight.student_id || undefined,
+            studentName: insight.student_name || undefined,
+            insightId: insight.insight_key || undefined,
+            initialMessage: buildInitialMessage(insight),
+        })
+    }, [openChat])
 
     // Dismiss insight
     const handleDismiss = useCallback(async (e: React.MouseEvent, insightId: string) => {
@@ -137,12 +161,9 @@ export function AssistantInsights({ initialInsights, trainerId }: AssistantInsig
                     )}
                 </div>
                 {hasMore && (
-                    <Link
-                        href="/insights"
-                        className="text-xs text-violet-500 hover:text-violet-400 font-medium flex items-center gap-0.5"
-                    >
-                        Ver todos <ChevronRight className="w-3 h-3" />
-                    </Link>
+                    <span className="text-xs text-muted-foreground">
+                        +{insights.length - MAX_VISIBLE} mais
+                    </span>
                 )}
             </div>
 
@@ -151,8 +172,6 @@ export function AssistantInsights({ initialInsights, trainerId }: AssistantInsig
                 {visibleInsights.map(insight => {
                     const config = CATEGORY_CONFIG[insight.category] || CATEGORY_CONFIG.summary
                     const CategoryIcon = config.Icon
-                    const linkFn = insight.action_type ? ACTION_LINKS[insight.action_type] : null
-                    const href = linkFn ? linkFn(insight.action_metadata) : null
 
                     const cardContent = (
                         <div
@@ -199,14 +218,6 @@ export function AssistantInsights({ initialInsights, trainerId }: AssistantInsig
                             </button>
                         </div>
                     )
-
-                    if (href) {
-                        return (
-                            <Link key={insight.id} href={href} className="block group">
-                                {cardContent}
-                            </Link>
-                        )
-                    }
 
                     return <div key={insight.id} className="group">{cardContent}</div>
                 })}

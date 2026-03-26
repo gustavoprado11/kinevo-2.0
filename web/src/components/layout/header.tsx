@@ -4,8 +4,9 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
-import { LogOut } from 'lucide-react'
+import { LogOut, Sparkles } from 'lucide-react'
 import { NotificationBell } from './notification-bell'
+import { useAssistantChatStore } from '@/stores/assistant-chat-store'
 
 interface HeaderProps {
     trainerName: string
@@ -15,6 +16,7 @@ interface HeaderProps {
 
 export function Header({ trainerName, trainerEmail, trainerAvatarUrl }: HeaderProps) {
     const router = useRouter()
+    const openChat = useAssistantChatStore(s => s.openChat)
 
     const handleLogout = async () => {
         const supabase = createClient()
@@ -38,6 +40,15 @@ export function Header({ trainerName, trainerEmail, trainerAvatarUrl }: HeaderPr
 
             {/* Right side - User menu */}
             <div className="flex items-center gap-4">
+                {/* Assistant */}
+                <button
+                    onClick={() => openChat()}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-violet-200 dark:border-violet-500/30 bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 hover:bg-violet-100 dark:hover:bg-violet-500/20 transition-colors text-sm font-medium"
+                >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Assistente</span>
+                </button>
+
                 {/* Notifications */}
                 <NotificationBell />
 

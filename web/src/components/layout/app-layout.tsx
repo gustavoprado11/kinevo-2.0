@@ -6,6 +6,7 @@ import { FinancialBadge } from './financial-badge'
 import { ThemeSync } from '@/components/theme-sync'
 import { OnboardingProvider } from '@/components/onboarding/onboarding-provider'
 import { OnboardingChecklist } from '@/components/onboarding/widgets/onboarding-checklist'
+import { AssistantChatPanel } from '@/components/assistant/assistant-chat-panel'
 import { useSidebarStore } from '@/stores/sidebar-store'
 import type { OnboardingState } from '@kinevo/shared/types/onboarding'
 
@@ -46,6 +47,9 @@ export function AppLayout({ children, trainerName, trainerEmail, trainerAvatarUr
 
             {/* Onboarding Checklist Widget — floating, all pages */}
             <OnboardingChecklist />
+
+            {/* Assistant Chat Panel — global, slides in from right */}
+            <AssistantChatPanel />
         </div>
     )
 }
