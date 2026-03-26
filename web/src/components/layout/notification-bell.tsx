@@ -263,7 +263,7 @@ export function NotificationBell() {
                                             <p className="text-xs text-[#86868B] dark:text-muted-foreground mt-0.5 truncate">
                                                 {notif.message}
                                             </p>
-                                            <p className="text-[10px] text-[#AEAEB2] dark:text-muted-foreground/50 mt-1">
+                                            <p className="text-[10px] text-[#AEAEB2] dark:text-muted-foreground/50 mt-1" suppressHydrationWarning>
                                                 {timeAgo(notif.created_at)}
                                             </p>
                                         </div>

@@ -198,7 +198,7 @@ export function AssistantInsights({ initialInsights, trainerId }: AssistantInsig
                                     <span className={`text-[10px] font-semibold tracking-wide ${config.textColor}`}>
                                         {config.label}
                                     </span>
-                                    <span className="text-[10px] text-muted-foreground">{timeAgo(insight.created_at)}</span>
+                                    <span className="text-[10px] text-muted-foreground" suppressHydrationWarning>{timeAgo(insight.created_at)}</span>
                                     {insight.status === 'new' && (
                                         <span className={`w-1.5 h-1.5 rounded-full ${config.dotColor}`} />
                                     )}

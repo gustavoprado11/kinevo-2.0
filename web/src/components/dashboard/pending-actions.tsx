@@ -218,7 +218,7 @@ export function PendingActions({
                         <ActionAvatar name={f.studentName} avatarUrl={f.studentAvatar} />
                         <div className="min-w-0">
                             <span className="text-sm font-medium text-[#1D1D1F] dark:text-k-text-primary block truncate">{f.studentName}</span>
-                            <span className="text-xs text-[#6E6E73] dark:text-k-text-quaternary block">
+                            <span className="text-xs text-[#6E6E73] dark:text-k-text-quaternary block" suppressHydrationWarning>
                                 Respondeu {f.templateTitle} {timeAgo(f.submittedAt)}
                             </span>
                             <span className="text-[10px] text-[#86868B] dark:text-k-text-quaternary">Avaliação</span>

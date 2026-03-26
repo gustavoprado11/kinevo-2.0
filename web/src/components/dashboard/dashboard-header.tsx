@@ -32,10 +32,10 @@ export function DashboardHeader({ trainerName }: DashboardHeaderProps) {
     return (
         <div className="flex items-center justify-between mb-6">
             <div>
-                <h1 className="text-2xl font-bold tracking-tight text-k-text-primary">
+                <h1 className="text-2xl font-bold tracking-tight text-k-text-primary" suppressHydrationWarning>
                     {getGreeting()}, {firstName}
                 </h1>
-                <span className="text-sm text-k-text-tertiary">{formatDate()}</span>
+                <span className="text-sm text-k-text-tertiary" suppressHydrationWarning>{formatDate()}</span>
             </div>
             <button
                 data-onboarding="dashboard-training-room"
