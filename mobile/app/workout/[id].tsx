@@ -740,7 +740,7 @@ export default function WorkoutPlayerScreen() {
 
                                 // Use the first child's order_index - 1 to approximate parent superset position
                                 // (superset parent always comes before its children in order_index)
-                                const groupOrderIndex = Math.min(...group.map((e) => e.order_index)) - 0.5;
+                                const groupOrderIndex = (group[0].supersetOrderIndex ?? Math.min(...group.map((e) => e.order_index))) - 0.5;
 
                                 renderItems.push({
                                     type: 'superset',

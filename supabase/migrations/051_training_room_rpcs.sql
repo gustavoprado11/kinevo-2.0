@@ -171,6 +171,11 @@ BEGIN
                     THEN (v_superset_map -> v_item.parent_item_id::text ->> 'rest_seconds')::int
                     ELSE NULL
                 END,
+                'supersetOrderIndex', CASE
+                    WHEN v_item.parent_item_id IS NOT NULL
+                    THEN (v_superset_map -> v_item.parent_item_id::text ->> 'order_index')::int
+                    ELSE NULL
+                END,
                 'order_index', v_item.order_index
             );
         END IF;

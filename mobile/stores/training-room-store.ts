@@ -58,7 +58,8 @@ export interface ExerciseData {
     notes?: string | null;                // trainer note on exercise
     supersetId?: string | null;           // parent_item_id (groups into superset)
     supersetRestSeconds?: number;         // rest_seconds from superset parent
-    order_index: number;                  // global position in workout
+    supersetOrderIndex?: number | null;   // order_index from superset parent (global position)
+    order_index: number;                  // position in workout (local for superset children)
 }
 
 export interface WorkoutNote {

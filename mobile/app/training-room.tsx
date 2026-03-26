@@ -684,7 +684,7 @@ export default function TrainingRoomScreen() {
                     .map((e, i) => ({ ...e, _gi: i }))
                     .filter((e) => e.supersetId === exercise.supersetId);
 
-                const groupOrderIndex = Math.min(...group.map((e) => e.order_index)) - 0.5;
+                const groupOrderIndex = (group[0].supersetOrderIndex ?? Math.min(...group.map((e) => e.order_index))) - 0.5;
 
                 items.push({
                     orderIndex: groupOrderIndex,

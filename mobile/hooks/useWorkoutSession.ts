@@ -36,6 +36,7 @@ export interface ExerciseData {
     notes?: string | null;
     supersetId?: string | null;
     supersetRestSeconds?: number;
+    supersetOrderIndex?: number | null;
     order_index: number;
     exerciseFunction?: string | null;
     item_config?: Record<string, any>;
@@ -469,6 +470,7 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                         notes: item.notes || null,
                         supersetId: item.parent_item_id || null,
                         supersetRestSeconds: parentSuperset?.rest_seconds,
+                        supersetOrderIndex: parentSuperset?.order_index ?? null,
                         order_index: item.order_index,
                         exerciseFunction: item.exercise_function || null,
                         item_config: item.item_config || {},
