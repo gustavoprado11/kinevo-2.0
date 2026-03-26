@@ -51,7 +51,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "font-src 'self' fonts.gstatic.com",
               "img-src 'self' data: blob: lylksbtgrihzepbteest.supabase.co",
-              "connect-src 'self' lylksbtgrihzepbteest.supabase.co",
+              "connect-src 'self' https://lylksbtgrihzepbteest.supabase.co wss://lylksbtgrihzepbteest.supabase.co https://api.openai.com",
               "frame-src www.youtube.com checkout.stripe.com dashboard.stripe.com",
               "frame-ancestors 'self'",
               "base-uri 'self'",

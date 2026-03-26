@@ -6,7 +6,12 @@ import { FinancialBadge } from './financial-badge'
 import { ThemeSync } from '@/components/theme-sync'
 import { OnboardingProvider } from '@/components/onboarding/onboarding-provider'
 import { OnboardingChecklist } from '@/components/onboarding/widgets/onboarding-checklist'
-import { AssistantChatPanel } from '@/components/assistant/assistant-chat-panel'
+import dynamic from 'next/dynamic'
+
+const AssistantChatPanel = dynamic(
+    () => import('@/components/assistant/assistant-chat-panel').then(m => m.AssistantChatPanel),
+    { ssr: false }
+)
 import { useSidebarStore } from '@/stores/sidebar-store'
 import type { OnboardingState } from '@kinevo/shared/types/onboarding'
 

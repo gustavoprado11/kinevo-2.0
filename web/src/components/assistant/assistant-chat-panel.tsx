@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useMemo } from 'react'
+import { useEffect, useRef, useMemo, useId } from 'react'
 import { useChat } from 'ai/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Sparkles, X, Send, User } from 'lucide-react'
@@ -42,6 +42,7 @@ export function AssistantChatPanel() {
     const { isOpen, studentId, studentName, insightId, initialMessage, closeChat } = useAssistantChatStore()
     const messagesEndRef = useRef<HTMLDivElement>(null)
     const inputRef = useRef<HTMLInputElement>(null)
+    const reactId = useId()
 
     const initialMessages = useMemo(() => {
         if (!initialMessage) return []
@@ -52,7 +53,7 @@ export function AssistantChatPanel() {
         api: '/api/assistant/chat',
         body: { studentId, insightId },
         initialMessages,
-        id: `chat-${studentId || 'general'}-${Date.now()}`,
+        id: `chat-${studentId || 'general'}-${reactId}`,
         streamProtocol: 'text',
     })
 
