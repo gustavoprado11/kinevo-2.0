@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useRef, useMemo, useId } from 'react'
+import { useState, useEffect, useRef, useMemo, useId } from 'react'
 import { useChat } from 'ai/react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Sparkles, X, Send, User } from 'lucide-react'
+import { Sparkles, X, Send, User, ExternalLink } from 'lucide-react'
+import Link from 'next/link'
 import { useAssistantChatStore } from '@/stores/assistant-chat-store'
 
 // ── Quick action chips based on insight category ──
@@ -31,9 +32,19 @@ function renderMarkdown(text: string): string {
     return text
         .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
         .replace(/\*(.+?)\*/g, '<em>$1</em>')
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-violet-500 underline underline-offset-2 hover:text-violet-400">$1</a>')
         .replace(/^- (.+)$/gm, '<li>$1</li>')
         .replace(/(<li>.*<\/li>\n?)+/g, '<ul class="list-disc pl-4 space-y-0.5">$&</ul>')
         .replace(/\n/g, '<br/>')
+}
+
+/** Extract review links from message content for rendering as buttons */
+function extractReviewLink(content: string): { url: string; label: string } | null {
+    const match = content.match(/\[([^\]]+)\]\((\/students\/[^)]+review=[^)]+)\)/)
+    if (match) return { label: match[1], url: match[2] }
+    const rawMatch = content.match(/(\/students\/\S*review=\S+)/)
+    if (rawMatch) return { label: 'Revisar programa', url: rawMatch[1] }
+    return null
 }
 
 // ── Component ──
@@ -58,6 +69,16 @@ export function AssistantChatPanel() {
     })
 
     const chips = getChipsForInsight(insightId)
+
+    // Extended loading state (tool execution takes longer)
+    const [loadingSeconds, setLoadingSeconds] = useState(0)
+    useEffect(() => {
+        if (!isLoading) { setLoadingSeconds(0); return }
+        const interval = setInterval(() => setLoadingSeconds(s => s + 1), 1000)
+        return () => clearInterval(interval)
+    }, [isLoading])
+
+    const loadingText = loadingSeconds >= 5 ? 'Gerando programa...' : loadingSeconds >= 3 ? 'Analisando dados...' : null
 
     // Scroll to bottom on new messages
     useEffect(() => {
@@ -150,10 +171,26 @@ export function AssistantChatPanel() {
                                         : 'bg-muted text-foreground rounded-2xl rounded-bl-md px-3.5 py-2.5'
                                     }`}>
                                         {message.role === 'assistant' ? (
-                                            <div
-                                                className="text-sm leading-relaxed [&_strong]:font-semibold [&_ul]:mt-1 [&_ul]:mb-1 [&_li]:text-sm [&_br+br]:hidden"
-                                                dangerouslySetInnerHTML={{ __html: renderMarkdown(message.content) }}
-                                            />
+                                            <>
+                                                <div
+                                                    className="text-sm leading-relaxed [&_strong]:font-semibold [&_ul]:mt-1 [&_ul]:mb-1 [&_li]:text-sm [&_br+br]:hidden [&_a]:text-violet-500 [&_a]:underline"
+                                                    dangerouslySetInnerHTML={{ __html: renderMarkdown(message.content) }}
+                                                />
+                                                {(() => {
+                                                    const reviewLink = extractReviewLink(message.content)
+                                                    if (!reviewLink) return null
+                                                    return (
+                                                        <Link
+                                                            href={reviewLink.url}
+                                                            className="mt-2 flex items-center gap-1.5 text-xs font-medium text-violet-600 dark:text-violet-400 hover:text-violet-500 transition-colors"
+                                                            onClick={closeChat}
+                                                        >
+                                                            <ExternalLink className="w-3 h-3" />
+                                                            {reviewLink.label}
+                                                        </Link>
+                                                    )
+                                                })()}
+                                            </>
                                         ) : (
                                             <p className="text-sm leading-relaxed">{message.content}</p>
                                         )}
@@ -173,11 +210,15 @@ export function AssistantChatPanel() {
                                         <Sparkles className="w-3 h-3 text-violet-500" />
                                     </div>
                                     <div className="bg-muted rounded-2xl rounded-bl-md px-4 py-3">
-                                        <div className="flex gap-1">
-                                            <span className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce [animation-delay:0ms]" />
-                                            <span className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce [animation-delay:150ms]" />
-                                            <span className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce [animation-delay:300ms]" />
-                                        </div>
+                                        {loadingText ? (
+                                            <p className="text-xs text-muted-foreground animate-pulse">{loadingText}</p>
+                                        ) : (
+                                            <div className="flex gap-1">
+                                                <span className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce [animation-delay:0ms]" />
+                                                <span className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce [animation-delay:150ms]" />
+                                                <span className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce [animation-delay:300ms]" />
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             )}

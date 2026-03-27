@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { enrichInsightsWithLLM } from '@/lib/assistant/insight-enricher'
+import { insertTrainerNotification } from '@/lib/trainer-notifications'
+import { sendTrainerPush } from '@/lib/push-notifications'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -39,6 +41,7 @@ export async function GET(request: NextRequest) {
         let totalInsights = 0
         let totalEnriched = 0
         let totalConsolidated = 0
+        let totalPushed = 0
         const today = new Date().toISOString().slice(0, 10) // YYYY-MM-DD
 
         for (const trainer of trainers) {
@@ -81,16 +84,76 @@ export async function GET(request: NextRequest) {
                     } catch (enrichError) {
                         console.error(`[cron:generate-insights] LLM enrichment failed for trainer ${trainerId}, keeping rule-based insights:`, enrichError)
                     }
+
+                    // Phase 3: Push notifications for critical insights (best-effort)
+                    try {
+                        totalPushed += await sendInsightPushNotifications(trainerId, insights)
+                    } catch (pushError) {
+                        console.error(`[cron:generate-insights] Push failed for trainer ${trainerId}:`, pushError)
+                    }
                 }
             }
         }
 
-        console.log(`[cron:generate-insights] Generated ${totalInsights} insights, enriched ${totalEnriched}, consolidated ${totalConsolidated} for ${trainers.length} trainers`)
-        return NextResponse.json({ trainers: trainers.length, insights: totalInsights, enriched: totalEnriched, consolidated: totalConsolidated })
+        console.log(`[cron:generate-insights] Generated ${totalInsights} insights, enriched ${totalEnriched}, consolidated ${totalConsolidated}, pushed ${totalPushed} for ${trainers.length} trainers`)
+        return NextResponse.json({ trainers: trainers.length, insights: totalInsights, enriched: totalEnriched, consolidated: totalConsolidated, pushed: totalPushed })
     } catch (err) {
         console.error('[cron:generate-insights] Unexpected error:', err)
         return NextResponse.json({ error: 'Internal error' }, { status: 500 })
     }
+}
+
+// ── Push notifications for critical insights ──
+
+async function sendInsightPushNotifications(trainerId: string, insights: InsightRow[]): Promise<number> {
+    // Only push for high/critical priority
+    const critical = insights.filter(i => i.priority === 'high' || i.priority === 'critical')
+    if (critical.length === 0) return 0
+
+    // Rate limit: max 3 assistant pushes per day per trainer
+    const todayStr = new Date().toISOString().split('T')[0]
+    const { count } = await supabaseAdmin
+        .from('trainer_notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('trainer_id', trainerId)
+        .eq('type', 'assistant_insight')
+        .gte('created_at', todayStr)
+
+    const alreadySent = count || 0
+    if (alreadySent >= 3) return 0
+
+    const remaining = 3 - alreadySent
+    const toNotify = critical.slice(0, remaining)
+    let pushed = 0
+
+    for (const insight of toNotify) {
+        const notifId = await insertTrainerNotification({
+            trainerId,
+            type: 'assistant_insight',
+            title: insight.title,
+            message: insight.body,
+            metadata: {
+                category: insight.category,
+                student_id: insight.student_id,
+                action_type: insight.action_type,
+                insight_key: insight.insight_key,
+            },
+        })
+
+        if (notifId) {
+            sendTrainerPush({
+                trainerId,
+                type: 'assistant_insight',
+                title: insight.title,
+                body: insight.body,
+                data: { screen: 'dashboard' },
+                notificationId: notifId,
+            })
+            pushed++
+        }
+    }
+
+    return pushed
 }
 
 // ── Types ──
