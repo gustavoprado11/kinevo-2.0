@@ -9,6 +9,7 @@ import { TrainerProfileBanner } from '@/components/dashboard/trainer-profile-ban
 import { DashboardHeader } from '@/components/dashboard/dashboard-header'
 import { StatCards } from '@/components/dashboard/stat-cards'
 import { CompactTools } from '@/components/dashboard/compact-tools'
+import { ExpiringPrograms } from '@/components/dashboard/expiring-programs'
 import { AssistantActionCards } from '@/components/dashboard/assistant-action-cards'
 import { WelcomeModal } from '@/components/onboarding/widgets/welcome-modal'
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
@@ -102,30 +103,33 @@ export function DashboardClient({ trainer, data, initialStudents, selfStudentId,
             {/* Trainer Profile Banner (conditional, dismissible) */}
             <TrainerProfileBanner selfStudentId={selfStudentId} />
 
-            {/* 1. Header: greeting + date + Sala de Treino */}
+            {/* 1. Saudação */}
             <DashboardHeader trainerName={trainer.name} />
 
-            {/* 2. Treinos de Hoje (full width) */}
+            {/* 2. Assistente Kinevo + Programas encerrando — side by side on desktop */}
+            <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-4 mb-6">
+                <AssistantActionCards
+                    initialInsights={data.assistantInsights}
+                    pendingFinancial={data.pendingFinancial}
+                    pendingForms={data.pendingForms}
+                    expiredPlans={data.expiredPlans}
+                    trainerId={trainer.id}
+                    onMarkAsPaid={handleMarkAsPaid}
+                    onSellPlan={handleSellPlan}
+                    onArchiveStudent={handleArchiveStudent}
+                />
+                <ExpiringPrograms programs={data.expiringPrograms} />
+            </div>
+
+            {/* 4. Treinos de hoje */}
             <div className="mb-6">
                 <DailyActivityFeed activities={data.dailyActivity} scheduledToday={data.scheduledToday} />
             </div>
 
-            {/* 3. Stat Cards */}
+            {/* 5. Stat Cards */}
             <StatCards stats={data.stats} />
 
-            {/* 4. Assistente Kinevo — unified insights + actions */}
-            <AssistantActionCards
-                initialInsights={data.assistantInsights}
-                pendingFinancial={data.pendingFinancial}
-                pendingForms={data.pendingForms}
-                expiredPlans={data.expiredPlans}
-                trainerId={trainer.id}
-                onMarkAsPaid={handleMarkAsPaid}
-                onSellPlan={handleSellPlan}
-                onArchiveStudent={handleArchiveStudent}
-            />
-
-            {/* 5. Compact Tools */}
+            {/* 6. Compact Tools */}
             <CompactTools onNewStudent={() => setIsModalOpen(true)} />
 
             {/* Modals & Overlays */}

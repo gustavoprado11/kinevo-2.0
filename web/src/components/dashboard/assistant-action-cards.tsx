@@ -217,7 +217,7 @@ export function AssistantActionCards({
     // ── Render ──
 
     return (
-        <div className="flex flex-col rounded-xl border border-[#D2D2D7] dark:border-k-border-primary bg-white dark:bg-surface-card shadow-apple-card dark:shadow-xl mb-6">
+        <div className="flex flex-col rounded-xl border border-[#D2D2D7] dark:border-k-border-primary bg-white dark:bg-surface-card shadow-apple-card dark:shadow-xl">
             {/* Header — matches DailyActivityFeed pattern */}
             <div className="flex items-center justify-between border-b border-[#E8E8ED] dark:border-k-border-subtle px-6 py-4">
                 <div className="flex items-center gap-2">
@@ -287,7 +287,7 @@ export function AssistantActionCards({
 
                                         {/* Line 3: Subtitle / body */}
                                         {row.subtitle && (
-                                            <p className="text-[11px] text-[#AEAEB2] dark:text-muted-foreground/60 truncate max-w-md mt-0.5" suppressHydrationWarning>
+                                            <p className="text-[11px] text-[#AEAEB2] dark:text-muted-foreground/60 line-clamp-2 max-w-md mt-0.5" suppressHydrationWarning>
                                                 {row.subtitle}
                                             </p>
                                         )}

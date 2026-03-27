@@ -4,9 +4,10 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, Users, Dumbbell, Calendar, Wallet, Settings, FileText, PanelLeftClose, PanelLeftOpen, MessageSquarePlus, Headphones } from 'lucide-react'
+import { LayoutDashboard, Users, Dumbbell, Calendar, Wallet, Settings, FileText, PanelLeftClose, PanelLeftOpen, MessageSquarePlus, Headphones, MessageCircle } from 'lucide-react'
 import { useSidebarStore, shouldAutoCollapse } from '@/stores/sidebar-store'
 import { FeedbackModal } from '@/components/feedback/feedback-modal'
+import { MessagesBadge } from '@/components/messages/messages-badge'
 
 interface NavItem {
     name: string
@@ -31,6 +32,11 @@ const navigation: NavItem[] = [
         href: '/students',
         icon: Users,
         onboardingId: 'sidebar-students',
+    },
+    {
+        name: 'Mensagens',
+        href: '/messages',
+        icon: MessageCircle,
     },
     {
         name: 'Exercícios',
@@ -144,6 +150,7 @@ export function Sidebar({ financialBadge }: SidebarProps = {}) {
                                     {item.name}
                                 </span>
                                 {!isCollapsed && item.name === 'Financeiro' && financialBadge}
+                                {!isCollapsed && item.name === 'Mensagens' && <MessagesBadge />}
                             </Link>
 
                             {/* Tooltip — only when collapsed */}

@@ -1,6 +1,6 @@
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { createClient } from '@/lib/supabase/server'
-import { getWeekRange, getScheduledWorkoutsForDate } from '@kinevo/shared/utils/schedule-projection'
+import { getWeekRange, getProgramEndDate, getProgramWeek, getScheduledWorkoutsForDate } from '@kinevo/shared/utils/schedule-projection'
 
 // ── Types ──
 
@@ -41,6 +41,17 @@ export interface ExpiredPlanItem {
     expiredAt: string
 }
 
+export interface ExpiringProgramItem {
+    studentId: string
+    studentName: string
+    studentAvatar: string | null
+    programId: string
+    programName: string
+    currentWeek: number
+    totalWeeks: number
+    endsInDays: number
+}
+
 export interface DailyActivityItem {
     id: string
     sessionId: string
@@ -79,6 +90,7 @@ export interface DashboardData {
     pendingFinancial: PendingFinancialItem[]
     pendingForms: PendingFormItem[]
     expiredPlans: ExpiredPlanItem[]
+    expiringPrograms: ExpiringProgramItem[]
     scheduledToday: ScheduledTodayItem[]
     dailyActivity: DailyActivityItem[]
     assistantInsights: AssistantInsightItem[]
@@ -141,6 +153,7 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
         todaySessionsResult,
         allSessionsResult,
         insightsResult,
+        expiredProgramsResult,
     ] = await Promise.all([
         // 1. Students
         supabaseAdmin
@@ -236,6 +249,14 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
             .in('status', ['new', 'read'])
             .order('created_at', { ascending: false })
             .limit(20),
+
+        // 11. Recently expired programs (last 30 days)
+        supabaseAdmin
+            .from('assigned_programs')
+            .select('id, name, student_id, duration_weeks, started_at, status')
+            .eq('trainer_id', trainerId)
+            .eq('status', 'expired')
+            .gte('updated_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()),
     ])
 
     const students = studentsResult.data ?? []
@@ -349,6 +370,55 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
 
 
 
+    // ── Expiring Programs (active expiring soon + expired without replacement) ──
+
+    const expiringPrograms: ExpiringProgramItem[] = []
+    const studentsWithActiveProgram = new Set(activePrograms.map(p => p.student_id))
+
+    // Active programs expiring within 7 days
+    for (const program of activePrograms) {
+        if (!program.started_at || !program.duration_weeks) continue
+        const endDate = getProgramEndDate(program.started_at, program.duration_weeks)
+        const endsInDays = daysDiff(today, endDate)
+        if (endsInDays > 7) continue
+        const currentWeek = getProgramWeek(today, program.started_at, program.duration_weeks) ?? program.duration_weeks
+        const student = activeStudents.find(s => s.id === program.student_id)
+        if (!student) continue
+        expiringPrograms.push({
+            studentId: program.student_id,
+            studentName: student.name,
+            studentAvatar: student.avatar_url,
+            programId: program.id,
+            programName: program.name,
+            currentWeek,
+            totalWeeks: program.duration_weeks,
+            endsInDays,
+        })
+    }
+
+    // Expired programs where student has no active replacement
+    for (const program of expiredProgramsResult.data ?? []) {
+        if (studentsWithActiveProgram.has(program.student_id)) continue // already has a new program
+        const student = activeStudents.find(s => s.id === program.student_id)
+        if (!student) continue
+        const endDate = program.started_at && program.duration_weeks
+            ? getProgramEndDate(program.started_at, program.duration_weeks)
+            : today
+        const endsInDays = daysDiff(today, endDate) // negative = days since expiry
+        expiringPrograms.push({
+            studentId: program.student_id,
+            studentName: student.name,
+            studentAvatar: student.avatar_url,
+            programId: program.id,
+            programName: program.name,
+            currentWeek: program.duration_weeks || 0,
+            totalWeeks: program.duration_weeks || 0,
+            endsInDays,
+        })
+    }
+
+    expiringPrograms.sort((a, b) => a.endsInDays - b.endsInDays)
+
     // ── Daily Activity ──
 
     const dailyActivity: DailyActivityItem[] = (todaySessionsResult.data ?? []).map((session: any) => ({
@@ -417,6 +487,7 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
         pendingFinancial,
         pendingForms,
         expiredPlans,
+        expiringPrograms,
         dailyActivity,
         scheduledToday,
         assistantInsights,

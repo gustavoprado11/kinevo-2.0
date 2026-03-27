@@ -34,7 +34,7 @@ export function Header({ trainerName, trainerEmail, trainerAvatarUrl }: HeaderPr
         .slice(0, 2)
 
     return (
-        <header className="h-16 bg-white/80 dark:bg-background backdrop-blur-sm border-b border-[#E8E8ED] dark:border-border flex items-center justify-between px-6 sticky top-0 z-header">
+        <header className="h-16 bg-white dark:bg-surface-card border-b border-[#E8E8ED] dark:border-k-border-subtle flex items-center justify-between px-6 sticky top-0 z-header">
             {/* Left side - can add breadcrumbs or page title later */}
             <div />
 

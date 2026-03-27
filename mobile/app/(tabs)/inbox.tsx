@@ -12,7 +12,9 @@ import {
 import Animated, { FadeInUp, FadeIn, Easing } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { useInbox, type InboxItem } from "../../hooks/useInbox";
+import { useTrainerChat } from "../../hooks/useTrainerChat";
 import { PressableScale } from "../../components/shared/PressableScale";
+import { TrainerMessageCard } from "../../components/inbox/TrainerMessageCard";
 
 // ── Helpers ──
 function TypeIcon({ type }: { type: InboxItem["type"] }) {
@@ -306,6 +308,11 @@ export default function InboxScreen() {
         pendingItems, completedItems, unreadCount,
         isLoading, isRefreshing, refresh, markItemOpened,
     } = useInbox();
+    const {
+        trainer: chatTrainer,
+        lastMessage: chatLastMessage,
+        unreadCount: chatUnreadCount,
+    } = useTrainerChat();
 
     const handleOpenItem = useCallback(async (item: InboxItem) => {
         await markItemOpened(item);
@@ -329,6 +336,19 @@ export default function InboxScreen() {
                 <Text style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>
                     Solicitações, feedbacks e mensagens do seu treinador.
                 </Text>
+
+                {/* Trainer Messages */}
+                {chatTrainer && chatLastMessage && (
+                    <View style={{ marginTop: 16, marginBottom: 8 }}>
+                        <Text style={sectionLabelStyle}>Mensagens</Text>
+                        <TrainerMessageCard
+                            trainer={chatTrainer}
+                            lastMessage={chatLastMessage}
+                            unreadCount={chatUnreadCount}
+                            onPress={() => router.push('/chat')}
+                        />
+                    </View>
+                )}
 
                 {/* Dynamic Unread Widget */}
                 <UnreadWidget count={unreadCount} />
