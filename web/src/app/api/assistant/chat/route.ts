@@ -1,6 +1,5 @@
-import { streamText, tool } from 'ai'
+import { streamText, tool, jsonSchema } from 'ai'
 import { openai } from '@ai-sdk/openai'
-import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { buildChatContext } from '@/lib/assistant/context-builder'
@@ -8,6 +7,13 @@ import { generateProgram } from '@/actions/prescription/generate-program'
 import { enrichStudentContext } from '@/lib/prescription/context-enricher'
 
 export const maxDuration = 60
+
+// JSON Schema definitions (zod v4 serialization is incompatible with OpenAI function calling)
+const studentIdSchema = jsonSchema<{ studentId: string }>({
+    type: 'object',
+    properties: { studentId: { type: 'string', description: 'ID do aluno' } },
+    required: ['studentId'],
+})
 
 export async function POST(req: Request) {
     try {
@@ -46,9 +52,7 @@ export async function POST(req: Request) {
             tools: {
                 generateProgram: tool({
                     description: 'Gera um novo programa de treino para o aluno. Usar quando o trainer pedir para criar/gerar um programa, ou quando o programa atual expirou. O programa é salvo como rascunho para revisão.',
-                    parameters: z.object({
-                        studentId: z.string().describe('ID do aluno para quem gerar o programa'),
-                    }),
+                    parameters: studentIdSchema,
                     execute: async ({ studentId: sid }) => {
                         try {
                             const result = await generateProgram(sid)
@@ -69,9 +73,7 @@ export async function POST(req: Request) {
 
                 analyzeStudentProgress: tool({
                     description: 'Analisa o progresso detalhado de um aluno: progressão de carga, aderência, volume e tendências. Usar quando pedirem análise, relatório ou panorama do aluno.',
-                    parameters: z.object({
-                        studentId: z.string().describe('ID do aluno para analisar'),
-                    }),
+                    parameters: studentIdSchema,
                     execute: async ({ studentId: sid }) => {
                         const context = await enrichStudentContext(supabase, sid)
                         const { data: recentSets } = await supabaseAdmin
@@ -98,9 +100,7 @@ export async function POST(req: Request) {
 
                 getStudentInsights: tool({
                     description: 'Busca os insights/alertas ativos do assistente para um aluno. Usar quando perguntarem sobre alertas, problemas ou status de um aluno.',
-                    parameters: z.object({
-                        studentId: z.string().describe('ID do aluno'),
-                    }),
+                    parameters: studentIdSchema,
                     execute: async ({ studentId: sid }) => {
                         const { data } = await supabaseAdmin
                             .from('assistant_insights')
