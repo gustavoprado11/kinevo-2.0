@@ -75,14 +75,25 @@ export async function POST(req: Request) {
                     description: 'Analisa o progresso detalhado de um aluno: progressão de carga, aderência, volume e tendências. Usar quando pedirem análise, relatório ou panorama do aluno.',
                     parameters: studentIdSchema,
                     execute: async ({ studentId: sid }) => {
+                        console.log('[TOOL analyzeStudentProgress] called with:', sid)
                         const context = await enrichStudentContext(supabaseAdmin as any, sid)
-                        const { data: recentSets } = await supabaseAdmin
+                        console.log('[TOOL analyzeStudentProgress] enricher result:', {
+                            name: context.student_name,
+                            programs: context.previous_programs?.length,
+                            loadEntries: context.load_progression?.length,
+                            sessions4w: context.session_patterns?.completed_sessions_4w,
+                        })
+
+                        const { data: recentSets, error: setsError } = await supabaseAdmin
                             .from('set_logs')
                             .select('exercise_id, weight, reps_completed, workout_sessions!inner(completed_at, student_id)')
                             .eq('workout_sessions.student_id', sid)
                             .eq('is_completed', true)
                             .gte('workout_sessions.completed_at', new Date(Date.now() - 28 * 24 * 60 * 60 * 1000).toISOString())
                             .limit(200)
+
+                        if (setsError) console.error('[TOOL analyzeStudentProgress] set_logs error:', setsError)
+                        console.log('[TOOL analyzeStudentProgress] recentSets:', recentSets?.length || 0)
 
                         return {
                             studentName: context.student_name,
