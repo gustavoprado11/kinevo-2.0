@@ -105,7 +105,15 @@ export function DashboardClient({ trainer, data, initialStudents, selfStudentId,
             {/* 1. Header: greeting + date + Sala de Treino */}
             <DashboardHeader trainerName={trainer.name} />
 
-            {/* 2. Assistente Kinevo — unified insights + actions */}
+            {/* 2. Treinos de Hoje (full width) */}
+            <div className="mb-6">
+                <DailyActivityFeed activities={data.dailyActivity} scheduledToday={data.scheduledToday} />
+            </div>
+
+            {/* 3. Stat Cards */}
+            <StatCards stats={data.stats} />
+
+            {/* 4. Assistente Kinevo — unified insights + actions */}
             <AssistantActionCards
                 initialInsights={data.assistantInsights}
                 pendingFinancial={data.pendingFinancial}
@@ -116,14 +124,6 @@ export function DashboardClient({ trainer, data, initialStudents, selfStudentId,
                 onSellPlan={handleSellPlan}
                 onArchiveStudent={handleArchiveStudent}
             />
-
-            {/* 3. Treinos de Hoje (full width) */}
-            <div className="mb-6">
-                <DailyActivityFeed activities={data.dailyActivity} scheduledToday={data.scheduledToday} />
-            </div>
-
-            {/* 4. Stat Cards */}
-            <StatCards stats={data.stats} />
 
             {/* 5. Compact Tools */}
             <CompactTools onNewStudent={() => setIsModalOpen(true)} />
