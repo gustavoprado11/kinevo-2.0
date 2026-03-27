@@ -53,16 +53,15 @@ export async function getProgramSnapshotForWatch(
     return null;
   }
 
-  // 3. Get all workouts with exercises (single query with join)
+  // 3. Get all workouts with ALL items (including superset parents for ordering)
   const { data: workouts, error: workoutsError }: { data: any; error: any } =
     await supabase
       .from('assigned_workouts' as any)
       .select(`
         id, name, order_index, scheduled_days,
-        assigned_workout_items!inner(id, item_type, exercise_id, exercise_name, exercise_muscle_group, sets, reps, rest_seconds, order_index, item_config)
+        assigned_workout_items(id, item_type, parent_item_id, exercise_id, exercise_name, exercise_muscle_group, sets, reps, rest_seconds, order_index, item_config)
       `)
       .eq('assigned_program_id', program.id)
-      .in('assigned_workout_items.item_type', ['exercise', 'cardio'])
       .order('order_index')
       .order('order_index', { referencedTable: 'assigned_workout_items' });
 
@@ -107,9 +106,11 @@ export async function getProgramSnapshotForWatch(
     }
   }
 
-  // 6. Last-used weights and reps per exercise item
+  // 6. Last-used weights and reps per exercise item (exclude superset containers)
   const allItemIds = workouts.flatMap((w: any) =>
-    (w.assigned_workout_items || []).map((item: any) => item.id),
+    (w.assigned_workout_items || [])
+      .filter((item: any) => item.item_type !== 'superset')
+      .map((item: any) => item.id),
   );
 
   const weightMap = new Map<string, number>();
@@ -141,9 +142,32 @@ export async function getProgramSnapshotForWatch(
   const programWorkouts: WatchProgramWorkout[] = workouts.map((w: any) => {
     const allItems: any[] = w.assigned_workout_items || [];
 
-    // Split by type
-    const exerciseItems = allItems.filter((i: any) => (i.item_type || 'exercise') === 'exercise');
-    const cardioRawItems = allItems.filter((i: any) => i.item_type === 'cardio');
+    // Build superset parent map: parentId → parent's order_index
+    const supersetParentOrder = new Map<string, number>();
+    for (const item of allItems) {
+      if (item.item_type === 'superset') {
+        supersetParentOrder.set(item.id, item.order_index);
+      }
+    }
+
+    // Filter to exercise/cardio items only, compute effective order
+    const sortableItems = allItems
+      .filter((i: any) => i.item_type === 'exercise' || i.item_type === 'cardio')
+      .map((item: any) => {
+        const parentOrder = item.parent_item_id
+          ? supersetParentOrder.get(item.parent_item_id)
+          : undefined;
+        return {
+          ...item,
+          // Superset children: position at parent's order, sub-sort by own order
+          effectiveOrder: parentOrder ?? item.order_index,
+          subOrder: parentOrder != null ? item.order_index : 0,
+        };
+      })
+      .sort((a: any, b: any) => a.effectiveOrder - b.effectiveOrder || a.subOrder - b.subOrder);
+
+    const exerciseItems = sortableItems.filter((i: any) => i.item_type === 'exercise');
+    const cardioRawItems = sortableItems.filter((i: any) => i.item_type === 'cardio');
 
     const exercises: WatchProgramExercise[] = exerciseItems.map((item: any, idx: number) => ({
       id: item.id,
@@ -164,7 +188,7 @@ export async function getProgramSnapshotForWatch(
       return {
         id: item.id,
         itemType: 'cardio' as const,
-        orderIndex: item.order_index ?? 999,
+        orderIndex: item.effectiveOrder ?? 999,
         config: {
           mode: cfg.mode || 'continuous',
           equipment: cfg.equipment,
