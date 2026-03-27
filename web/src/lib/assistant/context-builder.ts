@@ -189,7 +189,8 @@ Regras:
 - Use terminologia de musculação/fitness (séries, reps, carga, volume, periodização, etc.)
 - Não faça diagnósticos médicos — quando houver menção a dor/lesão, sugira que o trainer encaminhe o aluno a um profissional de saúde
 - Formate respostas com markdown quando útil (listas, negrito para ênfase)
-- Seja conciso — respostas longas demais cansam`
+- Seja conciso — respostas longas demais cansam
+- Quando o trainer perguntar sobre um aluno específico, SEMPRE use a tool analyzeStudentProgress com o ID do aluno (listado no contexto) antes de responder. Nunca diga que não há dados sem consultar a tool primeiro.`
 
     if (studentId) {
         const snapshot = await buildStudentSnapshot(trainerId, studentId)
@@ -240,7 +241,7 @@ ${insightsStr}`.trim()
 
     const studentsStr = snapshot.students.map(s => {
         const lastStr = s.days_since_last_session !== null ? `último treino há ${s.days_since_last_session}d` : 'nunca treinou'
-        return `  - ${s.name}: ${lastStr}${s.active_program ? ` | Programa: "${s.active_program}"` : ''}`
+        return `  - ${s.name} (id: ${s.id}): ${lastStr}${s.active_program ? ` | Programa: "${s.active_program}"` : ''}`
     }).join('\n')
 
     const insightsStr = snapshot.insights.length > 0
