@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { enrichInsightsWithLLM } from '@/lib/assistant/insight-enricher'
 
 export const dynamic = 'force-dynamic'
-export const maxDuration = 30
+export const maxDuration = 60
 
 /**
  * CRON: Generate proactive assistant insights for all trainers.
@@ -36,6 +37,8 @@ export async function GET(request: NextRequest) {
         }
 
         let totalInsights = 0
+        let totalEnriched = 0
+        let totalConsolidated = 0
         const today = new Date().toISOString().slice(0, 10) // YYYY-MM-DD
 
         for (const trainer of trainers) {
@@ -62,12 +65,28 @@ export async function GET(request: NextRequest) {
                     console.error(`[cron:generate-insights] Insert error for trainer ${trainerId}:`, insertError)
                 } else {
                     totalInsights += insights.length
+
+                    // Phase 2B: Enrich with LLM (best-effort)
+                    try {
+                        const enrichResult = await enrichInsightsWithLLM(trainerId, insights.map(i => ({
+                            insight_key: i.insight_key,
+                            student_id: i.student_id,
+                            category: i.category,
+                            title: i.title,
+                            body: i.body,
+                            action_metadata: i.action_metadata as Record<string, unknown>,
+                        })))
+                        totalEnriched += enrichResult.enriched
+                        totalConsolidated += enrichResult.consolidated
+                    } catch (enrichError) {
+                        console.error(`[cron:generate-insights] LLM enrichment failed for trainer ${trainerId}, keeping rule-based insights:`, enrichError)
+                    }
                 }
             }
         }
 
-        console.log(`[cron:generate-insights] Generated ${totalInsights} insights for ${trainers.length} trainers`)
-        return NextResponse.json({ trainers: trainers.length, insights: totalInsights })
+        console.log(`[cron:generate-insights] Generated ${totalInsights} insights, enriched ${totalEnriched}, consolidated ${totalConsolidated} for ${trainers.length} trainers`)
+        return NextResponse.json({ trainers: trainers.length, insights: totalInsights, enriched: totalEnriched, consolidated: totalConsolidated })
     } catch (err) {
         console.error('[cron:generate-insights] Unexpected error:', err)
         return NextResponse.json({ error: 'Internal error' }, { status: 500 })
