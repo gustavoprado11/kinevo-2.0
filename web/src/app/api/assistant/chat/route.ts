@@ -41,10 +41,28 @@ export async function POST(req: Request) {
         // 4. Build context
         const systemPrompt = await buildChatContext(trainer.id, trainer.name, studentId || undefined)
 
+        // Student ID context for tools (when in contextual mode)
+        const studentIdHint = studentId
+            ? `\nContexto atual: o aluno em foco tem student_id UUID: ${studentId}. Ao usar tools, passe sempre este UUID como studentId.`
+            : ''
+
+        // Helper: resolve name → UUID if the model passes a name instead of UUID
+        async function resolveStudentId(input: string): Promise<string | null> {
+            if (input.includes('-') && input.length >= 30) return input // already UUID
+            const { data } = await supabaseAdmin
+                .from('students')
+                .select('id')
+                .eq('coach_id', trainer!.id)
+                .ilike('name', `%${input}%`)
+                .limit(1)
+                .single()
+            return data?.id || null
+        }
+
         // 5. Stream with tools
         const result = streamText({
             model: openai('gpt-4.1-mini'),
-            system: systemPrompt + TOOL_INSTRUCTIONS,
+            system: systemPrompt + studentIdHint + TOOL_INSTRUCTIONS,
             messages,
             maxTokens: 1500,
             temperature: 0.7,
@@ -53,7 +71,9 @@ export async function POST(req: Request) {
                 generateProgram: tool({
                     description: 'Gera um novo programa de treino para o aluno. Usar quando o trainer pedir para criar/gerar um programa, ou quando o programa atual expirou. O programa é salvo como rascunho para revisão.',
                     parameters: studentIdSchema,
-                    execute: async ({ studentId: sid }) => {
+                    execute: async ({ studentId: rawId }) => {
+                        const sid = await resolveStudentId(rawId)
+                        if (!sid) return { success: false, error: `Aluno "${rawId}" não encontrado` }
                         try {
                             const result = await generateProgram(sid)
                             if (result.success) {
@@ -74,8 +94,10 @@ export async function POST(req: Request) {
                 analyzeStudentProgress: tool({
                     description: 'Analisa o progresso detalhado de um aluno: progressão de carga, aderência, volume e tendências. Usar quando pedirem análise, relatório ou panorama do aluno.',
                     parameters: studentIdSchema,
-                    execute: async ({ studentId: sid }) => {
-                        console.log('[TOOL analyzeStudentProgress] called with:', sid)
+                    execute: async ({ studentId: rawId }) => {
+                        const sid = await resolveStudentId(rawId)
+                        if (!sid) return { error: `Aluno "${rawId}" não encontrado` }
+                        console.log('[TOOL analyzeStudentProgress] resolved:', rawId, '→', sid)
                         const context = await enrichStudentContext(supabaseAdmin as any, sid)
                         console.log('[TOOL analyzeStudentProgress] enricher result:', {
                             name: context.student_name,
@@ -112,7 +134,9 @@ export async function POST(req: Request) {
                 getStudentInsights: tool({
                     description: 'Busca os insights/alertas ativos do assistente para um aluno. Usar quando perguntarem sobre alertas, problemas ou status de um aluno.',
                     parameters: studentIdSchema,
-                    execute: async ({ studentId: sid }) => {
+                    execute: async ({ studentId: rawId }) => {
+                        const sid = await resolveStudentId(rawId)
+                        if (!sid) return { insights: [], count: 0, error: `Aluno "${rawId}" não encontrado` }
                         const { data } = await supabaseAdmin
                             .from('assistant_insights')
                             .select('category, priority, title, body, action_type, created_at')
@@ -140,6 +164,8 @@ export async function POST(req: Request) {
 const TOOL_INSTRUCTIONS = `
 
 Instruções sobre ações:
+- Ao chamar tools, SEMPRE passe o student_id como UUID (formato xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx). Nunca passe o nome do aluno como studentId.
+- Se o aluno em foco já tem UUID informado no contexto, use esse UUID diretamente.
 - Quando o trainer pedir para gerar um programa, use a tool generateProgram. Após gerar, informe que foi criado como rascunho e forneça o link para revisão.
 - Não gere programa sem que o trainer peça explicitamente.
 - Quando pedirem análise ou panorama de um aluno, use analyzeStudentProgress e formate os dados em análise clara.
