@@ -40,7 +40,10 @@ function buildInitialMessage(insight: InsightItem): string {
     const meta = insight.action_metadata || {}
 
     if (insight.insight_key?.startsWith('gap_alert')) {
-        const days = meta.days_since_last || '?'
+        const days = meta.days_since_last
+        if (!days || days >= 365) {
+            return `Vi que ${name} ainda não realizou nenhum treino. Como posso ajudar?`
+        }
         return `Vi que ${name} está sem treinar há ${days} dias. Como posso ajudar?`
     }
     if (insight.insight_key?.startsWith('stagnation')) {
