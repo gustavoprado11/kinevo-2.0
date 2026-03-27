@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { AppLayout } from '@/components/layout'
 import { StudentModal } from '@/components/student-modal'
@@ -8,9 +8,13 @@ import { DailyActivityFeed } from '@/components/dashboard/daily-activity-feed'
 import { TrainerProfileBanner } from '@/components/dashboard/trainer-profile-banner'
 import { DashboardHeader } from '@/components/dashboard/dashboard-header'
 import { StatCards } from '@/components/dashboard/stat-cards'
-import { CompactTools } from '@/components/dashboard/compact-tools'
+import { QuickActions } from '@/components/dashboard/quick-actions'
 import { ExpiringPrograms } from '@/components/dashboard/expiring-programs'
 import { AssistantActionCards } from '@/components/dashboard/assistant-action-cards'
+import { WeeklyGoalsWidget } from '@/components/dashboard/weekly-goals-widget'
+import { StudentRankingWidget, type RankedStudent } from '@/components/dashboard/student-ranking-widget'
+import { WidgetGrid } from '@/components/dashboard/widget-grid'
+import { WidgetPicker } from '@/components/dashboard/widget-picker'
 import { WelcomeModal } from '@/components/onboarding/widgets/welcome-modal'
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
 import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
@@ -19,6 +23,7 @@ import { markAsPaid } from '@/actions/financial/mark-as-paid'
 import { archiveStudent } from '@/actions/financial/archive-student'
 import type { OnboardingState } from '@kinevo/shared/types/onboarding'
 import type { DashboardData } from '@/lib/dashboard/get-dashboard-data'
+import type { WidgetId } from '@/stores/dashboard-layout-store'
 
 interface Trainer {
     id: string
@@ -92,6 +97,60 @@ export function DashboardClient({ trainer, data, initialStudents, selfStudentId,
         setArchiveLoading(false)
     }
 
+    // Build student ranking from daily activity data
+    const rankedStudents: RankedStudent[] = useMemo(() => {
+        const map = new Map<string, { name: string; sessions: number }>()
+        for (const a of data.dailyActivity) {
+            const entry = map.get(a.studentId) || { name: a.studentName, sessions: 0 }
+            entry.sessions++
+            map.set(a.studentId, entry)
+        }
+        return Array.from(map.entries()).map(([id, info]) => ({
+            id,
+            name: info.name,
+            sessionsThisWeek: info.sessions,
+            streak: 0, // TODO: compute from historical data
+        }))
+    }, [data.dailyActivity])
+
+    // Widget render map — each widget ID maps to its JSX
+    const widgetMap: Partial<Record<WidgetId, React.ReactNode>> = useMemo(() => ({
+        'stats': <StatCards stats={data.stats} />,
+        'insights': (
+            <AssistantActionCards
+                initialInsights={data.assistantInsights}
+                pendingFinancial={data.pendingFinancial}
+                pendingForms={data.pendingForms}
+                expiredPlans={data.expiredPlans}
+                trainerId={trainer.id}
+                onMarkAsPaid={handleMarkAsPaid}
+                onSellPlan={handleSellPlan}
+                onArchiveStudent={handleArchiveStudent}
+            />
+        ),
+        'expiring-programs': <ExpiringPrograms programs={data.expiringPrograms} />,
+        'activity-feed': <DailyActivityFeed activities={data.dailyActivity} scheduledToday={data.scheduledToday} />,
+        'weekly-goals': (
+            <WeeklyGoalsWidget
+                sessionsThisWeek={data.stats.sessionsThisWeek}
+                activeStudentsCount={data.stats.activeStudentsCount}
+                mrr={data.stats.mrr}
+            />
+        ),
+        'student-ranking': <StudentRankingWidget students={rankedStudents} />,
+        'upcoming-schedules': (
+            <div className="flex flex-col rounded-xl border border-[#D2D2D7] dark:border-k-border-primary bg-white dark:bg-surface-card shadow-apple-card dark:shadow-xl">
+                <div className="flex items-center justify-between border-b border-[#E8E8ED] dark:border-k-border-subtle px-6 py-4">
+                    <h2 className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary">Próximos agendamentos</h2>
+                </div>
+                <div className="py-8 text-center">
+                    <p className="text-sm text-[#6E6E73] dark:text-k-text-secondary">Em breve</p>
+                    <p className="text-xs text-[#86868B] dark:text-k-text-tertiary mt-1">Sessões agendadas aparecerão aqui</p>
+                </div>
+            </div>
+        ),
+    }), [data, trainer.id, rankedStudents])
+
     return (
         <AppLayout
             trainerName={trainer.name}
@@ -99,38 +158,24 @@ export function DashboardClient({ trainer, data, initialStudents, selfStudentId,
             trainerAvatarUrl={trainer.avatar_url}
             trainerTheme={trainer.theme ?? undefined}
             onboardingState={trainer.onboarding_state}
+            students={students.map(s => ({ id: s.id, name: s.name, status: s.status }))}
         >
             {/* Trainer Profile Banner (conditional, dismissible) */}
             <TrainerProfileBanner selfStudentId={selfStudentId} />
 
-            {/* 1. Saudação */}
+            {/* 1. Saudação — always fixed */}
             <DashboardHeader trainerName={trainer.name} />
 
-            {/* 2. Assistente Kinevo + Programas encerrando — side by side on desktop */}
-            <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-5 mb-6">
-                <AssistantActionCards
-                    initialInsights={data.assistantInsights}
-                    pendingFinancial={data.pendingFinancial}
-                    pendingForms={data.pendingForms}
-                    expiredPlans={data.expiredPlans}
-                    trainerId={trainer.id}
-                    onMarkAsPaid={handleMarkAsPaid}
-                    onSellPlan={handleSellPlan}
-                    onArchiveStudent={handleArchiveStudent}
-                />
-                <ExpiringPrograms programs={data.expiringPrograms} />
+            {/* 2. Quick Actions — always fixed */}
+            <div className="mb-5">
+                <QuickActions onNewStudent={() => setIsModalOpen(true)} />
             </div>
 
-            {/* 4. Treinos de hoje */}
-            <div className="mb-6">
-                <DailyActivityFeed activities={data.dailyActivity} scheduledToday={data.scheduledToday} />
-            </div>
+            {/* 3. Widget Picker (shown when customizing) */}
+            <WidgetPicker />
 
-            {/* 5. Stat Cards */}
-            <StatCards stats={data.stats} />
-
-            {/* 6. Compact Tools */}
-            <CompactTools onNewStudent={() => setIsModalOpen(true)} />
+            {/* 4. Customizable Widget Grid */}
+            <WidgetGrid widgetMap={widgetMap} />
 
             {/* Modals & Overlays */}
             <StudentModal

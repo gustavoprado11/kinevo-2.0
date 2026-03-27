@@ -12,6 +12,11 @@ export interface DashboardStats {
     adherencePercent: number
     hasActivePrograms: boolean
     sessionsPerDay: number[] // 7 elements [Sun, Mon, ..., Sat] for sparkline
+    // Trends: comparison with previous week (null = not enough data)
+    sessionsLastWeek: number | null
+    mrrLastMonth: number | null
+    adherenceLastWeek: number | null
+    activeStudentsLastWeek: number | null
 }
 
 export interface PendingFinancialItem {
@@ -141,7 +146,11 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
     const todayStart = startOfDayInTZ(brDateStr, TZ)
     const weekRange = getWeekRange(today, TZ)
 
-    // 10 parallel queries
+    // Previous week range for trend comparison
+    const prevWeekStart = new Date(weekRange.start.getTime() - 7 * 24 * 60 * 60 * 1000)
+    const prevWeekEnd = new Date(weekRange.end.getTime() - 7 * 24 * 60 * 60 * 1000)
+
+    // 12 parallel queries
     const [
         studentsResult,
         activeContractsResult,
@@ -154,6 +163,7 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
         allSessionsResult,
         insightsResult,
         expiredProgramsResult,
+        prevWeekSessionsResult,
     ] = await Promise.all([
         // 1. Students
         supabaseAdmin
@@ -257,6 +267,15 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
             .eq('trainer_id', trainerId)
             .eq('status', 'expired')
             .gte('updated_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()),
+
+        // 12. Previous week sessions (for trend comparison)
+        supabaseAdmin
+            .from('workout_sessions')
+            .select('id')
+            .eq('trainer_id', trainerId)
+            .eq('status', 'completed')
+            .gte('completed_at', prevWeekStart.toISOString())
+            .lte('completed_at', prevWeekEnd.toISOString()),
     ])
 
     const students = studentsResult.data ?? []
@@ -316,6 +335,9 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
 
     const adherencePercent = totalWithProgram > 0 ? Math.round((onTrack / totalWithProgram) * 100) : 0
     const hasActivePrograms = totalWithProgram > 0
+
+    // ── Trends (previous week comparison) ──
+    const sessionsLastWeek = prevWeekSessionsResult.data?.length ?? null
 
     // ── Pending Financial ──
 
@@ -483,6 +505,10 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
             adherencePercent,
             hasActivePrograms,
             sessionsPerDay,
+            sessionsLastWeek,
+            mrrLastMonth: null, // TODO: requires historical contract data
+            adherenceLastWeek: null, // TODO: requires historical adherence tracking
+            activeStudentsLastWeek: null, // TODO: requires historical student count
         },
         pendingFinancial,
         pendingForms,
