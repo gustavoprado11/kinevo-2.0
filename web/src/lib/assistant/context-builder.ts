@@ -1,6 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { enrichStudentContext, type EnrichedStudentContext } from '@/lib/prescription/context-enricher'
-import { createClient } from '@/lib/supabase/server'
 
 // ── Types ──
 
@@ -36,10 +35,8 @@ interface GeneralSnapshot {
 // ── Student context ──
 
 async function buildStudentSnapshot(trainerId: string, studentId: string): Promise<StudentSnapshot> {
-    const supabase = await createClient()
-
     const [enriched, profileResult, programResult, checkinsResult, insightsResult] = await Promise.all([
-        enrichStudentContext(supabase, studentId),
+        enrichStudentContext(supabaseAdmin as any, studentId),
 
         supabaseAdmin
             .from('student_prescription_profiles')

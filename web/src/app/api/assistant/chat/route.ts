@@ -75,7 +75,7 @@ export async function POST(req: Request) {
                     description: 'Analisa o progresso detalhado de um aluno: progressão de carga, aderência, volume e tendências. Usar quando pedirem análise, relatório ou panorama do aluno.',
                     parameters: studentIdSchema,
                     execute: async ({ studentId: sid }) => {
-                        const context = await enrichStudentContext(supabase, sid)
+                        const context = await enrichStudentContext(supabaseAdmin as any, sid)
                         const { data: recentSets } = await supabaseAdmin
                             .from('set_logs')
                             .select('exercise_id, weight, reps_completed, workout_sessions!inner(completed_at, student_id)')
