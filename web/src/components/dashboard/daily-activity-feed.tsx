@@ -126,7 +126,7 @@ export function DailyActivityFeed({ activities, scheduledToday }: DailyActivityF
                             </div>
 
                             <div className="text-right">
-                                <p className="text-sm font-semibold text-[#1D1D1F] dark:text-foreground">
+                                <p className="text-sm font-semibold text-[#1D1D1F] dark:text-foreground" suppressHydrationWarning>
                                     {new Date(activity.completedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                                 </p>
                                 <p className="mt-0.5 text-xs text-[#86868B] dark:text-muted-foreground font-medium">

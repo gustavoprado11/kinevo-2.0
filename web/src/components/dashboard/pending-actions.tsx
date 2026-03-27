@@ -129,7 +129,7 @@ export function PendingActions({
                         <ActionAvatar name={c.studentName} avatarUrl={c.studentAvatar} />
                         <div className="min-w-0">
                             <span className="text-sm font-medium text-[#1D1D1F] dark:text-k-text-primary block truncate">{c.studentName}</span>
-                            <span className="text-xs text-[#6E6E73] dark:text-k-text-quaternary block">
+                            <span className="text-xs text-[#6E6E73] dark:text-k-text-quaternary block" suppressHydrationWarning>
                                 {formatCurrency(c.amount)}
                                 {c.currentPeriodEnd && ` · ${isPastDue ? 'venceu' : 'vence'} ${new Date(c.currentPeriodEnd).toLocaleDateString('pt-BR')}`}
                             </span>
@@ -175,7 +175,7 @@ export function PendingActions({
                         <ActionAvatar name={ep.studentName} avatarUrl={ep.studentAvatar} />
                         <div className="min-w-0">
                             <span className="text-sm font-medium text-[#1D1D1F] dark:text-k-text-primary block truncate">{ep.studentName}</span>
-                            <span className="text-xs text-[#6E6E73] dark:text-k-text-quaternary block">
+                            <span className="text-xs text-[#6E6E73] dark:text-k-text-quaternary block" suppressHydrationWarning>
                                 {ep.planTitle ? `${ep.planTitle} · ` : ''}Expirou em {new Date(ep.expiredAt).toLocaleDateString('pt-BR')}
                             </span>
                             <span className="text-[10px] text-[#86868B] dark:text-k-text-quaternary">Plano expirado</span>

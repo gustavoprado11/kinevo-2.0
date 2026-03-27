@@ -29,6 +29,9 @@ interface AppLayoutProps {
 export function AppLayout({ children, trainerName, trainerEmail, trainerAvatarUrl, trainerTheme, onboardingState }: AppLayoutProps) {
     const isCollapsed = useSidebarStore(state => state.isCollapsed)
 
+    // Zustand persist restores from localStorage on mount — server always renders
+    // with the default (false). suppressHydrationWarning on the affected element
+    // prevents React #418 when persisted state differs from default.
     return (
         <div className="min-h-screen bg-background text-foreground">
             <ThemeSync trainerTheme={trainerTheme} />
@@ -38,7 +41,7 @@ export function AppLayout({ children, trainerName, trainerEmail, trainerAvatarUr
             />
 
             {/* Main content area */}
-            <div className={`bg-surface-primary min-h-screen transition-all duration-300 ease-in-out ${isCollapsed ? 'pl-[68px]' : 'pl-64'}`}>
+            <div suppressHydrationWarning className={`bg-surface-primary min-h-screen transition-all duration-300 ease-in-out ${isCollapsed ? 'pl-[68px]' : 'pl-64'}`}>
                 {/* Header */}
                 <Header trainerName={trainerName} trainerEmail={trainerEmail} trainerAvatarUrl={trainerAvatarUrl} />
 

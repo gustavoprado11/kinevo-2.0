@@ -84,6 +84,7 @@ export function Sidebar({ financialBadge }: SidebarProps = {}) {
 
     return (
         <aside
+            suppressHydrationWarning
             className={`sidebar-container fixed inset-y-0 left-0 z-sidebar flex flex-col border-r border-[#E8E8ED] dark:border-k-border-subtle bg-white dark:bg-surface-sidebar/60 dark:backdrop-blur-2xl transition-all duration-300 ease-in-out ${
                 isCollapsed ? 'w-[68px]' : 'w-64'
             }`}
