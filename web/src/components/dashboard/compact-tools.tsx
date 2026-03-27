@@ -23,7 +23,7 @@ export function CompactTools({ onNewStudent }: CompactToolsProps) {
     const cardClass = "rounded-xl border border-[#D2D2D7] dark:border-k-border-primary bg-white dark:bg-surface-card shadow-apple-card dark:shadow-none"
 
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <button
                 data-onboarding="dashboard-new-student"
                 onClick={onNewStudent}

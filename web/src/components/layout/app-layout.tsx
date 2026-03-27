@@ -1,7 +1,6 @@
 'use client'
 
 import { Sidebar } from './sidebar'
-import { Header } from './header'
 import { FinancialBadge } from './financial-badge'
 import { ThemeSync } from '@/components/theme-sync'
 import { OnboardingProvider } from '@/components/onboarding/onboarding-provider'
@@ -38,13 +37,13 @@ export function AppLayout({ children, trainerName, trainerEmail, trainerAvatarUr
             {/* Sidebar */}
             <Sidebar
                 financialBadge={<FinancialBadge />}
+                trainerName={trainerName}
+                trainerEmail={trainerEmail}
+                trainerAvatarUrl={trainerAvatarUrl}
             />
 
             {/* Main content area */}
             <div suppressHydrationWarning className={`bg-surface-primary min-h-screen transition-all duration-300 ease-in-out ${isCollapsed ? 'pl-[68px]' : 'pl-64'}`}>
-                {/* Header */}
-                <Header trainerName={trainerName} trainerEmail={trainerEmail} trainerAvatarUrl={trainerAvatarUrl} />
-
                 {/* Page content */}
                 <main className="p-8">
                     <OnboardingProvider initialState={onboardingState ?? null}>

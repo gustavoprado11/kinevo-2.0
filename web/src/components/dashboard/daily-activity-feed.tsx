@@ -87,12 +87,12 @@ export function DailyActivityFeed({ activities, scheduledToday }: DailyActivityF
                         <button
                             key={activity.id}
                             onClick={() => handleSessionClick(activity.sessionId)}
-                            className="group flex w-full items-center justify-between px-5 py-4 text-left transition-all hover:bg-[#F5F5F7] dark:hover:bg-muted/50"
+                            className="group flex w-full items-center justify-between px-6 py-4 text-left transition-all hover:bg-[#F5F5F7] dark:hover:bg-muted/50"
                         >
                             <div className="flex items-center gap-4">
                                 {/* Avatar */}
-                                <div className="h-10 w-10 shrink-0 rounded-full border border-[#E8E8ED] dark:border-border bg-[#F5F5F7] dark:bg-muted flex items-center justify-center">
-                                    <span className="text-sm font-bold text-[#007AFF] dark:text-primary">
+                                <div className="h-9 w-9 shrink-0 rounded-full border border-[#E8E8ED] dark:border-border bg-[#F5F5F7] dark:bg-muted flex items-center justify-center">
+                                    <span className="text-xs font-bold text-[#007AFF] dark:text-primary">
                                         {activity.studentName.charAt(0).toUpperCase()}
                                     </span>
                                 </div>
@@ -104,12 +104,12 @@ export function DailyActivityFeed({ activities, scheduledToday }: DailyActivityF
                                         </span>
                                         <span className="text-xs text-[#AEAEB2] dark:text-muted-foreground">•</span>
                                         <span className="text-sm text-[#6E6E73] dark:text-muted-foreground font-medium">
-                                            Concluiu <span className="font-semibold text-[#1D1D1F] dark:text-foreground transition-colors group-hover:text-[#007AFF] dark:group-hover:text-primary">{activity.workoutName}</span>
+                                            Concluiu <span className="font-semibold text-[#1D1D1F] dark:text-foreground">{activity.workoutName}</span>
                                         </span>
                                     </div>
                                     <div className="flex items-center gap-3">
                                         {activity.rpe && (
-                                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${getRpeColor(activity.rpe)}`}>
+                                            <span className={`text-[11px] font-medium px-2 py-0.5 rounded-md border ${getRpeColor(activity.rpe)}`}>
                                                 PSE {activity.rpe}
                                             </span>
                                         )}

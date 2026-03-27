@@ -56,7 +56,7 @@ export function StatCards({ stats }: StatCardsProps) {
         })
     }
 
-    const cardClass = "rounded-xl border border-[#D2D2D7] dark:border-k-border-primary bg-white dark:bg-surface-card p-4 shadow-apple-card dark:shadow-none"
+    const cardClass = "rounded-xl border border-[#D2D2D7] dark:border-k-border-primary bg-white dark:bg-surface-card p-5 shadow-apple-card dark:shadow-none"
 
     return (
         <div className={`grid gap-4 mb-6 ${showAdherence ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-1 sm:grid-cols-3'}`}>

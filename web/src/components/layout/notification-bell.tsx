@@ -46,7 +46,11 @@ const TYPE_COLORS: Record<string, string> = {
     subscription_canceled: 'text-red-500 bg-red-500/10',
 }
 
-export function NotificationBell() {
+interface NotificationBellProps {
+    sidebarMode?: boolean
+}
+
+export function NotificationBell({ sidebarMode }: NotificationBellProps = {}) {
     const [notifications, setNotifications] = useState<Notification[]>([])
     const [unreadCount, setUnreadCount] = useState(0)
     const [isOpen, setIsOpen] = useState(false)
@@ -186,7 +190,7 @@ export function NotificationBell() {
                 onClick={() => setIsOpen(!isOpen)}
                 className="relative p-2 rounded-lg text-[#86868B] dark:text-muted-foreground hover:bg-[#F5F5F7] dark:hover:bg-glass-bg transition-colors"
             >
-                <Bell size={20} />
+                <Bell size={18} strokeWidth={1.5} />
                 {unreadCount > 0 && (
                     <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold leading-none">
                         {unreadCount > 9 ? '9+' : unreadCount}
@@ -196,7 +200,7 @@ export function NotificationBell() {
 
             {/* Dropdown */}
             {isOpen && (
-                <div className="absolute right-0 top-full mt-2 w-96 bg-white dark:bg-surface-card border border-[#E8E8ED] dark:border-k-border-primary rounded-xl shadow-xl z-modal overflow-hidden">
+                <div className={`absolute mt-2 w-80 bg-white dark:bg-surface-card border border-[#E8E8ED] dark:border-k-border-primary rounded-xl shadow-xl z-modal overflow-hidden ${sidebarMode ? 'left-full top-0 ml-2' : 'right-0 top-full'}`}>
                     {/* Header */}
                     <div className="flex items-center justify-between px-4 py-3 border-b border-[#E8E8ED] dark:border-k-border-subtle">
                         <h3 className="text-sm font-semibold text-[#1D1D1F] dark:text-foreground">

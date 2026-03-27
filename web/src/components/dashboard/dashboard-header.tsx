@@ -1,7 +1,9 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { Monitor } from 'lucide-react'
+import { Monitor, Sparkles } from 'lucide-react'
+import { useAssistantChatStore } from '@/stores/assistant-chat-store'
+import { NotificationBell } from '@/components/layout/notification-bell'
 
 interface DashboardHeaderProps {
     trainerName: string
@@ -27,24 +29,34 @@ function formatDate(): string {
 
 export function DashboardHeader({ trainerName }: DashboardHeaderProps) {
     const router = useRouter()
+    const openChat = useAssistantChatStore(s => s.openChat)
     const firstName = trainerName.split(' ')[0]
 
     return (
         <div className="flex items-center justify-between mb-6">
             <div>
-                <h1 className="text-2xl font-bold tracking-tight text-k-text-primary" suppressHydrationWarning>
+                <h1 className="font-display text-[32px] font-light tracking-tight text-k-text-primary leading-none" suppressHydrationWarning>
                     {getGreeting()}, {firstName}
                 </h1>
-                <span className="text-sm text-k-text-tertiary" suppressHydrationWarning>{formatDate()}</span>
+                <span className="text-[13px] text-k-text-tertiary mt-1.5 block" suppressHydrationWarning>{formatDate()}</span>
             </div>
-            <button
-                data-onboarding="dashboard-training-room"
-                onClick={() => router.push('/training-room')}
-                className="flex items-center gap-2 px-5 py-2 bg-[#007AFF] dark:bg-transparent border-0 dark:border dark:border-k-border-primary text-white dark:text-k-text-secondary hover:bg-[#0066D6] dark:hover:bg-glass-bg dark:hover:text-k-text-primary text-sm font-medium rounded-full dark:rounded-xl transition-colors"
-            >
-                <Monitor size={16} className="text-white dark:text-emerald-400" />
-                Sala de Treino
-            </button>
+            <div className="flex items-center gap-2">
+                <div className="flex items-center justify-center w-[34px] h-[34px] rounded-xl border border-[#E8E8ED] dark:border-k-border-primary bg-white dark:bg-surface-card hover:bg-[#F5F5F7] dark:hover:bg-glass-bg transition-colors relative overflow-hidden">
+                    <NotificationBell />
+                </div>
+                <button onClick={() => openChat()} className="flex items-center gap-2 px-4 py-1.5 border border-violet-200 dark:border-violet-500/30 bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 hover:bg-violet-100 dark:hover:bg-violet-500/20 text-sm font-medium rounded-xl transition-colors">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    Assistente
+                </button>
+                <button
+                    data-onboarding="dashboard-training-room"
+                    onClick={() => router.push('/training-room')}
+                    className="flex items-center gap-2 px-4 py-1.5 bg-[#007AFF] dark:bg-transparent border-0 dark:border dark:border-k-border-primary text-white dark:text-k-text-secondary hover:bg-[#0066D6] dark:hover:bg-glass-bg dark:hover:text-k-text-primary text-sm font-medium rounded-xl transition-colors"
+                >
+                    <Monitor size={16} className="text-white dark:text-emerald-400" />
+                    Sala de Treino
+                </button>
+            </div>
         </div>
     )
 }

@@ -29,7 +29,7 @@ export function ExpiringPrograms({ programs }: ExpiringProgramsProps) {
                     <Link
                         key={p.programId}
                         href={`/students/${p.studentId}`}
-                        className="group flex w-full items-center justify-between px-5 py-4 transition-all hover:bg-[#F5F5F7] dark:hover:bg-muted/50"
+                        className="group flex w-full items-center justify-between px-6 py-4 transition-all hover:bg-[#F5F5F7] dark:hover:bg-muted/50"
                     >
                         <div className="flex items-center gap-4 min-w-0">
                             <div className="h-10 w-10 shrink-0 rounded-full border border-[#E8E8ED] dark:border-border bg-[#F5F5F7] dark:bg-muted flex items-center justify-center">

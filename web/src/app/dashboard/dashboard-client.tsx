@@ -107,7 +107,7 @@ export function DashboardClient({ trainer, data, initialStudents, selfStudentId,
             <DashboardHeader trainerName={trainer.name} />
 
             {/* 2. Assistente Kinevo + Programas encerrando — side by side on desktop */}
-            <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-4 mb-6">
+            <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-5 mb-6">
                 <AssistantActionCards
                     initialInsights={data.assistantInsights}
                     pendingFinancial={data.pendingFinancial}
