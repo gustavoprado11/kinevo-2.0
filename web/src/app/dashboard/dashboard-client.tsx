@@ -8,10 +8,8 @@ import { DailyActivityFeed } from '@/components/dashboard/daily-activity-feed'
 import { TrainerProfileBanner } from '@/components/dashboard/trainer-profile-banner'
 import { DashboardHeader } from '@/components/dashboard/dashboard-header'
 import { StatCards } from '@/components/dashboard/stat-cards'
-import { PendingActions } from '@/components/dashboard/pending-actions'
-import { ExpiringPrograms } from '@/components/dashboard/expiring-programs'
 import { CompactTools } from '@/components/dashboard/compact-tools'
-import { AssistantInsights } from '@/components/dashboard/assistant-insights'
+import { AssistantActionCards } from '@/components/dashboard/assistant-action-cards'
 import { WelcomeModal } from '@/components/onboarding/widgets/welcome-modal'
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
 import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
@@ -107,13 +105,13 @@ export function DashboardClient({ trainer, data, initialStudents, selfStudentId,
             {/* 1. Header: greeting + date + Sala de Treino */}
             <DashboardHeader trainerName={trainer.name} />
 
-            {/* 2. Pending Actions (cross-module) */}
-            <PendingActions
+            {/* 2. Assistente Kinevo — unified insights + actions */}
+            <AssistantActionCards
+                initialInsights={data.assistantInsights}
                 pendingFinancial={data.pendingFinancial}
                 pendingForms={data.pendingForms}
-                inactiveStudents={data.inactiveStudents}
                 expiredPlans={data.expiredPlans}
-                activeStudentsCount={data.stats.activeStudentsCount}
+                trainerId={trainer.id}
                 onMarkAsPaid={handleMarkAsPaid}
                 onSellPlan={handleSellPlan}
                 onArchiveStudent={handleArchiveStudent}
@@ -127,13 +125,7 @@ export function DashboardClient({ trainer, data, initialStudents, selfStudentId,
             {/* 4. Stat Cards */}
             <StatCards stats={data.stats} />
 
-            {/* 5. Assistant Insights */}
-            <AssistantInsights initialInsights={data.assistantInsights} trainerId={trainer.id} />
-
-            {/* 6. Expiring Programs (conditional) */}
-            <ExpiringPrograms programs={data.expiringPrograms} />
-
-            {/* 7. Compact Tools */}
+            {/* 5. Compact Tools */}
             <CompactTools onNewStudent={() => setIsModalOpen(true)} />
 
             {/* Modals & Overlays */}

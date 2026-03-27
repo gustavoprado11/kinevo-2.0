@@ -1,6 +1,6 @@
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { createClient } from '@/lib/supabase/server'
-import { getWeekRange, getProgramEndDate, getProgramWeek, getScheduledWorkoutsForDate } from '@kinevo/shared/utils/schedule-projection'
+import { getWeekRange, getScheduledWorkoutsForDate } from '@kinevo/shared/utils/schedule-projection'
 
 // ── Types ──
 
@@ -33,31 +33,12 @@ export interface PendingFormItem {
     submittedAt: string
 }
 
-export interface InactiveStudentItem {
-    id: string
-    name: string
-    avatarUrl: string | null
-    daysSinceLastSession: number
-    programName: string
-}
-
 export interface ExpiredPlanItem {
     studentId: string
     studentName: string
     studentAvatar: string | null
     planTitle: string | null
     expiredAt: string
-}
-
-export interface ExpiringProgramItem {
-    studentId: string
-    studentName: string
-    studentAvatar: string | null
-    programId: string
-    programName: string
-    currentWeek: number
-    totalWeeks: number
-    endsInDays: number
 }
 
 export interface DailyActivityItem {
@@ -97,9 +78,7 @@ export interface DashboardData {
     stats: DashboardStats
     pendingFinancial: PendingFinancialItem[]
     pendingForms: PendingFormItem[]
-    inactiveStudents: InactiveStudentItem[]
     expiredPlans: ExpiredPlanItem[]
-    expiringPrograms: ExpiringProgramItem[]
     scheduledToday: ScheduledTodayItem[]
     dailyActivity: DailyActivityItem[]
     assistantInsights: AssistantInsightItem[]
@@ -368,55 +347,7 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
         }))
     }
 
-    // ── Inactive Students ──
 
-    const inactiveStudents: InactiveStudentItem[] = []
-    for (const studentId of studentsWithProgram) {
-        const student = activeStudents.find(s => s.id === studentId)
-        if (!student) continue
-
-        const lastSession = lastSessionByStudent.get(studentId)
-        const daysInactive = lastSession ? daysDiff(lastSession, today) : 999
-
-        if (daysInactive >= 5) {
-            const program = activePrograms.find(p => p.student_id === studentId)
-            inactiveStudents.push({
-                id: studentId,
-                name: student.name,
-                avatarUrl: student.avatar_url,
-                daysSinceLastSession: daysInactive,
-                programName: program?.name || 'Programa',
-            })
-        }
-    }
-    inactiveStudents.sort((a, b) => b.daysSinceLastSession - a.daysSinceLastSession)
-
-    // ── Expiring Programs ──
-
-    const expiringPrograms: ExpiringProgramItem[] = []
-    for (const program of activePrograms) {
-        if (!program.started_at || !program.duration_weeks) continue
-
-        const endDate = getProgramEndDate(program.started_at, program.duration_weeks)
-        const endsInDays = daysDiff(today, endDate)
-        if (endsInDays > 7) continue
-
-        const currentWeek = getProgramWeek(today, program.started_at, program.duration_weeks) ?? program.duration_weeks
-        const student = activeStudents.find(s => s.id === program.student_id)
-        if (!student) continue
-
-        expiringPrograms.push({
-            studentId: program.student_id,
-            studentName: student.name,
-            studentAvatar: student.avatar_url,
-            programId: program.id,
-            programName: program.name,
-            currentWeek,
-            totalWeeks: program.duration_weeks,
-            endsInDays,
-        })
-    }
-    expiringPrograms.sort((a, b) => a.endsInDays - b.endsInDays)
 
     // ── Daily Activity ──
 
@@ -485,9 +416,7 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
         },
         pendingFinancial,
         pendingForms,
-        inactiveStudents,
         expiredPlans,
-        expiringPrograms,
         dailyActivity,
         scheduledToday,
         assistantInsights,
