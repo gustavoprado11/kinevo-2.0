@@ -92,9 +92,12 @@ export function ProgramHistorySection({ programs, onViewReport }: ProgramHistory
                             <div className="absolute left-4 top-2 w-4 h-4 rounded-full border-2 border-surface-primary bg-glass-bg-active z-sticky group-hover:bg-violet-500 transition-colors" />
 
                             <div className="bg-glass-bg rounded-2xl p-5 border border-k-border-subtle hover:border-violet-500/30 transition-all overflow-hidden relative">
-                                <button
+                                <div
+                                    role="button"
+                                    tabIndex={0}
                                     onClick={() => handleExpand(program.id)}
-                                    className="w-full text-left relative z-sticky"
+                                    onKeyDown={(e) => { if (e.key === 'Enter') handleExpand(program.id) }}
+                                    className="w-full text-left relative z-sticky cursor-pointer"
                                 >
                                     <div className="flex justify-between items-start mb-2">
                                         <h4 className="font-black text-[#1C1C1E] dark:text-white text-lg tracking-tight group-hover:text-violet-300 transition-colors">
@@ -150,7 +153,7 @@ export function ProgramHistorySection({ programs, onViewReport }: ProgramHistory
                                             {program.sessions_count} sessões
                                         </div>
                                     </div>
-                                </button>
+                                </div>
 
                                 {/* Expanded Details */}
                                 {expandedProgramId === program.id && (

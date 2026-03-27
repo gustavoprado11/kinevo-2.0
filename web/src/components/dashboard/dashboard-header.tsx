@@ -41,9 +41,7 @@ export function DashboardHeader({ trainerName }: DashboardHeaderProps) {
                 <span className="text-[13px] text-k-text-tertiary mt-1.5 block" suppressHydrationWarning>{formatDate()}</span>
             </div>
             <div className="flex items-center gap-2">
-                <div className="flex items-center justify-center w-[34px] h-[34px] rounded-xl border border-[#E8E8ED] dark:border-k-border-primary bg-white dark:bg-surface-card hover:bg-[#F5F5F7] dark:hover:bg-glass-bg transition-colors relative overflow-hidden">
-                    <NotificationBell />
-                </div>
+                <NotificationBell />
                 <button onClick={() => openChat()} className="flex items-center gap-2 px-4 py-1.5 border border-violet-200 dark:border-violet-500/30 bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 hover:bg-violet-100 dark:hover:bg-violet-500/20 text-sm font-medium rounded-xl transition-colors">
                     <Sparkles className="w-3.5 h-3.5" />
                     Assistente
