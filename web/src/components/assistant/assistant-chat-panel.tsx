@@ -65,7 +65,6 @@ export function AssistantChatPanel() {
         body: { studentId, insightId },
         initialMessages,
         id: `chat-${studentId || 'general'}-${reactId}`,
-        streamProtocol: 'text',
     })
 
     const chips = getChipsForInsight(insightId)

@@ -116,7 +116,7 @@ export async function POST(req: Request) {
             },
         })
 
-        return result.toTextStreamResponse()
+        return result.toDataStreamResponse()
     } catch (error) {
         console.error('[CHAT API] ERROR:', error)
         return new Response(
