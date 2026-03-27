@@ -246,10 +246,13 @@ export function AssistantActionCards({
                         const cat = CAT[row.category] || CAT.summary
 
                         return (
-                            <button
+                            <div
                                 key={row.id}
+                                role="button"
+                                tabIndex={0}
                                 onClick={() => handleRowClick(row)}
-                                className="group flex w-full items-center justify-between px-5 py-4 text-left transition-all hover:bg-[#F5F5F7] dark:hover:bg-muted/50"
+                                onKeyDown={(e) => { if (e.key === 'Enter') handleRowClick(row) }}
+                                className="group flex w-full items-center justify-between px-5 py-4 text-left transition-all hover:bg-[#F5F5F7] dark:hover:bg-muted/50 cursor-pointer"
                             >
                                 <div className="flex items-center gap-4 min-w-0">
                                     {/* Avatar */}
@@ -347,7 +350,7 @@ export function AssistantActionCards({
                                         </div>
                                     )}
                                 </div>
-                            </button>
+                            </div>
                         )
                     })}
                 </div>
