@@ -17,6 +17,7 @@ const CALENDAR_WIDTH = SCREEN_WIDTH - CALENDAR_PADDING;
 
 const STATUS_COLORS: Record<CalendarDay["status"], string> = {
     done: "#22c55e",
+    done_historic: "#22c55e",
     missed: "#ef4444",
     compensated: "#94a3b8",
     scheduled: "#94a3b8",

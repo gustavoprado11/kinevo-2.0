@@ -44,6 +44,7 @@ const MONTH_DAY_HEADER_HEIGHT = 26; // D S T Q Q S S row
 
 const STATUS_COLORS: Record<CalendarDay["status"], string> = {
     done: "#22c55e",
+    done_historic: "#22c55e",
     missed: "#ef4444",
     compensated: "#94a3b8",
     scheduled: "#94a3b8",
@@ -53,6 +54,7 @@ const STATUS_COLORS: Record<CalendarDay["status"], string> = {
 
 const STATUS_DOT_COLORS: Record<CalendarDay["status"], string | null> = {
     done: "#7c3aed",
+    done_historic: "#a78bfa",
     missed: "#ef4444",
     compensated: "#94a3b8",
     scheduled: "#94a3b8",
@@ -67,6 +69,7 @@ const SPRING_CONFIG = { damping: 20, stiffness: 150 };
 interface UnifiedCalendarProps {
     workouts: ScheduledWorkoutRef[];
     sessionsMap: Map<string, SessionRef[]>;
+    allSessionsMap?: Map<string, SessionRef[]>;
     programStartedAt: string | null;
     programDurationWeeks: number | null;
     selectedDate: Date;
@@ -92,20 +95,16 @@ function WeekRow({
             {days.map((day, index) => {
                 const isSelected = day.dateKey === selectedKey;
                 const isToday = day.isToday;
-                const isOutOfProgram = day.status === "out_of_program";
 
                 return (
                     <TouchableOpacity
                         key={day.dateKey}
                         onPress={() => {
-                            if (!isOutOfProgram) {
-                                Haptics.selectionAsync();
-                                onDayPress(day.date);
-                            }
+                            Haptics.selectionAsync();
+                            onDayPress(day.date);
                         }}
-                        style={{ width: 40, alignItems: "center", opacity: isOutOfProgram ? 0.3 : 1 }}
+                        style={{ width: 40, alignItems: "center" }}
                         activeOpacity={0.7}
-                        disabled={isOutOfProgram}
                     >
                         <Text
                             style={{
@@ -168,6 +167,7 @@ function WeekRow({
 export function UnifiedCalendar({
     workouts,
     sessionsMap,
+    allSessionsMap,
     programStartedAt,
     programDurationWeeks,
     selectedDate,
@@ -183,16 +183,21 @@ export function UnifiedCalendar({
     // ── Animated values ──
     const expandProgress = useSharedValue(0); // 0 = week, 1 = month
 
+    // Helper: flatten a sessions map into an array
+    const flattenMap = (map: Map<string, SessionRef[]>): SessionRef[] => {
+        const arr: SessionRef[] = [];
+        map.forEach((sessions) => { for (const s of sessions) arr.push(s); });
+        return arr;
+    };
+
     // ── Week data (3-page swipe) ──
     const weeks = useMemo(() => {
         const prev = shiftWeek(anchorDate, -1);
         const next = shiftWeek(anchorDate, 1);
+        const sessionsArr = flattenMap(sessionsMap);
+        const allSessionsArr = allSessionsMap ? flattenMap(allSessionsMap) : undefined;
         return [prev, anchorDate, next].map((weekAnchor) => {
             const range = getWeekRange(weekAnchor);
-            const sessionsArr: SessionRef[] = [];
-            sessionsMap.forEach((arr) => {
-                for (const s of arr) sessionsArr.push(s);
-            });
             const days = generateCalendarDays(
                 range.start,
                 range.end,
@@ -200,18 +205,17 @@ export function UnifiedCalendar({
                 sessionsArr,
                 programStartedAt || new Date().toISOString(),
                 programDurationWeeks,
+                allSessionsArr,
             );
             return { key: toDateKey(range.start), days, range };
         });
-    }, [anchorDate, workouts, sessionsMap, programStartedAt, programDurationWeeks]);
+    }, [anchorDate, workouts, sessionsMap, allSessionsMap, programStartedAt, programDurationWeeks]);
 
     // ── Month data ──
     const monthGridDays = useMemo(() => {
         const gridRange = getMonthGridRange(anchorDate);
-        const sessionsArr: SessionRef[] = [];
-        sessionsMap.forEach((arr) => {
-            for (const s of arr) sessionsArr.push(s);
-        });
+        const sessionsArr = flattenMap(sessionsMap);
+        const allSessionsArr = allSessionsMap ? flattenMap(allSessionsMap) : undefined;
         return generateCalendarDays(
             gridRange.start,
             gridRange.end,
@@ -219,8 +223,9 @@ export function UnifiedCalendar({
             sessionsArr,
             programStartedAt || new Date().toISOString(),
             programDurationWeeks,
+            allSessionsArr,
         );
-    }, [anchorDate, workouts, sessionsMap, programStartedAt, programDurationWeeks]);
+    }, [anchorDate, workouts, sessionsMap, allSessionsMap, programStartedAt, programDurationWeeks]);
 
     const monthRowCount = Math.ceil(monthGridDays.length / 7);
     const monthContentHeight = MONTH_HEADER_HEIGHT + MONTH_DAY_HEADER_HEIGHT + (monthRowCount * MONTH_ROW_HEIGHT);
@@ -466,9 +471,8 @@ export function UnifiedCalendar({
                         const isCurrentMonth = day.date.getMonth() === anchorMonth;
                         const isSelected = day.dateKey === selectedKey;
                         const isToday = day.isToday;
-                        const isOutOfProgram = day.status === "out_of_program";
                         const dotColor = STATUS_DOT_COLORS[day.status];
-                        const isClickable = isCurrentMonth && !isOutOfProgram;
+                        const isClickable = isCurrentMonth;
 
                         return (
                             <TouchableOpacity
@@ -482,7 +486,7 @@ export function UnifiedCalendar({
                                     height: MONTH_ROW_HEIGHT,
                                     alignItems: "center",
                                     justifyContent: "center",
-                                    opacity: isCurrentMonth ? (isOutOfProgram ? 0.3 : 1) : 0.2,
+                                    opacity: isCurrentMonth ? 1 : 0.2,
                                 }}
                                 activeOpacity={0.6}
                             >

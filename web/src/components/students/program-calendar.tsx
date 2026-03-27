@@ -37,6 +37,10 @@ const STATUS_CONFIG: Record<CalendarDay['status'], { bg: string; ring?: string; 
         bg: 'bg-violet-600 shadow-lg shadow-violet-600/20',
         text: 'text-white',
     },
+    done_historic: {
+        bg: 'bg-violet-400/60 shadow-sm shadow-violet-400/10',
+        text: 'text-white',
+    },
     missed: {
         bg: 'bg-red-500/15 border border-red-500/30',
         text: 'text-red-400',

@@ -134,18 +134,25 @@ export function WorkoutList({ workouts, onWorkoutPress, weeklyProgress, todayCom
                                         </View>
                                     )}
 
-                                    {isDoneToday && (
-                                        <View style={{
-                                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                                            paddingHorizontal: 6,
-                                            paddingVertical: 2,
-                                            borderRadius: 6,
-                                        }}>
-                                            <Text style={{ fontSize: 9, fontWeight: '700', color: '#16a34a', textTransform: 'uppercase', letterSpacing: 1 }}>
-                                                Feito hoje
-                                            </Text>
-                                        </View>
-                                    )}
+                                    {isDoneToday && (() => {
+                                        const todayDow = new Date().getDay();
+                                        const isScheduledDay = Array.isArray(workout.scheduled_days) && workout.scheduled_days.some((d: any) => Number(d) === todayDow);
+                                        const label = isScheduledDay ? 'Feito hoje' : 'Compensado';
+                                        const color = isScheduledDay ? '#16a34a' : '#f59e0b';
+                                        const bg = isScheduledDay ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)';
+                                        return (
+                                            <View style={{
+                                                backgroundColor: bg,
+                                                paddingHorizontal: 6,
+                                                paddingVertical: 2,
+                                                borderRadius: 6,
+                                            }}>
+                                                <Text style={{ fontSize: 9, fontWeight: '700', color, textTransform: 'uppercase', letterSpacing: 1 }}>
+                                                    {label}
+                                                </Text>
+                                            </View>
+                                        );
+                                    })()}
                                 </View>
                             </View>
 

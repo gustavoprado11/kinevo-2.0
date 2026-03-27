@@ -110,6 +110,7 @@ interface ActionCardProps {
         notes?: string;
     } | null;
     isCompleted?: boolean;
+    isCompensated?: boolean;
     isMissed?: boolean;
     title?: string;
     timeContext?: TimeContext;
@@ -125,6 +126,7 @@ export function ActionCard({
     // Legacy/past-date props
     selectedWorkout,
     isCompleted,
+    isCompensated,
     isMissed,
     title,
     timeContext = 'today',
@@ -134,6 +136,35 @@ export function ActionCard({
     if (timeContext !== 'today') {
         const workout = selectedWorkout;
         const sectionTitle = title || "Hoje";
+
+        // Historic completed session (no workout from current program, but session exists)
+        if (!workout && isCompleted && todaySession) {
+            const startDate = new Date(todaySession.started_at);
+            const endDate = todaySession.completed_at ? new Date(todaySession.completed_at) : new Date();
+            const durationMin = Math.floor((endDate.getTime() - startDate.getTime()) / 60000);
+            const durationStr = durationMin >= 60
+                ? `${Math.floor(durationMin / 60)}h ${durationMin % 60}min`
+                : `${durationMin}min`;
+
+            return (
+                <View style={{ marginBottom: 28 }}>
+                    <Text style={styles.sectionTitle}>{sectionTitle}</Text>
+                    <PressableScale onPress={onPress} pressScale={0.96} style={styles.completedShell}>
+                        <View style={styles.completedInner}>
+                            <View style={styles.checkIcon}>
+                                <Check size={22} color="#16a34a" strokeWidth={2.5} />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.cardTitle}>Treino realizado</Text>
+                                <Text style={{ fontSize: 12, fontWeight: '500', color: '#16a34a' }}>
+                                    {durationStr}{(todaySession as any).rpe ? ` • PSE ${(todaySession as any).rpe}` : ''}
+                                </Text>
+                            </View>
+                        </View>
+                    </PressableScale>
+                </View>
+            );
+        }
 
         if (!workout) {
             return (
@@ -174,6 +205,27 @@ export function ActionCard({
                             {onShare && <BreatheShareButton onPress={onShare} />}
                         </View>
                     </PressableScale>
+                </View>
+            );
+        }
+
+        if (isCompensated) {
+            return (
+                <View style={{ marginBottom: 28 }}>
+                    <Text style={styles.sectionTitle}>{sectionTitle}</Text>
+                    <View style={styles.cardShell}>
+                        <View style={[styles.cardInner, { borderColor: 'rgba(245, 158, 11, 0.15)' }]}>
+                            <View style={[styles.iconBadge, { backgroundColor: 'rgba(245, 158, 11, 0.08)' }]}>
+                                <RotateCcw size={20} color="#f59e0b" strokeWidth={1.5} />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.cardTitle}>{workout.name}</Text>
+                                <Text style={{ fontSize: 12, fontWeight: '500', color: '#92400e' }}>
+                                    Realizado em outro dia desta semana
+                                </Text>
+                            </View>
+                        </View>
+                    </View>
                 </View>
             );
         }

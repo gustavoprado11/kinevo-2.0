@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from "react";
 import { Tabs } from "expo-router";
-import { Home, User, Clock, Inbox } from "lucide-react-native";
+import { Home, User, Clock, MessageCircle } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StyleSheet, View, Platform } from "react-native";
 import { BlurView } from "expo-blur";
@@ -115,9 +115,9 @@ export default function TabsLayout() {
             <Tabs.Screen
                 name="inbox"
                 options={{
-                    title: "Inbox",
+                    title: "Mensagens",
                     tabBarIcon: ({ color, focused }) => (
-                        <AnimatedTabIcon IconComponent={Inbox} color={color} focused={focused} />
+                        <AnimatedTabIcon IconComponent={MessageCircle} color={color} focused={focused} />
                     ),
                 }}
             />

@@ -27,6 +27,7 @@ export interface SessionRef {
 
 export type CalendarDayStatus =
   | 'done'
+  | 'done_historic'
   | 'missed'
   | 'compensated'
   | 'scheduled'
@@ -370,6 +371,7 @@ export function generateCalendarDays(
   sessions: SessionRef[],
   programStartedAt: string | Date,
   durationWeeks?: number | null,
+  allSessions?: SessionRef[],
 ): CalendarDay[] {
   const today = startOfDay(new Date())
   const start = startOfDay(rangeStart)
@@ -384,6 +386,18 @@ export function generateCalendarDays(
     const arr = sessionsByDate.get(key) || []
     arr.push(s)
     sessionsByDate.set(key, arr)
+  }
+
+  // Index ALL sessions (cross-program) for historic display
+  const allSessionsByDate = new Map<string, SessionRef[]>()
+  if (allSessions) {
+    for (const s of allSessions) {
+      const dateSource = s.completed_at ?? s.started_at
+      const key = toDateKey(new Date(dateSource))
+      const arr = allSessionsByDate.get(key) || []
+      arr.push(s)
+      allSessionsByDate.set(key, arr)
+    }
   }
 
   // Pre-compute compensation maps per week (keyed by week start dateKey)
@@ -417,10 +431,15 @@ export function generateCalendarDays(
     const daySessions = sessionsByDate.get(dateKey) || []
     const completedSessions = daySessions.filter((s) => s.status === 'completed')
 
+    // Check for historic sessions (cross-program) on this day
+    const allDaySessions = allSessionsByDate.get(dateKey) || []
+    const historicCompleted = allDaySessions.filter((s) => s.status === 'completed')
+
     // Determine status
     let status: CalendarDayStatus
     if (!inProgram) {
-      status = 'out_of_program'
+      // Outside current program: show historic sessions if any
+      status = historicCompleted.length > 0 ? 'done_historic' : 'rest'
     } else if (completedSessions.length > 0) {
       status = 'done'
     } else if (scheduled.length > 0) {

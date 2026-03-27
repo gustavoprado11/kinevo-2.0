@@ -53,8 +53,12 @@ export function useActiveProgram() {
     // Sessions cache: dateKey → WorkoutSession[]
     const [sessionsMap, setSessionsMap] = useState<Map<string, WorkoutSession[]>>(new Map());
 
-    // Keep programId in ref for fetchRange
+    // ALL sessions cache (cross-program, for calendar history)
+    const [allSessionsMap, setAllSessionsMap] = useState<Map<string, WorkoutSession[]>>(new Map());
+
+    // Keep programId and studentId in refs for fetch callbacks
     const programIdRef = useRef<string | null>(null);
+    const studentIdRef = useRef<string | null>(null);
 
     /**
      * Merge fetched sessions into the cache for a specific date range.
@@ -85,8 +89,57 @@ export function useActiveProgram() {
         });
     }, []);
 
+    // Merge ALL sessions (cross-program) into a separate cache
+    const mergeAllSessionsForRange = useCallback((sessions: WorkoutSession[], start: Date, end: Date) => {
+        setAllSessionsMap((prev) => {
+            const merged = new Map(prev);
+            const cursor = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+            const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+            while (cursor <= endDay) {
+                merged.delete(toDateKey(cursor));
+                cursor.setDate(cursor.getDate() + 1);
+            }
+            for (const s of sessions) {
+                const key = toDateKey(new Date(s.completed_at ?? s.started_at));
+                const arr = merged.get(key) || [];
+                arr.push(s);
+                merged.set(key, arr);
+            }
+            return merged;
+        });
+    }, []);
+
+    // Fetch ALL sessions (no program filter) for a date range — used by calendar history
+    const fetchAllRange = useCallback(async (start: Date, end: Date) => {
+        const sid = studentIdRef.current;
+        if (!sid) return;
+        try {
+            const rangeStart = start.toISOString();
+            const rangeEnd = end.toISOString();
+            const { data: sessionsData, error: sessionsError }: { data: any; error: any } = await supabase
+                .from("workout_sessions" as any)
+                .select("id, assigned_workout_id, started_at, completed_at, status")
+                .eq("student_id", sid)
+                .eq("status", "completed")
+                .or(`and(started_at.gte.${rangeStart},started_at.lte.${rangeEnd}),and(completed_at.gte.${rangeStart},completed_at.lte.${rangeEnd})`)
+                .order("started_at", { ascending: false });
+
+            if (sessionsError) {
+                if (__DEV__) console.error("[useActiveProgram] fetchAllRange error:", sessionsError);
+                return;
+            }
+            mergeAllSessionsForRange(sessionsData || [], start, end);
+        } catch (err) {
+            if (__DEV__) console.error("[useActiveProgram] fetchAllRange exception:", err);
+        }
+    }, [mergeAllSessionsForRange]);
+
     // Fetch sessions for an arbitrary date range and merge into cache
     const fetchRange = useCallback(async (start: Date, end: Date) => {
+        // Always fetch all sessions (cross-program) for calendar history
+        fetchAllRange(start, end);
+
+        // Also fetch program-specific sessions for scheduling logic
         const pid = programIdRef.current;
         if (!pid) return;
 
@@ -109,7 +162,7 @@ export function useActiveProgram() {
         } catch (err) {
             if (__DEV__) console.error("[useActiveProgram] fetchRange exception:", err);
         }
-    }, [mergeSessionsForRange]);
+    }, [mergeSessionsForRange, fetchAllRange]);
 
     const fetchActiveProgram = useCallback(async () => {
         if (!user) return;
@@ -128,6 +181,7 @@ export function useActiveProgram() {
             if (student) {
                 setStudentName(student.name || "");
                 setStudentId(student.id);
+                studentIdRef.current = student.id;
             } else {
                 setIsLoading(false);
                 return;
@@ -192,6 +246,9 @@ export function useActiveProgram() {
                 // Merge current-week sessions into cache (preserves past weeks)
                 mergeSessionsForRange(sessions, weekRange.start, weekRange.end);
 
+                // Also fetch ALL sessions (cross-program) for calendar history
+                fetchAllRange(weekRange.start, weekRange.end);
+
                 // Calculate weekly progress with pending workouts
                 const weeklyProgressData = calculateWeeklyProgress(
                     programData.workouts as WorkoutWithMeta[],
@@ -220,7 +277,7 @@ export function useActiveProgram() {
         } finally {
             setIsLoading(false);
         }
-    }, [user, mergeSessionsForRange]);
+    }, [user, mergeSessionsForRange, fetchAllRange]);
 
     // Listen for workout-completed events (fired by Watch finish handler in _layout.tsx)
     useEffect(() => {
@@ -276,6 +333,7 @@ export function useActiveProgram() {
         workouts: data?.workouts || [],
         sessions: allSessions,
         sessionsMap,
+        allSessionsMap,
         weeklyProgress: data?.weeklyProgress,
         weeklyProgressFull: data?.weeklyProgressFull || null,
         studentName,

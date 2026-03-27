@@ -9,7 +9,7 @@ import { useStudentAccess } from "../../hooks/useStudentAccess";
 import { ScreenWrapper } from "../../components/ScreenWrapper";
 import { PaymentBlockedScreen } from "../../components/PaymentBlockedScreen";
 import { User } from "lucide-react-native";
-import { toDateKey } from "@kinevo/shared/utils/schedule-projection";
+import { toDateKey, isDateInProgram } from "@kinevo/shared/utils/schedule-projection";
 
 import { UnifiedCalendar } from "../../components/home/UnifiedCalendar";
 import { ProgressCard } from "../../components/home/ProgressCard";
@@ -31,6 +31,7 @@ export default function HomeScreen() {
         workouts,
         sessions,
         sessionsMap,
+        allSessionsMap,
         weeklyProgress,
         weeklyProgressFull,
         studentName,
@@ -115,40 +116,82 @@ export default function HomeScreen() {
     // Determine Workout for Selected Date (with contextual info)
     const selectedWorkoutData = useMemo(() => {
         const selectedDayIndex = selectedDate.getDay();
-
-        const workout = workouts.find(w => {
-            if (!w.scheduled_days) return false;
-            return w.scheduled_days.some((d: any) => Number(d) === selectedDayIndex);
-        });
-
-        // Check completion for selected date
         const selectedKey = toDateKey(selectedDate);
-        const daySessions = sessionsMap.get(selectedKey) || [];
-        const isCompleted = daySessions.some(s => s.status === 'completed');
-
-        // Today's session (completed, for the scheduled workout or any)
-        const todaySession = daySessions.find(s =>
-            s.status === 'completed' && workout && s.assigned_workout_id === workout.id
-        ) || daySessions.find(s => s.status === 'completed') || null;
+        const weekDays = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+        const dayName = weekDays[selectedDayIndex];
+        const dateStr = `${selectedDate.getDate().toString().padStart(2, '0')}/${(selectedDate.getMonth() + 1).toString().padStart(2, '0')}`;
 
         // Time context
         const today = new Date();
         const todayNoTime = new Date(today.getFullYear(), today.getMonth(), today.getDate());
         const selectedNoTime = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
-
         const isToday = selectedNoTime.getTime() === todayNoTime.getTime();
         const isPast = selectedNoTime < todayNoTime;
         const isFuture = selectedNoTime > todayNoTime;
-
-        const isMissed = isPast && !!workout && !isCompleted;
-
         type TimeContext = 'today' | 'past' | 'future';
         const timeContext: TimeContext = isToday ? 'today' : isPast ? 'past' : 'future';
 
-        // Contextual title (used for non-today views)
-        const weekDays = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
-        const dayName = weekDays[selectedDayIndex];
-        const dateStr = `${selectedDate.getDate().toString().padStart(2, '0')}/${(selectedDate.getMonth() + 1).toString().padStart(2, '0')}`;
+        // Check if selected date is within the current program
+        const inProgram = programStartedAt
+            ? isDateInProgram(selectedDate, programStartedAt, programDurationWeeks)
+            : false;
+
+        // Historic sessions (cross-program) for this day
+        const historicSessions = allSessionsMap?.get(selectedKey) || [];
+        const hasHistoricSession = historicSessions.some(s => s.status === 'completed');
+
+        // If day is OUTSIDE current program: use historic data only
+        if (!inProgram && !isToday) {
+            if (hasHistoricSession) {
+                const session = historicSessions.find(s => s.status === 'completed')!;
+                return {
+                    workout: null,
+                    isCompleted: true,
+                    isCompensated: false,
+                    isMissed: false,
+                    title: `Treino Realizado — ${dayName}, ${dateStr}`,
+                    timeContext,
+                    todaySession: session as any,
+                };
+            }
+            // Outside program, no session → normal rest day
+            return {
+                workout: null,
+                isCompleted: false,
+                isCompensated: false,
+                isMissed: false,
+                title: `${dayName}, ${dateStr}`,
+                timeContext,
+                todaySession: null,
+            };
+        }
+
+        // Within current program (or today) — existing logic
+        const workout = workouts.find(w => {
+            if (!w.scheduled_days) return false;
+            return w.scheduled_days.some((d: any) => Number(d) === selectedDayIndex);
+        });
+
+        const daySessions = sessionsMap.get(selectedKey) || [];
+        const isCompleted = workout
+            ? daySessions.some(s => s.status === 'completed' && s.assigned_workout_id === workout.id)
+            : daySessions.some(s => s.status === 'completed');
+
+        const todaySession = workout
+            ? daySessions.find(s => s.status === 'completed' && s.assigned_workout_id === workout.id) ?? null
+            : daySessions.find(s => s.status === 'completed') ?? null;
+
+        // Check weekly compensation for this workout
+        let isCompensated = false;
+        let isMissed = false;
+        if (isPast && !!workout && !isCompleted) {
+            const counts = weeklyProgressFull?.workoutCounts?.get(workout.id);
+            if (counts && counts.completed >= counts.expected) {
+                isCompensated = true;
+            } else {
+                isMissed = true;
+            }
+        }
 
         let title: string;
         if (isToday) {
@@ -157,14 +200,16 @@ export default function HomeScreen() {
             title = `Treino Previsto — ${dayName}, ${dateStr}`;
         } else if (isPast && isCompleted) {
             title = `Treino Realizado — ${dayName}, ${dateStr}`;
+        } else if (isPast && isCompensated) {
+            title = `Treino Compensado — ${dayName}, ${dateStr}`;
         } else if (isPast && isMissed) {
             title = `Treino Perdido — ${dayName}, ${dateStr}`;
         } else {
             title = `Treino de ${dayName} (${dateStr})`;
         }
 
-        return { workout, isCompleted, isMissed, title, timeContext, todaySession };
-    }, [workouts, sessionsMap, selectedDate]);
+        return { workout, isCompleted, isCompensated, isMissed, title, timeContext, todaySession };
+    }, [workouts, sessionsMap, allSessionsMap, selectedDate, programStartedAt, programDurationWeeks, weeklyProgressFull]);
 
 
 
@@ -263,6 +308,7 @@ export default function HomeScreen() {
                     <UnifiedCalendar
                         workouts={calendarWorkouts}
                         sessionsMap={calendarSessionsMap}
+                        allSessionsMap={allSessionsMap as any}
                         programStartedAt={programStartedAt}
                         programDurationWeeks={programDurationWeeks}
                         selectedDate={selectedDate}
@@ -309,6 +355,7 @@ export default function HomeScreen() {
                                 onShare={selectedWorkoutData.isCompleted ? () => handleShareWorkout(selectedWorkoutData.workout) : undefined}
                                 selectedWorkout={selectedWorkoutData.workout}
                                 isCompleted={selectedWorkoutData.isCompleted}
+                                isCompensated={selectedWorkoutData.isCompensated}
                                 isMissed={selectedWorkoutData.isMissed}
                                 title={selectedWorkoutData.title}
                                 timeContext={selectedWorkoutData.timeContext}
