@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, memo, useCallback } from 'react'
 import { Users, Activity, TrendingUp, TrendingDown, Target, Eye, EyeOff, DollarSign } from 'lucide-react'
 import { motion } from 'framer-motion'
 import type { DashboardStats } from '@/lib/dashboard/get-dashboard-data'
@@ -97,7 +97,7 @@ function ProgressRing({ percent, size = 44, strokeWidth = 3.5 }: {
     const color = percent >= 70 ? '#34C759' : percent >= 40 ? '#007AFF' : '#FF9500'
 
     return (
-        <svg width={size} height={size} className="shrink-0 -rotate-90">
+        <svg width={size} height={size} className="shrink-0 -rotate-90" role="img" aria-label={`Aderência: ${percent}%`}>
             <circle
                 cx={size / 2}
                 cy={size / 2}
@@ -162,7 +162,7 @@ const cardVariants = {
 
 // ── Main Component ──
 
-export function StatCards({ stats }: StatCardsProps) {
+export const StatCards = memo(function StatCards({ stats }: StatCardsProps) {
     const showAdherence = stats.hasActivePrograms
     const [mrrVisible, setMrrVisible] = useState(true)
 
@@ -171,17 +171,17 @@ export function StatCards({ stats }: StatCardsProps) {
         if (stored === 'false') setMrrVisible(false)
     }, [])
 
-    const toggleMrr = () => {
+    const toggleMrr = useCallback(() => {
         setMrrVisible(prev => {
             localStorage.setItem('kinevo:mrr-visible', String(!prev))
             return !prev
         })
-    }
+    }, [])
 
     const cardClass = "rounded-xl border border-[#D2D2D7] dark:border-k-border-primary bg-white dark:bg-surface-card p-5 shadow-apple-card dark:shadow-none hover:shadow-md dark:hover:shadow-lg transition-shadow duration-200"
 
     return (
-        <div className={`grid gap-4 mb-6 ${showAdherence ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-1 sm:grid-cols-3'}`}>
+        <div className={`grid gap-4 mb-6 ${showAdherence ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-1 sm:grid-cols-3'}`} role="region" aria-label="Indicadores-chave de performance">
             {/* Active students */}
             <motion.div
                 className={cardClass}
@@ -189,11 +189,13 @@ export function StatCards({ stats }: StatCardsProps) {
                 initial="hidden"
                 animate="visible"
                 custom={0}
+                role="group"
+                aria-label={`Alunos ativos: ${stats.activeStudentsCount}`}
             >
                 <div className="flex items-center justify-between mb-3">
                     <span className="text-xs font-medium text-[#86868B] dark:text-k-text-tertiary uppercase tracking-wide">Alunos ativos</span>
                     <div className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center">
-                        <Users size={14} className="text-[#007AFF] dark:text-blue-400" />
+                        <Users size={14} className="text-[#007AFF] dark:text-blue-400" aria-hidden="true" />
                     </div>
                 </div>
                 <div className="flex items-baseline gap-2">
@@ -237,8 +239,13 @@ export function StatCards({ stats }: StatCardsProps) {
             >
                 <div className="flex items-center justify-between mb-3">
                     <span className="text-xs font-medium text-[#86868B] dark:text-k-text-tertiary uppercase tracking-wide">Receita mensal</span>
-                    <button onClick={toggleMrr} className="w-7 h-7 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-colors">
-                        {mrrVisible ? <Eye size={14} className="text-emerald-600 dark:text-emerald-400" /> : <EyeOff size={14} className="text-emerald-600 dark:text-emerald-400" />}
+                    <button
+                        onClick={toggleMrr}
+                        aria-label={mrrVisible ? 'Ocultar receita mensal' : 'Mostrar receita mensal'}
+                        aria-pressed={mrrVisible}
+                        className="w-7 h-7 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-colors"
+                    >
+                        {mrrVisible ? <Eye size={14} className="text-emerald-600 dark:text-emerald-400" aria-hidden="true" /> : <EyeOff size={14} className="text-emerald-600 dark:text-emerald-400" aria-hidden="true" />}
                     </button>
                 </div>
                 <div className="flex items-baseline gap-2">
@@ -275,4 +282,4 @@ export function StatCards({ stats }: StatCardsProps) {
             )}
         </div>
     )
-}
+})

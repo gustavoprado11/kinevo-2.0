@@ -1,5 +1,6 @@
 'use client'
 
+import { memo } from 'react'
 import { Target, TrendingUp, Users, DollarSign } from 'lucide-react'
 import { motion } from 'framer-motion'
 
@@ -19,7 +20,7 @@ interface WeeklyGoalsWidgetProps {
     mrr: number
 }
 
-export function WeeklyGoalsWidget({ sessionsThisWeek, activeStudentsCount, mrr }: WeeklyGoalsWidgetProps) {
+export const WeeklyGoalsWidget = memo(function WeeklyGoalsWidget({ sessionsThisWeek, activeStudentsCount, mrr }: WeeklyGoalsWidgetProps) {
     // Default goals — in production these would come from trainer settings
     const goals: WeeklyGoal[] = [
         {
@@ -99,4 +100,4 @@ export function WeeklyGoalsWidget({ sessionsThisWeek, activeStudentsCount, mrr }
             </div>
         </div>
     )
-}
+})

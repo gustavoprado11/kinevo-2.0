@@ -1,23 +1,27 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, lazy, Suspense, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { AppLayout } from '@/components/layout'
 import { StudentModal } from '@/components/student-modal'
-import { DailyActivityFeed } from '@/components/dashboard/daily-activity-feed'
 import { TrainerProfileBanner } from '@/components/dashboard/trainer-profile-banner'
 import { DashboardHeader } from '@/components/dashboard/dashboard-header'
 import { StatCards } from '@/components/dashboard/stat-cards'
 import { QuickActions } from '@/components/dashboard/quick-actions'
 import { ExpiringPrograms } from '@/components/dashboard/expiring-programs'
-import { AssistantActionCards } from '@/components/dashboard/assistant-action-cards'
-import { WeeklyGoalsWidget } from '@/components/dashboard/weekly-goals-widget'
-import { StudentRankingWidget, type RankedStudent } from '@/components/dashboard/student-ranking-widget'
 import { WidgetGrid } from '@/components/dashboard/widget-grid'
 import { WidgetPicker } from '@/components/dashboard/widget-picker'
 import { WelcomeModal } from '@/components/onboarding/widgets/welcome-modal'
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
 import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
+
+// ── Lazy-loaded heavy widgets (code-split) ──
+const AssistantActionCards = lazy(() => import('@/components/dashboard/assistant-action-cards').then(m => ({ default: m.AssistantActionCards })))
+const DailyActivityFeed = lazy(() => import('@/components/dashboard/daily-activity-feed').then(m => ({ default: m.DailyActivityFeed })))
+const WeeklyGoalsWidget = lazy(() => import('@/components/dashboard/weekly-goals-widget').then(m => ({ default: m.WeeklyGoalsWidget })))
+const StudentRankingWidget = lazy(() => import('@/components/dashboard/student-ranking-widget').then(m => ({ default: m.StudentRankingWidget })))
+
+import type { RankedStudent } from '@/components/dashboard/student-ranking-widget'
 import { FolderArchive, Loader2 } from 'lucide-react'
 import { markAsPaid } from '@/actions/financial/mark-as-paid'
 import { archiveStudent } from '@/actions/financial/archive-student'
@@ -57,6 +61,20 @@ interface DashboardClientProps {
     formTemplates?: FormTemplateOption[]
 }
 
+// ── Lazy loading skeleton ──
+function WidgetSkeleton() {
+    return (
+        <div className="rounded-xl border border-[#E8E8ED] dark:border-k-border-subtle bg-white dark:bg-surface-card p-6 animate-pulse">
+            <div className="h-4 w-32 bg-[#F0F0F5] dark:bg-white/5 rounded mb-4" />
+            <div className="space-y-3">
+                <div className="h-3 w-full bg-[#F0F0F5] dark:bg-white/5 rounded" />
+                <div className="h-3 w-3/4 bg-[#F0F0F5] dark:bg-white/5 rounded" />
+                <div className="h-3 w-1/2 bg-[#F0F0F5] dark:bg-white/5 rounded" />
+            </div>
+        </div>
+    )
+}
+
 export function DashboardClient({ trainer, data, initialStudents, selfStudentId, formTemplates = [] }: DashboardClientProps) {
     const router = useRouter()
     const [students, setStudents] = useState<Student[]>(initialStudents)
@@ -64,25 +82,25 @@ export function DashboardClient({ trainer, data, initialStudents, selfStudentId,
     const [archiveConfirm, setArchiveConfirm] = useState<{ id: string; name: string } | null>(null)
     const [archiveLoading, setArchiveLoading] = useState(false)
 
-    const handleStudentCreated = (newStudent: Student) => {
-        setStudents([newStudent, ...students])
+    const handleStudentCreated = useCallback((newStudent: Student) => {
+        setStudents(prev => [newStudent, ...prev])
         setIsModalOpen(false)
-    }
+    }, [])
 
-    const handleMarkAsPaid = async (contractId: string) => {
+    const handleMarkAsPaid = useCallback(async (contractId: string) => {
         const result = await markAsPaid({ contractId })
         if (result.success) {
             router.refresh()
         }
-    }
+    }, [router])
 
-    const handleSellPlan = (studentId: string) => {
+    const handleSellPlan = useCallback((studentId: string) => {
         router.push(`/financial/subscriptions?sell=${studentId}`)
-    }
+    }, [router])
 
-    const handleArchiveStudent = (studentId: string, studentName: string) => {
+    const handleArchiveStudent = useCallback((studentId: string, studentName: string) => {
         setArchiveConfirm({ id: studentId, name: studentName })
-    }
+    }, [])
 
     const confirmArchive = async () => {
         if (!archiveConfirm) return
@@ -114,30 +132,43 @@ export function DashboardClient({ trainer, data, initialStudents, selfStudentId,
     }, [data.dailyActivity])
 
     // Widget render map — each widget ID maps to its JSX
+    // Heavy widgets are wrapped in Suspense for code-split lazy loading
     const widgetMap: Partial<Record<WidgetId, React.ReactNode>> = useMemo(() => ({
         'stats': <StatCards stats={data.stats} />,
         'insights': (
-            <AssistantActionCards
-                initialInsights={data.assistantInsights}
-                pendingFinancial={data.pendingFinancial}
-                pendingForms={data.pendingForms}
-                expiredPlans={data.expiredPlans}
-                trainerId={trainer.id}
-                onMarkAsPaid={handleMarkAsPaid}
-                onSellPlan={handleSellPlan}
-                onArchiveStudent={handleArchiveStudent}
-            />
+            <Suspense fallback={<WidgetSkeleton />}>
+                <AssistantActionCards
+                    initialInsights={data.assistantInsights}
+                    pendingFinancial={data.pendingFinancial}
+                    pendingForms={data.pendingForms}
+                    expiredPlans={data.expiredPlans}
+                    trainerId={trainer.id}
+                    onMarkAsPaid={handleMarkAsPaid}
+                    onSellPlan={handleSellPlan}
+                    onArchiveStudent={handleArchiveStudent}
+                />
+            </Suspense>
         ),
         'expiring-programs': <ExpiringPrograms programs={data.expiringPrograms} />,
-        'activity-feed': <DailyActivityFeed activities={data.dailyActivity} scheduledToday={data.scheduledToday} />,
-        'weekly-goals': (
-            <WeeklyGoalsWidget
-                sessionsThisWeek={data.stats.sessionsThisWeek}
-                activeStudentsCount={data.stats.activeStudentsCount}
-                mrr={data.stats.mrr}
-            />
+        'activity-feed': (
+            <Suspense fallback={<WidgetSkeleton />}>
+                <DailyActivityFeed activities={data.dailyActivity} scheduledToday={data.scheduledToday} />
+            </Suspense>
         ),
-        'student-ranking': <StudentRankingWidget students={rankedStudents} />,
+        'weekly-goals': (
+            <Suspense fallback={<WidgetSkeleton />}>
+                <WeeklyGoalsWidget
+                    sessionsThisWeek={data.stats.sessionsThisWeek}
+                    activeStudentsCount={data.stats.activeStudentsCount}
+                    mrr={data.stats.mrr}
+                />
+            </Suspense>
+        ),
+        'student-ranking': (
+            <Suspense fallback={<WidgetSkeleton />}>
+                <StudentRankingWidget students={rankedStudents} />
+            </Suspense>
+        ),
         'upcoming-schedules': (
             <div className="flex flex-col rounded-xl border border-[#D2D2D7] dark:border-k-border-primary bg-white dark:bg-surface-card shadow-apple-card dark:shadow-xl">
                 <div className="flex items-center justify-between border-b border-[#E8E8ED] dark:border-k-border-subtle px-6 py-4">
@@ -149,7 +180,7 @@ export function DashboardClient({ trainer, data, initialStudents, selfStudentId,
                 </div>
             </div>
         ),
-    }), [data, trainer.id, rankedStudents])
+    }), [data, trainer.id, rankedStudents, handleMarkAsPaid, handleSellPlan, handleArchiveStudent])
 
     return (
         <AppLayout

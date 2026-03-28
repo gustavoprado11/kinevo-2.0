@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useCallback } from 'react'
+import { useMemo, useCallback, useRef } from 'react'
 import {
     DndContext,
     closestCenter,
@@ -86,18 +86,21 @@ function SortableWidget({
                     <button
                         {...attributes}
                         {...listeners}
+                        aria-label={`Arrastar widget ${config.label}`}
+                        aria-roledescription="item arrastável"
                         className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-white dark:bg-surface-card border border-[#D2D2D7] dark:border-k-border-primary shadow-md text-[10px] font-medium text-[#6E6E73] dark:text-k-text-secondary hover:bg-[#F5F5F7] dark:hover:bg-muted cursor-grab active:cursor-grabbing transition-colors"
                     >
-                        <GripVertical className="w-3 h-3" />
+                        <GripVertical className="w-3 h-3" aria-hidden="true" />
                         {config.label}
                     </button>
                     {config.removable && onRemove && (
                         <button
                             onClick={onRemove}
                             className="p-1 rounded-full bg-white dark:bg-surface-card border border-[#D2D2D7] dark:border-k-border-primary shadow-md text-[#AEAEB2] dark:text-k-text-quaternary hover:text-red-500 hover:border-red-200 dark:hover:border-red-500/30 transition-colors"
+                            aria-label={`Remover widget ${config.label}`}
                             title={`Remover ${config.label}`}
                         >
-                            <X className="w-3 h-3" />
+                            <X className="w-3 h-3" aria-hidden="true" />
                         </button>
                     )}
                 </div>
@@ -154,18 +157,20 @@ export function WidgetGrid({ widgetMap }: WidgetGridProps) {
     }, [sortedWidgets])
 
     return (
-        <div className="relative">
+        <section aria-label="Widgets do dashboard" className="relative">
             {/* Customize toggle button */}
             <div className="flex justify-end mb-3">
                 <button
                     onClick={() => setCustomizing(!isCustomizing)}
+                    aria-pressed={isCustomizing}
+                    aria-label={isCustomizing ? 'Concluir personalização do dashboard' : 'Personalizar layout do dashboard'}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                         isCustomizing
                             ? 'bg-[#007AFF] text-white shadow-md hover:bg-[#0056B3]'
                             : 'text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#6E6E73] dark:hover:text-k-text-secondary hover:bg-[#F5F5F7] dark:hover:bg-muted'
                     }`}
                 >
-                    <Settings2 className="w-3.5 h-3.5" />
+                    <Settings2 className="w-3.5 h-3.5" aria-hidden="true" />
                     {isCustomizing ? 'Concluir' : 'Personalizar'}
                 </button>
             </div>
@@ -220,6 +225,6 @@ export function WidgetGrid({ widgetMap }: WidgetGridProps) {
                     </div>
                 </SortableContext>
             </DndContext>
-        </div>
+        </section>
     )
 }

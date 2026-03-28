@@ -68,7 +68,7 @@ export function QuickActions({ onNewStudent }: QuickActionsProps) {
     }
 
     return (
-        <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
+        <nav aria-label="Ações rápidas" className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
             {actions.map((action) => {
                 const Icon = action.icon
                 return (
@@ -88,13 +88,13 @@ export function QuickActions({ onNewStudent }: QuickActionsProps) {
                             active:scale-[0.97]
                         `}
                     >
-                        <div className={`w-7 h-7 rounded-lg ${action.bg} flex items-center justify-center flex-shrink-0`}>
+                        <div className={`w-7 h-7 rounded-lg ${action.bg} flex items-center justify-center flex-shrink-0`} aria-hidden="true">
                             <Icon size={15} className={action.color} />
                         </div>
                         <span className="text-[#1D1D1F] dark:text-k-text-secondary">{action.label}</span>
                     </button>
                 )
             })}
-        </div>
+        </nav>
     )
 }

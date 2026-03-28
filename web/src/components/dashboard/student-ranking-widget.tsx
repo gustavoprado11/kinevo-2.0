@@ -1,5 +1,6 @@
 'use client'
 
+import { memo } from 'react'
 import { Trophy, Flame } from 'lucide-react'
 import { motion } from 'framer-motion'
 import Image from 'next/image'
@@ -22,7 +23,7 @@ const medalColors = [
     'text-amber-700',  // bronze
 ]
 
-export function StudentRankingWidget({ students }: StudentRankingWidgetProps) {
+export const StudentRankingWidget = memo(function StudentRankingWidget({ students }: StudentRankingWidgetProps) {
     // Sort by sessions desc, then by streak desc
     const ranked = [...students]
         .sort((a, b) => b.sessionsThisWeek - a.sessionsThisWeek || b.streak - a.streak)
@@ -97,4 +98,4 @@ export function StudentRankingWidget({ students }: StudentRankingWidgetProps) {
             )}
         </div>
     )
-}
+})

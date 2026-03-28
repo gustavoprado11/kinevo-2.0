@@ -1,5 +1,6 @@
 'use client'
 
+import { memo } from 'react'
 import { Calendar, Check } from 'lucide-react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
@@ -9,7 +10,7 @@ interface ExpiringProgramsProps {
     programs: ExpiringProgramItem[]
 }
 
-export function ExpiringPrograms({ programs }: ExpiringProgramsProps) {
+export const ExpiringPrograms = memo(function ExpiringPrograms({ programs }: ExpiringProgramsProps) {
     return (
         <div className="flex flex-col rounded-xl border border-[#D2D2D7] dark:border-k-border-primary bg-white dark:bg-surface-card shadow-apple-card dark:shadow-xl">
             {/* Header */}
@@ -75,4 +76,4 @@ export function ExpiringPrograms({ programs }: ExpiringProgramsProps) {
             )}
         </div>
     )
-}
+})

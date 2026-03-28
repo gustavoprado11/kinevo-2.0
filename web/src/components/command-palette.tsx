@@ -65,6 +65,7 @@ export function CommandPalette({ students = [] }: CommandPaletteProps) {
             <div
                 className="fixed inset-0 bg-black/50 backdrop-blur-sm"
                 onClick={() => setOpen(false)}
+                aria-hidden="true"
             />
 
             {/* Dialog */}
@@ -75,8 +76,8 @@ export function CommandPalette({ students = [] }: CommandPaletteProps) {
                 >
                     <Command label="Busca global">
                         {/* Input */}
-                        <div className="flex items-center gap-3 px-4 border-b border-[#E8E8ED] dark:border-k-border-subtle">
-                            <Search className="w-4 h-4 text-[#AEAEB2] dark:text-k-text-quaternary shrink-0" />
+                        <div className="flex items-center gap-3 px-4 border-b border-[#E8E8ED] dark:border-k-border-subtle" role="search">
+                            <Search className="w-4 h-4 text-[#AEAEB2] dark:text-k-text-quaternary shrink-0" aria-hidden="true" />
                             <Command.Input
                                 placeholder="Buscar alunos, ações, páginas..."
                                 className="flex-1 py-3.5 text-sm text-[#1D1D1F] dark:text-k-text-primary bg-transparent outline-none placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary"
@@ -266,7 +267,7 @@ function CommandItem({
             onSelect={onSelect}
             className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer text-sm text-[#1D1D1F] dark:text-k-text-primary data-[selected=true]:bg-[#007AFF]/10 dark:data-[selected=true]:bg-glass-bg-active transition-colors"
         >
-            <span className="shrink-0">{icon}</span>
+            <span className="shrink-0" aria-hidden="true">{icon}</span>
             <span className="flex-1 font-medium">{label}</span>
             {shortcut && (
                 <kbd className="text-[10px] text-[#AEAEB2] dark:text-k-text-quaternary bg-[#F5F5F7] dark:bg-glass-bg px-1.5 py-0.5 rounded font-mono">

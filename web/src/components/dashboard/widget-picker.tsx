@@ -54,7 +54,7 @@ export function WidgetPicker() {
                 </div>
 
                 {/* Available widgets grid */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2" role="group" aria-label="Widgets disponíveis">
                     {allWidgets.map(config => {
                         const isActive = activeIds.has(config.id)
                         const isRequired = !config.removable
@@ -70,6 +70,9 @@ export function WidgetPicker() {
                                         addWidget(config.id)
                                     }
                                 }}
+                                role="switch"
+                                aria-checked={isActive}
+                                aria-label={`${config.label}: ${config.description}${isRequired ? ' (obrigatório)' : ''}`}
                                 className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border text-left transition-all ${
                                     isActive
                                         ? isRequired
