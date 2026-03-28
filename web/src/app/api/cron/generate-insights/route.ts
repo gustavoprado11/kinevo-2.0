@@ -49,15 +49,16 @@ export async function GET(request: NextRequest) {
             const insights: InsightRow[] = []
 
             // Run all detections in parallel for this trainer
-            const [gapResults, stagnationResults, programResults, painResults, progressionResults] = await Promise.all([
+            const [gapResults, stagnationResults, programResults, painResults, progressionResults, formResults] = await Promise.all([
                 detectTrainingGaps(trainerId, today),
                 detectLoadStagnation(trainerId, today),
                 detectExpiringPrograms(trainerId, today),
                 detectPainReports(trainerId, today),
                 detectReadyToProgress(trainerId, today),
+                detectFormInsights(trainerId, today),
             ])
 
-            insights.push(...gapResults, ...stagnationResults, ...programResults, ...painResults, ...progressionResults)
+            insights.push(...gapResults, ...stagnationResults, ...programResults, ...painResults, ...progressionResults, ...formResults)
 
             if (insights.length > 0) {
                 const { error: insertError } = await supabaseAdmin
@@ -584,6 +585,188 @@ async function detectReadyToProgress(trainerId: string, today: string): Promise<
                 source: 'rules',
                 expires_at: expiresIn(14),
             })
+        }
+    }
+
+    return insights
+}
+
+// ── Detection 6: Form-based insights (anamnese & check-in health alerts) ──
+
+/**
+ * Scans recent anamnese and check-in submissions for health-relevant flags:
+ * - Anamnese: chronic conditions, injuries, medications, restrictions, surgeries
+ * - Check-ins: significant changes in sleep, stress, fatigue, well-being
+ *
+ * Creates per-student summary insights so the trainer has quick context.
+ * Uses submission ID in the insight_key for idempotency.
+ */
+async function detectFormInsights(trainerId: string, today: string): Promise<InsightRow[]> {
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+
+    // Fetch recent submissions with their template category
+    const { data, error } = await supabaseAdmin
+        .from('form_submissions')
+        .select(`
+            id, student_id, answers_json, created_at, trigger_context,
+            form_templates!inner(category, title),
+            students!inner(name)
+        `)
+        .eq('trainer_id', trainerId)
+        .eq('status', 'submitted')
+        .gte('created_at', sevenDaysAgo)
+
+    if (error || !data) return []
+
+    const insights: InsightRow[] = []
+
+    // Already-processed submissions (check existing insight_keys to avoid re-processing)
+    const existingKeys = new Set<string>()
+    const { data: existing } = await supabaseAdmin
+        .from('assistant_insights')
+        .select('insight_key')
+        .eq('trainer_id', trainerId)
+        .like('insight_key', 'form_insight:%')
+
+    for (const row of existing || []) {
+        existingKeys.add(row.insight_key)
+    }
+
+    for (const row of data as any[]) {
+        const category = row.form_templates?.category as string
+        const studentName = row.students?.name || 'Aluno'
+        const answers = row.answers_json || {}
+        const answersStr = JSON.stringify(answers).toLowerCase()
+        const insightKey = `form_insight:${row.id}`
+
+        // Skip already-processed
+        if (existingKeys.has(insightKey)) continue
+
+        // ── Anamnese submissions: extract health flags ──
+        if (category === 'anamnese') {
+            const flags: string[] = []
+
+            const healthKeywords: Record<string, string> = {
+                'diabetes': 'diabetes',
+                'hipertens': 'hipertensão',
+                'cardíac': 'condição cardíaca',
+                'cardiac': 'condição cardíaca',
+                'asma': 'asma',
+                'cirurgia': 'cirurgia recente',
+                'surgery': 'cirurgia recente',
+                'prótese': 'prótese',
+                'protese': 'prótese',
+                'hérnia': 'hérnia',
+                'hernia': 'hérnia',
+                'gravid': 'gravidez',
+                'gestant': 'gestação',
+                'tabagis': 'tabagismo',
+                'medica': 'uso de medicamentos',
+                'remédio': 'uso de medicamentos',
+                'remedio': 'uso de medicamentos',
+                'restrição': 'restrição médica',
+                'restricao': 'restrição médica',
+                'lesão': 'lesão prévia',
+                'lesao': 'lesão prévia',
+                'fratura': 'fratura prévia',
+                'coluna': 'problema na coluna',
+                'joelho': 'problema no joelho',
+                'ombro': 'problema no ombro',
+            }
+
+            for (const [keyword, label] of Object.entries(healthKeywords)) {
+                if (answersStr.includes(keyword)) {
+                    flags.push(label)
+                }
+            }
+
+            const uniqueFlags = [...new Set(flags)]
+
+            if (uniqueFlags.length > 0) {
+                const priority = uniqueFlags.length >= 3 ? 'high' as const : 'medium' as const
+                const flagList = uniqueFlags.slice(0, 5).join(', ')
+
+                insights.push({
+                    trainer_id: trainerId,
+                    student_id: row.student_id,
+                    category: 'alert',
+                    priority,
+                    title: `Anamnese de ${studentName}: ${uniqueFlags.length} ponto${uniqueFlags.length > 1 ? 's' : ''} de atenção`,
+                    body: `Na anamnese preenchida em ${formatDate(row.created_at)}, foram identificados: ${flagList}. Revise para adaptar o programa se necessário.`,
+                    action_type: 'review_anamnese',
+                    action_metadata: {
+                        student_id: row.student_id,
+                        submission_id: row.id,
+                        flags: uniqueFlags,
+                    },
+                    status: 'new',
+                    insight_key: insightKey,
+                    source: 'rules',
+                    expires_at: expiresIn(30),
+                })
+            }
+        }
+
+        // ── Check-in submissions: detect well-being drops ──
+        if (category === 'checkin' && row.trigger_context !== 'post_workout') {
+            const lowScoreFlags: string[] = []
+
+            for (const [key, value] of Object.entries(answers)) {
+                const keyLower = key.toLowerCase()
+                const numValue = typeof value === 'number' ? value : parseInt(String(value))
+
+                if (isNaN(numValue)) continue
+
+                // Detect low scores on well-being indicators (universally low on any scale)
+                const isLowScore = numValue <= 2
+
+                if (isLowScore) {
+                    if (keyLower.includes('sono') || keyLower.includes('sleep')) lowScoreFlags.push('sono ruim')
+                    else if (keyLower.includes('stress') || keyLower.includes('estresse')) lowScoreFlags.push('estresse alto')
+                    else if (keyLower.includes('fadiga') || keyLower.includes('cansa') || keyLower.includes('fatigue') || keyLower.includes('energy') || keyLower.includes('energia')) lowScoreFlags.push('fadiga elevada')
+                    else if (keyLower.includes('humor') || keyLower.includes('mood') || keyLower.includes('bem-estar') || keyLower.includes('disposição') || keyLower.includes('disposicao')) lowScoreFlags.push('bem-estar baixo')
+                    else if (keyLower.includes('motivação') || keyLower.includes('motivacao') || keyLower.includes('motivation')) lowScoreFlags.push('motivação baixa')
+                }
+
+                // Detect HIGH scores for negative indicators (stress, pain on inverted scales)
+                const isHighNegative = numValue >= 4
+                if (isHighNegative) {
+                    if (keyLower.includes('stress') || keyLower.includes('estresse')) lowScoreFlags.push('estresse alto')
+                    if (keyLower.includes('dor') || keyLower.includes('pain')) lowScoreFlags.push('dor reportada')
+                }
+            }
+
+            // Also check text answers for concerning keywords
+            const concernKeywords = ['cansad', 'exaust', 'insônia', 'insonia', 'ansied', 'depres', 'desanim']
+            for (const keyword of concernKeywords) {
+                if (answersStr.includes(keyword)) {
+                    lowScoreFlags.push('relato de mal-estar')
+                    break
+                }
+            }
+
+            const uniqueFlags = [...new Set(lowScoreFlags)]
+
+            if (uniqueFlags.length >= 2) {
+                insights.push({
+                    trainer_id: trainerId,
+                    student_id: row.student_id,
+                    category: 'alert',
+                    priority: 'medium',
+                    title: `Check-in de ${studentName}: sinais de atenção`,
+                    body: `No check-in de ${formatDate(row.created_at)} foram identificados: ${uniqueFlags.join(', ')}. Considere ajustar a intensidade do treino ou conversar com o aluno.`,
+                    action_type: 'review_checkin',
+                    action_metadata: {
+                        student_id: row.student_id,
+                        submission_id: row.id,
+                        flags: uniqueFlags,
+                    },
+                    status: 'new',
+                    insight_key: insightKey,
+                    source: 'rules',
+                    expires_at: expiresIn(7),
+                })
+            }
         }
     }
 

@@ -26,6 +26,8 @@ interface ProgramCalendarProps {
     scheduledWorkouts: ScheduledWorkoutRef[]
     initialSessions: RangeSession[]
     onDayClick?: (day: CalendarDay) => void
+    /** When provided, fetches ALL student sessions (full history) instead of only program sessions */
+    studentId?: string
 }
 
 // ---------------------------------------------------------------------------
@@ -116,18 +118,31 @@ function WeekView({
                     <div key={day.dateKey} className="flex flex-col items-center gap-2">
                         <DayLabel text={dayLabels[idx % 7]} />
                         <div className="relative group/day">
-                            {day.status === 'done' && day.completedSessions[0]?.rpe != null ? (
+                            {/* Historic session from another program */}
+                            {day.status === 'done_historic' ? (
+                                <button
+                                    onClick={() => onDayClick?.(day)}
+                                    className={`
+                                        w-9 h-9 rounded-full flex items-center justify-center transition-all duration-300
+                                        bg-violet-100 dark:bg-violet-500/15 ring-1 ring-violet-200 dark:ring-violet-500/20
+                                        ${day.isToday ? 'ring-2 ring-white/20 ring-offset-2 ring-offset-surface-card' : ''}
+                                        cursor-pointer hover:opacity-80
+                                    `}
+                                >
+                                    <CheckIcon className="w-3.5 h-3.5 text-violet-400" />
+                                </button>
+                            ) : day.status === 'done' && day.completedSessions[0]?.rpe != null ? (
                                 <button
                                     onClick={() => isClickable && onDayClick?.(day)}
                                     className={`
                                         w-9 h-9 rounded-full flex items-center justify-center transition-all duration-300
                                         ${day.completedSessions[0].rpe! >= 10
-                                            ? 'bg-red-500/20 ring-1 ring-red-500/30 text-red-400'
+                                            ? 'bg-red-100 dark:bg-red-500/20 ring-1 ring-red-300 dark:ring-red-500/30 text-red-600 dark:text-red-400'
                                             : day.completedSessions[0].rpe! >= 8
-                                                ? 'bg-yellow-500/20 ring-1 ring-yellow-500/30 text-yellow-400'
+                                                ? 'bg-violet-100 dark:bg-yellow-500/20 ring-1 ring-violet-300 dark:ring-yellow-500/30 text-violet-600 dark:text-yellow-400'
                                                 : day.completedSessions[0].rpe! >= 6
-                                                    ? 'bg-emerald-500/20 ring-1 ring-emerald-500/30 text-emerald-400'
-                                                    : 'bg-white/5 ring-1 ring-white/10 text-k-text-tertiary'
+                                                    ? 'bg-emerald-100 dark:bg-emerald-500/20 ring-1 ring-emerald-300 dark:ring-emerald-500/30 text-emerald-600 dark:text-emerald-400'
+                                                    : 'bg-zinc-100 dark:bg-white/5 ring-1 ring-zinc-300 dark:ring-white/10 text-zinc-500 dark:text-k-text-tertiary'
                                         }
                                         ${day.isToday ? 'ring-2 ring-white/20 ring-offset-2 ring-offset-surface-card' : ''}
                                         cursor-pointer hover:opacity-80
@@ -164,7 +179,9 @@ function WeekView({
                             {/* Tooltip */}
                             {isClickable && (
                                 <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-surface-card border border-k-border-primary rounded-lg text-xs font-medium text-k-text-primary opacity-0 group-hover/day:opacity-100 transition-opacity pointer-events-none z-header whitespace-nowrap shadow-xl">
-                                    {day.status === 'done' ? (
+                                    {day.status === 'done_historic' ? (
+                                        <span className="text-violet-400">Treino (programa anterior)</span>
+                                    ) : day.status === 'done' ? (
                                         <span>Realizado{day.completedSessions[0]?.rpe != null ? ` · PSE ${day.completedSessions[0].rpe}` : ''}</span>
                                     ) : day.status === 'compensated' ? (
                                         <span className="text-slate-400">
@@ -209,19 +226,31 @@ function MonthView({
     return (
         <div className="w-full">
             {/* Day-of-week header */}
-            <div className="grid grid-cols-7 gap-1 mb-2">
+            <div className="grid grid-cols-7 mb-1">
                 {dayLabels.map((l, i) => (
-                    <div key={i} className="text-center">
+                    <div key={i} className="text-center py-1">
                         <DayLabel text={l} />
                     </div>
                 ))}
             </div>
-            {/* Day grid */}
-            <div className="grid grid-cols-7 gap-1">
+            {/* Day grid — clean, no row wrappers */}
+            <div className="grid grid-cols-7">
                 {days.map((day) => {
-                    const cfg = STATUS_CONFIG[day.status]
                     const isCurrentMonth = day.date.getMonth() === anchorMonth
-                    const isClickable = day.status !== 'out_of_program' && isCurrentMonth
+                    const isDone = day.status === 'done'
+                    const isHistoric = day.status === 'done_historic'
+                    const isMissed = day.status === 'missed'
+                    const isScheduled = day.status === 'scheduled'
+                    const isClickable = (isDone || isHistoric || isMissed || isScheduled || day.status === 'compensated') && isCurrentMonth
+
+                    // RPE-based circle color
+                    const rpe = day.completedSessions[0]?.rpe
+                    let circleBg = 'bg-emerald-500'
+                    if (isDone && rpe != null) {
+                        if (rpe >= 10) circleBg = 'bg-red-500'
+                        else if (rpe >= 8) circleBg = 'bg-amber-500'
+                        else circleBg = 'bg-emerald-500'
+                    }
 
                     return (
                         <button
@@ -229,35 +258,77 @@ function MonthView({
                             onClick={() => isClickable && onDayClick?.(day)}
                             disabled={!isClickable}
                             className={`
-                                relative w-full aspect-square rounded-lg flex flex-col items-center justify-center transition-all
-                                ${!isCurrentMonth ? 'opacity-20' : ''}
-                                ${isClickable ? 'cursor-pointer hover:bg-glass-bg' : 'cursor-default'}
-                                ${day.isToday ? 'ring-1 ring-white/20' : ''}
+                                relative flex flex-col items-center justify-center py-1.5 group/cell
+                                ${!isCurrentMonth ? 'opacity-15' : ''}
+                                ${isClickable ? 'cursor-pointer' : 'cursor-default'}
                             `}
                         >
-                            <span className={`text-xs font-semibold ${isCurrentMonth ? cfg.text : 'text-k-text-quaternary/30'}`}>
-                                {day.date.getDate()}
-                            </span>
-                            {/* Status dot — RPE-colored for completed days */}
-                            {isCurrentMonth && day.status !== 'rest' && day.status !== 'out_of_program' && (
-                                <div
-                                    className={`mt-0.5 w-1.5 h-1.5 rounded-full ${
-                                        day.status === 'done'
-                                            ? (day.completedSessions[0]?.rpe != null
-                                                ? (day.completedSessions[0].rpe! >= 10 ? 'bg-red-400' : day.completedSessions[0].rpe! >= 8 ? 'bg-yellow-400' : day.completedSessions[0].rpe! >= 6 ? 'bg-emerald-400' : 'bg-white/40')
-                                                : 'bg-violet-500')
-                                            : day.status === 'compensated'
-                                                ? 'bg-slate-400'
-                                                : day.status === 'missed'
-                                                    ? 'bg-red-400'
-                                                    : 'bg-k-text-quaternary/50'
-                                    }`}
-                                />
+                            {/* Circle + number container */}
+                            <div className="relative flex items-center justify-center w-8 h-8">
+                                {/* Completed: solid colored circle */}
+                                {isCurrentMonth && isDone && (
+                                    <div className={`absolute inset-0.5 rounded-full ${circleBg}`} />
+                                )}
+                                {/* Historic: soft violet circle */}
+                                {isCurrentMonth && isHistoric && (
+                                    <div className="absolute inset-0.5 rounded-full bg-violet-100 dark:bg-violet-500/20" />
+                                )}
+                                {/* Today: violet ring */}
+                                {day.isToday && isCurrentMonth && (
+                                    <div className="absolute inset-0 rounded-full ring-2 ring-violet-500 dark:ring-violet-400" />
+                                )}
+                                {/* The number */}
+                                <span className={`relative text-xs font-semibold leading-none ${
+                                    isDone && isCurrentMonth
+                                        ? 'text-white font-bold'
+                                        : isHistoric && isCurrentMonth
+                                            ? 'text-violet-600 dark:text-violet-300 font-bold'
+                                            : isMissed && isCurrentMonth
+                                                ? 'text-red-400'
+                                                : isCurrentMonth
+                                                    ? 'text-[#3C3C43] dark:text-k-text-secondary'
+                                                    : 'text-[#D2D2D7] dark:text-k-text-quaternary/30'
+                                }`}>
+                                    {day.date.getDate()}
+                                </span>
+                            </div>
+
+                            {/* Tiny dot below for scheduled/missed (no circle) */}
+                            <div className="h-1 flex items-center justify-center">
+                                {isCurrentMonth && isScheduled && (
+                                    <div className="w-1 h-1 rounded-full bg-violet-300 dark:bg-violet-500/40" />
+                                )}
+                                {isCurrentMonth && isMissed && (
+                                    <div className="w-1 h-1 rounded-full bg-red-300 dark:bg-red-500/40" />
+                                )}
+                            </div>
+
+                            {/* Tooltip */}
+                            {isCurrentMonth && (isDone || isHistoric || isMissed) && (
+                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-[#1C1C1E] dark:bg-surface-card border border-transparent dark:border-k-border-primary rounded-md text-[9px] font-bold text-white opacity-0 group-hover/cell:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap shadow-lg">
+                                    {isDone ? (rpe != null ? `PSE ${rpe}` : 'Concluído') : isHistoric ? 'Programa anterior' : 'Faltou'}
+                                </div>
                             )}
                         </button>
                     )
                 })}
             </div>
+
+            {/* Program period bar — thin and subtle */}
+            {days.some(d => d.isInProgram && d.date.getMonth() === anchorMonth) && (() => {
+                const firstIdx = days.findIndex(d => d.isInProgram && d.date.getMonth() === anchorMonth)
+                const lastIdx = days.reduce((acc, d, i) => (d.isInProgram && d.date.getMonth() === anchorMonth) ? i : acc, 0)
+                const leftPct = (firstIdx / days.length) * 100
+                const rightPct = 100 - ((lastIdx + 1) / days.length) * 100
+                return (
+                    <div className="mt-1.5 relative h-1 rounded-full bg-[#F0F0F0] dark:bg-white/5 overflow-hidden">
+                        <div
+                            className="absolute inset-y-0 rounded-full bg-violet-400/50 dark:bg-violet-500/30"
+                            style={{ left: `${leftPct}%`, right: `${rightPct}%` }}
+                        />
+                    </div>
+                )
+            })()}
         </div>
     )
 }
@@ -266,15 +337,26 @@ function MonthView({
 // Metrics
 // ---------------------------------------------------------------------------
 
-function MetricsPanel({ days }: { days: CalendarDay[] }) {
+function MetricsBar({ days }: { days: CalendarDay[] }) {
     const metrics = useMemo(() => {
         const today = new Date()
         today.setHours(0, 0, 0, 0)
 
+        // Count sessions from current program (in-program days)
         const relevant = days.filter(d => d.isInProgram && d.date <= today)
         const scheduledPast = relevant.filter(d => d.scheduledWorkouts.length > 0).length
         const fulfilledPast = relevant.filter(d => d.status === 'done' || d.status === 'compensated').length
         const rate = scheduledPast > 0 ? Math.round((fulfilledPast / scheduledPast) * 100) : 0
+
+        // Count ALL completed sessions (including historic from other programs)
+        const allCompleted = days.filter(d => d.date <= today && (d.status === 'done' || d.status === 'done_historic' || d.status === 'compensated')).length
+
+        // Historic-only sessions
+        const historicCount = days.filter(d => d.date <= today && d.status === 'done_historic').length
+        const currentCount = days.filter(d => d.date <= today && d.status === 'done').length
+
+        // Are we viewing a period that has program data?
+        const hasProgramDays = relevant.length > 0
 
         // Streak: consecutive completed/compensated days going backwards
         let streak = 0
@@ -286,27 +368,51 @@ function MetricsPanel({ days }: { days: CalendarDay[] }) {
             else break
         }
 
-        return { rate, streak }
+        return { rate, streak, allCompleted, hasProgramDays, historicCount, currentCount }
     }, [days])
 
+    if (metrics.allCompleted === 0 && !metrics.hasProgramDays) return null
+
     return (
-        <div className="flex items-center gap-10">
-            <div>
-                <p className="text-[10px] font-bold text-[#8E8E93] dark:text-k-text-quaternary mb-1">
-                    Taxa de Adesão
-                </p>
-                <div className="flex items-baseline gap-1">
-                    <span className="text-2xl font-black text-[#1C1C1E] dark:text-white">{metrics.rate}%</span>
+        <div className="mt-4 pt-3 border-t border-[#F0F0F0] dark:border-k-border-subtle">
+            <div className="flex items-center gap-4 flex-wrap">
+                {/* Total sessions this period */}
+                <div className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                    <span className="text-[10px] font-bold text-[#6E6E73] dark:text-k-text-tertiary">
+                        {metrics.currentCount} {metrics.currentCount === 1 ? 'treino' : 'treinos'}
+                    </span>
                 </div>
-            </div>
-            <div>
-                <p className="text-[10px] font-bold text-[#8E8E93] dark:text-k-text-quaternary mb-1">
-                    Sequência
-                </p>
-                <div className="flex items-baseline gap-1">
-                    <span className="text-2xl font-black text-violet-400">{metrics.streak}</span>
-                    <span className="text-[10px] font-bold text-[#8E8E93] dark:text-k-text-tertiary">treinos</span>
-                </div>
+
+                {/* Historic sessions */}
+                {metrics.historicCount > 0 && (
+                    <div className="flex items-center gap-1.5">
+                        <div className="w-2 h-2 rounded-full bg-violet-300 dark:bg-violet-500/40" />
+                        <span className="text-[10px] font-bold text-[#6E6E73] dark:text-k-text-tertiary">
+                            {metrics.historicCount} de outro programa
+                        </span>
+                    </div>
+                )}
+
+                {/* Adherence rate (only when in-program) */}
+                {metrics.hasProgramDays && (
+                    <div className="flex items-center gap-1.5 ml-auto">
+                        <span className="text-[10px] font-bold text-[#AEAEB2] dark:text-k-text-quaternary">Adesão</span>
+                        <span className={`text-[11px] font-black ${
+                            metrics.rate >= 80 ? 'text-emerald-500' : metrics.rate >= 50 ? 'text-amber-500' : 'text-red-500'
+                        }`}>
+                            {metrics.rate}%
+                        </span>
+                    </div>
+                )}
+
+                {/* Streak (only when in-program and > 0) */}
+                {metrics.hasProgramDays && metrics.streak > 0 && (
+                    <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-bold text-[#AEAEB2] dark:text-k-text-quaternary">Sequência</span>
+                        <span className="text-[11px] font-black text-violet-500">{metrics.streak}</span>
+                    </div>
+                )}
             </div>
         </div>
     )
@@ -346,6 +452,7 @@ export function ProgramCalendar({
     scheduledWorkouts,
     initialSessions,
     onDayClick,
+    studentId,
 }: ProgramCalendarProps) {
     const [viewMode, setViewMode] = useState<'week' | 'month'>('week')
     const [anchorDate, setAnchorDate] = useState(() => new Date())
@@ -368,7 +475,8 @@ export function ProgramCalendar({
     // All cached sessions as array
     const allSessions = useMemo(() => Array.from(sessionsCache.values()), [sessionsCache])
 
-    // Generate calendar days
+    // Generate calendar days — pass allSessions as both program sessions and historic sessions
+    // so that days outside the current program also show completed workouts
     const calendarDays = useMemo(
         () =>
             generateCalendarDays(
@@ -378,8 +486,9 @@ export function ProgramCalendar({
                 allSessions,
                 programStartedAt,
                 programDurationWeeks,
+                studentId ? allSessions : undefined,
             ),
-        [range, scheduledWorkouts, allSessions, programStartedAt, programDurationWeeks],
+        [range, scheduledWorkouts, allSessions, programStartedAt, programDurationWeeks, studentId],
     )
 
     // Fetch sessions for a new range and merge into cache
@@ -391,6 +500,7 @@ export function ProgramCalendar({
                     programId,
                     newRange.start.toISOString(),
                     newRange.end.toISOString(),
+                    studentId,
                 )
                 if (result.success && result.data) {
                     setSessionsCache((prev) => {
@@ -403,7 +513,7 @@ export function ProgramCalendar({
                 }
             })
         },
-        [programId],
+        [programId, studentId],
     )
 
     // Navigation
@@ -483,19 +593,15 @@ export function ProgramCalendar({
             </div>
 
             {/* Calendar body */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div>
                 {viewMode === 'week' ? (
                     <WeekView days={calendarDays} onDayClick={onDayClick} />
                 ) : (
                     <MonthView days={calendarDays} anchorDate={anchorDate} onDayClick={onDayClick} />
                 )}
 
-                {/* Divider */}
-                <div className="h-px w-full bg-k-border-subtle md:hidden" />
-                <div className="hidden md:block w-px h-16 bg-k-border-subtle" />
-
-                {/* Metrics */}
-                <MetricsPanel days={calendarDays} />
+                {/* Inline metrics bar */}
+                <MetricsBar days={calendarDays} />
             </div>
         </div>
     )

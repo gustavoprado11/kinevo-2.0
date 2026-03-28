@@ -8,14 +8,14 @@ export interface InsightItem {
     id: string
     student_id: string | null
     student_name: string | null
-    category: 'alert' | 'progression' | 'suggestion' | 'summary'
+    category: 'alert' | 'progression' | 'suggestion' | 'summary' | 'pinned_note'
     priority: 'critical' | 'high' | 'medium' | 'low'
     title: string
     body: string
     action_type: string | null
     action_metadata: Record<string, any>
     status: 'new' | 'read' | 'dismissed' | 'acted'
-    source: 'rules' | 'llm'
+    source: 'rules' | 'llm' | 'trainer'
     insight_key: string
     created_at: string
 }
@@ -131,4 +131,55 @@ export async function getInsightCounts(): Promise<InsightCounts> {
         new: data.filter(d => d.status === 'new').length,
         read: data.filter(d => d.status === 'read').length,
     }
+}
+
+// ── Pinned Notes ──
+
+export async function createPinnedNote(
+    studentId: string,
+    text: string,
+): Promise<{ success: boolean; id?: string; error?: string }> {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: 'Não autenticado' }
+
+    const { data: trainer } = await supabase
+        .from('trainers')
+        .select('id')
+        .eq('auth_user_id', user.id)
+        .single()
+    if (!trainer) return { success: false, error: 'Trainer não encontrado' }
+
+    const insightKey = `pinned_note:${studentId}:${Date.now()}`
+
+    const { data, error } = await supabase
+        .from('assistant_insights')
+        .insert({
+            trainer_id: trainer.id,
+            student_id: studentId,
+            category: 'pinned_note',
+            priority: 'low',
+            title: 'Nota do treinador',
+            body: text,
+            status: 'read', // pins don't need "new" badge
+            source: 'trainer',
+            insight_key: insightKey,
+        })
+        .select('id')
+        .single()
+
+    if (error) return { success: false, error: error.message }
+    return { success: true, id: data?.id }
+}
+
+export async function deletePinnedNote(insightId: string): Promise<{ success: boolean }> {
+    const supabase = await createClient()
+
+    const { error } = await supabase
+        .from('assistant_insights')
+        .delete()
+        .eq('id', insightId)
+        .eq('category', 'pinned_note')
+
+    return { success: !error }
 }

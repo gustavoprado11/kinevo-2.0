@@ -2,30 +2,37 @@
 
 import { motion } from 'framer-motion'
 
-const metrics = [
-    { value: '50+', label: 'treinadores já usam o Kinevo' },
-    { value: '500+', label: 'programas prescritos na plataforma' },
-    { value: '0%', label: 'taxa sobre seus pagamentos' },
+const badges = [
+    { label: 'iOS & Android', emoji: '📱' },
+    { label: 'Apple Watch', emoji: '⌚' },
+    { label: 'Stripe Payments', emoji: '💳' },
+    { label: 'Modo Offline', emoji: '📡' },
+    { label: 'IA Integrada', emoji: '🤖' },
+    { label: 'Live Activity', emoji: '🔴' },
 ]
+
+// Duplicate for seamless marquee loop
+const marqueeItems = [...badges, ...badges]
 
 export function LandingSocialProof() {
     return (
-        <section className="bg-[#F5F5F7] py-16 md:py-20">
-            <div className="mx-auto max-w-5xl px-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12 text-center">
-                    {metrics.map((m, i) => (
-                        <motion.div
-                            key={m.label}
-                            initial={{ opacity: 0, y: 20 }}
-                            whileInView={{ opacity: 1, y: 0 }}
-                            viewport={{ once: true, margin: '-50px' }}
-                            transition={{ duration: 0.6, ease: 'easeOut', delay: i * 0.1 }}
+        <section className="relative py-12 md:py-16 bg-white border-y border-[#E8E8ED] overflow-hidden">
+            {/* Fade edges */}
+            <div className="absolute left-0 top-0 bottom-0 w-20 md:w-32 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none" />
+            <div className="absolute right-0 top-0 bottom-0 w-20 md:w-32 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none" />
+
+            <div className="flex items-center">
+                <div className="animate-marquee flex items-center gap-8 md:gap-12 whitespace-nowrap">
+                    {marqueeItems.map((badge, i) => (
+                        <div
+                            key={`${badge.label}-${i}`}
+                            className="flex items-center gap-2.5 px-2"
                         >
-                            <p className="font-jakarta text-4xl md:text-5xl font-extrabold bg-gradient-to-r from-[#7C3AED] to-[#A855F7] bg-clip-text text-transparent">
-                                {m.value}
-                            </p>
-                            <p className="font-jakarta text-sm text-[#86868B] mt-2">{m.label}</p>
-                        </motion.div>
+                            <span className="text-xl">{badge.emoji}</span>
+                            <span className="font-jakarta text-sm md:text-base font-medium text-[#6E6E73]">
+                                {badge.label}
+                            </span>
+                        </div>
                     ))}
                 </div>
             </div>
