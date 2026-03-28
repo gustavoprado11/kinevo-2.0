@@ -61,15 +61,9 @@ export function LandingTestimonials() {
                     transition={{ duration: 0.7, ease: 'easeOut' }}
                     className="text-center max-w-3xl mx-auto"
                 >
-                    <span className="font-jakarta text-sm font-semibold uppercase tracking-widest text-[#7C3AED]">
-                        Depoimentos
-                    </span>
-                    <h2 className="font-jakarta text-3xl md:text-5xl font-bold tracking-tight text-[#1D1D1F] mt-4">
+                    <h2 className="font-jakarta text-3xl md:text-5xl font-bold tracking-tight text-[#1D1D1F]">
                         Quem usa, recomenda.
                     </h2>
-                    <p className="font-jakarta text-lg text-[#86868B] mt-4">
-                        Veja o que treinadores reais estão dizendo sobre o Kinevo.
-                    </p>
                 </motion.div>
 
                 {/* Testimonial cards — bento grid */}
