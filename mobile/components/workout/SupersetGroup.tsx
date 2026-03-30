@@ -11,7 +11,7 @@ interface SupersetGroupProps {
     onToggleSetComplete: (globalExerciseIndex: number, setIndex: number) => void;
     onVideoPress?: (url: string) => void;
     onSwapPress?: (globalExerciseIndex: number) => void;
-    globalIndexOffset: number;
+    globalIndices: number[];
 }
 
 function computeRoundInfo(exercises: ExerciseData[]) {
@@ -36,7 +36,7 @@ export function SupersetGroup({
     onToggleSetComplete,
     onVideoPress,
     onSwapPress,
-    globalIndexOffset,
+    globalIndices,
 }: SupersetGroupProps) {
     const { currentRound, totalRounds } = computeRoundInfo(exercises);
     const allDone = currentRound >= totalRounds;
@@ -82,7 +82,7 @@ export function SupersetGroup({
 
             {/* Exercise cards with connectors */}
             {exercises.map((exercise, localIdx) => {
-                const globalIdx = globalIndexOffset + localIdx;
+                const globalIdx = globalIndices[localIdx];
 
                 return (
                     <React.Fragment key={exercise.id}>

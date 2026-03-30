@@ -703,7 +703,7 @@ export default function WorkoutPlayerScreen() {
                         // Build unified render list ordered by order_index
                         type RenderItem =
                             | { type: 'exercise'; exercise: ExerciseData; globalIndex: number; orderIndex: number }
-                            | { type: 'superset'; exercises: ExerciseData[]; supersetId: string; supersetRestSeconds: number; globalIndexOffset: number; orderIndex: number }
+                            | { type: 'superset'; exercises: ExerciseData[]; supersetId: string; supersetRestSeconds: number; globalIndices: number[]; orderIndex: number }
                             | { type: 'note'; note: WorkoutNote; orderIndex: number }
                             | { type: 'section_header'; label: string; orderIndex: number }
                             | { type: 'warmup_cardio'; exercise: ExerciseData; orderIndex: number };
@@ -747,7 +747,7 @@ export default function WorkoutPlayerScreen() {
                                     exercises: group,
                                     supersetId: exercise.supersetId,
                                     supersetRestSeconds: exercise.supersetRestSeconds || 60,
-                                    globalIndexOffset: group[0]._globalIndex,
+                                    globalIndices: group.map((e) => e._globalIndex),
                                     orderIndex: groupOrderIndex,
                                 });
                             } else {
@@ -853,7 +853,7 @@ export default function WorkoutPlayerScreen() {
                                                 onToggleSetComplete={(gi, si) => handleToggleSetComplete(gi, si)}
                                                 onVideoPress={(url) => setVideoModalUrl(url)}
                                                 onSwapPress={(gi) => openSwapModal(gi)}
-                                                globalIndexOffset={item.globalIndexOffset}
+                                                globalIndices={item.globalIndices}
                                             />
                                         );
                                     }

@@ -699,7 +699,7 @@ export default function TrainingRoomScreen() {
                             onToggleSetComplete={(globalIdx, setIdx) => {
                                 handleToggleSetComplete(globalIdx, setIdx);
                             }}
-                            globalIndexOffset={group[0]._gi}
+                            globalIndices={group.map((e) => e._gi)}
                         />
                     ),
                 });

@@ -473,7 +473,7 @@ export function TrainingRoomClient({ trainerId }: TrainingRoomClientProps) {
                                                         }
                                                         onSwapPress={handleSwapPress}
                                                         onVideoPress={handleVideoPress}
-                                                        globalIndexOffset={group[0]._gi}
+                                                        globalIndices={group.map((e) => e._gi)}
                                                     />
                                                 ),
                                             })

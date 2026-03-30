@@ -13,7 +13,7 @@ interface SupersetGroupProps {
     onToggleComplete: (globalIdx: number, setIdx: number) => void
     onSwapPress?: (globalIdx: number) => void
     onVideoPress?: (videoUrl: string | undefined) => void
-    globalIndexOffset: number
+    globalIndices: number[]
 }
 
 function computeRoundInfo(exercises: ExerciseData[]) {
@@ -40,7 +40,7 @@ export function SupersetGroup({
     onToggleComplete,
     onSwapPress,
     onVideoPress,
-    globalIndexOffset,
+    globalIndices,
 }: SupersetGroupProps) {
     const { currentRound, totalRounds } = computeRoundInfo(exercises)
     const allDone = currentRound >= totalRounds
@@ -69,7 +69,7 @@ export function SupersetGroup({
             {/* Exercise cards */}
             <div className="space-y-3">
                 {exercises.map((exercise, localIdx) => {
-                    const globalIdx = globalIndexOffset + localIdx
+                    const globalIdx = globalIndices[localIdx]
                     return (
                         <ExerciseCard
                             key={exercise.id}
