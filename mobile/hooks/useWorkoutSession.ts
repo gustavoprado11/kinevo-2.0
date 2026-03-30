@@ -438,9 +438,34 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                     }
                 }
 
-                // 4. Initialize exercise state and fetch history
+                // 4. Fetch trainer custom videos for exercise items
                 const exerciseItems = items.filter((item: any) => item.item_type === 'exercise');
                 const warmupCardioItems = items.filter((item: any) => item.item_type === 'warmup' || item.item_type === 'cardio');
+                const exerciseIds = exerciseItems.map((item: any) => item.exercise_id).filter(Boolean);
+                const trainerVideoMap = new Map<string, string>();
+
+                if (exerciseIds.length > 0) {
+                    // Get coach_id for video resolution (student's trainer)
+                    const { data: studentForVideos }: { data: any; error: any } = await supabase
+                        .from('students' as any)
+                        .select('coach_id')
+                        .eq('auth_user_id', user.id)
+                        .single();
+
+                    if (studentForVideos?.coach_id) {
+                        const { data: trainerVideos }: { data: any; error: any } = await supabase
+                            .from('trainer_exercise_videos' as any)
+                            .select('exercise_id, video_url')
+                            .eq('trainer_id', studentForVideos.coach_id)
+                            .in('exercise_id', exerciseIds);
+
+                        for (const tv of trainerVideos || []) {
+                            trainerVideoMap.set(tv.exercise_id, tv.video_url);
+                        }
+                    }
+                }
+
+                // 5. Initialize exercise state and fetch history
                 const exercisesData: ExerciseData[] = await Promise.all(exerciseItems.map(async (item: any) => {
                     let previousLoad: string | undefined = undefined;
                     let previousSets: PreviousSetData[] | undefined = undefined;
@@ -461,7 +486,7 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                         sets: item.sets || 3,
                         reps: item.reps || '10',
                         rest_seconds: item.rest_seconds || 60,
-                        video_url: item.exercises?.video_url,
+                        video_url: trainerVideoMap.get(item.exercise_id) || item.exercises?.video_url,
                         substitute_exercise_ids: item.substitute_exercise_ids || [],
                         swap_source: 'none',
                         setsData: createInitialSets(item.sets || 3),

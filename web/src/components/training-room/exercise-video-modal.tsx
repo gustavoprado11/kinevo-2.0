@@ -1,7 +1,7 @@
 'use client'
 
 import { X } from 'lucide-react'
-import { normalizeYouTubeEmbedUrl } from '@/lib/youtube'
+import { normalizeYouTubeEmbedUrl, isDirectVideoUrl } from '@/lib/youtube'
 
 interface ExerciseVideoModalProps {
     isOpen: boolean
@@ -19,6 +19,7 @@ export function ExerciseVideoModal({
     if (!isOpen) return null
 
     const embedUrl = normalizeYouTubeEmbedUrl(videoUrl)
+    const isDirect = isDirectVideoUrl(videoUrl)
 
     return (
         <div className="fixed inset-0 z-modal flex items-center justify-center">
@@ -41,7 +42,16 @@ export function ExerciseVideoModal({
                     </p>
                 )}
                 <div className="relative w-full rounded-xl overflow-hidden bg-black" style={{ aspectRatio: '16/9' }}>
-                    {embedUrl ? (
+                    {isDirect ? (
+                        <video
+                            src={videoUrl!}
+                            title={exerciseName || 'Demonstração do exercício'}
+                            controls
+                            autoPlay
+                            playsInline
+                            className="absolute inset-0 w-full h-full object-contain"
+                        />
+                    ) : embedUrl ? (
                         <iframe
                             src={embedUrl}
                             title={exerciseName || 'Demonstração do exercício'}

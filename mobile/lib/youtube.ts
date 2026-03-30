@@ -31,3 +31,16 @@ export function extractYoutubeId(url: string | null | undefined): string | null 
 
     return null;
 }
+
+/**
+ * Checks if a URL points to a direct video file (MP4, MOV, WebM).
+ */
+export function isDirectVideoUrl(url: string | null | undefined): boolean {
+    if (!url) return false;
+    try {
+        const u = new URL(url);
+        return /\.(mp4|mov|webm)(\?.*)?$/i.test(u.pathname);
+    } catch {
+        return false;
+    }
+}

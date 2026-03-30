@@ -2,8 +2,9 @@ import React, { useEffect, useState } from "react";
 import { View, Text, ScrollView, ActivityIndicator, useWindowDimensions } from "react-native";
 import { Stack, useLocalSearchParams } from "expo-router";
 import YoutubePlayer from "react-native-youtube-iframe";
+import { Video, ResizeMode } from "expo-av";
 import { supabase } from "../../lib/supabase";
-import { extractYouTubeId } from "../../utils/youtube";
+import { extractYouTubeId, isDirectVideoUrl } from "../../utils/youtube";
 import type { Exercise } from "../../hooks/useExerciseLibrary";
 
 const DIFFICULTY_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
@@ -28,12 +29,33 @@ export default function ExerciseDetailScreen() {
                     .single();
 
                 if (data) {
+                    // Resolve trainer custom video
+                    let resolvedVideoUrl = data.video_url;
+                    const { data: studentData } = await (supabase as any)
+                        .from("students")
+                        .select("coach_id")
+                        .eq("auth_user_id", (await supabase.auth.getUser()).data.user?.id)
+                        .single();
+
+                    if (studentData?.coach_id) {
+                        const { data: trainerVideo } = await (supabase as any)
+                            .from("trainer_exercise_videos")
+                            .select("video_url")
+                            .eq("trainer_id", studentData.coach_id)
+                            .eq("exercise_id", data.id)
+                            .single();
+
+                        if (trainerVideo?.video_url) {
+                            resolvedVideoUrl = trainerVideo.video_url;
+                        }
+                    }
+
                     setExercise({
                         id: data.id,
                         name: data.name,
                         equipment: data.equipment,
                         owner_id: data.owner_id,
-                        video_url: data.video_url,
+                        video_url: resolvedVideoUrl,
                         instructions: data.instructions,
                         difficulty_level: data.difficulty_level,
                         muscle_groups: ((data as any).exercise_muscle_groups ?? [])
@@ -51,6 +73,7 @@ export default function ExerciseDetailScreen() {
     }, [id]);
 
     const videoId = exercise ? extractYouTubeId(exercise.video_url) : null;
+    const isDirect = exercise ? isDirectVideoUrl(exercise.video_url) : false;
     const difficulty = exercise?.difficulty_level
         ? DIFFICULTY_CONFIG[exercise.difficulty_level]
         : null;
@@ -86,7 +109,7 @@ export default function ExerciseDetailScreen() {
                 contentContainerStyle={{ paddingBottom: 60 }}
             >
                 {/* Video */}
-                {videoId && (
+                {videoId ? (
                     <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
                         <View style={{ borderRadius: 14, overflow: "hidden" }}>
                             <YoutubePlayer
@@ -96,7 +119,18 @@ export default function ExerciseDetailScreen() {
                             />
                         </View>
                     </View>
-                )}
+                ) : isDirect && exercise.video_url ? (
+                    <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
+                        <View style={{ borderRadius: 14, overflow: "hidden" }}>
+                            <Video
+                                source={{ uri: exercise.video_url }}
+                                style={{ width: width - 40, height: (width - 40) * 9 / 16 }}
+                                useNativeControls
+                                resizeMode={ResizeMode.CONTAIN}
+                            />
+                        </View>
+                    </View>
+                ) : null}
 
                 {/* Info Card */}
                 <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>

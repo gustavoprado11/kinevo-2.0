@@ -1,0 +1,502 @@
+# Sistema de Monetização por Indicação — Embaixadores Kinevo (MVP)
+
+## Status
+- [x] Rascunho
+- [ ] Em implementação
+- [ ] Concluída
+
+## Contexto
+
+O Kinevo está lançando um Programa de Embaixadores para aquisição orgânica de treinadores via indicação. O modelo é inspirado no sistema de cupons da Growth Suplementos — familiar para treinadores/influenciadores fitness — mas com uma vantagem: **comissão recorrente** enquanto o indicado mantiver a assinatura ativa.
+
+Estamos começando com 2-3 embaixadores para validar o modelo antes de escalar.
+
+### Modelo de negócio atual
+- Assinatura Pro: **R$39,90/mês** (treinador paga, aluno usa grátis)
+- Pagamento via Stripe Checkout + Billing
+- Existe plano gratuito com limitações e plano Pro sem limitações
+
+### Regras de negócio do programa
+- **Benefício para quem usa o cupom:** 20% de desconto nos 2 primeiros meses (R$31,92/mês → R$39,90/mês a partir do 3º)
+- **Comissão para o embaixador:** 10% recorrente sobre cada pagamento do indicado (~R$3,19/mês nos primeiros 2 meses, ~R$3,99/mês depois)
+- **Comissão cessa** em: cancelamento, reembolso, inadimplência
+- Treinador **não pode usar seu próprio cupom**
+- Cupom: alfanumérico, case-insensitive, sem espaços, único por embaixador
+
+## Objetivo
+
+Implementar o MVP do sistema de embaixadores com: cadastro de embaixadores via admin, cupom integrado ao Stripe Checkout, tracking de indicações e comissões via webhooks, e painel do embaixador no dashboard.
+
+**Fora do MVP (fases futuras):** solicitação/aprovação de saques via Pix, painel admin completo com relatórios, detecção automática de fraude, período de transição pós-desativação.
+
+## Escopo
+
+### Incluído (MVP — esta spec)
+- Rota admin protegida (`/admin`) para cadastrar/gerenciar embaixadores e cupons
+- Integração Stripe: criação de Coupons e Promotion Codes programaticamente
+- Checkout com cupom pré-aplicado via URL (`/pro?cupom=CODIGO`)
+- Campo de cupom manual no checkout para quem não veio pelo link
+- Tracking de indicações via metadata da subscription no Stripe
+- Webhook handlers para calcular comissões automaticamente
+- Painel do embaixador (`/embaixador`) com métricas e histórico
+- Migration com tabelas, RLS e políticas
+
+### Excluído (fases futuras)
+- Solicitação e processamento de saques via Pix
+- Painel admin com relatórios avançados (CAC, LTV, ROI por embaixador)
+- Detecção automática de fraude (mesmo IP/dispositivo)
+- Período de transição de 3 meses após desativação do embaixador
+- Landing page dedicada por embaixador (`/ref/CODIGO`)
+- Notificações push para o embaixador
+- Cupom em trial gratuito
+- Acúmulo com outras promoções
+
+## Arquivos Afetados
+
+### Banco de Dados (Supabase)
+- **Nova migration** — tabelas `ambassadors`, `referrals`, `commissions`
+- **RLS policies** para cada tabela
+
+### Web Dashboard — Novas páginas/componentes
+- `/admin` — rota protegida para gerenciamento de embaixadores
+- `/embaixador` — painel do embaixador no dashboard do treinador
+- Componentes do painel do embaixador (métricas, lista de indicações, histórico de comissões)
+- Componentes do admin (lista de embaixadores, formulário de criação, ativação/desativação)
+
+### Web Dashboard — Modificações
+- **Checkout/página Pro** — aceitar query param `?cupom=CODIGO`, exibir campo de cupom, aplicar Promotion Code no Stripe Checkout Session
+- **Webhook handler do Stripe** — adicionar handlers para tracking de indicações e cálculo de comissões
+- **Middleware/layout** — proteção da rota `/admin` (verificar role admin)
+
+### Arquivos específicos: Investigar
+> O executor deve analisar o codebase para identificar:
+> - Como o Stripe Checkout Session é criado atualmente (arquivo e função)
+> - Onde estão os webhook handlers do Stripe
+> - Como o middleware de auth funciona para proteger rotas
+> - Estrutura do layout do dashboard para adicionar link "Embaixador" no sidebar
+> - Se existe conceito de "role" de usuário (admin) ou se precisa criar
+
+---
+
+## Modelo de Dados
+
+### Tabela `ambassadors`
+
+```sql
+CREATE TABLE ambassadors (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  trainer_id UUID NOT NULL REFERENCES trainers(id) ON DELETE CASCADE,
+  coupon_code TEXT NOT NULL UNIQUE, -- ex: 'LUCAS', sempre uppercase
+  stripe_coupon_id TEXT, -- ID do Stripe Coupon criado
+  stripe_promotion_code_id TEXT, -- ID do Stripe Promotion Code
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
+  activated_at TIMESTAMPTZ DEFAULT now(),
+  deactivated_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(trainer_id) -- um embaixador por treinador
+);
+```
+
+### Tabela `referrals`
+
+```sql
+CREATE TABLE referrals (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  ambassador_id UUID NOT NULL REFERENCES ambassadors(id) ON DELETE CASCADE,
+  referred_trainer_id UUID NOT NULL REFERENCES trainers(id) ON DELETE CASCADE,
+  coupon_code_used TEXT NOT NULL, -- snapshot do cupom usado no momento da indicação
+  stripe_subscription_id TEXT, -- ID da subscription do indicado
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'canceled', 'past_due')),
+  referred_at TIMESTAMPTZ DEFAULT now(),
+  canceled_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(referred_trainer_id) -- cada treinador só pode ser indicado uma vez
+);
+```
+
+### Tabela `commissions`
+
+```sql
+CREATE TABLE commissions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  referral_id UUID NOT NULL REFERENCES referrals(id) ON DELETE CASCADE,
+  ambassador_id UUID NOT NULL REFERENCES ambassadors(id) ON DELETE CASCADE,
+  stripe_invoice_id TEXT NOT NULL UNIQUE, -- garante uma comissão por invoice
+  invoice_amount_cents INTEGER NOT NULL, -- valor pago pelo indicado (em centavos)
+  commission_rate NUMERIC(5,4) NOT NULL DEFAULT 0.10, -- 10%
+  commission_amount_cents INTEGER NOT NULL, -- valor da comissão (em centavos)
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'reversed')),
+  period_start TIMESTAMPTZ, -- início do período da invoice
+  period_end TIMESTAMPTZ, -- fim do período da invoice
+  confirmed_at TIMESTAMPTZ,
+  reversed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+```
+
+### RLS Policies
+
+**`ambassadors`:**
+- Admin: full CRUD (definir como identificar admin — investigar se existe role no projeto)
+- Treinador embaixador: SELECT próprio registro (`trainer_id = current_trainer_id()`)
+- Público: nenhum acesso
+
+**`referrals`:**
+- Admin: full CRUD
+- Embaixador: SELECT onde `ambassador_id` = seu ambassador.id (ver suas indicações)
+- Treinador indicado: nenhum acesso direto (não precisa saber quem o indicou)
+
+**`commissions`:**
+- Admin: full CRUD
+- Embaixador: SELECT onde `ambassador_id` = seu ambassador.id (ver suas comissões)
+
+---
+
+## Comportamento Esperado
+
+### Fluxo 1: Admin cadastra embaixador
+
+1. Admin acessa `/admin` (rota protegida)
+2. Clica em "Novo Embaixador"
+3. Seleciona um treinador existente (busca por nome/email)
+4. Define o código do cupom (ex: `LUCAS`) — sistema valida unicidade e formato
+5. Ao salvar:
+   - Cria registro na tabela `ambassadors`
+   - Chama Stripe API: cria um `Coupon` (20% off, duration: 2 months, `repeating`)
+   - Chama Stripe API: cria um `Promotion Code` vinculado ao Coupon, com `code` = cupom do embaixador e `metadata.ambassador_id`
+   - Salva `stripe_coupon_id` e `stripe_promotion_code_id` no registro
+6. Admin vê o embaixador na lista com status "Ativo"
+
+### Fluxo 2: Novo treinador usa o cupom
+
+**Via link (cupom pré-aplicado):**
+1. Treinador acessa `kinevoapp.com/pro?cupom=LUCAS`
+2. Página de checkout carrega com o cupom já aplicado
+3. Exibe: "Cupom LUCAS aplicado — 20% off nos 2 primeiros meses"
+4. Treinador completa o checkout via Stripe
+
+**Via campo manual:**
+1. Treinador acessa a página de checkout normalmente
+2. Digita o cupom no campo "Cupom de desconto"
+3. Sistema valida em tempo real: cupom existe? embaixador ativo? treinador não é o próprio embaixador?
+4. Se válido: aplica desconto e exibe confirmação
+5. Completa o checkout
+
+**No backend (Stripe Checkout Session):**
+1. Ao criar a Checkout Session, incluir o `promotion_code` do Stripe (se cupom válido)
+2. Nos `metadata` da Checkout Session e/ou `subscription_data.metadata`, incluir:
+   - `ambassador_id`: ID do embaixador
+   - `coupon_code`: código usado
+3. Após checkout completo (webhook `checkout.session.completed`):
+   - Identificar o `ambassador_id` dos metadata
+   - Criar registro em `referrals` vinculando embaixador → novo treinador
+
+### Fluxo 3: Comissão calculada automaticamente via webhook
+
+**`invoice.payment_succeeded`:**
+1. Webhook recebe o evento
+2. Busca a subscription associada à invoice
+3. Verifica se a subscription tem `metadata.ambassador_id`
+4. Se sim:
+   - Calcula comissão: `invoice.amount_paid * 0.10`
+   - Cria registro em `commissions` com status `pending`
+   - Atualiza para `confirmed` (no MVP, confirmação automática — sem delay)
+5. Se não tem metadata de embaixador: ignora (assinatura orgânica)
+
+**`customer.subscription.deleted`:**
+1. Busca referral vinculado a essa subscription
+2. Atualiza `referrals.status` → `canceled`, seta `canceled_at`
+3. Comissões futuras não serão geradas (verificação no handler de `invoice.payment_succeeded`)
+
+**`charge.refunded`:**
+1. Busca a invoice associada ao charge
+2. Busca comissão vinculada a essa invoice
+3. Se existe: atualiza `commissions.status` → `reversed`, seta `reversed_at`
+
+**`invoice.payment_failed`:**
+1. Busca referral vinculado à subscription
+2. Atualiza `referrals.status` → `past_due`
+3. Não gera comissão (o handler de `invoice.payment_succeeded` simplesmente não é acionado)
+
+### Fluxo 4: Embaixador consulta seu painel
+
+1. Treinador embaixador acessa `/embaixador` no dashboard
+2. Vê dashboard com métricas:
+   - **Meu cupom:** `LUCAS` (com botão copiar) + link de indicação (com botão copiar)
+   - **Indicações totais:** quantidade total de treinadores indicados
+   - **Assinantes ativos:** quantidade com status `active`
+   - **Comissão do mês:** soma das comissões `confirmed` do mês corrente
+   - **Comissão total:** soma de todas as comissões `confirmed`
+3. Abaixo, duas seções:
+   - **Minhas indicações:** lista com nome do treinador, data, status (ativo/cancelado/inadimplente)
+   - **Histórico de comissões:** lista com mês, valor, quantidade de pagamentos, status
+4. Se o treinador não é embaixador, a página exibe mensagem: "Quer se tornar um embaixador Kinevo? Entre em contato" (com link ou email)
+
+### Fluxo 5: Admin gerencia embaixadores
+
+1. Admin acessa `/admin`
+2. Vê lista de embaixadores com: nome, cupom, indicações (count), comissão total, status
+3. Pode **desativar** um embaixador: seta `status = 'inactive'`, `deactivated_at = now()`
+   - Promotion Code é desativado no Stripe (`active = false`)
+   - Cupom não pode mais ser usado por novos treinadores
+   - Indicações existentes continuam gerando comissão (no MVP — sem período de transição)
+4. Pode **reativar** um embaixador: seta `status = 'active'`, reativa Promotion Code no Stripe
+5. Pode **criar** novo embaixador (Fluxo 1)
+
+---
+
+## Integração Stripe — Detalhes Técnicos
+
+### Criação do Coupon + Promotion Code (ao cadastrar embaixador)
+
+```typescript
+// Pseudo-código — adaptar ao padrão do projeto
+
+// 1. Criar Coupon no Stripe
+const coupon = await stripe.coupons.create({
+  percent_off: 20,
+  duration: 'repeating',
+  duration_in_months: 2,
+  name: `Embaixador ${couponCode}`,
+  metadata: { ambassador_id: ambassadorId }
+});
+
+// 2. Criar Promotion Code vinculado
+const promoCode = await stripe.promotionCodes.create({
+  coupon: coupon.id,
+  code: couponCode.toUpperCase(),
+  active: true,
+  metadata: { ambassador_id: ambassadorId },
+  restrictions: {
+    first_time_transaction: true // só novos assinantes
+  }
+});
+```
+
+### Checkout Session com cupom
+
+```typescript
+// Ao criar a Checkout Session, se há cupom válido:
+const session = await stripe.checkout.sessions.create({
+  // ... parâmetros existentes
+  discounts: [{ promotion_code: promoCode.stripe_promotion_code_id }],
+  subscription_data: {
+    metadata: {
+      ambassador_id: ambassador.id,
+      coupon_code: couponCode
+    }
+  }
+});
+```
+
+### Validação do cupom (Server Action)
+
+```typescript
+// Pseudo-código da validação
+async function validateCoupon(couponCode: string, trainerId: string) {
+  // 1. Buscar embaixador pelo cupom
+  const ambassador = await findAmbassadorByCoupon(couponCode.toUpperCase());
+
+  if (!ambassador) return { valid: false, error: 'Cupom não encontrado' };
+  if (ambassador.status !== 'active') return { valid: false, error: 'Cupom inativo' };
+  if (ambassador.trainer_id === trainerId) return { valid: false, error: 'Você não pode usar seu próprio cupom' };
+
+  // 2. Verificar se o treinador já usou algum cupom antes
+  const existingReferral = await findReferralByTrainer(trainerId);
+  if (existingReferral) return { valid: false, error: 'Você já utilizou um cupom anteriormente' };
+
+  return { valid: true, ambassador };
+}
+```
+
+---
+
+## Telas e Componentes
+
+### `/admin` — Painel Admin (MVP)
+
+```
+┌─────────────────────────────────────────────┐
+│ Admin Kinevo                                │
+├─────────────────────────────────────────────┤
+│                                             │
+│ Embaixadores                    [+ Novo]    │
+│                                             │
+│ ┌───────────┬────────┬──────┬───────┬─────┐ │
+│ │ Nome      │ Cupom  │ Ind. │ Com.  │ St. │ │
+│ ├───────────┼────────┼──────┼───────┼─────┤ │
+│ │ Lucas S.  │ LUCAS  │ 12   │ R$180 │ ●   │ │
+│ │ Ana Costa │ ANA    │ 5    │ R$60  │ ●   │ │
+│ └───────────┴────────┴──────┴───────┴─────┘ │
+│                                             │
+│ Modal: Novo Embaixador                      │
+│ ┌─────────────────────────────────────────┐ │
+│ │ Treinador: [busca por nome/email     ]  │ │
+│ │ Cupom:     [CODIGO                   ]  │ │
+│ │            (automático uppercase)       │ │
+│ │                                         │ │
+│ │            [Cancelar]  [Criar]          │ │
+│ └─────────────────────────────────────────┘ │
+└─────────────────────────────────────────────┘
+```
+
+### `/embaixador` — Painel do Embaixador
+
+```
+┌─────────────────────────────────────────────┐
+│ Programa de Embaixadores                    │
+├─────────────────────────────────────────────┤
+│                                             │
+│ Meu cupom: LUCAS          [Copiar cupom]    │
+│ Meu link: kinevoapp.com/pro?cupom=LUCAS     │
+│                            [Copiar link]    │
+│                                             │
+│ ┌──────────┐ ┌──────────┐ ┌──────────┐     │
+│ │ Indicações│ │ Ativos   │ │ Comissão │     │
+│ │    12     │ │    9     │ │ R$45,80  │     │
+│ │  total    │ │ assin.   │ │ este mês │     │
+│ └──────────┘ └──────────┘ └──────────┘     │
+│                                             │
+│ ┌──────────────────┐                        │
+│ │ Comissão Total   │                        │
+│ │ R$380,00         │                        │
+│ └──────────────────┘                        │
+│                                             │
+│ Minhas Indicações                           │
+│ ┌───────────────┬────────────┬────────────┐ │
+│ │ Treinador     │ Data       │ Status     │ │
+│ ├───────────────┼────────────┼────────────┤ │
+│ │ João Silva    │ 15/03/2026 │ ● Ativo    │ │
+│ │ Maria Santos  │ 02/03/2026 │ ● Ativo    │ │
+│ │ Pedro Lima    │ 10/01/2026 │ ○ Cancelado│ │
+│ └───────────────┴────────────┴────────────┘ │
+│                                             │
+│ Histórico de Comissões                      │
+│ ┌──────────┬─────────┬───────┬────────────┐ │
+│ │ Período  │ Pgtos   │ Valor │ Status     │ │
+│ ├──────────┼─────────┼───────┼────────────┤ │
+│ │ Mar/2026 │ 9       │R$45,80│ Confirmado │ │
+│ │ Fev/2026 │ 10      │R$48,20│ Confirmado │ │
+│ │ Jan/2026 │ 8       │R$35,00│ Confirmado │ │
+│ └──────────┴─────────┴───────┴────────────┘ │
+└─────────────────────────────────────────────┘
+```
+
+### Checkout (`/pro`) — Modificações
+
+```
+┌─────────────────────────────────────────────┐
+│ Assine o Kinevo Pro                         │
+├─────────────────────────────────────────────┤
+│                                             │
+│ R$39,90/mês                                 │
+│                                             │
+│ Cupom de desconto:                          │
+│ ┌─────────────────────────┬───────────────┐ │
+│ │ LUCAS                   │  [Aplicar]    │ │
+│ └─────────────────────────┴───────────────┘ │
+│ ✓ Cupom LUCAS aplicado                      │
+│   20% off nos 2 primeiros meses             │
+│   Você pagará R$31,92/mês por 2 meses       │
+│                                             │
+│              [Assinar agora]                │
+└─────────────────────────────────────────────┘
+```
+
+---
+
+## Critérios de Aceite
+
+### Cadastro de Embaixadores (Admin)
+- [ ] Rota `/admin` protegida — somente admin acessa
+- [ ] Admin consegue criar embaixador selecionando treinador + definindo cupom
+- [ ] Cupom é validado: alfanumérico, sem espaços, único, uppercase automático
+- [ ] Criação gera Coupon + Promotion Code no Stripe
+- [ ] Admin consegue desativar embaixador (desativa Promotion Code no Stripe)
+- [ ] Admin consegue reativar embaixador (reativa Promotion Code no Stripe)
+- [ ] Lista de embaixadores exibe nome, cupom, contagem de indicações, comissão total, status
+
+### Checkout com Cupom
+- [ ] URL `kinevoapp.com/pro?cupom=LUCAS` carrega checkout com cupom pré-aplicado
+- [ ] Campo manual permite digitar cupom e validar em tempo real
+- [ ] Validação impede: cupom inexistente, cupom inativo, auto-indicação, cupom já usado pelo treinador
+- [ ] Desconto de 20% é aplicado nos 2 primeiros meses via Stripe
+- [ ] Metadata `ambassador_id` e `coupon_code` são gravados na subscription
+
+### Tracking de Indicações (Webhooks)
+- [ ] `checkout.session.completed` cria registro em `referrals`
+- [ ] `invoice.payment_succeeded` calcula e registra comissão em `commissions`
+- [ ] `customer.subscription.deleted` atualiza referral para `canceled`
+- [ ] `charge.refunded` reverte comissão para `reversed`
+- [ ] `invoice.payment_failed` atualiza referral para `past_due`, não gera comissão
+- [ ] Assinaturas sem metadata de embaixador são ignoradas (orgânicas)
+
+### Painel do Embaixador
+- [ ] Página `/embaixador` acessível no dashboard do treinador embaixador
+- [ ] Exibe cupom e link de indicação com botões de copiar
+- [ ] Métricas: indicações totais, assinantes ativos, comissão do mês, comissão total
+- [ ] Lista de indicações com nome, data, status
+- [ ] Histórico de comissões agrupado por mês
+- [ ] Treinador não-embaixador vê mensagem informativa em vez do painel
+
+### Geral
+- [ ] Sem novos erros de TypeScript
+- [ ] Retrocompatível com checkout e webhooks existentes
+- [ ] RLS impede embaixador de ver dados de outros embaixadores
+- [ ] Stripe é a fonte da verdade para comissões (calculadas a partir de webhooks reais)
+
+## Restrições Técnicas
+
+- Seguir convenções documentadas no `CLAUDE.md`
+- Mudanças cirúrgicas — não reescrever lógica existente de checkout ou webhooks
+- Estender os webhook handlers existentes (não substituir)
+- Valores monetários sempre em centavos (integer) no banco, formatados na UI
+- `coupon_code` sempre armazenado em UPPERCASE
+- Proteção da rota `/admin`: investigar mecanismo existente de roles ou criar o mínimo necessário (flag `is_admin` na tabela de trainers ou similar)
+- Usar Server Components para o painel do embaixador (dados sensíveis, sem necessidade de interatividade pesada)
+- Server Actions para mutations (criar embaixador, validar cupom)
+
+## Edge Cases
+
+- **Treinador já é assinante Pro e tenta usar cupom:** rejeitar — cupom só para novos assinantes (`first_time_transaction: true` no Stripe)
+- **Cupom digitado com case diferente (lucas, Lucas, LUCAS):** normalizar para UPPERCASE antes de validar
+- **Embaixador desativado enquanto checkout em andamento:** Stripe rejeita o Promotion Code automaticamente se `active = false`
+- **Mesmo treinador tenta usar dois cupons diferentes:** `UNIQUE(referred_trainer_id)` no `referrals` impede
+- **Invoice com valor zero (trial, crédito):** verificar `invoice.amount_paid > 0` antes de calcular comissão
+- **Webhook duplicado do Stripe:** `UNIQUE(stripe_invoice_id)` no `commissions` impede comissão duplicada
+- **Embaixador deleta sua conta:** `ON DELETE CASCADE` em `ambassadors.trainer_id` remove tudo — comissões pendentes são perdidas (aceitável no MVP)
+- **Treinador indicado faz upgrade/downgrade:** comissão segue o valor real pago (`invoice.amount_paid`), não o valor do plano
+- **Checkout sem cupom (orgânico):** subscription não tem metadata de embaixador, webhooks ignoram
+
+## Referências
+
+- Stripe Coupons API: https://stripe.com/docs/api/coupons
+- Stripe Promotion Codes API: https://stripe.com/docs/api/promotion_codes
+- Stripe Checkout Discounts: https://stripe.com/docs/payments/checkout/discounts
+- Webhook handlers existentes no projeto (investigar localização)
+- Modelo Growth Suplementos como inspiração UX (não técnica)
+
+## Testes Requeridos
+
+### Lógica Pura (unitários — obrigatório)
+- [ ] `validateCoupon()` — cupom válido, cupom inexistente, cupom inativo, auto-indicação, cupom já usado
+- [ ] Normalização de cupom (uppercase, trim, caracteres inválidos)
+- [ ] Cálculo de comissão: `amount_paid * rate` com arredondamento correto em centavos
+
+### Server Actions / Queries (recomendado)
+- [ ] `createAmbassador` — cria registro + Stripe Coupon + Promotion Code (mockar Stripe)
+- [ ] `deactivateAmbassador` — atualiza status + desativa Promotion Code no Stripe
+- [ ] `reactivateAmbassador` — atualiza status + reativa Promotion Code no Stripe
+- [ ] Webhook `invoice.payment_succeeded` — cria comissão corretamente; ignora invoices sem embaixador; ignora invoices com amount zero
+- [ ] Webhook `charge.refunded` — reverte comissão; ignora charges sem comissão associada
+- [ ] Webhook `customer.subscription.deleted` — atualiza referral status
+
+### Componentes (fluxos críticos — opcional)
+- [ ] Campo de cupom no checkout: valida, aplica, exibe feedback
+- [ ] Painel do embaixador: renderiza métricas corretamente com dados mock
+
+## Notas de Implementação
+
+_(Preenchido pelo executor durante/após a implementação)_

@@ -3,7 +3,8 @@
 // ============================================================================
 // Tests the full generation pipeline: profile → validateInput → AI/heuristic →
 // validateOutput → fixViolations → output snapshot.
-// Run with: npx tsx web/src/lib/prescription/__tests__/generate-program-e2e.test.ts
+
+import { describe, it, expect } from 'vitest'
 
 import type {
     StudentPrescriptionProfile,
@@ -17,27 +18,6 @@ import { validateInput, validateOutput, fixViolations, resolveAiMode } from '../
 import { buildHeuristicProgram } from '../program-builder'
 import { buildPromptPair, parseAiResponse } from '../prompt-builder'
 import { ENGINE_VERSION } from '../constants'
-
-// ============================================================================
-// Helpers
-// ============================================================================
-
-let passed = 0
-let failed = 0
-
-function assert(condition: boolean, message: string) {
-    if (condition) {
-        passed++
-        console.log(`  ✓ ${message}`)
-    } else {
-        failed++
-        console.error(`  ✗ FAIL: ${message}`)
-    }
-}
-
-function section(title: string) {
-    console.log(`\n━━ ${title} ━━`)
-}
 
 // ============================================================================
 // Fixtures — using EXACT DB muscle group names
@@ -116,12 +96,10 @@ function makeExerciseLibrary(): PrescriptionExerciseRef[] {
 }
 
 // ============================================================================
-// Test 1: Full pipeline — Beginner 3x/week heuristic
+// Tests
 // ============================================================================
 
-section('Full Pipeline — Beginner 3x/week Heuristic')
-
-{
+describe('Full Pipeline — Beginner 3x/week Heuristic', () => {
     const profile = makeProfile({
         training_level: 'beginner',
         goal: 'hypertrophy',
@@ -130,252 +108,207 @@ section('Full Pipeline — Beginner 3x/week Heuristic')
     const exercises = makeExerciseLibrary()
     const exerciseMap = new Map(exercises.map(e => [e.id, e]))
 
-    // Step 1: Resolve mode
-    const aiMode = resolveAiMode(profile, null)
-    assert(aiMode === 'auto', `AI mode = ${aiMode} (expected auto)`)
+    it('resolves AI mode to auto', () => {
+        expect(resolveAiMode(profile, null)).toBe('auto')
+    })
 
-    // Step 2: Validate input
-    const inputValidation = validateInput(profile, exercises)
-    assert(inputValidation.valid === true, 'Input validation passes')
+    it('input validation passes', () => {
+        expect(validateInput(profile, exercises).valid).toBe(true)
+    })
 
-    // Step 3: Build input snapshot
-    const inputSnapshot: PrescriptionInputSnapshot = {
-        profile: {
-            student_id: profile.student_id,
-            training_level: profile.training_level,
-            goal: profile.goal,
-            available_days: profile.available_days,
-            session_duration_minutes: profile.session_duration_minutes,
-            available_equipment: profile.available_equipment,
-            favorite_exercise_ids: profile.favorite_exercise_ids,
-            disliked_exercise_ids: profile.disliked_exercise_ids,
-            medical_restrictions: profile.medical_restrictions,
-            ai_mode: profile.ai_mode,
-            adherence_rate: profile.adherence_rate,
-        },
-        available_exercises: exercises,
-        performance_context: null,
-        engine_version: ENGINE_VERSION,
-    }
-    assert(inputSnapshot.engine_version === '1.0.0', 'Input snapshot has engine version')
-
-    // Step 4: Generate (heuristic — no OpenAI key)
-    const output = buildHeuristicProgram(profile, exercises)
-    assert(output.workouts.length === 3, `Generated ${output.workouts.length} workouts`)
-    assert(output.program.duration_weeks === 4, 'Duration = 4 weeks')
-
-    // Step 5: Validate output
-    const validation = validateOutput(output, profile, exerciseMap)
-    const errors = validation.violations.filter(v => v.severity === 'error')
-    assert(errors.length === 0, `Output passes validation (${errors.length} errors)`)
-
-    // Step 6: Verify snapshot fields on items
-    for (const workout of output.workouts) {
-        for (const item of workout.items) {
-            assert(item.exercise_name !== '', `Item has exercise_name: ${item.exercise_name}`)
-            assert(item.exercise_muscle_group !== '', `Item has muscle_group: ${item.exercise_muscle_group}`)
-            assert(item.sets! >= 1, `Item has sets >= 1: ${item.sets}`)
-            assert(item.reps !== '', `Item has reps: ${item.reps}`)
-            assert(item.rest_seconds! > 0, `Item has rest_seconds > 0: ${item.rest_seconds}`)
+    it('input snapshot has engine version', () => {
+        const inputSnapshot: PrescriptionInputSnapshot = {
+            profile: {
+                student_id: profile.student_id,
+                training_level: profile.training_level,
+                goal: profile.goal,
+                available_days: profile.available_days,
+                session_duration_minutes: profile.session_duration_minutes,
+                available_equipment: profile.available_equipment,
+                favorite_exercise_ids: profile.favorite_exercise_ids,
+                disliked_exercise_ids: profile.disliked_exercise_ids,
+                medical_restrictions: profile.medical_restrictions,
+                ai_mode: profile.ai_mode,
+                adherence_rate: profile.adherence_rate,
+            },
+            available_exercises: exercises,
+            performance_context: null,
+            engine_version: ENGINE_VERSION,
         }
-    }
+        expect(inputSnapshot.engine_version).toBe('1.0.0')
+    })
 
-    // Step 7: Verify reasoning
-    assert(output.reasoning.structure_rationale !== '', 'Reasoning has structure_rationale')
-    assert(output.reasoning.confidence_score > 0, `Confidence = ${output.reasoning.confidence_score}`)
+    it('generates 3 workouts with 4-week duration', () => {
+        const output = buildHeuristicProgram(profile, exercises)
+        expect(output.workouts.length).toBe(3)
+        expect(output.program.duration_weeks).toBe(4)
+    })
 
-    console.log('\n  → Pipeline result: { success: true, source: "heuristic" }')
-}
+    it('output passes validation', () => {
+        const output = buildHeuristicProgram(profile, exercises)
+        const validation = validateOutput(output, profile, exerciseMap)
+        const errors = validation.violations.filter(v => v.severity === 'error')
+        expect(errors.length).toBe(0)
+    })
 
-// ============================================================================
-// Test 2: Prompt builder produces valid prompts
-// ============================================================================
+    it('all items have required snapshot fields', () => {
+        const output = buildHeuristicProgram(profile, exercises)
+        for (const workout of output.workouts) {
+            for (const item of workout.items) {
+                expect(item.exercise_name).toBeTruthy()
+                expect(item.exercise_muscle_group).toBeTruthy()
+                expect(item.sets).toBeGreaterThanOrEqual(1)
+                expect(item.reps).toBeTruthy()
+                expect(item.rest_seconds).toBeGreaterThan(0)
+            }
+        }
+    })
 
-section('Prompt Builder')
+    it('has reasoning with structure_rationale and confidence', () => {
+        const output = buildHeuristicProgram(profile, exercises)
+        expect(output.reasoning.structure_rationale).toBeTruthy()
+        expect(output.reasoning.confidence_score).toBeGreaterThan(0)
+    })
+})
 
-{
+describe('Prompt Builder', () => {
     const profile = makeProfile()
     const exercises = makeExerciseLibrary()
 
-    const { system, user } = buildPromptPair(profile, exercises, null)
+    it('system prompt has required sections', () => {
+        const { system } = buildPromptPair(profile, exercises, null)
+        expect(system).toContain('# PAPEL')
+        expect(system).toContain('# METODOLOGIA KINEVO')
+        expect(system).toContain('# RESTRIÇÕES ABSOLUTAS')
+        expect(system).toContain('# FORMATO DE SAÍDA')
+        expect(system).toContain('# REGRAS DE RESPOSTA')
+        expect(system).toContain('10–12')
+        expect(system).toContain('Bíceps')
+    })
 
-    assert(system.includes('# PAPEL'), 'System prompt has Role section')
-    assert(system.includes('# METODOLOGIA KINEVO'), 'System prompt has Methodology section')
-    assert(system.includes('# RESTRIÇÕES ABSOLUTAS'), 'System prompt has Constraints section')
-    assert(system.includes('# FORMATO DE SAÍDA'), 'System prompt has Output Format section')
-    assert(system.includes('# REGRAS DE RESPOSTA'), 'System prompt has Response Rules section')
-    assert(system.includes('10–12'), 'System prompt includes beginner volume range from constants')
-    assert(system.includes('Bíceps'), 'System prompt includes small muscle groups from constants')
+    it('user prompt is valid JSON with correct structure', () => {
+        const { user } = buildPromptPair(profile, exercises, null)
+        const parsed = JSON.parse(user)
+        expect(parsed.student_profile.training_level).toBe('beginner')
+        expect(Array.isArray(parsed.available_exercises)).toBe(true)
+        expect(parsed.available_exercises.length).toBe(exercises.length)
+    })
+})
 
-    // User prompt is valid JSON
-    let userParsed: any
-    try {
-        userParsed = JSON.parse(user)
-        assert(true, 'User prompt is valid JSON')
-    } catch {
-        assert(false, 'User prompt is valid JSON')
-    }
-
-    assert(userParsed?.student_profile?.training_level === 'beginner', 'User prompt has student training_level')
-    assert(Array.isArray(userParsed?.available_exercises), 'User prompt has exercises array')
-    assert(userParsed.available_exercises.length === exercises.length, `User prompt has ${exercises.length} exercises`)
-}
-
-// ============================================================================
-// Test 3: parseAiResponse
-// ============================================================================
-
-section('parseAiResponse')
-
-{
-    // Valid response
-    const validJson = JSON.stringify({
-        program: { name: 'Test', description: 'Desc', duration_weeks: 4 },
-        workouts: [{
-            name: 'Treino A',
-            order_index: 0,
-            scheduled_days: [1],
-            items: [{
-                exercise_id: 'supino-reto',
-                exercise_name: 'Supino Reto',
-                exercise_muscle_group: 'Peito',
-                exercise_equipment: null,
-                sets: 3,
-                reps: '8-12',
-                rest_seconds: 90,
-                notes: null,
-                substitute_exercise_ids: [],
+describe('parseAiResponse', () => {
+    it('parses valid JSON response', () => {
+        const validJson = JSON.stringify({
+            program: { name: 'Test', description: 'Desc', duration_weeks: 4 },
+            workouts: [{
+                name: 'Treino A',
                 order_index: 0,
+                scheduled_days: [1],
+                items: [{
+                    exercise_id: 'supino-reto',
+                    exercise_name: 'Supino Reto',
+                    exercise_muscle_group: 'Peito',
+                    exercise_equipment: null,
+                    sets: 3,
+                    reps: '8-12',
+                    rest_seconds: 90,
+                    notes: null,
+                    substitute_exercise_ids: [],
+                    order_index: 0,
+                }],
             }],
-        }],
-        reasoning: {
-            structure_rationale: 'Full body',
-            volume_rationale: 'Min volume',
-            workout_notes: ['Treino A: 1 exercício'],
-            attention_flags: [],
-            confidence_score: 0.85,
-        },
+            reasoning: {
+                structure_rationale: 'Full body',
+                volume_rationale: 'Min volume',
+                workout_notes: ['Treino A: 1 exercício'],
+                attention_flags: [],
+                confidence_score: 0.85,
+            },
+        })
+
+        const parsed = parseAiResponse(validJson)
+        expect(parsed).not.toBeNull()
+        expect(parsed!.workouts[0].items[0].exercise_id).toBe('supino-reto')
+        expect(parsed!.reasoning.confidence_score).toBe(0.85)
     })
 
-    const parsed = parseAiResponse(validJson)
-    assert(parsed !== null, 'Valid JSON parses successfully')
-    assert(parsed!.workouts[0].items[0].exercise_id === 'supino-reto', 'Parsed exercise_id correct')
-    assert(parsed!.reasoning.confidence_score === 0.85, 'Parsed confidence_score correct')
-
-    // Invalid response — missing workouts
-    const invalidJson = JSON.stringify({ program: { name: 'X' } })
-    assert(parseAiResponse(invalidJson) === null, 'Invalid JSON (missing workouts) returns null')
-
-    // Invalid response — not JSON
-    assert(parseAiResponse('not json at all') === null, 'Non-JSON returns null')
-
-    // Invalid response — missing exercise_id
-    const missingIdJson = JSON.stringify({
-        program: { name: 'X', description: '', duration_weeks: 4 },
-        workouts: [{ name: 'A', items: [{ sets: 3, reps: '8-12' }] }],
-        reasoning: { structure_rationale: '', volume_rationale: '', workout_notes: [], attention_flags: [], confidence_score: 0.5 },
+    it('returns null for missing workouts', () => {
+        expect(parseAiResponse(JSON.stringify({ program: { name: 'X' } }))).toBeNull()
     })
-    assert(parseAiResponse(missingIdJson) === null, 'Missing exercise_id returns null')
-}
 
-// ============================================================================
-// Test 4: Intermediate 4x/week full pipeline
-// ============================================================================
-
-section('Full Pipeline — Intermediate 4x/week')
-
-{
-    const profile = makeProfile({
-        training_level: 'intermediate',
-        goal: 'weight_loss',
-        available_days: [1, 2, 4, 5],
+    it('returns null for non-JSON', () => {
+        expect(parseAiResponse('not json at all')).toBeNull()
     })
-    const exercises = makeExerciseLibrary()
-    const exerciseMap = new Map(exercises.map(e => [e.id, e]))
-    const perfCtx: PrescriptionPerformanceContext = {
-        weeks_of_history: 8,
-        recent_adherence_rate: 90,
-        recent_avg_rpe: 7.5,
-        stalled_exercise_ids: [],
-        previous_program: null,
-    }
 
-    const aiMode = resolveAiMode(profile, perfCtx)
-    assert(aiMode === 'copilot', `AI mode = ${aiMode}`)
-
-    const output = buildHeuristicProgram(profile, exercises)
-    assert(output.workouts.length === 4, `Generated ${output.workouts.length} workouts`)
-
-    const validation = validateOutput(output, profile, exerciseMap)
-    const errors = validation.violations.filter(v => v.severity === 'error')
-    assert(errors.length === 0, `Validation passes (${errors.length} errors)`)
-
-    console.log('\n  → Pipeline result: { success: true, source: "heuristic" }')
-}
-
-// ============================================================================
-// Test 5: Beginner 5x/week — Full PPL+ validation
-// ============================================================================
-
-section('Full Pipeline — Beginner 5x/week PPL+')
-
-{
-    const profile = makeProfile({
-        training_level: 'beginner',
-        goal: 'hypertrophy',
-        available_days: [1, 2, 3, 5, 6],
-        session_duration_minutes: 60,
+    it('returns null for missing exercise_id', () => {
+        const json = JSON.stringify({
+            program: { name: 'X', description: '', duration_weeks: 4 },
+            workouts: [{ name: 'A', items: [{ sets: 3, reps: '8-12' }] }],
+            reasoning: { structure_rationale: '', volume_rationale: '', workout_notes: [], attention_flags: [], confidence_score: 0.5 },
+        })
+        expect(parseAiResponse(json)).toBeNull()
     })
-    const exercises = makeExerciseLibrary()
-    const exerciseMap = new Map(exercises.map(e => [e.id, e]))
+})
 
-    const output = buildHeuristicProgram(profile, exercises)
+describe('Full Pipeline — Intermediate 4x/week', () => {
+    it('generates valid 4-workout program', () => {
+        const profile = makeProfile({
+            training_level: 'intermediate',
+            goal: 'weight_loss',
+            available_days: [1, 2, 4, 5],
+        })
+        const exercises = makeExerciseLibrary()
+        const exerciseMap = new Map(exercises.map(e => [e.id, e]))
+        const perfCtx: PrescriptionPerformanceContext = {
+            weeks_of_history: 8,
+            recent_adherence_rate: 90,
+            recent_avg_rpe: 7.5,
+            stalled_exercise_ids: [],
+            previous_program: null,
+        }
 
-    assert(output.workouts.length === 5, `Generated ${output.workouts.length} workouts`)
+        expect(resolveAiMode(profile, perfCtx)).toBe('copilot')
 
-    // Each workout: 4-6 exercises
-    for (const w of output.workouts) {
-        assert(
-            w.items.length >= 4 && w.items.length <= 6,
-            `${w.name}: ${w.items.length} exercises (4-6 range)`,
-        )
-    }
+        const output = buildHeuristicProgram(profile, exercises)
+        expect(output.workouts.length).toBe(4)
 
-    // All workouts have at least 1 compound
-    for (const w of output.workouts) {
-        const hasCompound = w.items.some(i => exerciseMap.get(i.exercise_id!)?.is_compound === true)
-        assert(hasCompound, `${w.name}: has compound`)
-    }
+        const validation = validateOutput(output, profile, exerciseMap)
+        const errors = validation.violations.filter(v => v.severity === 'error')
+        expect(errors.length).toBe(0)
+    })
+})
 
-    // Validates without errors
-    const validation = validateOutput(output, profile, exerciseMap)
-    const errors = validation.violations.filter(v => v.severity === 'error')
-    assert(errors.length === 0, `PPL+ validates (${errors.length} errors)`)
+describe('Full Pipeline — Beginner 5x/week PPL+', () => {
+    it('generates valid 5-workout PPL+ program', () => {
+        const profile = makeProfile({
+            training_level: 'beginner',
+            goal: 'hypertrophy',
+            available_days: [1, 2, 3, 5, 6],
+            session_duration_minutes: 60,
+        })
+        const exercises = makeExerciseLibrary()
+        const exerciseMap = new Map(exercises.map(e => [e.id, e]))
 
-    // Coverage: Quadríceps, Posterior de Coxa/Glúteo on distinct days
-    const musclesByWorkout = output.workouts.map(w => ({
-        name: w.name,
-        groups: [...new Set(w.items.map(i => i.exercise_muscle_group))],
-    }))
+        const output = buildHeuristicProgram(profile, exercises)
 
-    const hasQuads = musclesByWorkout.some(w => w.groups.includes('Quadríceps'))
-    const hasPostCoxa = musclesByWorkout.some(w =>
-        w.groups.includes('Posterior de Coxa') || w.groups.includes('Glúteo'),
-    )
-    assert(hasQuads, 'PPL+ covers Quadríceps')
-    assert(hasPostCoxa, 'PPL+ covers Posterior de Coxa / Glúteo')
+        expect(output.workouts.length).toBe(5)
 
-    console.log('\n  → Pipeline result: { success: true, source: "heuristic", structure: "ppl_plus" }')
-}
+        for (const w of output.workouts) {
+            expect(w.items.length).toBeGreaterThanOrEqual(4)
+            expect(w.items.length).toBeLessThanOrEqual(6)
 
-// ============================================================================
-// Summary
-// ============================================================================
+            const hasCompound = w.items.some(i => exerciseMap.get(i.exercise_id!)?.is_compound === true)
+            expect(hasCompound).toBe(true)
+        }
 
-console.log(`\n${'═'.repeat(50)}`)
-console.log(`  Total: ${passed + failed} | Passed: ${passed} | Failed: ${failed}`)
-console.log(`${'═'.repeat(50)}`)
+        const validation = validateOutput(output, profile, exerciseMap)
+        const errors = validation.violations.filter(v => v.severity === 'error')
+        expect(errors.length).toBe(0)
 
-if (failed > 0) {
-    process.exit(1)
-}
+        const musclesByWorkout = output.workouts.map(w => ({
+            name: w.name,
+            groups: [...new Set(w.items.map(i => i.exercise_muscle_group))],
+        }))
+        expect(musclesByWorkout.some(w => w.groups.includes('Quadríceps'))).toBe(true)
+        expect(musclesByWorkout.some(w => w.groups.includes('Posterior de Coxa') || w.groups.includes('Glúteo'))).toBe(true)
+    })
+})

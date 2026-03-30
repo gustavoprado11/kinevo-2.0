@@ -1,7 +1,8 @@
 // ============================================================================
 // Kinevo Prescription Engine — Unit Tests
 // ============================================================================
-// Run with: npx tsx web/src/lib/prescription/__tests__/rules-engine.test.ts
+
+import { describe, it, expect } from 'vitest'
 
 import {
     validateInput,
@@ -12,6 +13,7 @@ import {
 } from '../rules-engine'
 
 import { buildHeuristicProgram } from '../program-builder'
+import { calcExercisesPerWorkout } from '../constants'
 
 import type {
     StudentPrescriptionProfile,
@@ -22,27 +24,6 @@ import type {
 } from '@kinevo/shared/types/prescription'
 
 import { VOLUME_RANGES } from '@kinevo/shared/types/prescription'
-
-// ============================================================================
-// Test Helpers
-// ============================================================================
-
-let passed = 0
-let failed = 0
-
-function assert(condition: boolean, message: string) {
-    if (condition) {
-        passed++
-        console.log(`  ✓ ${message}`)
-    } else {
-        failed++
-        console.error(`  ✗ FAIL: ${message}`)
-    }
-}
-
-function section(title: string) {
-    console.log(`\n━━ ${title} ━━`)
-}
 
 // ============================================================================
 // Fixtures — using EXACT DB muscle group names
@@ -129,93 +110,74 @@ function makeExerciseMap(exercises: PrescriptionExerciseRef[]): Map<string, Pres
 }
 
 // ============================================================================
-// Tests: validateInput
+// Tests
 // ============================================================================
 
-section('validateInput')
+describe('validateInput', () => {
+    it('valid profile + exercises passes', () => {
+        const result = validateInput(makeProfile(), makeExerciseLibrary())
+        expect(result.valid).toBe(true)
+    })
 
-{
-    const profile = makeProfile()
-    const exercises = makeExerciseLibrary()
-    const result = validateInput(profile, exercises)
-    assert(result.valid === true, 'Valid profile + exercises → passes')
-}
+    it('empty available_days fails', () => {
+        const result = validateInput(makeProfile({ available_days: [] }), makeExerciseLibrary())
+        expect(result.valid).toBe(false)
+        expect(result.errors.some(e => e.includes('pelo menos 1 dia'))).toBe(true)
+    })
 
-{
-    const profile = makeProfile({ available_days: [] })
-    const exercises = makeExerciseLibrary()
-    const result = validateInput(profile, exercises)
-    assert(result.valid === false, 'Empty available_days → fails')
-    assert(result.errors.some(e => e.includes('pelo menos 1 dia')), 'Error message mentions days')
-}
+    it('empty exercise library fails', () => {
+        const result = validateInput(makeProfile(), [])
+        expect(result.valid).toBe(false)
+    })
 
-{
-    const profile = makeProfile()
-    const result = validateInput(profile, [])
-    assert(result.valid === false, 'Empty exercise library → fails')
-}
+    it('no compound exercises fails', () => {
+        const result = validateInput(makeProfile(), [makeExercise({ is_compound: false })])
+        expect(result.valid).toBe(false)
+    })
+})
 
-{
-    const profile = makeProfile()
-    const isolationOnly = [makeExercise({ is_compound: false })]
-    const result = validateInput(profile, isolationOnly)
-    assert(result.valid === false, 'No compound exercises → fails')
-}
+describe('validateOutput — Volume', () => {
+    it('volume exceeding max for primary group triggers error', () => {
+        const profile = makeProfile({ training_level: 'beginner' })
+        const exercises = makeExerciseLibrary()
+        const exerciseMap = makeExerciseMap(exercises)
 
-// ============================================================================
-// Tests: validateOutput — Volume exceeds max
-// ============================================================================
-
-section('validateOutput — Volume')
-
-{
-    const profile = makeProfile({ training_level: 'beginner' })
-    const exercises = makeExerciseLibrary()
-    const exerciseMap = makeExerciseMap(exercises)
-
-    // Build a program that intentionally exceeds volume for Peito (PRIMARY group)
-    const overVolume: PrescriptionOutputSnapshot = {
-        program: { name: 'Test', description: 'Test', duration_weeks: 4 },
-        workouts: [
-            {
+        const overVolume: PrescriptionOutputSnapshot = {
+            program: { name: 'Test', description: 'Test', duration_weeks: 4 },
+            workouts: [{
                 name: 'Treino A',
                 order_index: 0,
-                scheduled_days: [1, 3, 5], // 3x/week = sets × 3
-                items: [
-                    {
-                        exercise_id: 'supino-reto', exercise_name: 'Supino Reto',
-                        exercise_muscle_group: 'Peito', exercise_equipment: null,
-                        sets: 5, reps: '8-12', rest_seconds: 90, notes: null,
-                        substitute_exercise_ids: [], order_index: 0,
-                    },
-                ],
+                scheduled_days: [1, 3, 5],
+                items: [{
+                    exercise_id: 'supino-reto', exercise_name: 'Supino Reto',
+                    exercise_muscle_group: 'Peito', exercise_equipment: null,
+                    sets: 5, reps: '8-12', rest_seconds: 90, notes: null,
+                    substitute_exercise_ids: [], order_index: 0,
+                }],
+            }],
+            reasoning: {
+                structure_rationale: '', volume_rationale: '',
+                workout_notes: [], attention_flags: [], confidence_score: 0.8,
             },
-        ],
-        reasoning: {
-            structure_rationale: '', volume_rationale: '',
-            workout_notes: [], attention_flags: [], confidence_score: 0.8,
-        },
-    }
+        }
 
-    // 5 sets × 3 days = 15 weekly sets for Peito. Beginner max = 12.
-    const result = validateOutput(overVolume, profile, exerciseMap)
-    assert(result.hasErrors === true, 'Volume 15 sets/week for beginner Peito → error')
-    const volumeViolation = result.violations.find(v => v.rule_id === 'volume_exceeds_max')
-    assert(volumeViolation !== undefined, 'Violation is volume_exceeds_max')
-    assert(volumeViolation!.context.muscle_group === 'Peito', 'Violation targets Peito')
-    assert(volumeViolation!.context.actual_value === 15, 'Actual value is 15')
-}
+        // 5 sets × 3 days = 15 weekly sets for Peito. Beginner max = 12.
+        const result = validateOutput(overVolume, profile, exerciseMap)
+        expect(result.hasErrors).toBe(true)
+        const volumeViolation = result.violations.find(v => v.rule_id === 'volume_exceeds_max')
+        expect(volumeViolation).toBeDefined()
+        expect(volumeViolation!.context.muscle_group).toBe('Peito')
+        expect(volumeViolation!.context.actual_value).toBe(15)
+    })
 
-{
-    // Volume for a SMALL group should NOT trigger volume_exceeds_max
-    const profile = makeProfile({ training_level: 'beginner' })
-    const exercises = makeExerciseLibrary()
-    const exerciseMap = makeExerciseMap(exercises)
+    it('small group high volume does NOT trigger volume_exceeds_max', () => {
+        const profile = makeProfile({ training_level: 'beginner' })
+        const exercises = makeExerciseLibrary()
+        const exerciseMap = makeExerciseMap(exercises)
 
-    const smallGroupHighVolume: PrescriptionOutputSnapshot = {
-        program: { name: 'Test', description: 'Test', duration_weeks: 4 },
-        workouts: [
-            {
+        const smallGroupHighVolume: PrescriptionOutputSnapshot = {
+            program: { name: 'Test', description: 'Test', duration_weeks: 4 },
+            workouts: [{
                 name: 'Treino A',
                 order_index: 0,
                 scheduled_days: [1, 3, 5],
@@ -233,42 +195,35 @@ section('validateOutput — Volume')
                         substitute_exercise_ids: [], order_index: 1,
                     },
                 ],
+            }],
+            reasoning: {
+                structure_rationale: '', volume_rationale: '',
+                workout_notes: [], attention_flags: [], confidence_score: 0.8,
             },
-        ],
-        reasoning: {
-            structure_rationale: '', volume_rationale: '',
-            workout_notes: [], attention_flags: [], confidence_score: 0.8,
-        },
-    }
+        }
 
-    // Bíceps: 5 × 3 = 15 weekly sets. BUT Bíceps is SMALL, so no volume_exceeds_max error.
-    const result = validateOutput(smallGroupHighVolume, profile, exerciseMap)
-    const volumeViolation = result.violations.find(v => v.rule_id === 'volume_exceeds_max' && v.context.muscle_group === 'Bíceps')
-    assert(volumeViolation === undefined, 'Small group (Bíceps) high volume does NOT trigger volume_exceeds_max')
-}
-
-// ============================================================================
-// Tests: validateOutput — Medical restriction
-// ============================================================================
-
-section('validateOutput — Medical Restriction')
-
-{
-    const profile = makeProfile({
-        medical_restrictions: [{
-            description: 'Dor no joelho',
-            restricted_exercise_ids: ['leg-press'],
-            restricted_muscle_groups: [],
-            severity: 'moderate',
-        }],
+        const result = validateOutput(smallGroupHighVolume, profile, exerciseMap)
+        const volumeViolation = result.violations.find(v => v.rule_id === 'volume_exceeds_max' && v.context.muscle_group === 'Bíceps')
+        expect(volumeViolation).toBeUndefined()
     })
-    const exercises = makeExerciseLibrary()
-    const exerciseMap = makeExerciseMap(exercises)
+})
 
-    const withRestricted: PrescriptionOutputSnapshot = {
-        program: { name: 'Test', description: 'Test', duration_weeks: 4 },
-        workouts: [
-            {
+describe('validateOutput — Medical Restriction', () => {
+    it('restricted exercise in program triggers error', () => {
+        const profile = makeProfile({
+            medical_restrictions: [{
+                description: 'Dor no joelho',
+                restricted_exercise_ids: ['leg-press'],
+                restricted_muscle_groups: [],
+                severity: 'moderate',
+            }],
+        })
+        const exercises = makeExerciseLibrary()
+        const exerciseMap = makeExerciseMap(exercises)
+
+        const withRestricted: PrescriptionOutputSnapshot = {
+            program: { name: 'Test', description: 'Test', duration_weeks: 4 },
+            workouts: [{
                 name: 'Treino A',
                 order_index: 0,
                 scheduled_days: [1],
@@ -286,43 +241,37 @@ section('validateOutput — Medical Restriction')
                         substitute_exercise_ids: [], order_index: 1,
                     },
                 ],
+            }],
+            reasoning: {
+                structure_rationale: '', volume_rationale: '',
+                workout_notes: [], attention_flags: [], confidence_score: 0.8,
             },
-        ],
-        reasoning: {
-            structure_rationale: '', volume_rationale: '',
-            workout_notes: [], attention_flags: [], confidence_score: 0.8,
-        },
-    }
+        }
 
-    const result = validateOutput(withRestricted, profile, exerciseMap)
-    assert(result.hasErrors === true, 'Restricted exercise in program → error')
-    const restrictedV = result.violations.find(v => v.rule_id === 'restricted_exercise')
-    assert(restrictedV !== undefined, 'Violation is restricted_exercise')
-    assert(restrictedV!.context.exercise_id === 'leg-press', 'Violation targets leg-press')
-}
-
-// ============================================================================
-// Tests: fixViolations — Remove restricted exercise
-// ============================================================================
-
-section('fixViolations')
-
-{
-    const profile = makeProfile({
-        medical_restrictions: [{
-            description: 'Dor no joelho',
-            restricted_exercise_ids: ['leg-press'],
-            restricted_muscle_groups: [],
-            severity: 'moderate',
-        }],
+        const result = validateOutput(withRestricted, profile, exerciseMap)
+        expect(result.hasErrors).toBe(true)
+        const restrictedV = result.violations.find(v => v.rule_id === 'restricted_exercise')
+        expect(restrictedV).toBeDefined()
+        expect(restrictedV!.context.exercise_id).toBe('leg-press')
     })
-    const exercises = makeExerciseLibrary()
-    const exerciseMap = makeExerciseMap(exercises)
+})
 
-    const withRestricted: PrescriptionOutputSnapshot = {
-        program: { name: 'Test', description: 'Test', duration_weeks: 4 },
-        workouts: [
-            {
+describe('fixViolations', () => {
+    it('removes restricted exercise', () => {
+        const profile = makeProfile({
+            medical_restrictions: [{
+                description: 'Dor no joelho',
+                restricted_exercise_ids: ['leg-press'],
+                restricted_muscle_groups: [],
+                severity: 'moderate',
+            }],
+        })
+        const exercises = makeExerciseLibrary()
+        const exerciseMap = makeExerciseMap(exercises)
+
+        const withRestricted: PrescriptionOutputSnapshot = {
+            program: { name: 'Test', description: 'Test', duration_weeks: 4 },
+            workouts: [{
                 name: 'Treino A',
                 order_index: 0,
                 scheduled_days: [1],
@@ -340,328 +289,230 @@ section('fixViolations')
                         substitute_exercise_ids: [], order_index: 1,
                     },
                 ],
+            }],
+            reasoning: {
+                structure_rationale: '', volume_rationale: '',
+                workout_notes: [], attention_flags: [], confidence_score: 0.8,
             },
-        ],
-        reasoning: {
-            structure_rationale: '', volume_rationale: '',
-            workout_notes: [], attention_flags: [], confidence_score: 0.8,
-        },
-    }
+        }
 
-    const violations = validateOutput(withRestricted, profile, exerciseMap).violations
-    const restrictedViolations = violations.filter(v => v.rule_id === 'restricted_exercise')
+        const violations = validateOutput(withRestricted, profile, exerciseMap).violations
+        const restrictedViolations = violations.filter(v => v.rule_id === 'restricted_exercise')
+        const fixResult = fixViolations(withRestricted, restrictedViolations, exerciseMap)
 
-    const fixResult = fixViolations(withRestricted, restrictedViolations, exerciseMap)
-    assert(fixResult.appliedFixes.length > 0, 'Fix was applied')
-    assert(fixResult.appliedFixes[0].auto_fixed === true, 'Fix marked as auto_fixed')
+        expect(fixResult.appliedFixes.length).toBeGreaterThan(0)
+        expect(fixResult.appliedFixes[0].auto_fixed).toBe(true)
 
-    // Check the exercise was removed
-    const remainingItems = fixResult.fixed.workouts[0].items
-    const hasLegPress = remainingItems.some(i => i.exercise_id === 'leg-press')
-    assert(hasLegPress === false, 'Leg Press removed from program after fix')
-    assert(remainingItems.length === 1, 'Only agachamento remains')
-}
+        const remainingItems = fixResult.fixed.workouts[0].items
+        expect(remainingItems.some(i => i.exercise_id === 'leg-press')).toBe(false)
+        expect(remainingItems.length).toBe(1)
+    })
 
-// ============================================================================
-// Tests: fixViolations — Reduce volume
-// ============================================================================
+    it('reduces volume when exceeding max', () => {
+        const profile = makeProfile({ training_level: 'beginner' })
+        const exercises = makeExerciseLibrary()
+        const exerciseMap = makeExerciseMap(exercises)
 
-section('fixViolations — Volume Reduction')
-
-{
-    const profile = makeProfile({ training_level: 'beginner' })
-    const exercises = makeExerciseLibrary()
-    const exerciseMap = makeExerciseMap(exercises)
-
-    const overVolume: PrescriptionOutputSnapshot = {
-        program: { name: 'Test', description: 'Test', duration_weeks: 4 },
-        workouts: [
-            {
+        const overVolume: PrescriptionOutputSnapshot = {
+            program: { name: 'Test', description: 'Test', duration_weeks: 4 },
+            workouts: [{
                 name: 'Treino A',
                 order_index: 0,
                 scheduled_days: [1, 3, 5],
-                items: [
-                    {
-                        exercise_id: 'supino-reto', exercise_name: 'Supino Reto',
-                        exercise_muscle_group: 'Peito', exercise_equipment: null,
-                        sets: 5, reps: '8-12', rest_seconds: 90, notes: null,
-                        substitute_exercise_ids: [], order_index: 0,
-                    },
-                ],
+                items: [{
+                    exercise_id: 'supino-reto', exercise_name: 'Supino Reto',
+                    exercise_muscle_group: 'Peito', exercise_equipment: null,
+                    sets: 5, reps: '8-12', rest_seconds: 90, notes: null,
+                    substitute_exercise_ids: [], order_index: 0,
+                }],
+            }],
+            reasoning: {
+                structure_rationale: '', volume_rationale: '',
+                workout_notes: [], attention_flags: [], confidence_score: 0.8,
             },
-        ],
-        reasoning: {
-            structure_rationale: '', volume_rationale: '',
-            workout_notes: [], attention_flags: [], confidence_score: 0.8,
-        },
-    }
-
-    const violations = validateOutput(overVolume, profile, exerciseMap).violations
-    const volumeViolation = violations.filter(v => v.rule_id === 'volume_exceeds_max')
-    assert(volumeViolation.length === 1, 'Has 1 volume violation')
-
-    const fixResult = fixViolations(overVolume, volumeViolation, exerciseMap)
-    assert(fixResult.appliedFixes.length === 1, 'Volume fix applied')
-
-    // Check volume is now within range
-    const newVolume = computeWeeklyVolumePerMuscle(fixResult.fixed.workouts)
-    const maxBeginner = VOLUME_RANGES.beginner.max
-    assert(
-        (newVolume['Peito'] || 0) <= maxBeginner,
-        `Peito volume reduced to ${newVolume['Peito']} (max ${maxBeginner})`,
-    )
-}
-
-// ============================================================================
-// Tests: resolveAiMode
-// ============================================================================
-
-section('resolveAiMode')
-
-{
-    const beginnerProfile = makeProfile({ training_level: 'beginner' })
-    assert(resolveAiMode(beginnerProfile, null) === 'auto', 'Beginner → auto')
-}
-
-{
-    const advancedProfile = makeProfile({ training_level: 'advanced' })
-    assert(resolveAiMode(advancedProfile, null) === 'assistant', 'Advanced → assistant')
-}
-
-{
-    const intermediateProfile = makeProfile({ training_level: 'intermediate' })
-    const withHistory: PrescriptionPerformanceContext = {
-        weeks_of_history: 8,
-        recent_adherence_rate: 85,
-        recent_avg_rpe: 7,
-        stalled_exercise_ids: [],
-        previous_program: null,
-    }
-    assert(resolveAiMode(intermediateProfile, withHistory) === 'copilot', 'Intermediate + 8 weeks history → copilot')
-}
-
-{
-    const intermediateNoHistory = makeProfile({ training_level: 'intermediate' })
-    assert(resolveAiMode(intermediateNoHistory, null) === 'auto', 'Intermediate + no history → auto')
-}
-
-{
-    const severeRestriction = makeProfile({
-        training_level: 'beginner',
-        medical_restrictions: [{
-            description: 'Hérnia de disco',
-            restricted_exercise_ids: [],
-            restricted_muscle_groups: ['Lombar'],
-            severity: 'severe',
-        }],
-    })
-    assert(resolveAiMode(severeRestriction, null) === 'assistant', 'Severe restriction → assistant (overrides beginner)')
-}
-
-// ============================================================================
-// Tests: buildHeuristicProgram — Beginner 3x/week
-// ============================================================================
-
-section('buildHeuristicProgram — Beginner 3x/week')
-
-{
-    const profile = makeProfile({
-        training_level: 'beginner',
-        goal: 'hypertrophy',
-        available_days: [1, 3, 5],
-    })
-    const exercises = makeExerciseLibrary()
-    const exerciseMap = makeExerciseMap(exercises)
-
-    const program = buildHeuristicProgram(profile, exercises)
-
-    assert(program.workouts.length === 3, `Generates 3 workouts (got ${program.workouts.length})`)
-    assert(program.program.duration_weeks === 4, 'Duration is 4 weeks')
-    assert(program.program.name.includes('3x/semana'), 'Name includes frequency')
-
-    // Validate the program passes rules
-    const validation = validateOutput(program, profile, exerciseMap)
-    const errors = validation.violations.filter(v => v.severity === 'error')
-
-    if (errors.length > 0) {
-        console.error('  Errors found:')
-        for (const e of errors) {
-            console.error(`    - [${e.rule_id}] ${e.description}`)
         }
-    }
 
-    assert(errors.length === 0, `Program passes validateOutput without errors (had ${errors.length})`)
-}
+        const violations = validateOutput(overVolume, profile, exerciseMap).violations
+        const volumeViolation = violations.filter(v => v.rule_id === 'volume_exceeds_max')
+        expect(volumeViolation.length).toBe(1)
 
-// ============================================================================
-// Tests: buildHeuristicProgram — Intermediate 4x/week
-// ============================================================================
+        const fixResult = fixViolations(overVolume, volumeViolation, exerciseMap)
+        expect(fixResult.appliedFixes.length).toBe(1)
 
-section('buildHeuristicProgram — Intermediate 4x/week')
-
-{
-    const profile = makeProfile({
-        training_level: 'intermediate',
-        goal: 'weight_loss',
-        available_days: [1, 2, 4, 5],
+        const newVolume = computeWeeklyVolumePerMuscle(fixResult.fixed.workouts)
+        const maxBeginner = VOLUME_RANGES.beginner.max
+        expect(newVolume['Peito'] || 0).toBeLessThanOrEqual(maxBeginner)
     })
-    const exercises = makeExerciseLibrary()
-    const exerciseMap = makeExerciseMap(exercises)
+})
 
-    const program = buildHeuristicProgram(profile, exercises)
-
-    assert(program.workouts.length === 4, `Generates 4 workouts (got ${program.workouts.length})`)
-
-    const validation = validateOutput(program, profile, exerciseMap)
-    const errors = validation.violations.filter(v => v.severity === 'error')
-    assert(errors.length === 0, `Intermediate 4x passes without errors (had ${errors.length})`)
-}
-
-// ============================================================================
-// Tests: buildHeuristicProgram — Advanced 5x/week (PPL+)
-// ============================================================================
-
-section('buildHeuristicProgram — Beginner 5x/week (PPL+)')
-
-{
-    const profile = makeProfile({
-        training_level: 'beginner',
-        goal: 'hypertrophy',
-        available_days: [1, 2, 3, 5, 6],
-        session_duration_minutes: 60,
+describe('resolveAiMode', () => {
+    it('beginner → auto', () => {
+        expect(resolveAiMode(makeProfile({ training_level: 'beginner' }), null)).toBe('auto')
     })
-    const exercises = makeExerciseLibrary()
-    const exerciseMap = makeExerciseMap(exercises)
 
-    const program = buildHeuristicProgram(profile, exercises)
+    it('advanced → assistant', () => {
+        expect(resolveAiMode(makeProfile({ training_level: 'advanced' }), null)).toBe('assistant')
+    })
 
-    assert(program.workouts.length === 5, `Generates 5 workouts (got ${program.workouts.length})`)
-
-    // Each workout should have 4-6 exercises
-    for (const w of program.workouts) {
-        assert(
-            w.items.length >= 4 && w.items.length <= 6,
-            `${w.name}: ${w.items.length} exercises (expected 4-6)`,
-        )
-    }
-
-    // No workout should have more than 2 exercises for small groups
-    for (const w of program.workouts) {
-        const smallGroupCounts: Record<string, number> = {}
-        for (const item of w.items) {
-            const group = item.exercise_muscle_group!
-            if (['Bíceps', 'Tríceps', 'Panturrilha', 'Abdominais', 'Trapézio'].includes(group)) {
-                smallGroupCounts[group] = (smallGroupCounts[group] || 0) + 1
-            }
+    it('intermediate + 8 weeks history → copilot', () => {
+        const perfCtx: PrescriptionPerformanceContext = {
+            weeks_of_history: 8,
+            recent_adherence_rate: 85,
+            recent_avg_rpe: 7,
+            stalled_exercise_ids: [],
+            previous_program: null,
         }
-        const maxSmallInWorkout = Math.max(0, ...Object.values(smallGroupCounts))
-        assert(maxSmallInWorkout <= 2, `${w.name}: max ${maxSmallInWorkout} exercises for any single small group (expected ≤ 2)`)
-    }
+        expect(resolveAiMode(makeProfile({ training_level: 'intermediate' }), perfCtx)).toBe('copilot')
+    })
 
-    // All workouts should have at least 1 compound
-    for (const w of program.workouts) {
-        const hasCompound = w.items.some(item => {
-            const ref = exerciseMap.get(item.exercise_id!)
-            return ref?.is_compound === true
+    it('intermediate + no history → auto', () => {
+        expect(resolveAiMode(makeProfile({ training_level: 'intermediate' }), null)).toBe('auto')
+    })
+
+    it('severe restriction → assistant (overrides beginner)', () => {
+        const profile = makeProfile({
+            training_level: 'beginner',
+            medical_restrictions: [{
+                description: 'Hérnia de disco',
+                restricted_exercise_ids: [],
+                restricted_muscle_groups: ['Lombar'],
+                severity: 'severe',
+            }],
         })
-        assert(hasCompound, `${w.name}: has at least 1 compound exercise`)
-    }
-
-    // Should cover Quadríceps, Posterior de Coxa, and Glúteo
-    const allMuscleGroups = new Set(program.workouts.flatMap(w => w.items.map(i => i.exercise_muscle_group!)))
-    assert(allMuscleGroups.has('Quadríceps'), 'Covers Quadríceps')
-    assert(allMuscleGroups.has('Posterior de Coxa') || allMuscleGroups.has('Glúteo'), 'Covers Posterior de Coxa or Glúteo')
-
-    // Validate against rules
-    const validation = validateOutput(program, profile, exerciseMap)
-    const errors = validation.violations.filter(v => v.severity === 'error')
-
-    if (errors.length > 0) {
-        console.error('  Errors found:')
-        for (const e of errors) {
-            console.error(`    - [${e.rule_id}] ${e.description}`)
-        }
-    }
-
-    assert(errors.length === 0, `PPL+ program passes validateOutput without errors (had ${errors.length})`)
-
-    // Print program summary
-    console.log('\n  Program summary:')
-    for (const w of program.workouts) {
-        const groups = [...new Set(w.items.map(i => i.exercise_muscle_group!))]
-        console.log(`    ${w.name}: ${w.items.length} ex, ${w.items.reduce((s, i) => s + (i.sets ?? 0), 0)} sets [${groups.join(', ')}]`)
-        for (const item of w.items) {
-            console.log(`      - ${item.exercise_name} (${item.exercise_muscle_group}) ${item.sets}×${item.reps} rest ${item.rest_seconds}s`)
-        }
-    }
-}
-
-// ============================================================================
-// Tests: buildHeuristicProgram — With medical restrictions
-// ============================================================================
-
-section('buildHeuristicProgram — With restrictions')
-
-{
-    const profile = makeProfile({
-        training_level: 'beginner',
-        available_days: [1, 3, 5],
-        medical_restrictions: [{
-            description: 'Dor no joelho',
-            restricted_exercise_ids: ['leg-press', 'agachamento-livre'],
-            restricted_muscle_groups: [],
-            severity: 'moderate',
-        }],
+        expect(resolveAiMode(profile, null)).toBe('assistant')
     })
-    const exercises = makeExerciseLibrary()
-    const exerciseMap = makeExerciseMap(exercises)
+})
 
-    const program = buildHeuristicProgram(profile, exercises)
+describe('buildHeuristicProgram', () => {
+    it('beginner 3x/week generates valid program', () => {
+        const profile = makeProfile({
+            training_level: 'beginner',
+            goal: 'hypertrophy',
+            available_days: [1, 3, 5],
+        })
+        const exercises = makeExerciseLibrary()
+        const exerciseMap = makeExerciseMap(exercises)
 
-    // Check that restricted exercises are NOT in the program
-    const allExerciseIds = program.workouts.flatMap(w => w.items.map(i => i.exercise_id))
-    assert(!allExerciseIds.includes('leg-press'), 'Leg Press not in program')
-    assert(!allExerciseIds.includes('agachamento-livre'), 'Agachamento not in program')
+        const program = buildHeuristicProgram(profile, exercises)
 
-    // Should still pass validation (restricted exercises should not appear)
-    const validation = validateOutput(program, profile, exerciseMap)
-    const restrictedViolations = validation.violations.filter(v => v.rule_id === 'restricted_exercise')
-    assert(restrictedViolations.length === 0, 'No restricted exercise violations')
-}
+        expect(program.workouts.length).toBe(3)
+        expect(program.program.duration_weeks).toBe(4)
+        expect(program.program.name).toContain('3x/semana')
 
-// ============================================================================
-// Tests: calcExercisesPerWorkout
-// ============================================================================
+        const validation = validateOutput(program, profile, exerciseMap)
+        const errors = validation.violations.filter(v => v.severity === 'error')
+        expect(errors.length).toBe(0)
+    })
 
-section('calcExercisesPerWorkout')
+    it('intermediate 4x/week generates valid program', () => {
+        const profile = makeProfile({
+            training_level: 'intermediate',
+            goal: 'weight_loss',
+            available_days: [1, 2, 4, 5],
+        })
+        const exercises = makeExerciseLibrary()
+        const exerciseMap = makeExerciseMap(exercises)
 
-{
-    const { calcExercisesPerWorkout: calc } = require('../constants')
+        const program = buildHeuristicProgram(profile, exercises)
 
-    // Iniciante, 60min, 3x → {4, 6}
-    const r1 = calc(60, 'beginner', 3)
-    assert(r1.max === 6, `60min/3x: max=${r1.max} (expected 6)`)
-    assert(r1.min === 4, `60min/3x: min=${r1.min} (expected 4)`)
+        expect(program.workouts.length).toBe(4)
 
-    // Avançado, 90min, 5x → {4, 8}
-    const r2 = calc(90, 'advanced', 5)
-    assert(r2.max === 8, `90min/5x: max=${r2.max} (expected 8)`)
-    assert(r2.min >= 4, `90min/5x: min=${r2.min} (expected ≥ 4)`)
+        const validation = validateOutput(program, profile, exerciseMap)
+        const errors = validation.violations.filter(v => v.severity === 'error')
+        expect(errors.length).toBe(0)
+    })
 
-    // 60min, 5x → {4, 4}
-    const r3 = calc(60, 'beginner', 5)
-    assert(r3.max === 4, `60min/5x: max=${r3.max} (expected 4)`)
-    assert(r3.min === 4, `60min/5x: min=${r3.min} (expected 4)`)
-}
+    it('beginner 5x/week PPL+ generates valid program', () => {
+        const profile = makeProfile({
+            training_level: 'beginner',
+            goal: 'hypertrophy',
+            available_days: [1, 2, 3, 5, 6],
+            session_duration_minutes: 60,
+        })
+        const exercises = makeExerciseLibrary()
+        const exerciseMap = makeExerciseMap(exercises)
 
-// ============================================================================
-// Summary
-// ============================================================================
+        const program = buildHeuristicProgram(profile, exercises)
 
-console.log(`\n${'═'.repeat(50)}`)
-console.log(`  Total: ${passed + failed} | Passed: ${passed} | Failed: ${failed}`)
-console.log(`${'═'.repeat(50)}`)
+        expect(program.workouts.length).toBe(5)
 
-if (failed > 0) {
-    process.exit(1)
-}
+        // Each workout should have 4-6 exercises
+        for (const w of program.workouts) {
+            expect(w.items.length).toBeGreaterThanOrEqual(4)
+            expect(w.items.length).toBeLessThanOrEqual(6)
+        }
+
+        // No workout should have more than 2 exercises for small groups
+        for (const w of program.workouts) {
+            const smallGroupCounts: Record<string, number> = {}
+            for (const item of w.items) {
+                const group = item.exercise_muscle_group!
+                if (['Bíceps', 'Tríceps', 'Panturrilha', 'Abdominais', 'Trapézio'].includes(group)) {
+                    smallGroupCounts[group] = (smallGroupCounts[group] || 0) + 1
+                }
+            }
+            const maxSmallInWorkout = Math.max(0, ...Object.values(smallGroupCounts))
+            expect(maxSmallInWorkout).toBeLessThanOrEqual(2)
+        }
+
+        // All workouts should have at least 1 compound
+        for (const w of program.workouts) {
+            const hasCompound = w.items.some(item => exerciseMap.get(item.exercise_id!)?.is_compound === true)
+            expect(hasCompound).toBe(true)
+        }
+
+        // Should cover Quadríceps and Posterior de Coxa/Glúteo
+        const allMuscleGroups = new Set(program.workouts.flatMap(w => w.items.map(i => i.exercise_muscle_group!)))
+        expect(allMuscleGroups.has('Quadríceps')).toBe(true)
+        expect(allMuscleGroups.has('Posterior de Coxa') || allMuscleGroups.has('Glúteo')).toBe(true)
+
+        const validation = validateOutput(program, profile, exerciseMap)
+        const errors = validation.violations.filter(v => v.severity === 'error')
+        expect(errors.length).toBe(0)
+    })
+
+    it('respects medical restrictions', () => {
+        const profile = makeProfile({
+            training_level: 'beginner',
+            available_days: [1, 3, 5],
+            medical_restrictions: [{
+                description: 'Dor no joelho',
+                restricted_exercise_ids: ['leg-press', 'agachamento-livre'],
+                restricted_muscle_groups: [],
+                severity: 'moderate',
+            }],
+        })
+        const exercises = makeExerciseLibrary()
+        const exerciseMap = makeExerciseMap(exercises)
+
+        const program = buildHeuristicProgram(profile, exercises)
+
+        const allExerciseIds = program.workouts.flatMap(w => w.items.map(i => i.exercise_id))
+        expect(allExerciseIds).not.toContain('leg-press')
+        expect(allExerciseIds).not.toContain('agachamento-livre')
+
+        const validation = validateOutput(program, profile, exerciseMap)
+        const restrictedViolations = validation.violations.filter(v => v.rule_id === 'restricted_exercise')
+        expect(restrictedViolations.length).toBe(0)
+    })
+})
+
+describe('calcExercisesPerWorkout', () => {
+    it('beginner 60min 3x → {min: 4, max: 6}', () => {
+        const r = calcExercisesPerWorkout(60, 'beginner', 3)
+        expect(r.max).toBe(6)
+        expect(r.min).toBe(4)
+    })
+
+    it('advanced 90min 5x → {min: ≥4, max: 8}', () => {
+        const r = calcExercisesPerWorkout(90, 'advanced', 5)
+        expect(r.max).toBe(8)
+        expect(r.min).toBeGreaterThanOrEqual(4)
+    })
+
+    it('beginner 60min 5x → {min: 4, max: 4}', () => {
+        const r = calcExercisesPerWorkout(60, 'beginner', 5)
+        expect(r.max).toBe(4)
+        expect(r.min).toBe(4)
+    })
+})

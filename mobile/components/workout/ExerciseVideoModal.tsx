@@ -1,8 +1,9 @@
 import React, { useCallback } from 'react';
 import { View, Text, TouchableOpacity, Modal, Dimensions } from 'react-native';
 import YoutubePlayer from 'react-native-youtube-iframe';
+import { Video, ResizeMode } from 'expo-av';
 import { X } from 'lucide-react-native';
-import { extractYoutubeId } from '../../lib/youtube';
+import { extractYoutubeId, isDirectVideoUrl } from '../../lib/youtube';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const PLAYER_WIDTH = SCREEN_WIDTH - 32;
@@ -16,6 +17,7 @@ interface ExerciseVideoModalProps {
 
 export function ExerciseVideoModal({ visible, onClose, videoUrl }: ExerciseVideoModalProps) {
     const videoId = extractYoutubeId(videoUrl);
+    const isDirect = isDirectVideoUrl(videoUrl);
 
     const onStateChange = useCallback((state: string) => {
         if (state === 'ended') {
@@ -79,6 +81,14 @@ export function ExerciseVideoModal({ visible, onClose, videoUrl }: ExerciseVideo
                             webViewProps={{
                                 allowsInlineMediaPlayback: true,
                             }}
+                        />
+                    ) : isDirect && videoUrl ? (
+                        <Video
+                            source={{ uri: videoUrl }}
+                            style={{ width: PLAYER_WIDTH, height: PLAYER_HEIGHT }}
+                            useNativeControls
+                            resizeMode={ResizeMode.CONTAIN}
+                            shouldPlay={visible}
                         />
                     ) : (
                         <View

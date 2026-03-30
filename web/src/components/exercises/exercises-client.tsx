@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client'
 import { ExerciseItem, ExerciseWithDetails } from './exercise-item'
 import { ExerciseFormModal } from './exercise-form-modal'
 import { MuscleGroupManagerModal } from './muscle-group-manager-modal'
+import { TrainerVideoModal, type TrainerVideoData } from './trainer-video-modal'
 import { useOnboardingStore } from '@/stores/onboarding-store'
 import { Button } from '@/components/ui/button'
 import { Plus, Search, Settings2, LayoutGrid, List, ChevronDown, Check } from 'lucide-react'
@@ -111,6 +112,7 @@ interface ExercisesClientProps {
     trainerEmail?: string
     trainerAvatarUrl?: string | null
     trainerTheme?: 'light' | 'dark' | 'system'
+    initialTrainerVideosMap?: Record<string, TrainerVideoData>
 }
 
 export function ExercisesClient({
@@ -120,6 +122,7 @@ export function ExercisesClient({
     trainerEmail,
     trainerAvatarUrl,
     trainerTheme,
+    initialTrainerVideosMap = {},
 }: ExercisesClientProps) {
     const router = useRouter()
     const [exercises, setExercises] = useState(initialExercises)
@@ -131,6 +134,8 @@ export function ExercisesClient({
     const [isFormOpen, setIsFormOpen] = useState(false)
     const [isManagerOpen, setIsManagerOpen] = useState(false)
     const [editingExercise, setEditingExercise] = useState<ExerciseWithDetails | null>(null)
+    const [trainerVideosMap, setTrainerVideosMap] = useState<Record<string, TrainerVideoData>>(initialTrainerVideosMap)
+    const [videoModalExercise, setVideoModalExercise] = useState<ExerciseWithDetails | null>(null)
 
     useMemo(() => {
         setExercises(initialExercises)
@@ -224,6 +229,22 @@ export function ExercisesClient({
             console.error('Error archiving exercise:', error)
             alert('Erro ao arquivar exercício.')
         }
+    }
+
+    const handleCustomVideoClick = (exercise: ExerciseWithDetails) => {
+        setVideoModalExercise(exercise)
+    }
+
+    const handleTrainerVideoChange = (exerciseId: string, video: TrainerVideoData | null) => {
+        setTrainerVideosMap(prev => {
+            const next = { ...prev }
+            if (video) {
+                next[exerciseId] = video
+            } else {
+                delete next[exerciseId]
+            }
+            return next
+        })
     }
 
     const handleSuccess = () => {
@@ -331,6 +352,8 @@ export function ExercisesClient({
                                     onEdit={handleEdit}
                                     onDelete={handleArchive}
                                     viewMode="grid"
+                                    trainerVideo={trainerVideosMap[exercise.id] || null}
+                                    onCustomVideoClick={handleCustomVideoClick}
                                 />
                             ))}
                         </div>
@@ -344,6 +367,8 @@ export function ExercisesClient({
                                     onEdit={handleEdit}
                                     onDelete={handleArchive}
                                     viewMode="list"
+                                    trainerVideo={trainerVideosMap[exercise.id] || null}
+                                    onCustomVideoClick={handleCustomVideoClick}
                                 />
                             ))}
                         </div>
@@ -380,6 +405,17 @@ export function ExercisesClient({
                 trainerId={currentTrainerId}
                 manager={muscleGroupsManager}
             />
+
+            {videoModalExercise && (
+                <TrainerVideoModal
+                    isOpen={true}
+                    onClose={() => setVideoModalExercise(null)}
+                    exerciseId={videoModalExercise.id}
+                    exerciseName={videoModalExercise.name}
+                    currentCustomVideo={trainerVideosMap[videoModalExercise.id] || null}
+                    onSuccess={(video) => handleTrainerVideoChange(videoModalExercise.id, video)}
+                />
+            )}
 
             {/* Tour */}
             <TourRunner tourId="exercises" steps={TOUR_STEPS.exercises} autoStart />

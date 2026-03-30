@@ -33,6 +33,17 @@ export default async function ExercisesPage() {
         .eq('is_archived', false)
         .order('name', { ascending: true })
 
+    // Fetch trainer's custom videos (single query, build map)
+    const { data: trainerVideos } = await supabase
+        .from('trainer_exercise_videos')
+        .select('exercise_id, video_url, video_type')
+        .eq('trainer_id', trainer.id)
+
+    const trainerVideosMap: Record<string, { video_url: string; video_type: 'upload' | 'external_url' }> = {}
+    for (const tv of trainerVideos || []) {
+        trainerVideosMap[tv.exercise_id] = { video_url: tv.video_url, video_type: tv.video_type as 'upload' | 'external_url' }
+    }
+
     // Map to ensure types (optional but good for safety)
     const mappedExercises: ExerciseWithDetails[] = (exercises || []).map(e => ({
         id: e.id,
@@ -59,6 +70,7 @@ export default async function ExercisesPage() {
             trainerEmail={trainer.email}
             trainerAvatarUrl={trainer.avatar_url}
             trainerTheme={trainer.theme ?? undefined}
+            initialTrainerVideosMap={trainerVideosMap}
         />
     )
 }

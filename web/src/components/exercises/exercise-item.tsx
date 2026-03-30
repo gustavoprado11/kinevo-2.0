@@ -12,6 +12,7 @@ export interface ExerciseWithDetails extends Exercise {
 import { useState } from 'react'
 import { ExerciseActionsMenu } from './exercise-actions-menu'
 import { VideoPreviewModal } from './video-preview-modal'
+import type { TrainerVideoData } from './trainer-video-modal'
 
 interface ExerciseItemProps {
     exercise: ExerciseWithDetails
@@ -19,16 +20,27 @@ interface ExerciseItemProps {
     onEdit: (exercise: ExerciseWithDetails) => void
     onDelete: (exercise: ExerciseWithDetails) => void
     viewMode?: 'grid' | 'list'
+    trainerVideo?: TrainerVideoData | null
+    onCustomVideoClick?: (exercise: ExerciseWithDetails) => void
 }
 
-export function ExerciseItem({ exercise, currentTrainerId, onEdit, onDelete, viewMode = 'grid' }: ExerciseItemProps) {
+export function ExerciseItem({ exercise, currentTrainerId, onEdit, onDelete, viewMode = 'grid', trainerVideo, onCustomVideoClick }: ExerciseItemProps) {
     const [isVideoOpen, setIsVideoOpen] = useState(false)
     const isOwner = exercise.owner_id === currentTrainerId
     const muscleGroups = exercise.muscle_groups || []
 
+    // Resolve effective video URL: custom > default
+    const effectiveVideoUrl = trainerVideo?.video_url || exercise.video_url
+    const hasCustomVideo = !!trainerVideo
+
     const handleVideoClick = (e: React.MouseEvent) => {
         e.stopPropagation()
         setIsVideoOpen(true)
+    }
+
+    const handleCustomVideoClick = (e: React.MouseEvent) => {
+        e.stopPropagation()
+        onCustomVideoClick?.(exercise)
     }
 
     // --- List View ---
@@ -59,8 +71,8 @@ export function ExerciseItem({ exercise, currentTrainerId, onEdit, onDelete, vie
                         <span className="hidden lg:block text-xs text-[#86868B] dark:text-k-text-quaternary shrink-0">{exercise.equipment}</span>
                     )}
 
-                    {exercise.video_url ? (
-                        <button onClick={handleVideoClick} className="shrink-0 text-[#34C759] dark:text-violet-400/60 hover:text-[#2DB84D] dark:hover:text-violet-400 transition-colors" title="Ver vídeo">
+                    {effectiveVideoUrl ? (
+                        <button onClick={handleVideoClick} className={`shrink-0 transition-colors ${hasCustomVideo ? 'text-violet-500 dark:text-violet-400 hover:text-violet-600 dark:hover:text-violet-300' : 'text-[#34C759] dark:text-violet-400/60 hover:text-[#2DB84D] dark:hover:text-violet-400'}`} title={hasCustomVideo ? 'Ver meu vídeo' : 'Ver vídeo'}>
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -70,18 +82,33 @@ export function ExerciseItem({ exercise, currentTrainerId, onEdit, onDelete, vie
                         <div className="w-4 shrink-0" />
                     )}
 
+                    <button
+                        onClick={handleCustomVideoClick}
+                        className={`shrink-0 text-xs font-medium px-2 py-1 rounded-md transition-colors ${
+                            hasCustomVideo
+                                ? 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-500/10'
+                                : 'text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#6E6E73] dark:hover:text-k-text-tertiary hover:bg-[#F5F5F7] dark:hover:bg-glass-bg'
+                        }`}
+                        title="Meu vídeo"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                    </button>
+
                     <ExerciseActionsMenu
                         exercise={exercise}
                         currentTrainerId={currentTrainerId}
                         onEdit={onEdit}
                         onDelete={onDelete}
+                        onCustomVideo={onCustomVideoClick}
                     />
                 </div>
 
                 <VideoPreviewModal
                     isOpen={isVideoOpen}
                     onClose={() => setIsVideoOpen(false)}
-                    videoUrl={exercise.video_url || null}
+                    videoUrl={effectiveVideoUrl || null}
                     title={exercise.name}
                 />
             </>
@@ -97,11 +124,18 @@ export function ExerciseItem({ exercise, currentTrainerId, onEdit, onDelete, vie
                         <h3 className="truncate text-sm font-medium text-[#1D1D1F] dark:text-k-text-primary tracking-tight dark:group-hover:text-violet-400 transition-colors">
                             {exercise.name}
                         </h3>
-                        {isOwner && (
-                            <span className="inline-flex items-center mt-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#F5F5F7] dark:bg-violet-500/10 text-[#6E6E73] dark:text-violet-400 border border-[#E8E8ED] dark:border-violet-500/20">
-                                Meu exercício
-                            </span>
-                        )}
+                        <div className="flex items-center gap-1.5 mt-1.5">
+                            {isOwner && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#F5F5F7] dark:bg-violet-500/10 text-[#6E6E73] dark:text-violet-400 border border-[#E8E8ED] dark:border-violet-500/20">
+                                    Meu exercício
+                                </span>
+                            )}
+                            {hasCustomVideo && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-violet-50 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-200 dark:border-violet-500/20">
+                                    Meu vídeo
+                                </span>
+                            )}
+                        </div>
                     </div>
 
                     <ExerciseActionsMenu
@@ -109,14 +143,19 @@ export function ExerciseItem({ exercise, currentTrainerId, onEdit, onDelete, vie
                         currentTrainerId={currentTrainerId}
                         onEdit={onEdit}
                         onDelete={onDelete}
+                        onCustomVideo={onCustomVideoClick}
                     />
                 </div>
 
                 <div className="mt-auto bg-[#F5F5F7] dark:bg-surface-inset p-3 rounded-b-xl border-t border-[#E8E8ED] dark:border-k-border-subtle flex items-center gap-3">
-                    {exercise.video_url ? (
+                    {effectiveVideoUrl ? (
                         <button
                             onClick={handleVideoClick}
-                            className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium text-[#34C759] dark:text-violet-300 hover:text-[#2DB84D] dark:hover:text-k-text-primary dark:hover:bg-glass-bg transition-colors"
+                            className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium transition-colors ${
+                                hasCustomVideo
+                                    ? 'text-violet-600 dark:text-violet-300 hover:text-violet-700 dark:hover:text-k-text-primary dark:hover:bg-glass-bg'
+                                    : 'text-[#34C759] dark:text-violet-300 hover:text-[#2DB84D] dark:hover:text-k-text-primary dark:hover:bg-glass-bg'
+                            }`}
                         >
                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
@@ -126,8 +165,18 @@ export function ExerciseItem({ exercise, currentTrainerId, onEdit, onDelete, vie
                         </button>
                     ) : null}
 
+                    <button
+                        onClick={handleCustomVideoClick}
+                        className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#6E6E73] dark:hover:text-k-text-tertiary hover:bg-white/50 dark:hover:bg-glass-bg transition-colors"
+                    >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                        Meu vídeo
+                    </button>
+
                     {muscleGroups.length > 0 && (
-                        <div className={`flex items-center gap-1.5 text-xs font-medium text-[#86868B] dark:text-muted-foreground/60 ${exercise.video_url ? 'border-l border-[#E8E8ED] dark:border-k-border-subtle pl-3' : ''} truncate`}>
+                        <div className={`flex items-center gap-1.5 text-xs font-medium text-[#86868B] dark:text-muted-foreground/60 border-l border-[#E8E8ED] dark:border-k-border-subtle pl-3 truncate`}>
                             <span className="truncate">{muscleGroups.map(g => g.name).join(', ')}</span>
                         </div>
                     )}
@@ -137,7 +186,7 @@ export function ExerciseItem({ exercise, currentTrainerId, onEdit, onDelete, vie
             <VideoPreviewModal
                 isOpen={isVideoOpen}
                 onClose={() => setIsVideoOpen(false)}
-                videoUrl={exercise.video_url || null}
+                videoUrl={effectiveVideoUrl || null}
                 title={exercise.name}
             />
         </>

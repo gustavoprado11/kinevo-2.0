@@ -101,6 +101,20 @@ export async function getStudentTodayWorkout(
 
     const previousData = await fetchPreviousData(supabase, studentId, exerciseIds)
 
+    // Fetch trainer's custom videos for these exercises
+    const trainerVideoMap = new Map<string, string>()
+    if (exerciseIds.length > 0) {
+        const { data: trainerVideos } = await supabase
+            .from('trainer_exercise_videos')
+            .select('exercise_id, video_url')
+            .eq('trainer_id', trainer.id)
+            .in('exercise_id', exerciseIds)
+
+        for (const tv of trainerVideos || []) {
+            trainerVideoMap.set(tv.exercise_id, tv.video_url)
+        }
+    }
+
     // Build ExerciseData array — same structure as mobile
     const exercises: ExerciseData[] = exerciseItems.map((item) => {
         const exerciseRef = item.exercises as any
@@ -118,7 +132,7 @@ export async function getStudentTodayWorkout(
             sets: setsCount,
             reps: item.reps || '12',
             rest_seconds: item.rest_seconds || 60,
-            video_url: exerciseRef?.video_url || undefined,
+            video_url: trainerVideoMap.get(exerciseId) || exerciseRef?.video_url || undefined,
             substitute_exercise_ids: item.substitute_exercise_ids || [],
             swap_source: 'none' as const,
             setsData: createInitialSets(setsCount),

@@ -109,9 +109,41 @@ export function useFetchStudentWorkout() {
                 if (rpcError) throw rpcError;
                 if (!data) return { data: null, error: 'Treino não encontrado' };
 
+                // Fetch trainer custom videos for exercise items
+                const rawExercises = data.exercises || [];
+                const exerciseIds = rawExercises
+                    .map((ex: any) => ex.exercise_id)
+                    .filter(Boolean);
+
+                const trainerVideoMap = new Map<string, string>();
+                if (exerciseIds.length > 0) {
+                    // In trainer context, get current trainer's custom videos
+                    const { data: { user } } = await supabase.auth.getUser();
+                    if (user) {
+                        const { data: trainer } = await supabase
+                            .from('trainers')
+                            .select('id')
+                            .eq('auth_user_id', user.id)
+                            .single();
+
+                        if (trainer) {
+                            const { data: trainerVideos }: { data: any; error: any } = await (supabase as any)
+                                .from('trainer_exercise_videos')
+                                .select('exercise_id, video_url')
+                                .eq('trainer_id', trainer.id)
+                                .in('exercise_id', exerciseIds);
+
+                            for (const tv of trainerVideos || []) {
+                                trainerVideoMap.set(tv.exercise_id, tv.video_url);
+                            }
+                        }
+                    }
+                }
+
                 // The RPC returns exercises with setsData as empty — we need to init them
-                const exercises: ExerciseData[] = (data.exercises || []).map((ex: any) => ({
+                const exercises: ExerciseData[] = rawExercises.map((ex: any) => ({
                     ...ex,
+                    video_url: trainerVideoMap.get(ex.exercise_id) || ex.video_url,
                     substitute_exercise_ids: ex.substitute_exercise_ids || [],
                     swap_source: ex.swap_source || 'none',
                     setsData: Array.from({ length: ex.sets || 3 }, () => ({

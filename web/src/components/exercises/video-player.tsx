@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import { normalizeYouTubeEmbedUrl } from '@/lib/youtube'
+import { normalizeYouTubeEmbedUrl, isDirectVideoUrl } from '@/lib/youtube'
 
 interface VideoPlayerProps {
     url: string | null
@@ -11,8 +11,9 @@ interface VideoPlayerProps {
 
 export function VideoPlayer({ url, title, className = '' }: VideoPlayerProps) {
     const embedUrl = useMemo(() => normalizeYouTubeEmbedUrl(url), [url])
+    const isDirect = useMemo(() => isDirectVideoUrl(url), [url])
 
-    if (!embedUrl) {
+    if (!embedUrl && !isDirect) {
         return (
             <div className={`aspect-video rounded-lg bg-muted flex items-center justify-center ${className}`}>
                 <div className="flex flex-col items-center gap-2 text-muted-foreground">
@@ -25,10 +26,24 @@ export function VideoPlayer({ url, title, className = '' }: VideoPlayerProps) {
         )
     }
 
+    if (isDirect) {
+        return (
+            <div className={`overflow-hidden rounded-lg bg-black aspect-video relative ${className}`}>
+                <video
+                    src={url!}
+                    title={title || 'Vídeo do exercício'}
+                    controls
+                    playsInline
+                    className="absolute inset-0 w-full h-full object-contain"
+                />
+            </div>
+        )
+    }
+
     return (
         <div className={`overflow-hidden rounded-lg bg-black aspect-video relative ${className}`}>
             <iframe
-                src={embedUrl}
+                src={embedUrl!}
                 title={title || 'Vídeo do exercício'}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen

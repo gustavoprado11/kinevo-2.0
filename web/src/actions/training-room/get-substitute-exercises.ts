@@ -25,6 +25,13 @@ export async function getSubstituteExercises(
 
     if (!user) return { data: [], error: 'Não autorizado' }
 
+    // Get trainer for custom video resolution
+    const { data: trainer } = await supabase
+        .from('trainers')
+        .select('id')
+        .eq('auth_user_id', user.id)
+        .single()
+
     const manualIds = (substituteExerciseIds || []).filter(Boolean)
 
     // Fetch manual (trainer-approved) substitutes
@@ -116,7 +123,26 @@ export async function getSubstituteExercises(
         }
     }
 
-    return { data: [...manualOptions, ...autoOptions], error: null }
+    // Resolve trainer custom videos for all returned exercises
+    const allOptions = [...manualOptions, ...autoOptions]
+    if (trainer && allOptions.length > 0) {
+        const allIds = allOptions.map(o => o.id)
+        const { data: trainerVideos } = await supabase
+            .from('trainer_exercise_videos')
+            .select('exercise_id, video_url')
+            .eq('trainer_id', trainer.id)
+            .in('exercise_id', allIds)
+
+        if (trainerVideos?.length) {
+            const videoMap = new Map(trainerVideos.map(tv => [tv.exercise_id, tv.video_url]))
+            for (const opt of allOptions) {
+                const customUrl = videoMap.get(opt.id)
+                if (customUrl) opt.video_url = customUrl
+            }
+        }
+    }
+
+    return { data: allOptions, error: null }
 }
 
 /**
@@ -144,17 +170,40 @@ export async function searchExercisesForSwap(
 
     if (!exercises) return { data: [], error: null }
 
-    return {
-        data: exercises.map((e: any) => ({
-            id: e.id,
-            name: e.name,
-            equipment: e.equipment,
-            video_url: e.video_url,
-            muscle_groups: (e.exercise_muscle_groups || [])
-                .map((emg: any) => emg.muscle_groups?.name)
-                .filter(Boolean),
-            source: 'auto' as const,
-        })),
-        error: null,
+    const options: SubstituteOption[] = exercises.map((e: any) => ({
+        id: e.id,
+        name: e.name,
+        equipment: e.equipment,
+        video_url: e.video_url,
+        muscle_groups: (e.exercise_muscle_groups || [])
+            .map((emg: any) => emg.muscle_groups?.name)
+            .filter(Boolean),
+        source: 'auto' as const,
+    }))
+
+    // Resolve trainer custom videos
+    const { data: swapTrainer } = await supabase
+        .from('trainers')
+        .select('id')
+        .eq('auth_user_id', user.id)
+        .single()
+
+    if (swapTrainer && options.length > 0) {
+        const ids = options.map(o => o.id)
+        const { data: trainerVideos } = await supabase
+            .from('trainer_exercise_videos')
+            .select('exercise_id, video_url')
+            .eq('trainer_id', swapTrainer.id)
+            .in('exercise_id', ids)
+
+        if (trainerVideos?.length) {
+            const videoMap = new Map(trainerVideos.map(tv => [tv.exercise_id, tv.video_url]))
+            for (const opt of options) {
+                const customUrl = videoMap.get(opt.id)
+                if (customUrl) opt.video_url = customUrl
+            }
+        }
     }
+
+    return { data: options, error: null }
 }
