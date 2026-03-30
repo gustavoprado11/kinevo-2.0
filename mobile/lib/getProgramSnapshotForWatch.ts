@@ -169,18 +169,38 @@ export async function getProgramSnapshotForWatch(
     const exerciseItems = sortableItems.filter((i: any) => i.item_type === 'exercise');
     const cardioRawItems = sortableItems.filter((i: any) => i.item_type === 'cardio');
 
-    const exercises: WatchProgramExercise[] = exerciseItems.map((item: any, idx: number) => ({
-      id: item.id,
-      name: item.exercise_name || `Exercício ${idx + 1}`,
-      muscleGroup: item.exercise_muscle_group || undefined,
-      sets: item.sets || 3,
-      reps: parseInt(item.reps || '0', 10) || 0,
-      weight: weightMap.get(item.id) ?? null,
-      restTime: item.rest_seconds || 60,
-      targetReps: item.reps || null,
-      lastWeight: weightMap.get(item.id) ?? null,
-      lastReps: repsMap.get(item.id) ?? null,
-    }));
+    // Compute superset group sizes and per-exercise position
+    const supersetGroupSize = new Map<string, number>();
+    for (const item of exerciseItems) {
+      if (item.parent_item_id) {
+        supersetGroupSize.set(item.parent_item_id, (supersetGroupSize.get(item.parent_item_id) || 0) + 1);
+      }
+    }
+    const supersetPositionCounter = new Map<string, number>();
+
+    const exercises: WatchProgramExercise[] = exerciseItems.map((item: any, idx: number) => {
+      let supersetIndex: number | undefined;
+      let supersetTotal: number | undefined;
+      if (item.parent_item_id) {
+        const pos = supersetPositionCounter.get(item.parent_item_id) || 0;
+        supersetPositionCounter.set(item.parent_item_id, pos + 1);
+        supersetIndex = pos;
+        supersetTotal = supersetGroupSize.get(item.parent_item_id);
+      }
+      return {
+        id: item.id,
+        name: item.exercise_name || `Exercício ${idx + 1}`,
+        muscleGroup: item.exercise_muscle_group || undefined,
+        sets: item.sets || 3,
+        reps: parseInt(item.reps || '0', 10) || 0,
+        weight: weightMap.get(item.id) ?? null,
+        restTime: item.rest_seconds || 60,
+        targetReps: item.reps || null,
+        lastWeight: weightMap.get(item.id) ?? null,
+        lastReps: repsMap.get(item.id) ?? null,
+        ...(supersetIndex !== undefined ? { supersetIndex, supersetTotal } : {}),
+      };
+    });
 
     // Build cardio items for Watch
     const cardioItems: WatchCardioItem[] = cardioRawItems.map((item: any) => {

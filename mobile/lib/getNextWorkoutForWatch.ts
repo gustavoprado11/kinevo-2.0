@@ -124,13 +124,12 @@ export async function getNextWorkoutForWatch(
     return null;
   }
 
-  // 6. Fetch exercise details for the target workout
-  const { data: items, error: itemsError }: { data: any; error: any } =
+  // 6. Fetch ALL items for the target workout (including superset parents for ordering)
+  const { data: allItems, error: itemsError }: { data: any; error: any } =
     await supabase
       .from('assigned_workout_items' as any)
-      .select('id, exercise_id, exercise_name, sets, reps, rest_seconds')
+      .select('id, item_type, parent_item_id, exercise_id, exercise_name, sets, reps, rest_seconds, order_index')
       .eq('assigned_workout_id', targetWorkout.id)
-      .eq('item_type', 'exercise')
       .order('order_index');
 
   if (itemsError) {
@@ -138,20 +137,60 @@ export async function getNextWorkoutForWatch(
     return null;
   }
 
+  // Build superset parent order map (parent id → global order_index)
+  const supersetParentOrder = new Map<string, number>();
+  for (const item of allItems || []) {
+    if (item.item_type === 'superset') {
+      supersetParentOrder.set(item.id, item.order_index);
+    }
+  }
+
+  // Sort exercises by effective order (superset children use parent's order_index)
+  const items = ((allItems || []) as any[])
+    .filter((i: any) => i.item_type === 'exercise')
+    .map((i: any) => ({
+      ...i,
+      effectiveOrder: i.parent_item_id
+        ? (supersetParentOrder.get(i.parent_item_id) ?? i.order_index)
+        : i.order_index,
+      subOrder: i.parent_item_id ? i.order_index : 0,
+    }))
+    .sort((a: any, b: any) => a.effectiveOrder - b.effectiveOrder || a.subOrder - b.subOrder);
+
+  // Compute superset group sizes and per-exercise position
+  const supersetGroupSize = new Map<string, number>();
+  for (const item of items) {
+    if (item.parent_item_id) {
+      supersetGroupSize.set(item.parent_item_id, (supersetGroupSize.get(item.parent_item_id) || 0) + 1);
+    }
+  }
+  const supersetPositionCounter = new Map<string, number>();
+
   // 7. Build Watch payload
   const payload: WatchWorkoutPayload = {
     workoutId: targetWorkout.id,
     workoutName: targetWorkout.name,
     studentName: student.name || '',
-    exercises: (items || []).map((item: any, idx: number) => ({
-      id: item.id,
-      name: item.exercise_name || `Exercício ${idx + 1}`,
-      sets: item.sets || 3,
-      reps: parseInt(item.reps || '0', 10) || 0,
-      restTime: item.rest_seconds || 60,
-      completedSets: 0,
-      targetReps: item.reps || undefined,
-    })),
+    exercises: items.map((item: any, idx: number) => {
+      let supersetIndex: number | undefined;
+      let supersetTotal: number | undefined;
+      if (item.parent_item_id) {
+        const pos = supersetPositionCounter.get(item.parent_item_id) || 0;
+        supersetPositionCounter.set(item.parent_item_id, pos + 1);
+        supersetIndex = pos;
+        supersetTotal = supersetGroupSize.get(item.parent_item_id);
+      }
+      return {
+        id: item.id,
+        name: item.exercise_name || `Exercício ${idx + 1}`,
+        sets: item.sets || 3,
+        reps: parseInt(item.reps || '0', 10) || 0,
+        restTime: item.rest_seconds || 60,
+        completedSets: 0,
+        targetReps: item.reps || undefined,
+        ...(supersetIndex !== undefined ? { supersetIndex, supersetTotal } : {}),
+      };
+    }),
     currentExerciseIndex: 0,
     currentSetIndex: 0,
     isActive: false, // Not started yet — Watch shows "Iniciar treino"

@@ -508,6 +508,13 @@ private struct ExerciseExecutionPage: View {
           .foregroundStyle(.gray.opacity(0.8))
       }
 
+      if let idx = exercise.supersetIndex, let total = exercise.supersetTotal {
+        Text("Superset · \(idx + 1) de \(total)")
+          .font(.caption2)
+          .foregroundStyle(.secondary)
+          .lineLimit(1)
+      }
+
       Text(exercise.name)
         .font(compact ? .caption : .subheadline)
         .fontWeight(.bold)

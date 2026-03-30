@@ -70,6 +70,8 @@ struct WorkoutExecutionState: Codable, Equatable {
         let targetReps: String?
         let lastWeight: Double?
         let lastReps: Int?
+        let supersetIndex: Int?   // 0-based position within superset group
+        let supersetTotal: Int?   // total exercises in superset group
         var sets: [SetState]
         var currentSetIndex: Int
 
@@ -79,7 +81,7 @@ struct WorkoutExecutionState: Codable, Equatable {
             var isCompleted: Bool
         }
 
-        /// Custom decoding to support persisted state that lacks lastWeight/lastReps.
+        /// Custom decoding to support persisted state that lacks lastWeight/lastReps/superset fields.
         init(from decoder: Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
             id = try container.decode(String.self, forKey: .id)
@@ -88,6 +90,8 @@ struct WorkoutExecutionState: Codable, Equatable {
             targetReps = try container.decodeIfPresent(String.self, forKey: .targetReps)
             lastWeight = try container.decodeIfPresent(Double.self, forKey: .lastWeight)
             lastReps = try container.decodeIfPresent(Int.self, forKey: .lastReps)
+            supersetIndex = try container.decodeIfPresent(Int.self, forKey: .supersetIndex)
+            supersetTotal = try container.decodeIfPresent(Int.self, forKey: .supersetTotal)
             sets = try container.decode([SetState].self, forKey: .sets)
             currentSetIndex = try container.decode(Int.self, forKey: .currentSetIndex)
         }
@@ -99,6 +103,8 @@ struct WorkoutExecutionState: Codable, Equatable {
             targetReps: String?,
             lastWeight: Double?,
             lastReps: Int?,
+            supersetIndex: Int? = nil,
+            supersetTotal: Int? = nil,
             sets: [SetState],
             currentSetIndex: Int
         ) {
@@ -108,6 +114,8 @@ struct WorkoutExecutionState: Codable, Equatable {
             self.targetReps = targetReps
             self.lastWeight = lastWeight
             self.lastReps = lastReps
+            self.supersetIndex = supersetIndex
+            self.supersetTotal = supersetTotal
             self.sets = sets
             self.currentSetIndex = currentSetIndex
         }
@@ -132,6 +140,8 @@ struct WorkoutExecutionState: Codable, Equatable {
                 targetReps: ex.targetReps,
                 lastWeight: ex.lastWeight,
                 lastReps: ex.lastReps,
+                supersetIndex: ex.supersetIndex,
+                supersetTotal: ex.supersetTotal,
                 sets: sets,
                 currentSetIndex: firstIncomplete
             )

@@ -88,6 +88,8 @@ struct WatchExerciseSnapshot: Identifiable, Hashable {
     let targetReps: String?
     let lastWeight: Double?
     let lastReps: Int?
+    let supersetIndex: Int?   // 0-based position within superset group
+    let supersetTotal: Int?   // total exercises in superset group
 
     static func from(_ exercise: WatchExercise) -> WatchExerciseSnapshot {
         WatchExerciseSnapshot(
@@ -100,7 +102,9 @@ struct WatchExerciseSnapshot: Identifiable, Hashable {
             completedSets: exercise.completedSets,
             targetReps: nil,
             lastWeight: nil,
-            lastReps: nil
+            lastReps: nil,
+            supersetIndex: nil,
+            supersetTotal: nil
         )
     }
 
@@ -117,7 +121,9 @@ struct WatchExerciseSnapshot: Identifiable, Hashable {
             completedSets: exercise.completedSets,
             targetReps: targetReps,
             lastWeight: dict["lastWeight"] as? Double,
-            lastReps: (dict["lastReps"] as? NSNumber)?.intValue
+            lastReps: (dict["lastReps"] as? NSNumber)?.intValue,
+            supersetIndex: (dict["supersetIndex"] as? NSNumber)?.intValue,
+            supersetTotal: (dict["supersetTotal"] as? NSNumber)?.intValue
         )
     }
 }
@@ -257,7 +263,9 @@ struct WatchProgramSnapshot {
                 restTime: ex.restTime,
                 targetReps: ex.targetReps,
                 lastWeight: nil,
-                lastReps: nil
+                lastReps: nil,
+                supersetIndex: ex.supersetIndex,
+                supersetTotal: ex.supersetTotal
             )
         }
 
@@ -295,6 +303,8 @@ struct WatchProgramExerciseSummary {
     let targetReps: String?
     let lastWeight: Double?
     let lastReps: Int?
+    let supersetIndex: Int?   // 0-based position within superset group
+    let supersetTotal: Int?   // total exercises in superset group
 
     static func parse(from dict: [String: Any]) -> WatchProgramExerciseSummary? {
         guard
@@ -314,7 +324,9 @@ struct WatchProgramExerciseSummary {
             restTime: dict["restTime"] as? Int ?? 60,
             targetReps: dict["targetReps"] as? String,
             lastWeight: dict["lastWeight"] as? Double,
-            lastReps: (dict["lastReps"] as? NSNumber)?.intValue
+            lastReps: (dict["lastReps"] as? NSNumber)?.intValue,
+            supersetIndex: (dict["supersetIndex"] as? NSNumber)?.intValue,
+            supersetTotal: (dict["supersetTotal"] as? NSNumber)?.intValue
         )
     }
 }
@@ -383,7 +395,9 @@ struct WatchProgramWorkoutSummary: Identifiable {
                 completedSets: 0,
                 targetReps: ex.targetReps,
                 lastWeight: ex.lastWeight,
-                lastReps: ex.lastReps
+                lastReps: ex.lastReps,
+                supersetIndex: ex.supersetIndex,
+                supersetTotal: ex.supersetTotal
             )
         }
 

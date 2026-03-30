@@ -346,7 +346,9 @@ struct WorkoutListView: View {
                 completedSets: completedCount,
                 targetReps: ex.targetReps,
                 lastWeight: ex.lastWeight,
-                lastReps: ex.lastReps
+                lastReps: ex.lastReps,
+                supersetIndex: ex.supersetIndex,
+                supersetTotal: ex.supersetTotal
             )
         }
 

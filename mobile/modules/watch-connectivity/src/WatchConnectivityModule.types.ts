@@ -31,6 +31,8 @@ export interface WatchWorkoutExercise {
   restTime?: number;
   completedSets?: number;
   targetReps?: string;
+  supersetIndex?: number;  // 0-based position within superset group
+  supersetTotal?: number;  // total exercises in superset group
 }
 
 export interface WatchWorkoutPayload {
@@ -58,6 +60,8 @@ export interface WatchProgramExercise {
   targetReps: string | null;
   lastWeight: number | null;
   lastReps: number | null;
+  supersetIndex?: number;  // 0-based position within superset group
+  supersetTotal?: number;  // total exercises in superset group
 }
 
 export interface WatchCardioItem {
