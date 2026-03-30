@@ -84,6 +84,8 @@ export function TrainerVideoModal({
 
             const ext = selectedFile.name.split('.').pop()?.toLowerCase() || 'mp4'
             const storagePath = `${user.id}/${exerciseId}/${Date.now()}_video.${ext}`
+            // Force video/mp4 for .mov files so browsers can play them (iPhone H.264 .mov is MP4-compatible)
+            const uploadContentType = selectedFile.type === 'video/quicktime' ? 'video/mp4' : selectedFile.type
 
             setUploadProgress(30)
 
@@ -91,7 +93,7 @@ export function TrainerVideoModal({
                 .from('trainer-videos')
                 .upload(storagePath, selectedFile, {
                     upsert: true,
-                    contentType: selectedFile.type,
+                    contentType: uploadContentType,
                 })
 
             if (uploadError) throw uploadError

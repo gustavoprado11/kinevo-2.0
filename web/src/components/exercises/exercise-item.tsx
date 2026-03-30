@@ -38,11 +38,6 @@ export function ExerciseItem({ exercise, currentTrainerId, onEdit, onDelete, vie
         setIsVideoOpen(true)
     }
 
-    const handleCustomVideoClick = (e: React.MouseEvent) => {
-        e.stopPropagation()
-        onCustomVideoClick?.(exercise)
-    }
-
     // --- List View ---
     if (viewMode === 'list') {
         return (
@@ -82,20 +77,6 @@ export function ExerciseItem({ exercise, currentTrainerId, onEdit, onDelete, vie
                         <div className="w-4 shrink-0" />
                     )}
 
-                    <button
-                        onClick={handleCustomVideoClick}
-                        className={`shrink-0 text-xs font-medium px-2 py-1 rounded-md transition-colors ${
-                            hasCustomVideo
-                                ? 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-500/10'
-                                : 'text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#6E6E73] dark:hover:text-k-text-tertiary hover:bg-[#F5F5F7] dark:hover:bg-glass-bg'
-                        }`}
-                        title="Meu vídeo"
-                    >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                        </svg>
-                    </button>
-
                     <ExerciseActionsMenu
                         exercise={exercise}
                         currentTrainerId={currentTrainerId}
@@ -118,7 +99,7 @@ export function ExerciseItem({ exercise, currentTrainerId, onEdit, onDelete, vie
     // --- Grid View (compact) ---
     return (
         <>
-            <div className="group rounded-xl border border-[#E8E8ED] dark:border-k-border-primary bg-white dark:bg-surface-card shadow-apple-card dark:shadow-none transition-all duration-200 hover:shadow-[0_2px_8px_rgba(0,0,0,0.12)] hover:border-[#D2D2D7] dark:hover:border-violet-500/30 overflow-hidden flex flex-col h-full">
+            <div className="group relative rounded-xl border border-[#E8E8ED] dark:border-k-border-primary bg-white dark:bg-surface-card shadow-apple-card dark:shadow-none transition-all duration-200 hover:shadow-[0_2px_8px_rgba(0,0,0,0.12)] hover:border-[#D2D2D7] dark:hover:border-violet-500/30 flex flex-col h-full">
                 <div className="p-4 flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                         <h3 className="truncate text-sm font-medium text-[#1D1D1F] dark:text-k-text-primary tracking-tight dark:group-hover:text-violet-400 transition-colors">
@@ -165,18 +146,8 @@ export function ExerciseItem({ exercise, currentTrainerId, onEdit, onDelete, vie
                         </button>
                     ) : null}
 
-                    <button
-                        onClick={handleCustomVideoClick}
-                        className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#6E6E73] dark:hover:text-k-text-tertiary hover:bg-white/50 dark:hover:bg-glass-bg transition-colors"
-                    >
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                        </svg>
-                        Meu vídeo
-                    </button>
-
                     {muscleGroups.length > 0 && (
-                        <div className={`flex items-center gap-1.5 text-xs font-medium text-[#86868B] dark:text-muted-foreground/60 border-l border-[#E8E8ED] dark:border-k-border-subtle pl-3 truncate`}>
+                        <div className={`flex items-center gap-1.5 text-xs font-medium text-[#86868B] dark:text-muted-foreground/60 ${effectiveVideoUrl ? 'border-l border-[#E8E8ED] dark:border-k-border-subtle pl-3' : ''} truncate`}>
                             <span className="truncate">{muscleGroups.map(g => g.name).join(', ')}</span>
                         </div>
                     )}

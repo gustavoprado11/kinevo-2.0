@@ -397,6 +397,8 @@ export function ExercisesClient({
                 onSuccess={handleSuccess}
                 exercise={editingExercise}
                 trainerId={currentTrainerId}
+                trainerVideo={editingExercise ? trainerVideosMap[editingExercise.id] || null : null}
+                onTrainerVideoChange={handleTrainerVideoChange}
             />
 
             <MuscleGroupManagerModal

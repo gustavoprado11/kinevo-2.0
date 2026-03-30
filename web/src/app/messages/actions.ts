@@ -42,32 +42,23 @@ export async function getTotalUnreadCount(): Promise<number> {
     const auth = await getAuthenticatedTrainer()
     if (!auth) return 0
 
+    const { data: students } = await supabaseAdmin
+        .from('students')
+        .select('id')
+        .eq('coach_id', auth.trainer.id)
+
+    if (!students?.length) return 0
+
     const { count, error } = await supabaseAdmin
         .from('messages')
         .select('id', { count: 'exact', head: true })
         .eq('sender_type', 'student')
         .is('read_at', null)
-        .in('student_id', (
-            supabaseAdmin.from('students').select('id').eq('coach_id', auth.trainer.id)
-        ) as any)
+        .in('student_id', students.map(s => s.id))
 
-    // Fallback if subquery doesn't work with PostgREST
     if (error) {
-        const { data: students } = await supabaseAdmin
-            .from('students')
-            .select('id')
-            .eq('coach_id', auth.trainer.id)
-
-        if (!students?.length) return 0
-
-        const { count: fallbackCount } = await supabaseAdmin
-            .from('messages')
-            .select('id', { count: 'exact', head: true })
-            .eq('sender_type', 'student')
-            .is('read_at', null)
-            .in('student_id', students.map(s => s.id))
-
-        return fallbackCount ?? 0
+        console.error('[getTotalUnreadCount] Error:', error)
+        return 0
     }
 
     return count ?? 0
