@@ -38,4 +38,8 @@ extension Color {
     static let kinevoTextPrimary = Color(hex: "F1F5F9")
     static let kinevoTextSecondary = Color(hex: "64748B")
     static let kinevoSuccess = Color.green
+    static let kinevoSuccessGradientStart = Color(hex: "10B981")
+    static let kinevoSuccessGradientEnd = Color(hex: "059669")
+    static let kinevoWarning = Color(hex: "F59E0B")
+    static let kinevoCardFocused = Color(hex: "1E1E38")
 }

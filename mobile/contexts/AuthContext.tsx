@@ -85,9 +85,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Clear Watch workout state so the old account's workout doesn't persist.
         if (Platform.OS === "ios") {
             try {
-                const { syncWorkoutToWatch } = require("../modules/watch-connectivity");
-                syncWorkoutToWatch(null);
-                if (__DEV__) console.log("[AuthContext] Cleared Watch workout on sign out");
+                const { syncProgramToWatch } = require("../modules/watch-connectivity");
+                syncProgramToWatch(null);
+                if (__DEV__) console.log("[AuthContext] Cleared Watch program on sign out");
             } catch (e: any) {
                 if (__DEV__) console.warn("[AuthContext] Failed to clear Watch (non-critical):", e?.message);
             }

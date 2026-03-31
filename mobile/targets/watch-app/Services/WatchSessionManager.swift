@@ -15,6 +15,8 @@ class WatchSessionManager: NSObject, ObservableObject {
   var onSyncSuccess: ((_ workoutId: String) -> Void)?
   var onRemoteFinish: ((_ workoutId: String) -> Void)?
   var onRemoteStartWorkout: ((_ workoutId: String) -> Void)?
+  var onProgramUpdated: ((_ snapshot: WatchProgramSnapshot) -> Void)?
+  var onExerciseOrderUpdate: ((_ workoutId: String, _ exerciseIds: [String]) -> Void)?
 
   private var wcSession: WCSession?
 
@@ -207,7 +209,8 @@ class WatchSessionManager: NSObject, ObservableObject {
   }
 
   /// Send FINISH_WORKOUT with RPE, start time, completed exercises, and cardio results.
-  /// Uses transferUserInfo for guaranteed delivery.
+  /// Uses sendReliable (sendMessage first, transferUserInfo fallback) for immediate delivery
+  /// when iPhone is reachable — transferUserInfo alone may not wake the JS runtime.
   func sendFinishWorkout(workoutId: String, rpe: Int, startedAt: Date, exercises: [[String: Any]], cardio: [[String: Any]] = []) {
     let formatter = ISO8601DateFormatter()
     formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
@@ -228,13 +231,7 @@ class WatchSessionManager: NSObject, ObservableObject {
     ]
 
     print("[WatchSessionManager] 📤 Sending FINISH_WORKOUT for \(workoutId) with RPE \(rpe), \(exercises.count) exercises, \(cardio.count) cardio")
-
-    guard let session = wcSession, session.activationState == .activated else {
-      print("[WatchSessionManager] ❌ Session not activated for FINISH_WORKOUT")
-      return
-    }
-    session.transferUserInfo(message)
-    print("[WatchSessionManager] ✅ FINISH_WORKOUT queued via transferUserInfo for \(workoutId)")
+    sendReliable(message, label: "FINISH_WORKOUT")
   }
 
   /// Notify iPhone that a cardio item was completed on the Watch.
@@ -350,6 +347,7 @@ extension WatchSessionManager: WCSessionDelegate {
         programSnapshot = WatchProgramSnapshot.parse(from: dict)
         if let snapshot = programSnapshot {
           print("[WatchSessionManager] Parsed v2 program: \(snapshot.programName) — \(snapshot.workouts.count) workouts")
+          onProgramUpdated?(snapshot)
         } else {
           print("[WatchSessionManager] Failed to parse v2 program payload")
           programSnapshot = nil
@@ -443,6 +441,35 @@ extension WatchSessionManager: WCSessionDelegate {
       print("[WatchSessionManager] WORKOUT_FINISHED_FROM_PHONE for workoutId: \(workoutId)")
       DispatchQueue.main.async {
         self.onRemoteFinish?(workoutId)
+      }
+
+    case "UPDATE_EXERCISE_ORDER":
+      guard let payload = message["payload"] as? [String: Any],
+            let workoutId = payload["workoutId"] as? String
+      else {
+        print("[WatchSessionManager] UPDATE_EXERCISE_ORDER — failed to parse payload or workoutId")
+        return
+      }
+
+      // Robust array parsing — handle Obj-C bridge types
+      let exerciseIds: [String]
+      if let ids = payload["exerciseIds"] as? [String] {
+        exerciseIds = ids
+      } else if let rawArray = payload["exerciseIds"] as? [Any] {
+        exerciseIds = rawArray.compactMap { $0 as? String }
+      } else {
+        print("[WatchSessionManager] UPDATE_EXERCISE_ORDER — exerciseIds not parseable")
+        return
+      }
+
+      guard !exerciseIds.isEmpty else {
+        print("[WatchSessionManager] UPDATE_EXERCISE_ORDER — exerciseIds is empty")
+        return
+      }
+
+      print("[WatchSessionManager] UPDATE_EXERCISE_ORDER for workoutId: \(workoutId) — \(exerciseIds.count) exercises")
+      DispatchQueue.main.async {
+        self.onExerciseOrderUpdate?(workoutId, exerciseIds)
       }
 
     default:

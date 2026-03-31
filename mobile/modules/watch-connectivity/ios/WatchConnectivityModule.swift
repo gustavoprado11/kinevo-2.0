@@ -530,8 +530,33 @@ public class WatchConnectivityModule: Module {
     return envelope
   }
 
+  /// Recursively strip NSNull values from a dictionary/array tree.
+  /// WatchConnectivity only accepts property list types — NSNull causes
+  /// WCErrorCodePayloadUnsupportedTypes.
+  private func sanitizeForPropertyList(_ value: Any) -> Any? {
+    if value is NSNull { return nil }
+    if let dict = value as? [String: Any] {
+      var sanitized = [String: Any]()
+      for (key, val) in dict {
+        if let clean = sanitizeForPropertyList(val) {
+          sanitized[key] = clean
+        }
+      }
+      return sanitized
+    }
+    if let array = value as? [Any] {
+      return array.compactMap { sanitizeForPropertyList($0) }
+    }
+    return value
+  }
+
   private func sendApplicationContext(context: [String: Any]) {
-    NSLog("[WatchConnectivity] syncWorkoutToWatch called with context keys: \(context.keys)")
+    NSLog("[WatchConnectivity] sendApplicationContext called with keys: \(context.keys.sorted())")
+
+    guard let sanitized = sanitizeForPropertyList(context) as? [String: Any] else {
+      NSLog("[WatchConnectivity] ❌ Failed to sanitize context")
+      return
+    }
 
     // Ensure we have a session reference.
     if wcSession == nil, WCSession.isSupported() {
@@ -540,13 +565,13 @@ public class WatchConnectivityModule: Module {
     }
 
     guard let session = wcSession, session.activationState == .activated else {
-      pendingApplicationContext = context
+      pendingApplicationContext = sanitized
       NSLog("[WatchConnectivity] Session not activated yet. Context queued. State: \(wcSession?.activationState.rawValue ?? -1)")
       return
     }
 
     do {
-      try session.updateApplicationContext(context)
+      try session.updateApplicationContext(sanitized)
       pendingApplicationContext = nil
       NSLog("[WatchConnectivity] ✅ Sent application context to watch")
     } catch {
@@ -562,9 +587,10 @@ public class WatchConnectivityModule: Module {
     guard activationState == .activated else { return }
 
     // Flush pending application context (iPhone → Watch).
-    if let pendingContext = pendingApplicationContext {
+    if let pendingContext = pendingApplicationContext,
+       let sanitized = sanitizeForPropertyList(pendingContext) as? [String: Any] {
       do {
-        try wcSession?.updateApplicationContext(pendingContext)
+        try wcSession?.updateApplicationContext(sanitized)
         pendingApplicationContext = nil
         NSLog("[WatchConnectivity] ✅ Flushed queued application context after activation")
       } catch {

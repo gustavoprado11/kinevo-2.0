@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { router } from 'expo-router';
 import { Alert } from 'react-native';
 import { getProgramWeek } from '@kinevo/shared/utils/schedule-projection';
+import { sortExerciseItems } from '../utils/sortExerciseItems';
 
 export interface WorkoutSetData {
     weight: string;
@@ -264,7 +265,7 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                 });
 
             if (error) {
-                if (__DEV__) console.error(`[useWorkoutSession] persistSetLog error: ${error.message}`);
+                if (__DEV__) console.error(`[useWorkoutSession] persistSetLog error: ${error.message} | code: ${error.code} | details: ${error.details} | hint: ${error.hint}`);
             } else {
                 if (__DEV__) console.log(`[useWorkoutSession] Set persisted: exercise=${exercise.name}, set=${setIndex + 1}, ${repsCompleted}reps x ${weight}kg`);
             }
@@ -438,8 +439,12 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                     }
                 }
 
-                // 4. Fetch trainer custom videos for exercise items
-                const exerciseItems = items.filter((item: any) => item.item_type === 'exercise');
+                // 4. Sort exercise items using superset-aware ordering
+                const exerciseItems = sortExerciseItems(
+                    items.filter((item: any) => item.item_type === 'exercise'),
+                    supersetMap,
+                );
+
                 const warmupCardioItems = items.filter((item: any) => item.item_type === 'warmup' || item.item_type === 'cardio');
                 const exerciseIds = exerciseItems.map((item: any) => item.exercise_id).filter(Boolean);
                 const trainerVideoMap = new Map<string, string>();
@@ -528,9 +533,15 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                     hasLoadedRef.current = true;
                 }
 
-            } catch (error) {
+            } catch (error: any) {
                 if (__DEV__) console.error("Error fetching workout:", error);
-                Alert.alert("Erro", "Falha ao carregar o treino.");
+                const isPGRST116 = error?.code === 'PGRST116';
+                Alert.alert(
+                    "Erro",
+                    isPGRST116
+                        ? "Treino não encontrado. Verifique se o programa ainda está ativo."
+                        : "Falha ao carregar o treino."
+                );
             } finally {
                 if (mounted) {
                     setIsLoading(false);
@@ -787,6 +798,24 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                 .eq('id', studentId)
                 .single();
 
+            // Resolve assigned_program_id: prefer state, fallback to fresh DB query
+            let resolvedProgramId = assignedProgramId;
+            if (!resolvedProgramId) {
+                const { data: workoutData }: { data: any } = await supabase
+                    .from('assigned_workouts' as any)
+                    .select('assigned_program_id')
+                    .eq('id', workoutId)
+                    .maybeSingle();
+                resolvedProgramId = workoutData?.assigned_program_id ?? null;
+            }
+
+            if (!resolvedProgramId || !studentFull?.coach_id) {
+                if (__DEV__) console.error(
+                    `[useWorkoutSession] createSession aborted: assigned_program_id=${resolvedProgramId}, coach_id=${studentFull?.coach_id}`
+                );
+                return null;
+            }
+
             // Determine scheduled_date: set to today if this workout is scheduled for today's day-of-week
             const todayDow = new Date().getDay();
             const isScheduledToday = scheduledDaysRef.current?.includes(todayDow);
@@ -798,9 +827,9 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
 
             const insertPayload: Record<string, any> = {
                 student_id: studentId,
-                trainer_id: studentFull?.coach_id,
+                trainer_id: studentFull.coach_id,
                 assigned_workout_id: workoutId,
-                assigned_program_id: assignedProgramId,
+                assigned_program_id: resolvedProgramId,
                 status: 'in_progress',
                 started_at: new Date().toISOString(),
                 sync_status: 'synced',
@@ -861,11 +890,15 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                     .eq('id', workoutId)
                     .single();
 
+                if (!workout?.assigned_program_id || !student.coach_id) {
+                    throw new Error(`Missing required fields: assigned_program_id=${workout?.assigned_program_id}, coach_id=${student.coach_id}`);
+                }
+
                 const fallbackPayload: Record<string, any> = {
                     student_id: student.id,
                     trainer_id: student.coach_id,
                     assigned_workout_id: workoutId,
-                    assigned_program_id: workout?.assigned_program_id,
+                    assigned_program_id: workout.assigned_program_id,
                     status: 'completed',
                     started_at: new Date(startTime).toISOString(),
                     completed_at: now,

@@ -67,8 +67,8 @@ class WorkoutExecutionStore: ObservableObject {
     /// Initialize state from snapshot WITHOUT starting (for pre-start screen).
     func loadWorkout(from snapshot: WatchWorkoutSnapshot) {
         if let existing = state, existing.workoutId == snapshot.workoutId {
-            // Same workout already loaded — don't overwrite progress
-            print("[WorkoutStore] Workout \(existing.workoutId) already loaded — keeping existing state")
+            // Same workout already loaded — update exercise order but keep progress
+            updateExerciseOrder(from: snapshot.exercises.map(\.id))
             return
         }
         if let existing = state {
@@ -174,6 +174,91 @@ class WorkoutExecutionStore: ObservableObject {
         state = nil
         WorkoutStatePersistence.delete()
         print("[WorkoutStore] Cleared workout \(workoutId)")
+    }
+
+    // MARK: - Program Reconciliation (always-active, independent of views)
+
+    /// Called by WatchSessionManager.onProgramUpdated when a new applicationContext arrives.
+    /// Extracts the active workout's exercise order and applies it.
+    func reconcileProgram(_ snapshot: WatchProgramSnapshot) {
+        guard let current = state else {
+            print("[WorkoutStore] reconcileProgram — no active workout, skipping")
+            return
+        }
+
+        guard current.finishState != .pending else {
+            print("[WorkoutStore] reconcileProgram — finish pending, skipping")
+            return
+        }
+
+        guard let matchingWorkout = snapshot.workouts.first(where: { $0.workoutId == current.workoutId }) else {
+            print("[WorkoutStore] reconcileProgram — active workout \(current.workoutId) not in program, clearing")
+            clearWorkout()
+            return
+        }
+
+        let newOrder = matchingWorkout.exercises.map(\.id)
+        print("[WorkoutStore] reconcileProgram — updating exercise order for \(current.workoutId)")
+        updateExerciseOrder(from: newOrder)
+    }
+
+    // MARK: - Exercise Order Update
+
+    /// Reorder exercises to match the canonical order from iPhone, preserving all progress.
+    /// Matches by exercise ID. New exercises are appended; removed ones are dropped.
+    func updateExerciseOrder(from newOrder: [String]) {
+        guard var s = state else { return }
+        guard !newOrder.isEmpty else { return }
+
+        let currentOrder = s.exercises.map(\.id)
+        if currentOrder == newOrder {
+            return // Already in correct order
+        }
+
+        // Track which exercise the user is currently viewing
+        let currentExerciseId = s.exerciseIndex < s.exercises.count
+            ? s.exercises[s.exerciseIndex].id
+            : nil
+
+        // Build lookup of existing exercises (with progress) by ID
+        var exerciseById: [String: WorkoutExecutionState.ExerciseState] = [:]
+        for ex in s.exercises {
+            exerciseById[ex.id] = ex
+        }
+
+        // Reorder: place existing exercises in the new order, preserving progress
+        var reordered: [WorkoutExecutionState.ExerciseState] = []
+        for id in newOrder {
+            if let existing = exerciseById[id] {
+                reordered.append(existing)
+            }
+            // New exercises not in current state are skipped — they have no progress
+            // and were not part of the original workout load
+        }
+
+        // Append any exercises that exist in state but not in newOrder (defensive)
+        let newOrderSet = Set(newOrder)
+        for ex in s.exercises {
+            if !newOrderSet.contains(ex.id) {
+                reordered.append(ex)
+            }
+        }
+
+        let oldNames = s.exercises.map(\.name)
+        s.exercises = reordered
+        let newNames = s.exercises.map(\.name)
+
+        // Update exerciseIndex to follow the exercise the user was viewing
+        if let targetId = currentExerciseId,
+           let newIndex = reordered.firstIndex(where: { $0.id == targetId }) {
+            s.exerciseIndex = newIndex
+        } else {
+            s.exerciseIndex = min(s.exerciseIndex, max(reordered.count - 1, 0))
+        }
+
+        state = s
+        persistImmediate()
+        print("[WorkoutStore] Updated exercise order: \(oldNames) → \(newNames)")
     }
 
     // MARK: - Mutations
@@ -309,9 +394,11 @@ class WorkoutExecutionStore: ObservableObject {
             // Find current workout in the program snapshot
             let matchingWorkout = workoutsArray.first { ($0["workoutId"] as? String) == current.workoutId }
 
-            if matchingWorkout != nil {
-                // Workout still exists in program — no reconciliation needed for v2
-                // (v2 exercises start fresh, no completedSets to merge)
+            if let matchingWorkout = matchingWorkout {
+                // Workout still exists in program — update exercise order from fresh data
+                let exercisesArray = matchingWorkout["exercises"] as? [[String: Any]] ?? []
+                let newOrder = exercisesArray.compactMap { $0["id"] as? String }
+                updateExerciseOrder(from: newOrder)
                 print("[WorkoutStore] v2 reconcile — active workout \(current.workoutId) found in program")
             } else {
                 // Active workout not in program — iPhone moved on
@@ -442,5 +529,43 @@ class WorkoutExecutionStore: ObservableObject {
         state.exercises.reduce(0) { total, ex in
             total + ex.sets.filter(\.isCompleted).count
         }
+    }
+
+    // MARK: - Computed Stats (for UI)
+
+    /// Total completed sets across all exercises.
+    var totalCompletedSets: Int {
+        guard let s = state else { return 0 }
+        return s.exercises.reduce(0) { total, ex in
+            total + ex.sets.filter(\.isCompleted).count
+        }
+    }
+
+    /// Total volume (weight × reps) for completed sets. Excludes bodyweight (weight == 0).
+    var totalVolume: Double {
+        guard let s = state else { return 0 }
+        return s.exercises.reduce(0.0) { total, ex in
+            total + ex.sets.filter(\.isCompleted).reduce(0.0) { subtotal, set in
+                set.weight > 0 ? subtotal + set.weight * Double(set.reps) : subtotal
+            }
+        }
+    }
+
+    /// Count of exercises where at least one completed set exceeds lastWeight.
+    var prCount: Int {
+        guard let s = state else { return 0 }
+        return s.exercises.filter { ex in
+            guard let lw = ex.lastWeight else { return false }
+            return ex.sets.contains { $0.isCompleted && $0.weight > lw }
+        }.count
+    }
+
+    /// Overall workout progress (0...1). Ratio of completed sets to total sets.
+    var overallProgress: Double {
+        guard let s = state else { return 0 }
+        let total = s.exercises.reduce(0) { $0 + $1.sets.count }
+        guard total > 0 else { return 0 }
+        let completed = s.exercises.reduce(0) { $0 + $1.sets.filter(\.isCompleted).count }
+        return Double(completed) / Double(total)
     }
 }

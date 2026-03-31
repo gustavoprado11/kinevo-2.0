@@ -257,9 +257,11 @@ struct CardioExecutionView: View {
     // MARK: - Completed View
 
     private var completedView: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 8) {
+            Spacer()
+
             Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 40))
+                .font(.system(size: 36))
                 .foregroundStyle(.green)
 
             Text("Concluído!")
@@ -276,6 +278,10 @@ struct CardioExecutionView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+
+            Spacer()
+            // Reserve space for the "Finalizar Treino" overlay button
+            Spacer().frame(height: 44)
         }
     }
 

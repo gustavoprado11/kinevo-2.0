@@ -15,6 +15,7 @@ import Animated, {
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { useInbox, type InboxItem } from "../../hooks/useInbox";
+import { useUnreadCount } from "../../hooks/useUnreadCount";
 import { PressableScale } from "../../components/shared/PressableScale";
 import { ChatView } from "../../components/chat/ChatView";
 
@@ -40,12 +41,37 @@ function statusLabel(status: InboxItem["status"]) {
 }
 
 // ── Animated Segmented Control (same pattern as logs.tsx) ──
+function SegmentBadge({ count }: { count: number }) {
+    if (count <= 0) return null;
+    return (
+        <View
+            style={{
+                minWidth: 18,
+                height: 18,
+                borderRadius: 9,
+                backgroundColor: '#ef4444',
+                alignItems: 'center',
+                justifyContent: 'center',
+                paddingHorizontal: 5,
+            }}
+        >
+            <Text style={{ fontSize: 10, fontWeight: '700', color: '#ffffff' }}>
+                {count > 99 ? '99+' : count}
+            </Text>
+        </View>
+    );
+}
+
 function AnimatedSegmentedControl({
     activeTab,
     onTabChange,
+    messagesBadge = 0,
+    notificationsBadge = 0,
 }: {
     activeTab: 'messages' | 'notifications';
     onTabChange: (tab: 'messages' | 'notifications') => void;
+    messagesBadge?: number;
+    notificationsBadge?: number;
 }) {
     const pillX = useSharedValue(activeTab === 'messages' ? 0 : 1);
 
@@ -101,7 +127,7 @@ function AnimatedSegmentedControl({
                     justifyContent: 'center',
                     paddingVertical: 10,
                     borderRadius: 11,
-                    gap: 8,
+                    gap: 6,
                 }}
             >
                 <MessageCircle size={16} color={activeTab === 'messages' ? '#0f172a' : '#64748b'} />
@@ -115,6 +141,7 @@ function AnimatedSegmentedControl({
                 >
                     Mensagens
                 </Text>
+                <SegmentBadge count={messagesBadge} />
             </Pressable>
 
             {/* Notifications tab */}
@@ -127,7 +154,7 @@ function AnimatedSegmentedControl({
                     justifyContent: 'center',
                     paddingVertical: 10,
                     borderRadius: 11,
-                    gap: 8,
+                    gap: 6,
                 }}
             >
                 <Bell size={16} color={activeTab === 'notifications' ? '#0f172a' : '#64748b'} />
@@ -141,6 +168,7 @@ function AnimatedSegmentedControl({
                 >
                     Notificações
                 </Text>
+                <SegmentBadge count={notificationsBadge} />
             </Pressable>
         </View>
     );
@@ -360,6 +388,7 @@ function NotificationsTab() {
 // ── Main Screen ──
 export default function InboxScreen() {
     const [activeTab, setActiveTab] = useState<'messages' | 'notifications'>('messages');
+    const { messages: unreadMessages, notifications: unreadNotifications } = useUnreadCount();
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: "#F2F2F7" }} edges={["top"]}>
@@ -370,7 +399,12 @@ export default function InboxScreen() {
                 </Text>
             </View>
 
-            <AnimatedSegmentedControl activeTab={activeTab} onTabChange={setActiveTab} />
+            <AnimatedSegmentedControl
+                activeTab={activeTab}
+                onTabChange={setActiveTab}
+                messagesBadge={unreadMessages}
+                notificationsBadge={unreadNotifications}
+            />
 
             {activeTab === 'messages' ? (
                 <ChatView />

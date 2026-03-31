@@ -2,7 +2,7 @@ import React, { useRef, useEffect } from "react";
 import { Tabs } from "expo-router";
 import { Home, User, Clock, MessageCircle } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { StyleSheet, View, Platform } from "react-native";
+import { StyleSheet, View, Text, Platform } from "react-native";
 import { BlurView } from "expo-blur";
 import Animated, {
     useSharedValue,
@@ -11,16 +11,19 @@ import Animated, {
     withSequence,
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
+import { useUnreadCount } from "../../hooks/useUnreadCount";
 
 // ─── Animated Tab Icon with Bounce ───
 function AnimatedTabIcon({
     IconComponent,
     color,
     focused,
+    badge,
 }: {
     IconComponent: typeof Home;
     color: string;
     focused: boolean;
+    badge?: number;
 }) {
     const scale = useSharedValue(1);
     const prevFocused = useRef(focused);
@@ -42,12 +45,33 @@ function AnimatedTabIcon({
 
     return (
         <Animated.View style={[animatedStyle, { alignItems: 'center', justifyContent: 'center' }]}>
-            <IconComponent
-                size={22}
-                color={color}
-                strokeWidth={focused ? 2.5 : 1.5}
-            />
-            {/* Active indicator dot */}
+            <View>
+                <IconComponent
+                    size={22}
+                    color={color}
+                    strokeWidth={focused ? 2.5 : 1.5}
+                />
+                {!!badge && badge > 0 && (
+                    <View
+                        style={{
+                            position: "absolute",
+                            top: -6,
+                            right: -10,
+                            minWidth: 16,
+                            height: 16,
+                            borderRadius: 8,
+                            backgroundColor: "#ef4444",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            paddingHorizontal: 4,
+                        }}
+                    >
+                        <Text style={{ fontSize: 10, fontWeight: "700", color: "#ffffff" }}>
+                            {badge > 99 ? "99+" : badge}
+                        </Text>
+                    </View>
+                )}
+            </View>
             {focused && (
                 <View
                     style={{
@@ -65,6 +89,7 @@ function AnimatedTabIcon({
 
 export default function TabsLayout() {
     const insets = useSafeAreaInsets();
+    const { total: unreadCount } = useUnreadCount();
 
     return (
         <Tabs
@@ -117,7 +142,7 @@ export default function TabsLayout() {
                 options={{
                     title: "Mensagens",
                     tabBarIcon: ({ color, focused }) => (
-                        <AnimatedTabIcon IconComponent={MessageCircle} color={color} focused={focused} />
+                        <AnimatedTabIcon IconComponent={MessageCircle} color={color} focused={focused} badge={unreadCount} />
                     ),
                 }}
             />

@@ -156,7 +156,7 @@ export default function WorkoutPlayerScreen() {
     // Apple Watch connectivity
     // Note: FINISH_WORKOUT is handled at root level (_layout.tsx → finishWorkoutFromWatch)
     // so it works even when this screen is not mounted (app killed during workout).
-    const { sendWorkoutToWatch } = useWatchConnectivity({
+    useWatchConnectivity({
         onWatchSetComplete: ({ workoutId, exerciseIndex, setIndex, reps, weight }) => {
             if (workoutId && workoutId !== (id as string)) {
                 return;
@@ -167,65 +167,35 @@ export default function WorkoutPlayerScreen() {
             );
             applyWatchSetCompletion(exerciseIndex, setIndex, reps, weight);
         },
+        onWatchCardioComplete: ({ workoutId, itemId, elapsedSeconds }) => {
+            if (workoutId && workoutId !== (id as string)) {
+                return;
+            }
+
+            if (__DEV__) console.log(
+                `[WorkoutScreen] Watch reported cardio complete: itemId ${itemId}, elapsed ${elapsedSeconds}s`
+            );
+            toggleCardioComplete(itemId, true, { elapsedSeconds });
+        },
     });
 
-    // Send workout data to Apple Watch when loaded
-    const lastWatchPayloadRef = useRef<any>(null);
-    const workoutStartedAtRef = useRef<string>(new Date().toISOString());
+    // Notify Watch to auto-start this workout when data is loaded (once per screen mount).
+    // v2 program snapshot (with all workouts) is synced by WatchBridge in _layout.tsx —
+    // we no longer send v1 workout snapshots here to avoid overwriting the v2 context.
     const watchStartSentRef = useRef(false);
 
     useEffect(() => {
-        if (!isLoading && exercises.length > 0 && workoutName && profile?.name) {
-            const watchPayload = {
-                workoutId: id as string,
-                workoutName,
-                studentName: profile.name,
-                exercises: exercises.map((ex, idx) => ({
-                    id: ex.id || `ex-${idx}`,
-                    name: ex.name,
-                    sets: ex.setsData.length,
-                    reps: parseInt(ex.setsData[0]?.reps || '0') || 0,
-                    weight: ex.setsData[0]?.weight ? parseFloat(ex.setsData[0].weight) : undefined,
-                    restTime: ex.rest_seconds || 0,
-                    completedSets: ex.setsData.filter((s) => s.completed).length,
-                    targetReps: ex.reps || undefined,
-                })),
-                currentExerciseIndex: 0,
-                currentSetIndex: 0,
-                isActive: true,
-                startedAt: workoutStartedAtRef.current,
-                updatedAt: new Date().toISOString(),
-            };
-
-            if (__DEV__) console.log('[WorkoutScreen] Sending workout to watch:', watchPayload);
-            lastWatchPayloadRef.current = watchPayload;
-            sendWorkoutToWatch(watchPayload);
-
-            // Notify Watch to auto-start this workout (once per screen mount)
-            if (!watchStartSentRef.current && Platform.OS === 'ios') {
-                watchStartSentRef.current = true;
-                const { sendMessage } = require('../../modules/watch-connectivity/src/WatchConnectivityModule');
-                sendMessage({
-                    type: 'START_WORKOUT_FROM_PHONE',
-                    payload: { workoutId: id as string },
-                }).catch((e: any) => {
-                    if (__DEV__) console.log('[WorkoutScreen] Could not notify Watch to start:', e?.message);
-                });
-            }
+        if (!isLoading && exercises.length > 0 && !watchStartSentRef.current && Platform.OS === 'ios') {
+            watchStartSentRef.current = true;
+            const { sendMessage } = require('../../modules/watch-connectivity/src/WatchConnectivityModule');
+            sendMessage({
+                type: 'START_WORKOUT_FROM_PHONE',
+                payload: { workoutId: id as string },
+            }).catch((e: any) => {
+                if (__DEV__) console.log('[WorkoutScreen] Could not notify Watch to start:', e?.message);
+            });
         }
-    }, [isLoading, exercises, workoutName, profile, id, sendWorkoutToWatch]);
-
-    // Re-sync watch when app returns to foreground.
-    useEffect(() => {
-        const subscription = AppState.addEventListener('change', (nextState) => {
-            if (nextState === 'active' && lastWatchPayloadRef.current) {
-                if (__DEV__) console.log('[WorkoutScreen] App became active, re-syncing workout to watch');
-                sendWorkoutToWatch(lastWatchPayloadRef.current);
-            }
-        });
-
-        return () => subscription.remove();
-    }, [sendWorkoutToWatch]);
+    }, [isLoading, exercises, id]);
 
     const navigation = useNavigation();
     const isFinishingRef = useRef(false);

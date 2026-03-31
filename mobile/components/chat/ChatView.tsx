@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { ChevronLeft, Send, ImagePlus, X, Check, CheckCheck, MessageCircle } from 'lucide-react-native';
+import { ChevronLeft, Send, ImagePlus, ImageOff, X, Check, CheckCheck, MessageCircle } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 import { supabase } from '../../lib/supabase';
@@ -62,7 +62,9 @@ export function ChatView({ showBackButton = false }: ChatViewProps) {
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [text, setText] = useState('');
     const [imageUri, setImageUri] = useState<string | null>(null);
+    const [imageMimeType, setImageMimeType] = useState<string | undefined>(undefined);
     const [isSending, setIsSending] = useState(false);
+    const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
     const flatListRef = useRef<FlatList>(null);
 
     // Load initial messages
@@ -146,7 +148,7 @@ export function ChatView({ showBackButton = false }: ChatViewProps) {
         let msg: ChatMessage | null = null;
 
         if (imageUri) {
-            msg = await sendImageMessage(imageUri, trimmed || undefined);
+            msg = await sendImageMessage(imageUri, trimmed || undefined, imageMimeType);
         } else {
             msg = await sendTextMessage(trimmed);
         }
@@ -158,10 +160,11 @@ export function ChatView({ showBackButton = false }: ChatViewProps) {
             });
             setText('');
             setImageUri(null);
+            setImageMimeType(undefined);
         }
 
         setIsSending(false);
-    }, [text, imageUri, isSending, sendTextMessage, sendImageMessage]);
+    }, [text, imageUri, imageMimeType, isSending, sendTextMessage, sendImageMessage]);
 
     // Pick image
     const pickImage = useCallback(async () => {
@@ -173,6 +176,7 @@ export function ChatView({ showBackButton = false }: ChatViewProps) {
 
         if (!result.canceled && result.assets[0]) {
             setImageUri(result.assets[0].uri);
+            setImageMimeType(result.assets[0].mimeType ?? undefined);
         }
     }, []);
 
@@ -220,14 +224,29 @@ export function ChatView({ showBackButton = false }: ChatViewProps) {
                         }),
                     }}>
                         {item.image_url && (
-                            <Image
-                                source={{ uri: item.image_url }}
-                                style={{
-                                    width: 220, height: 160, borderRadius: 12,
+                            failedImages.has(item.id) ? (
+                                <View style={{
+                                    width: 220, height: 100, borderRadius: 12,
+                                    backgroundColor: isStudent ? 'rgba(255,255,255,0.1)' : '#f1f5f9',
+                                    alignItems: 'center', justifyContent: 'center',
                                     marginBottom: item.content ? 6 : 0,
-                                }}
-                                resizeMode="cover"
-                            />
+                                }}>
+                                    <ImageOff size={24} color={isStudent ? 'rgba(255,255,255,0.4)' : '#94a3b8'} />
+                                    <Text style={{ fontSize: 11, color: isStudent ? 'rgba(255,255,255,0.4)' : '#94a3b8', marginTop: 4 }}>
+                                        Imagem indisponível
+                                    </Text>
+                                </View>
+                            ) : (
+                                <Image
+                                    source={{ uri: item.image_url }}
+                                    style={{
+                                        width: 220, height: 160, borderRadius: 12,
+                                        marginBottom: item.content ? 6 : 0,
+                                    }}
+                                    resizeMode="cover"
+                                    onError={() => setFailedImages(prev => new Set(prev).add(item.id))}
+                                />
+                            )
                         )}
 
                         {item.content && (
@@ -387,9 +406,12 @@ export function ChatView({ showBackButton = false }: ChatViewProps) {
                 )}
 
                 <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8 }}>
+                    {/* TODO: Re-enable image upload after fixing RN XMLHttpRequest/FormData issue with Supabase Storage */}
+                    {/*
                     <Pressable onPress={pickImage} hitSlop={8} style={{ paddingBottom: 6 }}>
                         <ImagePlus size={22} color="#94a3b8" strokeWidth={1.5} />
                     </Pressable>
+                    */}
 
                     <TextInput
                         value={text}

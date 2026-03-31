@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { ArrowLeft, Check, CheckCheck, Loader2 } from 'lucide-react'
+import { ArrowLeft, Check, CheckCheck, ImageOff, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { getMessages, markMessagesAsRead } from '@/app/messages/actions'
@@ -240,12 +240,23 @@ export function ChatPanel({ studentId, studentName, studentAvatar, onBack }: Cha
                                 }`}>
                                     {/* Image */}
                                     {msg.image_url && (
-                                        <a href={msg.image_url} target="_blank" rel="noopener noreferrer" className="block mb-1.5">
+                                        <a href={msg.image_url} target="_blank" rel="noopener noreferrer" className="block mb-1.5" data-img-container>
                                             <img
                                                 src={msg.image_url}
                                                 alt=""
                                                 className="max-w-[280px] max-h-[200px] rounded-lg object-cover cursor-pointer"
+                                                onError={(e) => {
+                                                    const target = e.currentTarget
+                                                    target.style.display = 'none'
+                                                    const container = target.closest('[data-img-container]')
+                                                    const fallback = container?.querySelector<HTMLElement>('[data-fallback="img-error"]')
+                                                    if (fallback) fallback.style.display = 'flex'
+                                                }}
                                             />
+                                            <div data-fallback="img-error" className="hidden items-center justify-center gap-1.5 w-[200px] h-[80px] rounded-lg bg-[#F5F5F7] dark:bg-k-bg-tertiary">
+                                                <ImageOff size={16} className="text-[#86868B] dark:text-k-text-quaternary" />
+                                                <span className="text-[11px] text-[#86868B] dark:text-k-text-quaternary">Imagem indisponível</span>
+                                            </div>
                                         </a>
                                     )}
                                     {/* Text */}

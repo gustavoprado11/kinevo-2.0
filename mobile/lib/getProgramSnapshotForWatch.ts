@@ -8,6 +8,7 @@
 
 import { supabase } from './supabase';
 import { getProgramWeek } from '@kinevo/shared/utils/schedule-projection';
+import { sortExerciseItems } from '../utils/sortExerciseItems';
 
 const EQUIPMENT_LABELS: Record<string, string> = {
   treadmill: 'Esteira',
@@ -142,29 +143,19 @@ export async function getProgramSnapshotForWatch(
   const programWorkouts: WatchProgramWorkout[] = workouts.map((w: any) => {
     const allItems: any[] = w.assigned_workout_items || [];
 
-    // Build superset parent map: parentId → parent's order_index
-    const supersetParentOrder = new Map<string, number>();
+    // Build superset parent map: parentId → { order_index }
+    const supersetParentOrder = new Map<string, { order_index: number }>();
     for (const item of allItems) {
       if (item.item_type === 'superset') {
-        supersetParentOrder.set(item.id, item.order_index);
+        supersetParentOrder.set(item.id, { order_index: item.order_index });
       }
     }
 
-    // Filter to exercise/cardio items only, compute effective order
-    const sortableItems = allItems
-      .filter((i: any) => i.item_type === 'exercise' || i.item_type === 'cardio')
-      .map((item: any) => {
-        const parentOrder = item.parent_item_id
-          ? supersetParentOrder.get(item.parent_item_id)
-          : undefined;
-        return {
-          ...item,
-          // Superset children: position at parent's order, sub-sort by own order
-          effectiveOrder: parentOrder ?? item.order_index,
-          subOrder: parentOrder != null ? item.order_index : 0,
-        };
-      })
-      .sort((a: any, b: any) => a.effectiveOrder - b.effectiveOrder || a.subOrder - b.subOrder);
+    // Filter to exercise/cardio items only, sort with superset-aware ordering
+    const sortableItems = sortExerciseItems(
+      allItems.filter((i: any) => i.item_type === 'exercise' || i.item_type === 'cardio'),
+      supersetParentOrder,
+    );
 
     const exerciseItems = sortableItems.filter((i: any) => i.item_type === 'exercise');
     const cardioRawItems = sortableItems.filter((i: any) => i.item_type === 'cardio');

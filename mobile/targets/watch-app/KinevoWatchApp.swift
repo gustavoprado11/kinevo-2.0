@@ -41,6 +41,21 @@ struct KinevoWatchApp: App {
                         programSnapshot: sessionManager?.programSnapshot
                     )
                 }
+
+                // Wire program updates — when new applicationContext arrives,
+                // update exercise order for the active workout (if any).
+                sessionManager.onProgramUpdated = { [weak workoutStore] snapshot in
+                    workoutStore?.reconcileProgram(snapshot)
+                }
+
+                // Wire direct exercise order updates from iPhone (immediate delivery via sendMessage).
+                sessionManager.onExerciseOrderUpdate = { [weak workoutStore] workoutId, exerciseIds in
+                    guard let store = workoutStore,
+                          let current = store.state,
+                          current.workoutId == workoutId
+                    else { return }
+                    store.updateExerciseOrder(from: exerciseIds)
+                }
             }
         }
         .onChange(of: workoutStore.remoteStartWorkoutId) { _, newId in

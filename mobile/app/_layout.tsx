@@ -30,7 +30,7 @@ function WatchBridge() {
 
     const { useWatchConnectivity } = require("../hooks/useWatchConnectivity");
     const { finishWorkoutFromWatch, watchFinishState, processPendingWatchWorkouts } = require("../lib/finishWorkoutFromWatch");
-    const { sendAckToWatch, syncProgramToWatch } = require("../modules/watch-connectivity");
+    const { sendAckToWatch, syncProgramToWatch, sendMessage } = require("../modules/watch-connectivity");
     const { appEvents, WORKOUT_COMPLETED, WATCH_WORKOUT_FINISHED } = require("../lib/events");
     const { supabase } = require("../lib/supabase");
     const { getProgramSnapshotForWatch } = require("../lib/getProgramSnapshotForWatch");
@@ -51,6 +51,29 @@ function WatchBridge() {
             lastStartRef.current = { workoutId, ts: now };
 
             if (__DEV__) console.log(`[Layout] Watch requested START_WORKOUT: ${workoutId}`);
+
+            // Send correct exercise order directly to Watch via sendMessage (immediate delivery).
+            // applicationContext (syncProgramToWatch) is eventual and arrives too late —
+            // the Watch has already loaded the workout from the cached snapshot by then.
+            try {
+                const { data: { user: syncUser } } = await supabase.auth.getUser();
+                if (syncUser) {
+                    const freshPayload = await getProgramSnapshotForWatch(syncUser.id);
+                    syncProgramToWatch(freshPayload);
+
+                    // Extract exercise IDs in correct order for this specific workout
+                    const workoutData = freshPayload?.workouts?.find((w: any) => w.workoutId === workoutId);
+                    if (workoutData?.exercises?.length) {
+                        const exerciseIds = workoutData.exercises.map((e: any) => e.id);
+                        sendMessage({
+                            type: 'UPDATE_EXERCISE_ORDER',
+                            payload: { workoutId, exerciseIds },
+                        }).catch(() => {});  // fire-and-forget, Watch may not be reachable
+                    }
+                }
+            } catch (syncErr: any) {
+                if (__DEV__) console.warn(`[Layout] Re-sync failed (non-critical): ${syncErr?.message}`);
+            }
 
             // Pre-create workout_session (in_progress) so data survives even if
             // the app is killed before the workout screen mounts.
@@ -79,24 +102,30 @@ function WatchBridge() {
                                 .eq('id', workoutId)
                                 .maybeSingle();
 
-                            const { data: session, error } = await supabase
-                                .from('workout_sessions')
-                                .insert({
-                                    student_id: student.id,
-                                    trainer_id: student.coach_id,
-                                    assigned_workout_id: workoutId,
-                                    assigned_program_id: workout?.assigned_program_id,
-                                    status: 'in_progress',
-                                    started_at: new Date().toISOString(),
-                                    sync_status: 'synced',
-                                })
-                                .select('id')
-                                .single();
-
-                            if (error) {
-                                if (__DEV__) console.error('[Layout] Failed to pre-create session:', error);
+                            if (!workout?.assigned_program_id || !student.coach_id) {
+                                if (__DEV__) console.warn(
+                                    `[Layout] Cannot pre-create session: assigned_program_id=${workout?.assigned_program_id}, coach_id=${student.coach_id}`
+                                );
                             } else {
-                                if (__DEV__) console.log(`[Layout] Pre-created in_progress session: ${session.id}`);
+                                const { data: session, error } = await supabase
+                                    .from('workout_sessions')
+                                    .insert({
+                                        student_id: student.id,
+                                        trainer_id: student.coach_id,
+                                        assigned_workout_id: workoutId,
+                                        assigned_program_id: workout.assigned_program_id,
+                                        status: 'in_progress',
+                                        started_at: new Date().toISOString(),
+                                        sync_status: 'synced',
+                                    })
+                                    .select('id')
+                                    .single();
+
+                                if (error) {
+                                    if (__DEV__) console.error('[Layout] Failed to pre-create session:', error);
+                                } else {
+                                    if (__DEV__) console.log(`[Layout] Pre-created in_progress session: ${session.id}`);
+                                }
                             }
                         } else {
                             if (__DEV__) console.log(`[Layout] Session already exists for ${workoutId}: ${existing.id}`);
@@ -180,8 +209,8 @@ function WatchBridge() {
                 } else {
                     console.error('[Layout] finishWorkoutFromWatch returned null');
                 }
-            } catch (error) {
-                console.error('[Layout] Error finishing workout from watch:', __DEV__ ? error : '');
+            } catch (error: any) {
+                console.error('[Layout] Error finishing workout from watch:', error?.message ?? error);
             }
         },
         [router]
@@ -214,8 +243,12 @@ function WatchBridge() {
             } catch (e: any) {
                 if (__DEV__) console.warn(`[Layout] Discard cleanup failed: ${e?.message}`);
             }
+
+            // Close the workout screen on the phone (same pattern as onWatchFinishWorkout)
+            appEvents.emit(WATCH_WORKOUT_FINISHED, { workoutId });
+            router.replace('/(tabs)/home');
         },
-        []
+        [router]
     );
 
     useWatchConnectivity({ onWatchStartWorkout, onWatchFinishWorkout, onWatchDiscardWorkout });

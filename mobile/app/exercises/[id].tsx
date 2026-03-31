@@ -2,10 +2,23 @@ import React, { useEffect, useState } from "react";
 import { View, Text, ScrollView, ActivityIndicator, useWindowDimensions } from "react-native";
 import { Stack, useLocalSearchParams } from "expo-router";
 import YoutubePlayer from "react-native-youtube-iframe";
-import { Video, ResizeMode } from "expo-av";
 import { supabase } from "../../lib/supabase";
 import { extractYouTubeId, isDirectVideoUrl } from "../../utils/youtube";
 import type { Exercise } from "../../hooks/useExerciseLibrary";
+
+// Lazy-load expo-av to avoid crash when native module is not linked
+let ExpoVideo: any = null;
+let ExpoResizeMode: any = null;
+let expoAvLoaded = false;
+
+try {
+    const av = require("expo-av");
+    ExpoVideo = av.Video;
+    ExpoResizeMode = av.ResizeMode;
+    expoAvLoaded = true;
+} catch {
+    // expo-av not available — direct video playback will be disabled
+}
 
 const DIFFICULTY_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
     beginner: { label: "Iniciante", color: "#16a34a", bg: "#f0fdf4" },
@@ -119,14 +132,14 @@ export default function ExerciseDetailScreen() {
                             />
                         </View>
                     </View>
-                ) : isDirect && exercise.video_url ? (
+                ) : isDirect && exercise.video_url && expoAvLoaded && ExpoVideo ? (
                     <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
                         <View style={{ borderRadius: 14, overflow: "hidden" }}>
-                            <Video
+                            <ExpoVideo
                                 source={{ uri: exercise.video_url }}
                                 style={{ width: width - 40, height: (width - 40) * 9 / 16 }}
                                 useNativeControls
-                                resizeMode={ResizeMode.CONTAIN}
+                                resizeMode={ExpoResizeMode?.CONTAIN}
                             />
                         </View>
                     </View>

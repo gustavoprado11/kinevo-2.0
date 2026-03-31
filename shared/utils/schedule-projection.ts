@@ -265,37 +265,30 @@ export function calculateWeeklyProgress(
     for (const [workoutId, occs] of occByWorkout) {
       const counts = workoutCounts.get(workoutId)
       if (!counts) continue
-      const deficit = counts.expected - counts.completed
-      if (deficit <= 0) continue
+      if (counts.completed >= counts.expected) continue
 
-      // Pick the oldest past occurrences as "missed"
-      // Only consider occurrences whose date has passed (or is today)
-      let pendingCount = 0
-      for (const occ of occs) {
-        if (pendingCount >= deficit) break
-        if (occ.date <= today) {
-          pendingWorkouts.push({
-            assignedWorkoutId: occ.workoutId,
-            workoutName: occ.workoutName,
-            originalDay: WEEK_DAYS_PT[occ.dayOfWeek],
-            missedDate: `${String(occ.date.getDate()).padStart(2, '0')}/${String(occ.date.getMonth() + 1).padStart(2, '0')}`,
-            exerciseCount: occ.exerciseCount,
-            notes: occ.notes,
-          })
-          pendingCount++
-        }
-      }
+      // Filter to past/today occurrences only, sorted chronologically (already sorted)
+      const pastOccs = occs.filter(occ => occ.date <= today)
 
-      // If there are still pending but no past dates (all future), add future ones
-      const remaining = deficit - pendingCount
-      if (remaining > 0) {
-        for (const occ of occs) {
-          if (pendingCount >= deficit) break
-          if (occ.date > today) {
-            // Future occurrence — not missed yet, but counts toward expected
-            // Don't add to pendingWorkouts (they haven't missed it yet)
-          }
+      // Consume completed sessions against the oldest occurrences first.
+      // This ensures that a session done on Monday "covers" the Monday occurrence,
+      // so only truly uncovered occurrences are marked as missed.
+      let availableSessions = counts.completed
+      for (const occ of pastOccs) {
+        if (availableSessions > 0) {
+          // This occurrence is covered by a completed session
+          availableSessions--
+          continue
         }
+        // No sessions left to cover this occurrence — it's missed
+        pendingWorkouts.push({
+          assignedWorkoutId: occ.workoutId,
+          workoutName: occ.workoutName,
+          originalDay: WEEK_DAYS_PT[occ.dayOfWeek],
+          missedDate: `${String(occ.date.getDate()).padStart(2, '0')}/${String(occ.date.getMonth() + 1).padStart(2, '0')}`,
+          exerciseCount: occ.exerciseCount,
+          notes: occ.notes,
+        })
       }
     }
   }

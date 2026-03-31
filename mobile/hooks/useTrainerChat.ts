@@ -2,6 +2,49 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 
+// Upload file to Supabase Storage via native XMLHttpRequest (bypasses whatwg-fetch polyfill issues)
+function uploadToSupabaseStorage(
+    bucketName: string,
+    filePath: string,
+    fileUri: string,
+    mimeType: string,
+    supabaseUrl: string,
+    accessToken: string,
+    anonKey: string
+): Promise<{ error: string | null }> {
+    return new Promise((resolve) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', `${supabaseUrl}/storage/v1/object/${bucketName}/${filePath}`);
+        xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`);
+        xhr.setRequestHeader('apikey', anonKey);
+        xhr.setRequestHeader('x-upsert', 'false');
+
+        xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                if (__DEV__) console.log('[Chat] Upload success, status:', xhr.status);
+                resolve({ error: null });
+            } else {
+                if (__DEV__) console.error('[Chat] Upload failed, status:', xhr.status, 'response:', xhr.responseText);
+                resolve({ error: `Upload failed: ${xhr.status}` });
+            }
+        };
+
+        xhr.onerror = () => {
+            if (__DEV__) console.error('[Chat] XHR upload error');
+            resolve({ error: 'XHR network error' });
+        };
+
+        const formData = new FormData();
+        formData.append('file', {
+            uri: fileUri,
+            name: filePath.split('/').pop(),
+            type: mimeType,
+        } as any);
+
+        xhr.send(formData);
+    });
+}
+
 export interface ChatMessage {
     id: string;
     student_id: string;
@@ -139,23 +182,35 @@ export function useTrainerChat() {
     }, [user]);
 
     // Send an image message
-    const sendImageMessage = useCallback(async (imageUri: string, content?: string): Promise<ChatMessage | null> => {
+    const sendImageMessage = useCallback(async (imageUri: string, content?: string, assetMimeType?: string): Promise<ChatMessage | null> => {
         const sid = studentIdRef.current;
         if (!sid || !user) return null;
 
-        // Upload image to Supabase Storage
-        const ext = imageUri.split('.').pop()?.toLowerCase() || 'jpg';
+        // Resolve content-type from asset metadata (reliable) instead of URI extension (unreliable on iOS)
+        const mimeType = assetMimeType?.startsWith('image/') ? assetMimeType : 'image/jpeg';
+        const ext = mimeType === 'image/png' ? 'png'
+            : mimeType === 'image/webp' ? 'webp'
+            : 'jpg'; // jpeg, heic, and anything else → jpg (ImagePicker compresses to jpeg at quality < 1)
         const fileName = `${sid}/${Date.now()}.${ext}`;
 
-        const response = await fetch(imageUri);
-        const blob = await response.blob();
+        if (__DEV__) console.log('[Chat] Asset mimeType:', assetMimeType, 'uri:', imageUri);
+        if (__DEV__) console.log('[Chat] Computed ext:', ext, 'contentType:', mimeType, 'fileName:', fileName);
 
-        const { error: uploadError } = await supabase.storage
-            .from('messages')
-            .upload(fileName, blob, {
-                contentType: `image/${ext === 'jpg' ? 'jpeg' : ext}`,
-                upsert: false,
-            });
+        // Get auth token for direct upload
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+            if (__DEV__) console.error('[useTrainerChat] No auth session for upload');
+            return null;
+        }
+
+        const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
+        const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
+
+        // Upload via native XMLHttpRequest + FormData (bypasses whatwg-fetch polyfill)
+        const { error: uploadError } = await uploadToSupabaseStorage(
+            'messages', fileName, imageUri, mimeType,
+            supabaseUrl, session.access_token, anonKey
+        );
 
         if (uploadError) {
             if (__DEV__) console.error('[useTrainerChat] upload error:', uploadError);
@@ -163,6 +218,7 @@ export function useTrainerChat() {
         }
 
         const { data: publicData } = supabase.storage.from('messages').getPublicUrl(fileName);
+        if (__DEV__) console.log('[Chat] Public URL:', publicData.publicUrl);
 
         const { data, error } = await supabase
             .from('messages' as any)

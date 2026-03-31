@@ -117,6 +117,12 @@ export function usePushNotifications(role: "trainer" | "student" | null) {
                         });
                     }
                     break;
+                case "message":
+                case "student_message":
+                case "text_message":
+                    // Trainer sent a message — open the inbox/chat tab
+                    router.push("/(tabs)/inbox");
+                    break;
                 case "program_assigned":
                     // Navigate to home so the student sees the new program
                     router.push("/(tabs)/home");
