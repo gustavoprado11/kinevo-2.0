@@ -3,9 +3,10 @@ import { Pressable, StyleProp, ViewStyle } from 'react-native';
 import Animated, {
     useSharedValue,
     useAnimatedStyle,
-    withSpring,
+    withTiming,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
+import { ANIM } from '../../lib/animations';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -28,8 +29,8 @@ interface PressableScaleProps {
 
 /**
  * A card/button wrapper that provides:
- * - Squish on press-in (spring-based scale down)
- * - Bouncy release back to 1.0
+ * - Subtle scale-down on press-in
+ * - Smooth release back to 1.0
  * - Light haptic impulse on release
  *
  * All animations run on the UI thread via Reanimated worklets at 60fps.
@@ -48,19 +49,14 @@ export function PressableScale({
     const scale = useSharedValue(1);
 
     const handlePressIn = useCallback(() => {
-        scale.value = withSpring(pressScale, {
-            damping: 15,
-            stiffness: 150,
-            mass: 0.8,
+        scale.value = withTiming(pressScale, {
+            duration: 100,
+            easing: ANIM.timing.fast.easing,
         });
     }, [pressScale]);
 
     const handlePressOut = useCallback(() => {
-        scale.value = withSpring(1, {
-            damping: 12,
-            stiffness: 200,
-            mass: 0.6,
-        });
+        scale.value = withTiming(1, ANIM.timing.fast);
         if (haptic) {
             Haptics.impactAsync(hapticStyle);
         }

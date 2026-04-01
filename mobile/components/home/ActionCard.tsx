@@ -1,57 +1,25 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { View, Text, Pressable } from "react-native";
 import { Dumbbell, ChevronRight, Coffee, Check, Play, AlertCircle, PartyPopper, RotateCcw } from "lucide-react-native";
 import Animated, {
     useSharedValue,
     useAnimatedStyle,
-    withRepeat,
     withTiming,
-    withSpring,
-    Easing,
-    cancelAnimation,
 } from "react-native-reanimated";
 import { PressableScale } from "../shared/PressableScale";
 import * as Haptics from "expo-haptics";
+import { ANIM } from "../../lib/animations";
 import type { PendingWorkout, WeeklyProgress } from "@kinevo/shared/utils/schedule-projection";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-// ── Breathing Share Button ──
-function BreatheShareButton({ onPress }: { onPress: () => void }) {
+// ── Share Button (static — no breathing pulse) ──
+function ShareButton({ onPress }: { onPress: () => void }) {
     const scale = useSharedValue(1);
-    const isPressed = useSharedValue(false);
-
-    useEffect(() => {
-        scale.value = withRepeat(
-            withTiming(1.04, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
-            -1,
-            true
-        );
-    }, []);
 
     const animatedStyle = useAnimatedStyle(() => ({
         transform: [{ scale: scale.value }],
     }));
-
-    const handlePressIn = () => {
-        isPressed.value = true;
-        cancelAnimation(scale);
-        scale.value = withSpring(0.95, { damping: 15, stiffness: 200 });
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    };
-
-    const handlePressOut = () => {
-        isPressed.value = false;
-        scale.value = withSpring(1, { damping: 12, stiffness: 200 }, (finished) => {
-            if (finished) {
-                scale.value = withRepeat(
-                    withTiming(1.04, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
-                    -1,
-                    true
-                );
-            }
-        });
-    };
 
     return (
         <AnimatedPressable
@@ -59,8 +27,12 @@ function BreatheShareButton({ onPress }: { onPress: () => void }) {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 onPress();
             }}
-            onPressIn={handlePressIn}
-            onPressOut={handlePressOut}
+            onPressIn={() => {
+                scale.value = withTiming(0.95, { duration: 100, easing: ANIM.timing.fast.easing });
+            }}
+            onPressOut={() => {
+                scale.value = withTiming(1, ANIM.timing.fast);
+            }}
             style={[
                 animatedStyle,
                 {
@@ -202,7 +174,7 @@ export function ActionCard({
                                     Concluído com sucesso!
                                 </Text>
                             </View>
-                            {onShare && <BreatheShareButton onPress={onShare} />}
+                            {onShare && <ShareButton onPress={onShare} />}
                         </View>
                     </PressableScale>
                 </View>
@@ -356,7 +328,7 @@ export function ActionCard({
                                 {durationStr}{todaySession!.rpe ? ` • PSE ${todaySession!.rpe}` : ''}
                             </Text>
                         </View>
-                        {onShare && <BreatheShareButton onPress={onShare} />}
+                        {onShare && <ShareButton onPress={onShare} />}
                     </View>
                 </PressableScale>
 
@@ -423,7 +395,7 @@ export function ActionCard({
                                 {durationStr}{todaySession!.rpe ? ` • PSE ${todaySession!.rpe}` : ''} — Semana completa!
                             </Text>
                         </View>
-                        {onShare && <BreatheShareButton onPress={onShare} />}
+                        {onShare && <ShareButton onPress={onShare} />}
                     </View>
                 </PressableScale>
             </View>

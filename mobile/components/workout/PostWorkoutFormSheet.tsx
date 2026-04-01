@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, ScrollView, Modal, Platform, KeyboardAvoidingView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ClipboardCheck } from 'lucide-react-native';
-import Animated, { FadeInUp } from 'react-native-reanimated';
+import Animated, { FadeInUp, Easing } from 'react-native-reanimated';
 import { FormRenderer } from '../forms/FormRenderer';
 import type { TriggerData } from '../../hooks/useWorkoutFormTriggers';
 
@@ -30,7 +30,7 @@ export function PostWorkoutFormSheet({ visible, trigger, onSubmit, onSkip }: Pos
                 <View style={{ flex: 1, paddingTop: Platform.OS === 'ios' ? 20 : insets.top }}>
                     {/* Header */}
                     <Animated.View
-                        entering={FadeInUp.delay(100).springify().damping(18)}
+                        entering={FadeInUp.delay(100).duration(300).easing(Easing.out(Easing.cubic))}
                         style={{
                             paddingHorizontal: 20,
                             paddingBottom: 16,
@@ -72,7 +72,7 @@ export function PostWorkoutFormSheet({ visible, trigger, onSubmit, onSkip }: Pos
                         showsVerticalScrollIndicator={false}
                         keyboardShouldPersistTaps="handled"
                     >
-                        <Animated.View entering={FadeInUp.delay(200).springify().damping(18)}>
+                        <Animated.View entering={FadeInUp.delay(200).duration(300).easing(Easing.out(Easing.cubic))}>
                             <FormRenderer
                                 mode="inline"
                                 schema={trigger.schemaJson}

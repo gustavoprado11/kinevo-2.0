@@ -31,6 +31,7 @@ import RNReanimated, {
     withSpring,
     runOnJS,
 } from 'react-native-reanimated';
+import { ANIM } from '../lib/animations';
 import { useTrainingRoomStore } from '../stores/training-room-store';
 import type { ExerciseData, WorkoutNote, ActiveSession } from '../stores/training-room-store';
 import { useFinishTrainerWorkout } from '../hooks/useTrainerWorkoutSession';
@@ -121,7 +122,7 @@ function DraggableChipSlot({
             draggingChipIdSV.value = chipId;
             dragTranslateX.value = 0;
             dragOffsetX.value = 0;
-            chipScale.value = withSpring(1.08, { damping: 15 });
+            chipScale.value = withSpring(1.08, ANIM.spring.snappy);
             runOnJS(onDragStart)();
         })
         .onUpdate((e) => {
@@ -129,8 +130,8 @@ function DraggableChipSlot({
             runOnJS(onDragUpdate)(dragTranslateX.value);
         })
         .onEnd(() => {
-            chipScale.value = withSpring(1, { damping: 15 });
-            dragTranslateX.value = withSpring(0, { damping: 20, stiffness: 200 }, (finished) => {
+            chipScale.value = withSpring(1, ANIM.spring.snappy);
+            dragTranslateX.value = withSpring(0, ANIM.spring.snappy, (finished) => {
                 if (finished) {
                     draggingChipIdSV.value = null;
                 }

@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Modal, TouchableOpacity, Dimensions, StyleSheet } from 'react-native';
 import { X, Share2 } from 'lucide-react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring, withSequence } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, withSequence, Easing } from 'react-native-reanimated';
+import { ANIM } from '../../lib/animations';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ShareWorkoutModal } from './ShareWorkoutModal';
@@ -42,8 +43,8 @@ export function WorkoutSuccessModal({ visible, onClose, data }: WorkoutSuccessMo
     useEffect(() => {
         if (visible) {
             scale.value = withSequence(
-                withSpring(1.02, { damping: 16, stiffness: 200 }),
-                withSpring(1, { damping: 20, stiffness: 200 })
+                withTiming(1.02, { duration: 200, easing: Easing.out(Easing.cubic) }),
+                withTiming(1, ANIM.timing.fast)
             );
         } else {
             scale.value = 0;

@@ -6,9 +6,10 @@ import {
     Share2, X, Camera, Image as ImageIcon, Trophy, FileText, LayoutTemplate,
 } from 'lucide-react-native';
 import Animated, {
-    useSharedValue, useAnimatedStyle, withSpring, withTiming, withSequence,
+    useSharedValue, useAnimatedStyle, withTiming, withSequence,
     interpolate, Extrapolation, Easing,
 } from 'react-native-reanimated';
+import { ANIM } from '../../lib/animations';
 import ViewShot, { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import * as ImagePicker from 'expo-image-picker';
@@ -94,7 +95,7 @@ function TemplateSegment({
 
     useEffect(() => {
         const idx = templates.findIndex(t => t.key === selected);
-        pillX.value = withSpring(idx, { damping: 22, stiffness: 260, mass: 0.8 });
+        pillX.value = withTiming(idx, ANIM.timing.normal);
     }, [selected]);
 
     const segmentWidth = (SCREEN_WIDTH - 48 - 8) / templates.length;
@@ -157,7 +158,7 @@ export function ShareWorkoutModal({ visible, onClose, data, sessionId }: ShareWo
 
     useEffect(() => {
         if (visible) {
-            scale.value = withSpring(1, { damping: 24, stiffness: 260, mass: 0.9 });
+            scale.value = withTiming(1, ANIM.timing.normal);
         } else {
             scale.value = withTiming(0, { duration: 200 });
             setTimeout(() => {
@@ -184,7 +185,7 @@ export function ShareWorkoutModal({ visible, onClose, data, sessionId }: ShareWo
     }, []);
 
     const handleSharePressOut = useCallback(() => {
-        shareScale.value = withSpring(1, { damping: 28, stiffness: 400, mass: 0.7 });
+        shareScale.value = withTiming(1, ANIM.timing.fast);
     }, []);
 
     const handlePickImage = useCallback(async () => {

@@ -18,6 +18,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { ChevronDown, ChevronLeft, ChevronRight, Check } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
+import { ANIM } from "../../lib/animations";
 import {
     generateCalendarDays,
     getWeekRange,
@@ -64,7 +65,7 @@ const STATUS_DOT_COLORS: Record<CalendarDay["status"], string | null> = {
 
 const DAY_NAMES = ["D", "S", "T", "Q", "Q", "S", "S"];
 
-const SPRING_CONFIG = { damping: 20, stiffness: 150 };
+const SPRING_CONFIG = ANIM.spring.tight;
 
 interface UnifiedCalendarProps {
     workouts: ScheduledWorkoutRef[];

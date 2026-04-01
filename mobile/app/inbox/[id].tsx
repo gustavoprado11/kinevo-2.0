@@ -7,7 +7,7 @@ import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import * as SecureStore from "expo-secure-store";
 import { ChevronLeft, Upload, CheckCircle2, MessageCircle } from "lucide-react-native";
-import Animated, { FadeInUp, FadeIn, ZoomIn } from "react-native-reanimated";
+import Animated, { FadeInUp, FadeIn, ZoomIn, Easing } from "react-native-reanimated";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../contexts/AuthContext";
 import { PressableScale } from "../../components/shared/PressableScale";
@@ -368,7 +368,7 @@ export default function InboxItemDetailScreen() {
                 <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 30 }}>
                     {/* Title card */}
                     <Animated.View
-                        entering={FadeInUp.delay(50).springify().damping(18)}
+                        entering={FadeInUp.delay(50).duration(300).easing(Easing.out(Easing.cubic))}
                         style={{
                             backgroundColor: '#ffffff',
                             borderRadius: 20,
@@ -397,7 +397,7 @@ export default function InboxItemDetailScreen() {
                             <Animated.View
                                 entering={
                                     FadeIn.delay(150).duration(400)
-                                        .springify().damping(18).stiffness(100)
+                                        .duration(300).easing(Easing.out(Easing.cubic))
                                 }
                             >
                                 <PressableScale
@@ -456,7 +456,7 @@ export default function InboxItemDetailScreen() {
 
                             {submission && questions.length > 0 && (
                                 <View style={{ marginTop: 20 }}>
-                                    <Animated.View entering={FadeInUp.delay(250).springify().damping(18)}>
+                                    <Animated.View entering={FadeInUp.delay(250).duration(300).easing(Easing.out(Easing.cubic))}>
                                         <Text style={{ color: "#94a3b8", fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 2, marginBottom: 10, paddingLeft: 1 }}>
                                             Suas respostas
                                         </Text>
@@ -475,7 +475,7 @@ export default function InboxItemDetailScreen() {
                                         return (
                                             <Animated.View
                                                 key={question.id}
-                                                entering={FadeInUp.delay(300 + qIdx * 80).springify().damping(18).stiffness(100)}
+                                                entering={FadeInUp.delay(200 + qIdx * 50).duration(300).easing(Easing.out(Easing.cubic))}
                                             >
                                                 <View
                                                     style={{

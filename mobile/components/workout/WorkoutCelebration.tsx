@@ -4,7 +4,6 @@ import Animated, {
     useSharedValue,
     useAnimatedStyle,
     withTiming,
-    withSpring,
     withDelay,
     withSequence,
     Easing,
@@ -207,13 +206,13 @@ export function WorkoutCelebration({ visible, onComplete, data }: WorkoutCelebra
         checkScale.value = withDelay(
             100,
             withSequence(
-                withSpring(1.08, { damping: 8, stiffness: 150 }),
-                withSpring(1, { damping: 12, stiffness: 120 })
+                withTiming(1.08, { duration: 250, easing: Easing.out(Easing.cubic) }),
+                withTiming(1, { duration: 200, easing: Easing.inOut(Easing.cubic) })
             )
         );
         glowScale.value = withDelay(
             100,
-            withSpring(1, { damping: 10, stiffness: 60 })
+            withTiming(1, { duration: 400, easing: Easing.out(Easing.cubic) })
         );
 
         // Phase 2 (400ms): Title

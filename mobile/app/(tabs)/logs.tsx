@@ -15,6 +15,7 @@ import Animated, {
     runOnJS,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
+import { ANIM } from '../../lib/animations';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useWorkoutHistory, HistorySession, HistoryStats, HistoryWorkoutItem } from '../../hooks/useWorkoutHistory';
 import { useStudentProfile } from '../../hooks/useStudentProfile';
@@ -40,7 +41,7 @@ function AnimatedSegmentedControl({
 
     const handlePress = useCallback((tab: 'history' | 'performance') => {
         Haptics.selectionAsync();
-        pillX.value = withSpring(tab === 'history' ? 0 : 1, { damping: 20, stiffness: 200 });
+        pillX.value = withTiming(tab === 'history' ? 0 : 1, ANIM.timing.normal);
         onTabChange(tab);
     }, [onTabChange]);
 
@@ -201,7 +202,7 @@ function HistoryList({ history }: { history: HistorySession[] }) {
     if (!history.length) {
         return (
             <Animated.View
-                entering={FadeInUp.delay(100).springify().damping(18)}
+                entering={FadeInUp.delay(100).duration(ANIM.enter.duration).easing(ANIM.enter.easing)}
                 style={{ alignItems: 'center', justifyContent: 'center', marginTop: 80 }}
             >
                 <View
@@ -233,7 +234,7 @@ function HistoryList({ history }: { history: HistorySession[] }) {
             {history.map((session, index) => (
                 <Animated.View
                     key={session.id}
-                    entering={FadeInUp.delay(index * 80).springify().damping(18).stiffness(100)}
+                    entering={FadeInUp.delay(index * ANIM.enter.stagger).duration(ANIM.enter.duration).easing(ANIM.enter.easing)}
                 >
                     <HistoryCard session={session} />
                 </Animated.View>
@@ -251,7 +252,7 @@ function HistoryCard({ session }: { session: HistorySession }) {
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
         const next = !expanded;
         setExpanded(next);
-        chevronRotation.value = withSpring(next ? 1 : 0, { damping: 20, stiffness: 150 });
+        chevronRotation.value = withTiming(next ? 1 : 0, ANIM.timing.fast);
     }, [expanded]);
 
     const chevronStyle = useAnimatedStyle(() => ({
@@ -581,7 +582,7 @@ function PublishedReportsSection() {
     if (reports.length === 0) return null;
 
     return (
-        <Animated.View entering={FadeInUp.delay(400).springify().damping(18)}>
+        <Animated.View entering={FadeInUp.delay(400).duration(ANIM.enter.duration).easing(ANIM.enter.easing)}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16, marginTop: 8, paddingHorizontal: 4 }}>
                 <Text style={{ fontSize: 12, fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 1 }}>
                     Relatórios de Programa
@@ -625,7 +626,7 @@ function PerformanceView({ stats }: { stats: HistoryStats }) {
         <View>
             {/* Jornada Card */}
             <Animated.View
-                entering={FadeInUp.delay(100).springify().damping(18)}
+                entering={FadeInUp.delay(100).duration(ANIM.enter.duration).easing(ANIM.enter.easing)}
                 style={{
                     backgroundColor: '#ffffff',
                     borderRadius: 20,
@@ -672,7 +673,7 @@ function PerformanceView({ stats }: { stats: HistoryStats }) {
             {/* Recordes Pessoais */}
             <View>
                 <Animated.View
-                    entering={FadeInUp.delay(200).springify().damping(18)}
+                    entering={FadeInUp.delay(200).duration(ANIM.enter.duration).easing(ANIM.enter.easing)}
                     style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16, paddingHorizontal: 4 }}
                 >
                     <Text
@@ -690,7 +691,7 @@ function PerformanceView({ stats }: { stats: HistoryStats }) {
                     {stats.personalRecords.map((pr, idx) => (
                         <Animated.View
                             key={idx}
-                            entering={FadeInUp.delay(300 + idx * 80).springify().damping(18).stiffness(100)}
+                            entering={FadeInUp.delay(200 + idx * ANIM.enter.stagger).duration(ANIM.enter.duration).easing(ANIM.enter.easing)}
                             style={{ width: '48%', marginBottom: 12 }}
                         >
                             <PressableScale

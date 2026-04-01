@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useCallback } from "react";
 import { View, Text, ScrollView, RefreshControl, ActivityIndicator, Image, TouchableOpacity } from "react-native";
-import Animated, { FadeIn, FadeInDown, FadeInUp } from "react-native-reanimated";
+import Animated, { FadeIn, FadeInDown, FadeInUp, Easing } from "react-native-reanimated";
+import { ANIM } from "../../lib/animations";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useAuth } from "../../contexts/AuthContext";
 import { useActiveProgram } from "../../hooks/useActiveProgram";
@@ -17,8 +18,8 @@ import { ActionCard } from "../../components/home/ActionCard";
 import { WorkoutList } from "../../components/home/WorkoutList";
 import { ShareWorkoutModal } from "../../components/workout/ShareWorkoutModal";
 
-// ─── Spring-based entering animation configs ───
-const SPRING_ENTER = { damping: 18, stiffness: 100, mass: 0.8 };
+// ─── Entering animation shorthand ───
+const ENTER = ANIM.enter;
 
 export default function HomeScreen() {
     const router = useRouter();
@@ -303,7 +304,7 @@ export default function HomeScreen() {
 
                 {/* ── Calendar: Unified accordion with smooth expand/collapse ── */}
                 <Animated.View
-                    entering={FadeInDown.delay(100).duration(400).springify().damping(18).stiffness(100)}
+                    entering={FadeInDown.delay(50).duration(ENTER.duration).easing(ENTER.easing)}
                 >
                     <UnifiedCalendar
                         workouts={calendarWorkouts}
@@ -328,7 +329,7 @@ export default function HomeScreen() {
                         {/* ── Progress Card: Slide-Up stagger delay 200ms ── */}
                         {programName && (
                             <Animated.View
-                                entering={FadeInUp.delay(200).springify().damping(SPRING_ENTER.damping).stiffness(SPRING_ENTER.stiffness).mass(SPRING_ENTER.mass)}
+                                entering={FadeInUp.delay(100).duration(ENTER.duration).easing(ENTER.easing)}
                             >
                                 <ProgressCard
                                     programName={programName}
@@ -340,7 +341,7 @@ export default function HomeScreen() {
 
                         {/* ── Action Card: Slide-Up stagger delay 300ms ── */}
                         <Animated.View
-                            entering={FadeInUp.delay(300).springify().damping(SPRING_ENTER.damping).stiffness(SPRING_ENTER.stiffness).mass(SPRING_ENTER.mass)}
+                            entering={FadeInUp.delay(150).duration(ENTER.duration).easing(ENTER.easing)}
                         >
                             <ActionCard
                                 todayWorkout={selectedWorkoutData.timeContext === 'today' ? selectedWorkoutData.workout : undefined}
@@ -364,7 +365,7 @@ export default function HomeScreen() {
 
                         {/* ── Workout List: Slide-Up stagger delay 400ms ── */}
                         <Animated.View
-                            entering={FadeInUp.delay(400).springify().damping(SPRING_ENTER.damping).stiffness(SPRING_ENTER.stiffness).mass(SPRING_ENTER.mass)}
+                            entering={FadeInUp.delay(200).duration(ENTER.duration).easing(ENTER.easing)}
                             className="mb-6"
                         >
                             {workouts.length > 0 ? (

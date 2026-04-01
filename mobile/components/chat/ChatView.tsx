@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
     View, Text, FlatList, TextInput, Pressable, Image,
-    KeyboardAvoidingView, Platform, ActivityIndicator,
+    KeyboardAvoidingView, Platform, ActivityIndicator, Keyboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -44,8 +44,24 @@ interface ChatViewProps {
 export function ChatView({ showBackButton = false }: ChatViewProps) {
     const router = useRouter();
     const insets = useSafeAreaInsets();
-    // When inline in a tab, add padding for the absolutely-positioned tab bar (50 + bottom inset)
-    const tabBarPadding = showBackButton ? 0 : 50 + insets.bottom;
+
+    // Track keyboard visibility so we can drop the tab-bar padding when the
+    // keyboard is on screen (the tab bar hides automatically on iOS).
+    const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+    useEffect(() => {
+        const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+        const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+        const showSub = Keyboard.addListener(showEvent, () => setKeyboardVisible(true));
+        const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardVisible(false));
+
+        return () => { showSub.remove(); hideSub.remove(); };
+    }, []);
+
+    // When inline in a tab, add padding for the absolutely-positioned tab bar
+    // (50 + bottom inset) — but only when the keyboard is hidden.
+    const tabBarPadding = showBackButton ? 0 : (keyboardVisible ? 0 : 50 + insets.bottom);
 
     const {
         studentId,
@@ -301,7 +317,7 @@ export function ChatView({ showBackButton = false }: ChatViewProps) {
         <KeyboardAvoidingView
             style={{ flex: 1 }}
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            keyboardVerticalOffset={showBackButton ? 0 : 90}
+            keyboardVerticalOffset={0}
         >
             {/* Header */}
             <View style={{

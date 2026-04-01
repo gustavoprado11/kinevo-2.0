@@ -7,13 +7,14 @@ import { BlurView } from "expo-blur";
 import Animated, {
     useSharedValue,
     useAnimatedStyle,
-    withSpring,
     withSequence,
+    withTiming,
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { useUnreadCount } from "../../hooks/useUnreadCount";
+import { ANIM } from "../../lib/animations";
 
-// ─── Animated Tab Icon with Bounce ───
+// ─── Animated Tab Icon ───
 function AnimatedTabIcon({
     IconComponent,
     color,
@@ -31,8 +32,8 @@ function AnimatedTabIcon({
     useEffect(() => {
         if (focused && !prevFocused.current) {
             scale.value = withSequence(
-                withSpring(1.25, { damping: 8, stiffness: 250, mass: 0.5 }),
-                withSpring(1, { damping: 12, stiffness: 200, mass: 0.6 })
+                withTiming(1.08, { duration: 200, easing: ANIM.timing.fast.easing }),
+                withTiming(1, ANIM.timing.fast)
             );
             Haptics.selectionAsync();
         }

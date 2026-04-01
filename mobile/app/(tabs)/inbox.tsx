@@ -12,9 +12,10 @@ import {
 } from "lucide-react-native";
 import Animated, {
     FadeInUp, FadeIn, Easing,
-    useSharedValue, useAnimatedStyle, withSpring, interpolate,
+    useSharedValue, useAnimatedStyle, withTiming, interpolate,
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
+import { ANIM } from "../../lib/animations";
 import { useInbox, type InboxItem } from "../../hooks/useInbox";
 import { useUnreadCount, refetchUnreadCounts } from "../../hooks/useUnreadCount";
 import { PressableScale } from "../../components/shared/PressableScale";
@@ -78,7 +79,7 @@ function AnimatedSegmentedControl({
 
     const handlePress = useCallback((tab: 'messages' | 'notifications') => {
         Haptics.selectionAsync();
-        pillX.value = withSpring(tab === 'messages' ? 0 : 1, { damping: 20, stiffness: 200 });
+        pillX.value = withTiming(tab === 'messages' ? 0 : 1, ANIM.timing.normal);
         onTabChange(tab);
     }, [onTabChange]);
 
