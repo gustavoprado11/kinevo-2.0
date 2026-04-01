@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
+import { decrementUnreadMessages } from './useUnreadCount';
 
 // Upload file to Supabase Storage via native XMLHttpRequest (bypasses whatwg-fetch polyfill issues)
 function uploadToSupabaseStorage(
@@ -247,6 +248,12 @@ export function useTrainerChat() {
         const sid = studentIdRef.current;
         if (!sid) return;
 
+        // Optimistically decrement the shared badge count
+        const currentUnread = unreadCount;
+        if (currentUnread > 0) {
+            decrementUnreadMessages(currentUnread);
+        }
+
         await supabase
             .from('messages' as any)
             .update({ read_at: new Date().toISOString() })
@@ -255,7 +262,7 @@ export function useTrainerChat() {
             .is('read_at', null);
 
         setUnreadCount(0);
-    }, []);
+    }, [unreadCount]);
 
     // Notify trainer via web API route
     const notifyTrainer = useCallback(async (sid: string, messageContent: string) => {

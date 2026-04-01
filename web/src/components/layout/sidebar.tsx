@@ -6,12 +6,11 @@ import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import {
     LayoutDashboard, Users, Dumbbell, Calendar, Wallet, FileText,
-    PanelLeftClose, MessageSquarePlus, Headphones, MessageCircle,
+    PanelLeftClose, MessageSquarePlus, Headphones,
     LogOut, BookOpen, ChevronRight, Settings,
 } from 'lucide-react'
 import { useSidebarStore, shouldAutoCollapse } from '@/stores/sidebar-store'
 import { FeedbackModal } from '@/components/feedback/feedback-modal'
-import { MessagesBadge } from '@/components/messages/messages-badge'
 import { createClient } from '@/lib/supabase/client'
 
 interface NavItem {
@@ -40,11 +39,6 @@ const navigation: NavItem[] = [
         href: '/students',
         icon: Users,
         onboardingId: 'sidebar-students',
-    },
-    {
-        name: 'Mensagens',
-        href: '/messages',
-        icon: MessageCircle,
     },
     {
         name: 'Avaliações',
@@ -82,7 +76,7 @@ export function Sidebar({ financialBadge, trainerName, trainerEmail, trainerAvat
     const router = useRouter()
     const { isCollapsed, isAutoCollapsed, toggle, setAutoCollapse, expand } = useSidebarStore()
     const [feedbackOpen, setFeedbackOpen] = useState(false)
-    const [bibliotecaOpen, setBibliotecaOpen] = useState(true)
+    const [bibliotecaOpen, setBibliotecaOpen] = useState(false)
     const [profileOpen, setProfileOpen] = useState(false)
     const profileRef = useRef<HTMLDivElement>(null)
 
@@ -209,7 +203,6 @@ export function Sidebar({ financialBadge, trainerName, trainerEmail, trainerAvat
                                     {item.name}
                                 </span>
                                 {!isCollapsed && item.name === 'Financeiro' && financialBadge}
-                                {!isCollapsed && item.name === 'Mensagens' && <MessagesBadge />}
                             </Link>
 
                             {/* Tooltip — only when collapsed */}

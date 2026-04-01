@@ -160,7 +160,7 @@ export function ChatPanel({ studentId, studentName, studentAvatar, onBack }: Cha
             <div className="flex items-center gap-3 px-5 py-3.5 bg-white dark:bg-surface-card border-b border-[#D2D2D7] dark:border-k-border-subtle">
                 <button
                     onClick={onBack}
-                    className="md:hidden p-1 -ml-1 text-[#6E6E73] dark:text-k-text-quaternary hover:text-[#1D1D1F] dark:hover:text-white"
+                    className="p-1 -ml-1 text-[#6E6E73] dark:text-k-text-quaternary hover:text-[#1D1D1F] dark:hover:text-white"
                 >
                     <ArrowLeft size={20} strokeWidth={1.5} />
                 </button>

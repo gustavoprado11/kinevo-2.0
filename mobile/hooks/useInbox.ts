@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
+import { decrementUnreadNotifications } from "./useUnreadCount";
 
 export type InboxItemType = "form_request" | "feedback" | "system_alert" | "text_message";
 export type InboxItemStatus = "unread" | "pending_action" | "completed" | "archived";
@@ -129,6 +130,11 @@ export function useInbox() {
         }
 
         if (!studentIdRef.current) return { success: false, error: "Student not resolved" };
+
+        // Optimistically decrement the shared badge count
+        if (item.status === "unread" && !item.read_at) {
+            decrementUnreadNotifications(1);
+        }
 
         const { error } = await supabase
             .from("student_inbox_items" as any)

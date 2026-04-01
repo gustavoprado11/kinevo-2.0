@@ -291,7 +291,9 @@ export async function sendMessage(
         title: auth.trainer.name,
         body: pushBody,
         data: { type: 'message', studentId },
-    }).catch(() => {}) // fire-and-forget
+    }).catch((err) => {
+        console.error('[sendMessage] Push notification failed:', err)
+    })
 
     return { success: true, message: msg as Message }
 }

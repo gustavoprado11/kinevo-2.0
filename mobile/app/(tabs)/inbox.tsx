@@ -1,4 +1,5 @@
 import React, { useRef, useCallback, useState } from "react";
+import { useFocusEffect } from "expo-router";
 import {
     View, Text, ScrollView, RefreshControl, Pressable,
     Animated as RNAnimated, PanResponder,
@@ -15,7 +16,7 @@ import Animated, {
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { useInbox, type InboxItem } from "../../hooks/useInbox";
-import { useUnreadCount } from "../../hooks/useUnreadCount";
+import { useUnreadCount, refetchUnreadCounts } from "../../hooks/useUnreadCount";
 import { PressableScale } from "../../components/shared/PressableScale";
 import { ChatView } from "../../components/chat/ChatView";
 
@@ -389,6 +390,13 @@ function NotificationsTab() {
 export default function InboxScreen() {
     const [activeTab, setActiveTab] = useState<'messages' | 'notifications'>('messages');
     const { messages: unreadMessages, notifications: unreadNotifications } = useUnreadCount();
+
+    // Safety net: refetch counts from DB when inbox tab gains focus
+    useFocusEffect(
+        useCallback(() => {
+            refetchUnreadCounts();
+        }, [])
+    );
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: "#F2F2F7" }} edges={["top"]}>

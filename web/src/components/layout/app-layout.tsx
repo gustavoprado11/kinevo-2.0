@@ -7,8 +7,8 @@ import { OnboardingProvider } from '@/components/onboarding/onboarding-provider'
 import { OnboardingChecklist } from '@/components/onboarding/widgets/onboarding-checklist'
 import dynamic from 'next/dynamic'
 
-const AssistantChatPanel = dynamic(
-    () => import('@/components/assistant/assistant-chat-panel').then(m => m.AssistantChatPanel),
+const UnifiedCommunicationPanel = dynamic(
+    () => import('@/components/communication/unified-panel').then(m => m.UnifiedCommunicationPanel),
     { ssr: false }
 )
 import { useSidebarStore } from '@/stores/sidebar-store'
@@ -55,8 +55,8 @@ export function AppLayout({ children, trainerName, trainerEmail, trainerAvatarUr
             {/* Onboarding Checklist Widget — floating, all pages */}
             <OnboardingChecklist />
 
-            {/* Assistant Chat Panel — global, slides in from right */}
-            <AssistantChatPanel />
+            {/* Unified Communication Panel — global, slides in from right */}
+            <UnifiedCommunicationPanel />
         </div>
     )
 }

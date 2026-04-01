@@ -1,15 +1,5 @@
-import { getTrainerWithSubscription } from '@/lib/auth/get-trainer'
-import { getConversations } from './actions'
-import { MessagesClient } from './messages-client'
+import { redirect } from 'next/navigation'
 
-export default async function MessagesPage() {
-    const { trainer } = await getTrainerWithSubscription()
-    const conversations = await getConversations()
-
-    return (
-        <MessagesClient
-            trainer={trainer}
-            initialConversations={conversations}
-        />
-    )
+export default function MessagesPage() {
+    redirect('/dashboard')
 }
