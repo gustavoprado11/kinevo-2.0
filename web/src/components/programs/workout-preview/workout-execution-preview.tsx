@@ -15,9 +15,11 @@ import type { WorkoutItem } from '../program-builder-client'
 interface WorkoutExecutionPreviewProps {
     workoutName: string
     items: WorkoutItem[]
+    /** Scale factor passed to PhoneFrame. Defaults to 0.82. */
+    scale?: number
 }
 
-export function WorkoutExecutionPreview({ workoutName, items }: WorkoutExecutionPreviewProps) {
+export function WorkoutExecutionPreview({ workoutName, items, scale }: WorkoutExecutionPreviewProps) {
     const renderItems = useMemo(() => builderItemsToPreview(items), [items])
 
     // Count total sets for progress display
@@ -33,7 +35,7 @@ export function WorkoutExecutionPreview({ workoutName, items }: WorkoutExecution
     }, [renderItems])
 
     return (
-        <PhoneFrame>
+        <PhoneFrame scale={scale}>
             {/* Header — matches mobile's header exactly */}
             <div
                 style={{

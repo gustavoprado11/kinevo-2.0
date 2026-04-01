@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import { getTrainerWithSubscription } from '@/lib/auth/get-trainer'
 import { EditAssignedProgramClient } from '@/components/programs/edit-assigned-program-client'
+import { getFormTemplatesForTriggers } from '@/actions/programs/get-form-templates-for-triggers'
 import type { Exercise } from '@/types/exercise'
 
 interface PageProps {
@@ -92,9 +93,10 @@ export default async function EditProgramPage({ params }: PageProps) {
         updated_at: new Date().toISOString()
     }))
 
-    // Fetch form triggers from source template (read-only)
+    // Fetch form trigger templates for configuration + existing triggers from source
+    const triggerResult = await getFormTemplatesForTriggers()
     let formTriggers: { preWorkout: any; postWorkout: any } | undefined
-    const sourceTemplateId = (program as any).source_template_id
+    const sourceTemplateId: string | null = (program as any).source_template_id ?? null
 
     if (sourceTemplateId) {
         const { data: triggers } = await supabase
@@ -128,7 +130,9 @@ export default async function EditProgramPage({ params }: PageProps) {
             program={program as any}
             exercises={mappedExercises}
             studentId={studentId}
+            sourceTemplateId={sourceTemplateId}
             formTriggers={formTriggers}
+            formTriggerTemplates={triggerResult.templates || []}
         />
     )
 }

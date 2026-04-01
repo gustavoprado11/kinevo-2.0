@@ -10,11 +10,7 @@ interface VolumeSummaryProps {
 
 export function VolumeSummary({ workouts }: VolumeSummaryProps) {
     // Calculate volume per muscle group across all workouts.
-    // Each exercise counts toward ALL its muscle groups (e.g. Levantamento Terra
-    // adds sets to Quadríceps, Glúteo, Posterior de Coxa, etc.).
     const volumeByGroup = workouts.reduce((acc, workout) => {
-        // Frequency is the number of days this workout is scheduled
-        // Fallback to 1 so the user sees volume while building even before scheduling
         const frequency = Math.max(1, workout.frequency?.length || 0)
 
         workout.items.forEach(item => {
@@ -59,51 +55,41 @@ export function VolumeSummary({ workouts }: VolumeSummaryProps) {
     }
 
     return (
-        <div className="w-full bg-surface-primary border-b border-k-border-subtle px-8 py-2.5 flex-shrink-0 z-header">
-            <div className="flex items-start gap-6">
-                {/* Master Label Group */}
-                <div className="flex items-center gap-2 shrink-0 border-r border-k-border-primary pr-6 py-0.5">
-                    <Dumbbell size={14} className="text-violet-400" strokeWidth={2.5} />
-                    <span className="text-[10px] font-bold text-k-text-quaternary whitespace-nowrap">
-                        Volume Semanal <span className="text-k-text-quaternary">(Séries)</span>
-                    </span>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 flex-1">
-                    <AnimatePresence mode="popLayout">
-                        {sortedGroups.length === 0 ? (
-                            <motion.div
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                className="text-[10px] font-bold text-k-text-quaternary"
+        <div className="flex items-center gap-2 min-w-0">
+            <Dumbbell size={12} className="text-violet-400 shrink-0" strokeWidth={2.5} />
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 min-w-0">
+                <AnimatePresence mode="popLayout">
+                    {sortedGroups.length === 0 ? (
+                        <motion.span
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="text-[10px] font-bold text-k-text-quaternary whitespace-nowrap"
+                        >
+                            0 séries
+                        </motion.span>
+                    ) : (
+                        sortedGroups.map(([group, volume]) => (
+                            <motion.span
+                                key={group}
+                                layout
+                                initial={{ opacity: 0, x: -6 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, scale: 0.9 }}
+                                transition={{ duration: 0.2, ease: "easeOut" }}
+                                className="flex items-center whitespace-nowrap"
                             >
-                                Aguardando exercícios...
-                            </motion.div>
-                        ) : (
-                            sortedGroups.map(([group, volume]) => (
-                                <motion.div
-                                    key={group}
-                                    layout
-                                    initial={{ opacity: 0, x: -10 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    exit={{ opacity: 0, scale: 0.9 }}
-                                    transition={{ duration: 0.3, ease: "easeOut" }}
-                                    className="flex items-center whitespace-nowrap"
-                                >
-                                    <span className="text-[11px] font-semibold text-k-text-tertiary">
-                                        {group}
-                                    </span>
-                                    <span className={`text-sm font-black ml-2 ${getVolumeColor(volume)}`} title={getVolumeHint(volume)}>
-                                        {volume}
-                                    </span>
-                                </motion.div>
-                            ))
-                        )}
-                    </AnimatePresence>
-                </div>
+                                <span className="text-[10px] font-medium text-k-text-quaternary">
+                                    {group}
+                                </span>
+                                <span className={`text-[11px] font-bold ml-1 ${getVolumeColor(volume)}`} title={getVolumeHint(volume)}>
+                                    {volume}
+                                </span>
+                            </motion.span>
+                        ))
+                    )}
+                </AnimatePresence>
             </div>
         </div>
     )
 }
-

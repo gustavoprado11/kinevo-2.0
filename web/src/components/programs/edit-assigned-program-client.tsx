@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useCallback, useId, useMemo, useRef } from 'react'
+import { useState, useCallback, useId, useMemo, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, Loader2, Calendar, Edit3, AlertCircle, Smartphone, GitCompareArrows, X, ClipboardCheck } from 'lucide-react'
+import { ChevronLeft, Loader2, Calendar, AlertCircle, Smartphone, GitCompareArrows, X, ListChecks } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { AppLayout } from '@/components/layout'
 import { createClient } from '@/lib/supabase/client'
@@ -13,9 +13,11 @@ import type { DragEndEvent } from '@dnd-kit/core'
 import { SortableWorkoutTab } from './sortable-workout-tab'
 import { ExerciseLibraryPanel } from './exercise-library-panel'
 import { VolumeSummary } from './volume-summary'
-import { ProgramFormTriggers, type InitialTrigger } from './program-form-triggers'
+import { ProgramFormTriggers, type TriggerSelection, type InitialTrigger } from './program-form-triggers'
 
 import type { Exercise } from '@/types/exercise'
+import type { FormTemplateOption } from '@/actions/programs/get-form-templates-for-triggers'
+import { saveProgramFormTriggers } from '@/actions/programs/save-program-form-triggers'
 import { capturePostAssignmentEdits } from '@/actions/prescription/capture-post-assignment-edits'
 import { WorkoutExecutionPreview } from './workout-preview/workout-execution-preview'
 import { ProgramSelector } from '@/components/builder/context-panel/program-selector'
@@ -89,17 +91,21 @@ interface EditAssignedProgramClientProps {
     program: AssignedProgramData
     exercises: Exercise[]
     studentId: string
-    /** Read-only form triggers inherited from the source program template */
+    /** Source template ID (for saving form triggers) */
+    sourceTemplateId?: string | null
+    /** Initial form triggers from source template */
     formTriggers?: {
         preWorkout: InitialTrigger | null
         postWorkout: InitialTrigger | null
     }
+    /** Available form templates for trigger configuration */
+    formTriggerTemplates?: FormTemplateOption[]
 }
 
 // Generate temp ID for new items
 const tempId = () => `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 
-export function EditAssignedProgramClient({ trainer, program, exercises, studentId, formTriggers: initialFormTriggers }: EditAssignedProgramClientProps) {
+export function EditAssignedProgramClient({ trainer, program, exercises, studentId, sourceTemplateId, formTriggers: initialFormTriggers, formTriggerTemplates = [] }: EditAssignedProgramClientProps) {
     const router = useRouter()
     const tabDndId = useId()
 
@@ -127,7 +133,11 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
     const [compareWorkouts, setCompareWorkouts] = useState<Workout[]>([])
     const [compareActiveWorkoutId, setCompareActiveWorkoutId] = useState<string | null>(null)
 
-    const formTriggerCount = [initialFormTriggers?.preWorkout, initialFormTriggers?.postWorkout].filter(Boolean).length
+    const [formTriggers, setFormTriggers] = useState<TriggerSelection>({
+        preWorkout: initialFormTriggers?.preWorkout?.formTemplateId ?? null,
+        postWorkout: initialFormTriggers?.postWorkout?.formTemplateId ?? null,
+    })
+    const formTriggerCount = (formTriggers.preWorkout ? 1 : 0) + (formTriggers.postWorkout ? 1 : 0)
 
     const [templateName, setTemplateName] = useState('')
     const [savingTemplate, setSavingTemplate] = useState(false)
@@ -314,8 +324,49 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
     const [error, setError] = useState<string | null>(null)
     const [nameShake, setNameShake] = useState(false)
     const [isCanvasScrolled, setIsCanvasScrolled] = useState(false)
+    const [isHeaderHidden, setIsHeaderHidden] = useState(false)
+    const lastScrollTopRef = useRef(0)
+    const accumulatedScrollRef = useRef(0)
+    const lastDirectionRef = useRef<'up' | 'down' | null>(null)
+    const headerTransitionRef = useRef(false)
+    const [previewScale, setPreviewScale] = useState(0.82)
+    const [isLibraryCollapsed, setIsLibraryCollapsed] = useState(() => {
+        if (typeof window !== 'undefined') {
+            return localStorage.getItem('kinevo-library-collapsed') === 'true'
+        }
+        return false
+    })
     const [isDraggingOver, setIsDraggingOver] = useState(false)
     const canvasScrollRef = useRef<HTMLDivElement>(null)
+
+    const setHeaderHiddenSafe = useCallback((hidden: boolean) => {
+        if (hidden === isHeaderHidden || headerTransitionRef.current) return
+        headerTransitionRef.current = true
+        setIsHeaderHidden(hidden)
+        setTimeout(() => { headerTransitionRef.current = false }, 200)
+    }, [isHeaderHidden])
+
+    // Dynamically scale the phone preview to fit the available vertical space
+    useEffect(() => {
+        const BASE_PHONE_HEIGHT = 812
+        const OFFSET = 180
+        const update = () => {
+            const available = window.innerHeight - OFFSET
+            const s = Math.min(0.82, Math.max(0.55, available / BASE_PHONE_HEIGHT))
+            setPreviewScale(s)
+        }
+        update()
+        window.addEventListener('resize', update)
+        return () => window.removeEventListener('resize', update)
+    }, [])
+
+    const toggleLibrary = useCallback(() => {
+        setIsLibraryCollapsed(prev => {
+            const next = !prev
+            localStorage.setItem('kinevo-library-collapsed', String(next))
+            return next
+        })
+    }, [])
     // Sensors for tab drag-and-drop
     const tabSensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -1032,6 +1083,15 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                 }
             }
 
+            // Save form triggers (if source template exists)
+            if (sourceTemplateId && (formTriggers.preWorkout || formTriggers.postWorkout)) {
+                await saveProgramFormTriggers({
+                    programTemplateId: sourceTemplateId,
+                    preWorkout: formTriggers.preWorkout,
+                    postWorkout: formTriggers.postWorkout,
+                })
+            }
+
             // Success feedback
             alert('Programa atualizado com sucesso!')
 
@@ -1163,8 +1223,8 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
             trainerTheme={trainer.theme ?? undefined}
         >
             <div className="flex flex-col h-[calc(100vh-64px)] overflow-hidden bg-surface-canvas">
-                {/* Compact Header */}
-                <div className="flex-shrink-0 bg-white dark:bg-surface-primary backdrop-blur-md border-b border-[#E8E8ED] dark:border-k-border-primary flex items-center gap-4 px-6 py-3 z-sticky">
+                {/* Compact Header — auto-hides on scroll down, reappears on scroll up */}
+                <div className={`flex-shrink-0 bg-white dark:bg-surface-primary backdrop-blur-md border-b border-[#E8E8ED] dark:border-k-border-primary flex items-center gap-4 px-6 z-sticky transition-all duration-250 ease-in-out overflow-hidden ${isHeaderHidden ? 'max-h-0 py-0 border-b-0 opacity-0' : isCanvasScrolled ? 'max-h-20 py-1.5 opacity-100' : 'max-h-20 py-3 opacity-100'}`}>
                     {/* Left: Back + Name */}
                     <div className="flex items-center gap-3 min-w-0">
                         <Button
@@ -1185,7 +1245,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                                     if (error) setError(null)
                                 }}
                                 placeholder="Nome do programa"
-                                className={`bg-transparent border-none text-lg font-bold text-k-text-primary placeholder:text-k-text-quaternary focus:ring-0 p-0 min-w-[140px] max-w-[280px] truncate transition-all ${nameShake ? 'animate-[shake_0.5s_ease-in-out]' : ''
+                                className={`bg-transparent border-none text-lg font-bold text-k-text-primary placeholder:text-k-text-quaternary focus:ring-0 p-0 min-w-[140px] max-w-[280px] truncate transition-all cursor-text hover:border-b hover:border-dashed hover:border-k-text-quaternary focus:border-b focus:border-solid focus:border-violet-500 ${nameShake ? 'animate-[shake_0.5s_ease-in-out]' : ''
                                     } ${error && !name.trim() ? 'placeholder:text-red-400/60' : ''}`}
                             />
                             <button
@@ -1194,13 +1254,15 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                                     }`}
                                 title="Editar descrição"
                             >
-                                <Edit3 className="w-3.5 h-3.5" strokeWidth={2.5} />
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h7" />
+                                </svg>
                             </button>
                         </div>
                     </div>
 
-                    {/* Center: Condensed timeline */}
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground border-x border-k-border-subtle px-6 shrink-0">
+                    {/* Center: Condensed timeline (hidden on scroll) */}
+                    <div className={`flex items-center gap-2 text-xs text-muted-foreground border-x border-k-border-subtle px-6 shrink-0 transition-all duration-200 overflow-hidden ${isCanvasScrolled ? 'max-w-0 opacity-0 px-0 border-0' : 'max-w-[600px] opacity-100'}`}>
                         <Calendar className="w-3.5 h-3.5 text-muted-foreground shrink-0" strokeWidth={1.5} />
                         <span className="text-[10px] text-muted-foreground">Início</span>
                         <input
@@ -1230,8 +1292,51 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                         </div>
                     </div>
 
-                    {/* Right: Save */}
-                    <div className="flex items-center gap-3 ml-auto flex-shrink-0">
+                    {/* View mode icons — Check-in · Preview · Compare */}
+                    <div className="flex items-center gap-1 ml-auto flex-shrink-0 mr-3">
+                        {formTriggerTemplates.length > 0 && (
+                            <button
+                                onClick={() => setCheckinExpanded(!checkinExpanded)}
+                                className={`relative w-8 h-8 flex items-center justify-center rounded-lg transition-colors duration-150 ${
+                                    checkinExpanded
+                                        ? 'text-violet-600 dark:text-violet-400 bg-violet-100/80 dark:bg-violet-500/[0.08]'
+                                        : 'text-[#AEAEB2] dark:text-k-text-quaternary hover:bg-[#F5F5F7]/60 dark:hover:bg-glass-bg/50 hover:text-[#1D1D1F] dark:hover:text-k-text-primary'
+                                }`}
+                                title={formTriggerCount > 0 ? `Check-in: ${formTriggerCount} formulário${formTriggerCount > 1 ? 's' : ''} ativo${formTriggerCount > 1 ? 's' : ''}` : 'Configurar check-in'}
+                                aria-expanded={checkinExpanded}
+                            >
+                                <ListChecks className="w-4 h-4" />
+                                {formTriggerCount > 0 && (
+                                    <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-emerald-500 dark:bg-emerald-400 ring-2 ring-white dark:ring-surface-primary" />
+                                )}
+                            </button>
+                        )}
+                        <button
+                            onClick={builderViewMode === 'preview' ? handleExitPreview : handleEnterPreview}
+                            className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors duration-150 ${
+                                builderViewMode === 'preview'
+                                    ? 'text-violet-600 dark:text-violet-400 bg-violet-100/80 dark:bg-violet-500/[0.08]'
+                                    : 'text-[#AEAEB2] dark:text-k-text-quaternary hover:bg-[#F5F5F7]/60 dark:hover:bg-glass-bg/50 hover:text-[#1D1D1F] dark:hover:text-k-text-primary'
+                            }`}
+                            title="Pré-visualizar no celular"
+                        >
+                            <Smartphone className="w-4 h-4" />
+                        </button>
+                        <button
+                            onClick={builderViewMode === 'compare' ? handleExitCompare : handleEnterCompare}
+                            className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors duration-150 ${
+                                builderViewMode === 'compare'
+                                    ? 'text-violet-600 dark:text-violet-400 bg-violet-100/80 dark:bg-violet-500/[0.08]'
+                                    : 'text-[#AEAEB2] dark:text-k-text-quaternary hover:bg-[#F5F5F7]/60 dark:hover:bg-glass-bg/50 hover:text-[#1D1D1F] dark:hover:text-k-text-primary'
+                            }`}
+                            title={builderViewMode === 'compare' ? 'Sair da comparação' : 'Comparar com treino anterior'}
+                        >
+                            <GitCompareArrows className="w-4 h-4" />
+                        </button>
+                    </div>
+
+                    {/* Save */}
+                    <div className="flex items-center gap-3 flex-shrink-0">
                         {/* Terciário: Salvar Modelo — ghost text */}
                         <button
                             onClick={() => {
@@ -1263,12 +1368,12 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                 {isDescriptionOpen && (
                     <div className="flex-shrink-0 bg-surface-primary border-b border-k-border-subtle px-8 py-4 animate-in slide-in-from-top-4 duration-300">
                         <div className="max-w-3xl">
-                            <label className="block text-[10px] font-bold text-k-text-quaternary mb-2">Descrição do Programa</label>
+                            <label className="block text-xs font-semibold text-k-text-tertiary mb-2">Descrição do programa</label>
                             <textarea
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
                                 placeholder="Adicione detalhes sobre o objetivo, metodologia ou observações gerais..."
-                                className="w-full bg-glass-bg border border-k-border-subtle rounded-xl px-4 py-3 text-sm text-k-text-primary placeholder:text-k-border-subtle focus:ring-1 focus:ring-violet-500/50 focus:border-violet-500/30 transition-all min-h-[80px] resize-none"
+                                className="w-full bg-white dark:bg-glass-bg border border-[#D2D2D7] dark:border-k-border-primary rounded-xl px-4 py-3 text-sm text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:ring-1 focus:ring-[#007AFF]/20 dark:focus:ring-violet-500/50 focus:border-[#007AFF] dark:focus:border-violet-500/30 transition-all min-h-[80px] resize-none"
                             />
                         </div>
                     </div>
@@ -1289,59 +1394,12 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
 
 
 
-                {/* Secondary Toolbar: icon group (right-aligned) — Check-in · Preview · Compare */}
-                <div className="flex-shrink-0 flex items-center justify-end px-6 min-h-[36px] border-b border-[#E8E8ED] dark:border-k-border-subtle">
-                    <div className="flex items-center gap-1">
-                        {/* Check-in (read-only) */}
-                        {formTriggerCount > 0 && (
-                            <button
-                                onClick={() => setCheckinExpanded(!checkinExpanded)}
-                                className={`relative w-8 h-8 flex items-center justify-center rounded-lg transition-colors duration-150 ${
-                                    checkinExpanded
-                                        ? 'text-violet-600 dark:text-violet-400 bg-violet-100/80 dark:bg-violet-500/[0.08]'
-                                        : 'text-[#AEAEB2] dark:text-k-text-quaternary hover:bg-[#F5F5F7]/60 dark:hover:bg-glass-bg/50 hover:text-[#1D1D1F] dark:hover:text-k-text-primary'
-                                }`}
-                                title={`Check-in: ${formTriggerCount} formulário${formTriggerCount > 1 ? 's' : ''} ativo${formTriggerCount > 1 ? 's' : ''}`}
-                                aria-expanded={checkinExpanded}
-                            >
-                                <ClipboardCheck className="w-4 h-4" />
-                                <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-emerald-500 dark:bg-emerald-400 ring-2 ring-white dark:ring-surface-primary" />
-                            </button>
-                        )}
-                        {/* Preview */}
-                        <button
-                            onClick={builderViewMode === 'preview' ? handleExitPreview : handleEnterPreview}
-                            className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors duration-150 ${
-                                builderViewMode === 'preview'
-                                    ? 'text-violet-600 dark:text-violet-400 bg-violet-100/80 dark:bg-violet-500/[0.08]'
-                                    : 'text-[#AEAEB2] dark:text-k-text-quaternary hover:bg-[#F5F5F7]/60 dark:hover:bg-glass-bg/50 hover:text-[#1D1D1F] dark:hover:text-k-text-primary'
-                            }`}
-                            title="Pré-visualizar no celular"
-                        >
-                            <Smartphone className="w-4 h-4" />
-                        </button>
-                        {/* Compare */}
-                        <button
-                            onClick={builderViewMode === 'compare' ? handleExitCompare : handleEnterCompare}
-                            className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors duration-150 ${
-                                builderViewMode === 'compare'
-                                    ? 'text-violet-600 dark:text-violet-400 bg-violet-100/80 dark:bg-violet-500/[0.08]'
-                                    : 'text-[#AEAEB2] dark:text-k-text-quaternary hover:bg-[#F5F5F7]/60 dark:hover:bg-glass-bg/50 hover:text-[#1D1D1F] dark:hover:text-k-text-primary'
-                            }`}
-                            title={builderViewMode === 'compare' ? 'Sair da comparação' : 'Comparar com treino anterior'}
-                        >
-                            <GitCompareArrows className="w-4 h-4" />
-                        </button>
-                    </div>
-                </div>
-
-                {/* Check-in expanded content panel (read-only) */}
-                {formTriggerCount > 0 && builderViewMode !== 'compare' && (
+                {/* Check-in expanded content panel */}
+                {formTriggerTemplates.length > 0 && builderViewMode !== 'compare' && (
                     <ProgramFormTriggers
-                        initialTriggers={initialFormTriggers!}
-                        availableTemplates={[]}
-                        onChange={() => {}}
-                        readOnly
+                        initialTriggers={initialFormTriggers ?? { preWorkout: null, postWorkout: null }}
+                        availableTemplates={formTriggerTemplates}
+                        onChange={setFormTriggers}
                         expanded={checkinExpanded}
                         onToggle={() => setCheckinExpanded(!checkinExpanded)}
                         renderContentOnly
@@ -1350,8 +1408,10 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
 
                 {/* Workspace (Layout Columns) */}
                 <div className="flex flex-1 overflow-hidden">
-                    {/* Left Panel: Exercise Library */}
-                    <div className="w-[320px] bg-white dark:bg-surface-primary border-r border-[#E8E8ED] dark:border-k-border-subtle flex flex-col flex-shrink-0">
+                    {/* Left Panel: Exercise Library (collapsible) */}
+                    <div
+                        className={`bg-white dark:bg-surface-primary flex flex-col flex-shrink-0 transition-all duration-250 ease-in-out ${isLibraryCollapsed ? 'w-0 overflow-hidden' : 'w-[320px]'}`}
+                    >
                         <ExerciseLibraryPanel
                             exercises={localExercises}
                             trainerId={trainer.id}
@@ -1360,6 +1420,15 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                             activeWorkoutId={activeWorkoutId}
                         />
                     </div>
+
+                    {/* Library toggle handle (edge) */}
+                    <button
+                        onClick={toggleLibrary}
+                        className="flex-shrink-0 w-5 flex items-center justify-center border-r border-[#E8E8ED] dark:border-k-border-subtle bg-[#FAFAFA] dark:bg-surface-primary hover:bg-[#F0F0F2] dark:hover:bg-glass-bg transition-colors group"
+                        title={isLibraryCollapsed ? 'Expandir biblioteca' : 'Minimizar biblioteca'}
+                    >
+                        <ChevronLeft className={`w-3.5 h-3.5 text-[#AEAEB2] dark:text-k-text-quaternary group-hover:text-[#007AFF] dark:group-hover:text-violet-400 transition-all duration-200 ${isLibraryCollapsed ? 'rotate-180' : ''}`} />
+                    </button>
 
                     {/* Right Panel: Canvas */}
                     <div className="flex-1 flex flex-col min-w-0 bg-surface-canvas">
@@ -1452,11 +1521,30 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                                             const scrollTop = e.currentTarget.scrollTop
                                             const shouldBeScrolled = isCanvasScrolled ? scrollTop > 10 : scrollTop > 60
                                             if (shouldBeScrolled !== isCanvasScrolled) setIsCanvasScrolled(shouldBeScrolled)
+                                            // Auto-hide header: accumulate distance in same direction
+                                            if (!headerTransitionRef.current) {
+                                                const dir = scrollTop > lastScrollTopRef.current ? 'down' : 'up'
+                                                const absDelta = Math.abs(scrollTop - lastScrollTopRef.current)
+                                                if (dir !== lastDirectionRef.current) {
+                                                    accumulatedScrollRef.current = 0
+                                                    lastDirectionRef.current = dir
+                                                }
+                                                accumulatedScrollRef.current += absDelta
+                                                if (dir === 'down' && scrollTop > 60 && accumulatedScrollRef.current > 40) {
+                                                    setHeaderHiddenSafe(true)
+                                                    accumulatedScrollRef.current = 0
+                                                } else if (dir === 'up' && accumulatedScrollRef.current > 20) {
+                                                    setHeaderHiddenSafe(false)
+                                                    accumulatedScrollRef.current = 0
+                                                }
+                                                if (scrollTop <= 10) setHeaderHiddenSafe(false)
+                                            }
+                                            lastScrollTopRef.current = scrollTop
                                         }}
                                         onDragOver={handleCanvasDragOver}
                                         onDragLeave={handleCanvasDragLeave}
                                         onDrop={handleCanvasDrop}
-                                        className={`flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent transition-colors duration-200 ${isDraggingOver ? 'bg-[#007AFF]/5 dark:bg-violet-500/5 ring-2 ring-inset ring-[#007AFF]/20 dark:ring-violet-500/20' : ''}`}
+                                        className={`flex-1 overflow-y-auto px-6 pt-3 pb-6 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent transition-colors duration-200 ${isDraggingOver ? 'bg-[#007AFF]/5 dark:bg-violet-500/5 ring-2 ring-inset ring-[#007AFF]/20 dark:ring-violet-500/20' : ''}`}
                                     >
                                         <div className="pb-20">
                                             {activeWorkout ? (
@@ -1562,11 +1650,8 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                         ) : (
                             /* ══ NORMAL MODE: Single column with optional preview panel ══ */
                             <>
-                                {/* Volume Summary */}
-                                <VolumeSummary workouts={workouts} />
-
-                                {/* Workout Tabs */}
-                                <div className="flex items-center gap-1 p-4 overflow-x-auto no-scrollbar border-b border-[#E8E8ED] dark:border-k-border-subtle bg-[#F5F5F7] dark:bg-surface-canvas">
+                                {/* Workout Tabs + Volume Summary (combined, wraps on overflow) */}
+                                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 border-b border-[#E8E8ED] dark:border-k-border-subtle bg-[#F5F5F7] dark:bg-surface-canvas">
                                     <DndContext id={tabDndId} sensors={tabSensors} collisionDetection={closestCenter} onDragEnd={handleWorkoutDragEnd}>
                                         <SortableContext items={workouts.map(w => w.id)} strategy={horizontalListSortingStrategy}>
                                             <div className="bg-white dark:bg-surface-card p-1 rounded-xl flex gap-1 items-center border border-[#E8E8ED] dark:border-k-border-subtle">
@@ -1619,13 +1704,18 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
 
                                     <button
                                         onClick={addWorkout}
-                                        className="w-8 h-8 flex items-center justify-center rounded-lg text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#007AFF] dark:hover:text-k-text-primary hover:bg-[#007AFF]/10 dark:hover:bg-glass-bg transition-all ml-2"
+                                        className="w-7 h-7 flex items-center justify-center rounded-lg text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#007AFF] dark:hover:text-k-text-primary hover:bg-[#007AFF]/10 dark:hover:bg-glass-bg transition-all ml-1 shrink-0"
                                         title="Adicionar Treino"
                                     >
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
                                         </svg>
                                     </button>
+
+                                    {/* Inline Volume Summary */}
+                                    <div className="ml-auto shrink-0">
+                                        <VolumeSummary workouts={workouts} />
+                                    </div>
                                 </div>
 
                                 {/* Canvas + inline Preview */}
@@ -1636,11 +1726,30 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                                             const scrollTop = e.currentTarget.scrollTop
                                             const shouldBeScrolled = isCanvasScrolled ? scrollTop > 10 : scrollTop > 60
                                             if (shouldBeScrolled !== isCanvasScrolled) setIsCanvasScrolled(shouldBeScrolled)
+                                            // Auto-hide header: accumulate distance in same direction
+                                            if (!headerTransitionRef.current) {
+                                                const dir = scrollTop > lastScrollTopRef.current ? 'down' : 'up'
+                                                const absDelta = Math.abs(scrollTop - lastScrollTopRef.current)
+                                                if (dir !== lastDirectionRef.current) {
+                                                    accumulatedScrollRef.current = 0
+                                                    lastDirectionRef.current = dir
+                                                }
+                                                accumulatedScrollRef.current += absDelta
+                                                if (dir === 'down' && scrollTop > 60 && accumulatedScrollRef.current > 40) {
+                                                    setHeaderHiddenSafe(true)
+                                                    accumulatedScrollRef.current = 0
+                                                } else if (dir === 'up' && accumulatedScrollRef.current > 20) {
+                                                    setHeaderHiddenSafe(false)
+                                                    accumulatedScrollRef.current = 0
+                                                }
+                                                if (scrollTop <= 10) setHeaderHiddenSafe(false)
+                                            }
+                                            lastScrollTopRef.current = scrollTop
                                         }}
                                         onDragOver={handleCanvasDragOver}
                                         onDragLeave={handleCanvasDragLeave}
                                         onDrop={handleCanvasDrop}
-                                        className={`flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent transition-colors duration-200 ${isDraggingOver ? 'bg-[#007AFF]/5 dark:bg-violet-500/5 ring-2 ring-inset ring-[#007AFF]/20 dark:ring-violet-500/20' : ''}`}
+                                        className={`flex-1 overflow-y-auto px-6 pt-3 pb-6 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent transition-colors duration-200 ${isDraggingOver ? 'bg-[#007AFF]/5 dark:bg-violet-500/5 ring-2 ring-inset ring-[#007AFF]/20 dark:ring-violet-500/20' : ''}`}
                                     >
                                         <div className={`mx-auto pb-20 transition-[max-width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
                                             builderViewMode === 'preview' ? 'max-w-6xl flex gap-8' : 'max-w-3xl'
@@ -1676,12 +1785,13 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                                                 )}
                                             </div>
 
-                                            {/* Mobile Preview — inline sticky, aligned with workout tabs */}
+                                            {/* Mobile Preview — sticky, dynamically scaled to fit viewport */}
                                             {builderViewMode === 'preview' && (
-                                                <div className="w-[340px] flex-shrink-0 sticky top-0 self-start">
+                                                <div className="flex-shrink-0 sticky top-0 self-start">
                                                     <WorkoutExecutionPreview
                                                         workoutName={activeWorkout?.name || 'Treino'}
                                                         items={activeWorkout?.items || []}
+                                                        scale={previewScale}
                                                     />
                                                 </div>
                                             )}

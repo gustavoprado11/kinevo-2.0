@@ -280,17 +280,18 @@ export function WorkoutPanel({
         return sum
     }, 0)
 
+    const selectedDayNames = DAYS.filter(d => (workout.frequency || []).includes(d.key)).map(d => d.name)
+
     return (
         <div className="space-y-6">
-            {/* Workout Header — single DOM structure, CSS-driven transitions */}
-            <div className={`sticky -top-6 z-sticky transition-[background-color,border-color,backdrop-filter,margin,padding] duration-300 ${isScrolled ? '-mx-6 px-6 py-2 bg-[#F5F5F7] dark:bg-surface-canvas border-b border-[#E8E8ED] dark:border-k-border-subtle' : ''}`}>
-                {/* Row: name + day selectors + sets */}
+            {/* Workout Header — compact single row */}
+            <div className={`sticky -top-3 z-sticky transition-[background-color,border-color,backdrop-filter,margin,padding] duration-300 ${isScrolled ? '-mx-6 px-6 py-2 bg-[#F5F5F7] dark:bg-surface-canvas border-b border-[#E8E8ED] dark:border-k-border-subtle' : ''}`}>
                 <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3 min-w-0">
                         {readonly ? (
                             <span
                                 ref={titleRef as React.RefObject<HTMLSpanElement>}
-                                className="font-bold text-xl text-[#1D1D1F] dark:text-k-text-primary block will-change-transform"
+                                className="font-bold text-lg text-[#1D1D1F] dark:text-k-text-primary block will-change-transform"
                                 style={{ transformOrigin: 'left center' }}
                             >
                                 {workout.name}
@@ -303,21 +304,27 @@ export function WorkoutPanel({
                                 onBlur={handleNameSave}
                                 onKeyDown={(e) => e.key === 'Enter' && handleNameSave()}
                                 autoFocus
-                                className="px-0 py-1 bg-transparent border-0 border-b border-[#007AFF] dark:border-violet-500 rounded-none text-xl text-[#1D1D1F] dark:text-k-text-primary font-bold focus:outline-none focus:ring-0 placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary w-auto min-w-[200px]"
+                                className="px-0 py-1 bg-transparent border-0 border-b border-[#007AFF] dark:border-violet-500 rounded-none text-lg text-[#1D1D1F] dark:text-k-text-primary font-bold focus:outline-none focus:ring-0 placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary w-auto min-w-[200px]"
                                 style={{ transformOrigin: 'left center' }}
                             />
                         ) : (
                             <button
                                 ref={titleRef as React.RefObject<HTMLButtonElement>}
                                 onClick={() => { setTempName(workout.name); setIsEditingName(true) }}
-                                className="font-bold text-xl text-[#1D1D1F] dark:text-k-text-primary hover:text-[#007AFF] dark:hover:text-violet-400 flex items-center gap-2 group will-change-transform"
+                                className="font-bold text-lg text-[#1D1D1F] dark:text-k-text-primary hover:text-[#007AFF] dark:hover:text-violet-400 flex items-center gap-2 group will-change-transform"
                                 style={{ transformOrigin: 'left center' }}
                             >
                                 {workout.name}
-                                <svg className="w-4 h-4 text-[#AEAEB2] dark:text-k-text-quaternary group-hover:text-[#007AFF] dark:group-hover:text-violet-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className="w-3.5 h-3.5 text-[#AEAEB2] dark:text-k-text-quaternary group-hover:text-[#007AFF] dark:group-hover:text-violet-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                 </svg>
                             </button>
+                        )}
+                        {/* Inline selected days text */}
+                        {!readonly && selectedDayNames.length > 0 && !isScrolled && (
+                            <span className="text-[10px] text-k-text-quaternary whitespace-nowrap">
+                                · {selectedDayNames.join(', ')}
+                            </span>
                         )}
                     </div>
 
@@ -343,29 +350,6 @@ export function WorkoutPanel({
                         )}
                     </div>
                 </div>
-
-                {/* Collapsible helper text — visible only when not scrolled and not readonly */}
-                {!readonly && (
-                    <div
-                        className="overflow-hidden transition-[max-height,opacity] duration-300"
-                        style={{ maxHeight: isScrolled ? 0 : 40, opacity: isScrolled ? 0 : 1 }}
-                    >
-                        <div className="pt-1.5">
-                            {(() => {
-                                const selected = DAYS.filter(d => (workout.frequency || []).includes(d.key))
-                                return selected.length > 0 ? (
-                                    <p className="text-[10px] text-k-text-tertiary">
-                                        No app do aluno em: <span className="text-k-text-secondary">{selected.map(d => d.name).join(', ')}</span>
-                                    </p>
-                                ) : (
-                                    <p className="text-xs text-muted-foreground">
-                                        Selecione os dias de treino do aluno
-                                    </p>
-                                )
-                            })()}
-                        </div>
-                    </div>
-                )}
             </div>
 
             {/* Items with connectors */}
@@ -376,7 +360,8 @@ export function WorkoutPanel({
                             <p className="text-[#86868B] dark:text-k-text-tertiary">Nenhum exercício neste treino</p>
                         </div>
                     ) : (
-                        <div className="py-8 px-6 rounded-xl border border-dashed border-[#E8E8ED] dark:border-k-border-subtle space-y-4">
+                        <div className="py-6 rounded-xl border border-dashed border-[#E8E8ED] dark:border-k-border-subtle">
+                            <div className="max-w-md mx-auto space-y-5 px-6">
                             {onSearchAddExercise && (
                                 <InlineExerciseSearch
                                     exercises={exercises}
@@ -384,35 +369,36 @@ export function WorkoutPanel({
                                 />
                             )}
 
-                            <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                            <div className="grid grid-cols-3 gap-3">
                                 {onAddWarmup && (
                                     <button
                                         onClick={onAddWarmup}
-                                        className="px-3 py-1.5 text-xs text-orange-500 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-500/10 rounded-md transition-colors flex items-center gap-1.5"
+                                        className="flex flex-col items-center gap-2 py-4 px-3 rounded-xl border border-dashed border-orange-200 dark:border-orange-500/20 text-orange-500 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-500/10 hover:border-orange-300 dark:hover:border-orange-500/30 transition-all"
                                     >
-                                        <Flame className="w-3.5 h-3.5" />
-                                        Aquecimento
+                                        <Flame className="w-5 h-5" />
+                                        <span className="text-xs font-medium">Aquecimento</span>
                                     </button>
                                 )}
                                 {onAddCardio && (
                                     <button
                                         onClick={onAddCardio}
-                                        className="px-3 py-1.5 text-xs text-cyan-600 dark:text-cyan-400 hover:bg-cyan-50 dark:hover:bg-cyan-500/10 rounded-md transition-colors flex items-center gap-1.5"
+                                        className="flex flex-col items-center gap-2 py-4 px-3 rounded-xl border border-dashed border-cyan-200 dark:border-cyan-500/20 text-cyan-600 dark:text-cyan-400 hover:bg-cyan-50 dark:hover:bg-cyan-500/10 hover:border-cyan-300 dark:hover:border-cyan-500/30 transition-all"
                                     >
-                                        <Zap className="w-3.5 h-3.5" />
-                                        Aeróbio
+                                        <Zap className="w-5 h-5" />
+                                        <span className="text-xs font-medium">Aeróbio</span>
                                     </button>
                                 )}
                                 <button
                                     onClick={onAddNote}
-                                    className="px-3 py-1.5 text-xs text-[#6E6E73] dark:text-k-text-tertiary hover:bg-[#F5F5F7] dark:hover:bg-glass-bg-active rounded-md transition-colors flex items-center gap-1.5"
+                                    className="flex flex-col items-center gap-2 py-4 px-3 rounded-xl border border-dashed border-[#D2D2D7] dark:border-k-border-subtle text-[#6E6E73] dark:text-k-text-tertiary hover:text-[#1D1D1F] dark:hover:text-k-text-primary hover:bg-[#F5F5F7] dark:hover:bg-glass-bg-active hover:border-[#AEAEB2] dark:hover:border-k-border-primary transition-all"
                                 >
-                                    <FileText className="w-3.5 h-3.5" />
-                                    Nota
+                                    <FileText className="w-5 h-5" />
+                                    <span className="text-xs font-medium">Nota</span>
                                 </button>
                             </div>
 
-                            <p className="text-xs text-muted-foreground text-center">Arraste exercícios da biblioteca ou pesquise acima</p>
+                            <p className="text-[11px] text-muted-foreground text-center">ou arraste da biblioteca</p>
+                            </div>
                         </div>
                     )
                 ) : readonly ? (
@@ -490,30 +476,30 @@ export function WorkoutPanel({
                                         />
                                     </div>
                                 )}
-                                <div className="flex justify-center gap-2 pt-4 flex-wrap">
+                                <div className="flex items-center justify-center gap-1.5 pt-3">
                                     {onAddWarmup && (
                                         <button
                                             onClick={onAddWarmup}
-                                            className="px-4 py-2 text-sm text-orange-500 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-500/10 rounded-full transition-colors flex items-center gap-2 border border-transparent hover:border-orange-200 dark:hover:border-orange-500/20"
+                                            className="px-3 py-1.5 text-xs text-orange-500 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-500/10 rounded-lg transition-colors flex items-center gap-1.5"
                                         >
-                                            <Flame className="w-4 h-4" />
+                                            <Flame className="w-3.5 h-3.5" />
                                             Aquecimento
                                         </button>
                                     )}
                                     {onAddCardio && (
                                         <button
                                             onClick={onAddCardio}
-                                            className="px-4 py-2 text-sm text-cyan-600 dark:text-cyan-400 hover:bg-cyan-50 dark:hover:bg-cyan-500/10 rounded-full transition-colors flex items-center gap-2 border border-transparent hover:border-cyan-200 dark:hover:border-cyan-500/20"
+                                            className="px-3 py-1.5 text-xs text-cyan-600 dark:text-cyan-400 hover:bg-cyan-50 dark:hover:bg-cyan-500/10 rounded-lg transition-colors flex items-center gap-1.5"
                                         >
-                                            <Zap className="w-4 h-4" />
+                                            <Zap className="w-3.5 h-3.5" />
                                             Aeróbio
                                         </button>
                                     )}
                                     <button
                                         onClick={onAddNote}
-                                        className="px-4 py-2 text-sm text-[#6E6E73] dark:text-k-text-tertiary hover:text-[#1D1D1F] dark:hover:text-k-text-primary hover:bg-[#F5F5F7] dark:hover:bg-glass-bg rounded-full transition-colors flex items-center gap-2 border border-transparent hover:border-[#D2D2D7] dark:hover:border-k-border-primary"
+                                        className="px-3 py-1.5 text-xs text-[#6E6E73] dark:text-k-text-tertiary hover:bg-[#F5F5F7] dark:hover:bg-glass-bg rounded-lg transition-colors flex items-center gap-1.5"
                                     >
-                                        <FileText className="w-4 h-4" />
+                                        <FileText className="w-3.5 h-3.5" />
                                         Nota
                                     </button>
                                 </div>

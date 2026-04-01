@@ -14,6 +14,7 @@ import { markInsightRead, dismissInsight } from '@/actions/insights'
 import type { InsightItem } from '@/actions/insights'
 import type { PendingFinancialItem, PendingFormItem, ExpiredPlanItem } from '@/lib/dashboard/get-dashboard-data'
 import { useAssistantChatStore } from '@/stores/assistant-chat-store'
+import { useCommunicationStore } from '@/stores/communication-store'
 
 // ── Category config ──
 
@@ -138,7 +139,7 @@ export function AssistantActionCards({
     const [insights, setInsights] = useState<InsightItem[]>(initialInsights)
     const [markingPaid, setMarkingPaid] = useState<string | null>(null)
     const openChat = useAssistantChatStore(s => s.openChat)
-    const openMessages = useAssistantChatStore(s => s.openMessages)
+    const { openPanel, openConversation } = useCommunicationStore()
     const P: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 }
 
     // Build rows
@@ -230,13 +231,14 @@ export function AssistantActionCards({
     const handleDirectAction = useCallback((e: React.MouseEvent, action: 'message' | 'program' | 'profile', studentId?: string | null, studentName?: string | null) => {
         e.stopPropagation()
         if (action === 'message' && studentId) {
-            openMessages({ studentId, studentName: studentName || undefined })
+            openPanel('messages')
+            openConversation(studentId)
         } else if (action === 'program' && studentId) {
             window.location.href = `/students/${studentId}/program/new`
         } else if (action === 'profile' && studentId) {
             window.location.href = `/students/${studentId}`
         }
-    }, [openMessages])
+    }, [openPanel, openConversation])
 
     const handleMarkAsPaid = useCallback(async (e: React.MouseEvent, contractId: string) => {
         e.stopPropagation()
