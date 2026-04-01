@@ -42,6 +42,7 @@ export async function getTotalUnreadCount(): Promise<number> {
     const auth = await getAuthenticatedTrainer()
     if (!auth) return 0
 
+    // First fetch student IDs, then query messages (Supabase JS doesn't support inline subqueries in .in())
     const { data: students } = await supabaseAdmin
         .from('students')
         .select('id')

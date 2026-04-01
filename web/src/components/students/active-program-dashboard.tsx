@@ -148,6 +148,8 @@ interface ActiveProgramDashboardProps {
     onPrescribeAI?: () => void
     onViewReport?: () => void
     hasActiveProgram?: boolean
+    /** Pass to show full student history in calendar, not just current program */
+    studentId?: string
 }
 
 export function ActiveProgramDashboard({
@@ -164,7 +166,8 @@ export function ActiveProgramDashboard({
     onCreateProgram,
     onPrescribeAI,
     onViewReport,
-    hasActiveProgram = false
+    hasActiveProgram = false,
+    studentId,
 }: ActiveProgramDashboardProps) {
     // Sheet State (for calendar day clicks)
     const [isSheetOpen, setIsSheetOpen] = useState(false)
@@ -494,37 +497,65 @@ export function ActiveProgramDashboard({
                     </div>
                 </div>
 
-                {/* Adherence Sparkline */}
-                {weeklyAdherence.length > 1 && (
-                    <div className="mb-8 bg-glass-bg rounded-xl p-4 border border-k-border-subtle">
-                        <div className="flex items-center justify-between mb-3">
-                            <p className="text-[10px] font-bold text-k-text-quaternary">
-                                Adesão por semana
-                            </p>
-                            <p className="text-[10px] font-bold text-k-text-quaternary">
-                                {weeklyAdherence.length} semanas
-                            </p>
+                {/* Adherence Sparkline — Enhanced */}
+                {weeklyAdherence.length > 1 && (() => {
+                    const data = weeklyAdherence.slice(-12)
+                    const avg = Math.round(data.reduce((s, w) => s + w.rate, 0) / data.length)
+                    // Trend: compare last 3 weeks vs first 3 weeks
+                    const recentAvg = data.slice(-3).reduce((s, w) => s + w.rate, 0) / Math.min(3, data.length)
+                    const earlyAvg = data.slice(0, 3).reduce((s, w) => s + w.rate, 0) / Math.min(3, data.length)
+                    const trendUp = recentAvg > earlyAvg + 5
+                    const trendDown = recentAvg < earlyAvg - 5
+                    return (
+                        <div className="mb-8 bg-glass-bg rounded-xl p-4 border border-k-border-subtle">
+                            <div className="flex items-center justify-between mb-3">
+                                <p className="text-[10px] font-bold text-k-text-quaternary flex items-center gap-1.5">
+                                    Adesão por semana
+                                    <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                                        avg >= 80 ? 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' :
+                                        avg >= 50 ? 'bg-yellow-100 dark:bg-yellow-500/10 text-yellow-600 dark:text-yellow-400' :
+                                        'bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400'
+                                    }`}>
+                                        {avg}% média
+                                        {trendUp && ' ↑'}
+                                        {trendDown && ' ↓'}
+                                    </span>
+                                </p>
+                                <p className="text-[10px] font-bold text-k-text-quaternary">
+                                    {weeklyAdherence.length} semanas
+                                </p>
+                            </div>
+                            <div className="flex items-end gap-1 h-10">
+                                {data.map((w) => (
+                                    <div key={w.week} className="flex-1 min-w-[6px] relative group cursor-default">
+                                        <div
+                                            className={`w-full rounded-t-sm transition-all ${
+                                                w.rate >= 80 ? 'bg-emerald-500' :
+                                                w.rate >= 50 ? 'bg-yellow-500' : 'bg-red-500'
+                                            } group-hover:opacity-80`}
+                                            style={{ height: `${Math.max(w.rate, 4)}%` }}
+                                        />
+                                        {/* Tooltip */}
+                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-[#1D1D1F] dark:bg-white text-white dark:text-[#1D1D1F] text-[9px] font-bold rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                                            Sem. {w.week}: {w.rate}%
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            {/* Average line indicator */}
+                            <div className="relative h-0 -mt-10 pointer-events-none" style={{ top: `${10 - (avg / 100) * 10}px` }}>
+                                <div className="w-full border-t border-dashed border-[#86868B]/30 dark:border-k-text-quaternary/30" />
+                            </div>
+                            <div className="mt-[40px]" /> {/* Spacer for the overlapping line */}
+                            <div className="flex items-center gap-4 mt-2 text-[9px] text-k-text-quaternary">
+                                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-emerald-500" /> ≥80%</span>
+                                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-yellow-500" /> ≥50%</span>
+                                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-red-500" /> &lt;50%</span>
+                                <span className="flex items-center gap-1 ml-auto"><span className="w-3 h-0 border-t border-dashed border-[#86868B]/50" /> média</span>
+                            </div>
                         </div>
-                        <div className="flex items-end gap-1 h-8">
-                            {weeklyAdherence.slice(-12).map((w) => (
-                                <div
-                                    key={w.week}
-                                    className={`flex-1 rounded-t-sm transition-all min-w-[6px] ${
-                                        w.rate >= 80 ? 'bg-emerald-500' :
-                                        w.rate >= 50 ? 'bg-yellow-500' : 'bg-red-500'
-                                    }`}
-                                    style={{ height: `${Math.max(w.rate, 4)}%` }}
-                                    title={`Semana ${w.week}: ${w.rate}%`}
-                                />
-                            ))}
-                        </div>
-                        <div className="flex items-center gap-4 mt-2 text-[9px] text-k-text-quaternary">
-                            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-emerald-500" /> ≥80%</span>
-                            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-yellow-500" /> ≥50%</span>
-                            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-red-500" /> &lt;50%</span>
-                        </div>
-                    </div>
-                )}
+                    )
+                })()}
 
                 {/* Navigable Calendar */}
                 {program.assigned_workouts && program.started_at && (
@@ -535,6 +566,7 @@ export function ActiveProgramDashboard({
                             programDurationWeeks={program.duration_weeks}
                             scheduledWorkouts={program.assigned_workouts}
                             initialSessions={calendarInitialSessions}
+                            studentId={studentId}
                             onDayClick={(day) => {
                                 if (day.status === 'done' && day.completedSessions.length > 0) {
                                     handleSessionClick(day.completedSessions[0].id)
@@ -595,23 +627,37 @@ export function ActiveProgramDashboard({
                                                             </span>
                                                         )}
                                                     </div>
-                                                    <p className="text-[10px] font-medium text-k-text-quaternary mt-0.5">
-                                                        {new Date(session.completed_at).toLocaleDateString('pt-BR', {
-                                                            weekday: 'short',
-                                                            day: 'numeric',
-                                                            month: 'short',
-                                                            hour: '2-digit',
-                                                            minute: '2-digit',
-                                                            timeZone: TIMEZONE
-                                                        })}
-                                                    </p>
+                                                    <div className="flex items-center gap-2 mt-0.5">
+                                                        <p className="text-[10px] font-medium text-k-text-quaternary">
+                                                            {new Date(session.completed_at).toLocaleDateString('pt-BR', {
+                                                                weekday: 'short',
+                                                                day: 'numeric',
+                                                                month: 'short',
+                                                                hour: '2-digit',
+                                                                minute: '2-digit',
+                                                                timeZone: TIMEZONE
+                                                            })}
+                                                        </p>
+                                                        {session.duration_seconds > 0 && (
+                                                            <span className="text-[10px] text-k-text-quaternary">
+                                                                · {session.duration_seconds >= 3600
+                                                                    ? `${Math.floor(session.duration_seconds / 3600)}h${Math.floor((session.duration_seconds % 3600) / 60)}m`
+                                                                    : `${Math.floor(session.duration_seconds / 60)}min`}
+                                                            </span>
+                                                        )}
+                                                        {!isExpanded && sessionDetails[session.id]?.items?.length > 0 && (
+                                                            <span className="text-[10px] text-k-text-quaternary">
+                                                                · {sessionDetails[session.id].items.filter((i: any) => i.itemType === 'exercise').length} exercícios
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                     {!isExpanded && session.feedback && (
-                                                        <p className="text-xs text-k-text-tertiary italic mt-1 truncate flex items-center gap-1.5">
-                                                            <svg className="w-3 h-3 shrink-0 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <div className="mt-1.5 inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-blue-50 dark:bg-blue-500/10 max-w-full">
+                                                            <svg className="w-3 h-3 shrink-0 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                                                             </svg>
-                                                            <span className="truncate">&ldquo;{session.feedback}&rdquo;</span>
-                                                        </p>
+                                                            <span className="text-[11px] text-blue-600 dark:text-blue-400 font-medium truncate">&ldquo;{session.feedback}&rdquo;</span>
+                                                        </div>
                                                     )}
                                                 </div>
                                             </div>
@@ -655,12 +701,14 @@ export function ActiveProgramDashboard({
 
                                                         {/* Feedback */}
                                                         {session.feedback && (
-                                                            <p className="text-xs text-k-text-tertiary italic pt-2 border-t border-k-border-subtle flex items-start gap-1.5">
-                                                                <svg className="w-3 h-3 shrink-0 opacity-50 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                                                                </svg>
-                                                                &ldquo;{session.feedback}&rdquo;
-                                                            </p>
+                                                            <div className="flex items-start gap-2 pt-2 mt-1 border-t border-k-border-subtle">
+                                                                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-500/10 flex-1">
+                                                                    <svg className="w-3.5 h-3.5 shrink-0 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                                                    </svg>
+                                                                    <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">&ldquo;{session.feedback}&rdquo;</span>
+                                                                </div>
+                                                            </div>
                                                         )}
 
                                                         {/* Open full detail modal */}

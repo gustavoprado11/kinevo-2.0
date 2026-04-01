@@ -2,76 +2,74 @@
 
 import Image from 'next/image'
 import { motion } from 'framer-motion'
-import { Timer, Dumbbell, Watch, Calendar, Smartphone, WifiOff } from 'lucide-react'
+import { Timer, Dumbbell, Watch, Calendar, Smartphone, WifiOff, Share2, Trophy } from 'lucide-react'
 
 const features = [
-    { icon: Timer, title: 'Timer de descanso inteligente' },
-    { icon: Dumbbell, title: 'Cargas automáticas da última sessão' },
-    { icon: Watch, title: 'Apple Watch integrado' },
-    { icon: Calendar, title: 'Calendário semanal visual' },
-    { icon: Smartphone, title: 'Live Activity no iOS' },
-    { icon: WifiOff, title: 'Modo offline completo' },
+    { icon: Timer, label: 'Timer inteligente' },
+    { icon: Dumbbell, label: 'Cargas automáticas' },
+    { icon: Watch, label: 'Apple Watch' },
+    { icon: Calendar, label: 'Calendário visual' },
+    { icon: Smartphone, label: 'Live Activity' },
+    { icon: WifiOff, label: 'Modo offline' },
+    { icon: Share2, label: 'Cards p/ Stories' },
+    { icon: Trophy, label: 'Recordes pessoais' },
 ]
 
 export function LandingStudentApp() {
     return (
-        <section className="bg-[#F5F5F7] py-24 md:py-32">
+        <section className="bg-white py-24 md:py-32 overflow-hidden">
             <div className="mx-auto max-w-7xl px-6">
+                {/* Header — centered */}
                 <motion.div
-                    initial={{ opacity: 0, y: 30 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true, margin: '-100px' }}
-                    transition={{ duration: 0.8, ease: 'easeOut' }}
-                    className="text-center max-w-3xl mx-auto"
-                >
-                    <span className="font-jakarta text-sm font-semibold uppercase tracking-widest text-[#7C3AED]">
-                        O APP DO SEU ALUNO
-                    </span>
-                    <h2 className="font-jakarta text-3xl md:text-5xl font-bold tracking-tight text-[#1D1D1F] mt-4">
-                        Quando o aluno abre o app, ele sente que tem o melhor personal.
-                    </h2>
-                    <p className="font-jakarta text-lg text-[#86868B] mt-5">
-                        App nativo para iOS e Android com design premium. Timer de descanso, cargas automáticas da última sessão, calendário semanal e modo offline. Integração com Apple Watch e Live Activity no iOS. E quando o aluno bate um recorde pessoal, ele compartilha nas redes — e divulga você.
-                    </p>
-                </motion.div>
-
-                <div className="mt-16 grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6 max-w-3xl mx-auto">
-                    {features.map((f, i) => (
-                        <motion.div
-                            key={f.title}
-                            initial={{ opacity: 0, y: 20 }}
-                            whileInView={{ opacity: 1, y: 0 }}
-                            viewport={{ once: true, margin: '-50px' }}
-                            transition={{ duration: 0.5, ease: 'easeOut', delay: i * 0.08 }}
-                            className="bg-white rounded-xl p-5 text-center"
-                        >
-                            <div className="w-10 h-10 rounded-lg bg-[#7C3AED]/10 flex items-center justify-center mx-auto">
-                                <f.icon className="w-5 h-5 text-[#7C3AED]" />
-                            </div>
-                            <p className="font-jakarta text-sm font-medium text-[#1D1D1F] mt-3">
-                                {f.title}
-                            </p>
-                        </motion.div>
-                    ))}
-                </div>
-
-                <motion.p
                     initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true, margin: '-50px' }}
-                    transition={{ duration: 0.6, ease: 'easeOut', delay: 0.3 }}
-                    className="font-jakarta text-[#86868B] text-sm text-center mt-10 max-w-lg mx-auto"
+                    viewport={{ once: true, margin: '-60px' }}
+                    transition={{ duration: 0.6 }}
+                    className="text-center max-w-2xl mx-auto mb-14"
                 >
-                    5 templates de cards para o aluno compartilhar: foto, highlights, resumo, PR e treino completo. Cada post é marketing gratuito para você.
-                </motion.p>
+                    <span className="font-jakarta text-xs font-semibold uppercase tracking-widest text-[#7C3AED]">
+                        O App do seu aluno
+                    </span>
+                    <h2 className="font-jakarta text-3xl md:text-5xl font-bold tracking-tight text-[#1D1D1F] mt-3">
+                        O aluno abre e sente que tem{' '}
+                        <span className="bg-gradient-to-r from-[#7C3AED] to-[#A855F7] bg-clip-text text-transparent">
+                            o melhor personal.
+                        </span>
+                    </h2>
+                </motion.div>
 
+                {/* Feature pills — horizontal scrollable on mobile */}
                 <motion.div
-                    initial={{ opacity: 0, y: 40, scale: 0.95 }}
+                    initial={{ opacity: 0, y: 12 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: '-40px' }}
+                    transition={{ duration: 0.5 }}
+                    className="flex flex-wrap justify-center gap-2.5 max-w-3xl mx-auto mb-14"
+                >
+                    {features.map((f, i) => (
+                        <motion.div
+                            key={f.label}
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            whileInView={{ opacity: 1, scale: 1 }}
+                            viewport={{ once: true }}
+                            transition={{ delay: i * 0.04, duration: 0.3 }}
+                            className="inline-flex items-center gap-2 bg-[#F5F5F7] rounded-full px-4 py-2"
+                        >
+                            <f.icon className="w-3.5 h-3.5 text-[#7C3AED]" />
+                            <span className="font-jakarta text-xs font-medium text-[#1D1D1F]">{f.label}</span>
+                        </motion.div>
+                    ))}
+                </motion.div>
+
+                {/* Mockup — large and immersive */}
+                <motion.div
+                    initial={{ opacity: 0, y: 40, scale: 0.97 }}
                     whileInView={{ opacity: 1, y: 0, scale: 1 }}
                     viewport={{ once: true }}
-                    transition={{ duration: 1, ease: 'easeOut', delay: 0.2 }}
-                    className="mt-12 max-w-3xl mx-auto"
+                    transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                    className="relative max-w-3xl mx-auto"
                 >
+                    <div className="absolute inset-0 -inset-y-8 bg-gradient-to-b from-[#7C3AED]/8 to-transparent rounded-3xl blur-2xl -z-10" />
                     <Image
                         src="/747shots_so.png"
                         alt="Kinevo — app do aluno em 3 iPhones"
@@ -80,6 +78,17 @@ export function LandingStudentApp() {
                         className="w-full h-auto"
                     />
                 </motion.div>
+
+                {/* Marketing hook */}
+                <motion.p
+                    initial={{ opacity: 0 }}
+                    whileInView={{ opacity: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.5, delay: 0.3 }}
+                    className="font-jakarta text-sm text-[#86868B] text-center mt-8 max-w-md mx-auto"
+                >
+                    5 templates de cards para Stories. Cada post é marketing gratuito para você.
+                </motion.p>
             </div>
         </section>
     )

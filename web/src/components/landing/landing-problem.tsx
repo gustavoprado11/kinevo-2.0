@@ -1,81 +1,88 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { ClipboardList, EyeOff, CreditCard } from 'lucide-react'
+import { ArrowDown } from 'lucide-react'
 
 const painPoints = [
     {
-        icon: ClipboardList,
-        title: 'Planilhas e PDFs por WhatsApp',
-        description:
-            'Você estudou periodização, bioquímica, biomecânica. Mas na hora de prescrever, a ferramenta é uma planilha copiada. O aluno recebe um PDF genérico e treina sozinho, sem contexto.',
+        emoji: '📋',
+        title: 'Planilhas e PDFs',
+        stat: '2h+',
+        statLabel: 'perdidas por programa',
     },
     {
-        icon: EyeOff,
-        title: 'Sem ideia de quem treinou',
-        description:
-            'O aluno some por semanas e você só descobre na próxima sessão. Sem dados, sem histórico, sem como mostrar evolução. A aderência cai e a culpa parece sua.',
+        emoji: '👻',
+        title: 'Aluno sumiu?',
+        stat: '0',
+        statLabel: 'visibilidade de aderência',
     },
     {
-        icon: CreditCard,
-        title: 'Pix, constrangimento e inadimplência',
-        description:
-            'Cobrar aluno é desconfortável. Você manda mensagem, espera, manda de novo. Quando tenta uma plataforma, perde 10-20% de cada cobrança em taxas.',
+        emoji: '💸',
+        title: 'Taxas e Pix',
+        stat: '10-20%',
+        statLabel: 'perdido em cada cobrança',
     },
 ]
 
 export function LandingProblem() {
     return (
-        <section className="bg-white py-24 md:py-32">
-            <div className="mx-auto max-w-7xl px-6">
+        <section className="relative bg-[#0A0A0B] py-24 md:py-32 overflow-hidden">
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_50%_0%,rgba(124,58,237,0.06),transparent)]" />
+
+            <div className="relative mx-auto max-w-7xl px-6">
+                {/* Header */}
                 <motion.div
-                    initial={{ opacity: 0, y: 30 }}
+                    initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true, margin: '-100px' }}
-                    transition={{ duration: 0.8, ease: 'easeOut' }}
-                    className="text-center max-w-3xl mx-auto"
+                    viewport={{ once: true, margin: '-80px' }}
+                    transition={{ duration: 0.6 }}
+                    className="text-center max-w-2xl mx-auto mb-16"
                 >
-                    <h2 className="font-jakarta text-3xl md:text-5xl font-bold tracking-tight text-[#1D1D1F]">
-                        Você é um profissional de verdade. Suas ferramentas deveriam ser também.
+                    <h2 className="font-jakarta text-3xl md:text-5xl font-bold tracking-tight text-white">
+                        Você é profissional.{' '}
+                        <span className="text-white/30">Suas ferramentas também deveriam ser.</span>
                     </h2>
                 </motion.div>
 
-                <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8">
+                {/* Visual cards — stat-driven */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
                     {painPoints.map((card, i) => (
                         <motion.div
                             key={card.title}
-                            initial={{ opacity: 0, y: 30 }}
+                            initial={{ opacity: 0, y: 20 }}
                             whileInView={{ opacity: 1, y: 0 }}
-                            viewport={{ once: true, margin: '-50px' }}
-                            transition={{ duration: 0.6, ease: 'easeOut', delay: i * 0.1 }}
-                            className="bg-[#F5F5F7] rounded-2xl p-8"
+                            viewport={{ once: true, margin: '-40px' }}
+                            transition={{ duration: 0.5, delay: i * 0.08 }}
+                            className="group bg-white/[0.03] border border-white/[0.05] rounded-2xl p-6 text-center hover:bg-white/[0.05] hover:border-white/[0.08] transition-all"
                         >
-                            <div className="w-12 h-12 rounded-xl bg-[#7C3AED]/10 flex items-center justify-center">
-                                <card.icon className="w-6 h-6 text-[#7C3AED]" />
-                            </div>
-                            <h3 className="font-jakarta text-lg font-semibold text-[#1D1D1F] mt-5">
-                                {card.title}
-                            </h3>
-                            <p className="font-jakarta text-[#86868B] text-sm leading-relaxed mt-3">
-                                {card.description}
+                            <span className="text-4xl">{card.emoji}</span>
+                            <p className="font-jakarta text-4xl md:text-5xl font-extrabold text-[#FF3B30]/80 mt-4">
+                                {card.stat}
                             </p>
+                            <p className="font-jakarta text-xs text-white/30 mt-1">{card.statLabel}</p>
+                            <p className="font-jakarta text-sm font-semibold text-white/60 mt-4">{card.title}</p>
                         </motion.div>
                     ))}
                 </div>
 
+                {/* Transition */}
                 <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true, margin: '-50px' }}
-                    transition={{ duration: 0.6, ease: 'easeOut', delay: 0.3 }}
-                    className="mt-16 text-center"
+                    initial={{ opacity: 0 }}
+                    whileInView={{ opacity: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.6, delay: 0.3 }}
+                    className="mt-14 text-center"
                 >
-                    <p className="font-jakarta text-2xl md:text-3xl font-bold text-[#1D1D1F]">
+                    <p className="font-jakarta text-xl md:text-2xl font-bold text-white">
                         O Kinevo muda isso.
                     </p>
-                    <p className="font-jakarta text-lg text-[#86868B] mt-3">
-                        Prescreva com precisão. Acompanhe de verdade. Receba sem perder um centavo.
-                    </p>
+                    <motion.div
+                        animate={{ y: [0, 5, 0] }}
+                        transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                        className="mt-4"
+                    >
+                        <ArrowDown className="w-4 h-4 text-[#7C3AED] mx-auto" />
+                    </motion.div>
                 </motion.div>
             </div>
         </section>

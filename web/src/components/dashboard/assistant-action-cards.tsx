@@ -3,9 +3,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
     Sparkles, X, AlertTriangle, TrendingUp, Lightbulb, BarChart3,
     Check, CreditCard, FileText, FolderArchive, ChevronRight,
+    MessageCircle, Dumbbell, Send,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { markInsightRead, dismissInsight } from '@/actions/insights'
@@ -56,6 +58,42 @@ function getActionChip(insight: InsightItem): string | undefined {
     return undefined
 }
 
+/** Returns direct action buttons per insight type (no assistant needed) */
+function getDirectActions(insight: InsightItem): Array<{
+    id: string
+    label: string
+    icon: React.ReactNode
+    action: 'message' | 'program' | 'profile'
+}> {
+    const key = insight.insight_key || ''
+    const actions: ReturnType<typeof getDirectActions> = []
+
+    // Gap alert → message the student + view profile
+    if (key.startsWith('gap_alert')) {
+        actions.push({ id: 'msg', label: 'Mensagem', icon: <MessageCircle className="w-3 h-3" />, action: 'message' })
+    }
+    // Stagnation → message + create program
+    if (key.startsWith('stagnation')) {
+        actions.push({ id: 'msg', label: 'Mensagem', icon: <MessageCircle className="w-3 h-3" />, action: 'message' })
+        actions.push({ id: 'prog', label: 'Novo programa', icon: <Dumbbell className="w-3 h-3" />, action: 'program' })
+    }
+    // Ready to progress → create program
+    if (key.startsWith('ready_to_progress')) {
+        actions.push({ id: 'prog', label: 'Novo programa', icon: <Dumbbell className="w-3 h-3" />, action: 'program' })
+    }
+    // Program expiring → create program + message
+    if (key.startsWith('program_expiring')) {
+        actions.push({ id: 'prog', label: 'Novo programa', icon: <Dumbbell className="w-3 h-3" />, action: 'program' })
+        actions.push({ id: 'msg', label: 'Mensagem', icon: <MessageCircle className="w-3 h-3" />, action: 'message' })
+    }
+    // Pain report → message student
+    if (key.startsWith('pain_report')) {
+        actions.push({ id: 'msg', label: 'Mensagem', icon: <MessageCircle className="w-3 h-3" />, action: 'message' })
+    }
+
+    return actions
+}
+
 const formatCurrency = (value: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
 
@@ -100,6 +138,7 @@ export function AssistantActionCards({
     const [insights, setInsights] = useState<InsightItem[]>(initialInsights)
     const [markingPaid, setMarkingPaid] = useState<string | null>(null)
     const openChat = useAssistantChatStore(s => s.openChat)
+    const openMessages = useAssistantChatStore(s => s.openMessages)
     const P: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 }
 
     // Build rows
@@ -188,6 +227,17 @@ export function AssistantActionCards({
         await dismissInsight(insightId)
     }, [])
 
+    const handleDirectAction = useCallback((e: React.MouseEvent, action: 'message' | 'program' | 'profile', studentId?: string | null, studentName?: string | null) => {
+        e.stopPropagation()
+        if (action === 'message' && studentId) {
+            openMessages({ studentId, studentName: studentName || undefined })
+        } else if (action === 'program' && studentId) {
+            window.location.href = `/students/${studentId}/program/new`
+        } else if (action === 'profile' && studentId) {
+            window.location.href = `/students/${studentId}`
+        }
+    }, [openMessages])
+
     const handleMarkAsPaid = useCallback(async (e: React.MouseEvent, contractId: string) => {
         e.stopPropagation()
         setMarkingPaid(contractId)
@@ -242,12 +292,15 @@ export function AssistantActionCards({
                 </div>
             ) : (
                 <div className="divide-y divide-[#E8E8ED] dark:divide-border max-h-[320px] overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
-                    {rows.map(row => {
+                    {rows.map((row, index) => {
                         const cat = CAT[row.category] || CAT.summary
 
                         return (
-                            <div
+                            <motion.div
                                 key={row.id}
+                                initial={{ opacity: 0, x: -8 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: index * 0.05, duration: 0.3 }}
                                 role="button"
                                 tabIndex={0}
                                 onClick={() => handleRowClick(row)}
@@ -296,23 +349,57 @@ export function AssistantActionCards({
 
                                 {/* Right side action */}
                                 <div className="flex items-center gap-2 shrink-0 ml-4">
-                                    {row.type === 'insight' && row.insight && (
-                                        <>
-                                            <button
-                                                onClick={(e) => handleDismiss(e, row.insight!.id)}
-                                                className="p-1 rounded-md hover:bg-black/5 dark:hover:bg-white/5 transition-colors opacity-0 group-hover:opacity-100"
-                                                title="Dispensar"
-                                            >
-                                                <X className="w-3.5 h-3.5 text-[#AEAEB2] dark:text-muted-foreground/50" />
-                                            </button>
-                                            <button
-                                                onClick={(e) => handleInsightAction(e, row.insight!)}
-                                                className="text-[11px] font-medium text-violet-600 dark:text-violet-400 hover:text-violet-500 flex items-center gap-1 transition-colors"
-                                            >
-                                                {getActionLabel(row.insight!)} <ChevronRight className="w-3 h-3" />
-                                            </button>
-                                        </>
-                                    )}
+                                    {row.type === 'insight' && row.insight && (() => {
+                                        const directActions = getDirectActions(row.insight!)
+                                        const primaryAction = directActions[0]
+                                        const secondaryActions = directActions.slice(1)
+                                        return (
+                                            <>
+                                                {/* Secondary actions — hover only */}
+                                                {secondaryActions.length > 0 && (
+                                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        {secondaryActions.map(da => (
+                                                            <button
+                                                                key={da.id}
+                                                                onClick={(e) => handleDirectAction(e, da.action, row.studentId, row.studentName)}
+                                                                className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium rounded-md border border-[#E8E8ED] dark:border-k-border-subtle bg-white dark:bg-surface-card text-[#6E6E73] dark:text-k-text-secondary hover:bg-[#F5F5F7] dark:hover:bg-muted hover:text-[#1D1D1F] dark:hover:text-foreground transition-colors"
+                                                                title={da.label}
+                                                            >
+                                                                {da.icon}
+                                                                <span className="hidden lg:inline">{da.label}</span>
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                                {/* Primary direct action — always visible */}
+                                                {primaryAction && (
+                                                    <button
+                                                        onClick={(e) => handleDirectAction(e, primaryAction.action, row.studentId, row.studentName)}
+                                                        className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded-lg border border-[#E8E8ED] dark:border-k-border-subtle bg-white dark:bg-surface-card text-[#6E6E73] dark:text-k-text-secondary hover:bg-[#F5F5F7] dark:hover:bg-muted hover:text-[#1D1D1F] dark:hover:text-foreground transition-all hover:shadow-sm"
+                                                        title={primaryAction.label}
+                                                    >
+                                                        {primaryAction.icon}
+                                                        {primaryAction.label}
+                                                    </button>
+                                                )}
+                                                {/* Dismiss — hover only */}
+                                                <button
+                                                    onClick={(e) => handleDismiss(e, row.insight!.id)}
+                                                    className="p-1 rounded-md hover:bg-black/5 dark:hover:bg-white/5 transition-colors opacity-0 group-hover:opacity-100"
+                                                    title="Dispensar"
+                                                >
+                                                    <X className="w-3.5 h-3.5 text-[#AEAEB2] dark:text-muted-foreground/50" />
+                                                </button>
+                                                {/* Assistant — always visible */}
+                                                <button
+                                                    onClick={(e) => handleInsightAction(e, row.insight!)}
+                                                    className="text-[11px] font-medium text-violet-600 dark:text-violet-400 hover:text-violet-500 flex items-center gap-1 transition-colors"
+                                                >
+                                                    {getActionLabel(row.insight!)} <ChevronRight className="w-3 h-3" />
+                                                </button>
+                                            </>
+                                        )
+                                    })()}
 
                                     {row.type === 'financial' && row.financialItem && (() => {
                                         const fin = row.financialItem!
@@ -337,6 +424,15 @@ export function AssistantActionCards({
 
                                     {row.type === 'expired_plan' && row.expiredPlanItem && (
                                         <div className="flex items-center gap-2">
+                                            {row.studentId && (
+                                                <button
+                                                    onClick={(e) => handleDirectAction(e, 'message', row.studentId, row.studentName)}
+                                                    className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium rounded-md border border-[#E8E8ED] dark:border-k-border-subtle bg-white dark:bg-surface-card text-[#6E6E73] dark:text-k-text-secondary hover:bg-[#F5F5F7] dark:hover:bg-muted hover:text-[#1D1D1F] dark:hover:text-foreground transition-colors opacity-0 group-hover:opacity-100"
+                                                    title="Enviar mensagem"
+                                                >
+                                                    <MessageCircle className="w-3 h-3" />
+                                                </button>
+                                            )}
                                             {onSellPlan && row.studentId && (
                                                 <button onClick={(e) => { e.stopPropagation(); onSellPlan(row.studentId!) }} className="text-[11px] font-medium text-[#007AFF] dark:text-primary hover:opacity-80 transition-colors">
                                                     Vender plano
@@ -350,7 +446,7 @@ export function AssistantActionCards({
                                         </div>
                                     )}
                                 </div>
-                            </div>
+                            </motion.div>
                         )
                     })}
                 </div>

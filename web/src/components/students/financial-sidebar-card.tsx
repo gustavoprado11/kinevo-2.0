@@ -34,7 +34,7 @@ export function FinancialSidebarCard({
     // Empty state — follows "Próximos Programas" empty pattern
     if (!contract || displayStatus === 'courtesy') {
         return (
-            <div className="bg-white dark:bg-glass-bg backdrop-blur-md rounded-2xl border border-[#E5E5EA] dark:border-k-border-primary p-6">
+            <div className="bg-white dark:bg-glass-bg backdrop-blur-md rounded-2xl border border-transparent dark:border-k-border-primary shadow-sm dark:shadow-none p-6">
                 <div className="flex items-center justify-between mb-4">
                     <h3 className="text-sm font-semibold text-[#1C1C1E] dark:text-white flex items-center gap-2">
                         Financeiro
@@ -61,7 +61,7 @@ export function FinancialSidebarCard({
     }
 
     return (
-        <div className="bg-white dark:bg-glass-bg backdrop-blur-md rounded-2xl border border-[#E5E5EA] dark:border-k-border-primary p-6">
+        <div className="bg-white dark:bg-glass-bg backdrop-blur-md rounded-2xl border border-transparent dark:border-k-border-primary shadow-sm dark:shadow-none p-6">
             {/* Header — same pattern as Observações / Próximos Programas */}
             <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-semibold text-[#1C1C1E] dark:text-white flex items-center gap-2">

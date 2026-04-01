@@ -15,7 +15,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
     // Get student data
     const { data: student } = await supabase
         .from('students')
-        .select('id, name, email, phone, status, modality, avatar_url, created_at, is_trainer_profile, trainer_notes')
+        .select('id, name, email, phone, status, modality, avatar_url, created_at, is_trainer_profile, trainer_notes, objective, management_tags')
         .eq('id', id)
         .single()
 
@@ -207,19 +207,39 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
         }
     }
 
-    // Get sessions for the current week (Sun–Sat) for the calendar
-    let calendarInitialSessions: { id: string; assigned_workout_id: string; started_at: string; completed_at: string | null; status: string; rpe: number | null }[] = []
-    if (activeProgram) {
-        const weekRange = getWeekRange(new Date(), 'America/Sao_Paulo')
-        const { data: weekSessions } = await supabase
+    // Get ALL sessions for the current month for the calendar (full history, not just active program)
+    let calendarInitialSessions: { id: string; assigned_workout_id: string; started_at: string; completed_at: string | null; status: string; rpe: number | null; assigned_program_id: string | null }[] = []
+    {
+        const now = new Date()
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+        const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
+        const { data: monthSessions } = await supabase
             .from('workout_sessions')
-            .select('id, assigned_workout_id, started_at, completed_at, status, rpe')
-            .eq('assigned_program_id', activeProgram.id)
-            .gte('completed_at', weekRange.start.toISOString())
-            .lte('completed_at', weekRange.end.toISOString())
-            .order('completed_at', { ascending: false })
+            .select('id, assigned_workout_id, started_at, completed_at, status, rpe, assigned_program_id')
+            .eq('student_id', id)
+            .gte('started_at', monthStart.toISOString())
+            .lte('started_at', monthEnd.toISOString())
+            .order('started_at', { ascending: false })
 
-        calendarInitialSessions = (weekSessions || []) as any
+        calendarInitialSessions = (monthSessions || []) as any
+    }
+
+    // ── Student-specific AI insights ──
+    let studentInsights: any[] = []
+    {
+        const { data: insightsData } = await supabase
+            .from('assistant_insights')
+            .select('id, student_id, category, priority, title, body, action_type, action_metadata, status, source, insight_key, created_at')
+            .eq('student_id', id)
+            .in('status', ['new', 'read'])
+            .order('created_at', { ascending: false })
+            .limit(10)
+
+        studentInsights = (insightsData || []).map(row => ({
+            ...row,
+            student_name: student.name,
+            action_metadata: row.action_metadata || {},
+        }))
     }
 
     // ── Sidebar data: Financial + Assessments ──
@@ -320,6 +340,39 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
         }
     }
 
+    // Fetch body metrics history (last 5 submissions for trend)
+    let bodyMetricsHistory: { weight: number | null; bodyFat: number | null; date: string }[] = []
+    {
+        const { data: metricsHistory } = await supabase
+            .from('form_submissions')
+            .select('answers_json, submitted_at, form_templates!inner(system_key)')
+            .eq('student_id', id)
+            .eq('trainer_id', trainer.id)
+            .in('status', ['submitted', 'reviewed'])
+            .in('form_templates.system_key', SUPPORTED_METRIC_SYSTEM_KEYS)
+            .order('submitted_at', { ascending: false })
+            .limit(5)
+
+        if (metricsHistory && metricsHistory.length > 0) {
+            bodyMetricsHistory = metricsHistory
+                .map(row => {
+                    const systemKey = (row.form_templates as any).system_key as string
+                    const fieldMap = BODY_METRIC_FIELD_MAP[systemKey]
+                    if (!fieldMap) return null
+                    const answers = (row.answers_json as any)?.answers || {}
+                    const w = answers[fieldMap.weight]?.value
+                    const bf = answers[fieldMap.bodyFat]?.value
+                    return {
+                        weight: w ? parseFloat(String(w)) : null,
+                        bodyFat: bf ? parseFloat(String(bf)) : null,
+                        date: row.submitted_at || '',
+                    }
+                })
+                .filter(Boolean)
+                .reverse() as typeof bodyMetricsHistory // chronological order
+        }
+    }
+
     // Shape contract data for the sidebar card
     const sidebarContract = contractData ? {
         id: contractData.id,
@@ -386,6 +439,8 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
             bodyMetrics={bodyMetrics}
             formTemplates={formTemplates}
             formSchedules={formSchedules}
+            studentInsights={studentInsights}
+            bodyMetricsHistory={bodyMetricsHistory}
         />
     )
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { AppLayout } from '@/components/layout'
 import {
@@ -16,13 +16,21 @@ import { extendProgram } from './actions/extend-program'
 import { deleteStudent } from './actions/student-actions'
 import { activateProgram } from './actions/activate-program'
 import { deleteProgram } from './actions/delete-program'
-import { updateTrainerNotes } from './actions/update-trainer-notes'
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
 import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
 import { getProgramWeek } from '@kinevo/shared/utils/schedule-projection'
 import { FinancialSidebarCard } from '@/components/students/financial-sidebar-card'
 import { AssessmentSidebarCard } from '@/components/students/assessment-sidebar-card'
-import { AlertCircle } from 'lucide-react'
+import { AlertCircle, Dumbbell, Flame, Activity, TrendingUp, Clock, FileText } from 'lucide-react'
+import { QuickMessageCard } from '@/components/students/quick-message-card'
+import { StudentInsightsCard } from '@/components/students/student-insights-card'
+import { ContextualAlerts } from '@/components/students/contextual-alerts'
+import { LoadProgressionChart } from '@/components/students/load-progression-chart'
+import { BodyMetricsTrend } from '@/components/students/body-metrics-trend'
+import { KeyboardShortcuts } from '@/components/students/keyboard-shortcuts'
+import { ProgramComparisonCard } from '@/components/students/program-comparison-card'
+import { StudentHealthSummary } from '@/components/students/student-health-summary'
+import type { InsightItem } from '@/actions/insights'
 import type { DisplayStatus } from '@/types/financial'
 
 interface Student {
@@ -36,6 +44,8 @@ interface Student {
     created_at: string
     is_trainer_profile: boolean | null
     trainer_notes: string | null
+    objective: string | null
+    management_tags: string[] | null
 }
 
 interface AssignedProgram {
@@ -90,6 +100,7 @@ interface CalendarSession {
     completed_at: string | null
     status: 'in_progress' | 'completed'
     rpe: number | null
+    assigned_program_id?: string | null
 }
 
 interface StudentDetailClientProps {
@@ -132,6 +143,8 @@ interface StudentDetailClientProps {
     } | null
     formTemplates: { id: string; title: string; category: string }[]
     formSchedules?: any[]
+    studentInsights?: InsightItem[]
+    bodyMetricsHistory?: { weight: number | null; bodyFat: number | null; date: string }[]
 }
 
 export function StudentDetailClient({
@@ -152,6 +165,8 @@ export function StudentDetailClient({
     bodyMetrics,
     formTemplates,
     formSchedules = [],
+    studentInsights = [],
+    bodyMetricsHistory = [],
 }: StudentDetailClientProps) {
     console.log('StudentDetailClient Rendered. Scheduled:', scheduledPrograms) // DEBUG LOG
     const router = useRouter()
@@ -162,19 +177,6 @@ export function StudentDetailClient({
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
     const [processingId, setProcessingId] = useState<string | null>(null)
     const [activationBlock, setActivationBlock] = useState<{ workoutNames: string[] } | null>(null)
-    const [trainerNotes, setTrainerNotes] = useState(initialStudent.trainer_notes || '')
-    const [notesSaving, setNotesSaving] = useState(false)
-    const notesTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-    const handleNotesChange = useCallback((value: string) => {
-        setTrainerNotes(value)
-        if (notesTimeoutRef.current) clearTimeout(notesTimeoutRef.current)
-        notesTimeoutRef.current = setTimeout(async () => {
-            setNotesSaving(true)
-            await updateTrainerNotes(student.id, value)
-            setNotesSaving(false)
-        }, 500)
-    }, [student.id])
 
     const handleAssignProgram = () => {
         setAssignModalMode('immediate')
@@ -317,62 +319,105 @@ export function StudentDetailClient({
                     student={student}
                     onEdit={handleEditStudent}
                     onDelete={handleDeleteStudent}
-                >
-                    {activeProgram && (
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-k-text-tertiary">
-                            {historySummary.expectedPerWeek > 0 && (
-                                <span className={historySummary.completedThisWeek >= historySummary.expectedPerWeek ? 'text-emerald-400' : 'text-yellow-400'}>
-                                    {historySummary.completedThisWeek}/{historySummary.expectedPerWeek} esta semana
-                                </span>
-                            )}
+                    quickStats={activeProgram ? (() => {
+                        const stats: { label: string; value: string; color: 'emerald' | 'blue' | 'violet' | 'amber' | 'red'; icon?: React.ReactNode }[] = []
 
-                            {historySummary.streak > 0 && (
-                                <>
-                                    <span className="text-k-text-quaternary">·</span>
-                                    <span>{historySummary.streak} treinos seguidos</span>
-                                </>
-                            )}
+                        // This week progress
+                        if (historySummary.expectedPerWeek > 0) {
+                            const metGoal = historySummary.completedThisWeek >= historySummary.expectedPerWeek
+                            stats.push({
+                                label: metGoal ? 'Meta atingida!' : 'esta semana',
+                                value: `${historySummary.completedThisWeek}/${historySummary.expectedPerWeek}`,
+                                color: metGoal ? 'emerald' : 'amber',
+                                icon: <Dumbbell className="w-3.5 h-3.5" />,
+                            })
+                        }
 
-                            {(() => {
-                                const rpeValues = recentSessions.map((s: any) => s.rpe).filter((r: any) => r != null && r > 0) as number[]
-                                if (rpeValues.length === 0) return null
-                                const avg = rpeValues.reduce((a, b) => a + b, 0) / rpeValues.length
-                                return (
-                                    <>
-                                        <span className="text-k-text-quaternary">·</span>
-                                        <span>PSE média: {avg.toFixed(1)}</span>
-                                    </>
-                                )
-                            })()}
+                        // Streak
+                        if (historySummary.streak > 0) {
+                            stats.push({
+                                label: 'treinos seguidos',
+                                value: String(historySummary.streak),
+                                color: 'amber',
+                                icon: <Flame className="w-3.5 h-3.5" />,
+                            })
+                        }
 
-                            {(() => {
-                                const changes = Object.values(tonnageMap).filter(t => t.percentChange != null)
-                                if (changes.length === 0) return null
-                                const avgChange = changes.reduce((sum, t) => sum + t.percentChange!, 0) / changes.length
-                                if (avgChange === 0) return null
-                                return (
-                                    <>
-                                        <span className="text-k-text-quaternary">·</span>
-                                        <span className={avgChange > 0 ? 'text-emerald-400' : 'text-red-400'}>
-                                            {avgChange > 0 ? '+' : ''}{avgChange.toFixed(1)}% carga
-                                        </span>
-                                    </>
-                                )
-                            })()}
-                        </div>
-                    )}
-                </StudentHeader>
+                        // Average RPE
+                        const rpeValues = recentSessions.map((s: any) => s.rpe).filter((r: any) => r != null && r > 0) as number[]
+                        if (rpeValues.length > 0) {
+                            const avg = rpeValues.reduce((a, b) => a + b, 0) / rpeValues.length
+                            stats.push({
+                                label: 'PSE média',
+                                value: avg.toFixed(1),
+                                color: 'blue',
+                                icon: <Activity className="w-3.5 h-3.5" />,
+                            })
+                        }
 
-                {/* Inactivity Alert */}
+                        // Load change
+                        const changes = Object.values(tonnageMap).filter(t => t.percentChange != null)
+                        if (changes.length > 0) {
+                            const avgChange = changes.reduce((sum, t) => sum + t.percentChange!, 0) / changes.length
+                            if (avgChange !== 0) {
+                                stats.push({
+                                    label: 'carga',
+                                    value: `${avgChange > 0 ? '+' : ''}${avgChange.toFixed(1)}%`,
+                                    color: avgChange > 0 ? 'emerald' : 'red',
+                                    icon: <TrendingUp className="w-3.5 h-3.5" />,
+                                })
+                            }
+                        }
+
+                        // Last workout
+                        if (historySummary.lastSessionDate) {
+                            const daysSince = Math.floor((Date.now() - new Date(historySummary.lastSessionDate).getTime()) / (1000 * 60 * 60 * 24))
+                            const lastLabel = daysSince === 0 ? 'Hoje' : daysSince === 1 ? 'Ontem' : `há ${daysSince}d`
+                            stats.push({
+                                label: 'último treino',
+                                value: lastLabel,
+                                color: 'blue',
+                                icon: <Clock className="w-3.5 h-3.5" />,
+                            })
+                        }
+
+                        return stats
+                    })() : undefined}
+                />
+
+                {/* Student Health Summary — compact status bar */}
+                <StudentHealthSummary
+                    historySummary={historySummary}
+                    recentSessions={recentSessions}
+                    weeklyAdherence={weeklyAdherence}
+                    hasActiveProgram={!!activeProgram}
+                    financialStatus={displayStatus}
+                    hasPendingForms={pendingForms.length > 0}
+                />
+
+                {/* Inactivity Alert — Enhanced with actions */}
                 {activeProgram && (() => {
                     const lastDate = historySummary.lastSessionDate
+                    const firstName = student.name.split(' ')[0]
+
                     if (!lastDate && historySummary.totalSessions === 0) {
                         return (
-                            <div className="flex items-center gap-3 px-5 py-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
-                                <svg className="w-4 h-4 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                </svg>
-                                <span className="text-sm font-medium text-amber-400">Ainda não iniciou o programa</span>
+                            <div className="flex items-center justify-between gap-3 px-5 py-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-xl">
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <svg className="w-4 h-4 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                    </svg>
+                                    <div>
+                                        <span className="text-sm font-semibold text-amber-700 dark:text-amber-400">Ainda não iniciou o programa</span>
+                                        <p className="text-xs text-amber-600/70 dark:text-amber-400/60 mt-0.5">Envie uma mensagem para motivar {firstName} a começar</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => router.push(`/messages?student=${student.id}`)}
+                                    className="shrink-0 px-3 py-1.5 text-[11px] font-bold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-500/15 hover:bg-amber-200 dark:hover:bg-amber-500/25 rounded-lg transition-all"
+                                >
+                                    Enviar mensagem
+                                </button>
                             </div>
                         )
                     }
@@ -382,20 +427,51 @@ export function StudentDetailClient({
                         const isWarning = daysSince >= 3
                         if (isWarning) {
                             return (
-                                <div className={`flex items-center gap-3 px-5 py-3 rounded-xl ${
+                                <div className={`flex items-center justify-between gap-3 px-5 py-3 rounded-xl ${
                                     isAlert
-                                        ? 'bg-red-500/10 border border-red-500/20'
-                                        : 'bg-yellow-500/10 border border-yellow-500/20'
+                                        ? 'bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20'
+                                        : 'bg-amber-50 dark:bg-yellow-500/10 border border-amber-200 dark:border-yellow-500/20'
                                 }`}>
-                                    <svg className={`w-4 h-4 shrink-0 ${isAlert ? 'text-red-500' : 'text-yellow-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                    </svg>
-                                    <span className={`text-sm font-medium ${isAlert ? 'text-red-400' : 'text-yellow-400'}`}>
-                                        Sem treino há {daysSince} dias
-                                        <span className="text-k-text-quaternary ml-1">
-                                            (último: {new Date(lastDate).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', timeZone: 'America/Sao_Paulo' }).replace('.', '')})
-                                        </span>
-                                    </span>
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <svg className={`w-4 h-4 shrink-0 ${isAlert ? 'text-red-500' : 'text-amber-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                        </svg>
+                                        <div>
+                                            <span className={`text-sm font-semibold ${isAlert ? 'text-red-700 dark:text-red-400' : 'text-amber-700 dark:text-yellow-400'}`}>
+                                                Sem treino há {daysSince} dias
+                                            </span>
+                                            <p className={`text-xs mt-0.5 ${isAlert ? 'text-red-600/70 dark:text-red-400/60' : 'text-amber-600/70 dark:text-yellow-400/60'}`}>
+                                                Último: {new Date(lastDate).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', weekday: 'short', timeZone: 'America/Sao_Paulo' }).replace('.', '')}
+                                                {isAlert ? ' — considere entrar em contato' : ''}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        <button
+                                            onClick={() => router.push(`/messages?student=${student.id}`)}
+                                            className={`px-3 py-1.5 text-[11px] font-bold rounded-lg transition-all ${
+                                                isAlert
+                                                    ? 'text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-500/15 hover:bg-red-200 dark:hover:bg-red-500/25'
+                                                    : 'text-amber-700 dark:text-yellow-300 bg-amber-100 dark:bg-yellow-500/15 hover:bg-amber-200 dark:hover:bg-yellow-500/25'
+                                            }`}
+                                        >
+                                            Mensagem
+                                        </button>
+                                        {student.phone && (
+                                            <a
+                                                href={`https://wa.me/${student.phone.replace(/\D/g, '')}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className={`px-3 py-1.5 text-[11px] font-bold rounded-lg transition-all ${
+                                                    isAlert
+                                                        ? 'text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-500/15 hover:bg-red-200 dark:hover:bg-red-500/25'
+                                                        : 'text-amber-700 dark:text-yellow-300 bg-amber-100 dark:bg-yellow-500/15 hover:bg-amber-200 dark:hover:bg-yellow-500/25'
+                                                }`}
+                                            >
+                                                WhatsApp
+                                            </a>
+                                        )}
+                                    </div>
                                 </div>
                             )
                         }
@@ -403,10 +479,21 @@ export function StudentDetailClient({
                     return null
                 })()}
 
+                {/* Contextual Alerts (data-driven) */}
+                {activeProgram && (
+                    <ContextualAlerts
+                        historySummary={historySummary}
+                        recentSessions={recentSessions}
+                        tonnageMap={tonnageMap}
+                        weeklyAdherence={weeklyAdherence}
+                        activeProgram={activeProgram}
+                    />
+                )}
+
                 {/* Main Content Grid - New Layout */}
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
-                    {/* Left Column: Active Program Dashboard */}
-                    <div data-onboarding="student-actions">
+                    {/* Left Column: Active Program Dashboard + Load Chart */}
+                    <div className="space-y-6" data-onboarding="student-actions">
                         <ActiveProgramDashboard
                             program={activeProgram}
                             summary={historySummary}
@@ -422,36 +509,63 @@ export function StudentDetailClient({
                             onPrescribeAI={trainer.ai_prescriptions_enabled ? handlePrescribeAI : undefined}
                             onViewReport={activeProgram ? () => window.open(`/reports/program/${activeProgram.id}`, '_blank') : undefined}
                             hasActiveProgram={!!activeProgram}
+                            studentId={student.id}
                         />
+
+                        {/* Load Progression Chart — per workout */}
+                        {activeProgram && (
+                            <LoadProgressionChart programId={activeProgram.id} />
+                        )}
+
+                        {/* Program Comparison — volume per muscle group */}
+                        {activeProgram && completedPrograms.length > 0 && (
+                            <ProgramComparisonCard
+                                currentProgramId={activeProgram.id}
+                                currentProgramName={activeProgram.name}
+                                previousProgramId={completedPrograms[0].id}
+                                previousProgramName={completedPrograms[0].name}
+                            />
+                        )}
                     </div>
 
-                    {/* Right Column: Notes → Queue → History */}
+                    {/* Right Column: Insights → Queue → History */}
                     <div className="space-y-6 lg:col-span-1">
-                        {/* Trainer Notes — First (most frequently used) */}
-                        <div className="bg-white dark:bg-glass-bg backdrop-blur-md rounded-2xl border border-[#E5E5EA] dark:border-k-border-primary p-6">
-                            <div className="flex items-center justify-between mb-3">
-                                <h3 className="text-sm font-semibold text-[#1C1C1E] dark:text-white flex items-center gap-2">
-                                    Observações
-                                    <span className="px-2 py-0.5 rounded bg-glass-bg text-[10px] text-k-text-tertiary font-bold border border-k-border-subtle">
-                                        Notas
-                                    </span>
-                                </h3>
-                                {notesSaving && (
-                                    <span className="text-[10px] font-bold text-k-text-quaternary animate-pulse">
-                                        Salvando...
-                                    </span>
-                                )}
-                            </div>
-                            <textarea
-                                value={trainerNotes}
-                                onChange={(e) => handleNotesChange(e.target.value)}
-                                placeholder="Observações sobre o aluno..."
-                                className="w-full min-h-[80px] bg-transparent text-sm text-k-text-secondary placeholder-k-text-quaternary resize-y outline-none p-0"
-                            />
-                        </div>
+                        {/* Unified Insights & Pinned Notes — First (most frequently used) */}
+                        <StudentInsightsCard
+                            studentId={student.id}
+                            insights={studentInsights}
+                        />
+
+                        {/* Quick Message with context-aware suggestions */}
+                        <QuickMessageCard
+                            studentId={student.id}
+                            studentName={student.name}
+                            suggestions={(() => {
+                                const s: { emoji: string; label: string; message: string }[] = []
+                                const firstName = student.name.split(' ')[0]
+                                if (historySummary.completedThisWeek >= historySummary.expectedPerWeek && historySummary.expectedPerWeek > 0) {
+                                    s.push({ emoji: '🎉', label: 'Parabenizar', message: `Parabéns ${firstName}! Atingiu a meta da semana, excelente dedicação!` })
+                                }
+                                if (historySummary.streak >= 3) {
+                                    s.push({ emoji: '🔥', label: 'Sequência', message: `${firstName}, ${historySummary.streak} treinos seguidos! Continue assim, o resultado vem!` })
+                                }
+                                if (historySummary.lastSessionDate) {
+                                    const daysSince = Math.floor((Date.now() - new Date(historySummary.lastSessionDate).getTime()) / (1000 * 60 * 60 * 24))
+                                    if (daysSince >= 3) {
+                                        s.push({ emoji: '💪', label: 'Motivar', message: `E aí ${firstName}, tudo bem? Bora voltar aos treinos, estou te esperando!` })
+                                    }
+                                }
+                                if (s.length === 0) {
+                                    s.push({ emoji: '👋', label: 'Check-in', message: `Oi ${firstName}, como está se sentindo com os treinos?` })
+                                }
+                                return s
+                            })()}
+                        />
+
+                        {/* (Insights card moved to top of column) */}
 
                         {/* Scheduled Programs — Compact */}
-                        <div className="bg-white dark:bg-glass-bg backdrop-blur-md rounded-2xl border border-[#E5E5EA] dark:border-k-border-primary p-6">
+                        <div className="bg-white dark:bg-glass-bg backdrop-blur-md rounded-2xl border border-transparent dark:border-k-border-primary shadow-sm dark:shadow-none p-6">
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="text-sm font-semibold text-[#1C1C1E] dark:text-white flex items-center gap-2">
                                     Próximos Programas
@@ -479,10 +593,26 @@ export function StudentDetailClient({
                                 <div className="text-center py-4">
                                     {(() => {
                                         if (!activeProgram) {
-                                            return <p className="text-sm text-k-text-quaternary mb-3">Aluno sem programa ativo.</p>
+                                            return (
+                                                <div className="rounded-xl border-2 border-dashed border-[#D2D2D7] dark:border-k-border-subtle p-4 mb-3">
+                                                    <div className="w-10 h-10 bg-violet-50 dark:bg-violet-500/10 rounded-full flex items-center justify-center mx-auto mb-2">
+                                                        <Dumbbell className="w-5 h-5 text-violet-500" />
+                                                    </div>
+                                                    <p className="text-sm font-medium text-[#1C1C1E] dark:text-k-text-secondary">Sem programa ativo</p>
+                                                    <p className="text-xs text-[#86868B] dark:text-k-text-quaternary mt-0.5">Crie o primeiro programa para {student.name.split(' ')[0]}</p>
+                                                </div>
+                                            )
                                         }
                                         if ((activeProgram.status as string) === 'expired') {
-                                            return <p className="text-sm text-amber-400 mb-3">Programa expirou! Conclua, prorrogue ou atribua um novo.</p>
+                                            return (
+                                                <div className="rounded-xl border border-red-200 dark:border-red-500/20 bg-red-50 dark:bg-red-500/5 p-4 mb-3">
+                                                    <div className="flex items-center gap-2 justify-center mb-1">
+                                                        <AlertCircle className="w-4 h-4 text-red-500" />
+                                                        <span className="text-sm font-semibold text-red-600 dark:text-red-400">Programa expirado!</span>
+                                                    </div>
+                                                    <p className="text-xs text-red-500/80 dark:text-red-400/60">Conclua, prorrogue ou atribua um novo programa.</p>
+                                                </div>
+                                            )
                                         }
                                         const programProgress = activeProgram?.started_at && activeProgram?.duration_weeks
                                             ? (getProgramWeek(new Date(), activeProgram.started_at, activeProgram.duration_weeks) ?? activeProgram.duration_weeks) / activeProgram.duration_weeks
@@ -491,12 +621,29 @@ export function StudentDetailClient({
                                             ? Math.max(0, activeProgram.duration_weeks - (getProgramWeek(new Date(), activeProgram.started_at, activeProgram.duration_weeks) ?? activeProgram.duration_weeks))
                                             : 0
                                         if (programProgress >= 0.75) {
-                                            return <p className="text-sm text-yellow-400 mb-3">Programa termina em {remainingWeeks} semana{remainingWeeks !== 1 ? 's' : ''}! Prepare o próximo ciclo.</p>
+                                            return (
+                                                <div className="rounded-xl border border-amber-200 dark:border-amber-500/20 bg-amber-50 dark:bg-amber-500/5 p-4 mb-3">
+                                                    <div className="flex items-center gap-2 justify-center mb-1">
+                                                        <Clock className="w-4 h-4 text-amber-500" />
+                                                        <span className="text-sm font-semibold text-amber-600 dark:text-amber-400">Faltam {remainingWeeks} semana{remainingWeeks !== 1 ? 's' : ''}!</span>
+                                                    </div>
+                                                    <p className="text-xs text-amber-600/70 dark:text-amber-400/60">Prepare o próximo ciclo de treinamento.</p>
+                                                </div>
+                                            )
                                         }
                                         if (programProgress >= 0.5) {
-                                            return <p className="text-sm text-k-text-quaternary mb-3">Programa em {Math.round(programProgress * 100)}% — bom momento para planejar o próximo.</p>
+                                            return (
+                                                <div className="rounded-xl border border-[#D2D2D7] dark:border-k-border-subtle bg-[#F5F5F7] dark:bg-white/3 p-4 mb-3">
+                                                    <p className="text-sm text-[#6E6E73] dark:text-k-text-tertiary">Programa em {Math.round(programProgress * 100)}%</p>
+                                                    <p className="text-xs text-[#86868B] dark:text-k-text-quaternary mt-0.5">Bom momento para planejar o próximo.</p>
+                                                </div>
+                                            )
                                         }
-                                        return <p className="text-sm text-k-text-quaternary mb-3">Nenhum programa na fila.</p>
+                                        return (
+                                            <div className="rounded-xl border-2 border-dashed border-[#D2D2D7] dark:border-k-border-subtle p-4 mb-3">
+                                                <p className="text-sm text-[#86868B] dark:text-k-text-quaternary">Nenhum programa na fila.</p>
+                                            </div>
+                                        )
                                     })()}
                                     <div className="flex items-center justify-center gap-2">
                                         <button
@@ -507,14 +654,14 @@ export function StudentDetailClient({
                                         </button>
                                         <button
                                             onClick={handleAssignScheduled}
-                                            className="px-3 py-1.5 text-xs font-bold text-k-text-tertiary hover:text-k-text-primary border border-k-border-subtle rounded-lg transition-all"
+                                            className="px-3 py-1.5 text-xs font-bold text-[#6E6E73] dark:text-k-text-tertiary hover:text-[#1D1D1F] dark:hover:text-k-text-primary border border-[#D2D2D7] dark:border-k-border-subtle rounded-lg transition-all"
                                         >
                                             Atribuir
                                         </button>
                                         {trainer.ai_prescriptions_enabled && (
                                             <button
                                                 onClick={handlePrescribeAI}
-                                                className="px-3 py-1.5 text-xs font-bold text-violet-400 hover:text-violet-300 border border-violet-500/30 rounded-lg transition-all"
+                                                className="px-3 py-1.5 text-xs font-bold text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 border border-violet-300 dark:border-violet-500/30 rounded-lg transition-all"
                                             >
                                                 Novo com IA
                                             </button>
@@ -573,6 +720,17 @@ export function StudentDetailClient({
                             formTemplates={formTemplates}
                             formSchedules={formSchedules}
                         />
+
+                        {/* Body Metrics Trend (if history available) */}
+                        {bodyMetricsHistory.length >= 2 && bodyMetrics && (
+                            <div className="bg-white dark:bg-glass-bg backdrop-blur-md rounded-2xl border border-transparent dark:border-k-border-primary shadow-sm dark:shadow-none p-6">
+                                <BodyMetricsTrend
+                                    history={bodyMetricsHistory}
+                                    currentWeight={bodyMetrics.weight}
+                                    currentBodyFat={bodyMetrics.bodyFat}
+                                />
+                            </div>
+                        )}
 
                         <ProgramHistorySection
                             programs={completedPrograms}
@@ -636,6 +794,16 @@ export function StudentDetailClient({
                     </div>
                 </div>
             )}
+
+            {/* Keyboard Shortcuts */}
+            <KeyboardShortcuts
+                onEditProgram={activeProgram ? handleEditProgram : undefined}
+                onCompleteProgram={activeProgram ? handleCompleteProgram : undefined}
+                onAssignProgram={handleAssignProgram}
+                onEditStudent={handleEditStudent}
+                onNavigateMessages={() => router.push(`/messages?student=${student.id}`)}
+                hasActiveProgram={!!activeProgram}
+            />
 
             {/* Tour: Student Detail (auto-start on first visit) */}
             <TourRunner tourId="student_detail" steps={TOUR_STEPS.student_detail} autoStart />
