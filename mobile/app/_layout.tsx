@@ -148,11 +148,12 @@ function WatchBridge() {
     );
 
     const onWatchFinishWorkout = React.useCallback(
-        async ({ workoutId, rpe, startedAt, exercises }: {
+        async ({ workoutId, rpe, startedAt, exercises, cardio }: {
             workoutId: string;
             rpe: number;
             startedAt?: string;
             exercises?: any[];
+            cardio?: Array<{ itemId: string; elapsedSeconds: number }>;
         }) => {
             const now = Date.now();
             const last = lastFinishRef.current;
@@ -165,19 +166,19 @@ function WatchBridge() {
 
             if (__DEV__) console.log(`[Layout] Watch requested FINISH_WORKOUT: ${workoutId}`);
 
+            // Attempt to save — but ALWAYS navigate afterwards (even on failure).
+            // If save fails, the pending queue in finishWorkoutFromWatch retries later.
             try {
                 const sessionId = await finishWorkoutFromWatch({
                     workoutId,
                     rpe,
                     startedAt,
                     exercises,
+                    cardio,
                 });
 
-                if (sessionId) {
+                if (sessionId && sessionId !== 'pending') {
                     if (__DEV__) console.log(`[Layout] Workout saved from watch: session ${sessionId}. Sending ACK.`);
-
-                    // Notify useActiveProgram to refresh (works even if user is already on Home tab)
-                    appEvents.emit(WORKOUT_COMPLETED);
 
                     // Send SYNC_SUCCESS ACK to Watch so it clears the pending finish entry.
                     try {
@@ -198,20 +199,21 @@ function WatchBridge() {
                     } catch (syncError: any) {
                         if (__DEV__) console.warn(`[Layout] Failed to re-sync program (non-critical): ${syncError?.message}`);
                     }
-
-                    // Notify the workout screen (if mounted) to stop timer and allow navigation.
-                    appEvents.emit(WATCH_WORKOUT_FINISHED, { workoutId });
-
-                    // Navigate directly — no Alert required. The user is on the Watch,
-                    // so a blocking Alert would go unseen. The beforeRemove guard in
-                    // workout/[id].tsx already allows navigation when watchFinishState.isFinished().
-                    router.replace('/(tabs)/home');
+                } else if (sessionId === 'pending') {
+                    if (__DEV__) console.warn(`[Layout] Workout queued for retry (auth unavailable) — navigating anyway`);
                 } else {
-                    console.error('[Layout] finishWorkoutFromWatch returned null');
+                    console.error('[Layout] finishWorkoutFromWatch returned null — navigating anyway');
                 }
             } catch (error: any) {
                 console.error('[Layout] Error finishing workout from watch:', error?.message ?? error);
             }
+
+            // ALWAYS notify and navigate — same pattern as discard.
+            // The workout screen's beforeRemove guard allows navigation when
+            // watchFinishState.isFinished() is true.
+            appEvents.emit(WORKOUT_COMPLETED);
+            appEvents.emit(WATCH_WORKOUT_FINISHED, { workoutId });
+            router.replace('/(tabs)/home');
         },
         [router]
     );

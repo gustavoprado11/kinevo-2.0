@@ -147,7 +147,7 @@ export async function finishWorkoutFromWatch(
   if (!user) {
     console.error('[finishWorkoutFromWatch] Step 2 FAILED: No authenticated user — saving to pending queue');
     await savePendingWorkout(payload);
-    return null;
+    return 'pending';
   }
 
   if (__DEV__) console.log(`[finishWorkoutFromWatch] Step 2: Auth OK — user ${user.id}`);
