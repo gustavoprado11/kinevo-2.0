@@ -348,3 +348,31 @@ supabase migration new [nome]  # Nova migration
 supabase db push               # Aplicar migrations
 supabase gen types typescript --project-id $REF > shared/types/database.ts
 ```
+
+---
+
+## Incidents & Lessons Learned
+
+### 2026-04-07 — Stripe Webhook Disabled (9 days)
+
+**Root cause:** Webhook registered in Stripe Dashboard as `https://kinevoapp.com/api/webhooks/stripe`.
+The Vercel domain config redirects `kinevoapp.com → www.kinevoapp.com` with a 307.
+Stripe does not follow redirects — every delivery attempt failed silently until auto-disable.
+
+**Impact:** No trainer lost access. The access guard checks `status` only (`trialing` or `active`),
+not `current_period_end`. Trainers remained on stale `trialing` status which still passed the gate.
+~21 webhook events were lost over 9 days (March 23 – April 7, 2026).
+
+**Fix:**
+1. Updated webhook URL in Stripe Dashboard to `https://www.kinevoapp.com/api/webhooks/stripe`
+2. Reactivated the endpoint
+3. Ran one-off script `scripts/sync-stale-subscriptions.ts` to fetch live state from Stripe
+   and upsert all 6 trainer subscriptions (status + current_period_end + cancel_at_period_end)
+
+**Rule:** Any external integration (Stripe, webhooks, third-party services) must always use
+`https://www.kinevoapp.com` (with www). Never `https://kinevoapp.com`.
+The canonical production domain is `www.kinevoapp.com`.
+
+**Files involved:**
+- `web/src/app/api/webhooks/stripe/route.ts` — main webhook handler
+- `web/src/lib/get-trainer.ts` — primary access guard (checks status only, not period_end)
