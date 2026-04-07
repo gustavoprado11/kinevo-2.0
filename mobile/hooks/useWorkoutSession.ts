@@ -86,6 +86,19 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
     // reference which would re-trigger the fetchWorkout effect and wipe exercise state.
     const hasLoadedRef = useRef(false);
     const isFetchingRef = useRef(false);
+    const loadedWorkoutIdRef = useRef<string | null>(null);
+
+    // Reset load guards when workoutId changes (e.g. Watch starts a new workout
+    // while the workout screen is still mounted from a previous session).
+    useEffect(() => {
+        if (loadedWorkoutIdRef.current && loadedWorkoutIdRef.current !== workoutId) {
+            hasLoadedRef.current = false;
+            isFetchingRef.current = false;
+            setIsLoading(true);
+            setExercises([]);
+            setSessionId(null);
+        }
+    }, [workoutId]);
 
     const mapExerciseToSubstituteOption = (
         exercise: any,
@@ -531,6 +544,7 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                     setExercises(exercisesData);
                     setWorkoutNotes(noteItems);
                     hasLoadedRef.current = true;
+                    loadedWorkoutIdRef.current = workoutId;
                 }
 
             } catch (error: any) {
@@ -543,9 +557,11 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                         : "Falha ao carregar o treino."
                 );
             } finally {
+                // Always reset isFetchingRef — even if unmounted — so a re-mount
+                // or TOKEN_REFRESHED re-trigger can attempt the fetch again.
+                isFetchingRef.current = false;
                 if (mounted) {
                     setIsLoading(false);
-                    isFetchingRef.current = false;
                 }
             }
         }

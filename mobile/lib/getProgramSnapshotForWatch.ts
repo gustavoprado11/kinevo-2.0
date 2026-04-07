@@ -81,8 +81,7 @@ export async function getProgramSnapshotForWatch(
     .from('workout_sessions' as any)
     .select('assigned_workout_id, status')
     .eq('assigned_program_id', program.id)
-    .gte('started_at', todayStart.toISOString())
-    .lte('started_at', todayEnd.toISOString());
+    .or(`and(started_at.gte.${todayStart.toISOString()},started_at.lte.${todayEnd.toISOString()}),and(completed_at.gte.${todayStart.toISOString()},completed_at.lte.${todayEnd.toISOString()})`);
 
   const completedToday = new Set(
     (todaySessions || [])

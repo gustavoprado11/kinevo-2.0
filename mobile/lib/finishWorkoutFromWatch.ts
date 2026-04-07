@@ -267,7 +267,8 @@ export async function finishWorkoutFromWatch(
             assigned_workout_id: workoutId,
             assigned_program_id: workout.assigned_program_id,
             status: 'completed',
-            started_at: (parsedStartedAt ?? now).toISOString(),
+            // Use Watch's startedAt when available; fallback: estimate start from duration or use now
+            started_at: (parsedStartedAt ?? (safeDuration ? new Date(now.getTime() - safeDuration * 1000) : now)).toISOString(),
             completed_at: now.toISOString(),
             duration_seconds: safeDuration,
             sync_status: 'synced',

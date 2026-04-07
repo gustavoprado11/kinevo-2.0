@@ -69,6 +69,12 @@ struct KinevoWatchApp: App {
                 print("[KinevoWatchApp] Programmatic navigation to workout \(workoutId)")
             }
         }
+        .onChange(of: workoutStore.state == nil) { _, isNil in
+            if isNil && !navigationPath.isEmpty {
+                navigationPath.removeLast()
+                print("[KinevoWatchApp] Workout state cleared — navigating back to workout list")
+            }
+        }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .background || newPhase == .inactive {
                 workoutStore.persistImmediate()
