@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
-import { X, Upload, Link, Trash2, Loader2 } from 'lucide-react'
+import { useState, useRef } from 'react'
+import { X, Upload, Link, Trash2, Loader2, RefreshCw } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { saveTrainerVideoMetadata, deleteTrainerVideo } from '@/actions/exercises/manage-trainer-video'
 import { VideoPlayer } from './video-player'
+import { isLikelyHEVC, canBrowserPlayVideo, convertVideoToWebM } from '@/lib/video-utils'
 
 const ACCEPTED_TYPES = ['video/mp4', 'video/quicktime', 'video/webm']
 const ACCEPTED_EXTENSIONS = ['.mp4', '.mov', '.webm']
@@ -41,6 +42,7 @@ export function TrainerVideoModal({
     const [deleting, setDeleting] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [uploadProgress, setUploadProgress] = useState(0)
+    const [transcodeStatus, setTranscodeStatus] = useState<string | null>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
 
     if (!isOpen) return null
@@ -75,30 +77,68 @@ export function TrainerVideoModal({
         if (!selectedFile) return
         setUploading(true)
         setError(null)
-        setUploadProgress(10)
+        setUploadProgress(5)
+        setTranscodeStatus(null)
 
         try {
             const supabase = createClient()
             const { data: { user } } = await supabase.auth.getUser()
             if (!user) throw new Error('Sessão inválida')
 
-            const ext = selectedFile.name.split('.').pop()?.toLowerCase() || 'mp4'
-            const storagePath = `${user.id}/${exerciseId}/${Date.now()}_video.${ext}`
-            // Force video/mp4 for .mov files so browsers can play them (iPhone H.264 .mov is MP4-compatible)
-            const uploadContentType = selectedFile.type === 'video/quicktime' ? 'video/mp4' : selectedFile.type
+            // Determine which file to upload — convert HEVC if needed
+            let fileToUpload = selectedFile
+            let needsConversion = false
 
-            setUploadProgress(30)
+            if (isLikelyHEVC(selectedFile)) {
+                setTranscodeStatus('Verificando compatibilidade...')
+                const canPlay = await canBrowserPlayVideo(selectedFile)
+
+                if (!canPlay) {
+                    needsConversion = true
+                    setTranscodeStatus('Convertendo vídeo para formato compatível...')
+                    setUploadProgress(10)
+
+                    const converted = await convertVideoToWebM(selectedFile, (percent) => {
+                        // Map conversion progress to 10-60% of total progress
+                        setUploadProgress(10 + Math.round(percent * 0.5))
+                    })
+
+                    if (converted) {
+                        fileToUpload = converted
+                        setTranscodeStatus(null)
+                    } else {
+                        // Conversion failed — upload original with warning
+                        console.warn('[TrainerVideoModal] Client-side conversion failed, uploading original')
+                        setTranscodeStatus(null)
+                        needsConversion = false
+                    }
+                }
+            }
+
+            setUploadProgress(needsConversion ? 65 : 30)
+            setTranscodeStatus(null)
+
+            const ext = fileToUpload.name.split('.').pop()?.toLowerCase() || 'mp4'
+            const storagePath = `${user.id}/${exerciseId}/${Date.now()}_video.${ext}`
+
+            // Set correct content-type
+            let uploadContentType = fileToUpload.type
+            if (uploadContentType === 'video/quicktime') {
+                uploadContentType = 'video/mp4'
+            } else if (!uploadContentType || uploadContentType === '') {
+                uploadContentType = ext === 'webm' ? 'video/webm' : 'video/mp4'
+            }
 
             const { error: uploadError } = await supabase.storage
                 .from('trainer-videos')
-                .upload(storagePath, selectedFile, {
+                .upload(storagePath, fileToUpload, {
                     upsert: true,
                     contentType: uploadContentType,
                 })
 
             if (uploadError) throw uploadError
 
-            setUploadProgress(70)
+            setUploadProgress(85)
 
             const { data: publicData } = supabase.storage
                 .from('trainer-videos')
@@ -109,19 +149,19 @@ export function TrainerVideoModal({
                 videoType: 'upload',
                 videoUrl: publicData.publicUrl,
                 storagePath,
-                originalFilename: selectedFile.name,
-                fileSizeBytes: selectedFile.size,
+                originalFilename: selectedFile.name, // Keep original filename for reference
+                fileSizeBytes: fileToUpload.size,
             })
-
-            setUploadProgress(100)
 
             if (!result.success) throw new Error(result.message)
 
+            setUploadProgress(100)
             onSuccess({ video_url: publicData.publicUrl, video_type: 'upload' })
             onClose()
         } catch (err: any) {
             console.error('[TrainerVideoModal] Upload error:', err)
             setError(err.message || 'Falha no upload.')
+            setTranscodeStatus(null)
         } finally {
             setUploading(false)
             setUploadProgress(0)
@@ -270,11 +310,19 @@ export function TrainerVideoModal({
                                 }}
                             />
                             {uploading && uploadProgress > 0 && (
-                                <div className="h-1.5 bg-[#F5F5F7] dark:bg-surface-inset rounded-full overflow-hidden">
-                                    <div
-                                        className="h-full bg-[#007AFF] dark:bg-violet-500 rounded-full transition-all duration-300"
-                                        style={{ width: `${uploadProgress}%` }}
-                                    />
+                                <div className="space-y-2">
+                                    <div className="h-1.5 bg-[#F5F5F7] dark:bg-surface-inset rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full bg-[#007AFF] dark:bg-violet-500 rounded-full transition-all duration-300"
+                                            style={{ width: `${uploadProgress}%` }}
+                                        />
+                                    </div>
+                                    {transcodeStatus && (
+                                        <div className="flex items-center gap-2 text-xs text-[#86868B] dark:text-k-text-quaternary">
+                                            <RefreshCw size={12} className="animate-spin" />
+                                            <span>{transcodeStatus}</span>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>

@@ -1,18 +1,25 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { normalizeYouTubeEmbedUrl, isDirectVideoUrl } from '@/lib/youtube'
 
 interface VideoPlayerProps {
     url: string | null
     title?: string
     className?: string
+    /** Optional callback when video fails to play (e.g. HEVC not supported) */
+    onPlaybackError?: () => void
 }
 
-export function VideoPlayer({ url, title, className = '' }: VideoPlayerProps) {
+export function VideoPlayer({ url, title, className = '', onPlaybackError }: VideoPlayerProps) {
     const embedUrl = useMemo(() => normalizeYouTubeEmbedUrl(url), [url])
     const isDirect = useMemo(() => isDirectVideoUrl(url), [url])
     const [videoError, setVideoError] = useState(false)
+
+    // Reset error state when URL changes
+    useEffect(() => {
+        setVideoError(false)
+    }, [url])
 
     if (!embedUrl && !isDirect) {
         return (
@@ -35,7 +42,13 @@ export function VideoPlayer({ url, title, className = '' }: VideoPlayerProps) {
                         <svg className="w-8 h-8 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                         </svg>
-                        <span className="text-sm">Formato não suportado pelo navegador</span>
+                        <span className="text-sm">
+                            Formato de vídeo não compatível com o navegador
+                        </span>
+                        <p className="text-xs text-white/40 max-w-xs">
+                            Vídeos gravados no iPhone em formato HEVC podem não reproduzir no Chrome ou Firefox.
+                            Tente regravar em &quot;Mais Compatível&quot; (Ajustes → Câmera → Formatos).
+                        </p>
                         <a
                             href={url!}
                             target="_blank"
@@ -49,8 +62,9 @@ export function VideoPlayer({ url, title, className = '' }: VideoPlayerProps) {
             )
         }
 
-        // Hint video/mp4 for .mov URLs so Chrome/Firefox attempt MP4 decoding
-        const mimeHint = /\.mov(\?.*)?$/i.test(url!) ? 'video/mp4' : undefined
+        // Determine MIME hints for different source types
+        const isMov = /\.mov(\?.*)?$/i.test(url!)
+        const isWebm = /\.webm(\?.*)?$/i.test(url!)
 
         return (
             <div className={`overflow-hidden rounded-lg bg-black aspect-video relative ${className}`}>
@@ -58,10 +72,21 @@ export function VideoPlayer({ url, title, className = '' }: VideoPlayerProps) {
                     title={title || 'Vídeo do exercício'}
                     controls
                     playsInline
-                    onError={() => setVideoError(true)}
+                    onError={() => {
+                        setVideoError(true)
+                        onPlaybackError?.()
+                    }}
                     className="absolute inset-0 w-full h-full object-contain"
                 >
-                    <source src={url!} type={mimeHint} />
+                    {/* Primary source with correct MIME hint */}
+                    <source
+                        src={url!}
+                        type={isMov ? 'video/mp4' : isWebm ? 'video/webm' : 'video/mp4'}
+                    />
+                    {/* Fallback for .mov: also try as quicktime for Safari */}
+                    {isMov && (
+                        <source src={url!} type="video/quicktime" />
+                    )}
                 </video>
             </div>
         )
