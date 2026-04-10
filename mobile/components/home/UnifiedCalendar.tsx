@@ -4,7 +4,7 @@ import {
     Text,
     TouchableOpacity,
     FlatList,
-    Dimensions,
+    useWindowDimensions,
     NativeScrollEvent,
     NativeSyntheticEvent,
 } from "react-native";
@@ -32,9 +32,7 @@ import {
     type SessionRef,
 } from "@kinevo/shared/utils/schedule-projection";
 
-const SCREEN_WIDTH = Dimensions.get("window").width;
 const CALENDAR_PADDING = 40;
-const CALENDAR_WIDTH = SCREEN_WIDTH - CALENDAR_PADDING;
 
 // Week row height: day-name (10+10mb) + circle (36) + dot (6+5) + bottom padding ≈ 82
 const WEEK_ROW_HEIGHT = 82;
@@ -84,15 +82,17 @@ function WeekRow({
     days,
     selectedDate,
     onDayPress,
+    calendarWidth,
 }: {
     days: CalendarDay[];
     selectedDate: Date;
     onDayPress: (date: Date) => void;
+    calendarWidth: number;
 }) {
     const selectedKey = toDateKey(selectedDate);
 
     return (
-        <View style={{ width: CALENDAR_WIDTH, flexDirection: "row", justifyContent: "space-between", paddingBottom: 12 }}>
+        <View style={{ width: calendarWidth, flexDirection: "row", justifyContent: "space-between", paddingBottom: 12 }}>
             {days.map((day, index) => {
                 const isSelected = day.dateKey === selectedKey;
                 const isToday = day.isToday;
@@ -176,6 +176,9 @@ export function UnifiedCalendar({
     onWeekChange,
     fetchRange,
 }: UnifiedCalendarProps) {
+    const { width: screenWidth } = useWindowDimensions();
+    const CALENDAR_WIDTH = screenWidth - CALENDAR_PADDING;
+
     const [expanded, setExpanded] = useState(false);
     const [anchorDate, setAnchorDate] = useState(() => new Date());
     const flatListRef = useRef<FlatList>(null);
@@ -438,6 +441,7 @@ export function UnifiedCalendar({
                             days={item.days}
                             selectedDate={selectedDate}
                             onDayPress={onDayPress}
+                            calendarWidth={CALENDAR_WIDTH}
                         />
                     )}
                     initialScrollIndex={1}

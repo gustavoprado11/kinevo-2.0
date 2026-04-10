@@ -3,12 +3,15 @@ import {
     View,
     Text,
     TouchableOpacity,
-    ActivityIndicator,
     Image,
     ScrollView,
     RefreshControl,
+    ActionSheetIOS,
+    Platform,
     Alert,
 } from "react-native";
+import { StudentDetailSkeleton } from "../../components/shared/skeletons/StudentDetailSkeleton";
+import { toast } from "../../lib/toast";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
@@ -25,12 +28,13 @@ import { StudentProgramsTab } from "../../components/trainer/student/StudentProg
 import { StudentFormsTab } from "../../components/trainer/student/StudentFormsTab";
 import { AssignProgramWizard } from "../../components/trainer/student/AssignProgramWizard";
 import { SubmissionDetailSheet } from "../../components/trainer/forms/SubmissionDetailSheet";
+import { colors } from "@/theme";
 
 type ProfileTab = "overview" | "programs" | "forms";
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
-    active: { bg: "#dcfce7", text: "#16a34a" },
-    inactive: { bg: "#fee2e2", text: "#ef4444" },
+    active: { bg: "#dcfce7", text: colors.status.active },
+    inactive: { bg: "#fee2e2", text: colors.error.default },
     pending: { bg: "#fef3c7", text: "#d97706" },
 };
 
@@ -39,8 +43,15 @@ const MODALITY_LABELS: Record<string, string> = {
     online: "Online",
 };
 
-export default function StudentProfileScreen() {
-    const { id } = useLocalSearchParams<{ id: string }>();
+export default function StudentProfileScreen({
+    embedded,
+    studentIdOverride,
+}: {
+    embedded?: boolean;
+    studentIdOverride?: string;
+} = {}) {
+    const params = useLocalSearchParams<{ id: string }>();
+    const id = studentIdOverride ?? params.id;
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const { data, isLoading, isRefreshing, refresh } = useStudentDetail(id || null);
@@ -69,11 +80,7 @@ export default function StudentProfileScreen() {
 
         // Check if student has a workout today
         if (!data.activeProgram) {
-            Alert.alert(
-                "Sem programa ativo",
-                "Este aluno não tem um programa ativo. Atribua um programa primeiro.",
-                [{ text: "OK" }]
-            );
+            toast.info("Sem programa ativo", "Este aluno não tem um programa ativo. Atribua um programa primeiro.");
             return;
         }
 
@@ -81,14 +88,37 @@ export default function StudentProfileScreen() {
         router.push("/(trainer-tabs)/training-room" as any);
     }, [data, sessions, setActiveStudent, router]);
 
+    const handleAssignProgram = useCallback(() => {
+        if (Platform.OS === 'ios') {
+            ActionSheetIOS.showActionSheetWithOptions(
+                {
+                    options: ['Cancelar', 'Selecionar existente', 'Criar novo programa'],
+                    cancelButtonIndex: 0,
+                },
+                (buttonIndex) => {
+                    if (buttonIndex === 1) setShowAssignProgram(true);
+                    if (buttonIndex === 2) {
+                        router.push({ pathname: '/program-builder', params: { studentId: id, mode: 'new' } } as any);
+                    }
+                }
+            );
+        } else {
+            Alert.alert(
+                'Atribuir programa',
+                'Como deseja prosseguir?',
+                [
+                    { text: 'Cancelar', style: 'cancel' },
+                    { text: 'Selecionar existente', onPress: () => setShowAssignProgram(true) },
+                    { text: 'Criar novo', onPress: () => router.push({ pathname: '/program-builder', params: { studentId: id, mode: 'new' } } as any) },
+                ]
+            );
+        }
+    }, [id, router]);
+
     const handlePrescribe = useCallback(() => {
         if (!data) return;
         if (!data.aiEnabled) {
-            Alert.alert(
-                "IA não habilitada",
-                "O módulo de prescrição IA não está habilitado para sua conta. Entre em contato com o suporte.",
-                [{ text: "OK" }]
-            );
+            toast.info("IA não habilitada", "O módulo de prescrição IA não está habilitado para sua conta. Entre em contato com o suporte.");
             return;
         }
         router.push({ pathname: "/student/[id]/prescribe", params: { id: id! } } as any);
@@ -96,15 +126,15 @@ export default function StudentProfileScreen() {
 
     if (isLoading || !data) {
         return (
-            <View style={{ flex: 1, backgroundColor: "#F2F2F7", paddingTop: insets.top }}>
-                <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
-                    <TouchableOpacity onPress={() => router.back()} style={{ padding: 8 }}>
-                        <ChevronLeft size={24} color="#1a1a2e" />
-                    </TouchableOpacity>
-                </View>
-                <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-                    <ActivityIndicator size="large" color="#7c3aed" />
-                </View>
+            <View style={{ flex: 1, backgroundColor: colors.background.primary, paddingTop: embedded ? 0 : insets.top }}>
+                {!embedded && (
+                    <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
+                        <TouchableOpacity onPress={() => router.back()} style={{ padding: 8 }}>
+                            <ChevronLeft size={24} color={colors.text.primary} />
+                        </TouchableOpacity>
+                    </View>
+                )}
+                <StudentDetailSkeleton />
             </View>
         );
     }
@@ -113,19 +143,21 @@ export default function StudentProfileScreen() {
     const statusColor = STATUS_COLORS[student.status] || STATUS_COLORS.active;
 
     return (
-        <View style={{ flex: 1, backgroundColor: "#F2F2F7" }}>
+        <View style={{ flex: 1, backgroundColor: colors.background.primary }}>
             {/* Header */}
-            <View style={{ backgroundColor: "#ffffff", paddingTop: insets.top, paddingBottom: 0 }}>
-                {/* Back button */}
-                <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8 }}>
-                    <TouchableOpacity
-                        onPress={() => router.back()}
-                        style={{ flexDirection: "row", alignItems: "center" }}
-                    >
-                        <ChevronLeft size={22} color="#7c3aed" />
-                        <Text style={{ fontSize: 16, color: "#7c3aed", marginLeft: 2 }}>Alunos</Text>
-                    </TouchableOpacity>
-                </View>
+            <View style={{ backgroundColor: colors.background.card, paddingTop: embedded ? 8 : insets.top, paddingBottom: 0 }}>
+                {/* Back button — hidden in embedded mode */}
+                {!embedded && (
+                    <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8 }}>
+                        <TouchableOpacity
+                            onPress={() => router.back()}
+                            style={{ flexDirection: "row", alignItems: "center" }}
+                        >
+                            <ChevronLeft size={22} color={colors.brand.primary} />
+                            <Text style={{ fontSize: 16, color: colors.brand.primary, marginLeft: 2 }}>Alunos</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
 
                 {/* Student info */}
                 <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingBottom: 14 }}>
@@ -143,15 +175,15 @@ export default function StudentProfileScreen() {
                             <Image source={{ uri: student.avatar_url }} style={{ width: 56, height: 56 }} />
                         ) : (
                             <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-                                <User size={24} color="#64748b" />
+                                <User size={24} color={colors.text.secondary} />
                             </View>
                         )}
                     </View>
                     <View style={{ flex: 1 }}>
-                        <Text style={{ fontSize: 20, fontWeight: "700", color: "#1a1a2e" }}>
+                        <Text style={{ fontSize: 20, fontWeight: "700", color: colors.text.primary }}>
                             {student.name}
                         </Text>
-                        <Text style={{ fontSize: 13, color: "#64748b", marginTop: 2 }}>
+                        <Text style={{ fontSize: 13, color: colors.text.secondary, marginTop: 2 }}>
                             {student.email}
                         </Text>
                         <View style={{ flexDirection: "row", gap: 6, marginTop: 6 }}>
@@ -161,7 +193,7 @@ export default function StudentProfileScreen() {
                                 </Text>
                             </View>
                             {student.modality && (
-                                <View style={{ backgroundColor: "#f1f5f9", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
+                                <View style={{ backgroundColor: colors.status.inactiveBg, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
                                     <Text style={{ fontSize: 11, fontWeight: "600", color: "#475569" }}>
                                         {MODALITY_LABELS[student.modality] || student.modality}
                                     </Text>
@@ -178,19 +210,19 @@ export default function StudentProfileScreen() {
                     contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 14, gap: 8 }}
                 >
                     <ActionButton
-                        icon={<Dumbbell size={14} color="#ffffff" />}
+                        icon={<Dumbbell size={14} color={colors.text.inverse} />}
                         label="Sala de Treino"
                         primary
                         onPress={handleStartTrainingRoom}
                     />
                     <ActionButton
-                        icon={<Calendar size={14} color="#7c3aed" />}
+                        icon={<Calendar size={14} color={colors.brand.primary} />}
                         label="Atribuir Programa"
-                        onPress={() => setShowAssignProgram(true)}
+                        onPress={handleAssignProgram}
                     />
                     {data.aiEnabled && (
                         <ActionButton
-                            icon={<Sparkles size={14} color="#7c3aed" />}
+                            icon={<Sparkles size={14} color={colors.brand.primary} />}
                             label="Prescrever IA"
                             onPress={handlePrescribe}
                         />
@@ -210,19 +242,22 @@ export default function StudentProfileScreen() {
                             <TouchableOpacity
                                 key={tab}
                                 onPress={() => setActiveTab(tab)}
+                                accessibilityRole="tab"
+                                accessibilityState={{ selected: isActive }}
+                                accessibilityLabel={labels[tab]}
                                 style={{
                                     flex: 1,
                                     paddingVertical: 12,
                                     alignItems: "center",
                                     borderBottomWidth: 2,
-                                    borderBottomColor: isActive ? "#7c3aed" : "transparent",
+                                    borderBottomColor: isActive ? colors.brand.primary : "transparent",
                                 }}
                             >
                                 <Text
                                     style={{
                                         fontSize: 13,
                                         fontWeight: "600",
-                                        color: isActive ? "#7c3aed" : "#94a3b8",
+                                        color: isActive ? colors.brand.primary : colors.text.tertiary,
                                     }}
                                 >
                                     {labels[tab]}
@@ -284,13 +319,15 @@ function ActionButton({
         <TouchableOpacity
             onPress={onPress}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={label}
             style={{
                 flexDirection: "row",
                 alignItems: "center",
                 paddingHorizontal: 14,
                 paddingVertical: 10,
                 borderRadius: 12,
-                backgroundColor: primary ? "#7c3aed" : "#f3f0ff",
+                backgroundColor: primary ? colors.brand.primary : "#f3f0ff",
                 gap: 6,
             }}
         >
@@ -299,7 +336,7 @@ function ActionButton({
                 style={{
                     fontSize: 13,
                     fontWeight: "600",
-                    color: primary ? "#ffffff" : "#7c3aed",
+                    color: primary ? colors.text.inverse : colors.brand.primary,
                 }}
             >
                 {label}

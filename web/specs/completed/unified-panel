@@ -1,0 +1,284 @@
+# Kinevo — Painel Unificado de Comunicação (Mensagens + Assistente)
+
+## Resumo
+
+Unificar o chat de mensagens com alunos e o Assistente Kinevo num único painel lateral no dashboard, eliminando a página `/messages` e o item "Mensagens" da sidebar. O trainer acessa ambas as funcionalidades por dois botões dedicados no header do dashboard, que abrem o mesmo painel lateral na tab correspondente.
+
+## Motivação
+
+- A página de Mensagens ocupa uma rota inteira para interações curtas e assíncronas
+- O Assistente já funciona como painel lateral — mensagens têm a mesma natureza
+- Unificar reduz itens da sidebar e mantém o trainer no dashboard enquanto se comunica
+- Modelo mental mais simples: "o painel lateral é onde eu me comunico"
+
+---
+
+## PARTE 1 — Arquitetura do painel
+
+### 1.1 Componente: `UnifiedCommunicationPanel`
+
+**Arquivo:** `web/src/components/communication/unified-panel.tsx`
+
+Componente client que substitui o `AssistantChatPanel` atual. É o container que gerencia as duas tabs.
+
+**Props/Estado (Zustand store):**
+- Evoluir o store existente `assistant-chat-store.ts` para suportar:
+  - `activeTab: 'assistant' | 'messages'`
+  - `isOpen: boolean`
+  - `openPanel(tab: 'assistant' | 'messages')` — abre o painel na tab especificada
+  - `closePanel()`
+  - `switchTab(tab: 'assistant' | 'messages')` — troca tab sem fechar
+  - Manter todos os campos existentes do assistente: `studentId`, `insightId`, `initialMessage`
+  - Adicionar campos para mensagens: `selectedStudentId: string | null` (conversa aberta no chat)
+
+**Layout do painel:**
+- Posição: fixed, right: 0, top: 0, height: 100vh
+- Largura: **450px** (maior que o assistente atual para acomodar chat)
+- Animação: slide-in da direita com Framer Motion (mesmo padrão do `assistant-chat-panel.tsx`)
+- Overlay: fundo semi-transparente clicável para fechar
+- Z-index: seguir sistema existente (`z-index.ts`)
+
+**Header do painel:**
+- Duas tabs: "Assistente" e "Mensagens"
+- Tab ativa: texto com cor primária + border-bottom 2px (roxo para Assistente, azul para Mensagens)
+- Tab inativa: texto secondary, sem borda
+- Botão X no canto direito para fechar
+- Transição entre tabs: sem fechar/reabrir o painel — apenas troca o conteúdo com transição suave (fade ou slide horizontal)
+
+**Corpo do painel:**
+- Renderiza condicionalmente baseado em `activeTab`:
+  - `'assistant'` → componente do Assistente existente (extrair o conteúdo interno do `AssistantChatPanel` atual)
+  - `'messages'` → novo componente `MessagesPanelContent`
+- **Estado preservado:** ao trocar de tab, o estado de cada uma é mantido. Se o trainer está numa conversa com o Gustavo no chat, troca pro assistente, e volta, ele continua na conversa — não volta pra lista
+
+### 1.2 Componente: `MessagesPanelContent`
+
+**Arquivo:** `web/src/components/communication/messages-panel-content.tsx`
+
+Componente client que renderiza dentro do painel unificado. Tem dois estados internos: lista de conversas e conversa individual.
+
+**Estado lista (view padrão):**
+- Campo de busca "Buscar por nome..." no topo
+- Lista scrollável de conversas, cada item com:
+  - Avatar do aluno (foto ou iniciais com cor) — mesmo padrão da página `/messages` atual
+  - Nome do aluno
+  - Preview da última mensagem (truncada, com "Você: " prefix se for do trainer)
+  - Timestamp relativo (1min, 18h, ontem, 25 mar)
+  - Badge de não lidas (bolinha azul com número) se > 0
+- Ordenação: por última mensagem (mais recente primeiro)
+- Realtime: ouvir inserts na tabela `messages` para atualizar preview e reordenar
+
+**Estado conversa (ao clicar num aluno):**
+- Transição: lista é substituída pela conversa (push navigation, não split view)
+- Header interno: botão voltar (←) + avatar + nome do aluno
+- Corpo: chat com bolhas de mensagem — idêntico ao `chat-panel.tsx` atual
+  - Mensagens do trainer: alinhadas à direita, fundo violet/roxo
+  - Mensagens do aluno: alinhadas à esquerda, fundo cinza claro
+  - Imagens inline clicáveis
+  - Separadores de data ("Hoje", "Ontem", "25 de março")
+  - Status de leitura: ✓ enviada, ✓✓ lida
+  - Paginação por cursor ("Carregar anteriores")
+- Input fixo no bottom:
+  - Textarea auto-resize (max 4 linhas)
+  - Botão de anexar imagem com preview
+  - Enter envia, Shift+Enter quebra linha
+  - Loading state no envio
+- Realtime: canal por student_id para mensagens novas
+- Auto-marca como lida ao abrir e ao receber mensagem
+
+**Reutilização:** Os componentes `conversation-list.tsx`, `chat-panel.tsx` e `message-input.tsx` de `/messages` devem ser reutilizados ou refatorados para funcionar tanto no painel quanto (opcionalmente) na rota antiga. A abordagem recomendada:
+1. Mover os componentes para `web/src/components/communication/` (shared)
+2. Torná-los independentes de contexto (recebem props, não dependem de layout de página)
+3. O `MessagesPanelContent` compõe esses componentes dentro do painel
+
+---
+
+## PARTE 2 — Botões no header do dashboard
+
+### 2.1 Botões
+
+**Arquivo:** `web/src/components/dashboard/header.tsx` (ou onde o header do dashboard é renderizado)
+
+Adicionar dois botões no header do dashboard, ao lado do botão "Sala de Treino" existente:
+
+**Botão Assistente:**
+- Ícone: sparkles (✨) — manter o ícone atual
+- Texto: "Assistente"
+- Badge: número de insights não lidos/ativos (badge vermelho, mesmo padrão atual)
+- Estilo normal: outline roxo (border roxo, texto roxo, fundo transparente)
+- Estilo ativo (quando painel aberto na tab Assistente): fundo roxo claro, border roxo, texto roxo escuro
+- Comportamento ao clicar:
+  - Se painel fechado: abre na tab Assistente
+  - Se painel aberto na tab Mensagens: troca para tab Assistente
+  - Se painel aberto na tab Assistente: fecha o painel
+
+**Botão Mensagens:**
+- Ícone: MessageCircle (💬) do lucide-react
+- Texto: "Mensagens"
+- Badge: número total de mensagens não lidas (badge vermelho)
+- Estilo normal: outline azul (border azul, texto azul, fundo transparente)
+- Estilo ativo (quando painel aberto na tab Mensagens): fundo azul claro, border azul, texto azul escuro
+- Comportamento ao clicar:
+  - Se painel fechado: abre na tab Mensagens
+  - Se painel aberto na tab Assistente: troca para tab Mensagens
+  - Se painel aberto na tab Mensagens: fecha o painel
+
+**Ordem dos botões:** Assistente | Mensagens | Sala de Treino
+
+### 2.2 Badge de mensagens não lidas
+
+Reutilizar a lógica existente do `MessagesBadge` da sidebar (que será removido). O count vem de `getTotalUnreadCount()` em `messages/actions.ts`.
+
+---
+
+## PARTE 3 — Remoção da página e sidebar
+
+### 3.1 Remover item "Mensagens" da sidebar
+
+**Arquivo:** `sidebar.tsx`
+
+- Remover o item "Mensagens" do array `navigation`
+- Remover o componente `MessagesBadge` da sidebar
+- Remover imports relacionados
+
+### 3.2 Manter a rota `/messages` (redirect)
+
+Em vez de deletar a rota, manter um redirect para `/dashboard` para não quebrar bookmarks ou deep links:
+
+**Arquivo:** `web/src/app/(dashboard)/messages/page.tsx`
+
+```typescript
+import { redirect } from 'next/navigation'
+export default function MessagesPage() {
+  redirect('/dashboard')
+}
+```
+
+Manter os arquivos de server actions (`actions.ts`) e types (`messages.ts`) intactos — eles são reutilizados pelo painel.
+
+---
+
+## PARTE 4 — Preservação de estado e comportamento
+
+### 4.1 Estado ao fechar/reabrir
+
+- Ao fechar o painel (X, clique no overlay, ou clique no botão ativo), o estado interno é preservado em memória (Zustand)
+- Ao reabrir, o painel abre na tab do botão clicado
+- Dentro de cada tab, o estado anterior é mantido:
+  - Assistente: conversa em andamento preservada
+  - Mensagens: se estava numa conversa, continua nela; se estava na lista, mostra a lista
+
+### 4.2 Transição entre tabs
+
+- Ao trocar de tab, o conteúdo faz transição suave (fade de 150ms ou slide horizontal)
+- O estado de cada tab é independente — não interfere um no outro
+- Se o painel já está aberto e o trainer clica no botão da tab ativa, o painel fecha
+
+### 4.3 Deep links e notificações
+
+- Push notification de mensagem: ao clicar, navegar para `/dashboard` com query param `?panel=messages&student={studentId}`
+- O dashboard lê o query param e abre o painel na tab Mensagens com a conversa certa
+- Push notification de insight: mesmo padrão, `?panel=assistant&insight={insightId}`
+
+### 4.4 Responsividade
+
+- Em telas < 768px: os botões do header mostram apenas ícone + badge (sem texto)
+- O painel em mobile ocupa 100% da largura (full screen) em vez de 450px
+- Botão de fechar sempre visível
+
+---
+
+## PARTE 5 — Visibilidade de mensagens não lidas
+
+- Mensagens não lidas **só são indicadas no dashboard** (badge no botão "Mensagens")
+- Quando o trainer está em outras páginas (Alunos, Programas, Financeiro, etc.), **não há indicador de mensagens**
+- Isso é intencional: o dashboard é o centro de comando, e o trainer volta lá naturalmente
+
+---
+
+## PARTE 6 — Migração do Assistente
+
+### 6.1 Refatorar `AssistantChatPanel`
+
+O componente `assistant-chat-panel.tsx` atual é um painel lateral standalone. Precisa ser refatorado:
+
+1. Extrair o conteúdo interno (chat com streaming, chips, context) para um componente `AssistantPanelContent`
+2. Esse componente é renderizado dentro do `UnifiedCommunicationPanel` quando `activeTab === 'assistant'`
+3. Remover o wrapper de painel/overlay/animação do `AssistantChatPanel` — isso agora é responsabilidade do `UnifiedCommunicationPanel`
+
+### 6.2 Atualizar o Zustand store
+
+Evoluir `assistant-chat-store.ts`:
+
+```typescript
+interface CommunicationStore {
+  // Panel state
+  isOpen: boolean
+  activeTab: 'assistant' | 'messages'
+  
+  // Assistant state (manter tudo que já existe)
+  studentId: string | null
+  insightId: string | null
+  initialMessage: string | null
+  
+  // Messages state
+  selectedStudentId: string | null
+  messagesView: 'list' | 'conversation'
+  
+  // Actions
+  openPanel: (tab: 'assistant' | 'messages') => void
+  closePanel: () => void
+  switchTab: (tab: 'assistant' | 'messages') => void
+  
+  // Assistant actions (manter as existentes)
+  openChat: (studentId?: string, insightId?: string, initialMessage?: string) => void
+  
+  // Messages actions
+  openConversation: (studentId: string) => void
+  backToList: () => void
+}
+```
+
+### 6.3 Atualizar `app-layout.tsx`
+
+Substituir `<AssistantChatPanel />` por `<UnifiedCommunicationPanel />` no layout global.
+
+---
+
+## Regras de implementação
+
+- Zero novos erros TypeScript
+- Seguir padrões visuais do Kinevo (cores, tipografia, espaçamentos, Lucide icons, sentence case)
+- Reutilizar componentes existentes de mensagens (refatorar, não reescrever)
+- Framer Motion para animações (padrão do projeto)
+- Supabase Realtime: manter os canais existentes de mensagens
+- Testar: painel abre/fecha, troca de tab, estado preservado, Realtime funciona, badges atualizam
+- Não alterar a tabela `messages` nem server actions — apenas frontend
+
+## Arquivos a criar
+
+| Arquivo | Propósito |
+|---------|-----------|
+| `components/communication/unified-panel.tsx` | Container do painel com tabs |
+| `components/communication/messages-panel-content.tsx` | Conteúdo da tab Mensagens (lista + chat) |
+| `components/communication/assistant-panel-content.tsx` | Conteúdo da tab Assistente (extraído do atual) |
+
+## Arquivos a modificar
+
+| Arquivo | Mudança |
+|---------|---------|
+| `assistant-chat-store.ts` | Evoluir para `communication-store.ts` com campos de ambas as tabs |
+| `assistant-chat-panel.tsx` | Extrair conteúdo para `assistant-panel-content.tsx`, remover wrapper |
+| `app-layout.tsx` | Trocar `<AssistantChatPanel />` por `<UnifiedCommunicationPanel />` |
+| `header.tsx` (dashboard) | Adicionar botão "Mensagens" + refatorar botão "Assistente" |
+| `sidebar.tsx` | Remover item "Mensagens" e `MessagesBadge` |
+| `messages/page.tsx` | Substituir por redirect para `/dashboard` |
+| Componentes de mensagens existentes | Mover para `components/communication/`, tornar independentes de layout |
+
+## Não implementar nesta spec
+
+- Acesso ao painel fora do dashboard (feature futura se necessário)
+- Atalho de mensagem no perfil do aluno (feature futura)
+- Notificações sonoras para mensagens novas
+- Indicador de "digitando..."
+- Mensagens em grupo

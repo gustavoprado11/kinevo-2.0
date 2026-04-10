@@ -1,6 +1,6 @@
-import React, { useRef, useEffect } from "react";
-import { Tabs } from "expo-router";
-import { LayoutDashboard, Users, Dumbbell, ClipboardList, MoreHorizontal } from "lucide-react-native";
+import React, { useRef, useEffect, useCallback } from "react";
+import { Tabs, usePathname, useRouter } from "expo-router";
+import { LayoutDashboard, Users, MessageCircle, ClipboardList, MoreHorizontal } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StyleSheet, View, Text, Platform } from "react-native";
 import { BlurView } from "expo-blur";
@@ -12,6 +12,9 @@ import Animated, {
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { usePendingSubmissionsCount } from "../../hooks/usePendingSubmissionsCount";
+import { useTrainerConversations } from "../../hooks/useTrainerConversations";
+import { useResponsive } from "../../hooks/useResponsive";
+import { NavigationSidebar, TabConfig } from "../../components/shared/NavigationSidebar";
 import { ANIM } from "../../lib/animations";
 
 // ─── Animated Tab Icon ───
@@ -91,34 +94,58 @@ function AnimatedTabIcon({
 export default function TrainerTabsLayout() {
     const insets = useSafeAreaInsets();
     const pendingFormsCount = usePendingSubmissionsCount();
+    const { totalUnread } = useTrainerConversations();
+    const { isTablet, isLandscape } = useResponsive();
+    const router = useRouter();
+    const pathname = usePathname();
 
-    return (
+    const TRAINER_TABS: TabConfig[] = [
+        { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        { key: 'students', label: 'Alunos', icon: Users },
+        { key: 'messages', label: 'Mensagens', icon: MessageCircle, badge: totalUnread },
+        { key: 'forms', label: 'Formulários', icon: ClipboardList, badge: pendingFormsCount },
+        { key: 'more', label: 'Mais', icon: MoreHorizontal },
+    ];
+
+    // Determine active tab from pathname
+    const activeTab = TRAINER_TABS.find(t => pathname.includes(t.key))?.key ?? 'dashboard';
+
+    const handleTabPress = useCallback((tabKey: string) => {
+        router.navigate(`/(trainer-tabs)/${tabKey}` as any);
+    }, [router]);
+
+    const tabBarStyle = isTablet
+        ? { display: 'none' as const }
+        : {
+            position: "absolute" as const,
+            bottom: 0,
+            left: 0,
+            right: 0,
+            backgroundColor: "transparent",
+            borderTopWidth: StyleSheet.hairlineWidth,
+            borderTopColor: "rgba(0, 0, 0, 0.08)",
+            elevation: 0,
+            shadowOpacity: 0,
+            height: 50 + insets.bottom,
+            paddingBottom: insets.bottom,
+        };
+
+    const tabContent = (
         <Tabs
             screenOptions={{
                 headerShown: false,
-                tabBarBackground: () => (
-                    <BlurView
-                        tint="light"
-                        intensity={90}
-                        style={[
-                            StyleSheet.absoluteFill,
-                            { backgroundColor: "rgba(255, 255, 255, 0.78)" },
-                        ]}
-                    />
-                ),
-                tabBarStyle: {
-                    position: "absolute",
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    backgroundColor: "transparent",
-                    borderTopWidth: StyleSheet.hairlineWidth,
-                    borderTopColor: "rgba(0, 0, 0, 0.08)",
-                    elevation: 0,
-                    shadowOpacity: 0,
-                    height: 50 + insets.bottom,
-                    paddingBottom: insets.bottom,
-                },
+                tabBarBackground: () =>
+                    isTablet ? null : (
+                        <BlurView
+                            tint="light"
+                            intensity={90}
+                            style={[
+                                StyleSheet.absoluteFill,
+                                { backgroundColor: "rgba(255, 255, 255, 0.78)" },
+                            ]}
+                        />
+                    ),
+                tabBarStyle,
                 tabBarActiveTintColor: "#7c3aed",
                 tabBarInactiveTintColor: "#94a3b8",
                 tabBarShowLabel: false,
@@ -133,6 +160,7 @@ export default function TrainerTabsLayout() {
                 name="dashboard"
                 options={{
                     title: "Dashboard",
+                    tabBarAccessibilityLabel: "Painel de controle",
                     tabBarIcon: ({ color, focused }) => (
                         <AnimatedTabIcon IconComponent={LayoutDashboard} color={color} focused={focused} />
                     ),
@@ -142,17 +170,19 @@ export default function TrainerTabsLayout() {
                 name="students"
                 options={{
                     title: "Alunos",
+                    tabBarAccessibilityLabel: "Lista de alunos",
                     tabBarIcon: ({ color, focused }) => (
                         <AnimatedTabIcon IconComponent={Users} color={color} focused={focused} />
                     ),
                 }}
             />
             <Tabs.Screen
-                name="training-room"
+                name="messages"
                 options={{
-                    title: "Sala de Treino",
+                    title: "Mensagens",
+                    tabBarAccessibilityLabel: "Mensagens",
                     tabBarIcon: ({ color, focused }) => (
-                        <AnimatedTabIcon IconComponent={Dumbbell} color={color} focused={focused} />
+                        <AnimatedTabIcon IconComponent={MessageCircle} color={color} focused={focused} badge={totalUnread} />
                     ),
                 }}
             />
@@ -160,20 +190,44 @@ export default function TrainerTabsLayout() {
                 name="forms"
                 options={{
                     title: "Formulários",
+                    tabBarAccessibilityLabel: "Formulários",
                     tabBarIcon: ({ color, focused }) => (
                         <AnimatedTabIcon IconComponent={ClipboardList} color={color} focused={focused} badge={pendingFormsCount} />
                     ),
                 }}
             />
             <Tabs.Screen
+                name="training-room"
+                options={{
+                    href: null,
+                }}
+            />
+            <Tabs.Screen
                 name="more"
                 options={{
                     title: "Mais",
+                    tabBarAccessibilityLabel: "Mais opções",
                     tabBarIcon: ({ color, focused }) => (
                         <AnimatedTabIcon IconComponent={MoreHorizontal} color={color} focused={focused} />
                     ),
                 }}
             />
         </Tabs>
+    );
+
+    if (!isTablet) return tabContent;
+
+    return (
+        <View style={{ flexDirection: 'row', flex: 1 }}>
+            <NavigationSidebar
+                expanded={isLandscape}
+                tabs={TRAINER_TABS}
+                activeTab={activeTab}
+                onTabPress={handleTabPress}
+            />
+            <View style={{ flex: 1 }}>
+                {tabContent}
+            </View>
+        </View>
     );
 }

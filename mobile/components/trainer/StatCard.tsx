@@ -1,6 +1,8 @@
 import React from "react";
 import { View, Text } from "react-native";
 import type { LucideIcon } from "lucide-react-native";
+import { colors } from "@/theme";
+import { useResponsive } from "@/hooks/useResponsive";
 
 interface StatCardProps {
     label: string;
@@ -12,15 +14,22 @@ interface StatCardProps {
 }
 
 export function StatCard({ label, value, icon: Icon, iconColor, iconBg, subtitle }: StatCardProps) {
+    const { isTablet, spacingScale, fontScale } = useResponsive();
+    const padding = isTablet ? 20 : 16;
+    const iconSize = isTablet ? 44 : 36;
+    const iconInner = isTablet ? 22 : 18;
+
     return (
         <View
+            accessibilityRole="summary"
+            accessibilityLabel={`${label}: ${value}${subtitle ? `, ${subtitle}` : ''}`}
             style={{
                 flex: 1,
-                backgroundColor: "#ffffff",
+                backgroundColor: colors.background.card,
                 borderRadius: 20,
-                padding: 16,
+                padding,
                 borderWidth: 1,
-                borderColor: "rgba(0,0,0,0.04)",
+                borderColor: colors.border.primary,
                 shadowColor: "#000",
                 shadowOffset: { width: 0, height: 2 },
                 shadowOpacity: 0.04,
@@ -30,8 +39,8 @@ export function StatCard({ label, value, icon: Icon, iconColor, iconBg, subtitle
         >
             <View
                 style={{
-                    width: 36,
-                    height: 36,
+                    width: iconSize,
+                    height: iconSize,
                     borderRadius: 12,
                     backgroundColor: iconBg,
                     alignItems: "center",
@@ -39,16 +48,16 @@ export function StatCard({ label, value, icon: Icon, iconColor, iconBg, subtitle
                     marginBottom: 12,
                 }}
             >
-                <Icon size={18} color={iconColor} />
+                <Icon size={iconInner} color={iconColor} />
             </View>
-            <Text style={{ fontSize: 24, fontWeight: "800", color: "#0f172a" }}>
+            <Text style={{ fontSize: Math.round(24 * fontScale), fontWeight: "800", color: colors.text.primary }}>
                 {value}
             </Text>
-            <Text style={{ fontSize: 11, fontWeight: "600", color: "#94a3b8", marginTop: 4, letterSpacing: 0.5 }}>
+            <Text style={{ fontSize: Math.round(11 * fontScale), fontWeight: "600", color: colors.text.tertiary, marginTop: 4, letterSpacing: 0.5 }}>
                 {label}
             </Text>
             {!!subtitle && (
-                <Text style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>
+                <Text style={{ fontSize: Math.round(11 * fontScale), color: colors.text.secondary, marginTop: 2 }}>
                     {subtitle}
                 </Text>
             )}

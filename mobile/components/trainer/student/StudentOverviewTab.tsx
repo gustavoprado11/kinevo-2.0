@@ -4,6 +4,10 @@ import { TrendingUp, Calendar, Clock, Dumbbell } from "lucide-react-native";
 import type { StudentDetailData } from "../../../hooks/useStudentDetail";
 import { getProgramWeek } from "@kinevo/shared/utils/schedule-projection";
 import { SessionHeatmap } from "./SessionHeatmap";
+import { ProgressCharts } from "./ProgressCharts";
+import { useResponsive } from "../../../hooks/useResponsive";
+import { ResponsiveGrid } from "../../shared/ResponsiveGrid";
+import { ResponsiveContainer } from "../../shared/ResponsiveContainer";
 
 function timeAgo(dateStr: string | null): string {
     if (!dateStr) return "Nunca";
@@ -39,7 +43,7 @@ export function StudentOverviewTab({ data }: Props) {
             showsVerticalScrollIndicator={false}
         >
             {/* KPI Cards */}
-            <View style={{ flexDirection: "row", gap: 10, marginBottom: 16 }}>
+            <ResponsiveGrid columns={{ phone: 2, tablet: 4 }} gap={10} style={{ marginBottom: 20 }}>
                 <KPICard
                     icon={<Dumbbell size={16} color="#7c3aed" />}
                     label="Esta semana"
@@ -50,8 +54,6 @@ export function StudentOverviewTab({ data }: Props) {
                     label="Aderência"
                     value={adherence !== null ? `${adherence}%` : "—"}
                 />
-            </View>
-            <View style={{ flexDirection: "row", gap: 10, marginBottom: 20 }}>
                 <KPICard
                     icon={<Calendar size={16} color="#3b82f6" />}
                     label="Total sessões"
@@ -62,10 +64,18 @@ export function StudentOverviewTab({ data }: Props) {
                     label="Último treino"
                     value={timeAgo(data.lastSessionDate)}
                 />
-            </View>
+            </ResponsiveGrid>
 
             {/* Heatmap */}
             <SessionHeatmap studentId={data.student.id} />
+
+            {/* Progress Charts */}
+            <View style={{ marginTop: 20, marginBottom: 20 }}>
+                <ProgressCharts
+                    studentId={data.student.id}
+                    expectedPerWeek={data.expectedPerWeek}
+                />
+            </View>
 
             {/* Active Program */}
             {data.activeProgram && (

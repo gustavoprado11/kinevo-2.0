@@ -102,11 +102,12 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Student not found or unauthorized' }, { status: 404 })
         }
 
-        // 3. Get template
+        // 3. Get template (filter by trainer_id to prevent assigning other trainers' templates)
         const { data: template } = await supabase
             .from('program_templates')
             .select('*')
             .eq('id', templateId)
+            .eq('trainer_id', trainer.id)
             .single()
 
         if (!template) {
@@ -241,6 +242,9 @@ export async function POST(request: NextRequest) {
                                 reps: item.reps,
                                 rest_seconds: item.rest_seconds,
                                 notes: item.notes,
+                                substitute_exercise_ids: item.substitute_exercise_ids || [],
+                                exercise_function: item.exercise_function || null,
+                                item_config: item.item_config || {},
                                 parent_item_id: null
                             })
                             .select('id')
@@ -266,7 +270,7 @@ export async function POST(request: NextRequest) {
                             if (groups.length > 0) exerciseMuscleGroup = groups.join(', ')
                         }
 
-                        await supabase
+                        const { error: childError } = await supabase
                             .from('assigned_workout_items')
                             .insert({
                                 assigned_workout_id: assignedWorkout.id,
@@ -281,8 +285,13 @@ export async function POST(request: NextRequest) {
                                 reps: item.reps,
                                 rest_seconds: item.rest_seconds,
                                 notes: item.notes,
+                                substitute_exercise_ids: item.substitute_exercise_ids || [],
+                                exercise_function: item.exercise_function || null,
+                                item_config: item.item_config || {},
                                 parent_item_id: parentAssignedId
                             })
+
+                        if (childError) throw childError
                     }
                 }
             }

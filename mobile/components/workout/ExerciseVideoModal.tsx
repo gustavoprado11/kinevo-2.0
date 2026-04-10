@@ -1,12 +1,8 @@
 import React, { useCallback } from 'react';
-import { View, Text, TouchableOpacity, Modal, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, useWindowDimensions } from 'react-native';
 import YoutubePlayer from 'react-native-youtube-iframe';
 import { X } from 'lucide-react-native';
 import { extractYoutubeId, isDirectVideoUrl } from '../../lib/youtube';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const PLAYER_WIDTH = SCREEN_WIDTH - 32;
-const PLAYER_HEIGHT = PLAYER_WIDTH * (9 / 16);
 
 // Lazy-load expo-av to avoid crash when native module is not linked
 let ExpoVideo: any = null;
@@ -29,6 +25,10 @@ interface ExerciseVideoModalProps {
 }
 
 export function ExerciseVideoModal({ visible, onClose, videoUrl }: ExerciseVideoModalProps) {
+    const { width: SCREEN_WIDTH } = useWindowDimensions();
+    const PLAYER_WIDTH = SCREEN_WIDTH - 32;
+    const PLAYER_HEIGHT = PLAYER_WIDTH * (9 / 16);
+
     const videoId = extractYoutubeId(videoUrl);
     const isDirect = isDirectVideoUrl(videoUrl);
 

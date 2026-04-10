@@ -56,6 +56,7 @@ struct WorkoutExecutionView: View {
   @State private var showDiscardConfirmation = false
   @State private var carouselPage: Int = 0
   @State private var checkmarkScale: CGFloat = 0.01
+  @State private var autoDismissTask: Task<Void, Never>?
 
   var body: some View {
     let sm = sessionManager
@@ -111,6 +112,21 @@ struct WorkoutExecutionView: View {
     }
     .navigationBarTitleDisplayMode(.inline)
     .toolbar(.hidden, for: .navigationBar)
+    // When SYNC_SUCCESS arrives and clearWorkout() fires, state becomes nil.
+    // Dismiss the sheet so the NavigationStack can pop this view.
+    .onChange(of: workoutStore.state == nil) { _, isNil in
+      if isNil && isFinishingWorkout {
+        NSLog("[KinevoWatch] workoutStore.state cleared — dismissing finish sheet")
+        isFinishingWorkout = false
+        // Small delay to let sheet dismiss before navigation pop
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+          dismiss()
+        }
+      }
+    }
+    .onDisappear {
+      autoDismissTask?.cancel()
+    }
   }
 
   // MARK: - Workout Content
@@ -353,6 +369,26 @@ struct WorkoutExecutionView: View {
             withAnimation(.spring(response: 0.4, dampingFraction: 0.6)) {
               checkmarkScale = 1.0
             }
+
+            // Auto-dismiss after 4 seconds — covers the case where SYNC_SUCCESS
+            // arrives but the sheet doesn't close, or ACK is never delivered.
+            autoDismissTask = Task { @MainActor in
+              try? await Task.sleep(nanoseconds: 4_000_000_000)
+              guard !Task.isCancelled else { return }
+              if isFinishingWorkout {
+                NSLog("[KinevoWatch] Auto-dismissing finish sheet after timeout")
+                isFinishingWorkout = false
+                // If state was already cleared by SYNC_SUCCESS, pop navigation
+                if workoutStore.state == nil {
+                  DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    dismiss()
+                  }
+                } else {
+                  // Force clear if SYNC_SUCCESS didn't arrive
+                  workoutStore.clearWorkout()
+                }
+              }
+            }
           }
 
         Text("Treino Concluído!")
@@ -368,7 +404,22 @@ struct WorkoutExecutionView: View {
           FinishStatRow(icon: "clock", label: "Duração", value: workoutDurationText)
         }
 
-        Text("Resultado sincronizado com o celular")
+        // Manual close button — fallback if auto-dismiss doesn't fire
+        Button("Fechar") {
+          NSLog("[KinevoWatch] Manual close tapped on finish screen")
+          isFinishingWorkout = false
+          if workoutStore.state != nil {
+            workoutStore.clearWorkout()
+          }
+          DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            dismiss()
+          }
+        }
+        .buttonStyle(.bordered)
+        .tint(.gray)
+        .padding(.top, 4)
+
+        Text("Sincronizando com o celular...")
           .font(.caption2)
           .foregroundStyle(.secondary)
           .multilineTextAlignment(.center)

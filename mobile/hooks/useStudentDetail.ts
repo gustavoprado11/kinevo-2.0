@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 import { supabase } from "../lib/supabase";
 import { useRoleMode } from "../contexts/RoleModeContext";
+import { useCachedQuery } from "./useCachedQuery";
+import { CACHE_KEYS, CACHE_TTL } from "../lib/cache-keys";
 
 export interface StudentDetailData {
     student: {
@@ -74,46 +76,22 @@ export interface StudentDetailData {
 
 export function useStudentDetail(studentId: string | null) {
     const { trainerId } = useRoleMode();
-    const [data, setData] = useState<StudentDetailData | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-    const [isRefreshing, setIsRefreshing] = useState(false);
-    const [error, setError] = useState<string | null>(null);
 
-    const fetchDetail = useCallback(async () => {
-        if (!trainerId || !studentId) return;
-
-        try {
-            const { data: result, error: rpcError } = await supabase.rpc(
-                "get_student_profile_detail" as any,
-                { p_student_id: studentId }
-            );
-            if (rpcError) throw new Error(rpcError.message);
-            setData(result as StudentDetailData);
-            setError(null);
-        } catch (err: any) {
-            if (__DEV__) console.error("[useStudentDetail] fetch error:", err);
-            setError(err.message);
-        }
+    const fetcher = useCallback(async (): Promise<StudentDetailData> => {
+        const { data, error } = await supabase.rpc(
+            "get_student_profile_detail" as any,
+            { p_student_id: studentId }
+        );
+        if (error) throw new Error(error.message);
+        return data as StudentDetailData;
     }, [trainerId, studentId]);
 
-    useEffect(() => {
-        if (!trainerId || !studentId) return;
-
-        let mounted = true;
-        (async () => {
-            setIsLoading(true);
-            await fetchDetail();
-            if (mounted) setIsLoading(false);
-        })();
-
-        return () => { mounted = false; };
-    }, [trainerId, studentId, fetchDetail]);
-
-    const refresh = useCallback(async () => {
-        setIsRefreshing(true);
-        await fetchDetail();
-        setIsRefreshing(false);
-    }, [fetchDetail]);
+    const { data, isLoading, isRefreshing, error, refresh } = useCachedQuery<StudentDetailData>({
+        cacheKey: CACHE_KEYS.STUDENT_DETAIL(studentId ?? ""),
+        fetcher,
+        ttl: CACHE_TTL.STUDENT_DETAIL,
+        enabled: !!trainerId && !!studentId,
+    });
 
     return { data, isLoading, isRefreshing, error, refresh };
 }

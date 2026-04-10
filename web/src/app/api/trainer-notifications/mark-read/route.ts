@@ -32,9 +32,9 @@ export async function POST(request: NextRequest) {
     if (body.all) {
         const { error } = await supabase
             .from('trainer_notifications')
-            .update({ read: true })
+            .update({ is_read: true })
             .eq('trainer_id', trainer.id)
-            .eq('read', false)
+            .eq('is_read', false)
 
         if (error) {
             console.error('[mark-read] Update error:', error)
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     } else if (body.ids && body.ids.length > 0) {
         const { error } = await supabase
             .from('trainer_notifications')
-            .update({ read: true })
+            .update({ is_read: true })
             .eq('trainer_id', trainer.id)
             .in('id', body.ids)
 

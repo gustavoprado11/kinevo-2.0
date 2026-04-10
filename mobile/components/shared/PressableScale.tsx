@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { Pressable, StyleProp, ViewStyle } from 'react-native';
+import { type AccessibilityState, Pressable, StyleProp, ViewStyle } from 'react-native';
 import Animated, {
     useSharedValue,
     useAnimatedStyle,
@@ -25,6 +25,10 @@ interface PressableScaleProps {
     accessibilityLabel?: string;
     /** Accessibility role. Default: "button" */
     accessibilityRole?: 'button' | 'link' | 'tab' | 'none';
+    /** Accessibility hint */
+    accessibilityHint?: string;
+    /** Accessibility state */
+    accessibilityState?: AccessibilityState;
 }
 
 /**
@@ -45,6 +49,8 @@ export function PressableScale({
     hapticStyle = Haptics.ImpactFeedbackStyle.Light,
     accessibilityLabel,
     accessibilityRole = 'button',
+    accessibilityHint,
+    accessibilityState,
 }: PressableScaleProps) {
     const scale = useSharedValue(1);
 
@@ -75,6 +81,8 @@ export function PressableScale({
             style={[style, animatedStyle]}
             accessibilityLabel={accessibilityLabel}
             accessibilityRole={accessibilityRole}
+            accessibilityHint={accessibilityHint}
+            accessibilityState={accessibilityState}
         >
             {children}
         </AnimatedPressable>

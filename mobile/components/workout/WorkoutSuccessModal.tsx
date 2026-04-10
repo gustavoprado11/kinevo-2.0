@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Modal, TouchableOpacity, Dimensions, StyleSheet } from 'react-native';
+import { View, Text, Modal, TouchableOpacity, useWindowDimensions, StyleSheet } from 'react-native';
 import { X, Share2 } from 'lucide-react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, withSequence, Easing } from 'react-native-reanimated';
 import { ANIM } from '../../lib/animations';
@@ -25,8 +25,6 @@ interface WorkoutSuccessModalProps {
     };
 }
 
-const { width } = Dimensions.get('window');
-const CARD_PREVIEW_WIDTH = width * 0.7;
 const CARD_ASPECT_RATIO = 568 / 320; // Original card proportions
 
 function formatRelativeDate(dateStr: string): string {
@@ -36,6 +34,9 @@ function formatRelativeDate(dateStr: string): string {
 }
 
 export function WorkoutSuccessModal({ visible, onClose, data }: WorkoutSuccessModalProps) {
+    const { width: screenWidth } = useWindowDimensions();
+    const CARD_PREVIEW_WIDTH = screenWidth * 0.7;
+
     const scale = useSharedValue(0);
     const [shareModalVisible, setShareModalVisible] = useState(false);
     const insets = useSafeAreaInsets();

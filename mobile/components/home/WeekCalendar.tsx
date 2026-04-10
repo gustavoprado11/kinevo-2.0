@@ -1,5 +1,5 @@
 import React, { useRef, useCallback, useMemo, useEffect, useState } from "react";
-import { View, Text, TouchableOpacity, FlatList, Dimensions, NativeScrollEvent, NativeSyntheticEvent } from "react-native";
+import { View, Text, TouchableOpacity, FlatList, useWindowDimensions, NativeScrollEvent, NativeSyntheticEvent } from "react-native";
 import { ChevronDown } from "lucide-react-native";
 import {
     generateCalendarDays,
@@ -11,9 +11,7 @@ import {
     type SessionRef,
 } from "@kinevo/shared/utils/schedule-projection";
 
-const SCREEN_WIDTH = Dimensions.get("window").width;
 const CALENDAR_PADDING = 40; // px-5 on each side
-const CALENDAR_WIDTH = SCREEN_WIDTH - CALENDAR_PADDING;
 
 const STATUS_COLORS: Record<CalendarDay["status"], string> = {
     done: "#22c55e",
@@ -44,15 +42,17 @@ function WeekRow({
     days,
     selectedDate,
     onDayPress,
+    calendarWidth,
 }: {
     days: CalendarDay[];
     selectedDate: Date;
     onDayPress: (date: Date) => void;
+    calendarWidth: number;
 }) {
     const selectedKey = toDateKey(selectedDate);
 
     return (
-        <View style={{ width: CALENDAR_WIDTH, flexDirection: "row", justifyContent: "space-between" }}>
+        <View style={{ width: calendarWidth, flexDirection: "row", justifyContent: "space-between" }}>
             {days.map((day, index) => {
                 const isSelected = day.dateKey === selectedKey;
                 const isToday = day.isToday;
@@ -135,6 +135,9 @@ export function WeekCalendar({
     onExpand,
     fetchRange,
 }: WeekCalendarProps) {
+    const { width: screenWidth } = useWindowDimensions();
+    const CALENDAR_WIDTH = screenWidth - CALENDAR_PADDING;
+
     const flatListRef = useRef<FlatList>(null);
     const [anchorDate, setAnchorDate] = useState(() => new Date());
     const isScrollingRef = useRef(false);
@@ -292,6 +295,7 @@ export function WeekCalendar({
                         days={item.days}
                         selectedDate={selectedDate}
                         onDayPress={onDayPress}
+                        calendarWidth={CALENDAR_WIDTH}
                     />
                 )}
                 initialScrollIndex={1}

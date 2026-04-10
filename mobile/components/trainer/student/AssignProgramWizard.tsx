@@ -9,8 +9,8 @@ import {
     TouchableOpacity,
     FlatList,
     ActivityIndicator,
-    Alert,
 } from "react-native";
+import { toast } from "@/lib/toast";
 import { X, ChevronRight, AlertTriangle, Check } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { supabase } from "../../../lib/supabase";
@@ -64,33 +64,22 @@ export function AssignProgramWizard({
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         setIsAssigning(true);
         try {
-            // Get current session token for API route
-            const { data: sessionData } = await supabase.auth.getSession();
-            const token = sessionData?.session?.access_token;
-            if (!token) throw new Error("Sessão expirada");
-
-            const apiUrl = process.env.EXPO_PUBLIC_WEB_URL || "https://app.kinevo.com.br";
-            const response = await fetch(`${apiUrl}/api/programs/assign`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify({
+            const { data, error } = await supabase.functions.invoke("assign-program", {
+                body: {
                     studentId,
                     templateId: selectedTemplate.id,
                     startDate: new Date().toISOString(),
                     isScheduled: !isImmediate,
-                }),
+                },
             });
 
-            const result = await response.json();
-            if (!response.ok) throw new Error(result.error || "Falha ao atribuir programa");
+            if (error) throw new Error(error.message || "Falha ao atribuir programa");
+            if (data?.error) throw new Error(data.error);
 
-            Alert.alert("Programa Atribuído!", `"${selectedTemplate.name}" foi atribuído a ${studentName}.`);
+            toast.success("Programa Atribuído!", `"${selectedTemplate.name}" foi atribuído a ${studentName}.`);
             onSuccess();
         } catch (err: any) {
-            Alert.alert("Erro", err.message || "Falha ao atribuir programa.");
+            toast.error("Erro", err.message || "Falha ao atribuir programa.");
         } finally {
             setIsAssigning(false);
         }

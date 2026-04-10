@@ -24,7 +24,7 @@ export async function GET() {
 
     const { data: notifications, error } = await supabase
         .from('trainer_notifications')
-        .select('id, type, title, message, read, metadata, created_at')
+        .select('id, type, title, body, is_read, data, category, created_at')
         .eq('trainer_id', trainer.id)
         .order('created_at', { ascending: false })
         .limit(20)
@@ -34,7 +34,7 @@ export async function GET() {
         return NextResponse.json({ error: 'Erro ao carregar notificações.' }, { status: 500 })
     }
 
-    const unreadCount = notifications?.filter(n => !n.read).length ?? 0
+    const unreadCount = notifications?.filter(n => !n.is_read).length ?? 0
 
     return NextResponse.json({ notifications: notifications ?? [], unreadCount })
 }

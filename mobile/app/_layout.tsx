@@ -1,11 +1,17 @@
 import React from "react";
 import { Stack, usePathname, useRouter } from "expo-router";
 import { Alert, Platform } from "react-native";
+import * as ScreenOrientation from 'expo-screen-orientation';
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { SafeAreaProvider } from "react-native-safe-area-context";
+import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
+import Toast from "react-native-toast-message";
 import { AuthProvider } from "../contexts/AuthContext";
 import { RoleModeProvider, useRoleMode } from "../contexts/RoleModeContext";
 import { usePushNotifications } from "../hooks/usePushNotifications";
+import { toastConfig } from "../components/shared/ToastConfig";
+import { ConnectionBanner } from "../components/shared/ConnectionBanner";
+import { useNetworkStatus } from "../hooks/useNetworkStatus";
+import { colors } from "../theme";
 import "../global.css";
 
 if (__DEV__) console.log("[Layout] Iniciando RootLayout");
@@ -354,8 +360,27 @@ function PushNotificationBridge() {
     return null;
 }
 
+function GlobalOverlays() {
+    const insets = useSafeAreaInsets();
+    const { isConnected, wasDisconnected } = useNetworkStatus();
+    return (
+        <>
+            <ConnectionBanner isConnected={isConnected} wasDisconnected={wasDisconnected} />
+            <Toast config={toastConfig} topOffset={insets.top + 8} />
+        </>
+    );
+}
+
 export default function RootLayout() {
     if (__DEV__) console.log("[Layout] Renderizando Provider Wrapper");
+
+    // Lock iPhone to portrait; iPad supports all orientations via app.json
+    React.useEffect(() => {
+        if (Platform.OS === 'ios' && !Platform.isPad) {
+            ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+        }
+    }, []);
+
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
             {/* WatchBridge MUST be outside AuthProvider so it mounts immediately,
@@ -369,12 +394,13 @@ export default function RootLayout() {
                         <Stack
                             screenOptions={{
                                 headerShown: false,
-                                contentStyle: { backgroundColor: '#F2F2F7' },
+                                contentStyle: { backgroundColor: colors.background.primary },
                                 gestureEnabled: true,
                                 gestureDirection: 'horizontal',
                                 animation: 'slide_from_right',
                             }}
                         />
+                        <GlobalOverlays />
                     </SafeAreaProvider>
                 </RoleModeProvider>
             </AuthProvider>

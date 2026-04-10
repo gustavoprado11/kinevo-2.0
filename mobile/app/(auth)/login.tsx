@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAuth } from "../../contexts/AuthContext";
+import { useResponsive } from "../../hooks/useResponsive";
 import { MaterialIcons, Feather } from "@expo/vector-icons";
 
 export default function LoginScreen() {
@@ -29,6 +30,7 @@ export default function LoginScreen() {
 
     const { signIn } = useAuth();
     const router = useRouter();
+    const { isTablet } = useResponsive();
 
     const handleSignIn = async () => {
         if (!email || !password) {
@@ -60,7 +62,10 @@ export default function LoginScreen() {
             <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
                 <KeyboardAvoidingView
                     behavior={Platform.OS === "ios" ? "padding" : "height"}
-                    className="flex-1 justify-center px-8"
+                    style={[
+                        { flex: 1, justifyContent: 'center', paddingHorizontal: 32 },
+                        isTablet && { maxWidth: 440, alignSelf: 'center', width: '100%' },
+                    ]}
                 >
                     {/* 1. TOPO (Header) */}
                     <View className="items-center mb-12">

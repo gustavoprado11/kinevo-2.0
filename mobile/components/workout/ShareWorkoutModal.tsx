@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import {
-    View, Text, Modal, Pressable, Platform, Alert, Dimensions, StyleSheet,
+    View, Text, Modal, Pressable, Platform, Alert, useWindowDimensions, StyleSheet,
 } from 'react-native';
 import {
     Share2, X, Camera, Image as ImageIcon, Trophy, FileText, LayoutTemplate,
@@ -32,15 +32,16 @@ interface ShareWorkoutModalProps {
     sessionId?: string;
 }
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-
 // Preview — controlled proportion, never dominates.
 const CARD_W = 320;
 const CARD_H = 568;
-const MAX_PREVIEW_H = SCREEN_HEIGHT * 0.48; // cap at ~48vh
-const IDEAL_SCALE = (SCREEN_WIDTH - 64) / CARD_W;  // comfortable side margins
-const PREVIEW_SCALE = Math.min(IDEAL_SCALE, MAX_PREVIEW_H / CARD_H);
-const SCALED_H = CARD_H * PREVIEW_SCALE;
+
+function computePreviewScale(screenWidth: number, screenHeight: number) {
+    const maxPreviewH = screenHeight * 0.48;
+    const idealScale = (screenWidth - 64) / CARD_W;
+    const previewScale = Math.min(idealScale, maxPreviewH / CARD_H);
+    return { previewScale, scaledH: CARD_H * previewScale };
+}
 
 type TemplateType = 'photo' | 'highlights' | 'full_workout' | 'summary' | 'pr';
 
@@ -86,10 +87,12 @@ function TemplateSegment({
     templates,
     selected,
     onSelect,
+    screenWidth,
 }: {
     templates: { key: TemplateType; label: string; Icon: any }[];
     selected: TemplateType;
     onSelect: (key: TemplateType) => void;
+    screenWidth: number;
 }) {
     const pillX = useSharedValue(templates.findIndex(t => t.key === selected));
 
@@ -98,7 +101,7 @@ function TemplateSegment({
         pillX.value = withTiming(idx, ANIM.timing.normal);
     }, [selected]);
 
-    const segmentWidth = (SCREEN_WIDTH - 48 - 8) / templates.length;
+    const segmentWidth = (screenWidth - 48 - 8) / templates.length;
 
     const pillStyle = useAnimatedStyle(() => ({
         transform: [{
@@ -147,6 +150,8 @@ function TemplateSegment({
 
 // ── Main Modal ──
 export function ShareWorkoutModal({ visible, onClose, data, sessionId }: ShareWorkoutModalProps) {
+    const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
+    const { previewScale: PREVIEW_SCALE, scaledH: SCALED_H } = computePreviewScale(SCREEN_WIDTH, SCREEN_HEIGHT);
     const insets = useSafeAreaInsets();
     const scale = useSharedValue(0);
     const viewShotRef = useRef<ViewShot>(null);
@@ -269,8 +274,8 @@ export function ShareWorkoutModal({ visible, onClose, data, sessionId }: ShareWo
                     </View>
 
                     {/* ── Preview (large, dominant) ── */}
-                    <View style={styles.previewWrapper}>
-                        <View style={styles.previewFrame}>
+                    <View style={[styles.previewWrapper, { height: SCALED_H + 12 }]}>
+                        <View style={[styles.previewFrame, { transform: [{ scale: PREVIEW_SCALE }] }]}>
                             <ViewShot
                                 ref={viewShotRef}
                                 options={{ format: "png", quality: 1.0 }}
@@ -294,6 +299,7 @@ export function ShareWorkoutModal({ visible, onClose, data, sessionId }: ShareWo
                         templates={templates}
                         selected={selectedTemplate}
                         onSelect={setSelectedTemplate}
+                        screenWidth={SCREEN_WIDTH}
                     />
 
                     {/* ── Photo Controls ── */}
@@ -382,14 +388,12 @@ const styles = StyleSheet.create({
     previewWrapper: {
         alignItems: 'center',
         justifyContent: 'center',
-        height: SCALED_H + 12,
         marginBottom: 24,
     },
     previewFrame: {
         width: CARD_W,
         height: CARD_H,
         position: 'absolute',
-        transform: [{ scale: PREVIEW_SCALE }],
         borderRadius: 16,
         overflow: 'hidden',
         backgroundColor: '#f8fafc',

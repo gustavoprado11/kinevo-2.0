@@ -270,9 +270,8 @@ export async function processStudentPendingPush(studentId?: string): Promise<num
 export async function processPendingPush(trainerId?: string): Promise<number> {
     let query = supabaseAdmin
         .from('trainer_notifications')
-        .select('id, trainer_id, type, title, message, metadata')
-        .is('push_sent_at', null)
-        .eq('read', false)
+        .select('id, trainer_id, type, title, body, data')
+        .eq('is_read', false)
         .order('created_at', { ascending: true })
         .limit(50)
 
@@ -300,11 +299,11 @@ export async function processPendingPush(trainerId?: string): Promise<number> {
                 trainerId: tId,
                 type: notif.type,
                 title: notif.title,
-                body: notif.message,
+                body: notif.body,
                 notificationId: notif.id,
                 data: {
                     notificationId: notif.id,
-                    ...(notif.metadata as Record<string, string> ?? {}),
+                    ...(notif.data as Record<string, string> ?? {}),
                 },
             })
 

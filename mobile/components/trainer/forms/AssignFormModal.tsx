@@ -8,11 +8,11 @@ import {
     FlatList,
     TextInput,
     ActivityIndicator,
-    Alert,
     Image,
     KeyboardAvoidingView,
     Platform,
 } from "react-native";
+import { toast } from "@/lib/toast";
 import { X, Search, Check, RefreshCw } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { supabase } from "../../../lib/supabase";
@@ -131,7 +131,7 @@ export function AssignFormModal({ visible, template, onClose, onSuccess }: Props
             }
 
             const freqLabel = FREQUENCY_OPTIONS.find((f) => f.key === frequency)?.label ?? "";
-            Alert.alert(
+            toast.success(
                 "Enviado!",
                 `Formulário enviado para ${result.assigned_count} aluno(s).${
                     result.skipped_count > 0 ? ` ${result.skipped_count} já tinham pendente.` : ""
@@ -145,7 +145,7 @@ export function AssignFormModal({ visible, template, onClose, onSuccess }: Props
             onSuccess();
             onClose();
         } catch (err: any) {
-            Alert.alert("Erro", err.message || "Falha ao enviar formulário.");
+            toast.error("Erro", err.message || "Falha ao enviar formulário.");
         } finally {
             setIsSending(false);
         }

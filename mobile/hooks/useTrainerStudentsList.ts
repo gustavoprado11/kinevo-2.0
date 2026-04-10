@@ -1,6 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useRoleMode } from "../contexts/RoleModeContext";
+import { useDebounce } from "./useDebounce";
+import { useCachedQuery } from "./useCachedQuery";
+import { CACHE_KEYS, CACHE_TTL } from "../lib/cache-keys";
 
 // ── Types ──
 
@@ -28,53 +31,32 @@ export type StudentFilter = "all" | "attention" | "online" | "presencial" | "no_
 
 export function useTrainerStudentsList() {
     const { trainerId } = useRoleMode();
-    const [students, setStudents] = useState<TrainerStudent[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [isRefreshing, setIsRefreshing] = useState(false);
-    const [error, setError] = useState<string | null>(null);
     const [search, setSearch] = useState("");
+    const debouncedSearch = useDebounce(search, 300);
     const [filter, setFilter] = useState<StudentFilter>("all");
 
-    const fetchStudents = useCallback(async () => {
-        if (!trainerId) return;
-
-        try {
-            const { data, error: rpcError } = await supabase.rpc("get_trainer_students_list" as any);
-            if (rpcError) throw new Error(rpcError.message);
-            setStudents((data || []) as TrainerStudent[]);
-            setError(null);
-        } catch (err: any) {
-            if (__DEV__) console.error("[useTrainerStudentsList] fetch error:", err);
-            setError(err.message);
-        }
+    const fetcher = useCallback(async (): Promise<TrainerStudent[]> => {
+        const { data, error } = await supabase.rpc("get_trainer_students_list" as any);
+        if (error) throw new Error(error.message);
+        return (data || []) as TrainerStudent[];
     }, [trainerId]);
 
-    useEffect(() => {
-        if (!trainerId) return;
+    const { data: students, isLoading, isRefreshing, error, refresh } = useCachedQuery<TrainerStudent[]>({
+        cacheKey: CACHE_KEYS.STUDENTS_LIST,
+        fetcher,
+        ttl: CACHE_TTL.STUDENTS_LIST,
+        enabled: !!trainerId,
+    });
 
-        let mounted = true;
-        (async () => {
-            setIsLoading(true);
-            await fetchStudents();
-            if (mounted) setIsLoading(false);
-        })();
-
-        return () => { mounted = false; };
-    }, [trainerId, fetchStudents]);
-
-    const refresh = useCallback(async () => {
-        setIsRefreshing(true);
-        await fetchStudents();
-        setIsRefreshing(false);
-    }, [fetchStudents]);
+    const allStudents = students ?? [];
 
     // Filtered and searched students
     const filteredStudents = useMemo(() => {
-        let result = students;
+        let result = allStudents;
 
-        // Search filter
-        if (search.trim()) {
-            const q = search.toLowerCase().trim();
+        // Search filter (uses debounced value)
+        if (debouncedSearch.trim()) {
+            const q = debouncedSearch.toLowerCase().trim();
             result = result.filter(
                 (s) =>
                     s.name.toLowerCase().includes(q) ||
@@ -106,22 +88,22 @@ export function useTrainerStudentsList() {
         }
 
         return result;
-    }, [students, search, filter]);
+    }, [allStudents, debouncedSearch, filter]);
 
     const counts = useMemo(() => {
         const fiveDaysAgo = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000);
         return {
-            all: students.length,
-            attention: students.filter((s) => {
+            all: allStudents.length,
+            attention: allStudents.filter((s) => {
                 if (s.is_trainer_profile || !s.program_name) return false;
                 if (!s.last_session_date) return true;
                 return new Date(s.last_session_date) < fiveDaysAgo;
             }).length,
-            online: students.filter((s) => s.modality === "online").length,
-            presencial: students.filter((s) => s.modality === "presencial").length,
-            no_program: students.filter((s) => !s.program_name && !s.is_trainer_profile).length,
+            online: allStudents.filter((s) => s.modality === "online").length,
+            presencial: allStudents.filter((s) => s.modality === "presencial").length,
+            no_program: allStudents.filter((s) => !s.program_name && !s.is_trainer_profile).length,
         };
-    }, [students]);
+    }, [allStudents]);
 
     return {
         students: filteredStudents,

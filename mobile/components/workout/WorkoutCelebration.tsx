@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback, useMemo } from 'react';
-import { View, Text, TouchableOpacity, Dimensions, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, useWindowDimensions, StyleSheet } from 'react-native';
 import Animated, {
     useSharedValue,
     useAnimatedStyle,
@@ -13,7 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { Check } from 'lucide-react-native';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+// SCREEN_WIDTH / SCREEN_HEIGHT now come from useWindowDimensions inside the component
 
 // ─── Types ──────────────────────────────────────────────────────────────────────
 
@@ -77,10 +77,10 @@ interface ParticleConfig {
     maxOpacity: number;
 }
 
-function generateParticles(count: number): ParticleConfig[] {
+function generateParticles(count: number, screenWidth: number, screenHeight: number): ParticleConfig[] {
     const particles: ParticleConfig[] = [];
-    const centerX = SCREEN_WIDTH / 2;
-    const centerY = SCREEN_HEIGHT * 0.32;
+    const centerX = screenWidth / 2;
+    const centerY = screenHeight * 0.32;
 
     for (let i = 0; i < count; i++) {
         const angle = (i / count) * Math.PI * 2 + (Math.random() - 0.5) * 0.8;
@@ -100,8 +100,6 @@ function generateParticles(count: number): ParticleConfig[] {
 
     return particles;
 }
-
-const PARTICLES = generateParticles(24);
 
 // ─── Particle Component ─────────────────────────────────────────────────────────
 
@@ -166,6 +164,9 @@ function StatItem({ value, label }: { value: string; label: string }) {
 // ─── Main Component ─────────────────────────────────────────────────────────────
 
 export function WorkoutCelebration({ visible, onComplete, data }: WorkoutCelebrationProps) {
+    const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+    const particles = useMemo(() => generateParticles(24, screenWidth, screenHeight), [screenWidth, screenHeight]);
+
     const overlayOpacity = useSharedValue(0);
     const checkScale = useSharedValue(0.3);
     const checkOpacity = useSharedValue(0);
@@ -293,7 +294,7 @@ export function WorkoutCelebration({ visible, onComplete, data }: WorkoutCelebra
 
             {/* Particles */}
             <Animated.View style={[StyleSheet.absoluteFill, particlesStyle]} pointerEvents="none">
-                {PARTICLES.map((particle, index) => (
+                {particles.map((particle, index) => (
                     <Particle key={index} config={particle} />
                 ))}
             </Animated.View>
@@ -301,7 +302,7 @@ export function WorkoutCelebration({ visible, onComplete, data }: WorkoutCelebra
             {/* Content */}
             <View style={styles.content}>
                 {/* Glow behind check */}
-                <Animated.View style={[styles.checkGlow, glowStyle]} />
+                <Animated.View style={[styles.checkGlow, { top: screenHeight * 0.32 - 65 }, glowStyle]} />
 
                 {/* Check circle */}
                 <Animated.View style={[styles.checkCircle, checkContainerStyle]}>
@@ -369,7 +370,6 @@ const styles = StyleSheet.create({
         height: 130,
         borderRadius: 65,
         backgroundColor: 'rgba(124, 58, 237, 0.18)',
-        top: SCREEN_HEIGHT * 0.32 - 65,
     },
     checkCircle: {
         width: 88,

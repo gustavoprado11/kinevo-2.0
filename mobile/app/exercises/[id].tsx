@@ -1,12 +1,27 @@
-import React, { useEffect, useState } from "react";
-import { View, Text, ScrollView, ActivityIndicator, useWindowDimensions } from "react-native";
-import { Stack, useLocalSearchParams } from "expo-router";
+import React, { useEffect, useState, useCallback } from "react";
+import {
+    View,
+    Text,
+    ScrollView,
+    ActivityIndicator,
+    useWindowDimensions,
+    TouchableOpacity,
+    Alert,
+} from "react-native";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import YoutubePlayer from "react-native-youtube-iframe";
+import * as Haptics from "expo-haptics";
+import { Pencil, Trash2, Shield } from "lucide-react-native";
 import { supabase } from "../../lib/supabase";
+import { useAuth } from "../../contexts/AuthContext";
+import { useExerciseCrud } from "../../hooks/useExerciseCrud";
+import { useExerciseLibrary, type Exercise } from "../../hooks/useExerciseLibrary";
+import { ExerciseFormModal } from "../../components/trainer/exercises/ExerciseFormModal";
 import { extractYouTubeId, isDirectVideoUrl } from "../../utils/youtube";
-import type { Exercise } from "../../hooks/useExerciseLibrary";
+import { toast } from "../../lib/toast";
+import type { ExerciseFormData } from "../../hooks/useExerciseCrud";
 
-// Lazy-load expo-av to avoid crash when native module is not linked
+// Lazy-load expo-av
 let ExpoVideo: any = null;
 let ExpoResizeMode: any = null;
 let expoAvLoaded = false;
@@ -17,7 +32,7 @@ try {
     ExpoResizeMode = av.ResizeMode;
     expoAvLoaded = true;
 } catch {
-    // expo-av not available — direct video playback will be disabled
+    // expo-av not available
 }
 
 const DIFFICULTY_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
@@ -29,68 +44,100 @@ const DIFFICULTY_CONFIG: Record<string, { label: string; color: string; bg: stri
 export default function ExerciseDetailScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const { width } = useWindowDimensions();
+    const { user } = useAuth();
+    const router = useRouter();
+    const { muscleGroups } = useExerciseLibrary();
+
     const [exercise, setExercise] = useState<Exercise | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [showEditModal, setShowEditModal] = useState(false);
+
+    const fetchExercise = useCallback(async () => {
+        try {
+            const { data } = await (supabase as any)
+                .from("exercises")
+                .select(
+                    "id, name, equipment, owner_id, video_url, instructions, difficulty_level, exercise_muscle_groups(muscle_groups(id, name))"
+                )
+                .eq("id", id)
+                .single();
+
+            if (data) {
+                setExercise({
+                    id: data.id,
+                    name: data.name,
+                    equipment: data.equipment,
+                    owner_id: data.owner_id,
+                    video_url: data.video_url,
+                    instructions: data.instructions,
+                    difficulty_level: data.difficulty_level,
+                    muscle_groups: ((data as any).exercise_muscle_groups ?? [])
+                        .map((emg: any) => emg.muscle_groups)
+                        .filter(Boolean),
+                });
+            }
+        } catch (err) {
+            if (__DEV__) console.error("[exercise-detail] Error:", err);
+        } finally {
+            setIsLoading(false);
+        }
+    }, [id]);
 
     useEffect(() => {
-        async function fetch() {
+        fetchExercise();
+    }, [fetchExercise]);
+
+    const { updateExercise, deleteExercise, isSaving } = useExerciseCrud(() => {
+        fetchExercise();
+    });
+
+    const isOwner = exercise?.owner_id === user?.id;
+    const isSystem = exercise?.owner_id === null;
+
+    const handleEdit = useCallback(
+        async (data: ExerciseFormData) => {
+            if (!exercise) return;
             try {
-                const { data } = await (supabase as any)
-                    .from("exercises")
-                    .select("id, name, equipment, owner_id, video_url, instructions, difficulty_level, exercise_muscle_groups(muscle_groups(id, name))")
-                    .eq("id", id)
-                    .single();
-
-                if (data) {
-                    // Resolve trainer custom video
-                    let resolvedVideoUrl = data.video_url;
-                    const { data: studentData } = await (supabase as any)
-                        .from("students")
-                        .select("coach_id")
-                        .eq("auth_user_id", (await supabase.auth.getUser()).data.user?.id)
-                        .single();
-
-                    if (studentData?.coach_id) {
-                        const { data: trainerVideo } = await (supabase as any)
-                            .from("trainer_exercise_videos")
-                            .select("video_url")
-                            .eq("trainer_id", studentData.coach_id)
-                            .eq("exercise_id", data.id)
-                            .single();
-
-                        if (trainerVideo?.video_url) {
-                            resolvedVideoUrl = trainerVideo.video_url;
-                        }
-                    }
-
-                    setExercise({
-                        id: data.id,
-                        name: data.name,
-                        equipment: data.equipment,
-                        owner_id: data.owner_id,
-                        video_url: resolvedVideoUrl,
-                        instructions: data.instructions,
-                        difficulty_level: data.difficulty_level,
-                        muscle_groups: ((data as any).exercise_muscle_groups ?? [])
-                            .map((emg: any) => emg.muscle_groups)
-                            .filter(Boolean),
-                    });
-                }
-            } catch (err) {
-                if (__DEV__) console.error("[exercise-detail] Error:", err);
-            } finally {
-                setIsLoading(false);
+                await updateExercise(exercise.id, data);
+                toast.success("Exercício atualizado!");
+                setShowEditModal(false);
+            } catch (err: unknown) {
+                const message = err instanceof Error ? err.message : "Falha ao atualizar.";
+                toast.error("Erro", message);
             }
-        }
-        fetch();
-    }, [id]);
+        },
+        [exercise, updateExercise]
+    );
+
+    const handleDelete = useCallback(() => {
+        if (!exercise) return;
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        Alert.alert(
+            "Excluir exercício",
+            `Deseja excluir "${exercise.name}"? Esta ação não pode ser desfeita.`,
+            [
+                { text: "Cancelar", style: "cancel" },
+                {
+                    text: "Excluir",
+                    style: "destructive",
+                    onPress: async () => {
+                        try {
+                            await deleteExercise(exercise.id);
+                            toast.success("Exercício excluído!");
+                            router.back();
+                        } catch (err: unknown) {
+                            const message = err instanceof Error ? err.message : "Falha ao excluir.";
+                            toast.error("Erro", message);
+                        }
+                    },
+                },
+            ]
+        );
+    }, [exercise, deleteExercise, router]);
 
     const videoId = exercise ? extractYouTubeId(exercise.video_url) : null;
     const isDirect = exercise ? isDirectVideoUrl(exercise.video_url) : false;
-    const difficulty = exercise?.difficulty_level
-        ? DIFFICULTY_CONFIG[exercise.difficulty_level]
-        : null;
-    const isSystem = exercise?.owner_id === null;
+    const difficulty = exercise?.difficulty_level ? DIFFICULTY_CONFIG[exercise.difficulty_level] : null;
 
     if (isLoading) {
         return (
@@ -205,11 +252,87 @@ export default function ExerciseDetailScreen() {
                     </View>
                 </View>
 
-                {/* Footer */}
-                <Text style={{ textAlign: "center", fontSize: 12, color: "#94a3b8", marginTop: 24, paddingHorizontal: 40 }}>
-                    Para editar este exercício, use a versão web
-                </Text>
+                {/* Action buttons */}
+                {isOwner && (
+                    <View style={{ paddingHorizontal: 20, paddingTop: 16, gap: 10 }}>
+                        <TouchableOpacity
+                            onPress={() => {
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                setShowEditModal(true);
+                            }}
+                            activeOpacity={0.7}
+                            accessibilityLabel="Editar exercício"
+                            accessibilityRole="button"
+                            style={{
+                                flexDirection: "row",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                backgroundColor: "#7c3aed",
+                                borderRadius: 14,
+                                paddingVertical: 14,
+                                gap: 8,
+                            }}
+                        >
+                            <Pencil size={18} color="#ffffff" />
+                            <Text style={{ fontSize: 15, fontWeight: "700", color: "#ffffff" }}>
+                                Editar exercício
+                            </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            onPress={handleDelete}
+                            activeOpacity={0.7}
+                            accessibilityLabel="Excluir exercício"
+                            accessibilityRole="button"
+                            style={{
+                                flexDirection: "row",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                backgroundColor: "#fef2f2",
+                                borderRadius: 14,
+                                paddingVertical: 14,
+                                gap: 8,
+                            }}
+                        >
+                            <Trash2 size={18} color="#ef4444" />
+                            <Text style={{ fontSize: 15, fontWeight: "700", color: "#ef4444" }}>
+                                Excluir exercício
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
+
+                {isSystem && (
+                    <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
+                        <View
+                            style={{
+                                flexDirection: "row",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                backgroundColor: "#f1f5f9",
+                                borderRadius: 12,
+                                paddingVertical: 12,
+                                gap: 8,
+                            }}
+                        >
+                            <Shield size={16} color="#94a3b8" />
+                            <Text style={{ fontSize: 13, fontWeight: "500", color: "#94a3b8" }}>
+                                Exercício do sistema — somente leitura
+                            </Text>
+                        </View>
+                    </View>
+                )}
             </ScrollView>
+
+            {/* Edit Modal */}
+            <ExerciseFormModal
+                visible={showEditModal}
+                exercise={exercise}
+                muscleGroups={muscleGroups}
+                onClose={() => setShowEditModal(false)}
+                onSave={handleEdit}
+                isSaving={isSaving}
+            />
         </>
     );
 }

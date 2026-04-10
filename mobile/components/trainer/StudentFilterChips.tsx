@@ -1,6 +1,7 @@
 import React from "react";
 import { ScrollView, Text } from "react-native";
 import { PressableScale } from "../shared/PressableScale";
+import { colors } from "@/theme";
 import type { StudentFilter } from "../../hooks/useTrainerStudentsList";
 
 interface FilterChipProps {
@@ -15,14 +16,17 @@ function FilterChip({ label, count, active, onPress }: FilterChipProps) {
         <PressableScale
             onPress={onPress}
             pressScale={0.95}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: active }}
+            accessibilityLabel={`Filtro ${label}, ${count} alunos`}
             style={{
-                backgroundColor: active ? "#7c3aed" : "#ffffff",
+                backgroundColor: active ? colors.brand.primary : colors.background.card,
                 borderRadius: 100,
                 paddingHorizontal: 14,
                 paddingVertical: 8,
                 marginRight: 8,
                 borderWidth: 1,
-                borderColor: active ? "#7c3aed" : "rgba(0,0,0,0.06)",
+                borderColor: active ? colors.brand.primary : "rgba(0,0,0,0.06)",
                 flexDirection: "row",
                 alignItems: "center",
                 gap: 6,
@@ -32,7 +36,7 @@ function FilterChip({ label, count, active, onPress }: FilterChipProps) {
                 style={{
                     fontSize: 13,
                     fontWeight: "600",
-                    color: active ? "#ffffff" : "#475569",
+                    color: active ? colors.text.inverse : "#475569",
                 }}
             >
                 {label}
@@ -42,7 +46,7 @@ function FilterChip({ label, count, active, onPress }: FilterChipProps) {
                     style={{
                         fontSize: 11,
                         fontWeight: "700",
-                        color: active ? "rgba(255,255,255,0.8)" : "#94a3b8",
+                        color: active ? "rgba(255,255,255,0.8)" : colors.text.tertiary,
                     }}
                 >
                     {count}

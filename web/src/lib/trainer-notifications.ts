@@ -5,6 +5,7 @@ interface TrainerNotificationParams {
     type: string
     title: string
     message: string
+    category?: string
     metadata?: Record<string, unknown>
 }
 
@@ -21,8 +22,9 @@ export async function insertTrainerNotification(params: TrainerNotificationParam
                 trainer_id: params.trainerId,
                 type: params.type,
                 title: params.title,
-                message: params.message,
-                metadata: params.metadata ?? {},
+                body: params.message,
+                data: params.metadata ?? {},
+                category: params.category ?? 'students',
             })
             .select('id')
             .single()

@@ -4,8 +4,16 @@ import * as Notifications from "expo-notifications";
 import type { EventSubscription } from "expo-modules-core";
 import { useRouter } from "expo-router";
 import { supabase } from "../lib/supabase";
+import { useNotificationStore } from "../stores/notification-store";
 
 const API_URL = process.env.EXPO_PUBLIC_WEB_URL || "https://app.kinevo.com.br";
+
+function getCategoryFromType(type: string): string {
+    if (['form_request', 'feedback', 'form_submission'].includes(type)) return 'forms';
+    if (['payment_received', 'payment_failed', 'payment_overdue', 'subscription_canceled', 'cancellation_alert'].includes(type)) return 'payments';
+    if (['program_assigned', 'program_expired'].includes(type)) return 'programs';
+    return 'students';
+}
 
 /**
  * Registers for push notifications and sends the token to the backend.
@@ -73,6 +81,7 @@ export function usePushNotifications(role: "trainer" | "student" | null) {
     const router = useRouter();
     const notificationListener = useRef<EventSubscription>(null);
     const responseListener = useRef<EventSubscription>(null);
+    const incrementUnread = useNotificationStore((s) => s.incrementUnread);
 
     useEffect(() => {
         if (!role) return;
@@ -95,9 +104,30 @@ export function usePushNotifications(role: "trainer" | "student" | null) {
             }),
         });
 
-        // Listen for incoming notifications (foreground)
-        notificationListener.current = Notifications.addNotificationReceivedListener((notification) => {
+        // Listen for incoming notifications (foreground) — persist to DB
+        notificationListener.current = Notifications.addNotificationReceivedListener(async (notification) => {
             if (__DEV__) console.log("[push] Notification received:", notification.request.content.title);
+
+            if (role === "trainer") {
+                const content = notification.request.content;
+                const notifData = (content.data ?? {}) as Record<string, string>;
+                const notifType = notifData.type ?? "unknown";
+
+                const { error } = await (supabase as any).from("trainer_notifications").insert({
+                    trainer_id: (await supabase.auth.getUser()).data.user?.id,
+                    type: notifType,
+                    category: getCategoryFromType(notifType),
+                    title: content.title ?? "Notificação",
+                    body: content.body ?? null,
+                    data: notifData,
+                });
+
+                if (!error) {
+                    incrementUnread();
+                } else if (__DEV__) {
+                    console.error("[push] Failed to persist notification:", error.message);
+                }
+            }
         });
 
         // Listen for notification taps — deep link based on data.type
@@ -120,8 +150,15 @@ export function usePushNotifications(role: "trainer" | "student" | null) {
                 case "message":
                 case "student_message":
                 case "text_message":
-                    // Trainer sent a message — open the inbox/chat tab
-                    router.push("/(tabs)/inbox");
+                    if (role === 'trainer' && (data?.studentId || data?.student_id)) {
+                        const sid = (data.studentId || data.student_id) as string;
+                        router.push({
+                            pathname: '/messages/[studentId]',
+                            params: { studentId: sid },
+                        } as any);
+                    } else {
+                        router.push("/(tabs)/inbox");
+                    }
                     break;
                 case "program_assigned":
                     // Navigate to home so the student sees the new program
@@ -181,5 +218,5 @@ export function usePushNotifications(role: "trainer" | "student" | null) {
             notificationListener.current?.remove();
             responseListener.current?.remove();
         };
-    }, [role, router]);
+    }, [role, router, incrementUnread]);
 }

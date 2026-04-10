@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, Image } from "react-native";
 import { ChevronRight } from "lucide-react-native";
 import { PressableScale } from "../shared/PressableScale";
+import { colors } from "@/theme";
 import type { TrainerStudent } from "../../hooks/useTrainerStudentsList";
 
 function relativeDate(dateStr: string | null): string {
@@ -19,13 +20,13 @@ function relativeDate(dateStr: string | null): string {
 function statusBadge(status: string): { label: string; bg: string; color: string } {
     switch (status) {
         case "active":
-            return { label: "Ativo", bg: "#f0fdf4", color: "#16a34a" };
+            return { label: "Ativo", bg: colors.status.activeBg, color: colors.status.active };
         case "inactive":
-            return { label: "Inativo", bg: "#fef2f2", color: "#ef4444" };
+            return { label: "Inativo", bg: colors.error.light, color: colors.error.default };
         case "pending":
-            return { label: "Pendente", bg: "#fffbeb", color: "#f59e0b" };
+            return { label: "Pendente", bg: colors.status.pendingBg, color: colors.status.pending };
         default:
-            return { label: status, bg: "#f1f5f9", color: "#64748b" };
+            return { label: status, bg: colors.status.inactiveBg, color: colors.text.secondary };
     }
 }
 
@@ -38,9 +39,10 @@ function modalityLabel(modality: string | null): string {
 interface StudentCardProps {
     student: TrainerStudent;
     onPress: () => void;
+    selected?: boolean;
 }
 
-export function StudentCard({ student, onPress }: StudentCardProps) {
+export function StudentCard({ student, onPress, selected }: StudentCardProps) {
     const badge = statusBadge(student.status);
     const initials = student.name
         .split(" ")
@@ -53,13 +55,18 @@ export function StudentCard({ student, onPress }: StudentCardProps) {
         <PressableScale
             onPress={onPress}
             pressScale={0.98}
+            accessibilityRole="button"
+            accessibilityLabel={`Aluno ${student.name}, status ${badge.label}${student.program_name ? `, programa ${student.program_name}` : ''}`}
+            accessibilityHint="Toque para ver detalhes do aluno"
             style={{
-                backgroundColor: "#ffffff",
+                backgroundColor: selected ? `${colors.brand.primaryLight}19` : colors.background.card,
                 borderRadius: 20,
                 padding: 14,
                 marginBottom: 10,
                 borderWidth: 1,
-                borderColor: "rgba(0,0,0,0.04)",
+                borderColor: selected ? colors.brand.primary : colors.border.primary,
+                borderLeftWidth: selected ? 3 : 1,
+                borderLeftColor: selected ? colors.brand.primary : colors.border.primary,
                 shadowColor: "#000",
                 shadowOffset: { width: 0, height: 2 },
                 shadowOpacity: 0.04,
@@ -72,7 +79,7 @@ export function StudentCard({ student, onPress }: StudentCardProps) {
                 {student.avatar_url ? (
                     <Image
                         source={{ uri: student.avatar_url }}
-                        style={{ width: 44, height: 44, borderRadius: 14, marginRight: 12, backgroundColor: "#f1f5f9" }}
+                        style={{ width: 44, height: 44, borderRadius: 14, marginRight: 12, backgroundColor: colors.status.inactiveBg }}
                     />
                 ) : (
                     <View
@@ -80,13 +87,13 @@ export function StudentCard({ student, onPress }: StudentCardProps) {
                             width: 44,
                             height: 44,
                             borderRadius: 14,
-                            backgroundColor: "#f5f3ff",
+                            backgroundColor: colors.brand.primaryLight,
                             alignItems: "center",
                             justifyContent: "center",
                             marginRight: 12,
                         }}
                     >
-                        <Text style={{ fontSize: 14, fontWeight: "700", color: "#7c3aed" }}>
+                        <Text style={{ fontSize: 14, fontWeight: "700", color: colors.brand.primary }}>
                             {initials}
                         </Text>
                     </View>
@@ -95,25 +102,25 @@ export function StudentCard({ student, onPress }: StudentCardProps) {
                 {/* Info */}
                 <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                        <Text style={{ fontSize: 14, fontWeight: "700", color: "#0f172a" }} numberOfLines={1}>
+                        <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text.primary }} numberOfLines={1}>
                             {student.name}
                         </Text>
                         {student.is_trainer_profile && (
                             <View
                                 style={{
-                                    backgroundColor: "#f5f3ff",
+                                    backgroundColor: colors.brand.primaryLight,
                                     paddingHorizontal: 6,
                                     paddingVertical: 1,
                                     borderRadius: 6,
                                 }}
                             >
-                                <Text style={{ fontSize: 9, fontWeight: "700", color: "#7c3aed" }}>EU</Text>
+                                <Text style={{ fontSize: 9, fontWeight: "700", color: colors.brand.primary }}>EU</Text>
                             </View>
                         )}
                     </View>
 
                     {/* Program + Progress */}
-                    <Text style={{ fontSize: 12, color: "#64748b", marginTop: 3 }} numberOfLines={1}>
+                    <Text style={{ fontSize: 12, color: colors.text.secondary, marginTop: 3 }} numberOfLines={1}>
                         {student.program_name || "Sem programa"}
                         {student.program_name && student.expected_per_week > 0
                             ? ` — ${student.sessions_this_week}/${student.expected_per_week}`
@@ -129,8 +136,8 @@ export function StudentCard({ student, onPress }: StudentCardProps) {
 
                         {/* Modality */}
                         {student.modality && (
-                            <View style={{ backgroundColor: "#f1f5f9", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 100 }}>
-                                <Text style={{ fontSize: 10, fontWeight: "600", color: "#64748b" }}>
+                            <View style={{ backgroundColor: colors.status.inactiveBg, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 100 }}>
+                                <Text style={{ fontSize: 10, fontWeight: "600", color: colors.text.secondary }}>
                                     {modalityLabel(student.modality)}
                                 </Text>
                             </View>
@@ -138,14 +145,14 @@ export function StudentCard({ student, onPress }: StudentCardProps) {
 
                         {/* Last session */}
                         <View style={{ backgroundColor: "#f8fafc", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 100 }}>
-                            <Text style={{ fontSize: 10, fontWeight: "500", color: "#94a3b8" }}>
+                            <Text style={{ fontSize: 10, fontWeight: "500", color: colors.text.tertiary }}>
                                 {relativeDate(student.last_session_date)}
                             </Text>
                         </View>
                     </View>
                 </View>
 
-                <ChevronRight size={18} color="#cbd5e1" />
+                <ChevronRight size={18} color={colors.text.quaternary} />
             </View>
         </PressableScale>
     );

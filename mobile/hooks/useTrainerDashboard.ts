@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 import { supabase } from "../lib/supabase";
 import { useRoleMode } from "../contexts/RoleModeContext";
-
-// Phase 2: useTrainerWorkoutSession — Zustand store ported from web/src/stores/training-room-store.ts
-// Phase 2: trainer_finish_workout_session RPC — SECURITY DEFINER to create workout_session + set_logs
+import { useCachedQuery } from "./useCachedQuery";
+import { CACHE_KEYS, CACHE_TTL } from "../lib/cache-keys";
 
 // ── Types ──
 
@@ -68,65 +67,46 @@ export interface PendingActions {
     expiringPrograms: ExpiringProgramItem[];
 }
 
+interface DashboardData {
+    stats: TrainerStats;
+    pendingActions: PendingActions;
+    dailyActivity: DailyActivityItem[];
+}
+
 // ── Hook ──
 
 export function useTrainerDashboard() {
     const { trainerId } = useRoleMode();
-    const [stats, setStats] = useState<TrainerStats | null>(null);
-    const [pendingActions, setPendingActions] = useState<PendingActions | null>(null);
-    const [dailyActivity, setDailyActivity] = useState<DailyActivityItem[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [isRefreshing, setIsRefreshing] = useState(false);
-    const [error, setError] = useState<string | null>(null);
 
-    const fetchDashboard = useCallback(async () => {
-        if (!trainerId) return;
+    const fetcher = useCallback(async (): Promise<DashboardData> => {
+        const [statsRes, pendingRes, activityRes] = await Promise.all([
+            supabase.rpc("get_trainer_stats" as any),
+            supabase.rpc("get_trainer_pending_actions" as any),
+            supabase.rpc("get_trainer_daily_activity" as any),
+        ]);
 
-        try {
-            // Parallel RPC calls for all 3 dashboard sections
-            const [statsRes, pendingRes, activityRes] = await Promise.all([
-                supabase.rpc("get_trainer_stats" as any),
-                supabase.rpc("get_trainer_pending_actions" as any),
-                supabase.rpc("get_trainer_daily_activity" as any),
-            ]);
+        if (statsRes.error) throw new Error(statsRes.error.message);
+        if (pendingRes.error) throw new Error(pendingRes.error.message);
+        if (activityRes.error) throw new Error(activityRes.error.message);
 
-            if (statsRes.error) throw new Error(statsRes.error.message);
-            if (pendingRes.error) throw new Error(pendingRes.error.message);
-            if (activityRes.error) throw new Error(activityRes.error.message);
-
-            setStats(statsRes.data as TrainerStats);
-            setPendingActions(pendingRes.data as PendingActions);
-            setDailyActivity((activityRes.data || []) as DailyActivityItem[]);
-            setError(null);
-        } catch (err: any) {
-            if (__DEV__) console.error("[useTrainerDashboard] fetch error:", err);
-            setError(err.message);
-        }
+        return {
+            stats: statsRes.data as TrainerStats,
+            pendingActions: pendingRes.data as PendingActions,
+            dailyActivity: (activityRes.data || []) as DailyActivityItem[],
+        };
     }, [trainerId]);
 
-    useEffect(() => {
-        if (!trainerId) return;
-
-        let mounted = true;
-        (async () => {
-            setIsLoading(true);
-            await fetchDashboard();
-            if (mounted) setIsLoading(false);
-        })();
-
-        return () => { mounted = false; };
-    }, [trainerId, fetchDashboard]);
-
-    const refresh = useCallback(async () => {
-        setIsRefreshing(true);
-        await fetchDashboard();
-        setIsRefreshing(false);
-    }, [fetchDashboard]);
+    const { data, isLoading, isRefreshing, error, refresh } = useCachedQuery<DashboardData>({
+        cacheKey: CACHE_KEYS.DASHBOARD_STATS,
+        fetcher,
+        ttl: CACHE_TTL.DASHBOARD,
+        enabled: !!trainerId,
+    });
 
     return {
-        stats,
-        pendingActions,
-        dailyActivity,
+        stats: data?.stats ?? null,
+        pendingActions: data?.pendingActions ?? null,
+        dailyActivity: data?.dailyActivity ?? [],
         isLoading,
         isRefreshing,
         error,

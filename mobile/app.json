@@ -3,7 +3,7 @@
     "name": "Kinevo",
     "slug": "kinevo",
     "version": "1.2.3",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
@@ -23,6 +23,12 @@
         "aps-environment": "production"
       },
       "infoPlist": {
+        "UISupportedInterfaceOrientations~ipad": [
+          "UIInterfaceOrientationPortrait",
+          "UIInterfaceOrientationPortraitUpsideDown",
+          "UIInterfaceOrientationLandscapeLeft",
+          "UIInterfaceOrientationLandscapeRight"
+        ],
         "ITSAppUsesNonExemptEncryption": false,
         "NSSupportsLiveActivities": true,
         "NSHealthShareUsageDescription": "O Kinevo usa dados de saúde para mostrar frequência cardíaca durante o treino.",

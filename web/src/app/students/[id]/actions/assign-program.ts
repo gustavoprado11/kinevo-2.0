@@ -41,11 +41,12 @@ export async function assignProgram({ studentId, templateId, startDate, isSchedu
 
         if (!student) throw new Error('Student not found or unauthorized')
 
-        // 3. Get template data
+        // 3. Get template data (filter by trainer_id for security)
         const { data: template } = await supabase
             .from('program_templates')
             .select('*')
             .eq('id', templateId)
+            .eq('trainer_id', trainer.id)
             .single()
 
         if (!template) throw new Error('Template not found')
@@ -227,7 +228,7 @@ export async function assignProgram({ studentId, templateId, startDate, isSchedu
                             if (groups.length > 0) exerciseMuscleGroup = groups.join(', ')
                         }
 
-                        await supabase
+                        const { error: childItemError } = await supabase
                             .from('assigned_workout_items')
                             .insert({
                                 assigned_workout_id: assignedWorkout.id,
@@ -247,6 +248,8 @@ export async function assignProgram({ studentId, templateId, startDate, isSchedu
                                 item_config: item.item_config || {},
                                 parent_item_id: parentAssignedId
                             })
+
+                        if (childItemError) throw childItemError
                     }
                 }
             }

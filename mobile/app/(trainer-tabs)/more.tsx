@@ -7,8 +7,6 @@ import {
     Bell,
     ChevronRight,
     Crown,
-    DollarSign,
-    Dumbbell,
     ExternalLink,
     LogOut,
     MessageCircle,
@@ -187,29 +185,10 @@ export default function MoreScreen() {
                     </View>
                 </Animated.View>
 
-                {/* ── Ferramentas ── */}
-                <SectionHeader title="Ferramentas" delay={100} />
+                {/* ── Comunicação ── */}
+                <SectionHeader title="Comunicação" delay={100} />
                 <Animated.View
                     entering={FadeInUp.delay(120).duration(300).easing(Easing.out(Easing.cubic))}
-                    style={CARD_STYLE}
-                >
-                    <MenuRow
-                        icon={<IconBox bg="#f5f3ff"><DollarSign size={18} color="#7c3aed" /></IconBox>}
-                        label="Financeiro"
-                        onPress={() => router.push("/financial" as any)}
-                    />
-                    <Divider />
-                    <MenuRow
-                        icon={<IconBox bg="#fef3c7"><Dumbbell size={18} color="#d97706" /></IconBox>}
-                        label="Exercícios"
-                        onPress={() => router.push("/exercises" as any)}
-                    />
-                </Animated.View>
-
-                {/* ── Comunicação ── */}
-                <SectionHeader title="Comunicação" delay={160} />
-                <Animated.View
-                    entering={FadeInUp.delay(180).duration(300).easing(Easing.out(Easing.cubic))}
                     style={CARD_STYLE}
                 >
                     <MenuRow
@@ -220,9 +199,9 @@ export default function MoreScreen() {
                 </Animated.View>
 
                 {/* ── Conta ── */}
-                <SectionHeader title="Conta" delay={220} />
+                <SectionHeader title="Conta" delay={160} />
                 <Animated.View
-                    entering={FadeInUp.delay(240).duration(300).easing(Easing.out(Easing.cubic))}
+                    entering={FadeInUp.delay(180).duration(300).easing(Easing.out(Easing.cubic))}
                     style={CARD_STYLE}
                 >
                     {/* Subscription */}
@@ -259,9 +238,9 @@ export default function MoreScreen() {
                 </Animated.View>
 
                 {/* ── Suporte ── */}
-                <SectionHeader title="Suporte" delay={280} />
+                <SectionHeader title="Suporte" delay={220} />
                 <Animated.View
-                    entering={FadeInUp.delay(300).duration(300).easing(Easing.out(Easing.cubic))}
+                    entering={FadeInUp.delay(240).duration(300).easing(Easing.out(Easing.cubic))}
                     style={CARD_STYLE}
                 >
                     <MenuRow

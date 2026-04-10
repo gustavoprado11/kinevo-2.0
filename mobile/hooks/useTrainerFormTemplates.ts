@@ -12,6 +12,7 @@ export interface FormTemplate {
     created_at: string;
     question_count: number;
     response_count: number;
+    trainer_id?: string | null;
 }
 
 export function useTrainerFormTemplates() {

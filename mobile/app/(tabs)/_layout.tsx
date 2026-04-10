@@ -1,5 +1,5 @@
-import React, { useRef, useEffect } from "react";
-import { Tabs } from "expo-router";
+import React, { useRef, useEffect, useCallback } from "react";
+import { Tabs, usePathname, useRouter } from "expo-router";
 import { Home, User, Clock, MessageCircle } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StyleSheet, View, Text, Platform } from "react-native";
@@ -12,6 +12,8 @@ import Animated, {
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { useUnreadCount } from "../../hooks/useUnreadCount";
+import { useResponsive } from "../../hooks/useResponsive";
+import { NavigationSidebar, TabConfig } from "../../components/shared/NavigationSidebar";
 import { ANIM } from "../../lib/animations";
 
 // ─── Animated Tab Icon ───
@@ -91,34 +93,55 @@ function AnimatedTabIcon({
 export default function TabsLayout() {
     const insets = useSafeAreaInsets();
     const { total: unreadCount } = useUnreadCount();
+    const { isTablet, isLandscape } = useResponsive();
+    const router = useRouter();
+    const pathname = usePathname();
 
-    return (
+    const STUDENT_TABS: TabConfig[] = [
+        { key: 'home', label: 'Início', icon: Home },
+        { key: 'inbox', label: 'Mensagens', icon: MessageCircle, badge: unreadCount },
+        { key: 'logs', label: 'Histórico', icon: Clock },
+        { key: 'profile', label: 'Perfil', icon: User },
+    ];
+
+    const activeTab = STUDENT_TABS.find(t => pathname.includes(t.key))?.key ?? 'home';
+
+    const handleTabPress = useCallback((tabKey: string) => {
+        router.navigate(`/(tabs)/${tabKey}` as any);
+    }, [router]);
+
+    const tabBarStyle = isTablet
+        ? { display: 'none' as const }
+        : {
+            position: 'absolute' as const,
+            bottom: 0,
+            left: 0,
+            right: 0,
+            backgroundColor: 'transparent',
+            borderTopWidth: StyleSheet.hairlineWidth,
+            borderTopColor: 'rgba(0, 0, 0, 0.08)',
+            elevation: 0,
+            shadowOpacity: 0,
+            height: 50 + insets.bottom,
+            paddingBottom: insets.bottom,
+        };
+
+    const tabContent = (
         <Tabs
             screenOptions={{
                 headerShown: false,
-                tabBarBackground: () => (
-                    <BlurView
-                        tint="light"
-                        intensity={90}
-                        style={[
-                            StyleSheet.absoluteFill,
-                            { backgroundColor: 'rgba(255, 255, 255, 0.78)' },
-                        ]}
-                    />
-                ),
-                tabBarStyle: {
-                    position: 'absolute',
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    backgroundColor: 'transparent',
-                    borderTopWidth: StyleSheet.hairlineWidth,
-                    borderTopColor: 'rgba(0, 0, 0, 0.08)',
-                    elevation: 0,
-                    shadowOpacity: 0,
-                    height: 50 + insets.bottom,
-                    paddingBottom: insets.bottom,
-                },
+                tabBarBackground: () =>
+                    isTablet ? null : (
+                        <BlurView
+                            tint="light"
+                            intensity={90}
+                            style={[
+                                StyleSheet.absoluteFill,
+                                { backgroundColor: 'rgba(255, 255, 255, 0.78)' },
+                            ]}
+                        />
+                    ),
+                tabBarStyle,
                 tabBarActiveTintColor: "#7c3aed",
                 tabBarInactiveTintColor: "#94a3b8",
                 tabBarShowLabel: false,
@@ -166,5 +189,21 @@ export default function TabsLayout() {
                 }}
             />
         </Tabs>
+    );
+
+    if (!isTablet) return tabContent;
+
+    return (
+        <View style={{ flexDirection: 'row', flex: 1 }}>
+            <NavigationSidebar
+                expanded={isLandscape}
+                tabs={STUDENT_TABS}
+                activeTab={activeTab}
+                onTabPress={handleTabPress}
+            />
+            <View style={{ flex: 1 }}>
+                {tabContent}
+            </View>
+        </View>
     );
 }

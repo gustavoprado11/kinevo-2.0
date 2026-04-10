@@ -20,9 +20,10 @@ interface Notification {
     id: string
     type: string
     title: string
-    message: string
-    read: boolean
-    metadata: Record<string, any>
+    body: string
+    is_read: boolean
+    data: Record<string, any>
+    category: string
     created_at: string
 }
 
@@ -106,7 +107,7 @@ export function NotificationBell({ sidebarMode }: NotificationBellProps = {}) {
                     (payload) => {
                         const newNotif = payload.new as Notification
                         setNotifications(prev => [newNotif, ...prev])
-                        if (!newNotif.read) setUnreadCount(prev => prev + 1)
+                        if (!newNotif.is_read) setUnreadCount(prev => prev + 1)
                     }
                 )
                 .on(
@@ -123,7 +124,7 @@ export function NotificationBell({ sidebarMode }: NotificationBellProps = {}) {
                             prev.map(n => n.id === updated.id ? updated : n)
                         )
                         // Decrement unread count when a notification is marked as read
-                        if (payload.old && !(payload.old as any).read && updated.read) {
+                        if (payload.old && !(payload.old as any).is_read && updated.is_read) {
                             setUnreadCount(prev => Math.max(0, prev - 1))
                         }
                     }
@@ -160,7 +161,7 @@ export function NotificationBell({ sidebarMode }: NotificationBellProps = {}) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ all: true }),
             })
-            setNotifications(prev => prev.map(n => ({ ...n, read: true })))
+            setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
             setUnreadCount(0)
         } catch {
             // Silently fail
@@ -175,7 +176,7 @@ export function NotificationBell({ sidebarMode }: NotificationBellProps = {}) {
                 body: JSON.stringify({ ids: [id] }),
             })
             setNotifications(prev =>
-                prev.map(n => n.id === id ? { ...n, read: true } : n)
+                prev.map(n => n.id === id ? { ...n, is_read: true } : n)
             )
             setUnreadCount(prev => Math.max(0, prev - 1))
         } catch {
@@ -242,11 +243,11 @@ export function NotificationBell({ sidebarMode }: NotificationBellProps = {}) {
                                     <button
                                         key={notif.id}
                                         onClick={() => {
-                                            if (!notif.read) handleMarkOneRead(notif.id)
+                                            if (!notif.is_read) handleMarkOneRead(notif.id)
                                         }}
                                         className={`
                                             w-full text-left px-4 py-3 flex gap-3 transition-colors border-b border-[#F5F5F7] dark:border-k-border-subtle last:border-b-0
-                                            ${!notif.read
+                                            ${!notif.is_read
                                                 ? 'bg-[#007AFF]/[0.03] dark:bg-violet-500/[0.04]'
                                                 : 'hover:bg-[#F5F5F7] dark:hover:bg-glass-bg'
                                             }
@@ -257,15 +258,15 @@ export function NotificationBell({ sidebarMode }: NotificationBellProps = {}) {
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-start justify-between gap-2">
-                                                <p className={`text-sm leading-tight ${!notif.read ? 'font-semibold text-[#1D1D1F] dark:text-foreground' : 'text-[#1D1D1F] dark:text-foreground/80'}`}>
+                                                <p className={`text-sm leading-tight ${!notif.is_read ? 'font-semibold text-[#1D1D1F] dark:text-foreground' : 'text-[#1D1D1F] dark:text-foreground/80'}`}>
                                                     {notif.title}
                                                 </p>
-                                                {!notif.read && (
+                                                {!notif.is_read && (
                                                     <span className="w-2 h-2 rounded-full bg-[#007AFF] dark:bg-violet-500 flex-shrink-0 mt-1.5" />
                                                 )}
                                             </div>
                                             <p className="text-xs text-[#86868B] dark:text-muted-foreground mt-0.5 truncate">
-                                                {notif.message}
+                                                {notif.body}
                                             </p>
                                             <p className="text-[10px] text-[#AEAEB2] dark:text-muted-foreground/50 mt-1" suppressHydrationWarning>
                                                 {timeAgo(notif.created_at)}
