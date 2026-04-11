@@ -12,7 +12,7 @@ import { SortableWorkoutTab } from './sortable-workout-tab'
 import { ExerciseLibraryPanel } from './exercise-library-panel'
 import { VolumeSummary } from './volume-summary'
 import { Button } from '@/components/ui/button'
-import { ChevronLeft, Loader2, Calendar, AlertCircle, Smartphone, GitCompareArrows, X, ListChecks } from 'lucide-react'
+import { ChevronLeft, Loader2, Calendar, AlertCircle, Smartphone, GitCompareArrows, X, ListChecks, FileText } from 'lucide-react'
 
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
 import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
@@ -24,12 +24,13 @@ import { ProgramFormTriggers, type TriggerSelection, type InitialTrigger } from 
 import { saveProgramFormTriggers } from '@/actions/programs/save-program-form-triggers'
 import type { FormTemplateOption } from '@/actions/programs/get-form-templates-for-triggers'
 import { WorkoutExecutionPreview } from './workout-preview/workout-execution-preview'
+import { AiPrescribePanel } from './ai-prescribe-panel'
 import { ProgramSelector } from '@/components/builder/context-panel/program-selector'
 import { getPastProgramsForStudent, getFullProgramForCompare } from '@/actions/programs/get-program-for-compare'
 import type { CompareProgramSummary, CompareProgramData } from '@/actions/programs/get-program-for-compare'
 import { compareWorkoutToWorkout } from '@/lib/workouts/transformPastWorkout'
 
-export type BuilderViewMode = 'normal' | 'preview' | 'compare'
+export type BuilderViewMode = 'normal' | 'preview' | 'compare' | 'ai_prescribe'
 
 export interface WorkoutItem {
     id: string
@@ -266,6 +267,14 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
         setBuilderViewMode('normal')
     }, [])
 
+    const handleEnterAiPrescribe = useCallback(() => {
+        setBuilderViewMode('ai_prescribe')
+    }, [])
+
+    const handleExitAiPrescribe = useCallback(() => {
+        setBuilderViewMode('normal')
+    }, [])
+
     // Initialize workouts helper
     const initializeWorkouts = (): Workout[] => {
         console.log('Initializing workouts with program:', program?.workout_templates)
@@ -492,7 +501,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
         ))
     }, [])
 
-    const addExerciseFromLibrary = useCallback((exercise: Exercise) => {
+    const addExerciseFromLibrary = useCallback((exercise: Exercise, options?: { sets?: number; reps?: string; rest_seconds?: number | null; notes?: string | null }) => {
         if (!activeWorkoutId) return
 
         setWorkouts(prev => prev.map(w => {
@@ -506,10 +515,10 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                 exercise_id: exercise.id,
                 substitute_exercise_ids: [],
                 exercise: exercise,
-                sets: 3,
-                reps: '10',
-                rest_seconds: 60,
-                notes: null,
+                sets: options?.sets ?? 3,
+                reps: options?.reps ?? '10',
+                rest_seconds: options?.rest_seconds ?? 60,
+                notes: options?.notes ?? null,
                 children: []
             }
 
@@ -520,6 +529,43 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
             }
         }))
     }, [activeWorkoutId])
+
+    const addExerciseToWorkout = useCallback((workoutId: string, exercise: Exercise, options?: { sets?: number; reps?: string; rest_seconds?: number | null; notes?: string | null }) => {
+        setWorkouts(prev => prev.map(w => {
+            if (w.id !== workoutId) return w
+
+            const newItem: WorkoutItem = {
+                id: tempId(),
+                item_type: 'exercise',
+                order_index: w.items.length,
+                parent_item_id: null,
+                exercise_id: exercise.id,
+                substitute_exercise_ids: [],
+                exercise: exercise,
+                sets: options?.sets ?? 3,
+                reps: options?.reps ?? '10',
+                rest_seconds: options?.rest_seconds ?? 60,
+                notes: options?.notes ?? null,
+                children: []
+            }
+
+            return { ...w, items: [...w.items, newItem] }
+        }))
+    }, [])
+
+    const createWorkoutWithName = useCallback((name: string): string => {
+        const id = tempId()
+        const newWorkout: Workout = {
+            id,
+            name,
+            order_index: workouts.length,
+            items: [],
+            frequency: []
+        }
+        setWorkouts(prev => [...prev, newWorkout])
+        setActiveWorkoutId(id)
+        return id
+    }, [workouts.length])
 
     const handleExerciseCreated = useCallback((newExercise: Exercise) => {
         setLocalExercises(prev => [newExercise, ...prev])
@@ -1279,6 +1325,17 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                 <GitCompareArrows className="w-4 h-4" />
                             </button>
                         )}
+                        <button
+                            onClick={builderViewMode === 'ai_prescribe' ? handleExitAiPrescribe : handleEnterAiPrescribe}
+                            className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors duration-150 ${
+                                builderViewMode === 'ai_prescribe'
+                                    ? 'text-violet-600 dark:text-violet-400 bg-violet-100/80 dark:bg-violet-500/[0.08]'
+                                    : 'text-[#AEAEB2] dark:text-k-text-quaternary hover:bg-[#F5F5F7]/60 dark:hover:bg-glass-bg/50 hover:text-[#1D1D1F] dark:hover:text-k-text-primary'
+                            }`}
+                            title="Texto para Treino"
+                        >
+                            <FileText className="w-4 h-4" />
+                        </button>
                     </div>
 
                     {/* Actions — context-aware save buttons */}
@@ -1750,9 +1807,9 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                         className={`flex-1 overflow-y-auto px-6 pt-3 pb-6 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent transition-colors duration-200 ${isDraggingOver ? 'bg-[#007AFF]/5 dark:bg-violet-500/5 ring-2 ring-inset ring-[#007AFF]/20 dark:ring-violet-500/20' : ''}`}
                                     >
                                         <div className={`mx-auto pb-20 transition-[max-width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
-                                            builderViewMode === 'preview' ? 'max-w-6xl flex gap-8' : 'max-w-3xl'
+                                            (builderViewMode === 'preview' || builderViewMode === 'ai_prescribe') ? 'max-w-6xl flex gap-8' : 'max-w-3xl'
                                         }`}>
-                                            <div className={builderViewMode === 'preview' ? 'flex-1 min-w-0' : ''}>
+                                            <div className={(builderViewMode === 'preview' || builderViewMode === 'ai_prescribe') ? 'flex-1 min-w-0' : ''}>
                                                 {activeWorkout ? (
                                                     <WorkoutPanel
                                                         workout={activeWorkout}
@@ -1792,6 +1849,18 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                                         scale={previewScale}
                                                     />
                                                 </div>
+                                            )}
+
+                                            {/* AI Prescribe Panel — sticky, same layout slot as preview */}
+                                            {builderViewMode === 'ai_prescribe' && (
+                                                <AiPrescribePanel
+                                                    onClose={handleExitAiPrescribe}
+                                                    exercises={localExercises}
+                                                    workouts={workouts}
+                                                    activeWorkoutId={activeWorkoutId}
+                                                    onAddExerciseToWorkout={addExerciseToWorkout}
+                                                    onCreateWorkout={createWorkoutWithName}
+                                                />
                                             )}
                                         </div>
                                     </div>
