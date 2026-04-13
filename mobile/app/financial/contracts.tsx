@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import * as Haptics from "expo-haptics";
 import {
     View,
@@ -11,10 +11,13 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, Stack } from "expo-router";
-import { ArrowLeft, Search, FileText } from "lucide-react-native";
+import { ChevronLeft, Search, FileText } from "lucide-react-native";
 import { EmptyState } from "../../components/shared/EmptyState";
 import { useTrainerContracts, ContractFilter } from "../../hooks/useTrainerContracts";
+import { useTrainerPlans } from "../../hooks/useTrainerPlans";
+import { useStripeStatus } from "../../hooks/useStripeStatus";
 import { ContractCard } from "../../components/financial/ContractCard";
+import { NewSubscriptionSheet } from "../../components/financial/NewSubscriptionSheet";
 import type { FinancialStudent } from "../../types/financial";
 
 const FILTERS: { key: ContractFilter; label: string }[] = [
@@ -38,35 +41,58 @@ export default function ContractsScreen() {
         isRefreshing,
         refresh,
     } = useTrainerContracts();
+    const { activePlans, refresh: refreshPlans } = useTrainerPlans();
+    const { status: stripeStatus } = useStripeStatus();
+    const [billingSheetVisible, setBillingSheetVisible] = useState(false);
+    const [selectedStudent, setSelectedStudent] = useState<FinancialStudent | null>(null);
+
+    const hasStripeConnect = !!(stripeStatus?.connected && stripeStatus?.charges_enabled);
+
+    const handleStudentPress = (item: FinancialStudent) => {
+        if (item.contract_id) {
+            router.push(`/financial/contract/${item.contract_id}` as any);
+        } else {
+            // No contract — open billing sheet to configure
+            setSelectedStudent(item);
+            setBillingSheetVisible(true);
+        }
+    };
 
     const renderItem = ({ item }: { item: FinancialStudent }) => (
         <ContractCard
             student={item}
-            onPress={() => {
-                if (item.contract_id) {
-                    router.push(`/financial/contract/${item.contract_id}` as any);
-                }
-            }}
+            onPress={() => handleStudentPress(item)}
         />
     );
 
     return (
         <>
-            <Stack.Screen
-                options={{
-                    headerShown: true,
-                    title: "Contratos",
-                    headerShadowVisible: false,
-                    headerStyle: { backgroundColor: "#F2F2F7" },
-                    headerTitleStyle: { fontSize: 17, fontWeight: "600", color: "#0f172a" },
-                    headerLeft: () => (
-                        <TouchableOpacity onPress={() => router.back()} hitSlop={8} accessibilityLabel="Voltar" accessibilityRole="button">
-                            <ArrowLeft size={22} color="#0f172a" />
-                        </TouchableOpacity>
-                    ),
-                }}
-            />
-            <SafeAreaView style={{ flex: 1, backgroundColor: "#F2F2F7" }} edges={["bottom"]}>
+            <Stack.Screen options={{ headerShown: false }} />
+            <SafeAreaView style={{ flex: 1, backgroundColor: "#F2F2F7" }} edges={["top"]}>
+                {/* Custom Header */}
+                <View style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    paddingHorizontal: 16,
+                    paddingVertical: 12,
+                }}>
+                    <TouchableOpacity
+                        onPress={() => router.back()}
+                        accessibilityRole="button"
+                        accessibilityLabel="Voltar"
+                        hitSlop={12}
+                    >
+                        <ChevronLeft size={24} color="#0f172a" />
+                    </TouchableOpacity>
+
+                    <Text style={{ fontSize: 18, fontWeight: "700", color: "#0f172a" }}>
+                        Assinaturas
+                    </Text>
+
+                    {/* Spacer */}
+                    <View style={{ width: 24 }} />
+                </View>
                 {/* Search */}
                 <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 4 }}>
                     <View
@@ -163,6 +189,25 @@ export default function ContractsScreen() {
                     />
                 )}
             </SafeAreaView>
+
+            {/* Configure Billing Sheet */}
+            <NewSubscriptionSheet
+                visible={billingSheetVisible}
+                onClose={() => { setBillingSheetVisible(false); setSelectedStudent(null); }}
+                onSuccess={() => {
+                    refresh();
+                    refreshPlans();
+                    setBillingSheetVisible(false);
+                    setSelectedStudent(null);
+                }}
+                plans={activePlans}
+                hasStripeConnect={hasStripeConnect}
+                preSelectedStudent={selectedStudent ? {
+                    id: selectedStudent.student_id,
+                    name: selectedStudent.student_name,
+                    avatar_url: selectedStudent.avatar_url,
+                } : null}
+            />
         </>
     );
 }

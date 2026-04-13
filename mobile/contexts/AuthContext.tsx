@@ -3,9 +3,10 @@ import React, {
     useContext,
     useEffect,
     useState,
+    useCallback,
     type ReactNode,
 } from "react";
-import { Platform, View, Text, ActivityIndicator } from "react-native";
+import { Platform, View, Text, ActivityIndicator, TouchableOpacity, AppState } from "react-native";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
 
@@ -40,27 +41,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (__DEV__) console.log("[AuthProvider] Renderizando, isLoading:", isLoading);
 
-    useEffect(() => {
-        if (__DEV__) console.log("[AuthProvider] useEffect - Buscando sessão...");
+    const loadSession = useCallback(async () => {
+        if (__DEV__) console.log("[AuthProvider] Buscando sessão...");
+        setIsLoading(true);
+        setError(null);
 
-        supabase.auth
-            .getSession()
-            .then(({ data: { session }, error }) => {
-                if (__DEV__) console.log("[AuthProvider] getSession resultado:", {
-                    hasSession: !!session,
-                    error: error?.message,
-                });
-                if (error) {
-                    setError(error.message);
-                }
-                setSession(session);
-                setIsLoading(false);
-            })
-            .catch((err) => {
-                console.error("[AuthProvider] Erro ao buscar sessão:", __DEV__ ? err : '');
-                setError(err.message);
-                setIsLoading(false);
+        try {
+            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+            if (__DEV__) console.log("[AuthProvider] getSession resultado:", {
+                hasSession: !!session,
+                error: sessionError?.message,
             });
+            if (sessionError) {
+                setError(sessionError.message);
+            }
+            setSession(session);
+        } catch (err: any) {
+            const msg = err?.message ?? "Erro desconhecido";
+            console.error("[AuthProvider] Erro ao buscar sessão:", __DEV__ ? err : "");
+
+            // SecureStore "User interaction is not allowed" — transient error when
+            // app launches in background (e.g., after Watch workout). Auto-retry
+            // when app comes to foreground.
+            if (msg.includes("User interaction is not allowed")) {
+                setError("keychain_locked");
+            } else {
+                setError(msg);
+            }
+        } finally {
+            setIsLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        loadSession();
 
         // Escutar mudanças de auth
         const {
@@ -68,10 +82,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } = supabase.auth.onAuthStateChange((_event, session) => {
             if (__DEV__) console.log("[AuthProvider] onAuthStateChange:", _event);
             setSession(session);
+            // If we had a keychain error and auth state changed, clear error
+            setError(null);
         });
 
-        return () => subscription.unsubscribe();
-    }, []);
+        // Auto-retry when app comes to foreground (covers Watch background launch)
+        const appStateSub = AppState.addEventListener("change", (state) => {
+            if (state === "active" && error === "keychain_locked") {
+                if (__DEV__) console.log("[AuthProvider] App foregrounded — retrying session load");
+                loadSession();
+            }
+        });
+
+        return () => {
+            subscription.unsubscribe();
+            appStateSub.remove();
+        };
+    }, [loadSession]);
 
     const signIn = async (email: string, password: string) => {
         const { error } = await supabase.auth.signInWithPassword({
@@ -116,6 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Mostrar erro se houver
     if (error) {
+        const isKeychainError = error === "keychain_locked";
         return (
             <View
                 style={{
@@ -127,18 +155,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 }}
             >
                 <Text style={{ color: "#ef4444", fontSize: 18, fontWeight: "bold" }}>
-                    Erro de Conexão
+                    {isKeychainError ? "Aguardando Desbloqueio" : "Erro de Conexão"}
                 </Text>
                 <Text
-                    style={{ color: "#71717a", marginTop: 8, textAlign: "center" }}
+                    style={{ color: "#71717a", marginTop: 8, textAlign: "center", lineHeight: 20 }}
                 >
-                    {error}
+                    {isKeychainError
+                        ? "O app foi aberto em segundo plano e precisa ser desbloqueado para acessar suas credenciais."
+                        : error}
                 </Text>
-                <Text
-                    style={{ color: "#3b82f6", marginTop: 16, fontSize: 12 }}
+                <TouchableOpacity
+                    onPress={loadSession}
+                    style={{
+                        marginTop: 24,
+                        backgroundColor: "#7c3aed",
+                        borderRadius: 12,
+                        paddingHorizontal: 24,
+                        paddingVertical: 12,
+                    }}
                 >
-                    Verifique o arquivo .env
-                </Text>
+                    <Text style={{ color: "#ffffff", fontSize: 15, fontWeight: "600" }}>
+                        Tentar Novamente
+                    </Text>
+                </TouchableOpacity>
             </View>
         );
     }

@@ -26,16 +26,20 @@ function FilterChip({ label, active, onPress }: FilterChipProps) {
                 backgroundColor: active ? colors.brand.primary : colors.background.card,
                 borderRadius: 100,
                 paddingHorizontal: 14,
-                paddingVertical: 8,
+                paddingVertical: 10,
                 marginRight: 8,
                 borderWidth: 1,
                 borderColor: active ? colors.brand.primary : 'rgba(0,0,0,0.06)',
+                minHeight: 36,
+                justifyContent: 'center',
+                alignItems: 'center',
             }}
         >
             <Text
                 style={{
                     fontSize: 13,
                     fontWeight: '600',
+                    lineHeight: 16,
                     color: active ? colors.text.inverse : '#475569',
                 }}
             >

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { View, Text, FlatList, RefreshControl, TextInput, TouchableOpacity } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { StudentsListSkeleton } from "../../components/shared/skeletons/StudentsListSkeleton";
 import { Search, Users, Plus } from "lucide-react-native";
 import { useRouter } from "expo-router";
@@ -44,6 +44,7 @@ export default function StudentsScreen() {
 
     const router = useRouter();
     const { isTablet } = useResponsive();
+    const insets = useSafeAreaInsets();
     const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
     const [showAddStudent, setShowAddStudent] = useState(false);
 
@@ -88,37 +89,17 @@ export default function StudentsScreen() {
                     <Text style={{ fontSize: 28, fontWeight: "800", color: colors.text.primary }}>
                         Alunos
                     </Text>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                        <View
-                            style={{
-                                backgroundColor: colors.brand.primaryLight,
-                                paddingHorizontal: 12,
-                                paddingVertical: 4,
-                                borderRadius: 100,
-                            }}
-                        >
-                            <Text style={{ fontSize: 13, fontWeight: "700", color: colors.brand.primary }}>
-                                {counts.all}
-                            </Text>
-                        </View>
-                        <TouchableOpacity
-                            onPress={() => {
-                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                setShowAddStudent(true);
-                            }}
-                            accessibilityRole="button"
-                            accessibilityLabel="Adicionar aluno"
-                            style={{
-                                width: 36,
-                                height: 36,
-                                borderRadius: 10,
-                                backgroundColor: colors.brand.primaryLight,
-                                alignItems: "center",
-                                justifyContent: "center",
-                            }}
-                        >
-                            <Plus size={18} color={colors.brand.primary} strokeWidth={2.5} />
-                        </TouchableOpacity>
+                    <View
+                        style={{
+                            backgroundColor: colors.brand.primaryLight,
+                            paddingHorizontal: 12,
+                            paddingVertical: 4,
+                            borderRadius: 100,
+                        }}
+                    >
+                        <Text style={{ fontSize: 13, fontWeight: "700", color: colors.brand.primary }}>
+                            {counts.all}
+                        </Text>
                     </View>
                 </Animated.View>
 
@@ -197,6 +178,34 @@ export default function StudentsScreen() {
                 placeholder={<StudentDetailPlaceholder />}
                 masterWidthPercent={35}
             />
+            {/* FAB */}
+            <TouchableOpacity
+                onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    setShowAddStudent(true);
+                }}
+                activeOpacity={0.8}
+                accessibilityLabel="Adicionar aluno"
+                accessibilityRole="button"
+                style={{
+                    position: "absolute",
+                    right: 20,
+                    bottom: insets.bottom + 66,
+                    width: 56,
+                    height: 56,
+                    borderRadius: 28,
+                    backgroundColor: "#7c3aed",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    shadowColor: "#7c3aed",
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.35,
+                    shadowRadius: 8,
+                    elevation: 6,
+                }}
+            >
+                <Plus size={26} color="#ffffff" strokeWidth={2.5} />
+            </TouchableOpacity>
             <AddStudentModal
                 visible={showAddStudent}
                 onClose={() => setShowAddStudent(false)}

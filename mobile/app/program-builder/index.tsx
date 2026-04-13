@@ -60,6 +60,9 @@ export default function ProgramBuilderScreen() {
     } = useProgramBuilder();
 
     useEffect(() => {
+        // When coming from text prescription, the store is already pre-filled
+        // via initFromParsedText — don't reset it.
+        if (params.mode === "from-text") return;
         initNewProgram(params.studentId);
     }, []);
 

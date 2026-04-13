@@ -17,6 +17,16 @@ interface SendTrainerPushParams {
  */
 export async function sendTrainerPush(params: SendTrainerPushParams): Promise<void> {
     try {
+        // 0. Check if push was already sent by DB trigger → Edge Function
+        if (params.notificationId) {
+            const { data: existing } = await supabaseAdmin
+                .from('trainer_notifications')
+                .select('push_sent_at')
+                .eq('id', params.notificationId)
+                .single()
+            if (existing?.push_sent_at) return
+        }
+
         // 1. Check trainer preferences
         const { data: trainer } = await supabaseAdmin
             .from('trainers')
@@ -272,6 +282,7 @@ export async function processPendingPush(trainerId?: string): Promise<number> {
         .from('trainer_notifications')
         .select('id, trainer_id, type, title, body, data')
         .eq('is_read', false)
+        .is('push_sent_at', null)
         .order('created_at', { ascending: true })
         .limit(50)
 

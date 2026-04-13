@@ -1,7 +1,8 @@
-import React from "react";
-import { View, Text } from "react-native";
+import React, { useState } from "react";
+import { View, Text, TouchableOpacity } from "react-native";
 import { Activity, Clock, Flame } from "lucide-react-native";
 import type { DailyActivityItem } from "../../hooks/useTrainerDashboard";
+import { SessionDetailSheet } from "./SessionDetailSheet";
 
 function formatDuration(seconds: number | null): string {
     if (!seconds) return "—";
@@ -22,6 +23,8 @@ interface DailyActivityFeedProps {
 }
 
 export function DailyActivityFeed({ items }: DailyActivityFeedProps) {
+    const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+
     if (items.length === 0) {
         return (
             <View
@@ -43,69 +46,81 @@ export function DailyActivityFeed({ items }: DailyActivityFeedProps) {
     }
 
     return (
-        <View
-            style={{
-                backgroundColor: "#ffffff",
-                borderRadius: 20,
-                overflow: "hidden",
-                borderWidth: 1,
-                borderColor: "rgba(0,0,0,0.04)",
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.04,
-                shadowRadius: 8,
-                elevation: 2,
-            }}
-        >
-            {items.map((item, index) => (
-                <View key={item.id}>
-                    {index > 0 && (
-                        <View style={{ height: 1, backgroundColor: "#f1f5f9", marginHorizontal: 16 }} />
-                    )}
-                    <View style={{ padding: 14, flexDirection: "row", alignItems: "center" }}>
-                        <View
-                            style={{
-                                width: 36,
-                                height: 36,
-                                borderRadius: 12,
-                                backgroundColor: "#f0fdf4",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                marginRight: 12,
-                            }}
-                        >
-                            <Activity size={16} color="#16a34a" />
-                        </View>
-                        <View style={{ flex: 1 }}>
-                            <Text style={{ fontSize: 13, fontWeight: "700", color: "#0f172a" }}>
-                                {item.student_name}
-                            </Text>
-                            <Text style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
-                                {item.workout_name}
-                            </Text>
-                        </View>
-                        <View style={{ alignItems: "flex-end", gap: 4 }}>
-                            <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                                <Clock size={10} color="#94a3b8" />
-                                <Text style={{ fontSize: 11, color: "#94a3b8", fontWeight: "500" }}>
-                                    {formatDuration(item.duration_seconds)}
+        <>
+            <View
+                style={{
+                    backgroundColor: "#ffffff",
+                    borderRadius: 20,
+                    overflow: "hidden",
+                    borderWidth: 1,
+                    borderColor: "rgba(0,0,0,0.04)",
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.04,
+                    shadowRadius: 8,
+                    elevation: 2,
+                }}
+            >
+                {items.map((item, index) => (
+                    <TouchableOpacity
+                        key={item.id}
+                        activeOpacity={0.6}
+                        onPress={() => setSelectedSessionId(item.id)}
+                    >
+                        {index > 0 && (
+                            <View style={{ height: 1, backgroundColor: "#f1f5f9", marginHorizontal: 16 }} />
+                        )}
+                        <View style={{ padding: 14, flexDirection: "row", alignItems: "center" }}>
+                            <View
+                                style={{
+                                    width: 36,
+                                    height: 36,
+                                    borderRadius: 12,
+                                    backgroundColor: "#f0fdf4",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    marginRight: 12,
+                                }}
+                            >
+                                <Activity size={16} color="#16a34a" />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={{ fontSize: 13, fontWeight: "700", color: "#0f172a" }}>
+                                    {item.student_name}
+                                </Text>
+                                <Text style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                                    {item.workout_name}
                                 </Text>
                             </View>
-                            {item.rpe != null && (
+                            <View style={{ alignItems: "flex-end", gap: 4 }}>
                                 <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                                    <Flame size={10} color="#f59e0b" />
-                                    <Text style={{ fontSize: 11, color: "#f59e0b", fontWeight: "600" }}>
-                                        RPE {item.rpe}
+                                    <Clock size={10} color="#94a3b8" />
+                                    <Text style={{ fontSize: 11, color: "#94a3b8", fontWeight: "500" }}>
+                                        {formatDuration(item.duration_seconds)}
                                     </Text>
                                 </View>
-                            )}
-                            <Text style={{ fontSize: 10, color: "#cbd5e1" }}>
-                                {formatTime(item.completed_at)}
-                            </Text>
+                                {item.rpe != null && (
+                                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                                        <Flame size={10} color="#f59e0b" />
+                                        <Text style={{ fontSize: 11, color: "#f59e0b", fontWeight: "600" }}>
+                                            PSE {item.rpe}
+                                        </Text>
+                                    </View>
+                                )}
+                                <Text style={{ fontSize: 10, color: "#cbd5e1" }}>
+                                    {formatTime(item.completed_at)}
+                                </Text>
+                            </View>
                         </View>
-                    </View>
-                </View>
-            ))}
-        </View>
+                    </TouchableOpacity>
+                ))}
+            </View>
+
+            <SessionDetailSheet
+                visible={!!selectedSessionId}
+                sessionId={selectedSessionId}
+                onClose={() => setSelectedSessionId(null)}
+            />
+        </>
     );
 }

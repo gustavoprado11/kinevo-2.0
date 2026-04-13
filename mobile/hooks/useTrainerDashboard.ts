@@ -17,6 +17,7 @@ export interface TrainerStats {
 
 export interface PendingFinancialItem {
     id: string;
+    student_id: string;
     student_name: string;
     student_avatar: string | null;
     amount: number;
@@ -27,6 +28,7 @@ export interface PendingFinancialItem {
 
 export interface PendingFormItem {
     id: string;
+    student_id: string;
     student_name: string;
     student_avatar: string | null;
     template_title: string;
@@ -42,6 +44,7 @@ export interface InactiveStudentItem {
 }
 
 export interface ExpiringProgramItem {
+    student_id: string;
     student_name: string;
     student_avatar: string | null;
     program_name: string;

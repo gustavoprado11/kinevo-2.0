@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, ScrollView, Switch, ActivityIndicator } from "react-native";
-import { Stack } from "expo-router";
+import { View, Text, ScrollView, Switch, ActivityIndicator, TouchableOpacity } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
+import { ChevronLeft } from "lucide-react-native";
 import { supabase } from "../lib/supabase";
+import { colors } from "@/theme";
 
 const API_URL = process.env.EXPO_PUBLIC_WEB_URL || "https://app.kinevo.com.br";
 
@@ -33,6 +36,7 @@ const DEFAULT_PREFS: NotificationPreferences = {
 };
 
 export default function NotificationSettingsScreen() {
+    const router = useRouter();
     const [preferences, setPreferences] = useState<NotificationPreferences>(DEFAULT_PREFS);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
@@ -88,74 +92,98 @@ export default function NotificationSettingsScreen() {
         }
     }, [preferences]);
 
-    if (isLoading) {
-        return (
-            <>
-                <Stack.Screen options={{ title: "Notificações", headerStyle: { backgroundColor: "#F2F2F7" }, headerTintColor: "#0f172a" }} />
-                <View style={{ flex: 1, backgroundColor: "#F2F2F7", justifyContent: "center", alignItems: "center" }}>
-                    <ActivityIndicator size="large" color="#7c3aed" />
-                </View>
-            </>
-        );
-    }
-
     return (
-        <>
-            <Stack.Screen options={{ title: "Notificações", headerStyle: { backgroundColor: "#F2F2F7" }, headerTintColor: "#0f172a" }} />
-            <ScrollView style={{ flex: 1, backgroundColor: "#F2F2F7" }} contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 24, paddingBottom: 60 }}>
-                <Text style={{ fontSize: 13, color: "#64748b", lineHeight: 20, marginBottom: 20, paddingHorizontal: 4 }}>
-                    Escolha quais notificações push você deseja receber no seu dispositivo.
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }} edges={["top"]}>
+            {/* Header */}
+            <View
+                style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    paddingHorizontal: 16,
+                    paddingVertical: 12,
+                }}
+            >
+                <TouchableOpacity
+                    onPress={() => router.back()}
+                    accessibilityRole="button"
+                    accessibilityLabel="Voltar"
+                    hitSlop={12}
+                >
+                    <ChevronLeft size={24} color={colors.text.primary} />
+                </TouchableOpacity>
+
+                <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text.primary }}>
+                    Notificações
                 </Text>
 
-                <View
-                    style={{
-                        backgroundColor: "#ffffff",
-                        borderRadius: 16,
-                        overflow: "hidden",
-                        borderWidth: 1,
-                        borderColor: "rgba(0,0,0,0.04)",
-                    }}
-                >
-                    {PREF_LABELS.map((item, index) => (
-                        <React.Fragment key={item.key}>
-                            {index > 0 && (
-                                <View style={{ height: 1, backgroundColor: "#f1f5f9", marginHorizontal: 20 }} />
-                            )}
-                            <View
-                                style={{
-                                    flexDirection: "row",
-                                    alignItems: "center",
-                                    paddingVertical: 14,
-                                    paddingHorizontal: 20,
-                                }}
-                            >
-                                <View style={{ flex: 1, marginRight: 12 }}>
-                                    <Text style={{ fontSize: 14, fontWeight: "500", color: "#0f172a" }}>
-                                        {item.label}
-                                    </Text>
-                                    <Text style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>
-                                        {item.description}
-                                    </Text>
-                                </View>
-                                <Switch
-                                    value={preferences[item.key]}
-                                    onValueChange={() => togglePreference(item.key)}
-                                    trackColor={{ false: "#e2e8f0", true: "#7c3aed" }}
-                                    thumbColor="#fff"
-                                    disabled={isSaving}
-                                />
-                            </View>
-                        </React.Fragment>
-                    ))}
-                </View>
+                {/* Spacer to center title */}
+                <View style={{ width: 24 }} />
+            </View>
 
-                {isSaving && (
-                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginTop: 16, gap: 8 }}>
-                        <ActivityIndicator size="small" color="#7c3aed" />
-                        <Text style={{ fontSize: 12, color: "#94a3b8" }}>Salvando...</Text>
+            {isLoading ? (
+                <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+                    <ActivityIndicator size="large" color="#7c3aed" />
+                </View>
+            ) : (
+                <ScrollView
+                    contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 60 }}
+                    showsVerticalScrollIndicator={false}
+                >
+                    <Text style={{ fontSize: 13, color: "#64748b", lineHeight: 20, marginBottom: 20, paddingHorizontal: 4 }}>
+                        Escolha quais notificações push você deseja receber no seu dispositivo.
+                    </Text>
+
+                    <View
+                        style={{
+                            backgroundColor: "#ffffff",
+                            borderRadius: 16,
+                            overflow: "hidden",
+                            borderWidth: 1,
+                            borderColor: "rgba(0,0,0,0.04)",
+                        }}
+                    >
+                        {PREF_LABELS.map((item, index) => (
+                            <React.Fragment key={item.key}>
+                                {index > 0 && (
+                                    <View style={{ height: 1, backgroundColor: "#f1f5f9", marginHorizontal: 20 }} />
+                                )}
+                                <View
+                                    style={{
+                                        flexDirection: "row",
+                                        alignItems: "center",
+                                        paddingVertical: 14,
+                                        paddingHorizontal: 20,
+                                    }}
+                                >
+                                    <View style={{ flex: 1, marginRight: 12 }}>
+                                        <Text style={{ fontSize: 14, fontWeight: "500", color: "#0f172a" }}>
+                                            {item.label}
+                                        </Text>
+                                        <Text style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>
+                                            {item.description}
+                                        </Text>
+                                    </View>
+                                    <Switch
+                                        value={preferences[item.key]}
+                                        onValueChange={() => togglePreference(item.key)}
+                                        trackColor={{ false: "#e2e8f0", true: "#7c3aed" }}
+                                        thumbColor="#fff"
+                                        disabled={isSaving}
+                                    />
+                                </View>
+                            </React.Fragment>
+                        ))}
                     </View>
-                )}
-            </ScrollView>
-        </>
+
+                    {isSaving && (
+                        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginTop: 16, gap: 8 }}>
+                            <ActivityIndicator size="small" color="#7c3aed" />
+                            <Text style={{ fontSize: 12, color: "#94a3b8" }}>Salvando...</Text>
+                        </View>
+                    )}
+                </ScrollView>
+            )}
+        </SafeAreaView>
     );
 }

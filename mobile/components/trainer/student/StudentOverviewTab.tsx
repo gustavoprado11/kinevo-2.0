@@ -1,6 +1,6 @@
-import React from "react";
-import { View, Text, ScrollView } from "react-native";
-import { TrendingUp, Calendar, Clock, Dumbbell } from "lucide-react-native";
+import React, { useState } from "react";
+import { View, Text, ScrollView, TouchableOpacity } from "react-native";
+import { TrendingUp, Calendar, Clock, Dumbbell, ChevronRight } from "lucide-react-native";
 import type { StudentDetailData } from "../../../hooks/useStudentDetail";
 import { getProgramWeek } from "@kinevo/shared/utils/schedule-projection";
 import { SessionHeatmap } from "./SessionHeatmap";
@@ -8,6 +8,7 @@ import { ProgressCharts } from "./ProgressCharts";
 import { useResponsive } from "../../../hooks/useResponsive";
 import { ResponsiveGrid } from "../../shared/ResponsiveGrid";
 import { ResponsiveContainer } from "../../shared/ResponsiveContainer";
+import { SessionDetailSheet } from "../SessionDetailSheet";
 
 function timeAgo(dateStr: string | null): string {
     if (!dateStr) return "Nunca";
@@ -32,6 +33,7 @@ interface Props {
 }
 
 export function StudentOverviewTab({ data }: Props) {
+    const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
     const adherence =
         data.expectedPerWeek > 0
             ? Math.round((data.sessionsThisWeek / data.expectedPerWeek) * 100)
@@ -117,8 +119,10 @@ export function StudentOverviewTab({ data }: Props) {
             ) : (
                 <View style={{ backgroundColor: "#ffffff", borderRadius: 14, marginBottom: 20, overflow: "hidden" }}>
                     {data.recentSessions.map((session, idx) => (
-                        <View
+                        <TouchableOpacity
                             key={session.id}
+                            activeOpacity={0.6}
+                            onPress={() => setSelectedSessionId(session.id)}
                             style={{
                                 flexDirection: "row",
                                 alignItems: "center",
@@ -158,15 +162,21 @@ export function StudentOverviewTab({ data }: Props) {
                                                 color: session.rpe >= 8 ? "#ef4444" : "#64748b",
                                             }}
                                         >
-                                            RPE {session.rpe}
+                                            PSE {session.rpe}
                                         </Text>
                                     </View>
                                 )}
+                                <ChevronRight size={16} color="#cbd5e1" />
                             </View>
-                        </View>
+                        </TouchableOpacity>
                     ))}
                 </View>
             )}
+            <SessionDetailSheet
+                visible={!!selectedSessionId}
+                sessionId={selectedSessionId}
+                onClose={() => setSelectedSessionId(null)}
+            />
         </ScrollView>
     );
 }

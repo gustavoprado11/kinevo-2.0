@@ -1,5 +1,5 @@
-import React, { useCallback } from "react";
-import { View, Text, ScrollView, Image, Linking, Alert } from "react-native";
+import React, { useCallback, useState } from "react";
+import { View, Text, ScrollView, Image, Linking, Alert, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import {
@@ -16,9 +16,10 @@ import Constants from "expo-constants";
 import { useRoleMode } from "../../contexts/RoleModeContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { PressableScale } from "../../components/shared/PressableScale";
+import { supabase } from "../../lib/supabase";
 
-const MANAGE_SUBSCRIPTION_URL = "https://app.kinevo.com.br/subscription";
-const SUPPORT_WHATSAPP_URL = "https://wa.me/5511999999999";
+const WEB_BASE_URL = "https://app.kinevo.com.br";
+const SUPPORT_WHATSAPP_URL = "https://wa.me/5531999064997?text=Ol%C3%A1!%20Preciso%20de%20ajuda%20com%20o%20app%20Kinevo.";
 
 function subscriptionLabel(status: string | null): { text: string; color: string; bg: string } {
     switch (status) {
@@ -122,6 +123,37 @@ export default function MoreScreen() {
         .join("")
         .toUpperCase() || "?";
 
+    const [loadingPortal, setLoadingPortal] = useState(false);
+
+    const handleManageSubscription = useCallback(async () => {
+        setLoadingPortal(true);
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session?.access_token) {
+                Alert.alert("Erro", "Sessão expirada. Faça login novamente.");
+                return;
+            }
+            const res = await fetch(`${WEB_BASE_URL}/api/stripe/portal`, {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${session.access_token}`,
+                    "Content-Type": "application/json",
+                },
+            });
+            const json = await res.json();
+            if (json.url) {
+                await Linking.openURL(json.url);
+            } else {
+                Alert.alert("Erro", json.error || "Não foi possível abrir o portal de assinatura.");
+            }
+        } catch (error) {
+            if (__DEV__) console.error("[more] Portal error:", error);
+            Alert.alert("Erro", "Não foi possível abrir o portal de assinatura.");
+        } finally {
+            setLoadingPortal(false);
+        }
+    }, []);
+
     const handleSwitchToStudent = useCallback(() => {
         switchToStudent();
         router.replace("/(tabs)/home");
@@ -130,7 +162,18 @@ export default function MoreScreen() {
     const handleSignOut = () => {
         Alert.alert("Sair", "Deseja sair da sua conta?", [
             { text: "Cancelar", style: "cancel" },
-            { text: "Sair", style: "destructive", onPress: signOut },
+            {
+                text: "Sair",
+                style: "destructive",
+                onPress: async () => {
+                    try {
+                        await signOut();
+                        router.replace("/(auth)/login");
+                    } catch (error) {
+                        if (__DEV__) console.error("[more] Sign out error:", error);
+                    }
+                },
+            },
         ]);
     };
 
@@ -206,9 +249,10 @@ export default function MoreScreen() {
                 >
                     {/* Subscription */}
                     <PressableScale
-                        onPress={() => Linking.openURL(MANAGE_SUBSCRIPTION_URL)}
+                        onPress={handleManageSubscription}
                         pressScale={0.98}
-                        style={{ flexDirection: "row", alignItems: "center", paddingVertical: 16, paddingHorizontal: 20 }}
+                        disabled={loadingPortal}
+                        style={{ flexDirection: "row", alignItems: "center", paddingVertical: 16, paddingHorizontal: 20, opacity: loadingPortal ? 0.6 : 1 }}
                     >
                         <IconBox bg="#fffbeb">
                             <Crown size={18} color="#f59e0b" />
@@ -223,7 +267,11 @@ export default function MoreScreen() {
                                 </View>
                             </View>
                         </View>
-                        <ExternalLink size={16} color="#94a3b8" />
+                        {loadingPortal ? (
+                            <ActivityIndicator size="small" color="#94a3b8" />
+                        ) : (
+                            <ExternalLink size={16} color="#94a3b8" />
+                        )}
                     </PressableScale>
 
                     <Divider />

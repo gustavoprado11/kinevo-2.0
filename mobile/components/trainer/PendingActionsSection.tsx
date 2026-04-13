@@ -1,6 +1,7 @@
 import React from "react";
-import { View, Text, ScrollView, Image } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity } from "react-native";
 import { CreditCard, FileText, UserX, CalendarClock } from "lucide-react-native";
+import { useRouter } from "expo-router";
 import type {
     PendingFinancialItem,
     PendingFormItem,
@@ -18,6 +19,7 @@ function ActionCard({
     subtitle,
     badge,
     badgeColor,
+    onPress,
 }: {
     icon: typeof CreditCard;
     iconColor: string;
@@ -26,9 +28,12 @@ function ActionCard({
     subtitle: string;
     badge?: string;
     badgeColor?: string;
+    onPress?: () => void;
 }) {
     return (
-        <View
+        <TouchableOpacity
+            onPress={onPress}
+            activeOpacity={0.7}
             style={{
                 width: 200,
                 backgroundColor: "#ffffff",
@@ -79,7 +84,7 @@ function ActionCard({
             <Text style={{ fontSize: 11, color: "#64748b", marginTop: 2 }} numberOfLines={2}>
                 {subtitle}
             </Text>
-        </View>
+        </TouchableOpacity>
     );
 }
 
@@ -98,9 +103,14 @@ export function PendingActionsSection({
     inactiveStudents,
     expiringPrograms,
 }: PendingActionsSectionProps) {
+    const router = useRouter();
     const totalActions = pendingFinancial.length + pendingForms.length + inactiveStudents.length + expiringPrograms.length;
 
     if (totalActions === 0) return null;
+
+    const navigateToStudent = (studentId: string) => {
+        router.push({ pathname: "/student/[id]", params: { id: studentId } } as any);
+    };
 
     return (
         <View style={{ marginBottom: 20 }}>
@@ -132,6 +142,7 @@ export function PendingActionsSection({
                         subtitle={`R$ ${item.amount?.toFixed(2)} — ${item.status === "past_due" ? "Vencido" : "Pendente"}`}
                         badge={item.billing_type === "manual_recurring" ? "Manual" : "Stripe"}
                         badgeColor="#fef2f2"
+                        onPress={() => navigateToStudent(item.student_id)}
                     />
                 ))}
                 {pendingForms.map((item) => (
@@ -144,6 +155,7 @@ export function PendingActionsSection({
                         subtitle={item.template_title}
                         badge="Formulário"
                         badgeColor="#f5f3ff"
+                        onPress={() => navigateToStudent(item.student_id)}
                     />
                 ))}
                 {inactiveStudents.map((item) => (
@@ -156,11 +168,12 @@ export function PendingActionsSection({
                         subtitle={`${item.days_since_last_session >= 999 ? "Nunca treinou" : `${item.days_since_last_session} dias sem treinar`} — ${item.program_name}`}
                         badge="Inativo"
                         badgeColor="#fffbeb"
+                        onPress={() => navigateToStudent(item.id)}
                     />
                 ))}
                 {expiringPrograms.map((item, i) => (
                     <ActionCard
-                        key={`exp-${i}`}
+                        key={`exp-${item.student_id}-${i}`}
                         icon={CalendarClock}
                         iconColor="#0ea5e9"
                         iconBg="#f0f9ff"
@@ -168,6 +181,7 @@ export function PendingActionsSection({
                         subtitle={`${item.program_name} — ${item.ends_in_days <= 0 ? "Expirado" : `${item.ends_in_days}d restantes`}`}
                         badge="Expirando"
                         badgeColor="#f0f9ff"
+                        onPress={() => navigateToStudent(item.student_id)}
                     />
                 ))}
             </ScrollView>

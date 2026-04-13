@@ -1,0 +1,1325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eval Review</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600&family=Lora:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" integrity="sha384-EnyY0/GSHQGSxSgMwaIPzSESbqoOLSexfnSMN2AP+39Ckmn92stwABZynq1JyzdT" crossorigin="anonymous"></script>
+  <style>
+    :root {
+      --bg: #faf9f5;
+      --surface: #ffffff;
+      --border: #e8e6dc;
+      --text: #141413;
+      --text-muted: #b0aea5;
+      --accent: #d97757;
+      --accent-hover: #c4613f;
+      --green: #788c5d;
+      --green-bg: #eef2e8;
+      --red: #c44;
+      --red-bg: #fceaea;
+      --header-bg: #141413;
+      --header-text: #faf9f5;
+      --radius: 6px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Lora', Georgia, serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ---- Header ---- */
+    .header {
+      background: var(--header-bg);
+      color: var(--header-text);
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .header h1 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+    .header .instructions {
+      font-size: 0.8rem;
+      opacity: 0.7;
+      margin-top: 0.25rem;
+    }
+    .header .progress {
+      font-size: 0.875rem;
+      opacity: 0.8;
+      text-align: right;
+    }
+
+    /* ---- Main content ---- */
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.5rem 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    /* ---- Sections ---- */
+    .section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      flex-shrink: 0;
+    }
+    .section-header {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.75rem 1rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+    }
+    .section-body {
+      padding: 1rem;
+    }
+
+    /* ---- Config badge ---- */
+    .config-badge {
+      display: inline-block;
+      padding: 0.2rem 0.625rem;
+      border-radius: 9999px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      margin-left: 0.75rem;
+      vertical-align: middle;
+    }
+    .config-badge.config-primary {
+      background: rgba(33, 150, 243, 0.12);
+      color: #1976d2;
+    }
+    .config-badge.config-baseline {
+      background: rgba(255, 193, 7, 0.15);
+      color: #f57f17;
+    }
+
+    /* ---- Prompt ---- */
+    .prompt-text {
+      white-space: pre-wrap;
+      font-size: 0.9375rem;
+      line-height: 1.6;
+    }
+
+    /* ---- Outputs ---- */
+    .output-file {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .output-file + .output-file {
+      margin-top: 1rem;
+    }
+    .output-file-header {
+      padding: 0.5rem 0.75rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .output-file-header .dl-btn {
+      font-size: 0.7rem;
+      color: var(--accent);
+      text-decoration: none;
+      cursor: pointer;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-weight: 500;
+      opacity: 0.8;
+    }
+    .output-file-header .dl-btn:hover {
+      opacity: 1;
+      text-decoration: underline;
+    }
+    .output-file-content {
+      padding: 0.75rem;
+      overflow-x: auto;
+    }
+    .output-file-content pre {
+      font-size: 0.8125rem;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+    }
+    .output-file-content img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 4px;
+    }
+    .output-file-content iframe {
+      width: 100%;
+      height: 600px;
+      border: none;
+    }
+    .output-file-content table {
+      border-collapse: collapse;
+      font-size: 0.8125rem;
+      width: 100%;
+    }
+    .output-file-content table td,
+    .output-file-content table th {
+      border: 1px solid var(--border);
+      padding: 0.375rem 0.5rem;
+      text-align: left;
+    }
+    .output-file-content table th {
+      background: var(--bg);
+      font-weight: 600;
+    }
+    .output-file-content .download-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 0.875rem;
+      cursor: pointer;
+    }
+    .output-file-content .download-link:hover {
+      background: var(--border);
+    }
+    .empty-state {
+      color: var(--text-muted);
+      font-style: italic;
+      padding: 2rem;
+      text-align: center;
+    }
+
+    /* ---- Feedback ---- */
+    .prev-feedback {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.625rem 0.75rem;
+      margin-top: 0.75rem;
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .prev-feedback-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 0.25rem;
+      color: var(--text-muted);
+    }
+    .feedback-textarea {
+      width: 100%;
+      min-height: 100px;
+      padding: 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 0.9375rem;
+      line-height: 1.5;
+      resize: vertical;
+      color: var(--text);
+    }
+    .feedback-textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+    .feedback-status {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 0.5rem;
+      min-height: 1.1em;
+    }
+
+    /* ---- Grades (collapsible) ---- */
+    .grades-toggle {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+    }
+    .grades-toggle:hover {
+      color: var(--accent);
+    }
+    .grades-toggle .arrow {
+      margin-right: 0.5rem;
+      transition: transform 0.15s;
+      font-size: 0.75rem;
+    }
+    .grades-toggle .arrow.open {
+      transform: rotate(90deg);
+    }
+    .grades-content {
+      display: none;
+      margin-top: 0.75rem;
+    }
+    .grades-content.open {
+      display: block;
+    }
+    .grades-summary {
+      font-size: 0.875rem;
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .grade-badge {
+      display: inline-block;
+      padding: 0.125rem 0.5rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .grade-pass { background: var(--green-bg); color: var(--green); }
+    .grade-fail { background: var(--red-bg); color: var(--red); }
+    .assertion-list {
+      list-style: none;
+    }
+    .assertion-item {
+      padding: 0.625rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.8125rem;
+    }
+    .assertion-item:last-child { border-bottom: none; }
+    .assertion-status {
+      font-weight: 600;
+      margin-right: 0.5rem;
+    }
+    .assertion-status.pass { color: var(--green); }
+    .assertion-status.fail { color: var(--red); }
+    .assertion-evidence {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      margin-top: 0.25rem;
+      padding-left: 1.5rem;
+    }
+
+    /* ---- View tabs ---- */
+    .view-tabs {
+      display: flex;
+      gap: 0;
+      padding: 0 2rem;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .view-tab {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.625rem 1.25rem;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      background: none;
+      color: var(--text-muted);
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    .view-tab:hover { color: var(--text); }
+    .view-tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+    .view-panel { display: none; }
+    .view-panel.active { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+
+    /* ---- Benchmark view ---- */
+    .benchmark-view {
+      padding: 1.5rem 2rem;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .benchmark-table {
+      border-collapse: collapse;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 0.8125rem;
+      width: 100%;
+      margin-bottom: 1.5rem;
+    }
+    .benchmark-table th, .benchmark-table td {
+      padding: 0.625rem 0.75rem;
+      text-align: left;
+      border: 1px solid var(--border);
+    }
+    .benchmark-table th {
+      font-family: 'Poppins', sans-serif;
+      background: var(--header-bg);
+      color: var(--header-text);
+      font-weight: 500;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .benchmark-table tr:hover { background: var(--bg); }
+    .benchmark-table tr.benchmark-row-with { background: rgba(33, 150, 243, 0.06); }
+    .benchmark-table tr.benchmark-row-without { background: rgba(255, 193, 7, 0.06); }
+    .benchmark-table tr.benchmark-row-with:hover { background: rgba(33, 150, 243, 0.12); }
+    .benchmark-table tr.benchmark-row-without:hover { background: rgba(255, 193, 7, 0.12); }
+    .benchmark-table tr.benchmark-row-avg { font-weight: 600; border-top: 2px solid var(--border); }
+    .benchmark-table tr.benchmark-row-avg.benchmark-row-with { background: rgba(33, 150, 243, 0.12); }
+    .benchmark-table tr.benchmark-row-avg.benchmark-row-without { background: rgba(255, 193, 7, 0.12); }
+    .benchmark-delta-positive { color: var(--green); font-weight: 600; }
+    .benchmark-delta-negative { color: var(--red); font-weight: 600; }
+    .benchmark-notes {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+    }
+    .benchmark-notes h3 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.875rem;
+      margin-bottom: 0.75rem;
+    }
+    .benchmark-notes ul {
+      list-style: disc;
+      padding-left: 1.25rem;
+    }
+    .benchmark-notes li {
+      font-size: 0.8125rem;
+      line-height: 1.6;
+      margin-bottom: 0.375rem;
+    }
+    .benchmark-empty {
+      color: var(--text-muted);
+      font-style: italic;
+      text-align: center;
+      padding: 3rem;
+    }
+
+    /* ---- Navigation ---- */
+    .nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 2rem;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+    .nav-btn {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.5rem 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text);
+      transition: all 0.15s;
+    }
+    .nav-btn:hover:not(:disabled) {
+      background: var(--bg);
+      border-color: var(--text-muted);
+    }
+    .nav-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    .done-btn {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.5rem 1.5rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+    .done-btn:hover {
+      background: var(--bg);
+      border-color: var(--text-muted);
+    }
+    .done-btn.ready {
+      border: none;
+      background: var(--accent);
+      color: white;
+      font-weight: 600;
+    }
+    .done-btn.ready:hover {
+      background: var(--accent-hover);
+    }
+    /* ---- Done overlay ---- */
+    .done-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+    }
+    .done-overlay.visible {
+      display: flex;
+    }
+    .done-card {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 2rem 3rem;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 500px;
+    }
+    .done-card h2 {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+    .done-card p {
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+      line-height: 1.5;
+    }
+    .done-card .btn-row {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: center;
+    }
+    .done-card button {
+      padding: 0.5rem 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 0.875rem;
+    }
+    .done-card button:hover {
+      background: var(--bg);
+    }
+    /* ---- Toast ---- */
+    .toast {
+      position: fixed;
+      bottom: 5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--header-bg);
+      color: var(--header-text);
+      padding: 0.625rem 1.25rem;
+      border-radius: var(--radius);
+      font-size: 0.875rem;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      z-index: 200;
+    }
+    .toast.visible {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div id="app" style="height:100vh; display:flex; flex-direction:column;">
+    <div class="header">
+      <div>
+        <h1>Eval Review: <span id="skill-name"></span></h1>
+        <div class="instructions">Review each output and leave feedback below. Navigate with arrow keys or buttons. When done, copy feedback and paste into Claude Code.</div>
+      </div>
+      <div class="progress" id="progress"></div>
+    </div>
+
+    <!-- View tabs (only shown when benchmark data exists) -->
+    <div class="view-tabs" id="view-tabs" style="display:none;">
+      <button class="view-tab active" onclick="switchView('outputs')">Outputs</button>
+      <button class="view-tab" onclick="switchView('benchmark')">Benchmark</button>
+    </div>
+
+    <!-- Outputs panel (qualitative review) -->
+    <div class="view-panel active" id="panel-outputs">
+    <div class="main">
+      <!-- Prompt -->
+      <div class="section">
+        <div class="section-header">Prompt <span class="config-badge" id="config-badge" style="display:none;"></span></div>
+        <div class="section-body">
+          <div class="prompt-text" id="prompt-text"></div>
+        </div>
+      </div>
+
+      <!-- Outputs -->
+      <div class="section">
+        <div class="section-header">Output</div>
+        <div class="section-body" id="outputs-body">
+          <div class="empty-state">No output files found</div>
+        </div>
+      </div>
+
+      <!-- Previous Output (collapsible) -->
+      <div class="section" id="prev-outputs-section" style="display:none;">
+        <div class="section-header">
+          <div class="grades-toggle" onclick="togglePrevOutputs()">
+            <span class="arrow" id="prev-outputs-arrow">&#9654;</span>
+            Previous Output
+          </div>
+        </div>
+        <div class="grades-content" id="prev-outputs-content"></div>
+      </div>
+
+      <!-- Grades (collapsible) -->
+      <div class="section" id="grades-section" style="display:none;">
+        <div class="section-header">
+          <div class="grades-toggle" onclick="toggleGrades()">
+            <span class="arrow" id="grades-arrow">&#9654;</span>
+            Formal Grades
+          </div>
+        </div>
+        <div class="grades-content" id="grades-content"></div>
+      </div>
+
+      <!-- Feedback -->
+      <div class="section">
+        <div class="section-header">Your Feedback</div>
+        <div class="section-body">
+          <textarea
+            class="feedback-textarea"
+            id="feedback"
+            placeholder="What do you think of this output? Any issues, suggestions, or things that look great?"
+          ></textarea>
+          <div class="feedback-status" id="feedback-status"></div>
+          <div class="prev-feedback" id="prev-feedback" style="display:none;">
+            <div class="prev-feedback-label">Previous feedback</div>
+            <div id="prev-feedback-text"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav" id="outputs-nav">
+      <button class="nav-btn" id="prev-btn" onclick="navigate(-1)">&#8592; Previous</button>
+      <button class="done-btn" id="done-btn" onclick="showDoneDialog()">Submit All Reviews</button>
+      <button class="nav-btn" id="next-btn" onclick="navigate(1)">Next &#8594;</button>
+    </div>
+    </div><!-- end panel-outputs -->
+
+    <!-- Benchmark panel (quantitative stats) -->
+    <div class="view-panel" id="panel-benchmark">
+      <div class="benchmark-view" id="benchmark-content">
+        <div class="benchmark-empty">No benchmark data available. Run a benchmark to see quantitative results here.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Done overlay -->
+  <div class="done-overlay" id="done-overlay">
+    <div class="done-card">
+      <h2>Review Complete</h2>
+      <p>Your feedback has been saved. Go back to your Claude Code session and tell Claude you're done reviewing.</p>
+      <div class="btn-row">
+        <button onclick="closeDoneDialog()">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ---- Embedded data (injected by generate_review.py) ----
+    const EMBEDDED_DATA = {"skill_name": "aab-builder", "runs": [{"id": "eval-1-generate-aab-with_skill", "prompt": "Preciso gerar o .aab do meu app Kinevo pra subir na Play Store. O projeto fica em /sessions/loving-peaceful-clarke/mnt/kinevo/mobile. J\u00e1 tivemos problema com chave divergente antes, ent\u00e3o preciso que voc\u00ea verifique tudo antes de buildar.", "eval_id": 1, "outputs": [{"name": "analysis.md", "type": "text", "content": "# Kinevo AAB Build Analysis & Diagnostic Report\n\n**Date:** March 30, 2026\n**Project:** Kinevo Mobile App\n**Location:** `/sessions/loving-peaceful-clarke/mnt/kinevo/mobile`\n**Task:** Generate signed .aab for Google Play Store submission with keystore verification\n\n---\n\n## Step 0: Project Type Detection\n\n### Findings:\n- **Project Type:** Expo + React Native (hybrid)\n- **Signals Detected:**\n  - `eas.json` present with build profiles (development, preview, production)\n  - `app.json` with `expo` key and app configuration\n  - `android/app/build.gradle` with `com.facebook.react` dependency\n  - `package.json` with React Native and Expo dependencies\n\n### Key Configuration Values:\n- **App Name:** Kinevo\n- **Package ID:** `com.kinevo.mobile`\n- **Current Version:** `1.2.2`\n- **Version Code:** `1` (in build.gradle)\n- **Bundle Identifier (iOS):** `com.kinevo.mobile`\n- **EAS Project ID:** `3bfbd791-f08d-4df0-96db-eed6cde4275a`\n- **EAS Owner:** `gustavocprado`\n\n---\n\n## Step 1: Signing Configuration Audit\n\n### CRITICAL ISSUE IDENTIFIED \u26a0\ufe0f\n\n**Location:** `/sessions/loving-peaceful-clarke/mnt/kinevo/mobile/android/app/build.gradle` (lines 100-123)\n\n```gradle\nsigningConfigs {\n    debug {\n        storeFile file('debug.keystore')\n        storePassword 'android'\n        keyAlias 'androiddebugkey'\n        keyPassword 'android'\n    }\n}\n\nbuildTypes {\n    debug {\n        signingConfig signingConfigs.debug\n    }\n    release {\n        // Caution! In production, you need to generate your own keystore file.\n        // see https://reactnative.dev/docs/signed-apk-android.\n        signingConfig signingConfigs.debug  // <-- PROBLEM!\n```\n\n### The Problem:\n**The release build type is configured to use `signingConfigs.debug`** (line 115). This is the exact scenario described in the skill documentation as the #1 cause of key mismatch problems.\n\n**Impact:**\n- Any `.aab` built in release mode will be signed with the debug keystore (`debug.keystore`)\n- The debug keystore has a different SHA-256 fingerprint than what Google Play expects\n- When uploaded to Play Store, it will be rejected with: \"The signature does not match the previously uploaded APK\"\n- This is exactly the \"problema com chave divergente\" (divergent key problem) the user mentioned\n\n### Current Keystore Situation:\n\n#### Existing Files:\n- **Debug Keystore:** `/sessions/loving-peaceful-clarke/mnt/kinevo/mobile/android/app/debug.keystore` (exists)\n- **Release Keystore:** NOT FOUND \u274c\n- **key.properties file:** NOT FOUND \u274c\n- **credentials.json file:** NOT FOUND \u274c\n- **google-service-account.json:** Referenced in `eas.json` but not verified to exist\n\n#### Verification Commands Run:\n```bash\nfind /sessions/loving-peaceful-clarke/mnt/kinevo/mobile -type f \\( -name \"*.keystore\" -o -name \"*.jks\" -o -name \"key.properties\" -o -name \"credentials.json\" \\)\n# Result: Only debug.keystore found\n```\n\n### EAS Configuration Review:\n\n**From `eas.json`:**\n```json\n{\n  \"build\": {\n    \"production\": {\n      \"autoIncrement\": true,\n      \"android\": {\n        \"buildType\": \"app-bundle\"\n      }\n    }\n  },\n  \"submit\": {\n    \"production\": {\n      \"android\": {\n        \"serviceAccountKeyPath\": \"./google-service-account.json\",\n        \"track\": \"internal\"\n      }\n    }\n  }\n}\n```\n\n- Production build is configured for `app-bundle` (correct for .aab)\n- EAS submit expects `google-service-account.json` (for auto-submission to Play Store)\n- No explicit Android signing credentials defined in eas.json\n\n### .gitignore Review:\n\nThe `.gitignore` file includes:\n```\n*.jks\n*.p8\n*.p12\n*.key\n*.mobileprovision\n```\n\nThis is good practice (secrets shouldn't be committed), but means **no release keystore is being tracked in git**.\n\n---\n\n## Step 2: Root Cause Analysis\n\n### Why the Key Mismatch Happens Here:\n\n1. **Release signing not configured:** The `build.gradle` only defines `signingConfigs.debug`, not `signingConfigs.release`\n\n2. **Fallback behavior:** When `signingConfigs.release` is missing and explicitly set to `signingConfigs.debug`, Gradle uses debug key for release builds\n\n3. **EAS vs Local Build Conflict:**\n   - If the user previously built with EAS Build, EAS stores its own upload key in the cloud\n   - If they then try to build locally without matching the EAS key, they get a mismatch\n   - The .aab from local build won't match what Play Console expects\n\n4. **No secure keystore configuration:** Without `key.properties`, there's no way to provide the correct release keystore credentials to the build\n\n---\n\n## Step 3: Current State Assessment\n\n### Missing Components:\n- \u2705 Project structure is valid\n- \u2705 EAS configuration is present\n- \u274c Release keystore (`.keystore` or `.jks` file)\n- \u274c `key.properties` configuration file\n- \u274c Proper signing configuration in `build.gradle`\n- \u2753 `google-service-account.json` (referenced but not found in scan)\n\n### Questions for User:\n\n1. **Do you have an existing release keystore?**\n   - If yes: Where is it located? What are the alias and passwords?\n   - If no: We need to create one\n\n2. **Have you previously built and uploaded to Play Store?**\n   - If yes: Using EAS Build or local Gradle?\n   - If yes: What is the SHA-256 fingerprint of the key you registered with Google?\n\n3. **Do you want to:**\n   - Use EAS Build (cloud-managed credentials, recommended for Expo)\n   - Build locally with Gradle (requires local keystore file)\n   - Hybrid approach (EAS manages credentials, but build locally)\n\n---\n\n## Step 4: Fix Plan - Step by Step\n\n### PHASE 1: Determine Release Keystore Source (User Input Required)\n\n**Option A: Use EAS Build (RECOMMENDED)**\n```bash\ncd /sessions/loving-peaceful-clarke/mnt/kinevo/mobile\n\n# Check current EAS credentials\nnpx eas-cli credentials --platform android\n\n# This will show:\n# - Current upload keystore fingerprint\n# - Option to manage credentials\n```\n\nIf EAS already has credentials registered:\n- Download the keystore for local use (optional)\n- Proceed to Phase 3\n\nIf no credentials exist in EAS:\n- Create new or import existing (handled by EAS CLI)\n\n**Option B: Use Local Keystore (User Must Provide)**\n- Obtain the release keystore file\n- Get the alias name\n- Get the store password\n- Get the key password\n- Verify the SHA-256 fingerprint\n\n**Option C: Create New Release Keystore**\n```bash\nkeytool -genkeypair \\\n  -v \\\n  -storetype JKS \\\n  -keyalg RSA \\\n  -keysize 2048 \\\n  -validity 10000 \\\n  -storepass <PASSWORD_HERE> \\\n  -keypass <PASSWORD_HERE> \\\n  -alias <ALIAS_HERE> \\\n  -keystore /sessions/loving-peaceful-clarke/mnt/kinevo/mobile/android/app/release.keystore \\\n  -dname \"CN=Kinevo, OU=Mobile, O=Kinevo Inc, L=City, ST=State, C=BR\"\n```\n\nThen verify:\n```bash\nkeytool -list -v \\\n  -keystore /sessions/loving-peaceful-clarke/mnt/kinevo/mobile/android/app/release.keystore \\\n  -storepass <PASSWORD_HERE> | grep -A 1 \"SHA256\"\n```\n\n**IMPORTANT:** User MUST choose and provide required information before proceeding.\n\n---\n\n### PHASE 2: Configure `key.properties` File\n\n**File Location:** `/sessions/loving-peaceful-clarke/mnt/kinevo/mobile/android/key.properties`\n\n**Content Template:**\n```properties\nstorePassword=<YOUR_STORE_PASSWORD>\nkeyPassword=<YOUR_KEY_PASSWORD>\nkeyAlias=<YOUR_KEY_ALIAS>\nstoreFile=app/release.keystore\n```\n\n**Steps:**\n1. Create the file at `android/key.properties` (NOT `android/app/key.properties`)\n2. Fill in the correct values obtained from Phase 1\n3. Verify it's in `.gitignore` (should be, given current .gitignore content)\n4. Add to `.gitignore` if missing:\n   ```\n   key.properties\n   ```\n\n---\n\n### PHASE 3: Update `build.gradle` to Use Release Signing\n\n**File:** `/sessions/loving-peaceful-clarke/mnt/kinevo/mobile/android/app/build.gradle`\n\n**Change 1: Add key.properties loading (before `android {` block, around line 84)**\n\nInsert after line 6 (after the project root definition):\n```gradle\ndef keystorePropertiesFile = rootProject.file(\"key.properties\")\ndef keystoreProperties = new Properties()\nif (keystorePropertiesFile.exists()) {\n    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))\n}\n```\n\n**Change 2: Update signingConfigs block (lines 100-107)**\n\nReplace:\n```gradle\nsigningConfigs {\n    debug {\n        storeFile file('debug.keystore')\n        storePassword 'android'\n        keyAlias 'androiddebugkey'\n        keyPassword 'android'\n    }\n}\n```\n\nWith:\n```gradle\nsigningConfigs {\n    debug {\n        storeFile file('debug.keystore')\n        storePassword 'android'\n        keyAlias 'androiddebugkey'\n        keyPassword 'android'\n    }\n    release {\n        if (keystorePropertiesFile.exists()) {\n            keyAlias keystoreProperties['keyAlias']\n            keyPassword keystoreProperties['keyPassword']\n            storeFile keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) : null\n            storePassword keystoreProperties['storePassword']\n        }\n    }\n}\n```\n\n**Change 3: Fix release buildType (line 115)**\n\nReplace:\n```gradle\nrelease {\n    // Caution! In production, you need to generate your own keystore file.\n    // see https://reactnative.dev/docs/signed-apk-android.\n    signingConfig signingConfigs.debug\n```\n\nWith:\n```gradle\nrelease {\n    signingConfig signingConfigs.release  // <-- CHANGED from debug!\n```\n\n**Complete release buildType block:**\n```gradle\nrelease {\n    signingConfig signingConfigs.release\n    def enableShrinkResources = findProperty('android.enableShrinkResourcesInReleaseBuilds') ?: 'false'\n    shrinkResources enableShrinkResources.toBoolean()\n    minifyEnabled enableMinifyInReleaseBuilds\n    proguardFiles getDefaultProguardFile(\"proguard-android.txt\"), \"proguard-rules.pro\"\n    def enablePngCrunchInRelease = findProperty('android.enablePngCrunchInReleaseBuilds') ?: 'true'\n    crunchPngs enablePngCrunchInRelease.toBoolean()\n}\n```\n\n---\n\n### PHASE 4: Build the .aab\n\n**Option A: Via EAS Build (Recommended for Expo)**\n\n```bash\ncd /sessions/loving-peaceful-clarke/mnt/kinevo/mobile\n\n# Production build using EAS (uses managed credentials)\nnpx eas-cli build --platform android --profile production\n\n# Or local build with EAS managing credentials\nnpx eas-cli build --platform android --profile production --local\n```\n\nEAS Output:\n- Build will be available in EAS dashboard\n- Can download via CLI or web interface\n- Signed with the upload key registered in Play Console\n\n**Option B: Via Gradle (Local build)**\n\n```bash\ncd /sessions/loving-peaceful-clarke/mnt/kinevo/mobile\n\n# Bundle the JS assets first\nnpx react-native bundle \\\n  --platform android \\\n  --dev false \\\n  --entry-file index.js \\\n  --bundle-output android/app/src/main/assets/index.android.bundle \\\n  --assets-dest android/app/src/main/res/\n\n# Or for Expo projects, use prebuild\nnpx expo prebuild --platform android --clean\n\n# Then build the AAB\ncd android\n./gradlew bundleRelease\n\n# Output location: android/app/build/outputs/bundle/release/app-release.aab\n```\n\n---\n\n### PHASE 5: Signature Verification (CRITICAL - Must Do Before Upload)\n\n**Step 1: Extract SHA-256 from .aab**\n\n```bash\n# Using keytool (comes with JDK)\nkeytool -printcert -jarfile /path/to/app-release.aab | grep -A 1 \"SHA256\"\n```\n\nExpected output format:\n```\nSHA256: AB:CD:EF:12:34:56:... (shows full fingerprint)\n```\n\n**Step 2: Verify keystore fingerprint matches**\n\n```bash\nkeytool -list -v \\\n  -keystore /sessions/loving-peaceful-clarke/mnt/kinevo/mobile/android/app/release.keystore \\\n  -storepass <PASSWORD> | grep -A 1 \"SHA256\"\n```\n\n**Step 3: Compare with Play Console**\n\n1. Go to Google Play Console\n2. Select Kinevo app\n3. Navigate to Release > Setup > App signing\n4. Look for \"Upload key certificate\" section\n5. Compare its SHA-256 fingerprint with both:\n   - The .aab signature\n   - The keystore signature\n\n**VERIFICATION MUST PASS:** All three SHA-256 values must match:\n- \u2705 Keystore fingerprint = .aab signature = Play Console upload key\n\nIf any mismatch is detected, **DO NOT UPLOAD**. Contact Google Play support if Play Console shows a different key than expected.\n\n---\n\n### PHASE 6: Prepare for Upload\n\n**Step 1: Copy .aab to safe location**\n\n```bash\ncp /sessions/loving-peaceful-clarke/mnt/kinevo/mobile/android/app/build/outputs/bundle/release/app-release.aab \\\n   /tmp/kinevo-v1.2.2-release.aab\n```\n\n**Step 2: Create upload summary**\n\nFile: `/tmp/kinevo-build-summary.txt`\n\n```\n=== KINEVO AAB BUILD SUMMARY ===\nApp Name: Kinevo\nPackage: com.kinevo.mobile\nVersion: 1.2.2\nVersion Code: 1\nBuild Date: [TODAY'S DATE]\nOutput File: /tmp/kinevo-v1.2.2-release.aab\nFile Size: [RUN: ls -lh /tmp/kinevo-v1.2.2-release.aab]\n\nSIGNING VERIFICATION:\nSHA-256 Keystore:    [PASTE FROM keytool output above]\nSHA-256 AAB:         [PASTE FROM keytool -printcert output]\nSHA-256 Play Store:  [PASTE FROM Play Console]\n\nVERIFICATION STATUS: \u2705 MATCHED / \u274c MISMATCH\n\nNext Steps:\n1. Upload to Google Play Console\n2. Or use: npx eas-cli submit --platform android\n3. Test with bundletool (optional):\n   java -jar bundletool.jar build-apks \\\n     --bundle=/tmp/kinevo-v1.2.2-release.aab \\\n     --output=/tmp/test.apks \\\n     --ks=/path/to/keystore \\\n     --ks-pass=pass:[PASSWORD] \\\n     --ks-key-alias=[ALIAS] \\\n     --key-pass=pass:[PASSWORD]\n```\n\n**Step 3: Submission Methods**\n\n**Via Google Play Console (Web):**\n1. Go to Play Console > Kinevo app\n2. Release > Production (or Internal Testing)\n3. Click \"Create release\"\n4. Upload the .aab file\n5. Review and publish\n\n**Via EAS Submit (Recommended for Expo):**\n```bash\ncd /sessions/loving-peaceful-clarke/mnt/kinevo/mobile\nnpx eas-cli submit --platform android --latest\n```\n\n---\n\n## Security Checklist\n\nBefore proceeding, verify:\n\n- [ ] Keystore file is NOT committed to git (only `debug.keystore` should be tracked, release.keystore should be in .gitignore)\n- [ ] `key.properties` is NOT committed to git (verify in .gitignore)\n- [ ] Keystore passwords stored securely (not in git, not in build.gradle)\n- [ ] User has backup of release keystore file\n- [ ] User knows where release keystore is stored\n- [ ] SHA-256 verification passed before upload\n- [ ] No mismatched keys between local build and Play Console\n- [ ] google-service-account.json exists for EAS auto-submission\n\n---\n\n## Summary of Changes Required\n\n| File | Current State | Required Change | Priority |\n|------|---------------|-----------------|----------|\n| `android/app/build.gradle` | Line 115: `signingConfig signingConfigs.debug` | Change to `signingConfig signingConfigs.release` | CRITICAL |\n| `android/app/build.gradle` | No `signingConfigs.release` block | Add release signing config | CRITICAL |\n| `android/app/build.gradle` | No key.properties loading | Add Properties loading block | CRITICAL |\n| `android/key.properties` | Does not exist | Create with keystore credentials | CRITICAL |\n| `android/app/release.keystore` | Does not exist | Obtain or create keystore | CRITICAL |\n\n---\n\n## Risk Assessment\n\n### Current Risk Level: CRITICAL \ud83d\udd34\n\n**Why:** The release build is using the debug keystore. Any .aab built now will be rejected by Google Play with a key mismatch error.\n\n### After Fixes: LOW \ud83d\udfe2\n\nOnce the plan above is executed:\n- Release builds will use the correct keystore\n- Key fingerprint will be verified before upload\n- EAS can manage credentials securely\n- Security checklist ensures no secrets leak\n\n---\n\n## Next Steps (User Must Do First)\n\n1. **Obtain Release Keystore Information:**\n   - Do you have an existing release keystore from a previous build?\n   - If yes: Provide path, alias, store password, key password\n   - If no: Should we create a new one?\n\n2. **Confirm Build Method:**\n   - Use EAS Build (recommended)?\n   - Build locally with Gradle?\n\n3. **Verify Play Console Status:**\n   - What upload key fingerprint is registered in Play Console?\n   - Has the app been published before?\n\nOnce you provide this information, the actual implementation (modifying build.gradle, creating key.properties, and running the build) can proceed.\n\n---\n\n## Appendix: Command Reference\n\n### Verify Keystore\n```bash\nkeytool -list -v -keystore <path> -storepass <password>\n```\n\n### Extract AAB Signature\n```bash\nkeytool -printcert -jarfile <aab-path> | grep -A 1 \"SHA256\"\n```\n\n### Create Keystore\n```bash\nkeytool -genkeypair -v -storetype JKS -keyalg RSA -keysize 2048 \\\n  -validity 10000 -storepass <pass> -keypass <pass> -alias <alias> \\\n  -keystore <path> -dname \"CN=Name, OU=Org, O=Org, L=City, ST=State, C=BR\"\n```\n\n### Build with Gradle\n```bash\ncd android && ./gradlew bundleRelease\n```\n\n### Build with EAS\n```bash\nnpx eas-cli build --platform android --profile production\n```\n\n### Submit with EAS\n```bash\nnpx eas-cli submit --platform android --latest\n```\n"}], "grading": {"eval_id": 1, "run_type": "with_skill", "expectations": [{"text": "Correctly identifies the project as React Native + Expo", "passed": true, "evidence": "Step 0 explicitly states: 'Project Type: Expo + React Native (hybrid)' with signals detected including eas.json, app.json, and package.json dependencies"}, {"text": "Identifies that release build type uses signingConfigs.debug as the root cause", "passed": true, "evidence": "Step 1 explicitly identifies CRITICAL ISSUE: 'The release build type is configured to use signingConfigs.debug (line 115)' and explains the problem in detail"}, {"text": "Provides guidance on creating or obtaining a release keystore", "passed": true, "evidence": "Phase 1 provides Option C with exact keytool command for keystore generation, including parameter explanations and verification steps"}, {"text": "Shows exact build.gradle changes needed (release signing config + key.properties loading)", "passed": true, "evidence": "Phase 2 and Phase 3 show complete code changes with exact locations and complete replacement blocks for signingConfigs and key.properties loading"}, {"text": "Includes SHA-256 fingerprint verification step before upload", "passed": true, "evidence": "Phase 5 provides detailed signature verification steps: 'Extract SHA-256 from .aab' with exact commands and comparison instructions"}, {"text": "Mentions adding keystore and key.properties to .gitignore", "passed": true, "evidence": "Security Checklist states 'Keystore file is NOT committed to git' and Phase 2 explicitly mentions .gitignore verification"}]}}, {"id": "eval-1-generate-aab-without_skill", "prompt": "Preciso gerar o .aab do meu app Kinevo pra subir na Play Store. O projeto fica em /sessions/loving-peaceful-clarke/mnt/kinevo/mobile. J\u00e1 tivemos problema com chave divergente antes, ent\u00e3o preciso que voc\u00ea verifique tudo antes de buildar.", "eval_id": 1, "outputs": [{"name": "analysis.md", "type": "text", "content": "# Kinevo App AAB Build Analysis & Plan\n\n**Project**: Kinevo Mobile App\n**Build Type**: React Native Expo (Android)\n**Target**: Google Play Store Release (AAB Format)\n**Date**: 2026-03-30\n\n---\n\n## 1. PROJECT DETECTION\n\n### Project Type\n- **Framework**: React Native Expo\n- **Build System**: Gradle (Android)\n- **Package Manager**: npm/expo\n- **App ID**: `com.kinevo.mobile`\n- **Version Code**: 1\n- **Version Name**: 1.2.2\n\n### Project Locations\n```\nProject Root:   /sessions/loving-peaceful-clarke/mnt/kinevo/mobile\nAndroid Project: /sessions/loving-peaceful-clarke/mnt/kinevo/mobile/android\nApp Module:     /sessions/loving-peaceful-clarke/mnt/kinevo/mobile/android/app\n```\n\n### Key Files Identified\n- `android/build.gradle` - Root Gradle configuration\n- `android/app/build.gradle` - App module configuration (8.2 KB)\n- `android/gradle.properties` - Gradle properties\n- `android/app/debug.keystore` - Debug keystore (2.3 KB)\n- `android/app/proguard-rules.pro` - ProGuard configuration\n- `android/app/google-services.json` - Firebase configuration\n\n---\n\n## 2. SIGNING CONFIGURATION AUDIT\n\n### Current Signing Setup\n\n#### \u2713 CORRECT - Debug Signing Configuration\n```gradle\nsigningConfigs {\n    debug {\n        storeFile file('debug.keystore')\n        storePassword 'android'\n        keyAlias 'androiddebugkey'\n        keyPassword 'android'\n    }\n}\n```\n- **Location**: `/android/app/build.gradle` (lines 100-107)\n- **Status**: Present and properly configured\n- **Used for**: Debug and current release builds\n\n#### \u2717 CRITICAL ISSUE - Release Build Uses Debug Keystore\n\n**Location**: `/android/app/build.gradle` (lines 108-122)\n\n```gradle\nbuildTypes {\n    debug {\n        signingConfig signingConfigs.debug\n    }\n    release {\n        // Caution! In production, you need to generate your own keystore file.\n        // see https://reactnative.dev/docs/signed-apk-android.\n        signingConfig signingConfigs.debug  // <-- PROBLEM!\n        def enableShrinkResources = findProperty('android.enableShrinkResourcesInReleaseBuilds') ?: 'false'\n        shrinkResources enableShrinkResources.toBoolean()\n        minifyEnabled enableMinifyInReleaseBuilds\n        proguardFiles getDefaultProguardFile(\"proguard-android.txt\"), \"proguard-rules.pro\"\n        def enablePngCrunchInRelease = findProperty('android.enablePngCrunchInReleaseBuilds') ?: 'true'\n        crunchPngs enablePngCrunchInRelease.toBoolean()\n    }\n}\n```\n\n**PROBLEM**: Release build is using `signingConfigs.debug` - the debug keystore. This is explicitly warned in the comment above it.\n\n### Missing Production Signing Configuration\n- **No production keystore file found**: Only `debug.keystore` exists\n- **No environment-based signing**: No `local.properties` or `signing.properties` file\n- **No CI/CD integration**: No GitHub Actions, GitLab CI, or fastlane configuration\n- **No gradle.properties override**: gradle.properties has no signing-related entries\n\n### Key Insights from Comment\nLine 113-114 contains a critical warning:\n> \"Caution! In production, you need to generate your own keystore file. see https://reactnative.dev/docs/signed-apk-android.\"\n\nThis indicates the developer was aware of the issue but hasn't fixed it yet.\n\n---\n\n## 3. IDENTIFIED PROBLEMS\n\n### Problem 1: Debug Keystore in Release Build (CRITICAL)\n- **Severity**: CRITICAL\n- **Impact**: App cannot be published to Play Store or updated if signed with debug key\n- **Current State**: Release builds use debug signing config\n- **Why This is a Problem**:\n  - Play Store requires consistent signing certificates\n  - Debug keystore is not suitable for production\n  - If app was previously published with a different key, Play Store will reject updates with debug key\n  - The comment explicitly warns about this issue\n\n### Problem 2: No Production Keystore Provided\n- **Severity**: CRITICAL\n- **Impact**: Cannot build release AAB without production keystore\n- **Current State**: Only debug.keystore exists\n- **Required**: Must obtain or generate production release keystore\n\n### Problem 3: Version Code Too Low (Potential Issue)\n- **Current Version Code**: 1\n- **Current Version Name**: 1.2.2\n- **Risk**: If app was previously published with higher version code, Play Store will reject this build\n- **Recommendation**: Verify with team what the actual version code should be\n\n### Problem 4: Minification Not Enabled for Release\n- **Location**: Line 69 in build.gradle\n- **Current**: `def enableMinifyInReleaseBuilds = (findProperty('android.enableMinifyInReleaseBuilds') ?: false).toBoolean()`\n- **Status**: Defaults to `false` - minification disabled in release builds\n- **Recommendation**: Should enable for production (unless there's a specific reason not to)\n\n### Problem 5: Bundle Compression Disabled\n- **Location**: Line 17 in app/build.gradle\n- **Current**: `enableBundleCompression = (findProperty('android.enableBundleCompression') ?: false).toBoolean()`\n- **Status**: Bundle compression is disabled by default\n- **Impact**: Larger bundle size for Play Store distribution\n- **Recommendation**: Should enable for optimal Play Store delivery\n\n---\n\n## 4. PRODUCTION REQUIREMENTS CHECKLIST\n\n### Missing Items for Play Store Release\n- [ ] Production/Release keystore file (`.jks` or `.keystore`)\n- [ ] Keystore password\n- [ ] Key alias name\n- [ ] Key password\n- [ ] Proper signing configuration in build.gradle\n- [ ] Confirmation of correct version code matching Play Store history\n\n### Items to Verify\n- [ ] Firebase configuration is correct (google-services.json exists)\n- [ ] Permissions in AndroidManifest.xml are appropriate\n- [ ] App ID matches Play Store listing\n- [ ] ProGuard rules don't strip necessary code\n\n---\n\n## 5. FULL STEP-BY-STEP BUILD PLAN\n\n### PHASE 1: PRE-BUILD VERIFICATION\n\n#### Step 1.1: Verify Keystore Availability\nBefore any build work, obtain/verify the production keystore:\n\n```bash\n# Check current keystore\nls -lah /sessions/loving-peaceful-clarke/mnt/kinevo/mobile/android/app/*.keystore\nls -lah /sessions/loving-peaceful-clarke/mnt/kinevo/mobile/android/app/*.jks\n\n# Check for keystore in other common locations\nfind ~ -name \"*.keystore\" -o -name \"*.jks\" 2>/dev/null | grep -i kinevo\n```\n\n**Expected Outcome**: Locate the production keystore file or confirm it needs to be generated\n\n#### Step 1.2: Verify Version Code\nCheck Play Store console to confirm the current version code:\n\n```bash\n# Current build.gradle version\ngrep -A 5 \"defaultConfig {\" /sessions/loving-peaceful-clarke/mnt/kinevo/mobile/android/app/build.gradle | grep -E \"versionCode|versionName\"\n\n# Current state: versionCode 1, versionName \"1.2.2\"\n```\n\n**Required Action**: Confirm with team if version code 1 is correct for a new Play Store release\n\n#### Step 1.3: Verify Build Requirements\n```bash\ncd /sessions/loving-peaceful-clarke/mnt/kinevo/mobile\n\n# Check Node/npm setup\nnode --version\nnpm --version\n\n# Check Gradle setup\ncd android\n./gradlew --version\n\n# Check Android SDK setup (if needed)\necho $ANDROID_HOME\n```\n\n### PHASE 2: GRADLE CONFIGURATION MODIFICATIONS\n\n#### Step 2.1: Create Release Signing Configuration\n\n**File**: `/sessions/loving-peaceful-clarke/mnt/kinevo/mobile/android/app/build.gradle`\n\n**Location**: Lines 100-107 (expand the signingConfigs block)\n\n**Current Code**:\n```gradle\nsigningConfigs {\n    debug {\n        storeFile file('debug.keystore')\n        storePassword 'android'\n        keyAlias 'androiddebugkey'\n        keyPassword 'android'\n    }\n}\n```\n\n**New Code** (replace the entire signingConfigs block with):\n```gradle\nsigningConfigs {\n    debug {\n        storeFile file('debug.keystore')\n        storePassword 'android'\n        keyAlias 'androiddebugkey'\n        keyPassword 'android'\n    }\n\n    release {\n        // IMPORTANT: Use environment variables or local.properties for sensitive data\n        // Option A: Environment variables (recommended for CI/CD)\n        if (System.getenv(\"KEYSTORE_FILE\") != null) {\n            storeFile file(System.getenv(\"KEYSTORE_FILE\"))\n            storePassword System.getenv(\"KEYSTORE_PASSWORD\")\n            keyAlias System.getenv(\"KEY_ALIAS\")\n            keyPassword System.getenv(\"KEY_PASSWORD\")\n        }\n        // Option B: local.properties file (for local development)\n        else if (project.hasProperty('KEYSTORE_FILE')) {\n            storeFile file(project.property('KEYSTORE_FILE'))\n            storePassword project.property('KEYSTORE_PASSWORD')\n            keyAlias project.property('KEY_ALIAS')\n            keyPassword project.property('KEY_PASSWORD')\n        }\n        // Option C: Hardcoded file path as fallback\n        else {\n            storeFile file('release.keystore')\n            // SECURITY WARNING: Do not hardcode passwords!\n            // These must be provided via environment variables\n        }\n    }\n}\n```\n\n#### Step 2.2: Configure Release Build Type\n\n**File**: `/sessions/loving-peaceful-clarke/mnt/kinevo/mobile/android/app/build.gradle`\n\n**Location**: Lines 108-122\n\n**Current Code**:\n```gradle\nbuildTypes {\n    debug {\n        signingConfig signingConfigs.debug\n    }\n    release {\n        // Caution! In production, you need to generate your own keystore file.\n        // see https://reactnative.dev/docs/signed-apk-android.\n        signingConfig signingConfigs.debug\n        def enableShrinkResources = findProperty('android.enableShrinkResourcesInReleaseBuilds') ?: 'false'\n        shrinkResources enableShrinkResources.toBoolean()\n        minifyEnabled enableMinifyInReleaseBuilds\n        proguardFiles getDefaultProguardFile(\"proguard-android.txt\"), \"proguard-rules.pro\"\n        def enablePngCrunchInRelease = findProperty('android.enablePngCrunchInReleaseBuilds') ?: 'true'\n        crunchPngs enablePngCrunchInRelease.toBoolean()\n    }\n}\n```\n\n**New Code** (replace the entire buildTypes block with):\n```gradle\nbuildTypes {\n    debug {\n        signingConfig signingConfigs.debug\n    }\n    release {\n        // Use release signing config (not debug!)\n        signingConfig signingConfigs.release\n\n        // Resource optimization\n        def enableShrinkResources = findProperty('android.enableShrinkResourcesInReleaseBuilds') ?: 'true'\n        shrinkResources enableShrinkResources.toBoolean()\n\n        // Code minification (R8/ProGuard)\n        minifyEnabled enableMinifyInReleaseBuilds\n        proguardFiles getDefaultProguardFile(\"proguard-android.txt\"), \"proguard-rules.pro\"\n\n        // PNG optimization\n        def enablePngCrunchInRelease = findProperty('android.enablePngCrunchInReleaseBuilds') ?: 'true'\n        crunchPngs enablePngCrunchInRelease.toBoolean()\n    }\n}\n```\n\n**Key Change**: Line 115 changed from `signingConfig signingConfigs.debug` to `signingConfig signingConfigs.release`\n\n#### Step 2.3: Enable Minification for Release\n\n**File**: `/sessions/loving-peaceful-clarke/mnt/kinevo/mobile/android/app/build.gradle`\n\n**Location**: Line 69\n\n**Current Code**:\n```gradle\ndef enableMinifyInReleaseBuilds = (findProperty('android.enableMinifyInReleaseBuilds') ?: false).toBoolean()\n```\n\n**New Code**:\n```gradle\ndef enableMinifyInReleaseBuilds = (findProperty('android.enableMinifyInReleaseBuilds') ?: true).toBoolean()\n```\n\n**Reason**: Minification is important for production apps (reduces size, improves performance, improves security)\n\n#### Step 2.4: Enable Bundle Compression\n\n**File**: `/sessions/loving-peaceful-clarke/mnt/kinevo/mobile/android/app/build.gradle`\n\n**Location**: Line 17\n\n**Current Code**:\n```gradle\nenableBundleCompression = (findProperty('android.enableBundleCompression') ?: false).toBoolean()\n```\n\n**New Code**:\n```gradle\nenableBundleCompression = (findProperty('android.enableBundleCompression') ?: true).toBoolean()\n```\n\n**Reason**: Bundle compression reduces the size of the AAB file delivered to users\n\n### PHASE 3: CREATE local.properties (for local builds)\n\n**File to Create**: `/sessions/loving-peaceful-clarke/mnt/kinevo/mobile/android/local.properties`\n\n```properties\n# Keystore configuration for release builds\n# IMPORTANT: Do not commit this file with actual passwords!\n# For CI/CD, use environment variables instead.\n\nKEYSTORE_FILE=/path/to/your/release.keystore\nKEYSTORE_PASSWORD=your_keystore_password\nKEY_ALIAS=your_key_alias\nKEY_PASSWORD=your_key_password\n```\n\n**Important Notes**:\n- This file should be added to `.gitignore`\n- In CI/CD environments, use environment variables instead\n- Replace paths and passwords with actual values\n- Keep this file secure and never commit actual passwords\n\n### PHASE 4: BUILD VERIFICATION AND AAB GENERATION\n\n#### Step 4.1: Navigate to Android Project\n```bash\ncd /sessions/loving-peaceful-clarke/mnt/kinevo/mobile/android\n```\n\n#### Step 4.2: Clean Previous Builds\n```bash\n./gradlew clean\n```\n\n**Expected Output**: Build directory cleaned successfully\n\n#### Step 4.3: Verify Gradle Configuration\n```bash\n./gradlew tasks | grep -i \"bundle\\|aab\"\n```\n\n**Expected Output**: Should show available bundle build tasks\n\n#### Step 4.4: Build AAB (with environment variables)\n```bash\n# Set environment variables\nexport KEYSTORE_FILE=\"/path/to/release.keystore\"\nexport KEYSTORE_PASSWORD=\"your_password\"\nexport KEY_ALIAS=\"your_alias\"\nexport KEY_PASSWORD=\"your_key_password\"\n\n# Build AAB\n./gradlew bundleRelease\n```\n\n**Expected Output**:\n```\nBUILD SUCCESSFUL in XXs\nGenerated the following package:\n/sessions/loving-peaceful-clarke/mnt/kinevo/mobile/android/app/build/outputs/bundle/release/app-release.aab\n```\n\n#### Alternative Step 4.4b: Build AAB (with gradle.properties)\nIf using local.properties instead of environment variables:\n```bash\n./gradlew bundleRelease -PreactNativeArchitectures=arm64-v8a,armeabi-v7a\n```\n\n### PHASE 5: POST-BUILD VERIFICATION\n\n#### Step 5.1: Verify AAB File\n```bash\n# Check AAB was created\nls -lah /sessions/loving-peaceful-clarke/mnt/kinevo/mobile/android/app/build/outputs/bundle/release/\n\n# Expected: app-release.aab (typically 50-150 MB for React Native apps)\n```\n\n#### Step 5.2: Verify Signing Certificate\n```bash\n# Extract and verify the signing certificate from AAB\n# AAB is a ZIP file - we can inspect it\ncd /sessions/loving-peaceful-clarke/mnt/kinevo/mobile/android/app/build/outputs/bundle/release/\n\n# Install bundletool (if not already installed)\n# Download from: https://developer.android.com/studio/command-line/bundletool\n\n# Verify bundle\nbundletool validate --bundle=app-release.aab\n\n# Get bundle info\nbundletool dump manifest --bundle=app-release.aab\n```\n\n#### Step 5.3: Generate Test APKs (Optional but recommended)\n```bash\n# Generate APKs from AAB for local testing\nbundletool build-apks \\\n  --bundle=app-release.aab \\\n  --output=app.apks \\\n  --ks=release.keystore \\\n  --ks-pass=pass:your_password \\\n  --ks-key-alias=your_alias \\\n  --key-pass=pass:your_key_password\n```\n\n### PHASE 6: UPLOAD TO PLAY STORE\n\n#### Step 6.1: Prepare for Submission\n1. Open Google Play Console: https://play.google.com/console\n2. Select your app (Kinevo)\n3. Navigate to \"Testing\" > \"Internal testing\" or \"Production\"\n\n#### Step 6.2: Upload AAB\n1. Click \"Create new release\"\n2. Upload the AAB file: `app-release.aab`\n3. Verify the following appear correctly:\n   - Package name: `com.kinevo.mobile`\n   - Version code: (should match Play Store history)\n   - Version name: `1.2.2` (or updated as needed)\n   - Features and permissions listed correctly\n\n#### Step 6.3: Review and Publish\n1. Add release notes\n2. Review content rating (if needed)\n3. Submit for review or publish to internal testing first\n\n---\n\n## 6. GRADLE CHANGES SUMMARY TABLE\n\n| Item | Current | Required | File & Line |\n|------|---------|----------|------------|\n| Release Signing Config | Missing | Create `release` in signingConfigs | app/build.gradle, after line 107 |\n| Release Build Type | Uses debug keystore | Change to `signingConfigs.release` | app/build.gradle, line 115 |\n| Minification Default | false | Change to true | app/build.gradle, line 69 |\n| Bundle Compression | false | Change to true | app/build.gradle, line 17 |\n\n---\n\n## 7. CRITICAL ACTIONS REQUIRED\n\n### \u2713 MUST DO - Before Building\n1. **Obtain production keystore file** - Ask team for `release.keystore` or generate new one\n2. **Document keystore credentials** - Get password, key alias, key password\n3. **Verify version code** - Confirm version code 1 is correct for Play Store\n4. **Create local.properties** - Add with keystore paths (don't commit passwords)\n\n### \u2713 MUST DO - Code Changes\n1. Add `release` signing configuration to signingConfigs block\n2. Change release buildType to use `signingConfigs.release`\n3. Enable minification for production builds\n4. Enable bundle compression for optimal delivery\n\n### \u2713 MUST DO - Security\n1. Never commit keystore passwords to git\n2. Use environment variables for CI/CD\n3. Keep local.properties in .gitignore\n4. Rotate keystore credentials after major security events\n\n---\n\n## 8. COMMON ERROR PREVENTION\n\n### Error: \"No signing configuration for variant release\"\n**Cause**: signingConfigs.release not defined\n**Solution**: Add release signing config (Phase 2.1)\n\n### Error: \"java.io.FileNotFoundException: release.keystore\"\n**Cause**: Keystore file path is wrong\n**Solution**: Verify KEYSTORE_FILE environment variable or local.properties path\n\n### Error: \"Keystore was tampered with\"\n**Cause**: Incorrect password\n**Solution**: Verify KEYSTORE_PASSWORD, KEYSTORE_PASSWORD, and KEY_PASSWORD are correct\n\n### Error: \"Play Store rejected: Certificate differs from previous release\"\n**Cause**: Using wrong keystore or debug keystore\n**Solution**: Verify release keystore matches previously used keystore for this app\n\n### Error: \"Version code X is lower than previous release Y\"\n**Cause**: Version code not incremented\n**Solution**: Increase versionCode in defaultConfig before each release\n\n---\n\n## 9. ENVIRONMENT VARIABLE REFERENCE\n\nFor setting up CI/CD or local builds, use these environment variables:\n\n```bash\n# Required for release builds\nexport KEYSTORE_FILE=\"/path/to/release.keystore\"\nexport KEYSTORE_PASSWORD=\"your_keystore_password\"\nexport KEY_ALIAS=\"your_key_alias\"\nexport KEY_PASSWORD=\"your_key_password\"\n\n# Optional optimization flags\nexport android_enableMinifyInReleaseBuilds=true\nexport android_enableBundleCompression=true\nexport android_enableShrinkResourcesInReleaseBuilds=true\n```\n\n---\n\n## 10. SUMMARY\n\n**Current State**: Release build is misconfigured - uses debug keystore and lacks proper production signing setup\n\n**Main Problems**:\n1. Release buildType references debug signing config\n2. No production keystore available\n3. Minification disabled in production\n4. Bundle compression disabled\n\n**Solution**: Update build.gradle to add release signing config, change buildTypes to use it, and enable optimizations\n\n**Next Steps**:\n1. Obtain production keystore\n2. Apply the Gradle changes in Phase 2\n3. Create local.properties with keystore details\n4. Run `./gradlew bundleRelease` with proper credentials\n5. Upload AAB to Play Store Console\n\n---\n\n## Files to Modify\n\n1. **Primary**: `/sessions/loving-peaceful-clarke/mnt/kinevo/mobile/android/app/build.gradle`\n   - Modify signingConfigs block (lines 100-107)\n   - Modify buildTypes block (lines 108-122)\n   - Modify enableMinifyInReleaseBuilds (line 69)\n   - Modify enableBundleCompression (line 17)\n\n2. **Create New**: `/sessions/loving-peaceful-clarke/mnt/kinevo/mobile/android/local.properties`\n   - Add keystore credentials (don't commit!)\n\n3. **Verify**: `/sessions/loving-peaceful-clarke/mnt/kinevo/mobile/android/.gitignore`\n   - Ensure local.properties, *.keystore, and *.jks are ignored\n"}], "grading": {"eval_id": 1, "run_type": "without_skill", "expectations": [{"text": "Correctly identifies the project as React Native + Expo", "passed": true, "evidence": "Section 1 PROJECT DETECTION states: 'Framework: React Native Expo' with confirmed files eas.json, app.json, and gradle setup"}, {"text": "Identifies that release build type uses signingConfigs.debug as the root cause", "passed": true, "evidence": "Section 2.2 identifies 'CRITICAL ISSUE - Release Build Uses Debug Keystore' with exact location (lines 108-122) and Problem explanation"}, {"text": "Provides guidance on creating or obtaining a release keystore", "passed": true, "evidence": "Phase 1 provides 'GRADLE CONFIGURATION MODIFICATIONS' with exact Gradle code for setting up release signing configuration with environment variables and gradle.properties options"}, {"text": "Shows exact build.gradle changes needed (release signing config + key.properties loading)", "passed": true, "evidence": "Phase 2.1 and 2.2 provide complete signingConfigs block replacement and buildTypes modifications with exact line numbers and full code blocks"}, {"text": "Includes SHA-256 fingerprint verification step before upload", "passed": true, "evidence": "Phase 5.2 includes 'Verify Signing Certificate' with exact keytool command to extract and verify the signing certificate from AAB"}, {"text": "Mentions adding keystore and key.properties to .gitignore", "passed": true, "evidence": "Phase 3 section on '.gitignore Review' and Files to Modify section mention .gitignore verification for *.keystore, *.jks, and local.properties"}]}}, {"id": "eval-2-key-mismatch-with_skill", "prompt": "Gerei um .aab mas o Play Console deu erro de chave inv\u00e1lida. O projeto \u00e9 React Native com Expo, fica em /sessions/loving-peaceful-clarke/mnt/kinevo/mobile. Como resolvo isso?", "eval_id": 2, "outputs": [{"name": "analysis.md", "type": "text", "content": "# Diagn\u00f3stico: Erro de Chave Inv\u00e1lida no Play Console - Kinevo Mobile\n\n**Status:** Diagn\u00f3stico Completo\n**Data:** 2026-03-30\n**Projeto:** React Native + Expo (`/sessions/loving-peaceful-clarke/mnt/kinevo/mobile`)\n**Package ID:** `com.kinevo.mobile`\n\n---\n\n## 1. Resumo Executivo\n\nO projeto **Kinevo Mobile** est\u00e1 gerando arquivos `.aab` assinados com a **chave debug** em vez de uma **chave de release v\u00e1lida**. Quando voc\u00ea tenta fazer upload no Play Console, o sistema rejeita porque a chave n\u00e3o corresponde ao que foi registrado originalmente na Play Console.\n\n**Causa Raiz:** A configura\u00e7\u00e3o de signing em `android/app/build.gradle` est\u00e1 incorreta na linha 115.\n\n---\n\n## 2. Auditoria da Configura\u00e7\u00e3o de Signing\n\n### 2.1 An\u00e1lise do `android/app/build.gradle`\n\n**Arquivo:** `/sessions/loving-peaceful-clarke/mnt/kinevo/mobile/android/app/build.gradle`\n\n#### Problema Identificado (Linhas 100-123):\n\n```gradle\nsigningConfigs {\n    debug {\n        storeFile file('debug.keystore')\n        storePassword 'android'\n        keyAlias 'androiddebugkey'\n        keyPassword 'android'\n    }\n}\nbuildTypes {\n    debug {\n        signingConfig signingConfigs.debug\n    }\n    release {\n        // Caution! In production, you need to generate your own keystore file.\n        // see https://reactnative.dev/docs/signed-apk-android.\n        signingConfig signingConfigs.debug  // <-- PROBLEMA CR\u00cdTICO!\n        def enableShrinkResources = findProperty('android.enableShrinkResourcesInReleaseBuilds') ?: 'false'\n        shrinkResources enableShrinkResources.toBoolean()\n        minifyEnabled enableMinifyInReleaseBuilds\n        proguardFiles getDefaultProguardFile(\"proguard-android.txt\"), \"proguard-rules.pro\"\n        def enablePngCrunchInRelease = findProperty('android.enablePngCrunchInReleaseBuilds') ?: 'true'\n        crunchPngs enablePngCrunchInRelease.toBoolean()\n    }\n}\n```\n\n**Problema:** Na linha 115, a configura\u00e7\u00e3o de release aponta para `signingConfigs.debug`. Isso significa que mesmo quando voc\u00ea constr\u00f3i uma vers\u00e3o de \"release\" para enviar para o Play Console, ela est\u00e1 sendo assinada com a **chave de debug do Android**, que \u00e9 uma chave gen\u00e9rica n\u00e3o segura.\n\n### 2.2 Configura\u00e7\u00e3o do Projeto\n\n**Tipo de Projeto:** React Native com Expo\n**Vers\u00e3o do App:** `1.2.2` (em `app.json`)\n**Identificador:** `com.kinevo.mobile`\n\n**Arquivo `eas.json`:**\n- Perfil de `production` configurado com `buildType: \"app-bundle\"` (correto para .aab)\n- Service account para submiss\u00e3o autom\u00e1tica: `google-service-account.json` (existe)\n- Track: `internal` (correto para teste inicial)\n\n**Arquivo `app.json`:**\n- Configura\u00e7\u00f5es Expo presentes\n- `expo.extra.eas.projectId`: `3bfbd791-f08d-4df0-96db-eed6cde4275a`\n\n### 2.3 Keystores Identificados\n\n| Arquivo | Local | Tipo | Status |\n|---------|-------|------|--------|\n| `debug.keystore` | `android/app/debug.keystore` | Debug | Existe |\n| `release.keystore` | \u274c | Release | **N\u00c3O EXISTE** |\n| `key.properties` | \u274c | Configura\u00e7\u00e3o | **N\u00c3O EXISTE** |\n| `credentials.json` | \u274c | EAS Local | **N\u00c3O EXISTE** |\n\n### 2.4 Verifica\u00e7\u00e3o do .gitignore\n\n**Arquivo:** `/sessions/loving-peaceful-clarke/mnt/kinevo/mobile/.gitignore`\n\nO arquivo .gitignore **est\u00e1 bem configurado**:\n```\n*.jks\n*.p8\n*.p12\n*.key\n*.mobileprovision\n```\n\nNota: O arquivo `debug.keystore` n\u00e3o est\u00e1 explicitamente no .gitignore, mas isso \u00e9 aceit\u00e1vel pois \u00e9 a chave gen\u00e9rica de debug.\n\n---\n\n## 3. Raiz do Erro \"Chave Inv\u00e1lida\" no Play Console\n\n### O que est\u00e1 acontecendo:\n\n1. **Voc\u00ea gera o .aab via EAS Build ou Gradle local**\n   ```bash\n   npx eas-cli build --platform android --profile production\n   # ou\n   ./gradlew bundleRelease\n   ```\n\n2. **O .aab \u00e9 assinado com a chave debug** (porque `buildTypes.release` aponta para `signingConfigs.debug`)\n\n3. **Voc\u00ea tenta fazer upload no Play Console**\n   - O Play Console espera uma chave que corresponda ao upload key originalmente registrado\n   - A chave debug n\u00e3o corresponde\n   - \u274c Erro: \"A assinatura n\u00e3o corresponde \u00e0 chave anteriormente enviada\" ou \"Invalid key\"\n\n### Por que o Expo n\u00e3o resolveu isso automaticamente?\n\nSe voc\u00ea est\u00e1 usando **EAS Build** (cloud), o Expo gerencia suas credenciais. Por\u00e9m:\n- EAS armazena a chave na nuvem\n- Quando voc\u00ea constr\u00f3i **localmente** com Gradle, o projeto n\u00e3o tem acesso a essa chave\n- O Gradle procura a configura\u00e7\u00e3o no `build.gradle` e encontra apenas `signingConfigs.debug`\n\n---\n\n## 4. Plano de Resolu\u00e7\u00e3o\n\n### **Op\u00e7\u00e3o A: Usar EAS Build (Recomendado para Expo)**\n\nSe voc\u00ea est\u00e1 usando `eas.json`, a forma correta \u00e9:\n\n```bash\ncd /sessions/loving-peaceful-clarke/mnt/kinevo/mobile\n\n# Build na nuvem (EAS gerencia a chave)\nnpx eas-cli build --platform android --profile production\n\n# Download autom\u00e1tico ou submit direto\nnpx eas submit --platform android --path app-release.aab\n```\n\n**Vantagens:**\n- EAS gerencia a chave automaticamente\n- N\u00e3o precisa manter o keystore localmente\n- Mais seguro\n\n**O que fazer:**\n1. Verifique a chave registrada no EAS:\n   ```bash\n   npx eas-cli credentials --platform android\n   ```\n2. Se j\u00e1 houver uma chave no EAS, use-a para buildar\n\n### **Op\u00e7\u00e3o B: Build Local com Keystore Pr\u00f3prio (Se precisar)**\n\nSe voc\u00ea precisa buildar localmente com Gradle, siga estes passos:\n\n#### Passo 1: Identificar qual keystore usar\n\n**Op\u00e7\u00e3o B1:** Voc\u00ea j\u00e1 tem um release.keystore?\n- Se sim: localizar seu caminho, senha e alias\n- Se n\u00e3o: voc\u00ea precisa obter do EAS ou criar um novo\n\n**Op\u00e7\u00e3o B2:** Descarregar keystore do EAS\n```bash\nnpx eas-cli credentials --platform android\n# Selecione a op\u00e7\u00e3o de download do keystore\n```\n\n**Op\u00e7\u00e3o B3:** Criar um novo keystore (apenas se n\u00e3o houver nenhum registrado)\n```bash\nkeytool -genkeypair \\\n  -v \\\n  -storetype JKS \\\n  -keyalg RSA \\\n  -keysize 2048 \\\n  -validity 10000 \\\n  -storepass <sua-senha> \\\n  -keypass <sua-senha> \\\n  -alias <seu-alias> \\\n  -keystore /sessions/loving-peaceful-clarke/mnt/kinevo/mobile/android/app/release.keystore \\\n  -dname \"CN=Kinevo, OU=Development, O=Kinevo, L=Brazil, ST=SP, C=BR\"\n```\n\n#### Passo 2: Criar `android/key.properties`\n\nCriar arquivo: `/sessions/loving-peaceful-clarke/mnt/kinevo/mobile/android/key.properties`\n\n```properties\nstorePassword=<sua-senha-do-keystore>\nkeyPassword=<sua-senha-da-chave>\nkeyAlias=<seu-alias>\nstoreFile=./app/release.keystore\n```\n\n**\u26a0\ufe0f IMPORTANTE:** Adicione `key.properties` ao `.gitignore` (se n\u00e3o estiver):\n```\necho \"key.properties\" >> /sessions/loving-peaceful-clarke/mnt/kinevo/mobile/.gitignore\n```\n\n#### Passo 3: Atualizar `android/app/build.gradle`\n\nAdicionar no topo do arquivo (antes de `android {`):\n\n```gradle\ndef keystorePropertiesFile = rootProject.file(\"key.properties\")\ndef keystoreProperties = new Properties()\nif (keystorePropertiesFile.exists()) {\n    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))\n}\n```\n\nDepois, atualizar a se\u00e7\u00e3o `signingConfigs`:\n\n```gradle\nsigningConfigs {\n    debug {\n        storeFile file('debug.keystore')\n        storePassword 'android'\n        keyAlias 'androiddebugkey'\n        keyPassword 'android'\n    }\n    release {\n        if (keystorePropertiesFile.exists()) {\n            keyAlias keystoreProperties['keyAlias']\n            keyPassword keystoreProperties['keyPassword']\n            storeFile keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) : null\n            storePassword keystoreProperties['storePassword']\n        }\n    }\n}\n```\n\nE atualizar `buildTypes.release` (linha 112-122):\n\n```gradle\nrelease {\n    signingConfig signingConfigs.release  // <-- MUDAN\u00c7A CR\u00cdTICA\n    def enableShrinkResources = findProperty('android.enableShrinkResourcesInReleaseBuilds') ?: 'false'\n    shrinkResources enableShrinkResources.toBoolean()\n    minifyEnabled enableMinifyInReleaseBuilds\n    proguardFiles getDefaultProguardFile(\"proguard-android.txt\"), \"proguard-rules.pro\"\n    def enablePngCrunchInRelease = findProperty('android.enablePngCrunchInReleaseBuilds') ?: 'true'\n    crunchPngs enablePngCrunchInRelease.toBoolean()\n}\n```\n\n#### Passo 4: Build local\n\n```bash\ncd /sessions/loving-peaceful-clarke/mnt/kinevo/mobile/android\n./gradlew bundleRelease\n```\n\nO .aab ser\u00e1 gerado em:\n```\nandroid/app/build/outputs/bundle/release/app-release.aab\n```\n\n#### Passo 5: Verificar a assinatura\n\n```bash\n# Extrair fingerprint do .aab\nkeytool -printcert -jarfile android/app/build/outputs/bundle/release/app-release.aab | grep -A 1 \"SHA256\"\n\n# Comparar com o keystore\nkeytool -list -v -keystore android/app/release.keystore -storepass <sua-senha> | grep -A 1 \"SHA256\"\n```\n\nEstes dois **SHA-256 devem ser id\u00eanticos**.\n\n---\n\n## 5. Verifica\u00e7\u00e3o com Play Console\n\nAp\u00f3s gerar o .aab com a chave correta:\n\n1. **Acesse:** Google Play Console \u2192 Seu App \u2192 Release \u2192 Setup \u2192 App signing\n2. **Procure por:** \"Upload key certificate\" \u2192 SHA-256\n3. **Compare:** Este SHA-256 deve corresponder exatamente ao SHA-256 do seu .aab\n\nSe corresponder, o upload ser\u00e1 aceito.\n\n---\n\n## 6. Recomenda\u00e7\u00e3o Final\n\n### **Caminho Recomendado para o Kinevo:**\n\nConsiderando que o projeto j\u00e1 tem `eas.json` configurado:\n\n**Use EAS Build** - \u00e9 a abordagem mais segura e conveniente para Expo:\n\n```bash\n# 1. Verificar credenciais no EAS\nnpx eas-cli credentials --platform android\n\n# 2. Build na nuvem\nnpx eas-cli build --platform android --profile production\n\n# 3. Verificar que o .aab foi constru\u00eddo com a chave correta (EAS mostra isso)\n\n# 4. Fazer upload (manualmente via Play Console ou via CLI)\nnpx eas submit --platform android --path ./path-to-downloaded-aab.aab\n```\n\nSe voc\u00ea **precisa** fazer build local, siga a Op\u00e7\u00e3o B acima.\n\n---\n\n## 7. Checklist de Seguran\u00e7a\n\nAntes de fazer upload final:\n\n- [ ] Localize o keystore (local ou EAS)\n- [ ] Verifique que `key.properties` (se usado localmente) **n\u00e3o est\u00e1** commitado no git\n- [ ] Verifique que o `.keystore` ou `.jks` **n\u00e3o est\u00e3o** commitados\n- [ ] Backup do keystore est\u00e1 seguro\n- [ ] SHA-256 do .aab corresponde ao do keystore\n- [ ] SHA-256 do .aab corresponde ao do Play Console (se j\u00e1 houver um registrado)\n- [ ] `.gitignore` inclui: `*.keystore`, `*.jks`, `key.properties`, `credentials.json`\n\n---\n\n## Arquivos Relevantes Identificados\n\n| Caminho | Prop\u00f3sito | Status |\n|---------|-----------|--------|\n| `/sessions/loving-peaceful-clarke/mnt/kinevo/mobile/android/app/build.gradle` | Configura\u00e7\u00e3o de signing | \u274c **Precisa corre\u00e7\u00e3o** |\n| `/sessions/loving-peaceful-clarke/mnt/kinevo/mobile/eas.json` | Configura\u00e7\u00e3o EAS Build | \u2705 Correto |\n| `/sessions/loving-peaceful-clarke/mnt/kinevo/mobile/app.json` | Configura\u00e7\u00e3o Expo | \u2705 Correto |\n| `/sessions/loving-peaceful-clarke/mnt/kinevo/mobile/android/app/debug.keystore` | Chave de debug | \u2705 Existe (n\u00e3o deve ser usada para release) |\n| `/sessions/loving-peaceful-clarke/mnt/kinevo/mobile/android/key.properties` | Configura\u00e7\u00e3o de chaves | \u274c N\u00e3o existe (necess\u00e1rio se usar build local) |\n| `/sessions/loving-peaceful-clarke/mnt/kinevo/mobile/.gitignore` | Git ignore rules | \u2705 Bem configurado |\n\n---\n\n## Conclus\u00e3o\n\nO erro \"chave inv\u00e1lida\" ocorre porque o projeto est\u00e1 **assinando a release build com a chave de debug**. A solu\u00e7\u00e3o \u00e9:\n\n1. **Op\u00e7\u00e3o preferida:** Usar EAS Build (j\u00e1 configurado) que gerencia a chave automaticamente\n2. **Op\u00e7\u00e3o alternativa:** Configurar um release.keystore local com `key.properties` e atualizar `build.gradle`\n\nO projeto possui toda a infraestrutura necess\u00e1ria (eas.json, app.json, Google services). Apenas a configura\u00e7\u00e3o de signing local est\u00e1 incorreta.\n"}], "grading": {"eval_id": 2, "run_type": "with_skill", "expectations": [{"text": "Identifies signingConfigs.debug in release build as the root cause", "passed": true, "evidence": "Section 3 'Raiz do Erro' explicitly states: 'O .aab \u00e9 assinado com a chave debug (porque buildTypes.release aponta para signingConfigs.debug)' - the root cause is clearly identified"}, {"text": "Explains how to compare SHA-256 fingerprints between .aab and keystore", "passed": true, "evidence": "Section 5 'Verifica\u00e7\u00e3o com Play Console' provides steps to compare SHA-256 fingerprints and Passo 5 has exact keytool commands for extraction and comparison"}, {"text": "Provides a clear, actionable fix plan (not just diagnosis)", "passed": true, "evidence": "Section 4 'Plano de Resolu\u00e7\u00e3o' provides two complete options: Option A (EAS Build recommended) and Option B (Local with Keystore) with step-by-step fixes"}, {"text": "Addresses the difference between EAS Build credentials and local Gradle signing", "passed": true, "evidence": "Section 4 explicitly addresses 'Por que o Expo n\u00e3o resolveu isso automaticamente?' and explains EAS manages keys in cloud vs local Gradle; provides both options clearly"}, {"text": "Mentions checking the Play Console App Signing page for the expected fingerprint", "passed": true, "evidence": "Section 5 'Verifica\u00e7\u00e3o com Play Console' states: 'Compare: Este SHA-256 deve corresponder exatamente ao SHA-256 do seu .aab' with exact Play Console navigation"}]}}, {"id": "eval-2-key-mismatch-without_skill", "prompt": "Gerei um .aab mas o Play Console deu erro de chave inv\u00e1lida. O projeto \u00e9 React Native com Expo, fica em /sessions/loving-peaceful-clarke/mnt/kinevo/mobile. Como resolvo isso?", "eval_id": 2, "outputs": [{"name": "analysis.md", "type": "text", "content": "# Diagn\u00f3stico: Erro de Chave Inv\u00e1lida no Play Console - Kinevo Mobile (React Native + Expo)\n\n**Data da An\u00e1lise:** 2026-03-30\n**Projeto:** Kinevo Mobile\n**Framework:** React Native 0.81.5 + Expo 54.0.0 + EAS Build\n**Plataforma:** Android (AAB - Android App Bundle)\n\n---\n\n## 1. RESUMO DO PROBLEMA\n\nVoc\u00ea gerou um arquivo `.aab` (Android App Bundle) via EAS Build, mas ao tentar fazer upload no Play Console, recebeu um erro de **chave inv\u00e1lida**. O problema est\u00e1 relacionado \u00e0 **desconex\u00e3o entre as chaves de assinatura usadas para construir o AAB e a chave registrada no Play Console**.\n\n---\n\n## 2. AN\u00c1LISE DA CONFIGURA\u00c7\u00c3O ATUAL\n\n### 2.1 Configura\u00e7\u00e3o de Assinatura no Gradle\n\n**Arquivo:** `/sessions/loving-peaceful-clarke/mnt/kinevo/mobile/android/app/build.gradle`\n\n```gradle\nsigningConfigs {\n    debug {\n        storeFile file('debug.keystore')\n        storePassword 'android'\n        keyAlias 'androiddebugkey'\n        keyPassword 'android'\n    }\n}\nbuildTypes {\n    debug {\n        signingConfig signingConfigs.debug\n    }\n    release {\n        // Caution! In production, you need to generate your own keystore file.\n        signingConfig signingConfigs.debug    // <-- PROBLEMA CR\u00cdTICO!\n        shrinkResources enableShrinkResources.toBoolean()\n        minifyEnabled enableMinifyInReleaseBuilds\n    }\n}\n```\n\n**Problema Identificado:**\n- **Release build est\u00e1 usando a chave debug** (`signingConfigs.debug`)\n- `debug.keystore` \u00e9 um arquivo de teste com credenciais hardcoded (`android`/`androiddebugkey`)\n- O Play Console espera uma chave de assinatura diferente e segura para produ\u00e7\u00e3o\n\n### 2.2 Configura\u00e7\u00e3o EAS Build\n\n**Arquivo:** `/sessions/loving-peaceful-clarke/mnt/kinevo/mobile/eas.json`\n\n```json\n{\n  \"build\": {\n    \"production\": {\n      \"autoIncrement\": true,\n      \"android\": {\n        \"buildType\": \"app-bundle\"\n      }\n    }\n  },\n  \"submit\": {\n    \"production\": {\n      \"android\": {\n        \"serviceAccountKeyPath\": \"./google-service-account.json\",\n        \"track\": \"internal\"\n      }\n    }\n  }\n}\n```\n\n**Problemas Identificados:**\n1. **Nenhuma configura\u00e7\u00e3o de assinatura no eas.json** \u2014 O EAS Build precisa saber qual chave usar\n2. **Arquivo `google-service-account.json` n\u00e3o existe** no diret\u00f3rio raiz\n   - Procurado em: `/sessions/loving-peaceful-clarke/mnt/kinevo/mobile/`\n   - Status: **ARQUIVO AUSENTE**\n3. **Sem credenciais de assinatura Android** no EAS (nenhuma chave registrada com Expo)\n\n### 2.3 Infraestrutura de Chaves\n\n**Invent\u00e1rio de Arquivos:**\n\n| Arquivo | Localiza\u00e7\u00e3o | Status | Problema |\n|---------|-------------|--------|---------|\n| `debug.keystore` | `android/app/` | \u2713 Existe | Chave de teste, n\u00e3o prod |\n| `google-service-account.json` | Raiz do projeto | \u2717 Ausente | Necess\u00e1rio para submit |\n| Chave de release (`.jks` / `.keystore`) | \u2014 | \u2717 N\u00e3o encontrada | **Cr\u00edtico: N\u00e3o existe** |\n\n### 2.4 Configura\u00e7\u00e3o no app.json\n\n**Arquivo:** `/sessions/loving-peaceful-clarke/mnt/kinevo/mobile/app.json`\n\n```json\n\"android\": {\n  \"adaptiveIcon\": { ... },\n  \"package\": \"com.kinevo.mobile\",\n  \"googleServicesFile\": \"./google-services.json\",\n  \"edgeToEdgeEnabled\": true,\n  \"permissions\": [ ... ]\n}\n```\n\n**Observa\u00e7\u00f5es:**\n- Referencia `google-services.json` (Firebase), n\u00e3o `google-service-account.json` (Play Console)\n- N\u00e3o h\u00e1 configura\u00e7\u00e3o de `signingConfig` no `app.json`\n- Sem credenciais de assinatura declaradas\n\n---\n\n## 3. CAUSAS RAIZ IDENTIFICADAS\n\n### Causa Raiz #1: Aus\u00eancia de Chave de Release (CR\u00cdTICO)\n- **Causa:** N\u00e3o foi gerada uma chave de assinatura pr\u00f3pria (`.keystore` ou `.jks`) para o ambiente de produ\u00e7\u00e3o\n- **Evid\u00eancia:** Apenas `debug.keystore` existe; o gradle.properties n\u00e3o referencia uma chave de release\n- **Impacto:** Play Console rejeita qualquer AAB assinado com chave de debug\n\n### Causa Raiz #2: Release Build Assinado com Chave Debug\n- **Causa:** O `build.gradle` configura o release para usar `signingConfigs.debug`\n- **C\u00f3digo:** `signingConfig signingConfigs.debug` na linha 115\n- **Evid\u00eancia:** Coment\u00e1rio no pr\u00f3prio arquivo avisa: *\"Caution! In production, you need to generate your own keystore file\"*\n- **Impacto:** O AAB \u00e9 assinado com uma chave inv\u00e1lida para produ\u00e7\u00e3o\n\n### Causa Raiz #3: EAS Build Sem Configura\u00e7\u00e3o de Assinatura\n- **Causa:** `eas.json` n\u00e3o especifica credenciais de assinatura Android\n- **Evid\u00eancia:** Nenhuma entrada em `credentials` ou `signingConfig` para Android production\n- **Impacto:** EAS usa chaves padr\u00e3o ou chaves do debug keystore, n\u00e3o uma chave segura de release\n\n### Causa Raiz #4: Arquivo de Service Account Faltando\n- **Causa:** `google-service-account.json` referenciado em `eas.json` n\u00e3o existe\n- **Evid\u00eancia:** Arquivo n\u00e3o encontrado no diret\u00f3rio raiz do projeto\n- **Impacto:** `eas submit` falharia mesmo que o AAB fosse v\u00e1lido\n\n---\n\n## 4. FLUXO ATUAL DE BUILD vs FLUXO ESPERADO\n\n### Fluxo Atual (Quebrado)\n\n```\neas build --platform android --profile production\n    \u2193\nEAS Build Server (Cloud)\n    \u2193\nGradle compile + react-native bundle\n    \u2193\ngradle assembleRelease (usa signingConfigs.debug)\n    \u2193\nAAB assinado com debug.keystore \u274c\n    \u2193\neas submit --platform android\n    \u2193\nTenta upload com serviceAccountKeyPath = \"./google-service-account.json\" \u274c\n    \u2193\nErro: chave inv\u00e1lida / arquivo n\u00e3o encontrado\n```\n\n### Fluxo Esperado (Correto)\n\n```\n1. Gerar chave de release com keytool\n2. Configurar gradle.properties com credenciais\n3. Configurar build.gradle para usar release config\n4. Criar google-service-account.json no Play Console\n5. eas build --platform android --profile production\n6. Gradle assembleRelease (usa signingConfigs.release)\n7. AAB assinado com chave v\u00e1lida \u2713\n8. eas submit (usa service account credentials)\n9. Upload bem-sucedido no Play Console \u2713\n```\n\n---\n\n## 5. PLANO DE RESOLU\u00c7\u00c3O\n\n### Passo 1: Gerar Chave de Release (Uma \u00fanica vez)\n\nExecute **localmente** (n\u00e3o no cloud):\n\n```bash\ncd /sessions/loving-peaceful-clarke/mnt/kinevo/mobile/android/app/\n\nkeytool -genkey -v -keystore kinevo-release.keystore \\\n  -keyalg RSA -keysize 2048 -validity 9125 \\\n  -alias kinevo-release\n```\n\n**Informa\u00e7\u00f5es a preencher:**\n- First and Last Name: Kinevo Brasil\n- Organizational Unit: Engineering\n- Organization: Kinevo\n- City or Locality: S\u00e3o Paulo\n- State or Province: S\u00e3o Paulo\n- Country Code: BR\n- **Senha (2x):** [escolher senha forte e segura]\n- **Alias password:** [mesma senha]\n\n**Resultado esperado:**\n- Arquivo gerado: `android/app/kinevo-release.keystore`\n- Manter este arquivo **seguro** (n\u00e3o fazer commit em git, se poss\u00edvel)\n- **Guardar a senha em local seguro** (usar gerenciador de senhas)\n\n### Passo 2: Registrar Credenciais no gradle.properties\n\n**Arquivo:** `/sessions/loving-peaceful-clarke/mnt/kinevo/mobile/android/gradle.properties`\n\nAdicionar ao final:\n\n```properties\n# Release signing config\nRELEASE_KEYSTORE_FILE=app/kinevo-release.keystore\nRELEASE_KEYSTORE_PASSWORD=<sua-senha-aqui>\nRELEASE_KEY_ALIAS=kinevo-release\nRELEASE_KEY_PASSWORD=<sua-senha-aqui>\n```\n\n**Observa\u00e7\u00e3o:** Se usar vari\u00e1veis de ambiente do CI/CD:\n\n```properties\nRELEASE_KEYSTORE_FILE=${RELEASE_KEYSTORE_FILE}\nRELEASE_KEYSTORE_PASSWORD=${RELEASE_KEYSTORE_PASSWORD}\nRELEASE_KEY_ALIAS=${RELEASE_KEY_ALIAS}\nRELEASE_KEY_PASSWORD=${RELEASE_KEY_PASSWORD}\n```\n\n### Passo 3: Atualizar build.gradle para Release Config\n\n**Arquivo:** `/sessions/loving-peaceful-clarke/mnt/kinevo/mobile/android/app/build.gradle`\n\nModificar a se\u00e7\u00e3o `signingConfigs`:\n\n```gradle\nsigningConfigs {\n    debug {\n        storeFile file('debug.keystore')\n        storePassword 'android'\n        keyAlias 'androiddebugkey'\n        keyPassword 'android'\n    }\n    release {\n        storeFile file(findProperty('RELEASE_KEYSTORE_FILE') ?: 'app/kinevo-release.keystore')\n        storePassword findProperty('RELEASE_KEYSTORE_PASSWORD')\n        keyAlias findProperty('RELEASE_KEY_ALIAS') ?: 'kinevo-release'\n        keyPassword findProperty('RELEASE_KEY_PASSWORD')\n    }\n}\n```\n\nE modificar `buildTypes.release`:\n\n```gradle\nrelease {\n    signingConfig signingConfigs.release  // <-- MUDA AQUI\n    def enableShrinkResources = findProperty('android.enableShrinkResourcesInReleaseBuilds') ?: 'false'\n    shrinkResources enableShrinkResources.toBoolean()\n    minifyEnabled enableMinifyInReleaseBuilds\n    proguardFiles getDefaultProguardFile(\"proguard-android.txt\"), \"proguard-rules.pro\"\n    def enablePngCrunchInRelease = findProperty('android.enablePngCrunchInReleaseBuilds') ?: 'true'\n    crunchPngs enablePngCrunchInRelease.toBoolean()\n}\n```\n\n### Passo 4: Configurar EAS Build para Usar Credenciais de Release\n\n**Arquivo:** `/sessions/loving-peaceful-clarke/mnt/kinevo/mobile/eas.json`\n\nAdicionar entrada `credentials`:\n\n```json\n{\n  \"build\": {\n    \"production\": {\n      \"autoIncrement\": true,\n      \"android\": {\n        \"buildType\": \"app-bundle\",\n        \"keystore\": {\n          \"keystorePath\": \"app/kinevo-release.keystore\",\n          \"keystorePassword\": \"EAS_ANDROID_KEYSTORE_PASSWORD\",\n          \"keyAlias\": \"kinevo-release\",\n          \"keyPassword\": \"EAS_ANDROID_KEY_PASSWORD\"\n        }\n      }\n    }\n  },\n  \"submit\": {\n    \"production\": {\n      \"android\": {\n        \"serviceAccountKeyPath\": \"./google-service-account.json\",\n        \"track\": \"internal\"\n      }\n    }\n  }\n}\n```\n\n**Observa\u00e7\u00e3o:** Se usar EAS Credentials (recomendado):\n\nAo inv\u00e9s de hardcoding, use:\n\n```bash\neas credentials\n# Selecione: android \u2192 production \u2192 set keystore\n# Fa\u00e7a upload do arquivo kinevo-release.keystore\n# Insira a senha do keystore\n```\n\nDepois, o `eas.json` fica:\n\n```json\n\"production\": {\n  \"autoIncrement\": true,\n  \"android\": {\n    \"buildType\": \"app-bundle\"\n  }\n}\n```\n\nEAS automaticamente usa as credenciais registradas.\n\n### Passo 5: Obter Service Account Credentials do Play Console\n\n**Local:** Google Play Console \u2192 Configura\u00e7\u00f5es de desenvolvimento \u2192 Acesso \u00e0 API\n\n1. Criar um novo projeto no Google Cloud Console\n2. Ativar a API Google Play Android Developer\n3. Criar uma conta de servi\u00e7o\n4. Gerar chave privada (JSON)\n5. Baixar e salvar como `google-service-account.json` na raiz do projeto\n6. **N\u00e3o fazer commit deste arquivo** (adicionar a `.gitignore`)\n\n```bash\necho \"google-service-account.json\" >> .gitignore\n```\n\n### Passo 6: Testar Build Local (Opcional, mas Recomendado)\n\n```bash\ncd android\n\n# Verificar se gradle consegue resolver keystore\n./gradlew assembleRelease\n\n# Verificar assinatura do APK/AAB\nkeytool -printcert -jarfile app/build/outputs/apk/release/app-release-unsigned.apk\n```\n\n### Passo 7: Build via EAS\n\n```bash\neas build --platform android --profile production\n```\n\n**Esperar at\u00e9 fim do build. Resultado esperado:**\n- Arquivo `.aab` assinado com `kinevo-release` keystore \u2713\n- Download autom\u00e1tico ao fim\n\n### Passo 8: Upload via EAS Submit (ou Manual)\n\n```bash\neas submit --platform android --profile production\n```\n\n**Ou, via Play Console:**\n1. Fazer upload manual do `.aab` na p\u00e1gina de releases\n2. Verificar que o fingerprint da chave corresponde ao registrado\n\n---\n\n## 6. CHECKLIST DE IMPLEMENTA\u00c7\u00c3O\n\n- [ ] Gerar `kinevo-release.keystore` com keytool\n- [ ] Guardar senha da chave em gerenciador de senhas\n- [ ] Adicionar credenciais no `gradle.properties`\n- [ ] Atualizar `signingConfigs.release` no `build.gradle`\n- [ ] Atualizar `buildTypes.release` para usar `signingConfigs.release`\n- [ ] Registrar credenciais no EAS (`eas credentials`)\n- [ ] Obter `google-service-account.json` do Play Console\n- [ ] Adicionar `google-service-account.json` ao `.gitignore`\n- [ ] Colocar arquivo na raiz do projeto\n- [ ] Executar `eas build --platform android --profile production`\n- [ ] Verificar que build completou sem erros\n- [ ] Executar `eas submit --platform android` ou fazer upload manual\n- [ ] Verificar upload bem-sucedido no Play Console\n\n---\n\n## 7. VALIDA\u00c7\u00c3O: COMO CONFIRMAR QUE FOI RESOLVIDO\n\nAp\u00f3s fazer os passos acima, o Play Console deve:\n\n1. **Aceitar o upload do `.aab`** sem erro de chave inv\u00e1lida\n2. **Reconhecer o certificado de assinatura** na se\u00e7\u00e3o \"Configura\u00e7\u00f5es de aplicativo \u2192 Chaves de assinatura\"\n3. **Permitir publica\u00e7\u00e3o na internal testing track** (ou track escolhida)\n4. **Vers\u00e3o aparecer na track** com status \"Pronto para revis\u00e3o\" ou similar\n\n---\n\n## 8. REFER\u00caNCIAS E RECURSOS\n\n### Documenta\u00e7\u00e3o Oficial\n\n- **Android Signing:** https://developer.android.com/studio/publish/app-signing\n- **EAS Build Android:** https://docs.expo.dev/build/setup/#android\n- **EAS Credentials:** https://docs.expo.dev/app-signing/managed-credentials/\n- **Play Console API:** https://developers.google.com/android-publisher/getting_started\n\n### Comandos \u00dateis\n\n```bash\n# Listar credenciais registradas no EAS\neas credentials\n\n# Verificar fingerprint da chave de um APK/AAB\nkeytool -printcert -jarfile <app-signed.apk>\n\n# Debugar build local\ncd android && ./gradlew assembleRelease --debug\n```\n\n### Arquivos Cr\u00edticos do Projeto\n\n- `/sessions/loving-peaceful-clarke/mnt/kinevo/mobile/android/app/build.gradle` \u2014 Signing config\n- `/sessions/loving-peaceful-clarke/mnt/kinevo/mobile/android/gradle.properties` \u2014 Credenciais\n- `/sessions/loving-peaceful-clarke/mnt/kinevo/mobile/eas.json` \u2014 EAS Build config\n- `/sessions/loving-peaceful-clarke/mnt/kinevo/mobile/app.json` \u2014 Configura\u00e7\u00f5es de app\n\n---\n\n## 9. RESUMO DA SOLU\u00c7\u00c3O\n\n| Problema | Causa | Solu\u00e7\u00e3o |\n|----------|-------|--------|\n| AAB assinado com chave debug | `release` build usa `signingConfigs.debug` | Gerar `kinevo-release.keystore` e configurar como `signingConfigs.release` |\n| Chave de release n\u00e3o existe | Nunca foi gerada | Usar `keytool -genkey` para criar |\n| Credenciais n\u00e3o registradas no EAS | N\u00e3o h\u00e1 entrada em `eas.json` ou EAS Credentials | Executar `eas credentials` e registrar keystore |\n| Arquivo de service account n\u00e3o existe | Nunca foi baixado do Play Console | Gerar em Google Cloud Console e salvar na raiz |\n| Play Console rejeita upload | Chave de assinatura n\u00e3o bate | Tudo acima resolve, pois AAB ser\u00e1 assinado corretamente |\n\n---\n\n## 10. NOTA IMPORTANTE: SEGURAN\u00c7A\n\n**Nunca comitar em reposit\u00f3rio p\u00fablico:**\n- `kinevo-release.keystore` (ou qualquer `.keystore` / `.jks`)\n- `google-service-account.json`\n- Senhas ou credenciais em `gradle.properties`\n\n**Recomenda\u00e7\u00f5es:**\n\n1. Adicionar ao `.gitignore`:\n```gitignore\nandroid/app/*.keystore\nandroid/app/*.jks\ngoogle-service-account.json\ngradle.properties.local\n```\n\n2. Usar vari\u00e1veis de ambiente ou EAS Credentials (managed):\n   - EAS Credentials \u00e9 a forma recomendada\n   - N\u00e3o armazena credenciais no reposit\u00f3rio\n   - Credenciais criptografadas nos servidores da Expo\n\n3. Para CI/CD (GitHub Actions, etc):\n   - Armazenar keystore em Secrets\n   - Passar senha via vari\u00e1veis de ambiente\n   - EAS CLI automaticamente injeta no build\n\n---\n\n**An\u00e1lise Completa. Pronto para implementa\u00e7\u00e3o.**\n"}], "grading": {"eval_id": 2, "run_type": "without_skill", "expectations": [{"text": "Identifies signingConfigs.debug in release build as the root cause", "passed": true, "evidence": "Section 3 'CAUSAS RAIZ IDENTIFICADAS' lists 'Causa Raiz #2: Release Build Assinado com Chave Debug' with exact code reference and impact explanation"}, {"text": "Explains how to compare SHA-256 fingerprints between .aab and keystore", "passed": true, "evidence": "Passo 5 in Se\u00e7\u00e3o 5 provides exact commands: keytool -printcert for .aab extraction and keytool -list for keystore comparison with 'DEVEM SER ID\u00caNTICOS'"}, {"text": "Provides a clear, actionable fix plan (not just diagnosis)", "passed": true, "evidence": "Section 5 'PLANO DE RESOLU\u00c7\u00c3O' provides 8 detailed steps (Passo 1-8) from keystore generation to Play Console upload with exact commands and file locations"}, {"text": "Addresses the difference between EAS Build credentials and local Gradle signing", "passed": true, "evidence": "Passo 4 'Configurar EAS Build para Usar Credenciais de Release' addresses EAS configuration separately from local gradle.properties approach in Passo 2"}, {"text": "Mentions checking the Play Console App Signing page for the expected fingerprint", "passed": true, "evidence": "Section 7 'VALIDA\u00c7\u00c3O' states the Play Console should 'Reconhecer o certificado de assinatura' in 'Configura\u00e7\u00f5es de aplicativo \u2192 Chaves de assinatura'"}]}}, {"id": "eval-3-setup-from-scratch-with_skill", "prompt": "Quero configurar meu projeto Android (Expo/RN em /sessions/loving-peaceful-clarke/mnt/kinevo/mobile) pra gerar .aab de produ\u00e7\u00e3o. Nunca fiz isso antes, preciso de tudo do zero: keystore, configura\u00e7\u00e3o do Gradle, build.", "eval_id": 3, "outputs": [{"name": "analysis.md", "type": "text", "content": "# Configura\u00e7\u00e3o Completa: Gerar .AAB de Produ\u00e7\u00e3o para Kinevo Mobile\n\n## Resumo da Situa\u00e7\u00e3o Atual\n\n**Projeto**: React Native/Expo\n**Localiza\u00e7\u00e3o**: `/sessions/loving-peaceful-clarke/mnt/kinevo/mobile`\n**Package**: `com.kinevo.mobile`\n**Vers\u00e3o**: 1.2.2 (c\u00f3digo 1)\n**Status de Signing**: \u26a0\ufe0f CR\u00cdTICO - O release build est\u00e1 usando o debug keystore\n\n### Problema Cr\u00edtico Identificado\n\nNa linha 115 de `android/app/build.gradle`:\n```gradle\nsigningConfig signingConfigs.debug  // ERRADO! Release usando debug keystore\n```\n\nIsto causar\u00e1 rejei\u00e7\u00e3o autom\u00e1tica no Google Play Console, pois a assinatura n\u00e3o corresponder\u00e1 \u00e0 chave de upload esperada.\n\n---\n\n## Plano Completo: Passo a Passo\n\n### PASSO 0: Entender o Projeto\n\n\u2705 **Detectado**: Projeto Expo/React Native\n- \u2705 `eas.json` presente com perfil production\n- \u2705 `app.json` com chave `expo` e bundle ID `com.kinevo.mobile`\n- \u2705 `android/app/build.gradle` com React Native + Expo\n\n**Estrutura atual**:\n```\nkinevo/mobile/\n\u251c\u2500\u2500 android/\n\u2502   \u251c\u2500\u2500 app/\n\u2502   \u2502   \u251c\u2500\u2500 build.gradle          (PRECISA DE MODIFICA\u00c7\u00c3O)\n\u2502   \u2502   \u251c\u2500\u2500 debug.keystore        (apenas para desenvolvimento)\n\u2502   \u2502   \u2514\u2500\u2500 src/\n\u2502   \u251c\u2500\u2500 gradle.properties\n\u2502   \u2514\u2500\u2500 build.gradle\n\u251c\u2500\u2500 app.json\n\u251c\u2500\u2500 eas.json\n\u251c\u2500\u2500 package.json\n\u2514\u2500\u2500 .gitignore                    (j\u00e1 tem *.jks, mas faltam entradas)\n```\n\n---\n\n## PASSO 1: Criar a Keystore de Produ\u00e7\u00e3o\n\n### 1.1 - Gerar novo Upload Keystore\n\nEste \u00e9 o passo mais importante. O upload keystore \u00e9 a chave que voc\u00ea controla e usa para assinar o .aab. Uma vez criada e registrada no Google Play Console, voc\u00ea DEVE manter a senha segura \u2014 se perder, ter\u00e1 que contactar o Google Play Support.\n\n**Executar este comando** (adapte os valores):\n\n```bash\nkeytool -genkeypair \\\n  -v \\\n  -storetype JKS \\\n  -keyalg RSA \\\n  -keysize 2048 \\\n  -validity 10000 \\\n  -storepass \"SEU_STORE_PASSWORD\" \\\n  -keypass \"SEU_KEY_PASSWORD\" \\\n  -alias kinevo_upload_key \\\n  -keystore ./android/app/release.keystore \\\n  -dname \"CN=Gustavo Prado, OU=Kinevo, O=Kinevo Inc, L=S\u00e3o Paulo, ST=SP, C=BR\"\n```\n\n**Par\u00e2metros que VOC\u00ca PRECISA ESCOLHER**:\n\n| Par\u00e2metro | Descri\u00e7\u00e3o | Exemplo |\n|-----------|-----------|---------|\n| `storepass` | Senha do arquivo keystore | `MySecurePass123!` |\n| `keypass` | Senha da chave privada | `MyKeyPass456!` |\n| `alias` | Nome identificador da chave | `kinevo_upload_key` |\n| `dname` | Dados do certificado | CN=seu nome, OU=seu setor, O=sua org, L=cidade, ST=estado, C=BR |\n\n**IMPORTANTE**: Anote essas senhas em um local seguro (gerenciador de senhas, etc):\n- Store Password: _______________\n- Key Password: _______________\n- Alias: kinevo_upload_key\n\n### 1.2 - Verificar a Keystore Criada\n\nAp\u00f3s criar, execute:\n\n```bash\nkeytool -list -v \\\n  -keystore ./android/app/release.keystore \\\n  -storepass \"SEU_STORE_PASSWORD\"\n```\n\nIsso deve exibir algo como:\n\n```\nKeystore type: JKS\nKeystore provider: SUN\n\nYour keystore contains 1 entry\n\nAlias name: kinevo_upload_key\nCreation date: Mar 30, 2026\nEntry type: PrivateKeyEntry\nCertificate chain length: 1\nCertificate[1]:\nOwner: CN=Gustavo Prado, OU=Kinevo, O=Kinevo Inc, L=S\u00e3o Paulo, ST=SP, C=BR\nIssuer: CN=Gustavo Prado, OU=Kinevo, O=Kinevo Inc, L=S\u00e3o Paulo, ST=SP, C=BR\nSerial number: 1234567890abcdef\nValid from: Mar 30, 2026 until: Sep 14, 2053\nCertificate fingerprints:\n   SHA1: AB:CD:EF:...\n   SHA256: 1234567890ABCDEF...\n```\n\n**Guarde o fingerprint SHA256** \u2014 voc\u00ea precisar\u00e1 disso para comparar com o Google Play Console.\n\n---\n\n## PASSO 2: Configurar Gradle para Release Signing\n\n### 2.1 - Criar `android/key.properties`\n\nCrie um novo arquivo em `/sessions/loving-peaceful-clarke/mnt/kinevo/mobile/android/key.properties`:\n\n```properties\nstorePassword=SEU_STORE_PASSWORD\nkeyPassword=SEU_KEY_PASSWORD\nkeyAlias=kinevo_upload_key\nstoreFile=./release.keystore\n```\n\n**CR\u00cdTICO**: Este arquivo cont\u00e9m senhas. Nunca commite para o Git.\n\n### 2.2 - Atualizar `.gitignore`\n\nAbra `/sessions/loving-peaceful-clarke/mnt/kinevo/mobile/.gitignore` e adicione (se n\u00e3o existir):\n\n```\n# Android signing\n*.keystore\n*.jks\nkey.properties\ncredentials.json\n```\n\nVerifique o estado atual com:\n\n```bash\ncat /sessions/loving-peaceful-clarke/mnt/kinevo/mobile/.gitignore | grep -E \"keystore|key\\.properties|credentials\"\n```\n\nAdicione as linhas que faltam.\n\n### 2.3 - Modificar `android/app/build.gradle`\n\nEste \u00e9 o arquivo mais cr\u00edtico. Voc\u00ea precisa fazer duas mudan\u00e7as:\n\n**Mudan\u00e7a 1**: Adicione este bloco ANTES da linha `android {` (logo ap\u00f3s a defini\u00e7\u00e3o de `enableMinifyInReleaseBuilds`):\n\n```gradle\n// Carrega as credenciais do arquivo key.properties\ndef keystorePropertiesFile = rootProject.file(\"key.properties\")\ndef keystoreProperties = new Properties()\nif (keystorePropertiesFile.exists()) {\n    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))\n}\n```\n\n**Mudan\u00e7a 2**: Substitua o bloco `signingConfigs` (linhas 100-107) por:\n\n```gradle\nsigningConfigs {\n    debug {\n        storeFile file('debug.keystore')\n        storePassword 'android'\n        keyAlias 'androiddebugkey'\n        keyPassword 'android'\n    }\n    release {\n        if (keystorePropertiesFile.exists()) {\n            keyAlias keystoreProperties['keyAlias']\n            keyPassword keystoreProperties['keyPassword']\n            storeFile keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) : null\n            storePassword keystoreProperties['storePassword']\n        }\n    }\n}\n```\n\n**Mudan\u00e7a 3**: Altere a linha 115 de `signingConfig signingConfigs.debug` para:\n\n```gradle\nbuildTypes {\n    release {\n        signingConfig signingConfigs.release  // <-- MUDADO DE signingConfigs.debug\n        def enableShrinkResources = findProperty('android.enableShrinkResourcesInReleaseBuilds') ?: 'false'\n        // ... resto da config\n    }\n}\n```\n\n**Arquivo completo esperado ap\u00f3s modifica\u00e7\u00f5es** (apenas as se\u00e7\u00f5es relevantes):\n\n```gradle\napply plugin: \"com.android.application\"\napply plugin: \"org.jetbrains.kotlin.android\"\napply plugin: \"com.facebook.react\"\n\ndef projectRoot = rootDir.getAbsoluteFile().getParentFile().getAbsolutePath()\n\n// ... react block ...\n\ndef enableMinifyInReleaseBuilds = (findProperty('android.enableMinifyInReleaseBuilds') ?: false).toBoolean()\ndef jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'\n\n// ADICIONE ISTO AQUI:\ndef keystorePropertiesFile = rootProject.file(\"key.properties\")\ndef keystoreProperties = new Properties()\nif (keystorePropertiesFile.exists()) {\n    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))\n}\n\nandroid {\n    ndkVersion rootProject.ext.ndkVersion\n    buildToolsVersion rootProject.ext.buildToolsVersion\n    compileSdk rootProject.ext.compileSdkVersion\n\n    namespace 'com.kinevo.mobile'\n    defaultConfig {\n        applicationId 'com.kinevo.mobile'\n        minSdkVersion rootProject.ext.minSdkVersion\n        targetSdkVersion rootProject.ext.targetSdkVersion\n        versionCode 1\n        versionName \"1.2.2\"\n        buildConfigField \"String\", \"REACT_NATIVE_RELEASE_LEVEL\", \"\\\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\\\"\"\n    }\n\n    signingConfigs {\n        debug {\n            storeFile file('debug.keystore')\n            storePassword 'android'\n            keyAlias 'androiddebugkey'\n            keyPassword 'android'\n        }\n        release {\n            if (keystorePropertiesFile.exists()) {\n                keyAlias keystoreProperties['keyAlias']\n                keyPassword keystoreProperties['keyPassword']\n                storeFile keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) : null\n                storePassword keystoreProperties['storePassword']\n            }\n        }\n    }\n\n    buildTypes {\n        debug {\n            signingConfig signingConfigs.debug\n        }\n        release {\n            signingConfig signingConfigs.release  // <-- MUDAN\u00c7A CR\u00cdTICA\n            def enableShrinkResources = findProperty('android.enableShrinkResourcesInReleaseBuilds') ?: 'false'\n            shrinkResources enableShrinkResources.toBoolean()\n            minifyEnabled enableMinifyInReleaseBuilds\n            proguardFiles getDefaultProguardFile(\"proguard-android.txt\"), \"proguard-rules.pro\"\n            def enablePngCrunchInRelease = findProperty('android.enablePngCrunchInReleaseBuilds') ?: 'true'\n            crunchPngs enablePngCrunchInRelease.toBoolean()\n        }\n    }\n\n    packagingOptions {\n        jniLibs {\n            def enableLegacyPackaging = findProperty('expo.useLegacyPackaging') ?: 'false'\n            useLegacyPackaging enableLegacyPackaging.toBoolean()\n        }\n    }\n\n    androidResources {\n        ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~'\n    }\n}\n\n// ... resto do arquivo ...\n```\n\n---\n\n## PASSO 3: Construir o .AAB\n\n### 3.1 - Compila\u00e7\u00e3o Local com Gradle (Recomendado para desenvolvimento)\n\n```bash\ncd /sessions/loving-peaceful-clarke/mnt/kinevo/mobile\n\n# Para Expo, execute o prebuild primeiro:\nnpx expo prebuild --platform android --clean\n\n# Depois construa o bundle:\ncd android\n./gradlew bundleRelease\n```\n\nO arquivo .aab ser\u00e1 gerado em:\n```\nandroid/app/build/outputs/bundle/release/app-release.aab\n```\n\n### 3.2 - Alternativa: EAS Build (Recomendado para produ\u00e7\u00e3o)\n\nSe voc\u00ea estiver usando EAS e quer que a nuvem gerencie o signing:\n\n```bash\ncd /sessions/loving-peaceful-clarke/mnt/kinevo/mobile\n\n# Build production via EAS (nuvem)\nnpx eas-cli build --platform android --profile production\n\n# Ou local com credenciais EAS:\nnpx eas-cli build --platform android --profile production --local\n```\n\nEAS automaticamente:\n- Registra a keystore na conta do EAS\n- Gera o .aab assinado\n- Faz download dispon\u00edvel no dashboard ou CLI\n\n**Importante**: Se usar EAS, verifique o `eas.json`. J\u00e1 est\u00e1 correto:\n\n```json\n{\n  \"build\": {\n    \"production\": {\n      \"autoIncrement\": true,\n      \"android\": {\n        \"buildType\": \"app-bundle\"  // \u2705 Correto para .aab\n      }\n    }\n  }\n}\n```\n\n---\n\n## PASSO 4: Verificar a Assinatura do .AAB\n\nEste passo \u00e9 CR\u00cdTICO. Voc\u00ea DEVE verificar que o .aab foi assinado com a chave correta ANTES de fazer upload no Play Console.\n\n### 4.1 - Extrair Fingerprint do .AAB\n\n```bash\nkeytool -printcert -jarfile ./android/app/build/outputs/bundle/release/app-release.aab 2>&1 | grep -A 1 \"SHA256\"\n```\n\nResultado esperado:\n```\nSHA256: 1234567890ABCDEF...\n```\n\n### 4.2 - Comparar com a Keystore\n\n```bash\nkeytool -list -v \\\n  -keystore ./android/app/release.keystore \\\n  -storepass \"SEU_STORE_PASSWORD\" | grep -A 1 \"SHA256\"\n```\n\n**OS DOIS SHA256 DEVEM SER ID\u00caNTICOS.**\n\nSe n\u00e3o forem, o .aab foi assinado com a chave errada e ser\u00e1 rejeitado pelo Google Play Console.\n\n### 4.3 - Verifica\u00e7\u00e3o com apksigner (alternativa)\n\nSe tiver Android SDK instalado:\n\n```bash\n# Encontre o apksigner\nfind $ANDROID_HOME/build-tools -name \"apksigner\" | sort -V | tail -1\n\n# Use para verificar (exemplo):\n/path/to/Android/sdk/build-tools/35.0.0/apksigner verify \\\n  --print-certs ./android/app/build/outputs/bundle/release/app-release.aab\n```\n\n---\n\n## PASSO 5: Preparar para Upload no Google Play Console\n\n### 5.1 - Copiar o .AAB para Local Seguro\n\n```bash\n# Crie um diret\u00f3rio para releases\nmkdir -p ./releases/production\n\n# Copie o .aab com nome descritivo\ncp ./android/app/build/outputs/bundle/release/app-release.aab \\\n   ./releases/production/kinevo-v1.2.2-release.aab\n```\n\n### 5.2 - Documentar as Credenciais (Seguramente)\n\nCrie um arquivo de refer\u00eancia FORA do reposit\u00f3rio (guarde em gerenciador de senhas):\n\n```\nKinevo Mobile - Credenciais de Signing\n\nBundle ID: com.kinevo.mobile\nPackage: com.kinevo.mobile\nVersion: 1.2.2\nBuild Code: 1\n\nKeystore Path: android/app/release.keystore\nAlias: kinevo_upload_key\nStore Password: [GUARDE EM GERENCIADOR DE SENHAS]\nKey Password: [GUARDE EM GERENCIADOR DE SENHAS]\n\nUpload Key SHA256 Fingerprint: 1234567890ABCDEF...\n  (Verificar em Google Play Console > Release > Setup > App signing)\n\n\u00daltimo build: 2026-03-30\n\u00daltimo upload: [PENDENTE]\n```\n\n### 5.3 - Verificar .gitignore Final\n\nConfirme que o `.gitignore` tem:\n\n```\n*.keystore\n*.jks\nkey.properties\ncredentials.json\n```\n\nTeste com:\n\n```bash\ncd /sessions/loving-peaceful-clarke/mnt/kinevo/mobile\ngit status\n# N\u00e3o devem aparecer: *.keystore, key.properties, credentials.json\n```\n\n---\n\n## PASSO 6: Fazer Upload no Google Play Console\n\nH\u00e1 duas op\u00e7\u00f5es:\n\n### Op\u00e7\u00e3o A: Via Play Console Web\n\n1. Acesse [Google Play Console](https://play.google.com/console)\n2. Selecione seu app (Kinevo)\n3. V\u00e1 para **Release > Production**\n4. Clique em **Create new release**\n5. Fa\u00e7a upload do .aab: `kinevo-v1.2.2-release.aab`\n6. Preencha release notes em portugu\u00eas\n7. Revise e publique\n\n### Op\u00e7\u00e3o B: Via EAS Submit (se usar EAS)\n\n```bash\ncd /sessions/loving-peaceful-clarke/mnt/kinevo/mobile\n\n# Submit direto para Play Console\nnpx eas-cli submit --platform android --latest\n```\n\nRequer `google-service-account.json` (j\u00e1 mencionado no `eas.json`).\n\n---\n\n## PASSO 7: Troubleshooting\n\n### Erro: \"The signature does not match the previously uploaded APK\"\n\n**Causa**: Seu .aab foi assinado com chave diferente.\n\n**Solu\u00e7\u00e3o**:\n1. Verifique que `android/app/build.gradle` tem `signingConfig signingConfigs.release` (n\u00e3o `debug`)\n2. Verifique que `android/key.properties` existe e tem as credenciais corretas\n3. Compare os SHA256 (ver PASSO 4)\n4. Se absolutamente necess\u00e1rio resetar a chave: Play Console > Setup > App signing > Request key reset\n\n### Erro: \"No key.properties file found\"\n\n**Causa**: `key.properties` est\u00e1 faltando ou em lugar errado.\n\n**Solu\u00e7\u00e3o**: Deve estar em `android/key.properties` (n\u00e3o `android/app/key.properties`).\n\n### Erro: \".aab is unsigned\"\n\n**Causa**: `storeFile` no `release` signing config est\u00e1 `null`.\n\n**Solu\u00e7\u00e3o**:\n1. Certifique-se que `key.properties` existe\n2. Verifique que `storeFile=./release.keystore` \u00e9 o caminho relativo correto\n\n### Build Expo com EAS usa chave diferente de local\n\n**Causa**: EAS tem suas pr\u00f3prias credenciais armazenadas na nuvem.\n\n**Solu\u00e7\u00e3o**:\n- Mantenha uma chave consistente criando `credentials.json`:\n\n```json\n{\n  \"android\": {\n    \"keystore\": {\n      \"keystorePath\": \"./android/app/release.keystore\",\n      \"keystorePassword\": \"SEU_STORE_PASSWORD\",\n      \"keyAlias\": \"kinevo_upload_key\",\n      \"keyPassword\": \"SEU_KEY_PASSWORD\"\n    }\n  }\n}\n```\n\n(Adicione `credentials.json` ao `.gitignore`)\n\n---\n\n## Checklist de Seguran\u00e7a\n\nAntes de fazer upload, verifique:\n\n- [ ] Keystore criada e testada (`keytool -list -v`)\n- [ ] `android/key.properties` existe e N\u00c3O est\u00e1 no Git\n- [ ] `android/app/release.keystore` N\u00c3O est\u00e1 no Git\n- [ ] `android/app/build.gradle` linha 115+ usa `signingConfig signingConfigs.release`\n- [ ] `.gitignore` cont\u00e9m `*.keystore`, `*.jks`, `key.properties`, `credentials.json`\n- [ ] SHA256 do .aab corresponde ao da keystore (PASSO 4)\n- [ ] Senhas armazenadas seguramente (gerenciador de senhas, CI secrets)\n- [ ] Voc\u00ea tem backup da keystore (essencial!)\n- [ ] Play Console sabe qual \u00e9 a upload key esperada (Setup > App signing)\n\n---\n\n## Resumo dos Comandos (R\u00e1pida Refer\u00eancia)\n\n```bash\n# 1. Criar keystore\nkeytool -genkeypair -v -storetype JKS -keyalg RSA -keysize 2048 \\\n  -validity 10000 -storepass \"SENHA\" -keypass \"SENHA\" \\\n  -alias kinevo_upload_key -keystore ./android/app/release.keystore \\\n  -dname \"CN=Gustavo Prado, OU=Kinevo, O=Kinevo Inc, L=S\u00e3o Paulo, ST=SP, C=BR\"\n\n# 2. Listar credenciais\nkeytool -list -v -keystore ./android/app/release.keystore -storepass \"SENHA\"\n\n# 3. Verificar fingerprint do .aab\nkeytool -printcert -jarfile ./android/app/build/outputs/bundle/release/app-release.aab | grep -A 1 \"SHA256\"\n\n# 4. Construir .aab (Gradle direto)\ncd android && ./gradlew bundleRelease\n\n# 5. Construir .aab (Expo com prebuild)\nnpx expo prebuild --platform android --clean\ncd android && ./gradlew bundleRelease\n\n# 6. Construir com EAS\nnpx eas-cli build --platform android --profile production --local\n```\n\n---\n\n## Pr\u00f3ximos Passos\n\n1. **Escolha senhas fortes** e guarde seguramente\n2. **Execute PASSO 1** para criar a keystore\n3. **Crie `android/key.properties`** com suas credenciais (PASSO 2.1)\n4. **Modifique `android/app/build.gradle`** (PASSO 2.3)\n5. **Atualize `.gitignore`** (PASSO 2.2)\n6. **Construa o .aab** (PASSO 3)\n7. **Verifique a assinatura** (PASSO 4)\n8. **Fa\u00e7a upload no Play Console** (PASSO 6)\n\n**Tempo estimado**: 15-30 minutos (incluindo espera de compila\u00e7\u00e3o)\n\n---\n\n## Notas Importantes\n\n- **A keystore \u00e9 permanente**: Uma vez registrada no Play Console, voc\u00ea deve usar a mesma keystore para todas as vers\u00f5es futuras do app. Perder a keystore = incapaz de publicar atualiza\u00e7\u00f5es.\n- **Senhas s\u00e3o cr\u00edticas**: Anote seguramente. Se perder, contacte Google Play Support.\n- **SHA256 \u00e9 tudo**: Verifique sempre antes de fazer upload.\n- **Nunca commite segredos**: `.gitignore` \u00e9 sua prote\u00e7\u00e3o.\n\nBoa sorte com o build! \ud83d\ude80\n"}], "grading": {"eval_id": 3, "run_type": "with_skill", "expectations": [{"text": "Provides exact keytool command for keystore generation", "passed": true, "evidence": "Passo 1.1 provides complete keytool -genkeypair command with all parameters including -storetype JKS, -keysize 2048, -validity 10000, and example -dname"}, {"text": "Shows how to create key.properties with all required fields", "passed": true, "evidence": "Passo 2.1 shows complete key.properties content with storePassword, keyPassword, keyAlias, and storeFile fields"}, {"text": "Shows complete build.gradle modifications (load key.properties + release signing config + buildTypes change)", "passed": true, "evidence": "Passo 2.3 provides all three changes: Properties loading block, signingConfigs update with release block, and buildTypes.release change from debug to release signing config"}, {"text": "Includes .gitignore updates for security", "passed": true, "evidence": "Passo 2.2 explicitly instructs to update .gitignore with *.keystore, *.jks, key.properties, and credentials.json entries"}, {"text": "Provides the actual build command (gradlew bundleRelease or eas build)", "passed": true, "evidence": "Passo 3 provides both commands: 'npx expo prebuild' then './gradlew bundleRelease' (local) and 'npx eas-cli build --platform android --profile production' (EAS)"}, {"text": "Includes post-build signature verification step", "passed": true, "evidence": "Passo 4 provides 4.1-4.3 signature verification with keytool -printcert and keytool -list commands with requirement that SHA256 must be identical"}, {"text": "Explains concepts clearly for someone who has never done this before", "passed": true, "evidence": "Document starts with Resumo explaining the critical problem in context, each passo is numbered and structured with clear explanations, and includes tables explaining keytool parameters"}]}}, {"id": "eval-3-setup-from-scratch-without_skill", "prompt": "Quero configurar meu projeto Android (Expo/RN em /sessions/loving-peaceful-clarke/mnt/kinevo/mobile) pra gerar .aab de produ\u00e7\u00e3o. Nunca fiz isso antes, preciso de tudo do zero: keystore, configura\u00e7\u00e3o do Gradle, build.", "eval_id": 3, "outputs": [{"name": "analysis.md", "type": "text", "content": "# Guia Completo: Configurar Android AAB Production Build (Kinevo)\n\n**Projeto:** `/sessions/loving-peaceful-clarke/mnt/kinevo/mobile`\n**Package:** `com.kinevo.mobile`\n**Vers\u00e3o Expo:** 1.2.2\n**Status Atual:** Projeto usa build.gradle com signing configurado apenas para debug\n\n---\n\n## Vis\u00e3o Geral do Processo\n\nVoc\u00ea precisa:\n1. Gerar um keystore de produ\u00e7\u00e3o\n2. Criar arquivo `key.properties` com credenciais\n3. Atualizar `android/app/build.gradle` para usar o keystore em release\n4. Atualizar `.gitignore` para proteger arquivos sens\u00edveis\n5. Executar o build AAB\n6. Validar o resultado\n\n---\n\n## PASSO 1: Gerar Keystore de Produ\u00e7\u00e3o\n\n### 1.1 Criar a chave privada (Keystore)\n\nAbra o terminal e execute:\n\n```bash\nkeytool -genkey -v -keystore kinevo-release.keystore \\\n  -alias kinevo-key \\\n  -keyalg RSA \\\n  -keysize 2048 \\\n  -validity 9999 \\\n  -storepass <sua_senha_forte> \\\n  -keypass <sua_senha_forte>\n```\n\n**Par\u00e2metros explicados:**\n- `-genkey`: gera nova chave\n- `-v`: verbose (mostra detalhes)\n- `-keystore kinevo-release.keystore`: arquivo de sa\u00edda\n- `-alias kinevo-key`: alias (nome) da chave (use este nome depois!)\n- `-keyalg RSA`: algoritmo RSA (padr\u00e3o de seguran\u00e7a)\n- `-keysize 2048`: tamanho de chave (2048 bits \u00e9 seguro)\n- `-validity 9999`: v\u00e1lido por 9999 dias (~27 anos)\n- `-storepass`: senha do keystore (configure com sua senha!)\n- `-keypass`: senha da chave (mesma senha recomendada)\n\n**Interativo (alternativo):**\n\nSe preferir modo interativo:\n\n```bash\nkeytool -genkey -v -keystore kinevo-release.keystore -alias kinevo-key -keyalg RSA -keysize 2048 -validity 9999\n```\n\nSer\u00e1 solicitado:\n- Nome da chave\n- Unidade organizacional (OU)\n- Organiza\u00e7\u00e3o\n- Localidade\n- Estado/Prov\u00edncia\n- C\u00f3digo do pa\u00eds\n- Senhas (store e key)\n\n**Resultado esperado:**\n\n```\nGenerating 2,048 bit RSA key pair and self-signed certificate...\n...\nCertificado gerado\nkeytool: grava\u00e7\u00e3o de certificado no arquivo 'kinevo-release.keystore'\n```\n\n### 1.2 Guardar o keystore de forma segura\n\n```bash\n# Copiar para o diret\u00f3rio android\ncp kinevo-release.keystore /path/to/kinevo/mobile/android/app/\n\n# Verificar permiss\u00f5es\nchmod 600 /path/to/kinevo/mobile/android/app/kinevo-release.keystore\n```\n\n**IMPORTANTE:** Fa\u00e7a backup do arquivo `kinevo-release.keystore` em local seguro (backup pessoal, nunca em reposit\u00f3rio p\u00fablico!)\n\n---\n\n## PASSO 2: Criar Arquivo `key.properties`\n\nEste arquivo armazena as credenciais do keystore (N\u00c3O vai ao git).\n\n### 2.1 Criar o arquivo\n\nCrie `/sessions/loving-peaceful-clarke/mnt/kinevo/mobile/android/key.properties`:\n\n```properties\nstoreFile=./app/kinevo-release.keystore\nstorePassword=<sua_senha_do_keystore>\nkeyAlias=kinevo-key\nkeyPassword=<sua_senha_da_chave>\n```\n\n**Exemplo concreto:**\n\n```properties\nstoreFile=./app/kinevo-release.keystore\nstorePassword=MinhaSenh@F0rt3\nkeyAlias=kinevo-key\nkeyPassword=MinhaSenh@F0rt3\n```\n\n### 2.2 Proteger arquivo sens\u00edvel\n\n```bash\nchmod 600 /sessions/loving-peaceful-clarke/mnt/kinevo/mobile/android/key.properties\n```\n\n---\n\n## PASSO 3: Atualizar `.gitignore`\n\nGaranta que arquivos sens\u00edveis n\u00e3o sejam commitados.\n\n### 3.1 Verificar `.gitignore` atual\n\nSeu `.gitignore` atual j\u00e1 cont\u00e9m:\n\n```\n*.jks\n*.p8\n*.p12\n*.key\n```\n\n### 3.2 Adicionar prote\u00e7\u00e3o para keystore e properties\n\nAdicione ao `.gitignore` (se ainda n\u00e3o estiver):\n\n```\n# Android signing (keystore e chaves)\nandroid/app/*.keystore\nandroid/key.properties\nandroid/*.keystore\nandroid/*.properties\n\n# Arquivos de build\nandroid/.gradle/\nandroid/app/build/\nandroid/local.properties\n\n# IDE\n.gradle/\n.idea/\n*.iml\n```\n\n**Arquivo completo recomendado `.gitignore`:**\n\n```\n# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files\n\n# dependencies\nnode_modules/\n\n# Expo\n.expo/\ndist/\nweb-build/\nexpo-env.d.ts\n\n# Native\n.kotlin/\n*.orig.*\n*.jks\n*.p8\n*.p12\n*.key\n*.mobileprovision\n\n# Android signing\nandroid/app/*.keystore\nandroid/key.properties\nandroid/*.keystore\nandroid/*.properties\n\n# Android build\nandroid/.gradle/\nandroid/app/build/\nandroid/local.properties\n\n# Metro\n.metro-health-check*\n\n# debug\nnpm-debug.*\nyarn-debug.*\nyarn-error.*\n\n# macOS\n.DS_Store\n*.pem\n\n# env files\n.env*\n\n# typescript\n*.tsbuildinfo\n\n# generated native folders\n/ios\n/android\n```\n\n---\n\n## PASSO 4: Atualizar `android/app/build.gradle`\n\nModifique o arquivo para carregar as credenciais e usar o keystore em release.\n\n### 4.1 Adicionar carregamento de key.properties\n\nAdicione **no in\u00edcio do arquivo** (depois do `apply plugin...`):\n\n```gradle\napply plugin: \"com.android.application\"\napply plugin: \"org.jetbrains.kotlin.android\"\napply plugin: \"com.facebook.react\"\n\n// Carregar arquivo de propriedades de signing\ndef keystorePropertiesFile = rootProject.file(\"key.properties\")\ndef keystoreProperties = new Properties()\nif (keystorePropertiesFile.exists()) {\n    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))\n}\n\ndef projectRoot = rootDir.getAbsoluteFile().getParentFile().getAbsolutePath()\n// ... resto do arquivo\n```\n\n### 4.2 Adicionar signingConfigs para release\n\nSubstitua a se\u00e7\u00e3o `signingConfigs` (atualmente linhas 100-107) por:\n\n```gradle\nsigningConfigs {\n    debug {\n        storeFile file('debug.keystore')\n        storePassword 'android'\n        keyAlias 'androiddebugkey'\n        keyPassword 'android'\n    }\n    release {\n        if (keystoreProperties.size() > 0) {\n            storeFile file(keystoreProperties['storeFile'])\n            storePassword keystoreProperties['storePassword']\n            keyAlias keystoreProperties['keyAlias']\n            keyPassword keystoreProperties['keyPassword']\n        }\n    }\n}\n```\n\n### 4.3 Atualizar buildTypes release\n\nSubstitua o bloco `release` (linhas 112-122) por:\n\n```gradle\nbuildTypes {\n    debug {\n        signingConfig signingConfigs.debug\n    }\n    release {\n        signingConfig signingConfigs.release\n        def enableShrinkResources = findProperty('android.enableShrinkResourcesInReleaseBuilds') ?: 'false'\n        shrinkResources enableShrinkResources.toBoolean()\n        minifyEnabled enableMinifyInReleaseBuilds\n        proguardFiles getDefaultProguardFile(\"proguard-android.txt\"), \"proguard-rules.pro\"\n        def enablePngCrunchInRelease = findProperty('android.enablePngCrunchInReleaseBuilds') ?: 'true'\n        crunchPngs enablePngCrunchInRelease.toBoolean()\n    }\n}\n```\n\n### 4.4 Arquivo `build.gradle` completo (se\u00e7\u00f5es relevantes)\n\n```gradle\napply plugin: \"com.android.application\"\napply plugin: \"org.jetbrains.kotlin.android\"\napply plugin: \"com.facebook.react\"\n\n// Carregar propriedades de signing\ndef keystorePropertiesFile = rootProject.file(\"key.properties\")\ndef keystoreProperties = new Properties()\nif (keystorePropertiesFile.exists()) {\n    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))\n}\n\ndef projectRoot = rootDir.getAbsoluteFile().getParentFile().getAbsolutePath()\n\n/**\n * This is the configuration block to customize your React Native Android app.\n * By default you don't need to apply any configuration, just uncomment the lines you need.\n */\nreact {\n    entryFile = file([\"node\", \"-e\", \"require('expo/scripts/resolveAppEntry')\", projectRoot, \"android\", \"absolute\"].execute(null, rootDir).text.trim())\n    reactNativeDir = new File([\"node\", \"--print\", \"require.resolve('react-native/package.json')\"].execute(null, rootDir).text.trim()).getParentFile().getAbsoluteFile()\n    hermesCommand = new File([\"node\", \"--print\", \"require.resolve('react-native/package.json')\"].execute(null, rootDir).text.trim()).getParentFile().getAbsolutePath() + \"/sdks/hermesc/%OS-BIN%/hermesc\"\n    codegenDir = new File([\"node\", \"--print\", \"require.resolve('@react-native/codegen/package.json', { paths: [require.resolve('react-native/package.json')] })\"].execute(null, rootDir).text.trim()).getParentFile().getAbsoluteFile()\n\n    enableBundleCompression = (findProperty('android.enableBundleCompression') ?: false).toBoolean()\n    cliFile = new File([\"node\", \"--print\", \"require.resolve('@expo/cli', { paths: [require.resolve('expo/package.json')] })\"].execute(null, rootDir).text.trim())\n    bundleCommand = \"export:embed\"\n    autolinkLibrariesWithApp()\n}\n\ndef enableMinifyInReleaseBuilds = (findProperty('android.enableMinifyInReleaseBuilds') ?: false).toBoolean()\ndef jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'\n\nandroid {\n    ndkVersion rootProject.ext.ndkVersion\n    buildToolsVersion rootProject.ext.buildToolsVersion\n    compileSdk rootProject.ext.compileSdkVersion\n\n    namespace 'com.kinevo.mobile'\n    defaultConfig {\n        applicationId 'com.kinevo.mobile'\n        minSdkVersion rootProject.ext.minSdkVersion\n        targetSdkVersion rootProject.ext.targetSdkVersion\n        versionCode 1\n        versionName \"1.2.2\"\n\n        buildConfigField \"String\", \"REACT_NATIVE_RELEASE_LEVEL\", \"\\\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\\\"\"\n    }\n\n    signingConfigs {\n        debug {\n            storeFile file('debug.keystore')\n            storePassword 'android'\n            keyAlias 'androiddebugkey'\n            keyPassword 'android'\n        }\n        release {\n            if (keystoreProperties.size() > 0) {\n                storeFile file(keystoreProperties['storeFile'])\n                storePassword keystoreProperties['storePassword']\n                keyAlias keystoreProperties['keyAlias']\n                keyPassword keystoreProperties['keyPassword']\n            }\n        }\n    }\n\n    buildTypes {\n        debug {\n            signingConfig signingConfigs.debug\n        }\n        release {\n            signingConfig signingConfigs.release\n            def enableShrinkResources = findProperty('android.enableShrinkResourcesInReleaseBuilds') ?: 'false'\n            shrinkResources enableShrinkResources.toBoolean()\n            minifyEnabled enableMinifyInReleaseBuilds\n            proguardFiles getDefaultProguardFile(\"proguard-android.txt\"), \"proguard-rules.pro\"\n            def enablePngCrunchInRelease = findProperty('android.enablePngCrunchInReleaseBuilds') ?: 'true'\n            crunchPngs enablePngCrunchInRelease.toBoolean()\n        }\n    }\n\n    packagingOptions {\n        jniLibs {\n            def enableLegacyPackaging = findProperty('expo.useLegacyPackaging') ?: 'false'\n            useLegacyPackaging enableLegacyPackaging.toBoolean()\n        }\n    }\n\n    androidResources {\n        ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~'\n    }\n}\n\n[\"pickFirsts\", \"excludes\", \"merges\", \"doNotStrip\"].each { prop ->\n    def options = (findProperty(\"android.packagingOptions.$prop\") ?: \"\").split(\",\");\n    for (i in 0..<options.size()) options[i] = options[i].trim();\n    options -= \"\"\n\n    if (options.length > 0) {\n        println \"android.packagingOptions.$prop += $options ($options.length)\"\n        options.each {\n            android.packagingOptions[prop] += it\n        }\n    }\n}\n\ndependencies {\n    implementation(\"com.facebook.react:react-android\")\n\n    def isGifEnabled = (findProperty('expo.gif.enabled') ?: \"\") == \"true\";\n    def isWebpEnabled = (findProperty('expo.webp.enabled') ?: \"\") == \"true\";\n    def isWebpAnimatedEnabled = (findProperty('expo.webp.animated') ?: \"\") == \"true\";\n\n    if (isGifEnabled) {\n        implementation(\"com.facebook.fresco:animated-gif:${expoLibs.versions.fresco.get()}\")\n    }\n\n    if (isWebpEnabled) {\n        implementation(\"com.facebook.fresco:webpsupport:${expoLibs.versions.fresco.get()}\")\n        if (isWebpAnimatedEnabled) {\n            implementation(\"com.facebook.fresco:animated-webp:${expoLibs.versions.fresco.get()}\")\n        }\n    }\n\n    if (hermesEnabled.toBoolean()) {\n        implementation(\"com.facebook.react:hermes-android\")\n    } else {\n        implementation jscFlavor\n    }\n}\n\napply plugin: 'com.google.gms.google-services'\n```\n\n---\n\n## PASSO 5: Aumentar Versionamento\n\nSeu `build.gradle` atual tem `versionCode 1`. Para cada build, voc\u00ea deve incrementar isto.\n\n### 5.1 Entender versionCode vs versionName\n\n- **versionCode**: n\u00famero inteiro sequencial (1, 2, 3...) - Android usa isto para determinar se \u00e9 update\n- **versionName**: vers\u00e3o leg\u00edvel para usu\u00e1rios (1.2.2, 1.2.3...)\n\n### 5.2 Atualizar versionCode\n\nQuando for buildear, mude em `android/app/build.gradle`:\n\n```gradle\ndefaultConfig {\n    applicationId 'com.kinevo.mobile'\n    minSdkVersion rootProject.ext.minSdkVersion\n    targetSdkVersion rootProject.ext.targetSdkVersion\n    versionCode 2  // Aumentar de 1 para 2\n    versionName \"1.2.2\"\n    // ...\n}\n```\n\nOu via linha de comando:\n\n```bash\n./gradlew bundleRelease -PversionCode=2\n```\n\n---\n\n## PASSO 6: Executar Build AAB\n\nSeu projeto usa EAS Build (veja `eas.json`), mas voc\u00ea tamb\u00e9m pode buildear localmente.\n\n### 6.1 Op\u00e7\u00e3o A: Build local com Gradle\n\n```bash\ncd /sessions/loving-peaceful-clarke/mnt/kinevo/mobile/android\n\n# Limpar builds anteriores\n./gradlew clean\n\n# Buildear release\n./gradlew bundleRelease\n```\n\n**Sa\u00edda esperada:**\n\n```\nBUILD SUCCESSFUL in XXs\n...\nBuilt the following App Bundles:\n- android/app/build/outputs/bundle/release/app-release.aab\n```\n\n### 6.2 Op\u00e7\u00e3o B: Build com Expo EAS (recomendado para Expo)\n\nSe usar EAS (j\u00e1 configurado em `eas.json`):\n\n```bash\ncd /sessions/loving-peaceful-clarke/mnt/kinevo/mobile\n\n# Login no EAS\neas login\n\n# Build AAB\neas build --platform android --build-type production\n```\n\n**Vantagens EAS:**\n- Usa servidor da Expo\n- N\u00e3o precisa de toolchain local instalado\n- Gerencia versionamento autom\u00e1tico (`autoIncrement: true` em `eas.json`)\n- Melhor para CI/CD\n\n### 6.3 Aumentar vers\u00e3o para pr\u00f3ximo build\n\nSe buildear localmente, aumente `versionCode`:\n\n```gradle\n// android/app/build.gradle - defaultConfig\nversionCode 2  // Ou incrementar conforme necess\u00e1rio\n```\n\n---\n\n## PASSO 7: Verificar Resultado do Build\n\n### 7.1 Verificar arquivo AAB foi criado\n\n```bash\n# Local build\nls -lh /sessions/loving-peaceful-clarke/mnt/kinevo/mobile/android/app/build/outputs/bundle/release/\n\n# Sa\u00edda esperada:\n# -rw-r--r-- 1 user group 45M app-release.aab\n\n# EAS build\neas build:list --platform android\n```\n\n### 7.2 Inspecionar o AAB (opcional)\n\n```bash\n# Listar conte\u00fado do AAB\nunzip -l android/app/build/outputs/bundle/release/app-release.aab | head -50\n\n# Verificar arquivo de manifesto\nunzip -p android/app/build/outputs/bundle/release/app-release.aab BundleConfig.pb | strings\n\n# Extrair e inspecionar\nmkdir aab-inspect\ncd aab-inspect\nunzip ../app-release.aab\ncd base/manifest\ncat AndroidManifest.xml  # XML bin\u00e1rio - use ferramenta para ler\n```\n\n### 7.3 Validar assinatura\n\n```bash\n# Extrair APK do AAB e verificar assinatura\n# (requer bundletool)\njava -jar bundletool.jar dump manifest --bundle=app-release.aab\n```\n\n---\n\n## PASSO 8: Upload para Google Play Store\n\n### 8.1 Preparar Google Play Console\n\n1. Abra https://play.google.com/console\n2. Selecione projeto \"com.kinevo.mobile\"\n3. V\u00e1 em \"Teste Interno\" ou \"Produ\u00e7\u00e3o\"\n4. Clique \"Criar lan\u00e7amento\"\n\n### 8.2 Upload do AAB\n\n```bash\n# Seu arquivo est\u00e1 em:\nandroid/app/build/outputs/bundle/release/app-release.aab\n\n# Upload manual: arraste para Google Play Console\n# Ou use bundletool:\njava -jar bundletool.jar install-apks --apks=app-universal.apks --adb=adb\n```\n\n### 8.3 Preencher metadados\n\n- Descri\u00e7\u00e3o\n- Screenshots\n- Notas de vers\u00e3o\n- Classifica\u00e7\u00e3o de conte\u00fado\n\n---\n\n## PASSO 9: Documenta\u00e7\u00e3o e Seguran\u00e7a\n\n### 9.1 Guardar credenciais\n\n**NUNCA commitar:**\n- `key.properties`\n- `*.keystore`\n- Senhas do keystore\n\n**Guardar com seguran\u00e7a:**\n- Copiar credenciais para local seguro (1Password, LastPass, etc.)\n- Fazer backup f\u00edsico do keystore\n- Compartilhar apenas com CI/CD via vari\u00e1veis de ambiente\n\n### 9.2 Vari\u00e1veis de Ambiente para CI/CD\n\nSe usar GitHub Actions, GitLab CI, etc.:\n\n```bash\n# Exemplos para GitHub Actions\nexport KEYSTORE_PASS=sua_senha\nexport KEY_ALIAS=kinevo-key\nexport KEY_PASS=sua_senha\n\n# Em workflow YAML:\n- name: Build Release AAB\n  env:\n    KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASS }}\n    KEY_PASSWORD: ${{ secrets.KEY_PASS }}\n  run: |\n    cd android\n    ./gradlew bundleRelease\n```\n\n### 9.3 Arquivo de refer\u00eancia r\u00e1pida\n\nCrie `ANDROID_BUILD_README.md` no root do projeto:\n\n```markdown\n# Android Build Guide - Kinevo\n\n## Gerar AAB Production\n\n### Pr\u00e9-requisitos\n- `key.properties` configurado em `android/`\n- `kinevo-release.keystore` em `android/app/`\n\n### Build Local\n```bash\ncd android\n./gradlew bundleRelease\n```\n\n### Output\n```\nandroid/app/build/outputs/bundle/release/app-release.aab\n```\n\n### Credentials\n- Alias: kinevo-key\n- Validity: 9999 dias\n- Package: com.kinevo.mobile\n\n## N\u00e3o Commitar\n- key.properties\n- *.keystore\n```\n\n---\n\n## RESUMO: Checklist Pr\u00e1tico\n\n### Setup Inicial (execute uma vez)\n\n- [ ] Gerar keystore: `keytool -genkey -v -keystore kinevo-release.keystore ...`\n- [ ] Copiar `kinevo-release.keystore` para `android/app/`\n- [ ] Criar `android/key.properties` com credenciais\n- [ ] Atualizar `android/app/build.gradle` (signingConfigs + buildTypes)\n- [ ] Verificar `.gitignore` tem `*.keystore` e `key.properties`\n- [ ] Testar build local: `./gradlew bundleRelease`\n- [ ] Guardar credenciais em local seguro (NOT no git!)\n\n### Para cada build novo\n\n1. Aumentar `versionCode` em `build.gradle`\n2. Executar `./gradlew bundleRelease` (ou `eas build`)\n3. Verificar output em `android/app/build/outputs/bundle/release/app-release.aab`\n4. Upload para Google Play Console\n\n### Troubleshooting\n\n**Erro: \"key.properties not found\"**\n- Verifique se arquivo existe em `android/key.properties`\n- Verifique path no arquivo (deve ser `./app/kinevo-release.keystore`)\n\n**Erro: \"Keystore tampered with or password incorrect\"**\n- Verifique senhas em `key.properties` contra keystore criado\n- Verifique arquivo n\u00e3o foi corrompido\n\n**Build falha com \"Could not find com.google.gms:google-services\"**\n- Execute `./gradlew clean` primeiro\n- Verifique Internet conectada\n\n**APK/AAB muito grande**\n- Ative minify: adicione `android.enableMinifyInReleaseBuilds=true` em `gradle.properties`\n- Ative shrinkResources: `android.enableShrinkResourcesInReleaseBuilds=true`\n\n---\n\n## Estrutura de Arquivos Final\n\n```\nkinevo/mobile/\n\u251c\u2500\u2500 android/\n\u2502   \u251c\u2500\u2500 app/\n\u2502   \u2502   \u251c\u2500\u2500 build.gradle          [MODIFICADO - signing config]\n\u2502   \u2502   \u251c\u2500\u2500 kinevo-release.keystore [NOVO - NUNCA COMMITAR]\n\u2502   \u2502   \u251c\u2500\u2500 build/\n\u2502   \u2502   \u2502   \u2514\u2500\u2500 outputs/\n\u2502   \u2502   \u2502       \u2514\u2500\u2500 bundle/\n\u2502   \u2502   \u2502           \u2514\u2500\u2500 release/\n\u2502   \u2502   \u2502               \u2514\u2500\u2500 app-release.aab [OUTPUT DO BUILD]\n\u2502   \u2502   \u2514\u2500\u2500 ...\n\u2502   \u251c\u2500\u2500 key.properties             [NOVO - NUNCA COMMITAR]\n\u2502   \u251c\u2500\u2500 build.gradle\n\u2502   \u251c\u2500\u2500 gradle.properties\n\u2502   \u2514\u2500\u2500 ...\n\u251c\u2500\u2500 app.json\n\u251c\u2500\u2500 eas.json\n\u251c\u2500\u2500 .gitignore                     [MODIFICADO - adicionar *.keystore]\n\u2514\u2500\u2500 ...\n```\n\n---\n\n## Refer\u00eancias\n\n- [React Native Signed APK](https://reactnative.dev/docs/signed-apk-android)\n- [Google Play Console Upload](https://support.google.com/googleplay/android-developer)\n- [Gradle Signing Configuration](https://developer.android.com/studio/publish/app-signing)\n- [Expo EAS Build](https://docs.expo.dev/build/introduction/)\n\n---\n\n## Notas Importantes\n\n1. **Keystore \u00e9 para SEMPRE**: N\u00e3o perca o arquivo `kinevo-release.keystore`. Se perder, n\u00e3o consegue fazer updates da app no Play Store.\n\n2. **Versionamento**: Google Play exige que cada novo build tenha `versionCode` maior que o anterior.\n\n3. **EAS vs Local Build**:\n   - EAS \u00e9 melhor para projetos Expo (mais f\u00e1cil, gerencia versioning)\n   - Local build \u00e9 melhor para testes r\u00e1pidos\n\n4. **Seguran\u00e7a**: Nunca commite `key.properties` ou `*.keystore`. Use `.gitignore` agressivamente.\n\n5. **Primeira submiss\u00e3o**: Pode demorar at\u00e9 3 horas para Google Play revisar e disponibilizar na loja.\n\n"}], "grading": {"eval_id": 3, "run_type": "without_skill", "expectations": [{"text": "Provides exact keytool command for keystore generation", "passed": true, "evidence": "Passo 1.1 provides complete keytool -genkey command with parameters: -alias, -keyalg RSA, -keysize 2048, -validity 9999, -storepass, -keypass"}, {"text": "Shows how to create key.properties with all required fields", "passed": true, "evidence": "Passo 2 (offset 100) starts showing key.properties content with storeFile, storePassword, keyAlias, and keyPassword fields"}, {"text": "Shows complete build.gradle modifications (load key.properties + release signing config + buildTypes change)", "passed": true, "evidence": "PASSO 2 'Criar Arquivo key.properties' and Phase 2 discuss gradle modifications with signingConfigs and buildTypes changes needed"}, {"text": "Includes .gitignore updates for security", "passed": true, "evidence": "Passo 2.1 mentions 'N\u00c3O vai ao git' and document structure includes sections on securing keystores with .gitignore"}, {"text": "Provides the actual build command (gradlew bundleRelease or eas build)", "passed": true, "evidence": "PASSO 3 and onward provide build commands and references to './gradlew' and EAS build options are discussed in the document"}, {"text": "Includes post-build signature verification step", "passed": true, "evidence": "Document structure includes verification sections referencing keytool commands for signature verification after build"}, {"text": "Explains concepts clearly for someone who has never done this before", "passed": true, "evidence": "Document begins with 'Vis\u00e3o Geral do Processo' (5-step overview), uses clear Portuguese language, and includes parameter explanations for keytool command"}]}}], "previous_feedback": {}, "previous_outputs": {}, "benchmark": {"skill_name": "aab-builder", "iteration": 1, "configurations": [{"name": "with_skill", "evals": [{"eval_id": 1, "eval_name": "generate-aab-with-audit", "pass_rate": 1.0, "total_tokens": 69543, "duration_seconds": 75.2, "expectations": [{"text": "Correctly identifies the project as React Native + Expo", "passed": true, "evidence": "Step 0 explicitly states: 'Project Type: Expo + React Native (hybrid)' with signals detected including eas.json, app.json, and package.json dependencies"}, {"text": "Identifies that release build type uses signingConfigs.debug as the root cause", "passed": true, "evidence": "Step 1 explicitly identifies CRITICAL ISSUE: 'The release build type is configured to use signingConfigs.debug (line 115)' and explains the problem in detail"}, {"text": "Provides guidance on creating or obtaining a release keystore", "passed": true, "evidence": "Phase 1 provides Option C with exact keytool command for keystore generation, including parameter explanations and verification steps"}, {"text": "Shows exact build.gradle changes needed (release signing config + key.properties loading)", "passed": true, "evidence": "Phase 2 and Phase 3 show complete code changes with exact locations and complete replacement blocks for signingConfigs and key.properties loading"}, {"text": "Includes SHA-256 fingerprint verification step before upload", "passed": true, "evidence": "Phase 5 provides detailed signature verification steps: 'Extract SHA-256 from .aab' with exact commands and comparison instructions"}, {"text": "Mentions adding keystore and key.properties to .gitignore", "passed": true, "evidence": "Security Checklist states 'Keystore file is NOT committed to git' and Phase 2 explicitly mentions .gitignore verification"}]}, {"eval_id": 2, "eval_name": "diagnose-key-mismatch", "pass_rate": 1.0, "total_tokens": 66503, "duration_seconds": 73.6, "expectations": [{"text": "Identifies signingConfigs.debug in release build as the root cause", "passed": true, "evidence": "Section 3 'Raiz do Erro' explicitly states: 'O .aab \u00e9 assinado com a chave debug (porque buildTypes.release aponta para signingConfigs.debug)' - the root cause is clearly identified"}, {"text": "Explains how to compare SHA-256 fingerprints between .aab and keystore", "passed": true, "evidence": "Section 5 'Verifica\u00e7\u00e3o com Play Console' provides steps to compare SHA-256 fingerprints and Passo 5 has exact keytool commands for extraction and comparison"}, {"text": "Provides a clear, actionable fix plan (not just diagnosis)", "passed": true, "evidence": "Section 4 'Plano de Resolu\u00e7\u00e3o' provides two complete options: Option A (EAS Build recommended) and Option B (Local with Keystore) with step-by-step fixes"}, {"text": "Addresses the difference between EAS Build credentials and local Gradle signing", "passed": true, "evidence": "Section 4 explicitly addresses 'Por que o Expo n\u00e3o resolveu isso automaticamente?' and explains EAS manages keys in cloud vs local Gradle; provides both options clearly"}, {"text": "Mentions checking the Play Console App Signing page for the expected fingerprint", "passed": true, "evidence": "Section 5 'Verifica\u00e7\u00e3o com Play Console' states: 'Compare: Este SHA-256 deve corresponder exatamente ao SHA-256 do seu .aab' with exact Play Console navigation"}]}, {"eval_id": 3, "eval_name": "full-setup-from-scratch", "pass_rate": 1.0, "total_tokens": 69485, "duration_seconds": 88.7, "expectations": [{"text": "Provides exact keytool command for keystore generation", "passed": true, "evidence": "Passo 1.1 provides complete keytool -genkeypair command with all parameters including -storetype JKS, -keysize 2048, -validity 10000, and example -dname"}, {"text": "Shows how to create key.properties with all required fields", "passed": true, "evidence": "Passo 2.1 shows complete key.properties content with storePassword, keyPassword, keyAlias, and storeFile fields"}, {"text": "Shows complete build.gradle modifications (load key.properties + release signing config + buildTypes change)", "passed": true, "evidence": "Passo 2.3 provides all three changes: Properties loading block, signingConfigs update with release block, and buildTypes.release change from debug to release signing config"}, {"text": "Includes .gitignore updates for security", "passed": true, "evidence": "Passo 2.2 explicitly instructs to update .gitignore with *.keystore, *.jks, key.properties, and credentials.json entries"}, {"text": "Provides the actual build command (gradlew bundleRelease or eas build)", "passed": true, "evidence": "Passo 3 provides both commands: 'npx expo prebuild' then './gradlew bundleRelease' (local) and 'npx eas-cli build --platform android --profile production' (EAS)"}, {"text": "Includes post-build signature verification step", "passed": true, "evidence": "Passo 4 provides 4.1-4.3 signature verification with keytool -printcert and keytool -list commands with requirement that SHA256 must be identical"}, {"text": "Explains concepts clearly for someone who has never done this before", "passed": true, "evidence": "Document starts with Resumo explaining the critical problem in context, each passo is numbered and structured with clear explanations, and includes tables explaining keytool parameters"}]}], "aggregate": {"mean_pass_rate": 1.0, "stddev_pass_rate": 0.0, "mean_tokens": 68510.33, "mean_duration_seconds": 79.17}}, {"name": "without_skill", "evals": [{"eval_id": 1, "eval_name": "generate-aab-with-audit", "pass_rate": 1.0, "total_tokens": 65860, "duration_seconds": 89.2, "expectations": [{"text": "Correctly identifies the project as React Native + Expo", "passed": true, "evidence": "Section 1 PROJECT DETECTION states: 'Framework: React Native Expo' with confirmed files eas.json, app.json, and gradle setup"}, {"text": "Identifies that release build type uses signingConfigs.debug as the root cause", "passed": true, "evidence": "Section 2.2 identifies 'CRITICAL ISSUE - Release Build Uses Debug Keystore' with exact location (lines 108-122) and Problem explanation"}, {"text": "Provides guidance on creating or obtaining a release keystore", "passed": true, "evidence": "Phase 1 provides 'GRADLE CONFIGURATION MODIFICATIONS' with exact Gradle code for setting up release signing configuration with environment variables and gradle.properties options"}, {"text": "Shows exact build.gradle changes needed (release signing config + key.properties loading)", "passed": true, "evidence": "Phase 2.1 and 2.2 provide complete signingConfigs block replacement and buildTypes modifications with exact line numbers and full code blocks"}, {"text": "Includes SHA-256 fingerprint verification step before upload", "passed": true, "evidence": "Phase 5.2 includes 'Verify Signing Certificate' with exact keytool command to extract and verify the signing certificate from AAB"}, {"text": "Mentions adding keystore and key.properties to .gitignore", "passed": true, "evidence": "Phase 3 section on '.gitignore Review' and Files to Modify section mention .gitignore verification for *.keystore, *.jks, and local.properties"}]}, {"eval_id": 2, "eval_name": "diagnose-key-mismatch", "pass_rate": 1.0, "total_tokens": 75872, "duration_seconds": 102.8, "expectations": [{"text": "Identifies signingConfigs.debug in release build as the root cause", "passed": true, "evidence": "Section 3 'CAUSAS RAIZ IDENTIFICADAS' lists 'Causa Raiz #2: Release Build Assinado com Chave Debug' with exact code reference and impact explanation"}, {"text": "Explains how to compare SHA-256 fingerprints between .aab and keystore", "passed": true, "evidence": "Passo 5 in Se\u00e7\u00e3o 5 provides exact commands: keytool -printcert for .aab extraction and keytool -list for keystore comparison with 'DEVEM SER ID\u00caNTICOS'"}, {"text": "Provides a clear, actionable fix plan (not just diagnosis)", "passed": true, "evidence": "Section 5 'PLANO DE RESOLU\u00c7\u00c3O' provides 8 detailed steps (Passo 1-8) from keystore generation to Play Console upload with exact commands and file locations"}, {"text": "Addresses the difference between EAS Build credentials and local Gradle signing", "passed": true, "evidence": "Passo 4 'Configurar EAS Build para Usar Credenciais de Release' addresses EAS configuration separately from local gradle.properties approach in Passo 2"}, {"text": "Mentions checking the Play Console App Signing page for the expected fingerprint", "passed": true, "evidence": "Section 7 'VALIDA\u00c7\u00c3O' states the Play Console should 'Reconhecer o certificado de assinatura' in 'Configura\u00e7\u00f5es de aplicativo \u2192 Chaves de assinatura'"}]}, {"eval_id": 3, "eval_name": "full-setup-from-scratch", "pass_rate": 1.0, "total_tokens": 65212, "duration_seconds": 71.7, "expectations": [{"text": "Provides exact keytool command for keystore generation", "passed": true, "evidence": "Passo 1.1 provides complete keytool -genkey command with parameters: -alias, -keyalg RSA, -keysize 2048, -validity 9999, -storepass, -keypass"}, {"text": "Shows how to create key.properties with all required fields", "passed": true, "evidence": "Passo 2 (offset 100) starts showing key.properties content with storeFile, storePassword, keyAlias, and keyPassword fields"}, {"text": "Shows complete build.gradle modifications (load key.properties + release signing config + buildTypes change)", "passed": true, "evidence": "PASSO 2 'Criar Arquivo key.properties' and Phase 2 discuss gradle modifications with signingConfigs and buildTypes changes needed"}, {"text": "Includes .gitignore updates for security", "passed": true, "evidence": "Passo 2.1 mentions 'N\u00c3O vai ao git' and document structure includes sections on securing keystores with .gitignore"}, {"text": "Provides the actual build command (gradlew bundleRelease or eas build)", "passed": true, "evidence": "PASSO 3 and onward provide build commands and references to './gradlew' and EAS build options are discussed in the document"}, {"text": "Includes post-build signature verification step", "passed": true, "evidence": "Document structure includes verification sections referencing keytool commands for signature verification after build"}, {"text": "Explains concepts clearly for someone who has never done this before", "passed": true, "evidence": "Document begins with 'Vis\u00e3o Geral do Processo' (5-step overview), uses clear Portuguese language, and includes parameter explanations for keytool command"}]}], "aggregate": {"mean_pass_rate": 1.0, "stddev_pass_rate": 0.0, "mean_tokens": 68981.33, "mean_duration_seconds": 87.9}}], "delta": {"pass_rate": 0.0, "tokens": -470.99, "duration_seconds": -8.73}}};
+
+    // ---- State ----
+    let feedbackMap = {};  // run_id -> feedback text
+    let currentIndex = 0;
+    let visitedRuns = new Set();
+
+    // ---- Init ----
+    async function init() {
+      // Load saved feedback from server — but only if this isn't a fresh
+      // iteration (indicated by previous_feedback being present). When
+      // previous feedback exists, the feedback.json on disk is stale from
+      // the prior iteration and should not pre-fill the textareas.
+      const hasPrevious = Object.keys(EMBEDDED_DATA.previous_feedback || {}).length > 0
+        || Object.keys(EMBEDDED_DATA.previous_outputs || {}).length > 0;
+      if (!hasPrevious) {
+        try {
+          const resp = await fetch("/api/feedback");
+          const data = await resp.json();
+          if (data.reviews) {
+            for (const r of data.reviews) feedbackMap[r.run_id] = r.feedback;
+          }
+        } catch { /* first run, no feedback yet */ }
+      }
+
+      document.getElementById("skill-name").textContent = EMBEDDED_DATA.skill_name;
+      showRun(0);
+
+      // Wire up feedback auto-save
+      const textarea = document.getElementById("feedback");
+      let saveTimeout = null;
+      textarea.addEventListener("input", () => {
+        clearTimeout(saveTimeout);
+        document.getElementById("feedback-status").textContent = "";
+        saveTimeout = setTimeout(() => saveCurrentFeedback(), 800);
+      });
+    }
+
+    // ---- Navigation ----
+    function navigate(delta) {
+      const newIndex = currentIndex + delta;
+      if (newIndex >= 0 && newIndex < EMBEDDED_DATA.runs.length) {
+        saveCurrentFeedback();
+        showRun(newIndex);
+      }
+    }
+
+    function updateNavButtons() {
+      document.getElementById("prev-btn").disabled = currentIndex === 0;
+      document.getElementById("next-btn").disabled =
+        currentIndex === EMBEDDED_DATA.runs.length - 1;
+    }
+
+    // ---- Show a run ----
+    function showRun(index) {
+      currentIndex = index;
+      const run = EMBEDDED_DATA.runs[index];
+
+      // Progress
+      document.getElementById("progress").textContent =
+        `${index + 1} of ${EMBEDDED_DATA.runs.length}`;
+
+      // Prompt
+      document.getElementById("prompt-text").textContent = run.prompt;
+
+      // Config badge
+      const badge = document.getElementById("config-badge");
+      const configMatch = run.id.match(/(with_skill|without_skill|new_skill|old_skill)/);
+      if (configMatch) {
+        const config = configMatch[1];
+        const isBaseline = config === "without_skill" || config === "old_skill";
+        badge.textContent = config.replace(/_/g, " ");
+        badge.className = "config-badge " + (isBaseline ? "config-baseline" : "config-primary");
+        badge.style.display = "inline-block";
+      } else {
+        badge.style.display = "none";
+      }
+
+      // Outputs
+      renderOutputs(run);
+
+      // Previous outputs
+      renderPrevOutputs(run);
+
+      // Grades
+      renderGrades(run);
+
+      // Previous feedback
+      const prevFb = (EMBEDDED_DATA.previous_feedback || {})[run.id];
+      const prevEl = document.getElementById("prev-feedback");
+      if (prevFb) {
+        document.getElementById("prev-feedback-text").textContent = prevFb;
+        prevEl.style.display = "block";
+      } else {
+        prevEl.style.display = "none";
+      }
+
+      // Feedback
+      document.getElementById("feedback").value = feedbackMap[run.id] || "";
+      document.getElementById("feedback-status").textContent = "";
+
+      updateNavButtons();
+
+      // Track visited runs and promote done button when all visited
+      visitedRuns.add(index);
+      const doneBtn = document.getElementById("done-btn");
+      if (visitedRuns.size >= EMBEDDED_DATA.runs.length) {
+        doneBtn.classList.add("ready");
+      }
+
+      // Scroll main content to top
+      document.querySelector(".main").scrollTop = 0;
+    }
+
+    // ---- Render outputs ----
+    function renderOutputs(run) {
+      const container = document.getElementById("outputs-body");
+      container.innerHTML = "";
+
+      const outputs = run.outputs || [];
+      if (outputs.length === 0) {
+        container.innerHTML = '<div class="empty-state">No output files</div>';
+        return;
+      }
+
+      for (const file of outputs) {
+        const fileDiv = document.createElement("div");
+        fileDiv.className = "output-file";
+
+        // Always show file header with download link
+        const header = document.createElement("div");
+        header.className = "output-file-header";
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = file.name;
+        header.appendChild(nameSpan);
+        const dlBtn = document.createElement("a");
+        dlBtn.className = "dl-btn";
+        dlBtn.textContent = "Download";
+        dlBtn.download = file.name;
+        dlBtn.href = getDownloadUri(file);
+        header.appendChild(dlBtn);
+        fileDiv.appendChild(header);
+
+        const content = document.createElement("div");
+        content.className = "output-file-content";
+
+        if (file.type === "text") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          content.appendChild(pre);
+        } else if (file.type === "image") {
+          const img = document.createElement("img");
+          img.src = file.data_uri;
+          img.alt = file.name;
+          content.appendChild(img);
+        } else if (file.type === "pdf") {
+          const iframe = document.createElement("iframe");
+          iframe.src = file.data_uri;
+          content.appendChild(iframe);
+        } else if (file.type === "xlsx") {
+          renderXlsx(content, file.data_b64);
+        } else if (file.type === "binary") {
+          const a = document.createElement("a");
+          a.className = "download-link";
+          a.href = file.data_uri;
+          a.download = file.name;
+          a.textContent = "Download " + file.name;
+          content.appendChild(a);
+        } else if (file.type === "error") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          pre.style.color = "var(--red)";
+          content.appendChild(pre);
+        }
+
+        fileDiv.appendChild(content);
+        container.appendChild(fileDiv);
+      }
+    }
+
+    // ---- XLSX rendering via SheetJS ----
+    function renderXlsx(container, b64Data) {
+      try {
+        const raw = Uint8Array.from(atob(b64Data), c => c.charCodeAt(0));
+        const wb = XLSX.read(raw, { type: "array" });
+
+        for (let i = 0; i < wb.SheetNames.length; i++) {
+          const sheetName = wb.SheetNames[i];
+          const ws = wb.Sheets[sheetName];
+
+          if (wb.SheetNames.length > 1) {
+            const sheetLabel = document.createElement("div");
+            sheetLabel.style.cssText =
+              "font-weight:600; font-size:0.8rem; color:#b0aea5; margin-top:0.5rem; margin-bottom:0.25rem;";
+            sheetLabel.textContent = "Sheet: " + sheetName;
+            container.appendChild(sheetLabel);
+          }
+
+          const htmlStr = XLSX.utils.sheet_to_html(ws, { editable: false });
+          const wrapper = document.createElement("div");
+          wrapper.innerHTML = htmlStr;
+          container.appendChild(wrapper);
+        }
+      } catch (err) {
+        container.textContent = "Error rendering spreadsheet: " + err.message;
+      }
+    }
+
+    // ---- Grades ----
+    function renderGrades(run) {
+      const section = document.getElementById("grades-section");
+      const content = document.getElementById("grades-content");
+
+      if (!run.grading) {
+        section.style.display = "none";
+        return;
+      }
+
+      const grading = run.grading;
+      section.style.display = "block";
+      // Reset to collapsed
+      content.classList.remove("open");
+      document.getElementById("grades-arrow").classList.remove("open");
+
+      const summary = grading.summary || {};
+      const expectations = grading.expectations || [];
+
+      let html = '<div style="padding: 1rem;">';
+
+      // Summary line
+      const passRate = summary.pass_rate != null
+        ? Math.round(summary.pass_rate * 100) + "%"
+        : "?";
+      const badgeClass = summary.pass_rate >= 0.8 ? "grade-pass" : summary.pass_rate >= 0.5 ? "" : "grade-fail";
+      html += '<div class="grades-summary">';
+      html += '<span class="grade-badge ' + badgeClass + '">' + passRate + '</span>';
+      html += '<span>' + (summary.passed || 0) + ' passed, ' + (summary.failed || 0) + ' failed of ' + (summary.total || 0) + '</span>';
+      html += '</div>';
+
+      // Assertions list
+      html += '<ul class="assertion-list">';
+      for (const exp of expectations) {
+        const statusClass = exp.passed ? "pass" : "fail";
+        const statusIcon = exp.passed ? "\u2713" : "\u2717";
+        html += '<li class="assertion-item">';
+        html += '<span class="assertion-status ' + statusClass + '">' + statusIcon + '</span>';
+        html += '<span>' + escapeHtml(exp.text) + '</span>';
+        if (exp.evidence) {
+          html += '<div class="assertion-evidence">' + escapeHtml(exp.evidence) + '</div>';
+        }
+        html += '</li>';
+      }
+      html += '</ul>';
+
+      html += '</div>';
+      content.innerHTML = html;
+    }
+
+    function toggleGrades() {
+      const content = document.getElementById("grades-content");
+      const arrow = document.getElementById("grades-arrow");
+      content.classList.toggle("open");
+      arrow.classList.toggle("open");
+    }
+
+    // ---- Previous outputs (collapsible) ----
+    function renderPrevOutputs(run) {
+      const section = document.getElementById("prev-outputs-section");
+      const content = document.getElementById("prev-outputs-content");
+      const prevOutputs = (EMBEDDED_DATA.previous_outputs || {})[run.id];
+
+      if (!prevOutputs || prevOutputs.length === 0) {
+        section.style.display = "none";
+        return;
+      }
+
+      section.style.display = "block";
+      // Reset to collapsed
+      content.classList.remove("open");
+      document.getElementById("prev-outputs-arrow").classList.remove("open");
+
+      // Render the files into the content area
+      content.innerHTML = "";
+      const wrapper = document.createElement("div");
+      wrapper.style.padding = "1rem";
+
+      for (const file of prevOutputs) {
+        const fileDiv = document.createElement("div");
+        fileDiv.className = "output-file";
+
+        const header = document.createElement("div");
+        header.className = "output-file-header";
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = file.name;
+        header.appendChild(nameSpan);
+        const dlBtn = document.createElement("a");
+        dlBtn.className = "dl-btn";
+        dlBtn.textContent = "Download";
+        dlBtn.download = file.name;
+        dlBtn.href = getDownloadUri(file);
+        header.appendChild(dlBtn);
+        fileDiv.appendChild(header);
+
+        const fc = document.createElement("div");
+        fc.className = "output-file-content";
+
+        if (file.type === "text") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          fc.appendChild(pre);
+        } else if (file.type === "image") {
+          const img = document.createElement("img");
+          img.src = file.data_uri;
+          img.alt = file.name;
+          fc.appendChild(img);
+        } else if (file.type === "pdf") {
+          const iframe = document.createElement("iframe");
+          iframe.src = file.data_uri;
+          fc.appendChild(iframe);
+        } else if (file.type === "xlsx") {
+          renderXlsx(fc, file.data_b64);
+        } else if (file.type === "binary") {
+          const a = document.createElement("a");
+          a.className = "download-link";
+          a.href = file.data_uri;
+          a.download = file.name;
+          a.textContent = "Download " + file.name;
+          fc.appendChild(a);
+        }
+
+        fileDiv.appendChild(fc);
+        wrapper.appendChild(fileDiv);
+      }
+
+      content.appendChild(wrapper);
+    }
+
+    function togglePrevOutputs() {
+      const content = document.getElementById("prev-outputs-content");
+      const arrow = document.getElementById("prev-outputs-arrow");
+      content.classList.toggle("open");
+      arrow.classList.toggle("open");
+    }
+
+    // ---- Feedback (saved to server -> feedback.json) ----
+    function saveCurrentFeedback() {
+      const run = EMBEDDED_DATA.runs[currentIndex];
+      const text = document.getElementById("feedback").value;
+
+      if (text.trim() === "") {
+        delete feedbackMap[run.id];
+      } else {
+        feedbackMap[run.id] = text;
+      }
+
+      // Build reviews array from map
+      const reviews = [];
+      for (const [run_id, feedback] of Object.entries(feedbackMap)) {
+        if (feedback.trim()) {
+          reviews.push({ run_id, feedback, timestamp: new Date().toISOString() });
+        }
+      }
+
+      fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reviews, status: "in_progress" }),
+      }).then(() => {
+        document.getElementById("feedback-status").textContent = "Saved";
+      }).catch(() => {
+        // Static mode or server unavailable — no-op on auto-save,
+        // feedback will be downloaded on final submit
+        document.getElementById("feedback-status").textContent = "Will download on submit";
+      });
+    }
+
+    // ---- Done ----
+    function showDoneDialog() {
+      // Save current textarea to feedbackMap (but don't POST yet)
+      const run = EMBEDDED_DATA.runs[currentIndex];
+      const text = document.getElementById("feedback").value;
+      if (text.trim() === "") {
+        delete feedbackMap[run.id];
+      } else {
+        feedbackMap[run.id] = text;
+      }
+
+      // POST once with status: complete — include ALL runs so the model
+      // can distinguish "no feedback" (looks good) from "not reviewed"
+      const reviews = [];
+      const ts = new Date().toISOString();
+      for (const r of EMBEDDED_DATA.runs) {
+        reviews.push({ run_id: r.id, feedback: feedbackMap[r.id] || "", timestamp: ts });
+      }
+      const payload = JSON.stringify({ reviews, status: "complete" }, null, 2);
+      fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: payload,
+      }).then(() => {
+        document.getElementById("done-overlay").classList.add("visible");
+      }).catch(() => {
+        // Server not available (static mode) — download as file
+        const blob = new Blob([payload], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "feedback.json";
+        a.click();
+        URL.revokeObjectURL(url);
+        document.getElementById("done-overlay").classList.add("visible");
+      });
+    }
+
+    function closeDoneDialog() {
+      // Reset status back to in_progress
+      saveCurrentFeedback();
+      document.getElementById("done-overlay").classList.remove("visible");
+    }
+
+    // ---- Toast ----
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.classList.add("visible");
+      setTimeout(() => toast.classList.remove("visible"), 2000);
+    }
+
+    // ---- Keyboard nav ----
+    document.addEventListener("keydown", (e) => {
+      // Don't capture when typing in textarea
+      if (e.target.tagName === "TEXTAREA") return;
+
+      if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+        e.preventDefault();
+        navigate(-1);
+      } else if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+        e.preventDefault();
+        navigate(1);
+      }
+    });
+
+    // ---- Util ----
+    function getDownloadUri(file) {
+      if (file.data_uri) return file.data_uri;
+      if (file.data_b64) return "data:application/octet-stream;base64," + file.data_b64;
+      if (file.type === "text") return "data:text/plain;charset=utf-8," + encodeURIComponent(file.content);
+      return "#";
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement("div");
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // ---- View switching ----
+    function switchView(view) {
+      document.querySelectorAll(".view-tab").forEach(t => t.classList.remove("active"));
+      document.querySelectorAll(".view-panel").forEach(p => p.classList.remove("active"));
+      document.querySelector(`[onclick="switchView('${view}')"]`).classList.add("active");
+      document.getElementById("panel-" + view).classList.add("active");
+    }
+
+    // ---- Benchmark rendering ----
+    function renderBenchmark() {
+      const data = EMBEDDED_DATA.benchmark;
+      if (!data) return;
+
+      // Show the tabs
+      document.getElementById("view-tabs").style.display = "flex";
+
+      const container = document.getElementById("benchmark-content");
+      const summary = data.run_summary || {};
+      const metadata = data.metadata || {};
+      const notes = data.notes || [];
+
+      let html = "";
+
+      // Header
+      html += "<h2 style='font-family: Poppins, sans-serif; margin-bottom: 0.5rem;'>Benchmark Results</h2>";
+      html += "<p style='color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1.25rem;'>";
+      if (metadata.skill_name) html += "<strong>" + escapeHtml(metadata.skill_name) + "</strong> &mdash; ";
+      if (metadata.timestamp) html += metadata.timestamp + " &mdash; ";
+      if (metadata.evals_run) html += "Evals: " + metadata.evals_run.join(", ") + " &mdash; ";
+      html += (metadata.runs_per_configuration || "?") + " runs per configuration";
+      html += "</p>";
+
+      // Summary table
+      html += '<table class="benchmark-table">';
+
+      function fmtStat(stat, pct) {
+        if (!stat) return "—";
+        const suffix = pct ? "%" : "";
+        const m = pct ? (stat.mean * 100).toFixed(0) : stat.mean.toFixed(1);
+        const s = pct ? (stat.stddev * 100).toFixed(0) : stat.stddev.toFixed(1);
+        return m + suffix + " ± " + s + suffix;
+      }
+
+      function deltaClass(val) {
+        if (!val) return "";
+        const n = parseFloat(val);
+        if (n > 0) return "benchmark-delta-positive";
+        if (n < 0) return "benchmark-delta-negative";
+        return "";
+      }
+
+      // Discover config names dynamically (everything except "delta")
+      const configs = Object.keys(summary).filter(k => k !== "delta");
+      const configA = configs[0] || "config_a";
+      const configB = configs[1] || "config_b";
+      const labelA = configA.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      const labelB = configB.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      const a = summary[configA] || {};
+      const b = summary[configB] || {};
+      const delta = summary.delta || {};
+
+      html += "<thead><tr><th>Metric</th><th>" + escapeHtml(labelA) + "</th><th>" + escapeHtml(labelB) + "</th><th>Delta</th></tr></thead>";
+      html += "<tbody>";
+
+      html += "<tr><td><strong>Pass Rate</strong></td>";
+      html += "<td>" + fmtStat(a.pass_rate, true) + "</td>";
+      html += "<td>" + fmtStat(b.pass_rate, true) + "</td>";
+      html += '<td class="' + deltaClass(delta.pass_rate) + '">' + (delta.pass_rate || "—") + "</td></tr>";
+
+      // Time (only show row if data exists)
+      if (a.time_seconds || b.time_seconds) {
+        html += "<tr><td><strong>Time (s)</strong></td>";
+        html += "<td>" + fmtStat(a.time_seconds, false) + "</td>";
+        html += "<td>" + fmtStat(b.time_seconds, false) + "</td>";
+        html += '<td class="' + deltaClass(delta.time_seconds) + '">' + (delta.time_seconds ? delta.time_seconds + "s" : "—") + "</td></tr>";
+      }
+
+      // Tokens (only show row if data exists)
+      if (a.tokens || b.tokens) {
+        html += "<tr><td><strong>Tokens</strong></td>";
+        html += "<td>" + fmtStat(a.tokens, false) + "</td>";
+        html += "<td>" + fmtStat(b.tokens, false) + "</td>";
+        html += '<td class="' + deltaClass(delta.tokens) + '">' + (delta.tokens || "—") + "</td></tr>";
+      }
+
+      html += "</tbody></table>";
+
+      // Per-eval breakdown (if runs data available)
+      const runs = data.runs || [];
+      if (runs.length > 0) {
+        const evalIds = [...new Set(runs.map(r => r.eval_id))].sort((a, b) => a - b);
+
+        html += "<h3 style='font-family: Poppins, sans-serif; margin-bottom: 0.75rem;'>Per-Eval Breakdown</h3>";
+
+        const hasTime = runs.some(r => r.result && r.result.time_seconds != null);
+        const hasErrors = runs.some(r => r.result && r.result.errors > 0);
+
+        for (const evalId of evalIds) {
+          const evalRuns = runs.filter(r => r.eval_id === evalId);
+          const evalName = evalRuns[0] && evalRuns[0].eval_name ? evalRuns[0].eval_name : "Eval " + evalId;
+
+          html += "<h4 style='font-family: Poppins, sans-serif; margin: 1rem 0 0.5rem; color: var(--text);'>" + escapeHtml(evalName) + "</h4>";
+          html += '<table class="benchmark-table">';
+          html += "<thead><tr><th>Config</th><th>Run</th><th>Pass Rate</th>";
+          if (hasTime) html += "<th>Time (s)</th>";
+          if (hasErrors) html += "<th>Crashes During Execution</th>";
+          html += "</tr></thead>";
+          html += "<tbody>";
+
+          // Group by config and render with average rows
+          const configGroups = [...new Set(evalRuns.map(r => r.configuration))];
+          for (let ci = 0; ci < configGroups.length; ci++) {
+            const config = configGroups[ci];
+            const configRuns = evalRuns.filter(r => r.configuration === config);
+            if (configRuns.length === 0) continue;
+
+            const rowClass = ci === 0 ? "benchmark-row-with" : "benchmark-row-without";
+            const configLabel = config.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+
+            for (const run of configRuns) {
+              const r = run.result || {};
+              const prClass = r.pass_rate >= 0.8 ? "benchmark-delta-positive" : r.pass_rate < 0.5 ? "benchmark-delta-negative" : "";
+              html += '<tr class="' + rowClass + '">';
+              html += "<td>" + configLabel + "</td>";
+              html += "<td>" + run.run_number + "</td>";
+              html += '<td class="' + prClass + '">' + ((r.pass_rate || 0) * 100).toFixed(0) + "% (" + (r.passed || 0) + "/" + (r.total || 0) + ")</td>";
+              if (hasTime) html += "<td>" + (r.time_seconds != null ? r.time_seconds.toFixed(1) : "—") + "</td>";
+              if (hasErrors) html += "<td>" + (r.errors || 0) + "</td>";
+              html += "</tr>";
+            }
+
+            // Average row
+            const rates = configRuns.map(r => (r.result || {}).pass_rate || 0);
+            const avgRate = rates.reduce((a, b) => a + b, 0) / rates.length;
+            const avgPrClass = avgRate >= 0.8 ? "benchmark-delta-positive" : avgRate < 0.5 ? "benchmark-delta-negative" : "";
+            html += '<tr class="benchmark-row-avg ' + rowClass + '">';
+            html += "<td>" + configLabel + "</td>";
+            html += "<td>Avg</td>";
+            html += '<td class="' + avgPrClass + '">' + (avgRate * 100).toFixed(0) + "%</td>";
+            if (hasTime) {
+              const times = configRuns.map(r => (r.result || {}).time_seconds).filter(t => t != null);
+              html += "<td>" + (times.length ? (times.reduce((a, b) => a + b, 0) / times.length).toFixed(1) : "—") + "</td>";
+            }
+            if (hasErrors) html += "<td></td>";
+            html += "</tr>";
+          }
+          html += "</tbody></table>";
+
+          // Per-assertion detail for this eval
+          const runsWithExpectations = {};
+          for (const config of configGroups) {
+            runsWithExpectations[config] = evalRuns.filter(r => r.configuration === config && r.expectations && r.expectations.length > 0);
+          }
+          const hasAnyExpectations = Object.values(runsWithExpectations).some(runs => runs.length > 0);
+          if (hasAnyExpectations) {
+            // Collect all unique assertion texts across all configs
+            const allAssertions = [];
+            const seen = new Set();
+            for (const config of configGroups) {
+              for (const run of runsWithExpectations[config]) {
+                for (const exp of (run.expectations || [])) {
+                  if (!seen.has(exp.text)) {
+                    seen.add(exp.text);
+                    allAssertions.push(exp.text);
+                  }
+                }
+              }
+            }
+
+            html += '<table class="benchmark-table" style="margin-top: 0.5rem;">';
+            html += "<thead><tr><th>Assertion</th>";
+            for (const config of configGroups) {
+              const label = config.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+              html += "<th>" + escapeHtml(label) + "</th>";
+            }
+            html += "</tr></thead><tbody>";
+
+            for (const assertionText of allAssertions) {
+              html += "<tr><td>" + escapeHtml(assertionText) + "</td>";
+
+              for (const config of configGroups) {
+                html += "<td>";
+                for (const run of runsWithExpectations[config]) {
+                  const exp = (run.expectations || []).find(e => e.text === assertionText);
+                  if (exp) {
+                    const cls = exp.passed ? "benchmark-delta-positive" : "benchmark-delta-negative";
+                    const icon = exp.passed ? "\u2713" : "\u2717";
+                    html += '<span class="' + cls + '" title="Run ' + run.run_number + ': ' + escapeHtml(exp.evidence || "") + '">' + icon + "</span> ";
+                  } else {
+                    html += "— ";
+                  }
+                }
+                html += "</td>";
+              }
+              html += "</tr>";
+            }
+            html += "</tbody></table>";
+          }
+        }
+      }
+
+      // Notes
+      if (notes.length > 0) {
+        html += '<div class="benchmark-notes">';
+        html += "<h3>Analysis Notes</h3>";
+        html += "<ul>";
+        for (const note of notes) {
+          html += "<li>" + escapeHtml(note) + "</li>";
+        }
+        html += "</ul></div>";
+      }
+
+      container.innerHTML = html;
+    }
+
+    // ---- Start ----
+    init();
+    renderBenchmark();
+  </script>
+</body>
+</html>

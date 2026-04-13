@@ -4,14 +4,28 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { stripe } from '@/lib/stripe'
 
 export async function POST(request: NextRequest) {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    let user: { id: string } | null = null
+
+    // Support Bearer token auth (mobile) and cookie auth (web)
+    const authHeader = request.headers.get('authorization')
+    if (authHeader?.startsWith('Bearer ')) {
+        const token = authHeader.replace('Bearer ', '')
+        const { data: { user: tokenUser }, error } = await supabaseAdmin.auth.getUser(token)
+        if (error || !tokenUser) {
+            return NextResponse.json({ error: 'Token inválido' }, { status: 401 })
+        }
+        user = tokenUser
+    } else {
+        const supabase = await createClient()
+        const { data: { user: cookieUser } } = await supabase.auth.getUser()
+        user = cookieUser
+    }
 
     if (!user) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { data: trainer } = await supabase
+    const { data: trainer } = await supabaseAdmin
         .from('trainers')
         .select('id')
         .eq('auth_user_id', user.id)

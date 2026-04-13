@@ -7,16 +7,34 @@ import type { Database } from "@kinevo/shared";
 // ─────────────────────────────────────────────────────────────────────────────
 // SecureStore Adapter para persistência segura de sessão
 // ─────────────────────────────────────────────────────────────────────────────
+// IMPORTANT: Use AFTER_FIRST_UNLOCK so the keychain is accessible when the app
+// is launched in the background (e.g., after a Watch workout completes).
+// The default (WHEN_UNLOCKED) fails with "User interaction is not allowed"
+// if the device is locked or the app hasn't been foregrounded yet.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const SECURE_STORE_OPTIONS: SecureStore.SecureStoreOptions = {
+    keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK,
+};
 
 const ExpoSecureStoreAdapter = {
     getItem: async (key: string): Promise<string | null> => {
-        return await SecureStore.getItemAsync(key);
+        try {
+            return await SecureStore.getItemAsync(key, SECURE_STORE_OPTIONS);
+        } catch {
+            // Fallback: try without options (reads items stored with old accessibility)
+            try {
+                return await SecureStore.getItemAsync(key);
+            } catch {
+                return null;
+            }
+        }
     },
     setItem: async (key: string, value: string): Promise<void> => {
-        await SecureStore.setItemAsync(key, value);
+        await SecureStore.setItemAsync(key, value, SECURE_STORE_OPTIONS);
     },
     removeItem: async (key: string): Promise<void> => {
-        await SecureStore.deleteItemAsync(key);
+        await SecureStore.deleteItemAsync(key, SECURE_STORE_OPTIONS);
     },
 };
 

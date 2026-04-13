@@ -19,6 +19,8 @@ import {
     Dumbbell,
     Calendar,
     Sparkles,
+    FileText,
+    MessageCircle,
     User,
 } from "lucide-react-native";
 import { useStudentDetail } from "../../hooks/useStudentDetail";
@@ -27,7 +29,9 @@ import { StudentOverviewTab } from "../../components/trainer/student/StudentOver
 import { StudentProgramsTab } from "../../components/trainer/student/StudentProgramsTab";
 import { StudentFormsTab } from "../../components/trainer/student/StudentFormsTab";
 import { AssignProgramWizard } from "../../components/trainer/student/AssignProgramWizard";
+import { TextPrescriptionSheet } from "../../components/trainer/student/TextPrescriptionSheet";
 import { SubmissionDetailSheet } from "../../components/trainer/forms/SubmissionDetailSheet";
+import { useProgramBuilderStore } from "../../stores/program-builder-store";
 import { colors } from "@/theme";
 
 type ProfileTab = "overview" | "programs" | "forms";
@@ -58,7 +62,9 @@ export default function StudentProfileScreen({
 
     const [activeTab, setActiveTab] = useState<ProfileTab>("overview");
     const [showAssignProgram, setShowAssignProgram] = useState(false);
+    const [showTextPrescription, setShowTextPrescription] = useState(false);
     const [detailSubmissionId, setDetailSubmissionId] = useState<string | null>(null);
+    const initFromParsedText = useProgramBuilderStore((s) => s.initFromParsedText);
 
     // Training room store for "Start Training Room" action
     const { sessions, addStudent, setActiveStudent } = useTrainingRoomStore();
@@ -114,6 +120,43 @@ export default function StudentProfileScreen({
             );
         }
     }, [id, router]);
+
+    const handleTextPrescription = useCallback(() => {
+        setShowTextPrescription(true);
+    }, []);
+
+    const handleTextParsed = useCallback(
+        (result: { workouts: Array<{ name: string; exercises: Array<{ matched: boolean; exercise_id: string | null; catalog_name: string | null; original_text: string; sets: number; reps: string; rest_seconds: number | null; notes: string | null; superset_group: string | null }> }> }) => {
+            if (!id) return;
+
+            // Convert parsed result → format for program builder store
+            // Only include matched exercises (those found in catalog)
+            const workoutsForBuilder = result.workouts.map((w) => ({
+                name: w.name,
+                exercises: w.exercises
+                    .filter((ex) => ex.matched && ex.exercise_id && ex.catalog_name)
+                    .map((ex) => ({
+                        exercise_id: ex.exercise_id!,
+                        catalog_name: ex.catalog_name!,
+                        sets: ex.sets,
+                        reps: ex.reps,
+                        rest_seconds: ex.rest_seconds,
+                        notes: ex.notes,
+                        superset_group: ex.superset_group ?? null,
+                    })),
+            })).filter((w) => w.exercises.length > 0);
+
+            // Seed the program builder store with parsed data
+            initFromParsedText(id, workoutsForBuilder);
+
+            // Navigate to program builder
+            router.push({
+                pathname: "/program-builder",
+                params: { studentId: id, mode: "from-text" },
+            } as any);
+        },
+        [id, initFromParsedText, router]
+    );
 
     const handlePrescribe = useCallback(() => {
         if (!data) return;
@@ -220,6 +263,16 @@ export default function StudentProfileScreen({
                         label="Atribuir Programa"
                         onPress={handleAssignProgram}
                     />
+                    <ActionButton
+                        icon={<MessageCircle size={14} color={colors.brand.primary} />}
+                        label="Conversar"
+                        onPress={() => router.push({ pathname: "/messages/[studentId]" as any, params: { studentId: id } })}
+                    />
+                    <ActionButton
+                        icon={<FileText size={14} color={colors.brand.primary} />}
+                        label="Prescrever por Texto"
+                        onPress={handleTextPrescription}
+                    />
                     {data.aiEnabled && (
                         <ActionButton
                             icon={<Sparkles size={14} color={colors.brand.primary} />}
@@ -291,6 +344,15 @@ export default function StudentProfileScreen({
                     setShowAssignProgram(false);
                     refresh();
                 }}
+            />
+
+            {/* Text Prescription Sheet */}
+            <TextPrescriptionSheet
+                visible={showTextPrescription}
+                studentId={id!}
+                studentName={student.name}
+                onClose={() => setShowTextPrescription(false)}
+                onParsed={handleTextParsed}
             />
 
             {/* Submission Detail */}

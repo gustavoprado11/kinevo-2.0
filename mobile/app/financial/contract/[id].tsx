@@ -14,7 +14,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams, Stack } from "expo-router";
 import {
-    ArrowLeft,
+    ChevronLeft,
     DollarSign,
     Link as LinkIcon,
     Ban,
@@ -26,7 +26,10 @@ import {
 } from "lucide-react-native";
 import { supabase } from "../../../lib/supabase";
 import { useContractDetail } from "../../../hooks/useContractDetail";
+import { useTrainerPlans } from "../../../hooks/useTrainerPlans";
+import { useStripeStatus } from "../../../hooks/useStripeStatus";
 import { ContractTimeline } from "../../../components/financial/ContractTimeline";
+import { NewSubscriptionSheet } from "../../../components/financial/NewSubscriptionSheet";
 import type { DisplayStatus } from "../../../types/financial";
 
 const API_URL = process.env.EXPO_PUBLIC_WEB_URL || "https://app.kinevo.com.br";
@@ -66,7 +69,12 @@ export default function ContractDetailScreen() {
     const router = useRouter();
     const { id } = useLocalSearchParams<{ id: string }>();
     const { student, events, isLoading, refresh } = useContractDetail(id || null);
+    const { activePlans, refresh: refreshPlans } = useTrainerPlans();
+    const { status: stripeStatus } = useStripeStatus();
     const [actionLoading, setActionLoading] = useState<string | null>(null);
+    const [billingSheetVisible, setBillingSheetVisible] = useState(false);
+
+    const hasStripeConnect = !!(stripeStatus?.connected && stripeStatus?.charges_enabled);
 
     const getToken = useCallback(async () => {
         const { data } = await supabase.auth.getSession();
@@ -230,26 +238,22 @@ export default function ContractDetailScreen() {
     if (isLoading || !student) {
         return (
             <>
-                <Stack.Screen
-                    options={{
-                        headerShown: true,
-                        title: "Contrato",
-                        headerShadowVisible: false,
-                        headerStyle: { backgroundColor: "#F2F2F7" },
-                        headerTitleStyle: { fontSize: 17, fontWeight: "600", color: "#0f172a" },
-                        headerLeft: () => (
-                            <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-                                <ArrowLeft size={22} color="#0f172a" />
-                            </TouchableOpacity>
-                        ),
-                    }}
-                />
-                <SafeAreaView style={{ flex: 1, backgroundColor: "#F2F2F7", alignItems: "center", justifyContent: "center" }} edges={["bottom"]}>
-                    {isLoading ? (
-                        <ActivityIndicator color="#7c3aed" size="large" />
-                    ) : (
-                        <Text style={{ fontSize: 15, color: "#94a3b8" }}>Contrato não encontrado</Text>
-                    )}
+                <Stack.Screen options={{ headerShown: false }} />
+                <SafeAreaView style={{ flex: 1, backgroundColor: "#F2F2F7" }} edges={["top"]}>
+                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 12 }}>
+                        <TouchableOpacity onPress={() => router.back()} hitSlop={12}>
+                            <ChevronLeft size={24} color="#0f172a" />
+                        </TouchableOpacity>
+                        <Text style={{ fontSize: 18, fontWeight: "700", color: "#0f172a" }}>Contrato</Text>
+                        <View style={{ width: 24 }} />
+                    </View>
+                    <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+                        {isLoading ? (
+                            <ActivityIndicator color="#7c3aed" size="large" />
+                        ) : (
+                            <Text style={{ fontSize: 15, color: "#94a3b8" }}>Contrato não encontrado</Text>
+                        )}
+                    </View>
                 </SafeAreaView>
             </>
         );
@@ -281,26 +285,34 @@ export default function ContractDetailScreen() {
 
     return (
         <>
-            <Stack.Screen
-                options={{
-                    headerShown: true,
-                    title: student.student_name,
-                    headerShadowVisible: false,
-                    headerStyle: { backgroundColor: "#F2F2F7" },
-                    headerTitleStyle: { fontSize: 17, fontWeight: "600", color: "#0f172a" },
-                    headerLeft: () => (
-                        <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-                            <ArrowLeft size={22} color="#0f172a" />
-                        </TouchableOpacity>
-                    ),
-                    headerRight: () => (
-                        <View style={{ backgroundColor: statusCfg.bg, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 100 }}>
-                            <Text style={{ fontSize: 11, fontWeight: "700", color: statusCfg.text }}>{statusCfg.label}</Text>
-                        </View>
-                    ),
-                }}
-            />
-            <SafeAreaView style={{ flex: 1, backgroundColor: "#F2F2F7" }} edges={["bottom"]}>
+            <Stack.Screen options={{ headerShown: false }} />
+            <SafeAreaView style={{ flex: 1, backgroundColor: "#F2F2F7" }} edges={["top"]}>
+                {/* Custom Header */}
+                <View style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    paddingHorizontal: 16,
+                    paddingVertical: 12,
+                }}>
+                    <TouchableOpacity
+                        onPress={() => router.back()}
+                        accessibilityRole="button"
+                        accessibilityLabel="Voltar"
+                        hitSlop={12}
+                    >
+                        <ChevronLeft size={24} color="#0f172a" />
+                    </TouchableOpacity>
+
+                    <Text style={{ fontSize: 18, fontWeight: "700", color: "#0f172a" }} numberOfLines={1}>
+                        {student.student_name}
+                    </Text>
+
+                    <View style={{ backgroundColor: statusCfg.bg, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 100 }}>
+                        <Text style={{ fontSize: 11, fontWeight: "700", color: statusCfg.text }}>{statusCfg.label}</Text>
+                    </View>
+                </View>
+
                 <ScrollView
                     style={{ flex: 1 }}
                     contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 100 }}
@@ -385,6 +397,29 @@ export default function ContractDetailScreen() {
                             )}
                         </View>
                     </View>
+
+                    {/* Configure Billing - for courtesy or canceled students */}
+                    {(student.display_status === "courtesy" || student.display_status === "canceled") && (
+                        <TouchableOpacity
+                            onPress={() => setBillingSheetVisible(true)}
+                            activeOpacity={0.7}
+                            style={{
+                                flexDirection: "row",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                gap: 8,
+                                paddingVertical: 16,
+                                borderRadius: 14,
+                                backgroundColor: "#7c3aed",
+                                marginBottom: 16,
+                            }}
+                        >
+                            <CreditCard size={18} color="#ffffff" />
+                            <Text style={{ fontSize: 15, fontWeight: "700", color: "#ffffff" }}>
+                                Configurar Cobrança
+                            </Text>
+                        </TouchableOpacity>
+                    )}
 
                     {/* Canceling info */}
                     {student.display_status === "canceling" && (
@@ -490,6 +525,23 @@ export default function ContractDetailScreen() {
                     </View>
                 </ScrollView>
             </SafeAreaView>
+
+            {/* Configure Billing Sheet */}
+            <NewSubscriptionSheet
+                visible={billingSheetVisible}
+                onClose={() => setBillingSheetVisible(false)}
+                onSuccess={() => {
+                    refresh();
+                    refreshPlans();
+                }}
+                plans={activePlans}
+                hasStripeConnect={hasStripeConnect}
+                preSelectedStudent={student ? {
+                    id: student.student_id,
+                    name: student.student_name,
+                    avatar_url: student.avatar_url,
+                } : null}
+            />
         </>
     );
 }

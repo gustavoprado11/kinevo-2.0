@@ -161,29 +161,19 @@ function ExerciseLogItem({ item }: { item: SessionItem }) {
 
             {hasLogs ? (
                 <div className="bg-[#F5F5F7] dark:bg-surface-inset rounded-xl border border-[#E8E8ED] dark:border-k-border-subtle overflow-hidden">
-                    <div className="grid grid-cols-4 bg-[#ECECF0] dark:bg-glass-bg py-2 px-4 text-[10px] font-black text-[#86868B] dark:text-k-text-quaternary">
+                    <div className="grid grid-cols-3 bg-[#ECECF0] dark:bg-glass-bg py-2 px-4 text-[10px] font-black text-[#86868B] dark:text-k-text-quaternary">
                         <div>Série</div>
                         <div className="text-center">Carga</div>
-                        <div className="text-center">Reps</div>
-                        <div className="text-right">PSE</div>
+                        <div className="text-right">Reps</div>
                     </div>
                     <div className="divide-y divide-[#E8E8ED] dark:divide-white/5">
                         {item.setLogs.map((set, idx) => (
-                            <div key={idx} className="grid grid-cols-4 items-center py-3 px-4 hover:bg-[#ECECF0] dark:hover:bg-glass-bg transition-colors">
+                            <div key={idx} className="grid grid-cols-3 items-center py-3 px-4 hover:bg-[#ECECF0] dark:hover:bg-glass-bg transition-colors">
                                 <div className="text-xs font-mono text-[#86868B] dark:text-k-text-tertiary">{set.setNumber}</div>
                                 <div className="text-center text-sm font-semibold text-[#1D1D1F] dark:text-white">
                                     {set.weight > 0 ? `${set.weight}${set.weightUnit || 'kg'}` : '-'}
                                 </div>
-                                <div className="text-center text-sm font-mono text-[#6E6E73] dark:text-k-text-secondary">{set.reps}</div>
-                                <div className="flex justify-end">
-                                    {set.rpe ? (
-                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-violet-500/10 text-violet-500 border border-violet-500/20">
-                                            {set.rpe}
-                                        </span>
-                                    ) : (
-                                        <span className="text-[10px] font-bold text-[#AEAEB2] dark:text-k-border-subtle">-</span>
-                                    )}
-                                </div>
+                                <div className="text-right text-sm font-mono text-[#6E6E73] dark:text-k-text-secondary">{set.reps}</div>
                             </div>
                         ))}
                     </div>

@@ -56,10 +56,10 @@ const PENDING_KEY = 'kinevo_pending_finish_workouts';
 
 async function savePendingWorkout(payload: WatchFinishPayload): Promise<void> {
   try {
-    const raw = await SecureStore.getItemAsync(PENDING_KEY);
+    const raw = await SecureStore.getItemAsync(PENDING_KEY, { keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK }).catch(() => SecureStore.getItemAsync(PENDING_KEY).catch(() => null));
     const pending: (WatchFinishPayload & { queuedAt: string })[] = raw ? JSON.parse(raw) : [];
     pending.push({ ...payload, queuedAt: new Date().toISOString() });
-    await SecureStore.setItemAsync(PENDING_KEY, JSON.stringify(pending));
+    await SecureStore.setItemAsync(PENDING_KEY, JSON.stringify(pending), { keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK });
     if (__DEV__) console.log(`[finishWorkoutFromWatch] Saved to pending queue. Total: ${pending.length}`);
   } catch (e: any) {
     if (__DEV__) console.error('[finishWorkoutFromWatch] Failed to save to pending queue:', e?.message);
@@ -72,7 +72,7 @@ async function savePendingWorkout(payload: WatchFinishPayload): Promise<void> {
  */
 export async function processPendingWatchWorkouts(): Promise<void> {
   try {
-    const raw = await SecureStore.getItemAsync(PENDING_KEY);
+    const raw = await SecureStore.getItemAsync(PENDING_KEY, { keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK }).catch(() => SecureStore.getItemAsync(PENDING_KEY).catch(() => null));
     if (!raw) return;
 
     const pending: (WatchFinishPayload & { queuedAt: string })[] = JSON.parse(raw);
@@ -105,9 +105,9 @@ export async function processPendingWatchWorkouts(): Promise<void> {
     }
 
     if (remaining.length > 0) {
-      await SecureStore.setItemAsync(PENDING_KEY, JSON.stringify(remaining));
+      await SecureStore.setItemAsync(PENDING_KEY, JSON.stringify(remaining), { keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK });
     } else {
-      await SecureStore.deleteItemAsync(PENDING_KEY);
+      await SecureStore.deleteItemAsync(PENDING_KEY, { keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK });
     }
 
     if (__DEV__) console.log(`[finishWorkoutFromWatch] Pending queue: ${remaining.length} remaining`);

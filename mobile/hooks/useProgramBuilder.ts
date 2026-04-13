@@ -52,15 +52,49 @@ export function useProgramBuilder() {
                 if (workoutError) throw workoutError;
                 const workoutId = (savedWorkout as any).id as string;
 
-                // 3. For each item: insert workout_item_templates
-                for (const item of workout.items) {
-                    const { error: itemError } = await supabase
+                // 3. Two-pass insert: root items first, then children
+                // Map local IDs → DB IDs for parent_item_id references
+                const idMap = new Map<string, string>();
+
+                // Pass 1: Insert root items (parent_item_id is null)
+                const rootItems = workout.items.filter(i => !i.parent_item_id);
+                for (const item of rootItems) {
+                    const { data: savedItem, error: itemError } = await supabase
                         .from('workout_item_templates')
                         .insert({
                             workout_template_id: workoutId,
                             item_type: item.item_type,
                             order_index: item.order_index,
                             parent_item_id: null,
+                            exercise_id: item.item_type === 'superset' ? null : item.exercise_id,
+                            substitute_exercise_ids: item.substitute_exercise_ids,
+                            sets: item.sets,
+                            reps: item.reps,
+                            rest_seconds: item.rest_seconds,
+                            notes: item.notes,
+                            exercise_function: item.exercise_function || null,
+                            item_config: item.item_config,
+                        } as any)
+                        .select('id')
+                        .single();
+
+                    if (itemError) throw itemError;
+                    idMap.set(item.id, (savedItem as any).id);
+                }
+
+                // Pass 2: Insert child items (exercises inside supersets)
+                const childItems = workout.items.filter(i => !!i.parent_item_id);
+                for (const item of childItems) {
+                    const dbParentId = idMap.get(item.parent_item_id!);
+                    if (!dbParentId) continue; // safety check
+
+                    const { error: itemError } = await supabase
+                        .from('workout_item_templates')
+                        .insert({
+                            workout_template_id: workoutId,
+                            item_type: item.item_type,
+                            order_index: item.order_index,
+                            parent_item_id: dbParentId,
                             exercise_id: item.exercise_id,
                             substitute_exercise_ids: item.substitute_exercise_ids,
                             sets: item.sets,
@@ -85,28 +119,18 @@ export function useProgramBuilder() {
         try {
             const programId = await saveAsTemplate();
 
-            // Call assign API (same pattern as AssignProgramWizard)
-            const { data: sessionData } = await supabase.auth.getSession();
-            const token = sessionData?.session?.access_token;
-            if (!token) throw new Error("Sessão expirada");
-
-            const apiUrl = process.env.EXPO_PUBLIC_WEB_URL || "https://app.kinevo.com.br";
-            const response = await fetch(`${apiUrl}/api/programs/assign`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify({
+            // Call assign Edge Function (same pattern as AssignProgramWizard)
+            const { data: result, error } = await supabase.functions.invoke("assign-program", {
+                body: {
                     studentId: targetStudentId,
                     templateId: programId,
                     startDate: new Date().toISOString(),
                     isScheduled: false,
-                }),
+                },
             });
 
-            const result = await response.json();
-            if (!response.ok) throw new Error(result.error || "Falha ao atribuir programa");
+            if (error) throw new Error(error.message || "Falha ao atribuir programa");
+            if (result?.error) throw new Error(result.error);
 
             toast.success("Programa criado!", `"${store.draft.name}" foi atribuído ao aluno.`);
             store.reset();

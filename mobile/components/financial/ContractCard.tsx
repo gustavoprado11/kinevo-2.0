@@ -103,8 +103,8 @@ export function ContractCard({ student, onPress }: Props) {
                         <Text style={{ fontSize: 10, fontWeight: "700", color: statusCfg.text }}>{statusCfg.label}</Text>
                     </View>
 
-                    {/* Billing type badge */}
-                    {billingCfg && (
+                    {/* Billing type badge (hide if same label as status to avoid duplication) */}
+                    {billingCfg && billingCfg.label !== statusCfg.label && (
                         <View style={{ backgroundColor: billingCfg.bg, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 100 }}>
                             <Text style={{ fontSize: 10, fontWeight: "700", color: billingCfg.text }}>{billingCfg.label}</Text>
                         </View>

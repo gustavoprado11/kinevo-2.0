@@ -122,7 +122,7 @@ export function RoleModeProvider({ children }: { children: ReactNode }) {
                     }
 
                     // 4. Read persisted role preference
-                    const savedRole = await SecureStore.getItemAsync(ROLE_KEY);
+                    const savedRole = await SecureStore.getItemAsync(ROLE_KEY, { keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK }).catch(() => SecureStore.getItemAsync(ROLE_KEY).catch(() => null));
                     if (cancelled) return;
 
                     if (savedRole === "trainer" || savedRole === "student") {
@@ -153,12 +153,12 @@ export function RoleModeProvider({ children }: { children: ReactNode }) {
 
     const switchToTrainer = useCallback(() => {
         setRole("trainer");
-        SecureStore.setItemAsync(ROLE_KEY, "trainer").catch(() => {});
+        SecureStore.setItemAsync(ROLE_KEY, "trainer", { keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK }).catch(() => {});
     }, []);
 
     const switchToStudent = useCallback(() => {
         setRole("student");
-        SecureStore.setItemAsync(ROLE_KEY, "student").catch(() => {});
+        SecureStore.setItemAsync(ROLE_KEY, "student", { keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK }).catch(() => {});
     }, []);
 
     const value = useMemo<RoleModeContextType>(
