@@ -376,7 +376,6 @@ export function StudentsClient({ trainer, initialStudents, formTemplates = [] }:
                                                                 width={36}
                                                                 height={36}
                                                                 className="h-9 w-9 rounded-full object-cover"
-                                                                unoptimized
                                                             />
                                                         ) : (
                                                             <span className="text-sm font-bold text-[#6E6E73] dark:text-k-text-secondary">

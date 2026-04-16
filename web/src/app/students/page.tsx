@@ -34,27 +34,30 @@ export default async function StudentsPage() {
         return <StudentsClient trainer={trainer} initialStudents={[]} formTemplates={formTemplates} />
     }
 
-    // Active programs with scheduled days for expected-per-week calculation
-    const { data: activePrograms } = await supabase
-        .from('assigned_programs')
-        .select(`
-            id, name, student_id, duration_weeks, started_at,
-            assigned_workouts(scheduled_days)
-        `)
-        .in('student_id', studentIds)
-        .eq('status', 'active')
-
-    // Completed sessions for these students (last 60 days — enough for last session + this week count)
-    // Use completed_at as canonical "when workout happened" timestamp
+    // Fire both enrichment queries in parallel
     const sixtyDaysAgo = new Date()
     sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60)
-    const { data: allSessions } = await supabase
-        .from('workout_sessions')
-        .select('student_id, completed_at')
-        .in('student_id', studentIds)
-        .eq('status', 'completed')
-        .gte('completed_at', sixtyDaysAgo.toISOString())
-        .order('completed_at', { ascending: false })
+    const [{ data: activePrograms }, { data: allSessions }] = await Promise.all([
+        // Active programs with scheduled days for expected-per-week calculation
+        supabase
+            .from('assigned_programs')
+            .select(`
+                id, name, student_id, duration_weeks, started_at,
+                assigned_workouts(scheduled_days)
+            `)
+            .in('student_id', studentIds)
+            .eq('status', 'active'),
+
+        // Completed sessions (last 60 days — enough for last session + this week count)
+        // Use completed_at as canonical "when workout happened" timestamp
+        supabase
+            .from('workout_sessions')
+            .select('student_id, completed_at')
+            .in('student_id', studentIds)
+            .eq('status', 'completed')
+            .gte('completed_at', sixtyDaysAgo.toISOString())
+            .order('completed_at', { ascending: false }),
+    ])
 
     // Build session stats per student
     const weekRange = getWeekRange(new Date(), 'America/Sao_Paulo')

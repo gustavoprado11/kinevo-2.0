@@ -12,238 +12,21 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
     const { trainer } = await getTrainerWithSubscription()
     const supabase = await createClient()
 
-    // Get student data
-    const { data: student } = await supabase
-        .from('students')
-        .select('id, name, email, phone, status, modality, avatar_url, created_at, is_trainer_profile, trainer_notes, objective, management_tags')
-        .eq('id', id)
-        .single()
+    // Compute month range up front so the calendar query can run in parallel
+    const now = new Date()
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
 
-    if (!student) {
-        redirect('/students')
-    }
-
-    // Get active or expired program for this student (show expired to trainer for action)
-    const { data: programCandidates } = await supabase
-        .from('assigned_programs')
-        .select(`
-            id, name, description, status, duration_weeks, current_week, started_at, created_at, expires_at,
-            assigned_workouts (
-                id,
-                name,
-                scheduled_days
-            )
-        `)
-        .eq('student_id', id)
-        .in('status', ['active', 'expired'])
-        .order('started_at', { ascending: false })
-        .limit(1)
-    const activeProgram = programCandidates?.[0] ?? null
-
-    // Get scheduled programs (include assigned_workouts for activation validation)
-    const { data: scheduledPrograms } = await supabase
-        .from('assigned_programs')
-        .select('id, name, description, status, duration_weeks, current_week, started_at, scheduled_start_date, created_at, assigned_workouts(id, name, scheduled_days)')
-        .eq('student_id', id)
-        .eq('status', 'scheduled')
-        .order('scheduled_start_date', { ascending: true })
-
-    // Get completed programs with aggregates
-    const { data: completedProgramsRaw } = await supabase
-        .from('assigned_programs')
-        .select(`
-            id,
-            name,
-            description,
-            started_at,
-            completed_at,
-            duration_weeks,
-            assigned_workouts(id)
-        `)
-        .eq('student_id', id)
-        .eq('status', 'completed')
-        .order('completed_at', { ascending: false })
-
-    // Calculate aggregates for completed programs — single batch query instead of N+1
-    const completedProgramIds = (completedProgramsRaw || []).map(p => p.id)
-    let sessionCountsByProgram = new Map<string, number>()
-    if (completedProgramIds.length > 0) {
-        const { data: sessionCounts } = await supabase
-            .from('workout_sessions')
-            .select('assigned_program_id')
-            .in('assigned_program_id', completedProgramIds)
-        for (const s of sessionCounts || []) {
-            sessionCountsByProgram.set(s.assigned_program_id, (sessionCountsByProgram.get(s.assigned_program_id) || 0) + 1)
-        }
-    }
-    const completedPrograms = (completedProgramsRaw || []).map(program => ({
-        id: program.id,
-        name: program.name,
-        description: program.description,
-        started_at: program.started_at,
-        completed_at: program.completed_at,
-        duration_weeks: program.duration_weeks,
-        workouts_count: program.assigned_workouts?.length || 0,
-        sessions_count: sessionCountsByProgram.get(program.id) || 0,
-    }))
-
-    // Get workout sessions summary — use completed_at as canonical timestamp
-    const { data: sessions } = await supabase
-        .from('workout_sessions')
-        .select('id, completed_at, status')
-        .eq('student_id', id)
-        .eq('status', 'completed')
-        .order('completed_at', { ascending: false })
-
-    // Calculate summary
-    const totalSessions = sessions?.length || 0
-    const lastSessionDate = sessions?.[0]?.completed_at || null
-
-    // Calculate sessions this week (Sunday–Saturday) in São Paulo timezone
-    const currentWeekRange = getWeekRange(new Date(), 'America/Sao_Paulo')
-    const completedThisWeek = sessions?.filter(s => {
-        const d = new Date(s.completed_at)
-        return d >= currentWeekRange.start && d <= currentWeekRange.end
-    }).length || 0
-
-    // Calculate expected workouts per week from active program (sum of all occurrences)
-    let expectedPerWeek = 0
-    if (activeProgram?.assigned_workouts) {
-        for (const w of activeProgram.assigned_workouts as any[]) {
-            expectedPerWeek += (w.scheduled_days?.length || 0)
-        }
-    }
-
-    // Calculate streak + weekly adherence from calendar days
-    let streak = 0
-    let weeklyAdherence: { week: number; rate: number }[] = []
-    if (activeProgram?.started_at && activeProgram?.assigned_workouts) {
-        // Get all completed sessions for active program
-        const { data: programSessions } = await supabase
-            .from('workout_sessions')
-            .select('id, assigned_workout_id, started_at, completed_at, status')
-            .eq('assigned_program_id', activeProgram.id)
-            .eq('status', 'completed')
-            .order('completed_at', { ascending: false })
-
-        if (programSessions && programSessions.length > 0) {
-            const today = new Date()
-            const programStart = new Date(activeProgram.started_at)
-            const days = generateCalendarDays(
-                programStart,
-                today,
-                activeProgram.assigned_workouts as any,
-                programSessions as any,
-                activeProgram.started_at,
-                activeProgram.duration_weeks,
-            )
-
-            // Streak: consecutive completed/compensated scheduled days going backwards
-            const scheduledPastDays = days
-                .filter(d => d.isInProgram && d.date <= today && d.scheduledWorkouts.length > 0)
-                .sort((a, b) => b.date.getTime() - a.date.getTime())
-            for (const d of scheduledPastDays) {
-                if (d.status === 'done' || d.status === 'compensated') streak++
-                else break
-            }
-
-            // Weekly adherence: group past scheduled days by program week
-            // Count both 'done' and 'compensated' as fulfilled
-            const weekMap = new Map<number, { scheduled: number; done: number }>()
-            for (const d of days) {
-                if (!d.isInProgram || !d.programWeek || d.scheduledWorkouts.length === 0 || d.date > today) continue
-                const entry = weekMap.get(d.programWeek) ?? { scheduled: 0, done: 0 }
-                entry.scheduled++
-                if (d.status === 'done' || d.status === 'compensated') entry.done++
-                weekMap.set(d.programWeek, entry)
-            }
-            weeklyAdherence = Array.from(weekMap.entries())
-                .sort(([a], [b]) => a - b)
-                .map(([week, data]) => ({
-                    week,
-                    rate: data.scheduled > 0 ? Math.round((data.done / data.scheduled) * 100) : 0
-                }))
-        }
-    }
-
-    const historySummary = {
-        totalSessions,
-        lastSessionDate,
-        completedThisWeek,
-        expectedPerWeek,
-        streak,
-    }
-
-    // Get recent sessions for the active program (if any)
-    let recentSessions: any[] = []
-    if (activeProgram) {
-        const { data: recent } = await supabase
-            .from('workout_sessions')
-            .select(`
-                id,
-                completed_at,
-                duration_seconds,
-                rpe,
-                feedback,
-                pre_workout_submission_id,
-                post_workout_submission_id,
-                assigned_workouts ( name )
-            `)
-            .eq('assigned_program_id', activeProgram.id)
-            .eq('status', 'completed')
-            .order('completed_at', { ascending: false })
-            .limit(5)
-
-        recentSessions = recent || []
-    }
-
-    // Calculate load progression for recent sessions
-    let tonnageMap: Record<string, { tonnage: number; previousTonnage: number | null; percentChange: number | null }> = {}
-    if (recentSessions.length > 0 && activeProgram) {
-        const sessionIds = recentSessions.map((s: any) => s.id)
-        const tonnageResult = await getSessionsTonnage(sessionIds, activeProgram.id)
-        if (tonnageResult.success && tonnageResult.data) {
-            tonnageMap = tonnageResult.data
-        }
-    }
-
-    // Get ALL sessions for the current month for the calendar (full history, not just active program)
-    let calendarInitialSessions: { id: string; assigned_workout_id: string; started_at: string; completed_at: string | null; status: string; rpe: number | null; assigned_program_id: string | null }[] = []
-    {
-        const now = new Date()
-        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-        const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
-        const { data: monthSessions } = await supabase
-            .from('workout_sessions')
-            .select('id, assigned_workout_id, started_at, completed_at, status, rpe, assigned_program_id')
-            .eq('student_id', id)
-            .gte('started_at', monthStart.toISOString())
-            .lte('started_at', monthEnd.toISOString())
-            .order('started_at', { ascending: false })
-
-        calendarInitialSessions = (monthSessions || []) as any
-    }
-
-    // ── Student-specific AI insights ──
-    let studentInsights: any[] = []
-    {
-        const { data: insightsData } = await supabase
-            .from('assistant_insights')
-            .select('id, student_id, category, priority, title, body, action_type, action_metadata, status, source, insight_key, created_at')
-            .eq('student_id', id)
-            .in('status', ['new', 'read'])
-            .order('created_at', { ascending: false })
-            .limit(10)
-
-        studentInsights = (insightsData || []).map(row => ({
-            ...row,
-            student_name: student.name,
-            action_metadata: row.action_metadata || {},
-        }))
-    }
-
-    // ── Sidebar data: Financial + Assessments ──
+    // ── STAGE 1: fire every independent query in parallel ──
     const [
+        { data: student },
+        { data: programCandidates },
+        { data: scheduledPrograms },
+        { data: completedProgramsRaw },
+        { data: sessions },
+        { data: monthSessions },
+        { data: insightsData },
+        { data: bodyMetricsHistoryData },
         { data: contractData },
         { data: lastSubmissionData },
         { data: pendingFormsData },
@@ -251,6 +34,89 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
         { data: formTemplatesData },
         { data: formSchedulesData },
     ] = await Promise.all([
+        supabase
+            .from('students')
+            .select('id, name, email, phone, status, modality, avatar_url, created_at, is_trainer_profile, trainer_notes, objective, management_tags')
+            .eq('id', id)
+            .single(),
+
+        // Active or expired program (show expired to trainer for action)
+        supabase
+            .from('assigned_programs')
+            .select(`
+                id, name, description, status, duration_weeks, current_week, started_at, created_at, expires_at,
+                assigned_workouts (
+                    id,
+                    name,
+                    scheduled_days
+                )
+            `)
+            .eq('student_id', id)
+            .in('status', ['active', 'expired'])
+            .order('started_at', { ascending: false })
+            .limit(1),
+
+        // Scheduled programs (include assigned_workouts for activation validation)
+        supabase
+            .from('assigned_programs')
+            .select('id, name, description, status, duration_weeks, current_week, started_at, scheduled_start_date, created_at, assigned_workouts(id, name, scheduled_days)')
+            .eq('student_id', id)
+            .eq('status', 'scheduled')
+            .order('scheduled_start_date', { ascending: true }),
+
+        // Completed programs with aggregates
+        supabase
+            .from('assigned_programs')
+            .select(`
+                id,
+                name,
+                description,
+                started_at,
+                completed_at,
+                duration_weeks,
+                assigned_workouts(id)
+            `)
+            .eq('student_id', id)
+            .eq('status', 'completed')
+            .order('completed_at', { ascending: false }),
+
+        // Workout sessions summary — use completed_at as canonical timestamp
+        supabase
+            .from('workout_sessions')
+            .select('id, completed_at, status')
+            .eq('student_id', id)
+            .eq('status', 'completed')
+            .order('completed_at', { ascending: false }),
+
+        // All sessions for the current month for the calendar (full history)
+        supabase
+            .from('workout_sessions')
+            .select('id, assigned_workout_id, started_at, completed_at, status, rpe, assigned_program_id')
+            .eq('student_id', id)
+            .gte('started_at', monthStart.toISOString())
+            .lte('started_at', monthEnd.toISOString())
+            .order('started_at', { ascending: false }),
+
+        // Student-specific AI insights
+        supabase
+            .from('assistant_insights')
+            .select('id, student_id, category, priority, title, body, action_type, action_metadata, status, source, insight_key, created_at')
+            .eq('student_id', id)
+            .in('status', ['new', 'read'])
+            .order('created_at', { ascending: false })
+            .limit(10),
+
+        // Body metrics history (last 5 submissions for trend)
+        supabase
+            .from('form_submissions')
+            .select('answers_json, submitted_at, form_templates!inner(system_key)')
+            .eq('student_id', id)
+            .eq('trainer_id', trainer.id)
+            .in('status', ['submitted', 'reviewed'])
+            .in('form_templates.system_key', SUPPORTED_METRIC_SYSTEM_KEYS)
+            .order('submitted_at', { ascending: false })
+            .limit(5),
+
         // Active contract (most relevant: active > past_due > pending)
         supabase
             .from('student_contracts')
@@ -313,6 +179,157 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
             .order('created_at', { ascending: false }),
     ])
 
+    if (!student) {
+        redirect('/students')
+    }
+
+    const activeProgram = programCandidates?.[0] ?? null
+    const calendarInitialSessions = (monthSessions || []) as { id: string; assigned_workout_id: string; started_at: string; completed_at: string | null; status: string; rpe: number | null; assigned_program_id: string | null }[]
+
+    // ── STAGE 2: queries that depend on Stage 1 results, fire in parallel ──
+    const completedProgramIds = (completedProgramsRaw || []).map(p => p.id)
+    const needsProgramSessions = !!(activeProgram?.started_at && activeProgram?.assigned_workouts)
+
+    const [sessionCountsResult, programSessionsResult, recentSessionsResult] = await Promise.all([
+        completedProgramIds.length > 0
+            ? supabase
+                .from('workout_sessions')
+                .select('assigned_program_id')
+                .in('assigned_program_id', completedProgramIds)
+            : Promise.resolve({ data: null }),
+
+        needsProgramSessions
+            ? supabase
+                .from('workout_sessions')
+                .select('id, assigned_workout_id, started_at, completed_at, status')
+                .eq('assigned_program_id', activeProgram!.id)
+                .eq('status', 'completed')
+                .order('completed_at', { ascending: false })
+            : Promise.resolve({ data: null }),
+
+        activeProgram
+            ? supabase
+                .from('workout_sessions')
+                .select(`
+                    id,
+                    completed_at,
+                    duration_seconds,
+                    rpe,
+                    feedback,
+                    pre_workout_submission_id,
+                    post_workout_submission_id,
+                    assigned_workouts ( name )
+                `)
+                .eq('assigned_program_id', activeProgram.id)
+                .eq('status', 'completed')
+                .order('completed_at', { ascending: false })
+                .limit(5)
+            : Promise.resolve({ data: null }),
+    ])
+
+    const sessionCountsByProgram = new Map<string, number>()
+    for (const s of sessionCountsResult.data || []) {
+        sessionCountsByProgram.set(s.assigned_program_id, (sessionCountsByProgram.get(s.assigned_program_id) || 0) + 1)
+    }
+    const completedPrograms = (completedProgramsRaw || []).map(program => ({
+        id: program.id,
+        name: program.name,
+        description: program.description,
+        started_at: program.started_at,
+        completed_at: program.completed_at,
+        duration_weeks: program.duration_weeks,
+        workouts_count: program.assigned_workouts?.length || 0,
+        sessions_count: sessionCountsByProgram.get(program.id) || 0,
+    }))
+
+    const recentSessions: any[] = recentSessionsResult.data || []
+
+    // Calculate summary
+    const totalSessions = sessions?.length || 0
+    const lastSessionDate = sessions?.[0]?.completed_at || null
+
+    // Calculate sessions this week (Sunday–Saturday) in São Paulo timezone
+    const currentWeekRange = getWeekRange(new Date(), 'America/Sao_Paulo')
+    const completedThisWeek = sessions?.filter(s => {
+        const d = new Date(s.completed_at)
+        return d >= currentWeekRange.start && d <= currentWeekRange.end
+    }).length || 0
+
+    // Calculate expected workouts per week from active program (sum of all occurrences)
+    let expectedPerWeek = 0
+    if (activeProgram?.assigned_workouts) {
+        for (const w of activeProgram.assigned_workouts as any[]) {
+            expectedPerWeek += (w.scheduled_days?.length || 0)
+        }
+    }
+
+    // Calculate streak + weekly adherence from calendar days
+    let streak = 0
+    let weeklyAdherence: { week: number; rate: number }[] = []
+    const programSessions = programSessionsResult.data
+    if (needsProgramSessions && programSessions && programSessions.length > 0) {
+        const today = new Date()
+        const programStart = new Date(activeProgram!.started_at)
+        const days = generateCalendarDays(
+            programStart,
+            today,
+            activeProgram!.assigned_workouts as any,
+            programSessions as any,
+            activeProgram!.started_at,
+            activeProgram!.duration_weeks,
+        )
+
+        // Streak: consecutive completed/compensated scheduled days going backwards
+        const scheduledPastDays = days
+            .filter(d => d.isInProgram && d.date <= today && d.scheduledWorkouts.length > 0)
+            .sort((a, b) => b.date.getTime() - a.date.getTime())
+        for (const d of scheduledPastDays) {
+            if (d.status === 'done' || d.status === 'compensated') streak++
+            else break
+        }
+
+        // Weekly adherence: group past scheduled days by program week
+        // Count both 'done' and 'compensated' as fulfilled
+        const weekMap = new Map<number, { scheduled: number; done: number }>()
+        for (const d of days) {
+            if (!d.isInProgram || !d.programWeek || d.scheduledWorkouts.length === 0 || d.date > today) continue
+            const entry = weekMap.get(d.programWeek) ?? { scheduled: 0, done: 0 }
+            entry.scheduled++
+            if (d.status === 'done' || d.status === 'compensated') entry.done++
+            weekMap.set(d.programWeek, entry)
+        }
+        weeklyAdherence = Array.from(weekMap.entries())
+            .sort(([a], [b]) => a - b)
+            .map(([week, data]) => ({
+                week,
+                rate: data.scheduled > 0 ? Math.round((data.done / data.scheduled) * 100) : 0
+            }))
+    }
+
+    const historySummary = {
+        totalSessions,
+        lastSessionDate,
+        completedThisWeek,
+        expectedPerWeek,
+        streak,
+    }
+
+    // ── STAGE 3: tonnage (depends on recentSessions) ──
+    let tonnageMap: Record<string, { tonnage: number; previousTonnage: number | null; percentChange: number | null }> = {}
+    if (recentSessions.length > 0 && activeProgram) {
+        const sessionIds = recentSessions.map((s: any) => s.id)
+        const tonnageResult = await getSessionsTonnage(sessionIds, activeProgram.id)
+        if (tonnageResult.success && tonnageResult.data) {
+            tonnageMap = tonnageResult.data
+        }
+    }
+
+    const studentInsights = (insightsData || []).map(row => ({
+        ...row,
+        student_name: student.name,
+        action_metadata: row.action_metadata || {},
+    }))
+
     // Compute financial display status
     const displayStatus = computeDisplayStatus(contractData ? {
         billing_type: contractData.billing_type,
@@ -340,37 +357,25 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
         }
     }
 
-    // Fetch body metrics history (last 5 submissions for trend)
+    // Shape body metrics history (last 5 submissions for trend) — fetched in Stage 1
     let bodyMetricsHistory: { weight: number | null; bodyFat: number | null; date: string }[] = []
-    {
-        const { data: metricsHistory } = await supabase
-            .from('form_submissions')
-            .select('answers_json, submitted_at, form_templates!inner(system_key)')
-            .eq('student_id', id)
-            .eq('trainer_id', trainer.id)
-            .in('status', ['submitted', 'reviewed'])
-            .in('form_templates.system_key', SUPPORTED_METRIC_SYSTEM_KEYS)
-            .order('submitted_at', { ascending: false })
-            .limit(5)
-
-        if (metricsHistory && metricsHistory.length > 0) {
-            bodyMetricsHistory = metricsHistory
-                .map(row => {
-                    const systemKey = (row.form_templates as any).system_key as string
-                    const fieldMap = BODY_METRIC_FIELD_MAP[systemKey]
-                    if (!fieldMap) return null
-                    const answers = (row.answers_json as any)?.answers || {}
-                    const w = answers[fieldMap.weight]?.value
-                    const bf = answers[fieldMap.bodyFat]?.value
-                    return {
-                        weight: w ? parseFloat(String(w)) : null,
-                        bodyFat: bf ? parseFloat(String(bf)) : null,
-                        date: row.submitted_at || '',
-                    }
-                })
-                .filter(Boolean)
-                .reverse() as typeof bodyMetricsHistory // chronological order
-        }
+    if (bodyMetricsHistoryData && bodyMetricsHistoryData.length > 0) {
+        bodyMetricsHistory = bodyMetricsHistoryData
+            .map(row => {
+                const systemKey = (row.form_templates as any).system_key as string
+                const fieldMap = BODY_METRIC_FIELD_MAP[systemKey]
+                if (!fieldMap) return null
+                const answers = (row.answers_json as any)?.answers || {}
+                const w = answers[fieldMap.weight]?.value
+                const bf = answers[fieldMap.bodyFat]?.value
+                return {
+                    weight: w ? parseFloat(String(w)) : null,
+                    bodyFat: bf ? parseFloat(String(bf)) : null,
+                    date: row.submitted_at || '',
+                }
+            })
+            .filter(Boolean)
+            .reverse() as typeof bodyMetricsHistory // chronological order
     }
 
     // Shape contract data for the sidebar card
