@@ -25,18 +25,52 @@ function getChipsForInsight(insightId: string | null): string[] {
 }
 
 // ── Simple markdown rendering ──
+// SECURITY: The LLM response can contain attacker-controlled content
+// (student names, anamnese answers are echoed by the model). We MUST:
+//   1. Escape all HTML entities BEFORE applying markdown transforms, so any
+//      `<script>`, `<img onerror>`, `<iframe>` in the raw text is neutralized.
+//   2. Validate URL schemes in [label](url) links — block `javascript:`,
+//      `data:`, `vbscript:`, `file:`, etc. Allow only http(s), relative paths,
+//      mailto, tel, and anchors.
+
+function escapeHtml(s: string): string {
+    return s
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+}
+
+const SAFE_URL_RE = /^(?:https?:\/\/|mailto:|tel:|\/|#)/i
+
+function safeUrl(rawUrl: string): string {
+    const trimmed = rawUrl.trim()
+    if (SAFE_URL_RE.test(trimmed)) return trimmed
+    return '#'
+}
 
 function renderMarkdown(text: string): string {
-    return text
-        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*(.+?)\*/g, '<em>$1</em>')
-        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-violet-500 underline underline-offset-2 hover:text-violet-400">$1</a>')
+    // Escape first — the only HTML in the output past this point is what we
+    // explicitly insert (strong/em/a/li/ul/br). Characters like `*`, `[`, `(`
+    // are not escaped so the markdown substitutions still match.
+    const escaped = escapeHtml(text)
+    return escaped
+        .replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*([^*]+?)\*/g, '<em>$1</em>')
+        .replace(
+            /\[([^\]]+)\]\(([^)]+)\)/g,
+            (_m, label: string, url: string) =>
+                `<a href="${escapeHtml(safeUrl(url))}" class="text-violet-500 underline underline-offset-2 hover:text-violet-400" target="_blank" rel="noopener noreferrer">${label}</a>`,
+        )
         .replace(/^- (.+)$/gm, '<li>$1</li>')
         .replace(/(<li>.*<\/li>\n?)+/g, '<ul class="list-disc pl-4 space-y-0.5">$&</ul>')
         .replace(/\n/g, '<br/>')
 }
 
-/** Extract review links from message content for rendering as buttons */
+/** Extract review links from message content for rendering as buttons.
+ *  Constrained to `/students/...review=...` (relative paths) so the extracted
+ *  URL is safe to pass to next/Link. */
 function extractReviewLink(content: string): { url: string; label: string } | null {
     const match = content.match(/\[([^\]]+)\]\((\/students\/[^)]+review=[^)]+)\)/)
     if (match) return { label: match[1], url: match[2] }
