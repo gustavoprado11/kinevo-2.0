@@ -60,24 +60,32 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
     }
 
-    // Idempotency check
-    const { data: existing } = await supabaseAdmin
-        .from('webhook_events')
-        .select('id')
-        .eq('event_id', event.id)
-        .single()
+    // Idempotency: race-safe insert-first pattern. See the comment in
+    // api/webhooks/stripe/route.ts for the TOCTOU rationale. Additionally,
+    // this handler previously inserted the idempotency row BEFORE running
+    // the handler AND returned 500 on handler failure — which meant a
+    // transient error left the event marked as "processed" so Stripe's
+    // retry silently skipped it (audit MEDIUM finding). We now insert
+    // first, and if the handler throws, we DELETE the idempotency row
+    // before returning 500 so Stripe's next retry reprocesses cleanly.
+    {
+        const { error: idempotencyError } = await supabaseAdmin
+            .from('webhook_events')
+            .insert({
+                event_id: event.id,
+                event_type: event.type,
+                metadata: { account: event.account },
+            })
 
-    if (existing) {
-        console.log(`[connect-webhook] Event ${event.id} already processed, skipping`)
-        return NextResponse.json({ received: true })
+        if (idempotencyError) {
+            if (idempotencyError.code === '23505') {
+                console.log(`[connect-webhook] Event ${event.id} already processed, skipping`)
+                return NextResponse.json({ received: true })
+            }
+            console.error('[connect-webhook] Idempotency insert failed:', idempotencyError)
+            return NextResponse.json({ error: 'Idempotency store unavailable' }, { status: 500 })
+        }
     }
-
-    // Record event for idempotency
-    await supabaseAdmin.from('webhook_events').insert({
-        event_id: event.id,
-        event_type: event.type,
-        metadata: { account: event.account },
-    })
 
     // The connected account ID — critical for all Stripe API calls
     const connectedAccountId = event.account || undefined
@@ -109,6 +117,8 @@ export async function POST(request: NextRequest) {
         }
     } catch (handlerError) {
         console.error(`[connect-webhook] Error handling ${event.type}:`, handlerError)
+        // Undo the idempotency row so Stripe's next retry reprocesses.
+        await supabaseAdmin.from('webhook_events').delete().eq('event_id', event.id)
         return NextResponse.json({ error: 'Handler failed' }, { status: 500 })
     }
 

@@ -45,26 +45,30 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
     }
 
-    // Idempotency check (non-blocking — if DB fails, we still process the event)
-    try {
-        const { data: existing } = await supabaseAdmin
+    // Idempotency: single insert backed by the UNIQUE(event_id) constraint on
+    // webhook_events. Previously we did check-then-insert, which has a TOCTOU
+    // window — two concurrent deliveries of the same event_id (common under
+    // Stripe's retry behavior on timeouts) could both read "not present" and
+    // both advance into the handler, producing duplicate subscription upserts
+    // and notifications. Insert-first collapses the race: only one INSERT
+    // wins, the loser gets error code 23505 (unique_violation) and bails out.
+    //
+    // If the idempotency-store itself is unhealthy (non-unique error), we
+    // return 500 so Stripe retries once the store is back, rather than
+    // silently processing the event twice.
+    {
+        const { error: idempotencyError } = await supabaseAdmin
             .from('webhook_events')
-            .select('id')
-            .eq('event_id', event.id)
-            .single()
+            .insert({ event_id: event.id, event_type: event.type, metadata: {} })
 
-        if (existing) {
-            console.log(`[webhook] Event ${event.id} already processed, skipping`)
-            return NextResponse.json({ received: true })
+        if (idempotencyError) {
+            if (idempotencyError.code === '23505') {
+                console.log(`[webhook] Event ${event.id} already processed, skipping`)
+                return NextResponse.json({ received: true })
+            }
+            console.error('[webhook] Idempotency insert failed:', idempotencyError)
+            return NextResponse.json({ error: 'Idempotency store unavailable' }, { status: 500 })
         }
-
-        await supabaseAdmin.from('webhook_events').insert({
-            event_id: event.id,
-            event_type: event.type,
-            metadata: {},
-        })
-    } catch (idempotencyError) {
-        console.error(`[webhook] Idempotency check failed (proceeding anyway):`, idempotencyError)
     }
 
     console.log(`[webhook] Received event: ${event.type} (${event.id})`)
