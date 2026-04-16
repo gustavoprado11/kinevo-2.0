@@ -126,66 +126,211 @@ Formato de resposta:
 
 interface LLMResult {
     data: string | null;
-    status: "success" | "error" | "timeout";
+    status: "success" | "error" | "timeout" | "missing_key";
+    /** Short human-readable failure detail — safe to surface to the UI. */
+    detail?: string;
+    /** HTTP status code returned by OpenAI (when applicable). */
+    upstream_status?: number;
     input_tokens?: number;
     output_tokens?: number;
+}
+
+// Ordered fallback list — we try each model until one answers. `gpt-4.1-mini`
+// is the primary (same model used by the web /api/prescription/parse-text
+// route); `gpt-4o-mini` is the broadly-available fallback so the feature
+// keeps working even if the project doesn't have access to the newer model.
+const MODEL_FALLBACKS = ["gpt-4.1-mini", "gpt-4o-mini"];
+
+// Split the user's text into separate per-workout blocks. See the equivalent
+// comment in web/src/app/api/prescription/parse-text/route.ts for rationale.
+// Parallel per-block calls turn O(total-exercises) into O(largest-workout).
+function splitWorkoutBlocks(text: string): string[] {
+    const lines = text.split("\n");
+    const blocks: string[] = [];
+    let current: string[] = [];
+    const headingRe = /^\s*(?:treino|dia|workout|day)\b/i;
+
+    for (const line of lines) {
+        const trimmed = line.trim();
+        if (trimmed.length > 0 && trimmed.length < 80 && headingRe.test(trimmed)) {
+            if (current.length > 0) {
+                const block = current.join("\n").trim();
+                if (block) blocks.push(block);
+            }
+            current = [line];
+        } else {
+            current.push(line);
+        }
+    }
+    if (current.length > 0) {
+        const block = current.join("\n").trim();
+        if (block) blocks.push(block);
+    }
+    if (blocks.length === 0) return [text];
+    return blocks;
 }
 
 async function callOpenAI(system: string, userMessage: string): Promise<LLMResult> {
     const apiKey = Deno.env.get("OPENAI_API_KEY");
     if (!apiKey) {
         console.error("[parse-workout-text] OPENAI_API_KEY not set");
-        return { data: null, status: "error" };
-    }
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 25000);
-
-    try {
-        const response = await fetch("https://api.openai.com/v1/chat/completions", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${apiKey}`,
-            },
-            signal: controller.signal,
-            body: JSON.stringify({
-                model: "gpt-4.1-mini",
-                temperature: 0.1,
-                max_tokens: 4000,
-                messages: [
-                    { role: "system", content: system },
-                    { role: "user", content: userMessage },
-                ],
-            }),
-        });
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-            const errText = await response.text().catch(() => "");
-            console.error(`[parse-workout-text] OpenAI HTTP ${response.status}: ${errText.slice(0, 300)}`);
-            return { data: null, status: "error" };
-        }
-
-        const payload = await response.json();
-        const content = payload?.choices?.[0]?.message?.content;
-
-        if (!content || typeof content !== "string") {
-            return { data: null, status: "error" };
-        }
-
         return {
-            data: content,
-            status: "success",
-            input_tokens: payload?.usage?.prompt_tokens,
-            output_tokens: payload?.usage?.completion_tokens,
+            data: null,
+            status: "missing_key",
+            detail: "OPENAI_API_KEY não está configurada nos secrets da Edge Function.",
         };
-    } catch (err: any) {
-        clearTimeout(timeoutId);
-        const status = err?.name === "AbortError" ? "timeout" : "error";
-        console.error(`[parse-workout-text] OpenAI call failed:`, err?.message);
-        return { data: null, status };
     }
+
+    let lastDetail: string | undefined;
+    let lastUpstream: number | undefined;
+
+    for (const model of MODEL_FALLBACKS) {
+        const controller = new AbortController();
+        // 28s timeout per model attempt. Large free-text prescriptions with
+        // 5+ workouts and 40+ exercises can approach this limit on gpt-4.1-mini;
+        // if we hit the limit, the fallback model (gpt-4o-mini) usually finishes
+        // faster because it generates shorter output tokens for the same task.
+        const timeoutId = setTimeout(() => controller.abort(), 28000);
+
+        try {
+            const response = await fetch("https://api.openai.com/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${apiKey}`,
+                },
+                signal: controller.signal,
+                body: JSON.stringify({
+                    model,
+                    temperature: 0.1,
+                    max_tokens: 4000,
+                    messages: [
+                        { role: "system", content: system },
+                        { role: "user", content: userMessage },
+                    ],
+                }),
+            });
+            clearTimeout(timeoutId);
+
+            if (!response.ok) {
+                const errText = await response.text().catch(() => "");
+                // Try to extract the OpenAI error message for cleaner surfacing.
+                let openaiMessage = errText.slice(0, 200);
+                try {
+                    const parsed = JSON.parse(errText);
+                    if (parsed?.error?.message) openaiMessage = String(parsed.error.message).slice(0, 200);
+                } catch {
+                    // keep raw slice
+                }
+                console.error(
+                    `[parse-workout-text] OpenAI ${model} HTTP ${response.status}: ${openaiMessage}`,
+                );
+                lastDetail = `OpenAI ${model}: ${openaiMessage}`;
+                lastUpstream = response.status;
+                // 400 "model not found" / 404 / 403 → try next fallback.
+                // 429 rate-limit + 5xx → also worth a fallback attempt.
+                // 401 invalid key → bail immediately, fallback won't help.
+                if (response.status === 401) {
+                    return {
+                        data: null,
+                        status: "error",
+                        detail: lastDetail,
+                        upstream_status: response.status,
+                    };
+                }
+                continue;
+            }
+
+            const payload = await response.json();
+            const content = payload?.choices?.[0]?.message?.content;
+
+            if (!content || typeof content !== "string") {
+                lastDetail = `OpenAI ${model}: resposta vazia (sem content).`;
+                console.error(`[parse-workout-text] ${lastDetail}`);
+                continue;
+            }
+
+            return {
+                data: content,
+                status: "success",
+                input_tokens: payload?.usage?.prompt_tokens,
+                output_tokens: payload?.usage?.completion_tokens,
+            };
+        } catch (err: any) {
+            clearTimeout(timeoutId);
+            const isAbort = err?.name === "AbortError";
+            lastDetail = isAbort
+                ? `OpenAI ${model}: tempo esgotado (28s).`
+                : `OpenAI ${model}: ${err?.message || "erro de rede"}`;
+            console.error(`[parse-workout-text] ${lastDetail}`);
+            // On timeout, try the next (usually faster) fallback model rather
+            // than bailing — a previous version returned early on the first
+            // timeout, which kept large prescriptions broken even when the
+            // fallback model would have finished in time.
+        }
+    }
+
+    return {
+        data: null,
+        status: lastDetail?.includes("tempo esgotado") ? "timeout" : "error",
+        detail: lastDetail ?? "Todos os modelos falharam.",
+        upstream_status: lastUpstream,
+    };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Catalog pre-filter — same strategy as the web /api/prescription/parse-text
+// route. Sending 400+ exercises on every call was pushing the LLM over the
+// 28s timeout for large free-text prescriptions (5+ workouts). By keeping
+// only exercises whose name shares a content word with the trainer's text we
+// cut both input and output tokens dramatically.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const STOP_WORDS = new Set([
+    "com", "sem", "para", "treino", "series", "serie", "reps", "rep",
+    "repeticoes", "rodadas", "descanso", "rest", "set", "sets", "ate", "falha",
+    "alternado", "alternada", "livre", "pegada", "enfasei", "enfase", "dia",
+    "possivel", "maquina", "barra", "halter", "halteres", "cabo", "polia",
+    "smith", "corda", "frente", "tras", "cima", "baixo", "completo", "media",
+    "medio", "aberta", "fechada", "pronada", "supinada", "neutra",
+]);
+
+function normalize(s: string): string {
+    return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
+function extractKeywords(text: string): Set<string> {
+    const tokens = normalize(text).match(/[a-z0-9]+/g) || [];
+    const keywords = new Set<string>();
+    for (const tok of tokens) {
+        if (tok.length >= 3 && !STOP_WORDS.has(tok) && !/^\d+$/.test(tok)) {
+            keywords.add(tok);
+        }
+    }
+    return keywords;
+}
+
+function filterCatalogByText<T extends { id: string; name: string }>(
+    text: string,
+    catalog: T[],
+): T[] {
+    const keywords = extractKeywords(text);
+    if (keywords.size === 0) return catalog;
+
+    const scored: Array<{ ex: T; score: number }> = [];
+    for (const ex of catalog) {
+        const nameTokens = normalize(ex.name).match(/[a-z0-9]+/g) || [];
+        let score = 0;
+        for (const tok of nameTokens) {
+            if (tok.length >= 3 && keywords.has(tok)) score++;
+        }
+        if (score > 0) scored.push({ ex, score });
+    }
+
+    scored.sort((a, b) => b.score - a.score);
+    const filtered = scored.map(s => s.ex);
+    if (filtered.length < 20) return catalog;
+    return filtered.slice(0, 150);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -336,54 +481,66 @@ Deno.serve(async (req: Request) => {
             return jsonResponse({ error: "No exercises in catalog" }, 400);
         }
 
-        // 5. Build catalog string for prompt
-        const catalogStr = exercises.map((e) => `${e.id}|${e.name}`).join("\n");
-
-        const userPrompt = `Texto do treinador:\n${text.trim()}\n\nCatálogo de exercícios disponíveis:\n${catalogStr}`;
-
-        // 6. Call LLM
-        const result = await callOpenAI(SYSTEM_PROMPT, userPrompt);
-
-        if (result.status !== "success" || !result.data) {
-            console.error("[parse-workout-text] LLM call failed:", result.status);
-            return jsonResponse(
-                { error: `AI processing failed: ${result.status}` },
-                500
-            );
-        }
-
-        // 7. Parse and validate response
-        const parsed = extractJson(result.data);
-        if (!parsed) {
-            console.error(
-                "[parse-workout-text] Failed to parse LLM JSON:",
-                result.data.slice(0, 500)
-            );
-            return jsonResponse({ error: "Failed to parse AI response" }, 422);
-        }
-
+        // 5. Split into per-workout blocks and process each in parallel.
+        // This turns a 5-workout prescription from ~54s (sequential single call)
+        // into ~15s (parallel per-workout calls).
+        const blocks = splitWorkoutBlocks(text.trim());
         const exerciseIdSet = new Set(exercises.map((e) => e.id));
-        const validated = validateAndFixResponse(parsed, exerciseIdSet);
-        if (!validated) {
-            console.error(
-                "[parse-workout-text] Invalid response structure:",
-                JSON.stringify(parsed).slice(0, 500)
+
+        const parseOneBlock = async (block: string) => {
+            const filtered = filterCatalogByText(block, exercises);
+            const catalogStr = filtered.map((e) => `${e.id}|${e.name}`).join("\n");
+            const userPrompt = `Texto do treinador:\n${block}\n\nCatálogo de exercícios disponíveis:\n${catalogStr}`;
+
+            const r = await callOpenAI(SYSTEM_PROMPT, userPrompt);
+            if (r.status !== "success" || !r.data) {
+                return { response: null, status: r.status, detail: r.detail, usage: null };
+            }
+            const parsed = extractJson(r.data);
+            if (!parsed) {
+                return { response: null, status: "parse_error", detail: "Resposta da IA não é JSON válido.", usage: { in: r.input_tokens, out: r.output_tokens } };
+            }
+            const validated = validateAndFixResponse(parsed, exerciseIdSet);
+            return {
+                response: validated,
+                status: validated ? "success" : "invalid_structure",
+                detail: validated ? undefined : "Estrutura da resposta inválida.",
+                usage: { in: r.input_tokens, out: r.output_tokens },
+            };
+        };
+
+        const results = await Promise.all(blocks.map(parseOneBlock));
+        const successful = results.filter((r) => r.response && r.response.workouts && r.response.workouts.length);
+
+        if (successful.length === 0) {
+            const first = results[0];
+            const status = first?.status || "error";
+            console.error("[parse-workout-text] All blocks failed:", results.map((r) => r.status).join(","));
+            const statusCode = status === "missing_key" ? 500
+                : status === "timeout" ? 504
+                : 502;
+            const userMessage = status === "timeout"
+                ? "A IA está demorando demais. Tente novamente ou divida o treino em blocos menores."
+                : status === "missing_key"
+                    ? "Configuração de IA ausente. Contate o suporte."
+                    : first?.detail || `AI processing failed: ${status}`;
+            return jsonResponse(
+                { error: userMessage, reason: status },
+                statusCode,
             );
-            return jsonResponse({ error: "Invalid AI response structure" }, 422);
         }
 
-        // Log usage
-        if (result.input_tokens) {
-            const costPerM = { input: 0.4, output: 1.6 };
-            const cost =
-                ((result.input_tokens ?? 0) / 1_000_000) * costPerM.input +
-                ((result.output_tokens ?? 0) / 1_000_000) * costPerM.output;
-            console.log(
-                `[parse-workout-text] tokens: in=${result.input_tokens} out=${result.output_tokens} cost=$${cost.toFixed(4)}`
-            );
-        }
+        const aggregated = {
+            workouts: successful.flatMap((r) => r.response!.workouts),
+        };
 
-        return jsonResponse(validated);
+        const totalIn = results.reduce((s, r) => s + (r.usage?.in || 0), 0);
+        const totalOut = results.reduce((s, r) => s + (r.usage?.out || 0), 0);
+        const costPerM = { input: 0.4, output: 1.6 };
+        const cost = (totalIn / 1_000_000) * costPerM.input + (totalOut / 1_000_000) * costPerM.output;
+        console.log(`[parse-workout-text] ${blocks.length} block(s), ${successful.length} ok, tokens: in=${totalIn} out=${totalOut} cost=$${cost.toFixed(4)}`);
+
+        return jsonResponse(aggregated);
     } catch (err) {
         console.error("[parse-workout-text] Unexpected error:", err);
         return jsonResponse({ error: "Internal server error" }, 500);
