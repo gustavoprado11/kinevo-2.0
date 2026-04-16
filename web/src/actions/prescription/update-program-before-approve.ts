@@ -101,11 +101,26 @@ export async function updateProgramBeforeApprove(
         return { success: false, error: 'Programa não está em rascunho.' }
     }
 
-    // 6. Apply edits to assigned_workout_items
+    // 6. Build the allowlist of assigned_workout_item ids that belong to THIS
+    //    generation's program. Without this, a trainer could submit arbitrary
+    //    item_ids in `edits` and mutate items in another trainer's program
+    //    (the .update().eq('id', item_id) had no ownership filter). The
+    //    allowlist turns attempted out-of-scope edits into silent no-ops.
+    const { data: validWorkouts } = await supabase
+        .from('assigned_workouts')
+        .select('id')
+        .eq('assigned_program_id', gen.assigned_program_id)
+
+    const validWorkoutIds = (validWorkouts || []).map((w: any) => w.id)
+    if (validWorkoutIds.length === 0) {
+        return { success: false, error: 'Programa sem treinos.' }
+    }
+
+    // Apply edits to assigned_workout_items (bounded to validWorkoutIds).
     let updatedCount = 0
 
     for (const edit of edits) {
-        if (!edit.item_id) continue
+        if (!edit.item_id || typeof edit.item_id !== 'string') continue
 
         // Build update payload with only defined fields
         const updatePayload: Record<string, unknown> = {}
@@ -121,14 +136,15 @@ export async function updateProgramBeforeApprove(
 
         if (Object.keys(updatePayload).length === 0) continue
 
-        const { error: updateError } = await supabase
+        const { error: updateError, count } = await supabase
             .from('assigned_workout_items')
-            .update(updatePayload)
+            .update(updatePayload, { count: 'exact' })
             .eq('id', edit.item_id)
+            .in('assigned_workout_id', validWorkoutIds)
 
         if (updateError) {
             console.error('[updateProgramBeforeApprove] item update error:', updateError)
-        } else {
+        } else if ((count ?? 0) > 0) {
             updatedCount++
         }
     }
