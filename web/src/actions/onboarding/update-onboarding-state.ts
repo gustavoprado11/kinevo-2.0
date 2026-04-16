@@ -1,8 +1,21 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { checkRateLimit, recordRequest } from '@/lib/rate-limit'
 import type { OnboardingState } from '@kinevo/shared/types/onboarding'
 import { DEFAULT_ONBOARDING_STATE } from '@kinevo/shared/types/onboarding'
+
+// Client debounces at 800ms, so legitimate flow is <=~75 calls/min in the
+// worst case. Anything beyond that is abuse or a runaway loop.
+const MAX_TOUR_ENTRIES = 100
+const MAX_TIP_ENTRIES = 200
+const MAX_STRING_LEN = 100
+
+function sanitizeIds(arr: unknown): string[] {
+  if (!Array.isArray(arr)) return []
+  return arr
+    .filter((x): x is string => typeof x === 'string' && x.length > 0 && x.length <= MAX_STRING_LEN)
+}
 
 export async function updateOnboardingState(
   newState: OnboardingState,
@@ -18,6 +31,13 @@ export async function updateOnboardingState(
       return { error: 'Not authenticated' }
     }
 
+    const rateLimitKey = `onboarding:update:${user.id}`
+    const limit = checkRateLimit(rateLimitKey, { perMinute: 60, perDay: 1000 })
+    if (!limit.allowed) {
+      return { error: limit.error || 'Rate limit exceeded' }
+    }
+    recordRequest(rateLimitKey)
+
     // Fetch current state to ensure we have the trainer
     const { data: trainer, error: trainerError } = await supabase
       .from('trainers')
@@ -32,17 +52,20 @@ export async function updateOnboardingState(
     // Deep merge: incoming state takes precedence, but we union arrays
     const current = (trainer.onboarding_state as OnboardingState) ?? DEFAULT_ONBOARDING_STATE
 
+    const incomingTours = sanitizeIds(newState.tours_completed)
+    const incomingTips = sanitizeIds(newState.tips_dismissed)
+
     const merged: OnboardingState = {
       welcome_tour_completed:
         newState.welcome_tour_completed || current.welcome_tour_completed,
       checklist_dismissed:
         newState.checklist_dismissed || current.checklist_dismissed,
       tours_completed: Array.from(
-        new Set([...current.tours_completed, ...newState.tours_completed]),
-      ),
+        new Set([...current.tours_completed, ...incomingTours]),
+      ).slice(0, MAX_TOUR_ENTRIES),
       tips_dismissed: Array.from(
-        new Set([...current.tips_dismissed, ...newState.tips_dismissed]),
-      ),
+        new Set([...current.tips_dismissed, ...incomingTips]),
+      ).slice(0, MAX_TIP_ENTRIES),
       milestones: {
         first_student_created:
           newState.milestones.first_student_created ||

@@ -1,9 +1,15 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { callLLM, type LLMModel } from '@/lib/prescription/llm-client'
+import { checkRateLimit, recordRequest } from '@/lib/rate-limit'
 import type { ParseTextRequest, ParseTextResponse } from './types'
 
 export const maxDuration = 30
+
+// Hard caps to prevent cost amplification. N parallel LLM calls × 4000
+// output tokens per call × GPT-4.1-mini pricing adds up fast.
+const MAX_TEXT_CHARS = 12_000
+const MAX_BLOCKS = 10
 
 // Ordered model fallback. gpt-4.1-mini is primary (higher quality matching on
 // Portuguese exercise names); gpt-4o-mini is the fallback for large inputs or
@@ -137,12 +143,24 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Trainer not found' }, { status: 404 })
         }
 
+        // Rate limit per trainer — each call fans out into N parallel LLM
+        // requests, so this is the cheapest defense against cost amplification.
+        const rateLimitKey = `prescription:parse-text:${trainer.id}`
+        const limit = checkRateLimit(rateLimitKey, { perMinute: 5, perDay: 50 })
+        if (!limit.allowed) {
+            return NextResponse.json({ error: limit.error || 'Rate limit exceeded' }, { status: 429 })
+        }
+        recordRequest(rateLimitKey)
+
         // Parse request
         const body: ParseTextRequest = await req.json()
         const { text, exercises } = body
 
         if (!text?.trim()) {
             return NextResponse.json({ error: 'text is required' }, { status: 400 })
+        }
+        if (text.length > MAX_TEXT_CHARS) {
+            return NextResponse.json({ error: `Texto muito longo (máx ${MAX_TEXT_CHARS} caracteres).` }, { status: 400 })
         }
 
         if (!exercises?.length) {
@@ -153,7 +171,7 @@ export async function POST(req: Request) {
         // running in parallel — that way a prescription with 5 workouts × 8
         // exercises takes ~max(per-workout-latency) instead of the sum, which
         // is what kept the single-call path timing out.
-        const blocks = splitWorkoutBlocks(text)
+        const blocks = splitWorkoutBlocks(text).slice(0, MAX_BLOCKS)
 
         const exerciseIdSet = new Set(exercises.map(e => e.id))
 

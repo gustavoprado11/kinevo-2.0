@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { logContractEvent } from '@/lib/contract-events'
+import { checkRateLimit, recordRequest } from '@/lib/rate-limit'
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const VALID_BILLING_TYPES = new Set(['subscription','one_time','installments','courtesy'])
 
 function addInterval(date: Date, interval: string): Date {
     const result = new Date(date)
@@ -43,11 +47,31 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Treinador não encontrado' }, { status: 404 })
     }
 
+    // Rate limit per trainer. Contract creation cascades into contract_events,
+    // updates on students, and potentially external Stripe calls — capping
+    // prevents floods of junk rows while still allowing bulk onboarding.
+    const rateLimitKey = `financial:create-contract:${trainer.id}`
+    const limit = checkRateLimit(rateLimitKey, { perMinute: 10, perDay: 200 })
+    if (!limit.allowed) {
+        return NextResponse.json({ error: limit.error || 'Rate limit exceeded' }, { status: 429 })
+    }
+    recordRequest(rateLimitKey)
+
     const body = await request.json()
     const { studentId, planId, billingType, blockOnFail = false } = body
 
     if (!studentId || !billingType) {
         return NextResponse.json({ error: 'Campos obrigatórios: studentId, billingType' }, { status: 400 })
+    }
+
+    if (!UUID_RE.test(studentId)) {
+        return NextResponse.json({ error: 'studentId inválido' }, { status: 400 })
+    }
+    if (planId != null && (typeof planId !== 'string' || !UUID_RE.test(planId))) {
+        return NextResponse.json({ error: 'planId inválido' }, { status: 400 })
+    }
+    if (!VALID_BILLING_TYPES.has(billingType)) {
+        return NextResponse.json({ error: 'billingType inválido' }, { status: 400 })
     }
 
     // Validate student belongs to trainer
