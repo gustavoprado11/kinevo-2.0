@@ -5,8 +5,13 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { buildChatContext } from '@/lib/assistant/context-builder'
 import { generateProgram } from '@/actions/prescription/generate-program'
 import { enrichStudentContext } from '@/lib/prescription/context-enricher'
+import { checkRateLimit, recordRequest } from '@/lib/rate-limit'
 
 export const maxDuration = 60
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const MAX_MESSAGE_CHARS = 8000
+const MAX_MESSAGES = 50
 
 // JSON Schema definitions (zod v4 serialization is incompatible with OpenAI function calling)
 const studentIdSchema = jsonSchema<{ studentId: string }>({
@@ -35,28 +40,69 @@ export async function POST(req: Request) {
             return new Response('Trainer not found', { status: 404 })
         }
 
-        // 3. Parse body
-        const { messages, studentId } = await req.json()
+        // 3. Rate limit (per-trainer) — prevents cost amplification via LLM.
+        const rateLimitKey = `assistant:chat:${trainer.id}`
+        const limit = checkRateLimit(rateLimitKey, { perMinute: 15, perDay: 300 })
+        if (!limit.allowed) {
+            return new Response(limit.error || 'Rate limit exceeded', { status: 429 })
+        }
+        recordRequest(rateLimitKey)
 
-        // 4. Build context
-        const systemPrompt = await buildChatContext(trainer.id, trainer.name, studentId || undefined)
+        // 4. Parse body + sanitize messages.
+        // SECURITY: `role` must be forced to 'user'/'assistant' — without this,
+        // a malicious client could inject `role: 'system'` with jailbreak instructions
+        // that the model would treat as trusted (prompt injection).
+        // Content is clamped to MAX_MESSAGE_CHARS and array length to MAX_MESSAGES
+        // to prevent cost amplification.
+        const body = await req.json()
+        const studentId: string | undefined = typeof body?.studentId === 'string' && UUID_RE.test(body.studentId)
+            ? body.studentId
+            : undefined
+        type SafeMessage = { role: 'user' | 'assistant'; content: string }
+        const rawMessages: unknown[] = Array.isArray(body?.messages) ? body.messages : []
+        const messages: SafeMessage[] = rawMessages
+            .slice(-MAX_MESSAGES)
+            .map((m): SafeMessage => {
+                const raw = m as { role?: unknown; content?: unknown }
+                return {
+                    role: raw?.role === 'assistant' ? 'assistant' : 'user',
+                    content: typeof raw?.content === 'string' ? raw.content.slice(0, MAX_MESSAGE_CHARS) : '',
+                }
+            })
+            .filter((m) => m.content.length > 0)
+
+        // 5. Build context
+        const systemPrompt = await buildChatContext(trainer.id, trainer.name, studentId)
 
         // Student ID context for tools (when in contextual mode)
         const studentIdHint = studentId
             ? `\nContexto atual: o aluno em foco tem student_id UUID: ${studentId}. Ao usar tools, passe sempre este UUID como studentId.`
             : ''
 
-        // Helper: resolve name → UUID if the model passes a name instead of UUID
+        // Helper: resolve name → UUID (from LLM tool call).
+        // SECURITY: validates ownership against trainer.id for BOTH UUID and name paths,
+        // so a prompt-injected tool call with an arbitrary UUID from another trainer's
+        // student is rejected.
         async function resolveStudentId(input: string): Promise<string | null> {
-            if (input.includes('-') && input.length >= 30) return input // already UUID
+            if (!input || typeof input !== 'string') return null
+            if (UUID_RE.test(input)) {
+                const { data } = await supabaseAdmin
+                    .from('students')
+                    .select('id')
+                    .eq('id', input)
+                    .eq('coach_id', trainer!.id)
+                    .maybeSingle()
+                return data?.id ?? null
+            }
+            const escaped = input.replace(/[%_\\]/g, '\\$&')
             const { data } = await supabaseAdmin
                 .from('students')
                 .select('id')
                 .eq('coach_id', trainer!.id)
-                .ilike('name', `%${input}%`)
+                .ilike('name', `%${escaped}%`)
                 .limit(1)
-                .single()
-            return data?.id || null
+                .maybeSingle()
+            return data?.id ?? null
         }
 
         // 5. Stream with tools

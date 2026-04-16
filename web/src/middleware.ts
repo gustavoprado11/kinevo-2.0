@@ -13,7 +13,16 @@ export const config = {
          * - _next/image (image optimization files)
          * - favicon.ico (favicon file)
          * - public folder
-         * - api/webhooks (Stripe webhooks — must not run auth middleware)
+         * - api/webhooks, api/stripe/webhook, api/stripe/cancel-subscription
+         *   (Stripe webhooks — signature-based auth, must not run cookie middleware)
+         * - api/cron (protected by CRON_SECRET Bearer)
+         * - api/financial, api/notifications (mobile-first endpoints — authenticate
+         *   via `Authorization: Bearer <supabase_access_token>`, NOT cookies.
+         *   Running this cookie-based middleware would redirect mobile requests
+         *   to /login. SECURITY CONTRACT: every route.ts inside these folders
+         *   MUST call `supabaseAdmin.auth.getUser(token)` on the Bearer token
+         *   and reject with 401 if absent/invalid. Do not add cookie-auth routes
+         *   here — create them elsewhere.)
          */
         '/((?!_next/static|_next/image|favicon.ico|api/webhooks|api/stripe/webhook|api/stripe/cancel-subscription|api/cron|api/financial|api/notifications|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
     ],
