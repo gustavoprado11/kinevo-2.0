@@ -37,13 +37,26 @@ export async function updateFormTemplate(input: UpdateFormTemplateInput) {
         return { success: false, error: 'Schema precisa conter ao menos uma pergunta' }
     }
 
-    // Validate ownership and get current version
-    const { data: existing } = await supabaseAdmin
-        .from('form_templates')
-        .select('id, version, trainer_id')
-        .eq('id', input.templateId)
-        .or(`trainer_id.eq.${trainer.id},trainer_id.is.null`)
-        .single()
+    // Validate ownership and get current version. Avoid interpolating
+    // trainer.id into `.or()` filter strings — even though it comes from our
+    // server, the pattern is a latent PostgREST-injection sink if any future
+    // refactor mixes user-supplied values into the same call. Two queries
+    // + local merge is trivially cheap here.
+    const [ownedRes, systemRes] = await Promise.all([
+        supabaseAdmin
+            .from('form_templates')
+            .select('id, version, trainer_id')
+            .eq('id', input.templateId)
+            .eq('trainer_id', trainer.id)
+            .maybeSingle(),
+        supabaseAdmin
+            .from('form_templates')
+            .select('id, version, trainer_id')
+            .eq('id', input.templateId)
+            .is('trainer_id', null)
+            .maybeSingle(),
+    ])
+    const existing = ownedRes.data ?? systemRes.data
 
     if (!existing) return { success: false, error: 'Template não encontrado' }
 
