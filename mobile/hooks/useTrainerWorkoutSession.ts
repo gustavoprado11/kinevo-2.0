@@ -141,18 +141,31 @@ export function useFetchStudentWorkout() {
                 }
 
                 // The RPC returns exercises with setsData as empty — we need to init them
-                const exercises: ExerciseData[] = rawExercises.map((ex: any) => ({
-                    ...ex,
-                    video_url: trainerVideoMap.get(ex.exercise_id) || ex.video_url,
-                    substitute_exercise_ids: ex.substitute_exercise_ids || [],
-                    swap_source: ex.swap_source || 'none',
-                    setsData: Array.from({ length: ex.sets || 3 }, () => ({
-                        weight: '',
-                        reps: '',
-                        completed: false,
-                    })),
-                    previousSets: ex.previousSets?.length > 0 ? ex.previousSets : undefined,
-                }));
+                const exercises: ExerciseData[] = rawExercises.map((ex: any) => {
+                    // Warmup/cardio items: no set tracking, no swaps, no video
+                    if (ex.item_type === 'warmup' || ex.item_type === 'cardio') {
+                        return {
+                            ...ex,
+                            substitute_exercise_ids: [],
+                            swap_source: 'none',
+                            setsData: [],
+                            exerciseFunction: ex.exercise_function ?? null,
+                        };
+                    }
+                    return {
+                        ...ex,
+                        video_url: trainerVideoMap.get(ex.exercise_id) || ex.video_url,
+                        substitute_exercise_ids: ex.substitute_exercise_ids || [],
+                        swap_source: ex.swap_source || 'none',
+                        setsData: Array.from({ length: ex.sets || 3 }, () => ({
+                            weight: '',
+                            reps: '',
+                            completed: false,
+                        })),
+                        previousSets: ex.previousSets?.length > 0 ? ex.previousSets : undefined,
+                        exerciseFunction: ex.exercise_function ?? null,
+                    };
+                });
 
                 const workoutNotes: WorkoutNote[] = data.workoutNotes || [];
 

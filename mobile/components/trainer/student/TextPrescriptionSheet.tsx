@@ -108,7 +108,31 @@ export function TextPrescriptionSheet({
             );
 
             if (error) {
-                throw new Error(error.message || "Erro ao chamar função");
+                // supabase-js wraps non-2xx responses in FunctionsHttpError with a
+                // generic message. The real server-side error body lives in
+                // `error.context` (a Response). Read it so the trainer sees the
+                // actual reason (e.g. "No exercises in catalog", "AI processing
+                // failed: timeout", etc.) instead of the opaque SDK message.
+                let serverMessage: string | null = null;
+                const response = (error as any)?.context;
+                if (response && typeof response.text === "function") {
+                    try {
+                        const bodyText = await response.text();
+                        try {
+                            const parsed = JSON.parse(bodyText);
+                            if (parsed?.error && typeof parsed.error === "string") {
+                                serverMessage = parsed.error;
+                            } else if (bodyText.trim()) {
+                                serverMessage = bodyText.trim().slice(0, 300);
+                            }
+                        } catch {
+                            if (bodyText.trim()) serverMessage = bodyText.trim().slice(0, 300);
+                        }
+                    } catch {
+                        // ignore — fall back to generic message below
+                    }
+                }
+                throw new Error(serverMessage || error.message || "Erro ao chamar função");
             }
 
             if (data?.error) {

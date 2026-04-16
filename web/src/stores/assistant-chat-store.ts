@@ -1,69 +1,13 @@
-import { create } from 'zustand'
+// Backwards-compatible re-export.
+//
+// This module used to create its own Zustand store. When the assistant + messages
+// panels were unified, `communication-store.ts` became the single source of truth
+// for the panel's open/close state. Several files still import from this path
+// (app-layout, command-palette, assistant-action-cards, etc.), so instead of a
+// wide refactor we keep the import surface intact and alias the unified store.
+//
+// Having two independent stores caused a visible bug: layout read `isOpen` from
+// one store while the panel rendered from the other, so opening the Assistant
+// shrank the main view without ever mounting the panel.
 
-type PanelTab = 'assistant' | 'chat'
-
-interface AssistantChatState {
-    isOpen: boolean
-    activeTab: PanelTab
-    // Assistant context
-    studentId: string | null
-    studentName: string | null
-    insightId: string | null
-    initialMessage: string | null
-    // Chat context (for deep-linking from insights)
-    chatStudentId: string | null
-    chatStudentName: string | null
-
-    openChat: (opts?: {
-        studentId?: string
-        studentName?: string
-        insightId?: string
-        initialMessage?: string
-    }) => void
-    openMessages: (opts?: {
-        studentId?: string
-        studentName?: string
-    }) => void
-    switchTab: (tab: PanelTab) => void
-    closeChat: () => void
-}
-
-export const useAssistantChatStore = create<AssistantChatState>()((set) => ({
-    isOpen: false,
-    activeTab: 'assistant',
-    studentId: null,
-    studentName: null,
-    insightId: null,
-    initialMessage: null,
-    chatStudentId: null,
-    chatStudentName: null,
-
-    openChat: (opts) => set({
-        isOpen: true,
-        activeTab: 'assistant',
-        studentId: opts?.studentId ?? null,
-        studentName: opts?.studentName ?? null,
-        insightId: opts?.insightId ?? null,
-        initialMessage: opts?.initialMessage ?? null,
-    }),
-
-    openMessages: (opts) => set({
-        isOpen: true,
-        activeTab: 'chat',
-        chatStudentId: opts?.studentId ?? null,
-        chatStudentName: opts?.studentName ?? null,
-    }),
-
-    switchTab: (tab) => set({ activeTab: tab }),
-
-    closeChat: () => set({
-        isOpen: false,
-        activeTab: 'assistant',
-        studentId: null,
-        studentName: null,
-        insightId: null,
-        initialMessage: null,
-        chatStudentId: null,
-        chatStudentName: null,
-    }),
-}))
+export { useCommunicationStore as useAssistantChatStore } from './communication-store'

@@ -34,12 +34,15 @@ import RNReanimated, {
 import { ANIM } from '../lib/animations';
 import { useTrainingRoomStore } from '../stores/training-room-store';
 import type { ExerciseData, WorkoutNote, ActiveSession } from '../stores/training-room-store';
-import { useFinishTrainerWorkout } from '../hooks/useTrainerWorkoutSession';
+import { useFinishTrainerWorkout, useExerciseSwap, type ExerciseSubstituteOption } from '../hooks/useTrainerWorkoutSession';
 import { StudentPickerModal } from '../components/trainer/StudentPickerModal';
 import { WorkoutFeedbackModal } from '../components/trainer/WorkoutFeedbackModal';
 import { ExerciseCard } from '../components/workout/ExerciseCard';
 import { SupersetGroup } from '../components/workout/SupersetGroup';
 import { WorkoutNoteCard } from '../components/workout/WorkoutNoteCard';
+import { WarmupCardioCard } from '../components/workout/WarmupCardioCard';
+import { ExerciseVideoModal } from '../components/workout/ExerciseVideoModal';
+import { ExerciseSwapModal } from '../components/workout/ExerciseSwapModal';
 import { RestTimerOverlay } from '../components/workout/RestTimerOverlay';
 
 // ---------------------------------------------------------------------------
@@ -354,13 +357,27 @@ export default function TrainingRoomScreen() {
     const clearExpiredSessions = useTrainingRoomStore((s) => s.clearExpiredSessions);
     const startRestTimer = useTrainingRoomStore((s) => s.startRestTimer);
     const clearRestTimer = useTrainingRoomStore((s) => s.clearRestTimer);
+    const toggleCardioComplete = useTrainingRoomStore((s) => s.toggleCardioComplete);
 
     const { finish, isSubmitting } = useFinishTrainerWorkout();
+    const { loadSubstituteOptions, searchSubstituteOptions, performSwap } = useExerciseSwap();
 
     const [isPickerOpen, setIsPickerOpen] = useState(false);
     const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
     const [draggingChipState, setDraggingChipState] = useState<string | null>(null);
     const [chipScrollEnabled, setChipScrollEnabled] = useState(true);
+
+    // Video modal state
+    const [videoModalUrl, setVideoModalUrl] = useState<string | null>(null);
+
+    // Swap modal state
+    const [swapModalVisible, setSwapModalVisible] = useState(false);
+    const [activeSwapIndex, setActiveSwapIndex] = useState<number | null>(null);
+    const [swapOptions, setSwapOptions] = useState<ExerciseSubstituteOption[]>([]);
+    const [swapModalLoading, setSwapModalLoading] = useState(false);
+    const [swapSearchQuery, setSwapSearchQuery] = useState('');
+    const [swapSearchResults, setSwapSearchResults] = useState<ExerciseSubstituteOption[]>([]);
+    const [swapSearchLoading, setSwapSearchLoading] = useState(false);
 
     const sessionCount = Object.keys(sessions).length;
 
@@ -662,6 +679,88 @@ export default function TrainingRoomScreen() {
     );
 
     // ---------------------------------------------------------------------------
+    // Video + swap handlers
+    // ---------------------------------------------------------------------------
+
+    const handleVideoPress = useCallback((url: string) => {
+        if (url) setVideoModalUrl(url);
+    }, []);
+
+    const openSwapModal = useCallback(async (exerciseIndex: number) => {
+        if (!activeSession) return;
+        const exercise = activeSession.exercises[exerciseIndex];
+        if (!exercise) return;
+
+        setActiveSwapIndex(exerciseIndex);
+        setSwapModalVisible(true);
+        setSwapModalLoading(true);
+        setSwapOptions([]);
+        setSwapSearchQuery('');
+        setSwapSearchResults([]);
+        setSwapSearchLoading(false);
+
+        try {
+            const options = await loadSubstituteOptions(exercise);
+            setSwapOptions(options);
+        } catch (err) {
+            if (__DEV__) console.error('[openSwapModal]', err);
+            Alert.alert('Erro', 'Não foi possível carregar as opções de troca.');
+        } finally {
+            setSwapModalLoading(false);
+        }
+    }, [activeSession, loadSubstituteOptions]);
+
+    const applySwap = useCallback((option: ExerciseSubstituteOption) => {
+        if (activeSwapIndex === null || !activeStudentId) return;
+        performSwap(activeStudentId, activeSwapIndex, option);
+        setSwapModalVisible(false);
+        setActiveSwapIndex(null);
+        setSwapOptions([]);
+        setSwapSearchQuery('');
+        setSwapSearchResults([]);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }, [activeSwapIndex, activeStudentId, performSwap]);
+
+    // Debounced search inside the swap modal
+    useEffect(() => {
+        if (!swapModalVisible || activeSwapIndex === null || !activeSession) return;
+
+        const query = swapSearchQuery.trim();
+        if (query.length < 2) {
+            setSwapSearchResults([]);
+            setSwapSearchLoading(false);
+            return;
+        }
+
+        const exercise = activeSession.exercises[activeSwapIndex];
+        if (!exercise) return;
+
+        let cancelled = false;
+        setSwapSearchLoading(true);
+
+        const timeout = setTimeout(async () => {
+            try {
+                const results = await searchSubstituteOptions(exercise, query);
+                if (cancelled) return;
+                const suggestionIds = new Set(swapOptions.map((o) => o.id));
+                setSwapSearchResults(results.filter((o) => !suggestionIds.has(o.id)));
+            } catch (err) {
+                if (!cancelled) {
+                    if (__DEV__) console.error('[swapSearch]', err);
+                    setSwapSearchResults([]);
+                }
+            } finally {
+                if (!cancelled) setSwapSearchLoading(false);
+            }
+        }, 300);
+
+        return () => {
+            cancelled = true;
+            clearTimeout(timeout);
+        };
+    }, [swapSearchQuery, swapModalVisible, activeSwapIndex, activeSession, swapOptions, searchSubstituteOptions]);
+
+    // ---------------------------------------------------------------------------
     // Render workout items (exercises, supersets, notes) by order_index
     // ---------------------------------------------------------------------------
 
@@ -677,6 +776,24 @@ export default function TrainingRoomScreen() {
         const items: RenderItem[] = [];
 
         exercises.forEach((exercise, ei) => {
+            // Warmup/Cardio items — no set tracking, render as dedicated card
+            if (exercise.item_type === 'warmup' || exercise.item_type === 'cardio') {
+                items.push({
+                    orderIndex: exercise.order_index,
+                    node: (
+                        <WarmupCardioCard
+                            key={exercise.id}
+                            exercise={exercise as any}
+                            disabled={disabled}
+                            onCardioToggle={(exerciseId, completed) => {
+                                if (activeStudentId) toggleCardioComplete(activeStudentId, exerciseId, completed);
+                            }}
+                        />
+                    ),
+                });
+                return;
+            }
+
             if (exercise.supersetId) {
                 if (processedSupersets.has(exercise.supersetId)) return;
                 processedSupersets.add(exercise.supersetId);
@@ -700,6 +817,8 @@ export default function TrainingRoomScreen() {
                             onToggleSetComplete={(globalIdx, setIdx) => {
                                 handleToggleSetComplete(globalIdx, setIdx);
                             }}
+                            onVideoPress={handleVideoPress}
+                            onSwapPress={(globalIdx) => openSwapModal(globalIdx)}
                             globalIndices={group.map((e) => e._gi)}
                         />
                     ),
@@ -717,6 +836,8 @@ export default function TrainingRoomScreen() {
                             setsData={exercise.setsData}
                             onSetChange={(setIdx, field, value) => handleSetChange(ei, setIdx, field, value)}
                             onToggleSetComplete={(setIdx) => handleToggleSetComplete(ei, setIdx)}
+                            onVideoPress={handleVideoPress}
+                            onSwapPress={() => openSwapModal(ei)}
                             videoUrl={exercise.video_url}
                             previousLoad={exercise.previousLoad}
                             previousSets={exercise.previousSets}
@@ -1029,6 +1150,34 @@ export default function TrainingRoomScreen() {
                     onCancel={handleCancelFeedback}
                 />
             )}
+
+            <ExerciseVideoModal
+                visible={videoModalUrl !== null}
+                onClose={() => setVideoModalUrl(null)}
+                videoUrl={videoModalUrl}
+            />
+
+            <ExerciseSwapModal
+                visible={swapModalVisible}
+                onClose={() => {
+                    setSwapModalVisible(false);
+                    setActiveSwapIndex(null);
+                    setSwapSearchQuery('');
+                    setSwapSearchResults([]);
+                }}
+                onSelect={applySwap}
+                exerciseName={
+                    activeSwapIndex !== null && activeSession
+                        ? activeSession.exercises[activeSwapIndex]?.name || null
+                        : null
+                }
+                options={swapOptions}
+                isLoading={swapModalLoading}
+                searchQuery={swapSearchQuery}
+                onSearchQueryChange={setSwapSearchQuery}
+                searchResults={swapSearchResults}
+                isSearching={swapSearchLoading}
+            />
         </>
     );
 }

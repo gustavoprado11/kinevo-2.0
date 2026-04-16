@@ -441,6 +441,10 @@ export function ExerciseLibraryPanel({
                 }}
                 trainerId={trainerId}
                 defaultName={searchQuery}
+                // Enable the "Meu Vídeo" section — parity with the Exercise Library modal.
+                // The modal persists the trainer video itself via saveTrainerVideoMetadata;
+                // no local state is needed in the program builder.
+                onTrainerVideoChange={() => { /* no-op: storage handled by the modal */ }}
             />
         </>
     )

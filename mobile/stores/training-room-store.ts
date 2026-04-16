@@ -43,6 +43,7 @@ export interface PreviousSetData {
 
 export interface ExerciseData {
     id: string;                           // assigned_workout_item_id
+    item_type?: 'exercise' | 'warmup' | 'cardio';
     planned_exercise_id: string;          // original exercise from template
     exercise_id: string;                  // currently active (may differ if swapped)
     name: string;
@@ -60,6 +61,8 @@ export interface ExerciseData {
     supersetRestSeconds?: number;         // rest_seconds from superset parent
     supersetOrderIndex?: number | null;   // order_index from superset parent (global position)
     order_index: number;                  // position in workout (local for superset children)
+    exerciseFunction?: string | null;     // 'warmup' | 'activation' | 'main' | 'accessory' | 'conditioning'
+    item_config?: Record<string, any>;    // warmup/cardio configuration (mode, duration, intervals, etc.)
 }
 
 export interface WorkoutNote {
@@ -127,6 +130,13 @@ interface TrainingRoomStore {
         exerciseIdx: number,
         newExercise: { id: string; name: string; source: 'manual' | 'auto' },
         previousLoad?: string,
+    ) => void;
+
+    // Warmup/Cardio completion (single synthetic set to mark the item done)
+    toggleCardioComplete: (
+        studentId: string,
+        exerciseId: string,
+        completed: boolean,
     ) => void;
 
     // Rest timer
@@ -297,6 +307,30 @@ export const useTrainingRoomStore = create<TrainingRoomStore>()(
                         );
 
                         return { ...ex, setsData };
+                    });
+
+                    return {
+                        sessions: {
+                            ...state.sessions,
+                            [studentId]: { ...session, exercises },
+                        },
+                    };
+                });
+            },
+
+            toggleCardioComplete(studentId: string, exerciseId: string, completed: boolean) {
+                set((state: TrainingRoomStore) => {
+                    const session = state.sessions[studentId];
+                    if (!session) return state;
+
+                    const exercises = session.exercises.map((ex: ExerciseData) => {
+                        if (ex.id !== exerciseId) return ex;
+                        return {
+                            ...ex,
+                            setsData: completed
+                                ? [{ weight: '0', reps: '1', completed: true }]
+                                : [],
+                        };
                     });
 
                     return {
