@@ -106,15 +106,10 @@ function formatDate(iso: string | null): string {
 
 function formatPeriod(start: string | null, end: string | null): string {
     if (!start) return "";
-    const fmt = (d: string) => new Date(d).toLocaleDateString("pt-BR", { month: "short", year: "2-digit" });
+    // Use 4-digit year — "mar. de 26" is ambiguous.
+    const fmt = (d: string) => new Date(d).toLocaleDateString("pt-BR", { month: "short", year: "numeric" });
     if (end) return `${fmt(start)} — ${fmt(end)}`;
     return `Desde ${fmt(start)}`;
-}
-
-function rpeLabel(rpe: number): string {
-    if (rpe < 6) return "Baixo esforço";
-    if (rpe <= 7.5) return "Bem dosado";
-    return "Alto esforço";
 }
 
 function volumeComparison(current: number, previous: number | null): string {
@@ -138,6 +133,7 @@ export function generateReportHTML(
     const hasProgression = m.progression?.top_exercises?.length > 0;
     const hasCheckins = m.checkins?.averages?.length > 0;
     const period = formatPeriod(report.program_started_at, report.program_completed_at);
+    const isCompleted = !!report.program_completed_at;
 
     return `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -237,7 +233,7 @@ export function generateReportHTML(
 <div class="divider"></div>
 
 <!-- KPI Cards -->
-${buildKPISection(m, hasFrequency, hasVolume, hasRPE)}
+${buildKPISection(m, hasFrequency, hasVolume, hasRPE, isCompleted)}
 
 <!-- Frequência Semanal -->
 ${hasFrequency && m.frequency.weekly_breakdown.length > 0 ? `
@@ -257,7 +253,7 @@ ${hasProgression ? `
 
 <!-- RPE Semanal -->
 ${hasRPE && m.rpe.weekly_avg.some(v => v !== null) ? `
-<div class="section-title">RPE por Semana</div>
+<div class="section-title">PSE por Semana</div>
 <div class="chart-card">
   ${buildBarChart(m.rpe.weekly_avg.map(v => v ?? 0), C.amber, 10, (v) => v > 0 ? v.toFixed(1) : "")}
 </div>
@@ -311,6 +307,7 @@ function buildKPISection(
     hasFrequency: boolean,
     hasVolume: boolean,
     hasRPE: boolean,
+    isCompleted: boolean,
 ): string {
     const cards: string[] = [];
 
@@ -323,7 +320,11 @@ function buildKPISection(
     }
 
     if (hasVolume) {
-        const comp = volumeComparison(m.volume.total_tonnage_kg, m.volume.previous_program_tonnage_kg);
+        // Só comparar com programa anterior quando o atual estiver concluído — senão o delta
+        // fica sempre enganoso (programa em andamento vs programa inteiro).
+        const comp = isCompleted
+            ? volumeComparison(m.volume.total_tonnage_kg, m.volume.previous_program_tonnage_kg)
+            : "";
         cards.push(`<div class="kpi-card">
             <div class="kpi-label">Volume Total</div>
             <div class="kpi-value">${formatTonnage(m.volume.total_tonnage_kg)}</div>
@@ -332,10 +333,12 @@ function buildKPISection(
     }
 
     if (hasRPE) {
+        // PSE = percepção subjetiva de esforço, auto-relatada pelo aluno. Sem alvo
+        // prescrito, mostramos só o número, sem qualificativos.
         cards.push(`<div class="kpi-card">
-            <div class="kpi-label">RPE Médio</div>
+            <div class="kpi-label">PSE Média</div>
             <div class="kpi-value">${m.rpe.overall_avg}</div>
-            <div class="kpi-sub">${rpeLabel(m.rpe.overall_avg!)}</div>
+            <div class="kpi-sub">Percepção de esforço do aluno</div>
         </div>`);
     }
 

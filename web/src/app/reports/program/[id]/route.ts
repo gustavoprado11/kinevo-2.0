@@ -12,14 +12,27 @@ export async function GET(
         const { id: programId } = await params
         const { trainer } = await getTrainerWithSubscription()
         const supabase = await createClient()
-        const shouldRegenerate = request.nextUrl.searchParams.get('regenerate') === '1'
+        const forceRegenerate = request.nextUrl.searchParams.get('regenerate') === '1'
 
-        // Try to fetch existing report, or generate one on-the-fly
+        // Policy:
+        //   - For programs that are still active/expired, the report is a live view
+        //     and must reflect the latest sessions. We regenerate on every GET.
+        //   - For completed programs, the report is a frozen "closing" snapshot —
+        //     we keep the cached version unless ?regenerate=1 is passed explicitly.
+        const { data: programStatusRow } = await supabase
+            .from('assigned_programs')
+            .select('status')
+            .eq('id', programId)
+            .maybeSingle()
+
+        const isCompleted = programStatusRow?.status === 'completed'
+        const shouldRegenerate = forceRegenerate || !isCompleted
+
         let report = await getReportByProgram(supabase, programId)
 
         if (report && shouldRegenerate) {
             const newId = await regenerateReport(supabase, report.id)
-            report = newId ? await getReport(supabase, newId) : null
+            report = newId ? await getReport(supabase, newId) : report
         }
 
         if (!report) {

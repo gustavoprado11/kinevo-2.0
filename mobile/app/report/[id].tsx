@@ -357,6 +357,7 @@ export default function ReportScreen() {
     const hasCheckins = m.checkins?.averages?.length > 0;
 
     const periodStr = formatPeriod(report.program_started_at, report.program_completed_at);
+    const isCompleted = !!report.program_completed_at;
 
     return (
         <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
@@ -405,7 +406,7 @@ export default function ReportScreen() {
                             icon={<TrendingUp size={16} color={COLORS.green} />}
                             label="Volume total"
                             value={formatTonnage(m.volume.total_tonnage_kg)}
-                            subtitle={formatVolumeComparison(m.volume.total_tonnage_kg, m.volume.previous_program_tonnage_kg)}
+                            subtitle={isCompleted ? formatVolumeComparison(m.volume.total_tonnage_kg, m.volume.previous_program_tonnage_kg) : null}
                         />
                     )}
                 </View>
@@ -413,9 +414,9 @@ export default function ReportScreen() {
                     {hasRPE && (
                         <KPICard
                             icon={<Flame size={16} color="#f59e0b" />}
-                            label="RPE médio"
+                            label="PSE média"
                             value={String(m.rpe.overall_avg)}
-                            subtitle={rpeLabel(m.rpe.overall_avg!)}
+                            subtitle="Percepção de esforço do aluno"
                         />
                     )}
                     {hasFrequency && m.frequency.best_streak_weeks > 0 && (
@@ -448,10 +449,10 @@ export default function ReportScreen() {
                     </>
                 )}
 
-                {/* Line chart: RPE semanal */}
+                {/* Line chart: PSE semanal */}
                 {hasRPE && m.rpe.weekly_avg.some((v) => v !== null) && (
                     <>
-                        <SectionLabel>RPE por Semana</SectionLabel>
+                        <SectionLabel>PSE por Semana</SectionLabel>
                         <View style={{ backgroundColor: COLORS.card, borderRadius: 14, padding: 16, marginBottom: 20 }}>
                             <LineChart data={m.rpe.weekly_avg} color="#f59e0b" maxY={10} />
                         </View>
@@ -1006,15 +1007,10 @@ function formatVolumeComparison(current: number, previous: number | null): strin
     return `${sign}${Math.round(diff)}% vs anterior`;
 }
 
-function rpeLabel(rpe: number): string {
-    if (rpe < 6) return "Baixo esforço";
-    if (rpe <= 7.5) return "Bem dosado";
-    return "Alto esforço";
-}
-
 function formatPeriod(start: string | null, end: string | null): string {
     if (!start) return "";
-    const fmt = (d: string) => new Date(d).toLocaleDateString("pt-BR", { month: "short", year: "2-digit" });
+    // Use 4-digit year — "mar. de 26" is ambiguous.
+    const fmt = (d: string) => new Date(d).toLocaleDateString("pt-BR", { month: "short", year: "numeric" });
     if (end) return `${fmt(start)} — ${fmt(end)}`;
     return `Desde ${fmt(start)}`;
 }

@@ -46,15 +46,10 @@ function formatDate(iso: string | null): string {
 
 function formatPeriod(start: string | null, end: string | null): string {
     if (!start) return ''
-    const fmt = (d: string) => new Date(d).toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' })
+    // Use 4-digit year — "mar. de 26" is ambiguous (1926? 2026?).
+    const fmt = (d: string) => new Date(d).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })
     if (end) return `${fmt(start)} — ${fmt(end)}`
     return `Desde ${fmt(start)}`
-}
-
-function rpeLabel(rpe: number): string {
-    if (rpe < 6) return 'Baixo esforço'
-    if (rpe <= 7.5) return 'Bem dosado'
-    return 'Alto esforço'
 }
 
 function volumeComparison(current: number, previous: number | null): string {
@@ -123,6 +118,7 @@ function buildKPISection(
     hasFrequency: boolean,
     hasVolume: boolean,
     hasRPE: boolean,
+    isCompleted: boolean,
 ): string {
     const cards: string[] = []
 
@@ -135,7 +131,12 @@ function buildKPISection(
     }
 
     if (hasVolume) {
-        const comp = volumeComparison(m.volume.total_tonnage_kg, m.volume.previous_program_tonnage_kg)
+        // Only compare to previous program once the current one is completed — comparing a
+        // partial (in-flight) program to a full prior program always yields a misleading
+        // large negative delta (e.g. "-94% vs programa anterior" mid-cycle).
+        const comp = isCompleted
+            ? volumeComparison(m.volume.total_tonnage_kg, m.volume.previous_program_tonnage_kg)
+            : ''
         cards.push(`<div class="kpi-card">
             <div class="kpi-label">Volume Total</div>
             <div class="kpi-value">${formatTonnage(m.volume.total_tonnage_kg)}</div>
@@ -144,10 +145,12 @@ function buildKPISection(
     }
 
     if (hasRPE) {
+        // PSE (percepção subjetiva de esforço) é auto-relatado pelo aluno, não prescrito.
+        // Mostrar o número neutro, sem qualificativos como "Bem dosado" que sugerem meta.
         cards.push(`<div class="kpi-card">
-            <div class="kpi-label">RPE Médio</div>
+            <div class="kpi-label">PSE Média</div>
             <div class="kpi-value">${m.rpe.overall_avg}</div>
-            <div class="kpi-sub">${rpeLabel(m.rpe.overall_avg!)}</div>
+            <div class="kpi-sub">Percepção de esforço do aluno</div>
         </div>`)
     }
 
@@ -179,6 +182,7 @@ export function generateReportHTML(
     const hasCheckins = m.checkins?.averages?.length > 0
     const period = formatPeriod(report.program_started_at, report.program_completed_at)
     const isDraft = report.status === 'draft'
+    const isCompleted = !!report.program_completed_at
 
     return `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -369,7 +373,7 @@ export function generateReportHTML(
 <div class="divider"></div>
 
 <!-- KPI Cards (all inline) -->
-${buildKPISection(m, hasFrequency, hasVolume, hasRPE)}
+${buildKPISection(m, hasFrequency, hasVolume, hasRPE, isCompleted)}
 
 <!-- Charts Grid: 2 columns in print -->
 <div class="chart-grid">
@@ -385,7 +389,7 @@ ${hasFrequency && m.frequency.weekly_breakdown.length > 0 ? `
 ${hasRPE && m.rpe.weekly_avg.some(v => v !== null) ? `
 <div class="chart-grid-item">
   <div class="chart-card">
-    <div class="section-title-inline">RPE por Semana</div>
+    <div class="section-title-inline">PSE por Semana</div>
     ${buildBarChart(m.rpe.weekly_avg.map(v => v ?? 0), C.amber, 10, (v) => v > 0 ? v.toFixed(1) : '')}
   </div>
 </div>

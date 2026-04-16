@@ -361,13 +361,22 @@ async function computeFrequency(
     programStartedAt: string | null,
     durationWeeks: number
 ): Promise<ReportFrequency> {
-    // Count assigned workouts (= distinct workout types in the program)
-    const { count: numWorkouts } = await supabase
+    // Planned sessions = sum of scheduled_days across all workouts × durationWeeks.
+    // Previously we counted distinct workouts (e.g. "Treino A", "Treino B") and multiplied
+    // by weeks, which silently produced the wrong denominator for programs where the same
+    // workout repeats multiple times per week (e.g. Treino A scheduled on Mon+Thu ≠ 1 session
+    // per week). The dashboard already sums scheduled_days in getExpectedPerWeek(), so we
+    // align the report to the same definition.
+    const { data: workoutsRows } = await supabase
         .from('assigned_workouts')
-        .select('id', { count: 'exact', head: true })
+        .select('scheduled_days')
         .eq('assigned_program_id', programId)
 
-    const plannedSessions = (numWorkouts ?? 0) * durationWeeks
+    const sessionsPerWeek = (workoutsRows ?? []).reduce<number>(
+        (sum, w) => sum + ((w?.scheduled_days as number[] | null | undefined)?.length ?? 0),
+        0
+    )
+    const plannedSessions = sessionsPerWeek * durationWeeks
 
     // Count completed sessions
     const { count: completedSessions } = await supabase
