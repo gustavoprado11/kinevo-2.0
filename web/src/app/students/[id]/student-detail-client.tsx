@@ -2,15 +2,13 @@
 
 import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import dynamic from 'next/dynamic'
 import { AppLayout } from '@/components/layout'
 import {
     StudentHeader,
     ActiveProgramDashboard,
     ProgramHistorySection
 } from '@/components/students'
-import { AssignProgramModal } from '@/components/students/assign-program-modal' // Direct import
-import { CompleteProgramModal } from '@/components/students/complete-program-modal' // Direct import
-import { StudentModal } from '@/components/student-modal'
 import { completeProgram } from './actions/complete-program'
 import { extendProgram } from './actions/extend-program'
 import { deleteStudent } from './actions/student-actions'
@@ -25,13 +23,38 @@ import { AlertCircle, Dumbbell, Flame, Activity, TrendingUp, Clock, FileText } f
 import { QuickMessageCard } from '@/components/students/quick-message-card'
 import { StudentInsightsCard } from '@/components/students/student-insights-card'
 import { ContextualAlerts } from '@/components/students/contextual-alerts'
-import { LoadProgressionChart } from '@/components/students/load-progression-chart'
-import { BodyMetricsTrend } from '@/components/students/body-metrics-trend'
 import { KeyboardShortcuts } from '@/components/students/keyboard-shortcuts'
-import { ProgramComparisonCard } from '@/components/students/program-comparison-card'
 import { StudentHealthSummary } from '@/components/students/student-health-summary'
 import type { InsightItem } from '@/actions/insights'
 import type { DisplayStatus } from '@/types/financial'
+
+// Modals — only rendered when opened by user. Kept out of the initial bundle.
+const AssignProgramModal = dynamic(
+    () => import('@/components/students/assign-program-modal').then(m => m.AssignProgramModal),
+    { ssr: false, loading: () => null },
+)
+const CompleteProgramModal = dynamic(
+    () => import('@/components/students/complete-program-modal').then(m => m.CompleteProgramModal),
+    { ssr: false, loading: () => null },
+)
+const StudentModal = dynamic(
+    () => import('@/components/student-modal').then(m => m.StudentModal),
+    { ssr: false, loading: () => null },
+)
+
+// Below-the-fold charts — don't block FCP.
+const LoadProgressionChart = dynamic(
+    () => import('@/components/students/load-progression-chart').then(m => m.LoadProgressionChart),
+    { ssr: false, loading: () => null },
+)
+const BodyMetricsTrend = dynamic(
+    () => import('@/components/students/body-metrics-trend').then(m => m.BodyMetricsTrend),
+    { ssr: false, loading: () => null },
+)
+const ProgramComparisonCard = dynamic(
+    () => import('@/components/students/program-comparison-card').then(m => m.ProgramComparisonCard),
+    { ssr: false, loading: () => null },
+)
 
 interface Student {
     id: string
