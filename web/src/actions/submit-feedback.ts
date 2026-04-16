@@ -49,7 +49,12 @@ export async function submitFeedback(formData: FormData): Promise<{ success: boo
                 return { success: false, message: 'Formato não suportado. Use JPG, PNG ou WebP.' }
             }
 
-            const filePath = `${user.id}/${Date.now()}-${file.name}`
+            // Never interpolate file.name directly into the storage path —
+            // a client-supplied name like "../other-user/shell.jpg" can escape
+            // the owner folder even though storage policies check the first
+            // path segment. Use a server-generated random name + the validated
+            // extension, so the stored path is always {auth_uid}/{ts}-{uuid}.{ext}.
+            const filePath = `${user.id}/${Date.now()}-${crypto.randomUUID()}.${ext}`
 
             const { error: uploadError } = await supabase.storage
                 .from('feedback')

@@ -246,7 +246,10 @@ export async function sendMessage(
             return { success: false, error: 'Formato não suportado. Use JPG, PNG, WebP ou GIF.' }
         }
 
-        const filePath = `${studentId}/${Date.now()}-${file.name}`
+        // Never interpolate file.name directly — a name like
+        // "../other-student/shell.jpg" could escape the path prefix used by
+        // the storage RLS policy. Use a server-generated random name instead.
+        const filePath = `${studentId}/${Date.now()}-${crypto.randomUUID()}.${ext}`
 
         const { error: uploadError } = await auth.supabase.storage
             .from('messages')
