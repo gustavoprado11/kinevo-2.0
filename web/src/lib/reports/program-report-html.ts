@@ -59,6 +59,71 @@ function volumeComparison(current: number, previous: number | null): string {
     return `${sign}${Math.round(diff)}% vs programa anterior`
 }
 
+// Same sentinel used by program-report-service for sets whose exercise has no
+// muscle_group (deleted or blank). Kept as a literal to avoid importing an
+// internal constant.
+const UNCLASSIFIED_MUSCLE_GROUP_KEY = '__unclassified'
+
+function displayMuscleGroup(key: string): string {
+    return key === UNCLASSIFIED_MUSCLE_GROUP_KEY ? 'Sem grupo' : key
+}
+
+/** Sum values of a Record<string, number>. */
+function sumSeriesRecord(rec: Record<string, number> | undefined | null): number {
+    if (!rec) return 0
+    let s = 0
+    for (const v of Object.values(rec)) s += v
+    return s
+}
+
+/**
+ * Unique total of completed sets across the whole program. Prefers the new
+ * dedicated `total_completed_sets` field (correct in the presence of compound
+ * exercises that credit multiple muscle groups per set). Falls back to summing
+ * `series_by_muscle_group.total` for reports cached before that field existed —
+ * acceptable approximation since back then compound sets weren't split either.
+ */
+function totalSeries(m: ProgramReport['metrics_json']): number {
+    const explicit = (m.volume as { total_completed_sets?: number } | undefined)?.total_completed_sets
+    if (typeof explicit === 'number') return explicit
+    return sumSeriesRecord(m.volume?.series_by_muscle_group?.total)
+}
+
+/**
+ * Render the "Séries por grupo muscular" card. Sorted desc by total, shows all
+ * muscle groups (the '__unclassified' bucket is shown as "Sem grupo" at the
+ * bottom). Compact horizontal bars — no SVG, just divs, so it prints well.
+ */
+function buildSeriesByMuscleGroupCard(
+    volume: ProgramReport['metrics_json']['volume']
+): string {
+    const total = volume?.series_by_muscle_group?.total ?? {}
+    const entries = Object.entries(total).filter(([, v]) => v > 0)
+    if (entries.length === 0) return ''
+
+    // Sort desc by series count, but always put '__unclassified' last.
+    entries.sort(([ka, va], [kb, vb]) => {
+        if (ka === UNCLASSIFIED_MUSCLE_GROUP_KEY) return 1
+        if (kb === UNCLASSIFIED_MUSCLE_GROUP_KEY) return -1
+        return vb - va // desc
+    })
+
+    const max = Math.max(...entries.map(([, v]) => v), 1)
+    const rows = entries.map(([k, v]) => {
+        const pct = (v / max) * 100
+        return `<div class="mg-row">
+            <span class="mg-label">${esc(displayMuscleGroup(k))}</span>
+            <div class="mg-bar-track"><div class="mg-bar-fill" style="width:${pct}%"></div></div>
+            <span class="mg-value">${v}</span>
+        </div>`
+    }).join('')
+
+    return `<div class="chart-card">
+        <div class="section-title-inline">Séries por grupo muscular</div>
+        ${rows}
+    </div>`
+}
+
 // ── Bar Chart Builder ──
 
 function buildBarChart(
@@ -85,6 +150,29 @@ function buildBarChart(
 
 // ── Progression Table Builder ──
 
+function formatKg(v: number): string {
+    // Trim trailing .0 — "82.5kg" reads better than "82.50kg" and "80kg" better than "80.0kg".
+    const rounded = Math.round(v * 10) / 10
+    return Number.isInteger(rounded) ? `${rounded}kg` : `${rounded.toFixed(1)}kg`
+}
+
+// Delta de carga com sinal explícito e formatação consistente:
+//   +3kg   / -2.5kg / 0kg   (o zero não leva sinal — não é nem ganho nem perda)
+// Sempre passa por formatKg pra manter as casas decimais coerentes.
+function formatDeltaKg(v: number): string {
+    if (v === 0) return '0kg'
+    const body = formatKg(Math.abs(v))
+    return v > 0 ? `+${body}` : `-${body}`
+}
+
+// Classe CSS do delta em três estados (positivo/neutro/negativo).
+// Usar "neutral" evita pintar +0kg de verde, que sugere progresso inexistente.
+function deltaStateClass(v: number): string {
+    if (v > 0) return ' positive'
+    if (v < 0) return ' negative'
+    return ' neutral'
+}
+
 function buildProgressionTable(
     exercises: ProgramReport['metrics_json']['progression']['top_exercises'],
     durationWeeks: number | null,
@@ -94,19 +182,35 @@ function buildProgressionTable(
 
     const rows = exercises.map(ex => {
         const weekCells = ex.weekly_max_weight.map(w =>
-            `<td>${w !== null ? `${w}kg` : '—'}</td>`
+            `<td>${w !== null ? formatKg(w) : '—'}</td>`
         ).join('')
-        const sign = ex.change_kg >= 0 ? '+' : ''
-        const deltaClass = ex.change_kg >= 0 ? '' : ' negative'
+        const deltaClass = deltaStateClass(ex.change_kg)
+        const pctBody = ex.change_pct === 0
+            ? '0%'
+            : `${ex.change_pct > 0 ? '+' : ''}${ex.change_pct}%`
+
+        // 1RM estimated — new in Bloco B. Some cached reports from before the migration
+        // won't have these fields; fall back to '—'.
+        const hasEst1RM = typeof ex.start_est_1rm === 'number' && typeof ex.end_est_1rm === 'number'
+            && (ex.start_est_1rm > 0 || ex.end_est_1rm > 0)
+        const est1RMCell = hasEst1RM
+            ? `<span class="prog-1rm-val">${formatKg(ex.start_est_1rm)} → ${formatKg(ex.end_est_1rm)}</span>`
+            : '—'
+        const changeEst = ex.change_est_1rm_kg ?? 0
+        const est1RMDelta = hasEst1RM
+            ? `<span class="prog-delta${deltaStateClass(changeEst)}">${formatDeltaKg(changeEst)}</span>`
+            : ''
+
         return `<tr>
             <td class="prog-name">${esc(ex.exercise_name)}</td>
             ${weekCells}
-            <td class="prog-delta${deltaClass}">${sign}${ex.change_kg}kg (${sign}${ex.change_pct}%)</td>
+            <td class="prog-delta${deltaClass}">${formatDeltaKg(ex.change_kg)} (${pctBody})</td>
+            <td class="prog-1rm">${est1RMCell}${est1RMDelta ? ` ${est1RMDelta}` : ''}</td>
         </tr>`
     }).join('')
 
     return `<table class="prog-table">
-        <thead><tr><th>Exercício</th>${weekHeaders}<th>Δ</th></tr></thead>
+        <thead><tr><th>Exercício</th>${weekHeaders}<th>Δ carga</th><th>1RM est. (ini → fim)</th></tr></thead>
         <tbody>${rows}</tbody>
     </table>`
 }
@@ -118,6 +222,7 @@ function buildKPISection(
     hasFrequency: boolean,
     hasVolume: boolean,
     hasRPE: boolean,
+    hasSeries: boolean,
     isCompleted: boolean,
 ): string {
     const cards: string[] = []
@@ -130,17 +235,53 @@ function buildKPISection(
         </div>`)
     }
 
-    if (hasVolume) {
-        // Only compare to previous program once the current one is completed — comparing a
-        // partial (in-flight) program to a full prior program always yields a misleading
-        // large negative delta (e.g. "-94% vs programa anterior" mid-cycle).
-        const comp = isCompleted
-            ? volumeComparison(m.volume.total_tonnage_kg, m.volume.previous_program_tonnage_kg)
-            : ''
+    // Series completadas é a métrica-chave de volume para o treinador (vocabulário
+    // que ele usa ao prescrever hipertrofia: "X séries por grupo por semana").
+    // A tonelagem continua útil como métrica secundária, mas não é a headline.
+    if (hasSeries) {
+        const total = totalSeries(m)
+        const weeks = m.volume?.series_by_muscle_group?.weekly?.length ?? 0
+        const weeklyAvg = weeks > 0 ? Math.round(total / weeks) : 0
         cards.push(`<div class="kpi-card">
-            <div class="kpi-label">Volume Total</div>
-            <div class="kpi-value">${formatTonnage(m.volume.total_tonnage_kg)}</div>
-            ${comp ? `<div class="kpi-sub">${esc(comp)}</div>` : ''}
+            <div class="kpi-label">Séries completadas</div>
+            <div class="kpi-value">${total.toLocaleString('pt-BR')}</div>
+            <div class="kpi-sub">${weeklyAvg}/semana em média</div>
+        </div>`)
+    }
+
+    // Carga média / série: peso médio LEVANTADO por set (ignora sets corporais).
+    // Vocabulário que o treinador lê como "carga típica que a aluna pegou".
+    // O valor vem calculado do service (avg_weight_per_set_kg). Relatórios
+    // gerados antes do novo campo caem no fallback tonelagem/sets — que é
+    // semanticamente errado (inflado pelas reps), mas evita quebrar cache velho.
+    const vol = m.volume as typeof m.volume & {
+        avg_weight_per_set_kg?: number | null
+        previous_program_avg_weight_per_set_kg?: number | null
+        previous_program_completed_sets?: number | null
+    }
+    const avgLoad: number | null = (() => {
+        if (typeof vol.avg_weight_per_set_kg === 'number') return vol.avg_weight_per_set_kg
+        const sets = vol.total_completed_sets
+        if (hasVolume && typeof sets === 'number' && sets > 0) {
+            return vol.total_tonnage_kg / sets
+        }
+        return null
+    })()
+    if (avgLoad !== null && avgLoad > 0) {
+        const prevAvg: number | null = (() => {
+            if (typeof vol.previous_program_avg_weight_per_set_kg === 'number') {
+                return vol.previous_program_avg_weight_per_set_kg
+            }
+            const prevTonnage = vol.previous_program_tonnage_kg
+            const prevSets = vol.previous_program_completed_sets
+            if (prevTonnage && prevSets && prevSets > 0) return prevTonnage / prevSets
+            return null
+        })()
+        const comp = isCompleted ? volumeComparison(avgLoad, prevAvg) : ''
+        cards.push(`<div class="kpi-card">
+            <div class="kpi-label">Carga média / série</div>
+            <div class="kpi-value">${formatKg(avgLoad)}</div>
+            <div class="kpi-sub">${comp ? esc(comp) : 'Peso médio levantado'}</div>
         </div>`)
     }
 
@@ -177,6 +318,7 @@ export function generateReportHTML(
     const m = report.metrics_json
     const hasFrequency = m.frequency && m.frequency.completed_sessions > 0
     const hasVolume = m.volume && m.volume.total_tonnage_kg > 0
+    const hasSeries = totalSeries(m) > 0
     const hasRPE = m.rpe && m.rpe.overall_avg !== null
     const hasProgression = m.progression?.top_exercises?.length > 0
     const hasCheckins = m.checkins?.averages?.length > 0
@@ -223,6 +365,12 @@ export function generateReportHTML(
     .checkin-bar-track { height: 6px; }
     .checkin-bar-fill { height: 6px; }
     .checkin-row { margin-bottom: 6px; }
+    .mg-label { font-size: 9px; width: 100px; }
+    .mg-value { font-size: 9px; }
+    .mg-bar-track { height: 5px; }
+    .mg-bar-fill { height: 5px; }
+    .mg-row { margin-bottom: 4px; }
+    .prog-1rm { font-size: 8px; }
     .footer { margin-top: 16px; padding-top: 8px; }
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -314,8 +462,18 @@ export function generateReportHTML(
   .prog-table td { padding: 8px 8px; border-bottom: 1px solid #f1f5f9; color: ${C.text}; }
   .prog-table tr:last-child td { border-bottom: none; }
   .prog-name { font-weight: 600; }
-  .prog-delta { font-weight: 700; color: ${C.green}; }
+  .prog-delta { font-weight: 700; color: ${C.textSecondary}; }
+  .prog-delta.positive { color: ${C.green}; }
   .prog-delta.negative { color: #ef4444; }
+  .prog-delta.neutral { color: ${C.textSecondary}; }
+  .prog-1rm { font-size: 10px; color: ${C.textSecondary}; white-space: nowrap; }
+  .prog-1rm-val { color: ${C.text}; font-weight: 600; }
+  /* Séries por grupo muscular — horizontal bars */
+  .mg-row { display: flex; align-items: center; margin-bottom: 8px; }
+  .mg-label { font-size: 12px; color: ${C.text}; width: 130px; flex-shrink: 0; }
+  .mg-bar-track { flex: 1; height: 8px; background: ${C.border}; border-radius: 4px; margin: 0 10px; overflow: hidden; }
+  .mg-bar-fill { height: 8px; border-radius: 4px; background: ${C.primary}; }
+  .mg-value { font-size: 12px; font-weight: 700; color: ${C.text}; width: 40px; text-align: right; flex-shrink: 0; }
   .checkin-row { display: flex; align-items: center; margin-bottom: 10px; }
   .checkin-label { font-size: 12px; color: ${C.text}; width: 160px; flex-shrink: 0; }
   .checkin-bar-track { flex: 1; height: 8px; background: ${C.border}; border-radius: 4px; margin: 0 10px; overflow: hidden; }
@@ -373,7 +531,7 @@ export function generateReportHTML(
 <div class="divider"></div>
 
 <!-- KPI Cards (all inline) -->
-${buildKPISection(m, hasFrequency, hasVolume, hasRPE, isCompleted)}
+${buildKPISection(m, hasFrequency, hasVolume, hasRPE, hasSeries, isCompleted)}
 
 <!-- Charts Grid: 2 columns in print -->
 <div class="chart-grid">
@@ -395,10 +553,16 @@ ${hasRPE && m.rpe.weekly_avg.some(v => v !== null) ? `
 </div>
 ` : ''}
 
+${hasSeries ? `
+<div class="chart-grid-item">
+  ${buildSeriesByMuscleGroupCard(m.volume)}
+</div>
+` : ''}
+
 ${hasVolume && m.volume.weekly_tonnage.some(v => v > 0) ? `
 <div class="chart-grid-item">
   <div class="chart-card">
-    <div class="section-title-inline">Volume Semanal</div>
+    <div class="section-title-inline">Carga total por semana</div>
     ${buildBarChart(m.volume.weekly_tonnage, C.green, undefined, (v) => v > 0 ? formatTonnage(v) : '')}
   </div>
 </div>
@@ -431,25 +595,33 @@ ${hasCheckins ? `
 
 <!-- Observações do Treinador -->
 <div class="section-title">Observações do Treinador</div>
-${isDraft ? `
+${(() => {
+  // trainer_notes (edição do treinador) tem precedência. Quando vazio, caímos
+  // no rascunho automático como ponto de partida — editar por cima salva em
+  // trainer_notes normalmente.
+  const effectiveNotes = report.trainer_notes ?? report.auto_notes_draft ?? ''
+  const isAutoDraft = !report.trainer_notes && !!report.auto_notes_draft
+  const draftTextareaBlock = isDraft ? `
 <textarea
   id="trainer-notes"
   class="notes-textarea no-print"
   placeholder="Adicione suas observações sobre o desempenho do aluno..."
   data-report-id="${esc(report.id)}"
->${esc(report.trainer_notes)}</textarea>
-<div id="notes-status" class="notes-save-status no-print"></div>
-` : ''}
-${report.trainer_notes ? `
+>${esc(effectiveNotes)}</textarea>
+<div id="notes-status" class="notes-save-status no-print">${isAutoDraft ? 'Rascunho gerado automaticamente — edite livremente.' : ''}</div>
+` : ''
+  const staticBlock = effectiveNotes ? `
 <div class="notes-block notes-static${isDraft ? '' : ' notes-published'}">
-  <div class="notes-text">${esc(report.trainer_notes)}</div>
-  <div class="notes-author">— ${esc(trainerName)}</div>
+  <div class="notes-text">${esc(effectiveNotes)}</div>
+  ${report.trainer_notes ? `<div class="notes-author">— ${esc(trainerName)}</div>` : ''}
 </div>
 ` : `
 <div class="notes-block notes-static">
   <div class="notes-text" style="color:${C.textMuted};font-style:italic">Nenhuma observação adicionada.</div>
 </div>
-`}
+`
+  return draftTextareaBlock + staticBlock
+})()}
 
 <!-- Footer -->
 <div class="footer">

@@ -24,6 +24,7 @@ import {
     RefreshCw,
     FileText,
     ArrowDown,
+    Layers,
 } from "lucide-react-native";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
@@ -45,6 +46,14 @@ interface ReportVolume {
     total_tonnage_kg: number;
     weekly_tonnage: number[];
     previous_program_tonnage_kg: number | null;
+    previous_program_completed_sets?: number | null;
+    avg_weight_per_set_kg?: number | null;
+    previous_program_avg_weight_per_set_kg?: number | null;
+    total_completed_sets?: number;
+    series_by_muscle_group?: {
+        total: Record<string, number>;
+        weekly: Array<Record<string, number>>;
+    };
 }
 
 interface ReportRPE {
@@ -60,6 +69,11 @@ interface ReportExerciseProgression {
     end_weight: number;
     change_kg: number;
     change_pct: number;
+    weekly_est_1rm?: (number | null)[];
+    start_est_1rm?: number;
+    end_est_1rm?: number;
+    change_est_1rm_kg?: number;
+    change_est_1rm_pct?: number;
 }
 
 interface ReportCheckins {
@@ -90,6 +104,12 @@ interface ProgramReport {
     program_completed_at: string | null;
     metrics_json: ProgramReportMetrics;
     trainer_notes: string | null;
+    /**
+     * Rascunho automático gerado a partir de metrics_json no backend. Fallback
+     * pro campo de notas quando o treinador ainda não preencheu — edições vão
+     * pra trainer_notes.
+     */
+    auto_notes_draft: string | null;
     generated_at: string;
     published_at: string | null;
 }
@@ -151,7 +171,10 @@ export default function ReportScreen() {
 
             const r = data as unknown as ProgramReport;
             setReport(r);
-            setNotes(r.trainer_notes ?? "");
+            // Pré-popula com auto_notes_draft quando trainer_notes está vazio —
+            // o treinador edita por cima e a primeira digitação debouncea o
+            // save em trainer_notes, onde a edição persiste.
+            setNotes(r.trainer_notes ?? r.auto_notes_draft ?? "");
 
             // Fetch student & trainer names
             const [{ data: student }, { data: trainer }] = await Promise.all([
@@ -352,6 +375,7 @@ export default function ReportScreen() {
     const isDraft = report.status === "draft";
     const hasFrequency = m.frequency && m.frequency.completed_sessions > 0;
     const hasVolume = m.volume && m.volume.total_tonnage_kg > 0;
+    const hasSeries = totalSeries(m) > 0;
     const hasRPE = m.rpe && m.rpe.overall_avg !== null;
     const hasProgression = m.progression?.top_exercises?.length > 0;
     const hasCheckins = m.checkins?.averages?.length > 0;
@@ -391,7 +415,16 @@ export default function ReportScreen() {
                 showsVerticalScrollIndicator={false}
                 refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor={COLORS.primary} />}
             >
-                {/* KPI Cards */}
+                {/* KPI Cards
+                  *
+                  * Ordem intencional (linguagem que o treinador usa):
+                  * 1ª linha  → Frequência    |  Séries completadas  (headlines de adesão + hipertrofia)
+                  * 2ª linha  → Volume total  |  PSE média
+                  * 3ª linha  → Melhor sequência (sozinho, só se houver)
+                  *
+                  * Séries é a métrica principal de volume pro treinador;
+                  * tonelagem vai como complemento porque é comum em planilhas antigas.
+                  */}
                 <View style={{ flexDirection: "row", gap: 10, marginBottom: 10 }}>
                     {hasFrequency && (
                         <KPICard
@@ -401,16 +434,54 @@ export default function ReportScreen() {
                             subtitle={`${m.frequency.completed_sessions} de ${m.frequency.planned_sessions}`}
                         />
                     )}
-                    {hasVolume && (
+                    {hasSeries && (
                         <KPICard
-                            icon={<TrendingUp size={16} color={COLORS.green} />}
-                            label="Volume total"
-                            value={formatTonnage(m.volume.total_tonnage_kg)}
-                            subtitle={isCompleted ? formatVolumeComparison(m.volume.total_tonnage_kg, m.volume.previous_program_tonnage_kg) : null}
+                            icon={<Layers size={16} color={COLORS.primary} />}
+                            label="Séries completadas"
+                            value={totalSeries(m).toLocaleString("pt-BR")}
+                            subtitle={(() => {
+                                const weeks = m.volume?.series_by_muscle_group?.weekly?.length ?? 0;
+                                const avg = weeks > 0 ? Math.round(totalSeries(m) / weeks) : 0;
+                                return `${avg}/semana em média`;
+                            })()}
                         />
                     )}
                 </View>
-                <View style={{ flexDirection: "row", gap: 10, marginBottom: 20 }}>
+                <View style={{ flexDirection: "row", gap: 10, marginBottom: 10 }}>
+                    {(() => {
+                        // Carga média / série: peso médio LEVANTADO por set
+                        // (service ignora corporal). Fallback pra tonelagem/sets
+                        // preserva o KPI em relatórios cacheados antigos.
+                        const avgLoad: number | null = (() => {
+                            if (typeof m.volume.avg_weight_per_set_kg === "number") {
+                                return m.volume.avg_weight_per_set_kg;
+                            }
+                            const sets = m.volume.total_completed_sets;
+                            if (hasVolume && typeof sets === "number" && sets > 0) {
+                                return m.volume.total_tonnage_kg / sets;
+                            }
+                            return null;
+                        })();
+                        if (avgLoad === null || avgLoad <= 0) return null;
+                        const prevAvg: number | null = (() => {
+                            if (typeof m.volume.previous_program_avg_weight_per_set_kg === "number") {
+                                return m.volume.previous_program_avg_weight_per_set_kg;
+                            }
+                            const prevTonnage = m.volume.previous_program_tonnage_kg;
+                            const prevSets = m.volume.previous_program_completed_sets ?? null;
+                            if (prevTonnage && prevSets && prevSets > 0) return prevTonnage / prevSets;
+                            return null;
+                        })();
+                        const comp = isCompleted ? formatVolumeComparison(avgLoad, prevAvg) : null;
+                        return (
+                            <KPICard
+                                icon={<TrendingUp size={16} color={COLORS.green} />}
+                                label="Carga média / série"
+                                value={formatKg(avgLoad)}
+                                subtitle={comp ?? "Peso médio levantado"}
+                            />
+                        );
+                    })()}
                     {hasRPE && (
                         <KPICard
                             icon={<Flame size={16} color="#f59e0b" />}
@@ -419,15 +490,20 @@ export default function ReportScreen() {
                             subtitle="Percepção de esforço do aluno"
                         />
                     )}
-                    {hasFrequency && m.frequency.best_streak_weeks > 0 && (
+                </View>
+                {hasFrequency && m.frequency.best_streak_weeks > 0 && (
+                    <View style={{ flexDirection: "row", gap: 10, marginBottom: 20 }}>
                         <KPICard
                             icon={<Zap size={16} color={COLORS.blue} />}
                             label="Melhor sequência"
                             value={String(m.frequency.best_streak_weeks)}
                             subtitle="semanas consecutivas"
                         />
-                    )}
-                </View>
+                        {/* Spacer to keep card width consistent with the 2-column rows above */}
+                        <View style={{ flex: 1 }} />
+                    </View>
+                )}
+                {!(hasFrequency && m.frequency.best_streak_weeks > 0) && <View style={{ height: 10 }} />}
 
                 {/* Bar chart: Frequência semanal */}
                 {hasFrequency && m.frequency.weekly_breakdown.length > 0 && (
@@ -435,6 +511,16 @@ export default function ReportScreen() {
                         <SectionLabel>Frequência Semanal</SectionLabel>
                         <View style={{ backgroundColor: COLORS.card, borderRadius: 14, padding: 16, marginBottom: 20 }}>
                             <BarChart data={m.frequency.weekly_breakdown} color={COLORS.primary} />
+                        </View>
+                    </>
+                )}
+
+                {/* Séries por grupo muscular */}
+                {hasSeries && m.volume?.series_by_muscle_group?.total && (
+                    <>
+                        <SectionLabel>Séries por Grupo Muscular</SectionLabel>
+                        <View style={{ backgroundColor: COLORS.card, borderRadius: 14, padding: 16, marginBottom: 20 }}>
+                            <MuscleGroupBreakdown total={m.volume.series_by_muscle_group.total} />
                         </View>
                     </>
                 )}
@@ -459,10 +545,10 @@ export default function ReportScreen() {
                     </>
                 )}
 
-                {/* Volume semanal */}
+                {/* Carga total por semana */}
                 {hasVolume && m.volume.weekly_tonnage.some((v) => v > 0) && (
                     <>
-                        <SectionLabel>Volume Semanal</SectionLabel>
+                        <SectionLabel>Carga total por semana</SectionLabel>
                         <View style={{ backgroundColor: COLORS.card, borderRadius: 14, padding: 16, marginBottom: 20 }}>
                             <BarChart data={m.volume.weekly_tonnage} color={COLORS.green} formatLabel={(v) => formatTonnage(v)} />
                         </View>
@@ -920,29 +1006,56 @@ function MultiLineChart({ exercises }: { exercises: ReportExerciseProgression[] 
                 ))}
             </View>
 
-            {/* Legend */}
-            <View style={{ gap: 6 }}>
+            {/* Legend — shows load delta and (when available) estimated 1RM delta */}
+            <View style={{ gap: 8 }}>
                 {exercises.map((exercise, exIdx) => {
                     const color = PROGRESSION_COLORS[exIdx % PROGRESSION_COLORS.length];
+                    const hasEst1RM =
+                        typeof exercise.start_est_1rm === "number" &&
+                        typeof exercise.end_est_1rm === "number" &&
+                        (exercise.start_est_1rm > 0 || exercise.end_est_1rm > 0);
+                    const est1RMChange = exercise.change_est_1rm_kg ?? 0;
                     return (
-                        <View key={exercise.exercise_id} style={{ flexDirection: "row", alignItems: "center" }}>
-                            <View
-                                style={{
-                                    width: 10,
-                                    height: 10,
-                                    borderRadius: 5,
-                                    backgroundColor: color,
-                                    marginRight: 8,
-                                }}
-                            />
-                            <Text style={{ fontSize: 13, color: COLORS.text, flex: 1 }} numberOfLines={1}>
-                                {exercise.exercise_name}
-                            </Text>
-                            <Text style={{ fontSize: 12, color: COLORS.textSecondary }}>
-                                {exercise.change_kg >= 0 ? "+" : ""}
-                                {exercise.change_kg}kg ({exercise.change_pct >= 0 ? "+" : ""}
-                                {exercise.change_pct}%)
-                            </Text>
+                        <View key={exercise.exercise_id}>
+                            <View style={{ flexDirection: "row", alignItems: "center" }}>
+                                <View
+                                    style={{
+                                        width: 10,
+                                        height: 10,
+                                        borderRadius: 5,
+                                        backgroundColor: color,
+                                        marginRight: 8,
+                                    }}
+                                />
+                                <Text style={{ fontSize: 13, color: COLORS.text, flex: 1 }} numberOfLines={1}>
+                                    {exercise.exercise_name}
+                                </Text>
+                                <Text
+                                    style={{
+                                        fontSize: 12,
+                                        fontWeight: "600",
+                                        color: deltaColor(exercise.change_kg),
+                                    }}
+                                >
+                                    {formatDeltaKg(exercise.change_kg)} ({formatDeltaPct(exercise.change_pct)})
+                                </Text>
+                            </View>
+                            {hasEst1RM && (
+                                <Text
+                                    style={{
+                                        fontSize: 11,
+                                        color: COLORS.textMuted,
+                                        marginLeft: 18,
+                                        marginTop: 2,
+                                    }}
+                                >
+                                    1RM est.: {formatKg(exercise.start_est_1rm!)} → {formatKg(exercise.end_est_1rm!)}
+                                    {"  "}
+                                    <Text style={{ color: deltaColor(est1RMChange), fontWeight: "600" }}>
+                                        ({formatDeltaKg(est1RMChange)})
+                                    </Text>
+                                </Text>
+                            )}
                         </View>
                     );
                 })}
@@ -988,6 +1101,62 @@ function ProgressBar({
     );
 }
 
+// ── Muscle Group Breakdown ──
+
+function MuscleGroupBreakdown({ total }: { total: Record<string, number> }) {
+    const entries = Object.entries(total).filter(([, v]) => v > 0);
+    if (entries.length === 0) return null;
+
+    // Sort desc, '__unclassified' last (trainer's tagging blind spot, not a real group).
+    entries.sort(([ka, va], [kb, vb]) => {
+        if (ka === UNCLASSIFIED_MUSCLE_GROUP_KEY) return 1;
+        if (kb === UNCLASSIFIED_MUSCLE_GROUP_KEY) return -1;
+        return vb - va;
+    });
+
+    const max = Math.max(...entries.map(([, v]) => v), 1);
+
+    return (
+        <View>
+            {entries.map(([key, count], i) => {
+                const pct = (count / max) * 100;
+                const isLast = i === entries.length - 1;
+                const isUnclassified = key === UNCLASSIFIED_MUSCLE_GROUP_KEY;
+                return (
+                    <View key={key} style={{ marginBottom: isLast ? 0 : 12 }}>
+                        <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 6 }}>
+                            <Text
+                                style={{
+                                    fontSize: 13,
+                                    color: isUnclassified ? COLORS.textMuted : COLORS.text,
+                                    flex: 1,
+                                    fontStyle: isUnclassified ? "italic" : "normal",
+                                }}
+                                numberOfLines={1}
+                            >
+                                {displayMuscleGroup(key)}
+                            </Text>
+                            <Text style={{ fontSize: 13, fontWeight: "700", color: COLORS.text, marginLeft: 8 }}>
+                                {count}
+                            </Text>
+                        </View>
+                        <View style={{ height: 8, backgroundColor: "#f1f5f9", borderRadius: 4 }}>
+                            <View
+                                style={{
+                                    height: 8,
+                                    width: `${pct}%`,
+                                    backgroundColor: isUnclassified ? COLORS.textMuted : COLORS.primary,
+                                    borderRadius: 4,
+                                }}
+                            />
+                        </View>
+                    </View>
+                );
+            })}
+        </View>
+    );
+}
+
 // ============================================================================
 // Helpers
 // ============================================================================
@@ -1013,4 +1182,49 @@ function formatPeriod(start: string | null, end: string | null): string {
     const fmt = (d: string) => new Date(d).toLocaleDateString("pt-BR", { month: "short", year: "numeric" });
     if (end) return `${fmt(start)} — ${fmt(end)}`;
     return `Desde ${fmt(start)}`;
+}
+
+// Same sentinel used on the service side for sets without a muscle_group.
+const UNCLASSIFIED_MUSCLE_GROUP_KEY = "__unclassified";
+
+function displayMuscleGroup(key: string): string {
+    return key === UNCLASSIFIED_MUSCLE_GROUP_KEY ? "Sem grupo" : key;
+}
+
+function sumSeriesRecord(rec: Record<string, number> | undefined | null): number {
+    if (!rec) return 0;
+    let s = 0;
+    for (const v of Object.values(rec)) s += v;
+    return s;
+}
+
+function totalSeries(m: ProgramReportMetrics): number {
+    const explicit = m.volume?.total_completed_sets;
+    if (typeof explicit === "number") return explicit;
+    return sumSeriesRecord(m.volume?.series_by_muscle_group?.total);
+}
+
+function formatKg(v: number): string {
+    const rounded = Math.round(v * 10) / 10;
+    return Number.isInteger(rounded) ? `${rounded}kg` : `${rounded.toFixed(1)}kg`;
+}
+
+// Delta de carga com sinal explícito e formatação consistente:
+//   +3kg / -2.5kg / 0kg (zero não leva sinal — não é ganho nem perda).
+function formatDeltaKg(v: number): string {
+    if (v === 0) return "0kg";
+    const body = formatKg(Math.abs(v));
+    return v > 0 ? `+${body}` : `-${body}`;
+}
+
+function formatDeltaPct(v: number): string {
+    if (v === 0) return "0%";
+    return `${v > 0 ? "+" : ""}${v}%`;
+}
+
+// Cor do delta em três estados — evita pintar 0 de verde.
+function deltaColor(v: number): string {
+    if (v > 0) return COLORS.green;
+    if (v < 0) return COLORS.red;
+    return COLORS.textSecondary;
 }

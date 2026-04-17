@@ -16,7 +16,7 @@ import type { Question } from "../../components/forms/FormFieldRenderer";
 
 interface InboxItem {
     id: string;
-    type: "form_request" | "feedback" | "system_alert" | "text_message";
+    type: "form_request" | "feedback" | "system_alert" | "text_message" | "program_report_published";
     status: "unread" | "pending_action" | "completed" | "archived";
     title: string;
     subtitle: string | null;

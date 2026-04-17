@@ -16,7 +16,9 @@ import { UnifiedCalendar } from "../../components/home/UnifiedCalendar";
 import { ProgressCard } from "../../components/home/ProgressCard";
 import { ActionCard } from "../../components/home/ActionCard";
 import { WorkoutList } from "../../components/home/WorkoutList";
+import { ReportReadyCard } from "../../components/home/ReportReadyCard";
 import { ShareWorkoutModal } from "../../components/workout/ShareWorkoutModal";
+import { useLatestUnreadReport } from "../../hooks/useLatestUnreadReport";
 
 // ─── Entering animation shorthand ───
 const ENTER = ANIM.enter;
@@ -26,6 +28,7 @@ export default function HomeScreen() {
     const { user } = useAuth();
     const { profile, refreshProfile } = useStudentProfile();
     const { allowed, reason, isLoading: accessLoading, refresh: refreshAccess } = useStudentAccess();
+    const { item: unreadReport, markOpened: markReportOpened } = useLatestUnreadReport();
 
     const {
         programName,
@@ -96,6 +99,15 @@ export default function HomeScreen() {
         setShareModalVisible(true);
         setShareSessionId(session.id);
     }, [sessionsMap, selectedDate, profile]);
+
+    const handleOpenReport = useCallback(async () => {
+        if (!unreadReport) return;
+        // Navega primeiro — melhor UX (tela abre imediato); markOpened roda
+        // em paralelo com UI otimista e o card some via estado local do hook.
+        const reportId = unreadReport.reportId;
+        router.push(`/report/${reportId}` as any);
+        markReportOpened();
+    }, [unreadReport, router, markReportOpened]);
 
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
@@ -301,6 +313,14 @@ export default function HomeScreen() {
                         )}
                     </TouchableOpacity>
                 </Animated.View>
+
+                {/* ── Report Ready Card: só renderiza se há relatório não lido ── */}
+                {unreadReport && (
+                    <ReportReadyCard
+                        programName={unreadReport.programName}
+                        onPress={handleOpenReport}
+                    />
+                )}
 
                 {/* ── Calendar: Unified accordion with smooth expand/collapse ── */}
                 <Animated.View

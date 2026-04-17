@@ -8,6 +8,8 @@
 // See: docs/program-report-spec.md
 
 import { createClient } from '@/lib/supabase/server'
+import { buildTrainerNotesDraft } from './program-report-notes-draft'
+import { insertStudentNotification } from '@/lib/student-notifications'
 
 // ============================================================================
 // Types
@@ -27,6 +29,45 @@ export interface ReportVolume {
     total_tonnage_kg: number
     weekly_tonnage: number[]
     previous_program_tonnage_kg: number | null
+    /**
+     * Completed sets in the previous program. Mantido pra retrocompatibilidade —
+     * relatórios gerados antes do campo avg_weight_per_set_kg precisam disso pra
+     * derivar a comparação por fallback. Null quando não há programa anterior.
+     */
+    previous_program_completed_sets: number | null
+    /**
+     * Carga média por série levantada neste programa (média dos pesos ponderada
+     * por set, considerando apenas sets com weight > 0 — sets corporais são
+     * ignorados). É a métrica que o treinador lê como "carga típica / série".
+     */
+    avg_weight_per_set_kg: number | null
+    /**
+     * Mesma média para o programa anterior, usada pra comparação vs programa
+     * anterior no KPI.
+     */
+    previous_program_avg_weight_per_set_kg: number | null
+    /**
+     * Unique completed sets across the whole program (each set_log counts exactly
+     * once). This is the headline volume metric — NOT the sum of
+     * series_by_muscle_group.total, which double-counts compound exercises.
+     */
+    total_completed_sets: number
+    /**
+     * Completed work sets grouped by muscle_group. Compound-exercise set_logs
+     * count in every group their exercise targets — e.g. an exercise with
+     * muscle_group="Posterior de Coxa, Glúteo" contributes +1 to "Posterior de
+     * Coxa" and +1 to "Glúteo". This is the convention trainers use when
+     * prescribing hypertrophy ("12 sets of hamstrings per week"). The sum of
+     * all groups can therefore exceed total_completed_sets. `muscle_group` is
+     * copied from exercises.muscle_group (trainer-defined free text);
+     * set_logs from warmup/cardio items are naturally excluded because those
+     * item_types don't produce set_logs. A special key '__unclassified'
+     * captures sets whose exercise was deleted or never had a muscle_group set.
+     */
+    series_by_muscle_group: {
+        total: Record<string, number>
+        weekly: Array<Record<string, number>>
+    }
 }
 
 export interface ReportRPE {
@@ -42,6 +83,15 @@ export interface ReportExerciseProgression {
     end_weight: number
     change_kg: number
     change_pct: number
+    /**
+     * Estimated 1-rep max per program-week, using the best of Epley and Brzycki
+     * formulas across the week's sets. Null for weeks with no logged sets.
+     */
+    weekly_est_1rm: (number | null)[]
+    start_est_1rm: number
+    end_est_1rm: number
+    change_est_1rm_kg: number
+    change_est_1rm_pct: number
 }
 
 export interface ReportCheckins {
@@ -72,6 +122,12 @@ export interface ProgramReport {
     program_completed_at: string | null
     metrics_json: ProgramReportMetrics
     trainer_notes: string | null
+    /**
+     * Rascunho automático gerado a partir de metrics_json no generateReport/
+     * regenerateReport. Read-only pros clientes — edição do treinador vai pra
+     * trainer_notes, que tem precedência na renderização.
+     */
+    auto_notes_draft: string | null
     generated_at: string
     published_at: string | null
     created_at: string
@@ -150,7 +206,26 @@ export async function generateReport(
             checkins,
         }
 
-        // 4. Insert the report
+        // 4. Build the auto notes draft from metrics. Treinador vê isso
+        //    pré-populado e edita em cima — a edição vai pra trainer_notes.
+        const autoNotesDraft = buildTrainerNotesDraft(metrics, {
+            isCompleted: ap.completed_at !== null || ap.status === 'completed',
+            durationWeeks: ap.duration_weeks,
+            studentFirstName: null,
+        })
+
+        // 5. Preferência do treinador: auto-publicar ou deixar em draft?
+        //    Se true, relatório sai direto como 'published' e o aluno
+        //    recebe a mesma notificação de relatório publicado.
+        const { data: trainerPrefs } = await supabase
+            .from('trainers')
+            .select('auto_publish_reports')
+            .eq('id', ap.trainer_id)
+            .single()
+        const autoPublish = trainerPrefs?.auto_publish_reports === true
+        const nowIso = new Date().toISOString()
+
+        // 6. Insert the report
         const { data: report, error: insertError } = await supabase
             .from('program_reports')
             .insert({
@@ -162,7 +237,9 @@ export async function generateReport(
                 program_started_at: ap.started_at,
                 program_completed_at: ap.completed_at,
                 metrics_json: metrics,
-                status: 'draft',
+                auto_notes_draft: autoNotesDraft,
+                status: autoPublish ? 'published' : 'draft',
+                published_at: autoPublish ? nowIso : null,
             })
             .select('id')
             .single()
@@ -170,6 +247,25 @@ export async function generateReport(
         if (insertError || !report) {
             console.error('[program-report] Insert failed:', insertError?.message)
             return null
+        }
+
+        // 7. Auto-publish: notifica o aluno imediatamente com o mesmo
+        //    payload do publishReport manual. Mantém o fluxo do aluno
+        //    idêntico independente de ter sido auto ou manual.
+        if (autoPublish) {
+            const programName = ap.name || 'seu programa'
+            await insertStudentNotification({
+                studentId: ap.student_id,
+                trainerId: ap.trainer_id,
+                type: 'program_report_published',
+                title: 'Seu relatório chegou!',
+                subtitle: `Veja como foi "${programName}" — fechamos o ciclo com os números e comentários do seu treinador.`,
+                payload: {
+                    report_id: report.id,
+                    assigned_program_id: programId,
+                    program_name: programName,
+                },
+            })
         }
 
         return report.id
@@ -259,21 +355,51 @@ export async function updateTrainerNotes(
 
 /**
  * Publishes a draft report, making it visible to the student.
+ *
+ * Além de mudar o status, insere uma notificação no inbox do aluno
+ * (`student_inbox_items` type `program_report_published`). O trigger
+ * `on_student_inbox_item_push` cuida do push automaticamente.
+ *
+ * A notificação só é criada quando o UPDATE de fato transicionou
+ * draft → published — republicações no-op não geram push duplicado.
  */
 export async function publishReport(
     supabase: SupabaseClient,
     reportId: string
 ): Promise<boolean> {
     try {
-        const { error } = await supabase
+        // UPDATE retorna as linhas afetadas. Filtro por status='draft' garante
+        // que um relatório já publicado não volte a disparar notificação.
+        const { data: updated, error } = await supabase
             .from('program_reports')
             .update({ status: 'published', published_at: new Date().toISOString() })
             .eq('id', reportId)
             .eq('status', 'draft')
+            .select('id, student_id, trainer_id, assigned_program_id, program_name')
 
         if (error) {
             console.error('[program-report] publishReport failed:', error.message)
             return false
+        }
+
+        // Transição efetiva: cria inbox item. Se updated vier vazio, o
+        // relatório já estava publicado ou não existe — nenhum dos dois
+        // deve gerar notificação.
+        const row = updated?.[0]
+        if (row) {
+            const programName = row.program_name || 'seu programa'
+            await insertStudentNotification({
+                studentId: row.student_id,
+                trainerId: row.trainer_id,
+                type: 'program_report_published',
+                title: 'Seu relatório chegou!',
+                subtitle: `Veja como foi "${programName}" — fechamos o ciclo com os números e comentários do seu treinador.`,
+                payload: {
+                    report_id: row.id,
+                    assigned_program_id: row.assigned_program_id,
+                    program_name: programName,
+                },
+            })
         }
 
         return true
@@ -335,6 +461,56 @@ export async function regenerateReport(
 // ============================================================================
 // Private: Helpers
 // ============================================================================
+
+/** Max number of exercises shown in the progression table. */
+const TOP_PROGRESSION_EXERCISES = 5
+
+/** Sentinel key for sets whose exercise has no muscle_group (deleted or blank). */
+const UNCLASSIFIED_MUSCLE_GROUP = '__unclassified'
+
+/**
+ * Splits a muscle_group string into distinct groups. Trainers often type compound
+ * exercises as "Posterior de Coxa, Glúteo" (or with ";" / "/" separators); we want
+ * those sets to count in each group independently, matching how hypertrophy volume
+ * is usually prescribed ("X sets per muscle per week"). Returns an array of trimmed
+ * non-empty keys, or [UNCLASSIFIED_MUSCLE_GROUP] if the input is empty.
+ *
+ * Duplicates within the same string (e.g. "Peito, Peito") are collapsed so a set
+ * never counts twice for the same group.
+ */
+function splitMuscleGroups(mg: string | null | undefined): string[] {
+    if (typeof mg !== 'string') return [UNCLASSIFIED_MUSCLE_GROUP]
+    const parts = mg
+        .split(/[,;/]+/)
+        .map(s => s.trim())
+        .filter(s => s.length > 0)
+    if (parts.length === 0) return [UNCLASSIFIED_MUSCLE_GROUP]
+    // Dedupe preserving order (case-insensitive: "peito" and "Peito" collapse).
+    const seen = new Set<string>()
+    const out: string[] = []
+    for (const p of parts) {
+        const k = p.toLowerCase()
+        if (!seen.has(k)) {
+            seen.add(k)
+            out.push(p)
+        }
+    }
+    return out
+}
+
+/**
+ * Estimated 1RM from a single set using the best (larger) of Epley and Brzycki.
+ * Brzycki is undefined at reps >= 37, so we clamp. Returns 0 for invalid input.
+ * Both formulas agree on 1RM when reps == 1.
+ */
+function estimateOneRepMax(weight: number, reps: number): number {
+    if (!weight || !reps || weight <= 0 || reps <= 0) return 0
+    const epley = weight * (1 + reps / 30)
+    // Brzycki explodes as reps approaches 37; clamp to a safe ceiling.
+    const brzyckiDen = 37 - Math.min(reps, 36)
+    const brzycki = brzyckiDen > 0 ? weight * (36 / brzyckiDen) : epley
+    return Math.max(epley, brzycki)
+}
 
 /** Compute 1-indexed program week from session date and program start date. */
 function calcProgramWeek(sessionDate: string | null, programStartedAt: string | null): number {
@@ -454,16 +630,28 @@ async function computeVolume(
     const ids = sessions.map(s => s.id)
 
     let totalTonnage = 0
+    let totalCompletedSets = 0 // unique set count — headline metric
+    // Para "Carga média / série": média dos pesos levantados ponderada por set.
+    // Só contamos sets com weight > 0 — sets corporais (peso 0) puxariam a média
+    // pra baixo de um jeito que não reflete o que o treinador quer ver.
+    let sumWeights = 0
+    let weightedSets = 0
     const weekTonnageMap = new Map<number, number>()
+    // Series aggregated by muscle_group — both total and per-week.
+    // Compound exercises (e.g. "Posterior de Coxa, Glúteo") split so each set
+    // counts in every group separately. This means sum over groups ≥ totalCompletedSets.
+    const seriesTotalByMG = new Map<string, number>()
+    const seriesWeeklyByMG: Array<Map<string, number>> = []
+    for (let w = 0; w < durationWeeks; w++) {
+        seriesWeeklyByMG.push(new Map<string, number>())
+    }
 
     if (ids.length > 0) {
         const { data: logs } = await supabase
             .from('set_logs')
-            .select('workout_session_id, weight, reps_completed')
+            .select('workout_session_id, weight, reps_completed, exercise_id, executed_exercise_id, assigned_workout_item_id')
             .in('workout_session_id', ids)
             .eq('is_completed', true)
-            .not('weight', 'is', null)
-            .not('reps_completed', 'is', null)
 
         // Build a session → week lookup (calculated from dates)
         const sessionWeekMap = new Map<string, number>()
@@ -471,11 +659,74 @@ async function computeVolume(
             sessionWeekMap.set(s.id, calcProgramWeek(s.started_at, programStartedAt))
         }
 
-        for (const log of logs ?? []) {
-            const tonnage = (log.weight ?? 0) * (log.reps_completed ?? 0)
-            totalTonnage += tonnage
+        // Resolve muscle_group per set_log via:
+        //   1. exercises.muscle_group (current, trainer-defined free text)
+        //   2. assigned_workout_items.exercise_muscle_group (snapshot, if exercise deleted)
+        const allLogs = logs ?? []
+        const exerciseIds = new Set<string>()
+        const itemIds = new Set<string>()
+        for (const log of allLogs) {
+            const exId = log.executed_exercise_id ?? log.exercise_id
+            if (exId) exerciseIds.add(exId)
+            if (log.assigned_workout_item_id) itemIds.add(log.assigned_workout_item_id)
+        }
+
+        const muscleByExercise = new Map<string, string | null>()
+        if (exerciseIds.size > 0) {
+            const { data: exRows } = await supabase
+                .from('exercises')
+                .select('id, muscle_group')
+                .in('id', [...exerciseIds])
+            for (const e of exRows ?? []) {
+                muscleByExercise.set(e.id, (e.muscle_group as string | null) ?? null)
+            }
+        }
+
+        const muscleByItem = new Map<string, string | null>()
+        if (itemIds.size > 0) {
+            const { data: itemRows } = await supabase
+                .from('assigned_workout_items')
+                .select('id, exercise_muscle_group')
+                .in('id', [...itemIds])
+            for (const r of itemRows ?? []) {
+                muscleByItem.set(r.id, (r.exercise_muscle_group as string | null) ?? null)
+            }
+        }
+
+        for (const log of allLogs) {
             const week = sessionWeekMap.get(log.workout_session_id) ?? 1
-            weekTonnageMap.set(week, (weekTonnageMap.get(week) ?? 0) + tonnage)
+            const weekIdx = Math.min(Math.max(week, 1), durationWeeks) - 1
+
+            // --- Tonnage (only counted when weight and reps are populated) ---
+            if (log.weight != null && log.reps_completed != null) {
+                const tonnage = log.weight * log.reps_completed
+                totalTonnage += tonnage
+                weekTonnageMap.set(week, (weekTonnageMap.get(week) ?? 0) + tonnage)
+            }
+
+            // --- Average weight per set (treinador lê isso como "carga típica
+            //     levantada por série"). Ignora sets de peso corporal. ---
+            if (log.weight != null && log.weight > 0) {
+                sumWeights += log.weight
+                weightedSets += 1
+            }
+
+            // --- Unique set count (headline metric) ---
+            totalCompletedSets += 1
+
+            // --- Series count by muscle_group (each set credits every group
+            //     the exercise targets — see splitMuscleGroups doc). ---
+            const exId = log.executed_exercise_id ?? log.exercise_id
+            const exMG = exId ? muscleByExercise.get(exId) : null
+            const itemMG = log.assigned_workout_item_id
+                ? muscleByItem.get(log.assigned_workout_item_id)
+                : null
+            const keys = splitMuscleGroups(exMG ?? itemMG ?? null)
+            const weekMap = seriesWeeklyByMG[weekIdx]
+            for (const key of keys) {
+                seriesTotalByMG.set(key, (seriesTotalByMG.get(key) ?? 0) + 1)
+                weekMap.set(key, (weekMap.get(key) ?? 0) + 1)
+            }
         }
     }
 
@@ -484,8 +735,22 @@ async function computeVolume(
         weeklyTonnage.push(Math.round(weekTonnageMap.get(w) ?? 0))
     }
 
-    // Previous program tonnage for comparison
+    // Serialize the Map<string, number> structures to plain objects for the JSONB column.
+    const seriesTotalObj: Record<string, number> = {}
+    for (const [k, v] of seriesTotalByMG) {
+        seriesTotalObj[k] = v
+    }
+    const seriesWeeklyObj: Array<Record<string, number>> = seriesWeeklyByMG.map(m => {
+        const o: Record<string, number> = {}
+        for (const [k, v] of m) o[k] = v
+        return o
+    })
+
+    // Programa anterior: precisamos de tonelagem + sets completados (pro
+    // fallback) e da carga média por série (pra comparação do KPI novo).
     let previousTonnage: number | null = null
+    let previousCompletedSets: number | null = null
+    let previousAvgWeightPerSet: number | null = null
     if (programStartedAt) {
         const { data: prevProgram } = await supabase
             .from('assigned_programs')
@@ -516,20 +781,48 @@ async function computeVolume(
                     .not('reps_completed', 'is', null)
 
                 let prevTotal = 0
+                let prevSets = 0
+                let prevSumWeights = 0
+                let prevWeightedSets = 0
                 for (const log of prevLogs ?? []) {
-                    prevTotal += (log.weight ?? 0) * (log.reps_completed ?? 0)
+                    const w = log.weight ?? 0
+                    const reps = log.reps_completed ?? 0
+                    prevTotal += w * reps
+                    prevSets += 1
+                    if (w > 0) {
+                        prevSumWeights += w
+                        prevWeightedSets += 1
+                    }
                 }
                 if (prevTotal > 0) {
                     previousTonnage = Math.round(prevTotal)
+                }
+                if (prevSets > 0) {
+                    previousCompletedSets = prevSets
+                }
+                if (prevWeightedSets > 0) {
+                    previousAvgWeightPerSet = Math.round((prevSumWeights / prevWeightedSets) * 10) / 10
                 }
             }
         }
     }
 
+    const avgWeightPerSet = weightedSets > 0
+        ? Math.round((sumWeights / weightedSets) * 10) / 10
+        : null
+
     return {
         total_tonnage_kg: Math.round(totalTonnage),
         weekly_tonnage: weeklyTonnage,
         previous_program_tonnage_kg: previousTonnage,
+        previous_program_completed_sets: previousCompletedSets,
+        avg_weight_per_set_kg: avgWeightPerSet,
+        previous_program_avg_weight_per_set_kg: previousAvgWeightPerSet,
+        total_completed_sets: totalCompletedSets,
+        series_by_muscle_group: {
+            total: seriesTotalObj,
+            weekly: seriesWeeklyObj,
+        },
     }
 }
 
@@ -623,11 +916,12 @@ async function computeProgression(
         return { top_exercises: [] }
     }
 
-    // Aggregate: exercise → { sessionCount, totalVolume, weeklyMaxWeight }
+    // Aggregate: exercise → { sessionCount, totalVolume, weeklyMaxWeight, weeklyMaxEst1RM }
     const exerciseStats = new Map<string, {
         sessionIds: Set<string>
         totalVolume: number
         weeklyMax: Map<number, number>
+        weeklyMaxEst1RM: Map<number, number>
     }>()
 
     for (const log of logs) {
@@ -639,6 +933,7 @@ async function computeProgression(
                 sessionIds: new Set(),
                 totalVolume: 0,
                 weeklyMax: new Map(),
+                weeklyMaxEst1RM: new Map(),
             })
         }
 
@@ -647,19 +942,32 @@ async function computeProgression(
         stats.totalVolume += (log.weight ?? 0) * (log.reps_completed ?? 0)
 
         const week = sessionWeekMap.get(log.workout_session_id) ?? 1
+        const w = log.weight ?? 0
+        const reps = log.reps_completed ?? 0
+
         const currentMax = stats.weeklyMax.get(week) ?? 0
-        if ((log.weight ?? 0) > currentMax) {
-            stats.weeklyMax.set(week, log.weight ?? 0)
+        if (w > currentMax) {
+            stats.weeklyMax.set(week, w)
+        }
+
+        // Weekly max estimated 1RM uses best-of-Epley-Brzycki across every set.
+        // Only valid if we have both weight and reps.
+        if (w > 0 && reps > 0) {
+            const est = estimateOneRepMax(w, reps)
+            const currentEst = stats.weeklyMaxEst1RM.get(week) ?? 0
+            if (est > currentEst) {
+                stats.weeklyMaxEst1RM.set(week, est)
+            }
         }
     }
 
-    // Rank by session count, then by total volume — pick top 3
+    // Rank by session count, then by total volume — pick top N (5)
     const ranked = [...exerciseStats.entries()]
         .sort((a, b) => {
             const diff = b[1].sessionIds.size - a[1].sessionIds.size
             return diff !== 0 ? diff : b[1].totalVolume - a[1].totalVolume
         })
-        .slice(0, 3)
+        .slice(0, TOP_PROGRESSION_EXERCISES)
 
     // Fetch exercise names
     const topExerciseIds = ranked.map(([id]) => id)
@@ -694,8 +1002,11 @@ async function computeProgression(
     // Build progression arrays
     const topExercises: ReportExerciseProgression[] = ranked.map(([exerciseId, stats]) => {
         const weeklyMaxWeight: (number | null)[] = []
+        const weeklyEst1RM: (number | null)[] = []
         let startWeight: number | null = null
         let endWeight: number | null = null
+        let startEst1RM: number | null = null
+        let endEst1RM: number | null = null
 
         for (let w = 1; w <= durationWeeks; w++) {
             const maxW = stats.weeklyMax.get(w) ?? null
@@ -707,12 +1018,30 @@ async function computeProgression(
             if (maxW !== null) {
                 endWeight = maxW
             }
+
+            const rawEst = stats.weeklyMaxEst1RM.get(w)
+            const est1RM = rawEst !== undefined && rawEst > 0
+                ? Math.round(rawEst * 10) / 10
+                : null
+            weeklyEst1RM.push(est1RM)
+
+            if (est1RM !== null && startEst1RM === null) {
+                startEst1RM = est1RM
+            }
+            if (est1RM !== null) {
+                endEst1RM = est1RM
+            }
         }
 
         const sw = startWeight ?? 0
         const ew = endWeight ?? 0
         const changeKg = ew - sw
         const changePct = sw > 0 ? Math.round((changeKg / sw) * 1000) / 10 : 0
+
+        const s1 = startEst1RM ?? 0
+        const e1 = endEst1RM ?? 0
+        const changeEst1RMKg = Math.round((e1 - s1) * 10) / 10
+        const changeEst1RMPct = s1 > 0 ? Math.round(((e1 - s1) / s1) * 1000) / 10 : 0
 
         return {
             exercise_id: exerciseId,
@@ -722,6 +1051,11 @@ async function computeProgression(
             end_weight: ew,
             change_kg: changeKg,
             change_pct: changePct,
+            weekly_est_1rm: weeklyEst1RM,
+            start_est_1rm: s1,
+            end_est_1rm: e1,
+            change_est_1rm_kg: changeEst1RMKg,
+            change_est_1rm_pct: changeEst1RMPct,
         }
     })
 

@@ -3,7 +3,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
 import { decrementUnreadNotifications } from "./useUnreadCount";
 
-export type InboxItemType = "form_request" | "feedback" | "system_alert" | "text_message";
+export type InboxItemType = "form_request" | "feedback" | "system_alert" | "text_message" | "program_report_published";
 export type InboxItemStatus = "unread" | "pending_action" | "completed" | "archived";
 
 export interface InboxItem {

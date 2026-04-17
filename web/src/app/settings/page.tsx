@@ -6,6 +6,7 @@ import { AppLayout } from '@/components/layout'
 import { BillingSection } from '@/components/settings/billing-section'
 import { ProfileForm } from '@/components/settings/profile-form'
 import { ThemeSelector } from '@/components/settings/theme-selector'
+import { ReportsPreferencesSection } from '@/components/settings/reports-preferences-section'
 
 import { ChevronRight } from 'lucide-react'
 
@@ -17,7 +18,7 @@ export default async function SettingsPage() {
 
     const { data: trainer } = await supabase
         .from('trainers')
-        .select('id, name, email, avatar_url, theme')
+        .select('id, name, email, avatar_url, theme, auto_publish_reports')
         .eq('auth_user_id', user.id)
         .single()
 
@@ -142,6 +143,7 @@ export default async function SettingsPage() {
                 <div className="lg:col-span-1 space-y-6">
                     <ProfileForm trainer={trainer} />
                     <ThemeSelector initialTheme={trainer.theme as 'light' | 'dark' | 'system' | null} />
+                    <ReportsPreferencesSection initialAutoPublish={trainer.auto_publish_reports ?? false} />
                 </div>
                 <div className="lg:col-span-2">
                     <BillingSection

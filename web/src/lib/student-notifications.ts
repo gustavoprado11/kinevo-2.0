@@ -3,7 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 interface StudentNotificationParams {
     studentId: string
     trainerId: string
-    type: 'program_assigned' | 'form_request' | 'feedback' | 'system_alert' | 'text_message'
+    type: 'program_assigned' | 'form_request' | 'feedback' | 'system_alert' | 'text_message' | 'program_report_published'
     title: string
     subtitle?: string
     payload?: Record<string, unknown>

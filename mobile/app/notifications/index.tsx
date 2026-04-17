@@ -48,6 +48,16 @@ function getDeepLinkForNotification(n: TrainerNotification): { pathname: string;
             }
             return null;
 
+        case 'program_report_pending':
+            // Relatórios ainda são gerados via web. No mobile, mandamos o
+            // treinador pra ficha do aluno — de lá ele abre o programa e
+            // acessa o link pra o relatório. Quando existir "gerar relatório"
+            // nativo, apontar diretamente pra essa rota.
+            if (data?.student_id) {
+                return { pathname: '/student/[id]', params: { id: data.student_id } };
+            }
+            return null;
+
         case 'payment_received':
         case 'payment_failed':
         case 'payment_overdue':

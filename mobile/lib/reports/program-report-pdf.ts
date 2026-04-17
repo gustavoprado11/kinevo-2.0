@@ -18,6 +18,14 @@ interface ReportVolume {
     total_tonnage_kg: number;
     weekly_tonnage: number[];
     previous_program_tonnage_kg: number | null;
+    previous_program_completed_sets?: number | null;
+    avg_weight_per_set_kg?: number | null;
+    previous_program_avg_weight_per_set_kg?: number | null;
+    total_completed_sets?: number;
+    series_by_muscle_group?: {
+        total: Record<string, number>;
+        weekly: Array<Record<string, number>>;
+    };
 }
 
 interface ReportRPE {
@@ -33,6 +41,11 @@ interface ReportExerciseProgression {
     end_weight: number;
     change_kg: number;
     change_pct: number;
+    weekly_est_1rm?: (number | null)[];
+    start_est_1rm?: number;
+    end_est_1rm?: number;
+    change_est_1rm_kg?: number;
+    change_est_1rm_pct?: number;
 }
 
 interface ReportCheckins {
@@ -63,6 +76,12 @@ interface ProgramReport {
     program_completed_at: string | null;
     metrics_json: ProgramReportMetrics;
     trainer_notes: string | null;
+    /**
+     * Rascunho automático gerado a partir de metrics_json. Usado como fallback
+     * quando trainer_notes está vazio — edição do treinador vai pra
+     * trainer_notes e tem precedência aqui.
+     */
+    auto_notes_draft: string | null;
     generated_at: string;
     published_at: string | null;
 }
@@ -119,6 +138,71 @@ function volumeComparison(current: number, previous: number | null): string {
     return `${sign}${Math.round(diff)}% vs programa anterior`;
 }
 
+const UNCLASSIFIED_MUSCLE_GROUP_KEY = "__unclassified";
+
+function displayMuscleGroup(key: string): string {
+    return key === UNCLASSIFIED_MUSCLE_GROUP_KEY ? "Sem grupo" : key;
+}
+
+function sumSeriesRecord(rec: Record<string, number> | undefined | null): number {
+    if (!rec) return 0;
+    let s = 0;
+    for (const v of Object.values(rec)) s += v;
+    return s;
+}
+
+function totalSeries(m: ProgramReportMetrics): number {
+    const explicit = m.volume?.total_completed_sets;
+    if (typeof explicit === "number") return explicit;
+    return sumSeriesRecord(m.volume?.series_by_muscle_group?.total);
+}
+
+function formatKg(v: number): string {
+    const rounded = Math.round(v * 10) / 10;
+    return Number.isInteger(rounded) ? `${rounded}kg` : `${rounded.toFixed(1)}kg`;
+}
+
+// Delta de carga com sinal explícito e formatação consistente:
+//   +3kg   / -2.5kg / 0kg   (o zero não leva sinal — não é nem ganho nem perda)
+// Sempre passa por formatKg pra manter as casas decimais coerentes.
+function formatDeltaKg(v: number): string {
+    if (v === 0) return "0kg";
+    const body = formatKg(Math.abs(v));
+    return v > 0 ? `+${body}` : `-${body}`;
+}
+
+// Classe CSS do delta em três estados (positivo/neutro/negativo).
+// "neutral" evita pintar +0kg de verde — que sugeriria progresso inexistente.
+function deltaStateClass(v: number): string {
+    if (v > 0) return " positive";
+    if (v < 0) return " negative";
+    return " neutral";
+}
+
+function buildSeriesByMuscleGroupCard(volume: ReportVolume): string {
+    const total = volume?.series_by_muscle_group?.total ?? {};
+    const entries = Object.entries(total).filter(([, v]) => v > 0);
+    if (entries.length === 0) return "";
+
+    entries.sort(([ka, va], [kb, vb]) => {
+        if (ka === UNCLASSIFIED_MUSCLE_GROUP_KEY) return 1;
+        if (kb === UNCLASSIFIED_MUSCLE_GROUP_KEY) return -1;
+        return vb - va;
+    });
+
+    const max = Math.max(...entries.map(([, v]) => v), 1);
+    const rows = entries.map(([k, v]) => {
+        const pct = (v / max) * 100;
+        return `<div class="mg-row">
+            <span class="mg-label">${esc(displayMuscleGroup(k))}</span>
+            <div class="mg-bar-track"><div class="mg-bar-fill" style="width:${pct}%"></div></div>
+            <span class="mg-value">${v}</span>
+        </div>`;
+    }).join("");
+
+    return rows;
+}
+
 // ── Main Export ──
 
 export function generateReportHTML(
@@ -129,6 +213,7 @@ export function generateReportHTML(
     const m = report.metrics_json;
     const hasFrequency = m.frequency && m.frequency.completed_sessions > 0;
     const hasVolume = m.volume && m.volume.total_tonnage_kg > 0;
+    const hasSeries = totalSeries(m) > 0;
     const hasRPE = m.rpe && m.rpe.overall_avg !== null;
     const hasProgression = m.progression?.top_exercises?.length > 0;
     const hasCheckins = m.checkins?.averages?.length > 0;
@@ -200,8 +285,17 @@ export function generateReportHTML(
   .prog-table td { padding: 8px 8px; border-bottom: 1px solid #f1f5f9; color: ${C.text}; }
   .prog-table tr:last-child td { border-bottom: none; }
   .prog-name { font-weight: 600; }
-  .prog-delta { font-weight: 700; color: ${C.green}; }
+  .prog-delta { font-weight: 700; color: ${C.textSecondary}; }
+  .prog-delta.positive { color: ${C.green}; }
   .prog-delta.negative { color: #ef4444; }
+  .prog-delta.neutral { color: ${C.textSecondary}; }
+  .prog-1rm { font-size: 10px; color: ${C.textSecondary}; white-space: nowrap; }
+  .prog-1rm-val { color: ${C.text}; font-weight: 600; }
+  .mg-row { display: flex; align-items: center; margin-bottom: 8px; }
+  .mg-label { font-size: 12px; color: ${C.text}; width: 130px; flex-shrink: 0; }
+  .mg-bar-track { flex: 1; height: 8px; background: ${C.border}; border-radius: 4px; margin: 0 10px; overflow: hidden; }
+  .mg-bar-fill { height: 8px; border-radius: 4px; background: ${C.primary}; }
+  .mg-value { font-size: 12px; font-weight: 700; color: ${C.text}; width: 40px; text-align: right; flex-shrink: 0; }
   .checkin-row { display: flex; align-items: center; margin-bottom: 10px; }
   .checkin-label { font-size: 12px; color: ${C.text}; width: 160px; flex-shrink: 0; }
   .checkin-bar-track { flex: 1; height: 8px; background: ${C.border}; border-radius: 4px; margin: 0 10px; overflow: hidden; }
@@ -233,7 +327,7 @@ export function generateReportHTML(
 <div class="divider"></div>
 
 <!-- KPI Cards -->
-${buildKPISection(m, hasFrequency, hasVolume, hasRPE, isCompleted)}
+${buildKPISection(m, hasFrequency, hasVolume, hasRPE, hasSeries, isCompleted)}
 
 <!-- Frequência Semanal -->
 ${hasFrequency && m.frequency.weekly_breakdown.length > 0 ? `
@@ -259,9 +353,17 @@ ${hasRPE && m.rpe.weekly_avg.some(v => v !== null) ? `
 </div>
 ` : ""}
 
-<!-- Volume Semanal -->
+<!-- Séries por grupo muscular (vocabulário do treinador: "X séries por grupo/semana") -->
+${hasSeries ? `
+<div class="section-title">Séries por grupo muscular</div>
+<div class="chart-card">
+  ${buildSeriesByMuscleGroupCard(m.volume)}
+</div>
+` : ""}
+
+<!-- Carga total por semana -->
 ${hasVolume && m.volume.weekly_tonnage.some(v => v > 0) ? `
-<div class="section-title">Volume Semanal</div>
+<div class="section-title">Carga total por semana</div>
 <div class="chart-card">
   ${buildBarChart(m.volume.weekly_tonnage, C.green, undefined, (v) => v > 0 ? formatTonnage(v) : "")}
 </div>
@@ -283,13 +385,21 @@ ${hasCheckins ? `
 ` : ""}
 
 <!-- Observações do Treinador -->
-${report.trainer_notes ? `
+${(() => {
+  // trainer_notes (edição do treinador) tem precedência. Se não houver,
+  // renderiza o rascunho automático — sem assinatura do treinador, já que
+  // é texto gerado por padrão.
+  const effectiveNotes = report.trainer_notes ?? report.auto_notes_draft ?? null;
+  if (!effectiveNotes) return "";
+  const showAuthor = !!report.trainer_notes;
+  return `
 <div class="section-title">Observações do Treinador</div>
 <div class="notes-block">
-  <div class="notes-text">${esc(report.trainer_notes)}</div>
-  <div class="notes-author">— ${esc(trainerName)}</div>
+  <div class="notes-text">${esc(effectiveNotes)}</div>
+  ${showAuthor ? `<div class="notes-author">— ${esc(trainerName)}</div>` : ""}
 </div>
-` : ""}
+`;
+})()}
 
 <!-- Footer -->
 <div class="footer">
@@ -307,6 +417,7 @@ function buildKPISection(
     hasFrequency: boolean,
     hasVolume: boolean,
     hasRPE: boolean,
+    hasSeries: boolean,
     isCompleted: boolean,
 ): string {
     const cards: string[] = [];
@@ -319,16 +430,46 @@ function buildKPISection(
         </div>`);
     }
 
-    if (hasVolume) {
-        // Só comparar com programa anterior quando o atual estiver concluído — senão o delta
-        // fica sempre enganoso (programa em andamento vs programa inteiro).
-        const comp = isCompleted
-            ? volumeComparison(m.volume.total_tonnage_kg, m.volume.previous_program_tonnage_kg)
-            : "";
+    if (hasSeries) {
+        const total = totalSeries(m);
+        const weeks = m.volume?.series_by_muscle_group?.weekly?.length ?? 0;
+        const weeklyAvg = weeks > 0 ? Math.round(total / weeks) : 0;
         cards.push(`<div class="kpi-card">
-            <div class="kpi-label">Volume Total</div>
-            <div class="kpi-value">${formatTonnage(m.volume.total_tonnage_kg)}</div>
-            ${comp ? `<div class="kpi-sub">${esc(comp)}</div>` : ""}
+            <div class="kpi-label">Séries completadas</div>
+            <div class="kpi-value">${total.toLocaleString("pt-BR")}</div>
+            <div class="kpi-sub">${weeklyAvg}/semana em média</div>
+        </div>`);
+    }
+
+    // Carga média / série: peso médio LEVANTADO por set (ignora sets corporais).
+    // Valor pré-calculado pelo service. Fallback pra tonelagem/sets só pra não
+    // quebrar relatórios cacheados antes da nova métrica — o número fica inflado
+    // pelas reps, mas é melhor que esconder o KPI.
+    const avgLoad: number | null = (() => {
+        if (typeof m.volume.avg_weight_per_set_kg === "number") {
+            return m.volume.avg_weight_per_set_kg;
+        }
+        const sets = m.volume.total_completed_sets;
+        if (hasVolume && typeof sets === "number" && sets > 0) {
+            return m.volume.total_tonnage_kg / sets;
+        }
+        return null;
+    })();
+    if (avgLoad !== null && avgLoad > 0) {
+        const prevAvg: number | null = (() => {
+            if (typeof m.volume.previous_program_avg_weight_per_set_kg === "number") {
+                return m.volume.previous_program_avg_weight_per_set_kg;
+            }
+            const prevTonnage = m.volume.previous_program_tonnage_kg;
+            const prevSets = m.volume.previous_program_completed_sets ?? null;
+            if (prevTonnage && prevSets && prevSets > 0) return prevTonnage / prevSets;
+            return null;
+        })();
+        const comp = isCompleted ? volumeComparison(avgLoad, prevAvg) : "";
+        cards.push(`<div class="kpi-card">
+            <div class="kpi-label">Carga média / série</div>
+            <div class="kpi-value">${formatKg(avgLoad)}</div>
+            <div class="kpi-sub">${comp ? esc(comp) : "Peso médio levantado"}</div>
         </div>`);
     }
 
@@ -392,19 +533,34 @@ function buildProgressionTable(
 
     const rows = exercises.map(ex => {
         const weekCells = ex.weekly_max_weight.map(w =>
-            `<td>${w !== null ? `${w}kg` : "—"}</td>`
+            `<td>${w !== null ? formatKg(w) : "—"}</td>`
         ).join("");
-        const sign = ex.change_kg >= 0 ? "+" : "";
-        const deltaClass = ex.change_kg >= 0 ? "" : " negative";
+        const deltaClass = deltaStateClass(ex.change_kg);
+        const pctBody = ex.change_pct === 0
+            ? "0%"
+            : `${ex.change_pct > 0 ? "+" : ""}${ex.change_pct}%`;
+
+        const startEst = ex.start_est_1rm ?? 0;
+        const endEst = ex.end_est_1rm ?? 0;
+        const hasEst1RM = startEst > 0 || endEst > 0;
+        const est1RMCell = hasEst1RM
+            ? `<span class="prog-1rm-val">${formatKg(startEst)} → ${formatKg(endEst)}</span>`
+            : "—";
+        const changeEst = ex.change_est_1rm_kg ?? 0;
+        const est1RMDelta = hasEst1RM
+            ? `<span class="prog-delta${deltaStateClass(changeEst)}">${formatDeltaKg(changeEst)}</span>`
+            : "";
+
         return `<tr>
             <td class="prog-name">${esc(ex.exercise_name)}</td>
             ${weekCells}
-            <td class="prog-delta${deltaClass}">${sign}${ex.change_kg}kg (${sign}${ex.change_pct}%)</td>
+            <td class="prog-delta${deltaClass}">${formatDeltaKg(ex.change_kg)} (${pctBody})</td>
+            <td class="prog-1rm">${est1RMCell}${est1RMDelta ? ` ${est1RMDelta}` : ""}</td>
         </tr>`;
     }).join("");
 
     return `<table class="prog-table">
-        <thead><tr><th>Exercício</th>${weekHeaders}<th>Δ</th></tr></thead>
+        <thead><tr><th>Exercício</th>${weekHeaders}<th>Δ carga</th><th>1RM est. (ini → fim)</th></tr></thead>
         <tbody>${rows}</tbody>
     </table>`;
 }

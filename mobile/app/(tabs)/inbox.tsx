@@ -8,7 +8,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import {
     FileText, MessageSquare, Bell, ChevronRight, CheckCircle2,
-    Inbox as InboxIcon, Trash2, MessageCircle,
+    Inbox as InboxIcon, Trash2, MessageCircle, Award,
 } from "lucide-react-native";
 import Animated, {
     FadeInUp, FadeIn, Easing,
@@ -25,6 +25,7 @@ import { ChatView } from "../../components/chat/ChatView";
 function TypeIcon({ type }: { type: InboxItem["type"] }) {
     if (type === "form_request") return <FileText size={18} color="#7c3aed" />;
     if (type === "feedback") return <MessageSquare size={18} color="#16a34a" />;
+    if (type === "program_report_published") return <Award size={18} color="#d97706" />;
     return <Bell size={18} color="#0ea5e9" />;
 }
 
@@ -32,6 +33,7 @@ function typeLabel(type: InboxItem["type"]) {
     if (type === "form_request") return "Formulário";
     if (type === "feedback") return "Feedback";
     if (type === "system_alert") return "Alerta";
+    if (type === "program_report_published") return "Relatório";
     return "Mensagem";
 }
 
@@ -232,7 +234,8 @@ function SwipeableInboxCard({
 
     const iconBg =
         item.type === "feedback" ? "#ecfdf5" :
-            item.type === "form_request" ? "#f5f3ff" : "#f0f9ff";
+            item.type === "form_request" ? "#f5f3ff" :
+                item.type === "program_report_published" ? "#fef3c7" : "#f0f9ff";
 
     return (
         <Animated.View
@@ -344,6 +347,18 @@ function NotificationsTab() {
 
     const handleOpenItem = useCallback(async (item: InboxItem) => {
         await markItemOpened(item);
+
+        // Deep link direto pra tela do relatório quando for notificação de
+        // relatório publicado. Evita passar pela tela genérica /inbox/[id]
+        // (que é desenhada pra forms).
+        if (item.type === "program_report_published") {
+            const reportId = item.payload?.report_id;
+            if (reportId) {
+                router.push(`/report/${reportId}`);
+                return;
+            }
+        }
+
         router.push(`/inbox/${item.id}`);
     }, [markItemOpened, router]);
 

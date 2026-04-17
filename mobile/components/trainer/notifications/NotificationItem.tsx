@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text } from 'react-native';
-import { Users, ClipboardList, CreditCard, Calendar } from 'lucide-react-native';
+import { Users, ClipboardList, CreditCard, Calendar, FileText } from 'lucide-react-native';
 import { PressableScale } from '../../shared/PressableScale';
 import { colors } from '@/theme';
 import type { TrainerNotification } from '../../../hooks/useTrainerNotifications';
@@ -9,7 +9,17 @@ import type { TrainerNotification } from '../../../hooks/useTrainerNotifications
 // Helpers
 // ---------------------------------------------------------------------------
 
-function getIcon(category: string) {
+// Ícone decidido por type quando há caso específico; senão cai no genérico
+// da categoria. Isso permite notificações da mesma categoria com ícones
+// distintos (ex.: Calendar pra programa expirado vs FileText pra relatório
+// pendente — ambos 'programs').
+function getIcon(type: string, category: string) {
+    // Tipos específicos que merecem ícone próprio
+    switch (type) {
+        case 'program_report_pending':
+            return { Icon: FileText, color: colors.brand.primary, bg: colors.brand.primaryLight };
+    }
+
     switch (category) {
         case 'students':
             return { Icon: Users, color: colors.brand.primary, bg: colors.status.presencialBg };
@@ -55,7 +65,7 @@ interface NotificationItemProps {
 }
 
 export function NotificationItem({ notification, onPress }: NotificationItemProps) {
-    const { Icon, color, bg } = getIcon(notification.category);
+    const { Icon, color, bg } = getIcon(notification.type, notification.category);
     const isUnread = !notification.is_read;
 
     return (
