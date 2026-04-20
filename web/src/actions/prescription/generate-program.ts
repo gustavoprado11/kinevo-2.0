@@ -27,6 +27,15 @@ import { getSubstitutes } from '@/lib/prescription/exercise-graph'
 import { optimizeWithAI } from '@/lib/prescription/ai-optimizer'
 import { structuralOptimizer, generateTradeoffReport, computePrescriptionQualityScore } from '@/lib/prescription/structural-optimizer'
 import { buildFormNarratives } from '@/lib/prescription/form-narrative-builder'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { callLLM, callWithModelFallback, DEFAULT_GENERATION_MODEL, FALLBACK_GENERATION_MODEL, type LLMModel, type LLMCallResult } from '@/lib/prescription/llm-client'
+import { enrichStudentContextV2 } from '@/lib/prescription/context-enricher-v2'
+import { buildSmartV2Prompt } from '@/lib/prescription/prompt-builder-v2'
+import { PROMPT_VERSION, validateCompactGeneration, type CompactGenerationOutput } from '@/lib/prescription/schemas'
+import { enrichCompactOutput } from '@/lib/prescription/output-enricher'
+import { validatePrescriptionAgainstRules } from '@/lib/prescription/rules-validator'
+import { logGenerationTelemetry } from '@/lib/prescription/telemetry'
+import { lookupCache, storeInCache } from '@/lib/prescription/program-cache'
 import { fetchPrescriptionQuestionnaire } from './questionnaire-actions'
 import { mapQuestionnaireToProfile, type QuestionnaireData } from '@/lib/prescription/questionnaire-mapper'
 import type { FormSubmissionSummary } from '@/actions/prescription/get-prescription-data'
@@ -116,18 +125,26 @@ export async function generateProgram(
     studentId: string,
     agentState?: PrescriptionAgentState | null,
     selectedFormIds?: string[],
+    options?: { supabase?: SupabaseClient },
 ): Promise<GenerateProgramResult> {
     const startTime = Date.now()
-    const supabase = await createClient()
+    // When called from a cookie-bearing server context (web), createClient()
+    // reads the session from cookies. API route handlers invoked from mobile
+    // inject a Bearer-authenticated client via options.supabase so we avoid
+    // duplicating this pipeline. See Fase 2.5.1 spec.
+    const supabase = options?.supabase ?? await createClient()
+    if (options?.supabase) {
+        console.debug('[generateProgram] using injected supabase client')
+    }
 
     // ── 1. Auth check ──
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: 'Não autorizado' }
 
-    // ── 2. Trainer lookup + feature flag ──
+    // ── 2. Trainer lookup + feature flags ──
     const { data: trainer } = await supabase
         .from('trainers')
-        .select('id, ai_prescriptions_enabled')
+        .select('id, ai_prescriptions_enabled, smart_v2_enabled')
         .eq('auth_user_id', user.id)
         .single()
 
@@ -137,6 +154,9 @@ export async function generateProgram(
     if (!trainer.ai_prescriptions_enabled) {
         return { success: false, error: 'Módulo de prescrição IA não está habilitado.' }
     }
+
+    // @ts-ignore — smart_v2_enabled from migration 104 (may be absent in older environments)
+    const smartV2Enabled = (trainer as any).smart_v2_enabled === true
 
     // Fetch trainer patterns separately (column from migration 064, may not exist yet)
     let trainerPatterns: TrainerPatterns | null = null
@@ -180,6 +200,31 @@ export async function generateProgram(
 
     // ── 6. Build performance context from recent sessions ──
     const performanceContext = await buildPerformanceContext(supabase, studentId)
+
+    // ── 6.5 Smart-v2 path (feature-flagged) ─────────────────────────────
+    // Always log the gate decision so operations can correlate "smart-v2 did
+    // not run" without cross-checking trainers.updated_at. One line per call.
+    console.log(
+        `[Smart-v2] gate: trainerId=${(trainer as any).id} studentId=${studentId} smart_v2_enabled=${smartV2Enabled}`,
+    )
+    if (smartV2Enabled) {
+        try {
+            const smartResult = await trySmartV2Generation({
+                supabase,
+                trainerId: (trainer as any).id,
+                studentId,
+                profile: typedProfile,
+                exercises,
+                performanceContext,
+                aiMode: resolveAiMode(typedProfile, performanceContext),
+                startTime,
+            })
+            if (smartResult) return smartResult
+            console.warn('[Smart-v2] smart-v2 aborted, falling back to legacy pipeline')
+        } catch (err) {
+            console.error('[Smart-v2] unexpected error, falling back to legacy pipeline:', err)
+        }
+    }
 
     // ── 7. Resolve AI mode ──
     const aiMode = resolveAiMode(typedProfile, performanceContext)
@@ -796,69 +841,45 @@ async function tryOpenAIGeneration(
     performanceContext: PrescriptionPerformanceContext | null,
     studentNarrative?: string | null,
 ): Promise<OpenAIResult> {
-    const model = resolveOpenAIModel()
+    const resolvedModel = resolveOpenAIModel()
+    const model: LLMModel =
+        resolvedModel === 'gpt-4o-mini' ? 'gpt-4o-mini' : 'gpt-4.1-mini'
     const llmEnabled = resolveLLMEnabled()
 
     if (!llmEnabled) {
         return { output: null, status: 'llm_disabled', model }
     }
 
-    const apiKey = process.env.OPENAI_API_KEY
-    if (!apiKey) {
-        return { output: null, status: 'missing_api_key', model }
-    }
-
     const { system, user } = buildPromptPair(profile, exercises, performanceContext, studentNarrative)
 
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), resolveTimeoutMs())
+    const llmResult = await callLLM({
+        model,
+        system,
+        messages: [{ role: 'user', content: user }],
+        max_tokens: 8000,
+        temperature: 0.3,
+        timeout_ms: resolveTimeoutMs(),
+        json_object_mode: true,
+    })
 
-    let response: Response
-    try {
-        response = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${apiKey}`,
-            },
-            signal: controller.signal,
-            body: JSON.stringify({
-                model,
-                temperature: 0.3,
-                response_format: { type: 'json_object' },
-                messages: [
-                    { role: 'system', content: system },
-                    { role: 'user', content: user },
-                ],
-            }),
-        })
-    } catch (err: any) {
-        clearTimeout(timeout)
-        if (err?.name === 'AbortError') {
-            return { output: null, status: 'timeout', model }
-        }
-        return { output: null, status: 'network_error', model }
+    if (llmResult.status === 'missing_api_key') {
+        return { output: null, status: 'missing_api_key', model }
     }
-    clearTimeout(timeout)
-
-    if (!response.ok) {
-        console.error('[generateProgram] OpenAI HTTP error:', response.status)
+    if (llmResult.status === 'timeout') {
+        return { output: null, status: 'timeout', model }
+    }
+    if (llmResult.status === 'http_error') {
+        console.error('[generateProgram] OpenAI HTTP error:', llmResult.http_status)
         return { output: null, status: 'http_error', model }
     }
-
-    let payload: any
-    try {
-        payload = await response.json()
-    } catch {
+    if (llmResult.status === 'network_error') {
+        return { output: null, status: 'network_error', model }
+    }
+    if (llmResult.status !== 'success' || !llmResult.data) {
         return { output: null, status: 'invalid_response', model }
     }
 
-    const content = payload?.choices?.[0]?.message?.content
-    if (!content || typeof content !== 'string') {
-        return { output: null, status: 'invalid_response', model }
-    }
-
-    const parsed = parseAiResponse(content)
+    const parsed = parseAiResponse(llmResult.data)
     if (!parsed) {
         console.warn('[generateProgram] Failed to parse AI response')
         return { output: null, status: 'invalid_response', model }
@@ -927,7 +948,7 @@ function mapExerciseRow(e: any): PrescriptionExerciseRef {
 const MIN_CURATED_POOL_SIZE = 15
 
 async function fetchExercisesForPrescription(
-    supabase: Awaited<ReturnType<typeof createClient>>,
+    supabase: SupabaseClient,
     equipmentKey?: string | null,
     favoriteExerciseIds?: string[],
 ): Promise<PrescriptionExerciseRef[]> {
@@ -1005,7 +1026,7 @@ async function fetchExercisesForPrescription(
 // ============================================================================
 
 async function buildPerformanceContext(
-    supabase: Awaited<ReturnType<typeof createClient>>,
+    supabase: SupabaseClient,
     studentId: string,
 ): Promise<PrescriptionPerformanceContext | null> {
     const fourWeeksAgo = new Date()
@@ -1074,5 +1095,265 @@ async function buildPerformanceContext(
         recent_avg_rpe: avgRpe,
         stalled_exercise_ids: [], // TODO: implement stall detection from set_logs
         previous_program: previousProgram,
+    }
+}
+
+// ============================================================================
+// Smart-v2 generation path (Phase 2.5)
+// ============================================================================
+// Runs the 3-layer prompt + structured output + rules-validator flow and
+// persists telemetry. Returns null if the path fails in a recoverable way;
+// the caller then falls back to the v1 pipeline.
+
+/**
+ * Builds the input_snapshot object persisted in prescription_generations for
+ * smart-v2 runs. Exported for direct unit testing — Fase 2.5.2 introduced the
+ * enriched_context_v2 key so the context injected into prompt Layer 3 becomes
+ * auditable without re-executing the pipeline.
+ */
+export async function buildSmartV2InputSnapshot(args: {
+    profile: StudentPrescriptionProfile
+    exercises: PrescriptionExerciseRef[]
+    performanceContext: PrescriptionPerformanceContext | null
+    enriched: import('@/lib/prescription/context-enricher-v2').EnrichedStudentContextV2
+}): Record<string, unknown> {
+    return {
+        profile: {
+            student_id: args.profile.student_id,
+            training_level: args.profile.training_level,
+            goal: args.profile.goal,
+            available_days: args.profile.available_days,
+            session_duration_minutes: args.profile.session_duration_minutes,
+            available_equipment: args.profile.available_equipment,
+            favorite_exercise_ids: args.profile.favorite_exercise_ids,
+            disliked_exercise_ids: args.profile.disliked_exercise_ids,
+            medical_restrictions: args.profile.medical_restrictions,
+            ai_mode: args.profile.ai_mode,
+            adherence_rate: args.profile.adherence_rate,
+        },
+        available_exercises: args.exercises,
+        performance_context: args.performanceContext,
+        engine_version: ENGINE_VERSION,
+        smart_v2: true,
+        prompt_version: PROMPT_VERSION,
+        enriched_context_v2: args.enriched,
+    }
+}
+
+interface SmartV2Args {
+    supabase: SupabaseClient
+    trainerId: string
+    studentId: string
+    profile: StudentPrescriptionProfile
+    exercises: PrescriptionExerciseRef[]
+    performanceContext: PrescriptionPerformanceContext | null
+    aiMode: AiMode
+    startTime: number
+}
+
+async function trySmartV2Generation(args: SmartV2Args): Promise<GenerateProgramResult | null> {
+    const { supabase, trainerId, studentId, profile, exercises, performanceContext, aiMode, startTime } = args
+
+    // Enrich context (v2). Failure here is fatal for this path — we can't
+    // prescribe smart without the richer signal.
+    const enriched = await enrichStudentContextV2(supabase, studentId, profile)
+
+    // Cache lookup keyed by profile + dynamic context.
+    const cache = lookupCache(profile, enriched)
+    let compact: CompactGenerationOutput | null = cache.hit ? cache.output : null
+
+    let usedModel: LLMModel = DEFAULT_GENERATION_MODEL
+    let retryCount = 0
+    let inputNew = 0
+    let inputCached = 0
+    let outputTokens = 0
+    let costUsd = 0
+    let semanticRetries = 0  // Fase 2.5.2
+
+    const exerciseMap = new Map(exercises.map(e => [e.id, e]))
+    const enrichedConstraints = await import('@/lib/prescription/constraints-engine')
+        .then(m => m.buildConstraints(profile, {
+            student_name: enriched.student_name,
+            previous_programs: enriched.previous_programs,
+            load_progression: enriched.load_progression,
+            session_patterns: enriched.session_patterns,
+            previous_exercise_ids: enriched.previous_exercise_ids,
+        }, []))
+
+    // Semantic-retry loop (Fase 2.5.2). HTTP retries happen inside
+    // callWithModelFallback (network/5xx/timeout). This outer loop retries
+    // when the rules-validator flags an error with autofix='retry' (e.g.
+    // hallucinated exercise_id, schedule mismatch). Max 2 semantic attempts
+    // on top of the HTTP retry budget.
+    const MAX_SEMANTIC_ATTEMPTS = 2
+    const basePrompt = buildSmartV2Prompt({
+        trainerId,
+        exercises,
+        profile,
+        context: enriched,
+    })
+    let correctiveMessage: string | null = null
+    let snapshot: PrescriptionOutputSnapshot
+    let validated: ReturnType<typeof validatePrescriptionAgainstRules>
+
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+        if (!compact) {
+            const messages: Array<{ role: 'user' | 'assistant'; content: string }> = [
+                { role: 'user', content: basePrompt.user },
+            ]
+            if (correctiveMessage) {
+                messages.push({
+                    role: 'user',
+                    content: `A sua saída anterior violou regras de domínio. Corrija e re-emita o JSON completo.\n\n${correctiveMessage}`,
+                })
+            }
+
+            const llmResult: LLMCallResult<string> = await callWithModelFallback<string>({
+                primary: DEFAULT_GENERATION_MODEL,
+                fallback: FALLBACK_GENERATION_MODEL,
+                makeCall: (model) => callLLM({
+                    model,
+                    system: basePrompt.system,
+                    messages,
+                    max_tokens: 6000,
+                    temperature: 0.5,
+                    timeout_ms: 60_000,
+                    structured_output: true,
+                }),
+            })
+
+            if (llmResult.status !== 'success' || !llmResult.data) {
+                const errorType =
+                    llmResult.status === 'http_error'
+                        ? ((llmResult.http_status ?? 0) >= 500 ? 'other' : 'schema_error')
+                        : llmResult.status === 'timeout' ? 'timeout'
+                            : llmResult.status === 'network_error' ? 'other'
+                                : 'other'
+                const wastedInput = llmResult.usage?.input_tokens ?? 0
+                const wastedOutput = llmResult.usage?.output_tokens ?? 0
+                console.warn(
+                    `[Smart-v2][telemetry][failed] trainerId=${trainerId} studentId=${studentId} ` +
+                    `model=${llmResult.model} http_status=${llmResult.http_status ?? 0} ` +
+                    `error_type=${errorType} attempt=${(llmResult.retry_count ?? 0) + 1} ` +
+                    `semanticRetries=${semanticRetries} ` +
+                    `tokens_wasted=${wastedInput + wastedOutput} status=${llmResult.status}`,
+                )
+                console.warn(`[Smart-v2] abort: llm_failed status=${llmResult.status}`)
+                return null
+            }
+
+            // Accumulate token + cost across semantic retries. `model_used`
+            // ends up reflecting the LAST attempt (telemetry intentional:
+            // shows which model produced the accepted output).
+            usedModel = llmResult.model
+            retryCount = llmResult.retry_count ?? 0
+            inputNew += Math.max(0, (llmResult.usage?.input_tokens ?? 0) - (llmResult.usage?.cached_input_tokens ?? 0))
+            inputCached += llmResult.usage?.cached_input_tokens ?? 0
+            outputTokens += llmResult.usage?.output_tokens ?? 0
+            costUsd += llmResult.usage?.cost_usd ?? 0
+
+            let parsed: CompactGenerationOutput | null = null
+            let parseError: string | null = null
+            try {
+                parsed = validateCompactGeneration(JSON.parse(llmResult.data))
+                if (!parsed) parseError = 'validator rejected structure'
+            } catch (err) {
+                parseError = err instanceof Error ? err.message : 'JSON.parse failed'
+            }
+            if (!parsed) {
+                console.warn(`[Smart-v2] abort: invalid_compact reason=${parseError}`)
+                return null
+            }
+            compact = parsed
+        }
+
+        snapshot = enrichCompactOutput(compact, exerciseMap, enrichedConstraints, profile)
+        validated = validatePrescriptionAgainstRules(snapshot, exerciseMap, profile)
+        snapshot = validated.output
+
+        const retryable = validated.violations.filter(v => v.autofix === 'retry')
+        if (retryable.length === 0) break
+
+        if (semanticRetries >= MAX_SEMANTIC_ATTEMPTS) {
+            console.warn(
+                `[Smart-v2] semantic_retry_exhausted after ${semanticRetries} attempts; ` +
+                `accepting output with ${retryable.length} retry-flagged violation(s): ` +
+                retryable.map(v => v.rule_id).join(','),
+            )
+            break
+        }
+
+        semanticRetries++
+        correctiveMessage = retryable.map(v => `- [${v.rule_id}] ${v.message}`).join('\n')
+        console.warn(
+            `[Smart-v2] semantic_retry attempt=${semanticRetries} rules=${retryable.map(v => v.rule_id).join(',')}`,
+        )
+        compact = null  // invalidate so the loop re-calls the LLM with the corrective message
+    }
+
+    // Cache only the FINAL accepted compact (avoid poisoning cache with
+    // semantically-rejected outputs). If it came from cache at entry,
+    // storeInCache is idempotent — re-storing is cheap and refreshes TTL.
+    if (compact) storeInCache(profile, compact, enriched)
+
+    const generationTimeMs = Date.now() - startTime
+
+    // Persist prescription_generations row (same shape as legacy path).
+    // Fase 2.5.2: the full EnrichedStudentContextV2 is persisted so the
+    // context injected into prompt Layer 3 becomes auditable without
+    // re-running the pipeline (addresses walk-through finding #5).
+    const inputSnapshot = await buildSmartV2InputSnapshot({
+        profile, exercises, performanceContext, enriched,
+    })
+
+    // @ts-ignore — prescription_generations table from migration 035
+    const { data: generation, error: genError } = await supabase
+        .from('prescription_generations')
+        .insert({
+            trainer_id: trainerId,
+            student_id: studentId,
+            assigned_program_id: null,
+            ai_mode_used: aiMode,
+            ai_model: usedModel,
+            ai_source: 'llm' as const,
+            input_snapshot: inputSnapshot,
+            output_snapshot: snapshot,
+            rules_violations: [],
+            status: 'pending_review',
+            generation_time_ms: generationTimeMs,
+            confidence_score: snapshot.reasoning.confidence_score,
+        })
+        .select('id')
+        .single()
+
+    if (genError || !generation) {
+        console.error('[generateProgram][smart-v2] failed to persist generation:', genError)
+        console.warn(`[Smart-v2] abort: persist_error reason=${genError?.message ?? 'unknown'}`)
+        return null
+    }
+
+    const generationId = (generation as any).id as string
+
+    // Telemetry update (non-blocking).
+    await logGenerationTelemetry(supabase, generationId, {
+        tokens_input_new: inputNew,
+        tokens_input_cached: inputCached,
+        tokens_output: outputTokens,
+        cost_usd: costUsd,
+        model_used: usedModel,
+        retry_count: retryCount,
+        prompt_version: PROMPT_VERSION,
+        rules_violations_count: validated.violations.length,
+        rules_violations_json: validated.violations,
+    })
+
+    return {
+        success: true,
+        generationId,
+        aiMode,
+        source: 'llm',
+        llmStatus: 'llm_used',
+        violations: [],
     }
 }

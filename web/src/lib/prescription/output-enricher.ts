@@ -44,6 +44,27 @@ export function enrichCompactOutput(
     constraints: PrescriptionConstraints,
     profile: StudentPrescriptionProfile,
 ): PrescriptionOutputSnapshot {
+    // Fase 2.5.2: surface IDs the LLM referenced that aren't in the pool.
+    // The rules-validator (R_POOL_UNKNOWN_EXERCISE) catches these and triggers
+    // a semantic retry, but we log here so the detection is visible in logs
+    // at the enrichment layer — useful when the retry also fails and we
+    // want to understand what the LLM kept hallucinating.
+    const missingIds: string[] = []
+    for (const cw of compact.workouts) {
+        for (const it of cw.items) {
+            if ((it.item_type ?? 'exercise') !== 'exercise') continue
+            if (it.exercise_id && !exerciseMap.has(it.exercise_id)) {
+                missingIds.push(it.exercise_id)
+            }
+        }
+    }
+    if (missingIds.length > 0) {
+        console.warn(
+            `[Smart-v2][missingIds] count=${missingIds.length} ` +
+            `poolSize=${exerciseMap.size} ids=${JSON.stringify(missingIds)}`,
+        )
+    }
+
     // 1. Enrich workouts with exercise metadata
     const workouts = compact.workouts.map((cw, wi) =>
         enrichWorkout(cw, wi, exerciseMap)
@@ -183,7 +204,12 @@ function generateReasoning(
     exerciseMap: Map<string, PrescriptionExerciseRef>,
 ): PrescriptionReasoning {
     return {
-        structure_rationale: generateStructureRationale(constraints, profile),
+        // Fase 2.5.2 (Option 1b): derive from the REAL output instead of
+        // templating from constraints. Previous behavior produced "Upper/Lower
+        // 4x/sem" even when the LLM delivered PPL+1 5x — the structure_rationale
+        // now reflects what was actually generated. Keeps UI contract intact
+        // (prescription-rationale-panel.tsx:93 still reads this field).
+        structure_rationale: generateStructureRationaleFromOutput(workouts),
         volume_rationale: generateVolumeRationale(workouts, constraints, exerciseMap),
         workout_notes: generateWorkoutNotes(workouts, exerciseMap),
         attention_flags: compact.meta.flags,
@@ -191,38 +217,82 @@ function generateReasoning(
     }
 }
 
-/**
- * Generates a telegraphic structure rationale from constraints.
- * Format: "{split} {freq}x. {emphasis info}. {adherence note}."
- */
-function generateStructureRationale(
-    constraints: PrescriptionConstraints,
-    profile: StudentPrescriptionProfile,
+// ============================================================================
+// Structure rationale — derived from the output (Fase 2.5.2, Option 1b)
+// ============================================================================
+// inferSplitLabel maps workout names to the closed set defined with Gustavo.
+// Unknown patterns return "Split personalizado" — no "Custom" fallback, no
+// heuristic guessing.
+
+const DAY_NAMES_PT_SHORT = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb']
+
+export function generateStructureRationaleFromOutput(
+    workouts: GeneratedWorkout[],
 ): string {
-    const parts: string[] = []
+    if (!workouts || workouts.length === 0) return 'Sem workouts gerados.'
 
-    // Split type and frequency
-    const splitLabel = SPLIT_LABELS[constraints.split_type] ?? constraints.split_type
-    parts.push(`${splitLabel} ${constraints.split_detail.length}x/sem`)
+    const covered = new Set<number>()
+    for (const w of workouts) for (const d of w.scheduled_days ?? []) covered.add(d)
+    const frequency = covered.size
 
-    // Emphasis
-    if (constraints.emphasized_groups.length > 0) {
-        parts.push(`Ênfase: ${constraints.emphasized_groups.join(', ')}`)
-    }
+    const splitLabel = inferSplitLabel(workouts.map(w => w.name), frequency)
 
-    // Adherence adjustment
-    if (constraints.adherence_adjustment === 'reduced') {
-        parts.push('Volume reduzido por aderência moderada')
-    } else if (constraints.adherence_adjustment === 'minimal') {
-        parts.push('Sessões simplificadas — aderência crítica')
-    }
+    const schedule = workouts
+        .map(w => {
+            const days = (w.scheduled_days ?? [])
+                .slice()
+                .sort((a, b) => a - b)
+                .map(d => DAY_NAMES_PT_SHORT[d] ?? `d${d}`)
+                .join('+')
+            return `${w.name} ${days}`
+        })
+        .join(', ')
 
-    // Session duration
-    parts.push(`${profile.session_duration_minutes}min/sessão`)
-
-    return parts.join('. ') + '.'
+    return `${splitLabel} ${frequency}x/sem (${schedule}).`
 }
 
+/**
+ * Closed-set classifier. Returns one of:
+ *   - "PPL"           when names cover {Push, Pull, Legs} (any prefix/order)
+ *       → "PPL+1"   when frequency === 5
+ *       → "PPLPPL"  when frequency === 6
+ *       → "PPL"     otherwise (3 or 4)
+ *   - "Upper/Lower A/B"  when names include Upper A/B + Lower A/B variants
+ *   - "Upper/Lower"       when names include Upper + Lower (no A/B variants)
+ *   - "Full Body"         when every name starts with "Full Body" or "Treino " (A/B/C)
+ *   - "Split personalizado" otherwise
+ */
+function inferSplitLabel(names: string[], frequency: number): string {
+    const lower = names.map(n => n.toLowerCase())
+
+    const hasPush = lower.some(n => n.includes('push'))
+    const hasPull = lower.some(n => n.includes('pull'))
+    const hasLegs = lower.some(n => n.includes('legs'))
+    if (hasPush && hasPull && hasLegs) {
+        if (frequency === 6) return 'PPLPPL'
+        if (frequency === 5) return 'PPL+1'
+        return 'PPL'
+    }
+
+    const hasUpperA = lower.some(n => /\bupper\s*a\b/.test(n))
+    const hasUpperB = lower.some(n => /\bupper\s*b\b/.test(n))
+    const hasLowerA = lower.some(n => /\blower\s*a\b/.test(n))
+    const hasLowerB = lower.some(n => /\blower\s*b\b/.test(n))
+    if (hasUpperA && hasUpperB && hasLowerA && hasLowerB) return 'Upper/Lower A/B'
+
+    const hasUpper = lower.some(n => n.includes('upper'))
+    const hasLower = lower.some(n => n.includes('lower'))
+    if (hasUpper && hasLower) return 'Upper/Lower'
+
+    const allFullBody = lower.every(n => n.startsWith('full body'))
+    if (allFullBody) return 'Full Body'
+
+    // A/B/C nominals without recognizable pattern → honest "personalized".
+    return 'Split personalizado'
+}
+
+// Retained for generateProgramDescription below — describes the split *type*
+// rolled up from constraints, not the delivered workouts.
 const SPLIT_LABELS: Record<string, string> = {
     full_body: 'Full Body',
     upper_lower: 'Upper/Lower',
