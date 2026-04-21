@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { extractJson, validateAndFixResponse } from '../route'
+import { extractJson, validateAndFixResponse } from '../lib'
 import type { ParseTextResponse } from '../types'
 
 // ── extractJson ──
