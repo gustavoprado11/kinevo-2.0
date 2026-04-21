@@ -39,11 +39,17 @@ export interface LLMCallResult<T> {
     status: LLMCallStatus
     model: LLMModel
     usage: LLMTokenUsage | null
+    /** HTTP status when status='http_error'; undefined otherwise. */
+    http_status?: number
+    /** Number of retries used before reaching this result (0 = first attempt). */
+    retry_count?: number
 }
 
 export interface LLMTokenUsage {
     input_tokens: number
     output_tokens: number
+    /** Subset of input_tokens that hit the provider's prompt cache (0 when unknown). */
+    cached_input_tokens: number
     cost_usd: number
 }
 
@@ -62,23 +68,59 @@ export interface LLMCallOptions {
     temperature?: number
     /** If true, use structured output (JSON Schema for OpenAI, prompt-enforced for Claude) */
     structured_output?: boolean
+    /**
+     * Legacy JSON mode. Applies to OpenAI only; adds `response_format:
+     * {type: 'json_object'}` to force JSON output without schema validation.
+     * Ignored when `structured_output` is true (strict schema takes priority).
+     * Kept because some call sites produce free-form JSON the caller parses.
+     */
+    json_object_mode?: boolean
 }
 
 // ============================================================================
 // Pricing Table (USD per 1M tokens)
 // ============================================================================
+// Cached-input pricing reflects OpenAI's automatic prompt caching discount
+// (50% off input). Anthropic does not yet expose a cached-input price here;
+// their cache-read rate is approximated at 10% of the base input price, but
+// we model 0 (no discount) until we actually consume prompt caching there.
 
-const PRICING: Record<LLMModel, { input: number; output: number }> = {
-    'claude-haiku-4-5-20251001': { input: 1.00, output: 5.00 },
-    'claude-sonnet-4-6':         { input: 3.00, output: 15.00 },
-    'gpt-4.1-mini':              { input: 0.40, output: 1.60 },
-    'gpt-4o-mini':               { input: 0.15, output: 0.60 },
+export interface LLMPricing {
+    /** USD per 1M non-cached input tokens. */
+    input: number
+    /** USD per 1M cached input tokens. */
+    cached_input: number
+    /** USD per 1M output tokens. */
+    output: number
 }
 
-function computeCost(model: LLMModel, inputTokens: number, outputTokens: number): number {
+export const PRICING: Record<LLMModel, LLMPricing> = {
+    'claude-haiku-4-5-20251001': { input: 1.00, cached_input: 1.00, output: 5.00 },
+    'claude-sonnet-4-6':         { input: 3.00, cached_input: 3.00, output: 15.00 },
+    'gpt-4.1-mini':              { input: 0.40, cached_input: 0.20, output: 1.60 },
+    'gpt-4o-mini':               { input: 0.15, cached_input: 0.075, output: 0.60 },
+}
+
+/**
+ * Cost of a call broken down by cached vs. new input. `input_new` is the
+ * portion of prompt tokens that were NOT cached; `input_cached` is the
+ * portion that hit the provider's prompt cache.
+ */
+export function computeCost(
+    model: LLMModel,
+    usage: { input_new: number; input_cached: number; output: number },
+): number {
     const pricing = PRICING[model]
-    return (inputTokens / 1_000_000) * pricing.input + (outputTokens / 1_000_000) * pricing.output
+    return (
+        (usage.input_new / 1_000_000) * pricing.input +
+        (usage.input_cached / 1_000_000) * pricing.cached_input +
+        (usage.output / 1_000_000) * pricing.output
+    )
 }
+
+// Default generation models for the smart-v2 pipeline.
+export const DEFAULT_GENERATION_MODEL: LLMModel = 'gpt-4.1-mini'
+export const FALLBACK_GENERATION_MODEL: LLMModel = 'gpt-4o-mini'
 
 // ============================================================================
 // Provider Detection
@@ -122,11 +164,19 @@ async function callAnthropic(options: LLMCallOptions): Promise<LLMCallResult<str
 
         const inputTokens = response.usage?.input_tokens ?? 0
         const outputTokens = response.usage?.output_tokens ?? 0
-        const cost = computeCost(options.model, inputTokens, outputTokens)
+        // Anthropic surfaces cache read tokens separately; we don't consume
+        // that path yet, so treat all input as new.
+        const cachedInputTokens = 0
+        const cost = computeCost(options.model, {
+            input_new: inputTokens - cachedInputTokens,
+            input_cached: cachedInputTokens,
+            output: outputTokens,
+        })
 
         const usage: LLMTokenUsage = {
             input_tokens: inputTokens,
             output_tokens: outputTokens,
+            cached_input_tokens: cachedInputTokens,
             cost_usd: cost,
         }
 
@@ -173,12 +223,33 @@ async function callOpenAI(options: LLMCallOptions): Promise<LLMCallResult<string
         ],
     }
 
-    // Structured output via JSON Schema
+    // Structured output via JSON Schema (preferred) or legacy JSON mode.
     if (options.structured_output) {
         body.response_format = {
             type: 'json_schema',
             json_schema: GENERATION_JSON_SCHEMA,
         }
+    } else if (options.json_object_mode) {
+        body.response_format = { type: 'json_object' }
+    }
+
+    // Opt-in full-payload dump. Off by default in production because prompts
+    // are long and may leak context. Flip KINEVO_LLM_DEBUG_PAYLOAD=1 to trace.
+    if (process.env.KINEVO_LLM_DEBUG_PAYLOAD === '1') {
+        const redactedBody = {
+            model: body.model,
+            temperature: body.temperature,
+            max_tokens: body.max_tokens,
+            response_format: body.response_format,
+            messages_summary: (body.messages as Array<{ role: string; content: string }>).map(m => ({
+                role: m.role,
+                chars: typeof m.content === 'string' ? m.content.length : 0,
+            })),
+        }
+        console.log(
+            `[LLMClient][debug] OpenAI request ${options.model} — ` +
+            JSON.stringify(redactedBody),
+        )
     }
 
     const controller = new AbortController()
@@ -197,19 +268,43 @@ async function callOpenAI(options: LLMCallOptions): Promise<LLMCallResult<string
         clearTimeout(timeoutId)
 
         if (!response.ok) {
-            console.error(`[LLMClient] OpenAI HTTP ${response.status}`)
-            return { data: null, status: 'http_error', model: options.model, usage: null }
+            // Always log the error body — OpenAI's structured error messages
+            // ("Invalid schema for response_format: …") only live here.
+            let errorBody: string | null = null
+            try {
+                errorBody = await response.clone().text()
+            } catch { /* ignore */ }
+            console.error(
+                `[LLMClient] OpenAI HTTP ${response.status} model=${options.model}` +
+                (errorBody ? ` body=${errorBody.slice(0, 2000)}` : ''),
+            )
+            return {
+                data: null,
+                status: 'http_error',
+                model: options.model,
+                usage: null,
+                http_status: response.status,
+            }
         }
 
         const payload = await response.json() as any
 
         const inputTokens = payload?.usage?.prompt_tokens ?? 0
         const outputTokens = payload?.usage?.completion_tokens ?? 0
-        const cost = computeCost(options.model, inputTokens, outputTokens)
+        // OpenAI exposes cached prompt tokens in prompt_tokens_details.cached_tokens
+        // when prompt caching is active (prompts ≥1024 tokens with a stable prefix).
+        const cachedInputTokens =
+            (payload?.usage?.prompt_tokens_details?.cached_tokens as number | undefined) ?? 0
+        const cost = computeCost(options.model, {
+            input_new: Math.max(0, inputTokens - cachedInputTokens),
+            input_cached: cachedInputTokens,
+            output: outputTokens,
+        })
 
         const usage: LLMTokenUsage = {
             input_tokens: inputTokens,
             output_tokens: outputTokens,
+            cached_input_tokens: cachedInputTokens,
             cost_usd: cost,
         }
 
@@ -347,6 +442,108 @@ export async function callWithFallback<T>(
 }
 
 // ============================================================================
+// Retry + Model Fallback (smart-v2 pipeline)
+// ============================================================================
+
+export interface RetryOptions {
+    /** Max attempts including the first. Default 3. */
+    maxAttempts?: number
+    /** Base delay in ms. Delay is baseDelayMs * 2^(attempt-1). Default 1000. */
+    baseDelayMs?: number
+    /** Injectable sleep (tests override for deterministic timing). */
+    sleep?: (ms: number) => Promise<void>
+}
+
+const defaultSleep = (ms: number) =>
+    new Promise<void>(resolve => setTimeout(resolve, ms))
+
+/**
+ * Returns true when the result is recoverable by a retry (network hiccup, 5xx,
+ * timeout). 4xx is a client/config error and never retried.
+ */
+function isRetryableFailure<T>(result: LLMCallResult<T>): boolean {
+    if (result.status === 'success') return false
+    if (result.status === 'network_error') return true
+    if (result.status === 'timeout') return true
+    if (result.status === 'http_error') {
+        const code = result.http_status ?? 0
+        return code === 0 || code >= 500
+    }
+    // missing_api_key / invalid_response / schema_validation_failed — not
+    // transient, don't waste calls retrying.
+    return false
+}
+
+/**
+ * Runs a single LLM call with exponential backoff retry. Only retries
+ * transient failures (see isRetryableFailure). Delays: 1s, 2s, 4s, …
+ * Returns the final result with `retry_count` populated.
+ */
+export async function callWithRetry<T>(
+    makeCall: () => Promise<LLMCallResult<T>>,
+    opts: RetryOptions = {},
+): Promise<LLMCallResult<T>> {
+    const maxAttempts = opts.maxAttempts ?? 3
+    const baseDelayMs = opts.baseDelayMs ?? 1000
+    const sleep = opts.sleep ?? defaultSleep
+
+    let lastResult: LLMCallResult<T> | null = null
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        const result = await makeCall()
+        lastResult = { ...result, retry_count: attempt - 1 }
+
+        if (result.status === 'success') return lastResult
+        if (!isRetryableFailure(result)) return lastResult
+        if (attempt === maxAttempts) return lastResult
+
+        const delay = baseDelayMs * Math.pow(2, attempt - 1)
+        console.warn(
+            `[LLMClient] attempt ${attempt}/${maxAttempts} failed (${result.status}); retrying in ${delay}ms`,
+        )
+        await sleep(delay)
+    }
+
+    // Unreachable under normal control flow; the loop always returns.
+    return lastResult as LLMCallResult<T>
+}
+
+export interface ModelFallbackOptions<T> {
+    /** Call factory parameterized by model. */
+    makeCall: (model: LLMModel) => Promise<LLMCallResult<T>>
+    /** Primary model tried up to `primaryRetry` attempts. */
+    primary: LLMModel
+    /** Fallback model tried once after primary fails. */
+    fallback: LLMModel
+    retry?: RetryOptions
+}
+
+/**
+ * Tries the primary model with retry; on total failure, falls back to a
+ * secondary model with a single attempt. Success short-circuits. The
+ * returned result carries `model` = the one that actually succeeded (or
+ * the last one tried on total failure).
+ */
+export async function callWithModelFallback<T>(
+    opts: ModelFallbackOptions<T>,
+): Promise<LLMCallResult<T>> {
+    const primaryResult = await callWithRetry(
+        () => opts.makeCall(opts.primary),
+        opts.retry,
+    )
+    if (primaryResult.status === 'success') return primaryResult
+
+    console.warn(
+        `[LLMClient] primary ${opts.primary} exhausted (${primaryResult.status}); falling back to ${opts.fallback}`,
+    )
+
+    const fallbackResult = await callWithRetry(
+        () => opts.makeCall(opts.fallback),
+        { ...opts.retry, maxAttempts: 1 },
+    )
+    return fallbackResult
+}
+
+// ============================================================================
 // Helpers
 // ============================================================================
 
@@ -356,9 +553,11 @@ function logUsage(
     usage: LLMTokenUsage,
     stopReason: string,
 ): void {
+    const cachedHint =
+        usage.cached_input_tokens > 0 ? `, cached: ${usage.cached_input_tokens}` : ''
     console.log(
         `[LLMClient] ${provider}/${model} — ` +
-        `input: ${usage.input_tokens}, output: ${usage.output_tokens}, ` +
+        `input: ${usage.input_tokens}${cachedHint}, output: ${usage.output_tokens}, ` +
         `cost: $${usage.cost_usd.toFixed(4)}, stop: ${stopReason}`
     )
 }

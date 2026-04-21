@@ -261,6 +261,95 @@ describe('program-builder-store', () => {
             expect(state.draft.studentId).toBeNull();
             expect(state.currentWorkoutId).toBeNull();
             expect(state.isDirty).toBe(false);
+            // Fase 3: AI fields default cleanly on reset.
+            expect(state.draft.generationId).toBeNull();
+            expect(state.draft.originatedFromAi).toBe(false);
+            expect(state.draft.originalSnapshot).toBeNull();
+        });
+    });
+
+    describe('initFromAiSnapshot', () => {
+        const SNAPSHOT = {
+            program: { name: 'Programa IA', description: 'desc', duration_weeks: 8 },
+            workouts: [
+                {
+                    name: 'A',
+                    order_index: 0,
+                    scheduled_days: [1, 4],
+                    items: [
+                        { item_type: 'exercise' as const, order_index: 0, exercise_id: 'ex-1', sets: 3, reps: '10', rest_seconds: 60, notes: null },
+                    ],
+                },
+            ],
+            reasoning: { structure_rationale: 'r', volume_rationale: 'v', workout_notes: [], attention_flags: [], confidence_score: 0.7 },
+        };
+
+        const BUILDER_DATA = {
+            id: 'temp_program',
+            name: 'Programa IA',
+            description: 'desc',
+            duration_weeks: 8,
+            workout_templates: [
+                {
+                    id: 'temp_workout',
+                    name: 'A',
+                    order_index: 0,
+                    frequency: ['mon', 'thu'],
+                    workout_item_templates: [
+                        {
+                            id: 'temp_item',
+                            item_type: 'exercise',
+                            order_index: 0,
+                            parent_item_id: null,
+                            exercise_id: 'ex-1',
+                            substitute_exercise_ids: null,
+                            sets: 3,
+                            reps: '10',
+                            rest_seconds: 60,
+                            notes: null,
+                            exercise_function: null,
+                            item_config: undefined,
+                        },
+                    ],
+                },
+            ],
+        };
+
+        it('populates workouts, generationId, originatedFromAi, originalSnapshot', () => {
+            useProgramBuilderStore.getState().initFromAiSnapshot(
+                'student-z',
+                BUILDER_DATA,
+                'gen-42',
+                SNAPSHOT,
+            );
+            const { draft, currentWorkoutId } = useProgramBuilderStore.getState();
+            expect(draft.studentId).toBe('student-z');
+            expect(draft.name).toBe('Programa IA');
+            expect(draft.duration_weeks).toBe(8);
+            expect(draft.generationId).toBe('gen-42');
+            expect(draft.originatedFromAi).toBe(true);
+            expect(draft.originalSnapshot).toEqual(SNAPSHOT);
+            expect(draft.workouts).toHaveLength(1);
+            expect(draft.workouts[0].name).toBe('A');
+            expect(draft.workouts[0].frequency).toEqual(['mon', 'thu']);
+            expect(draft.workouts[0].items).toHaveLength(1);
+            expect(draft.workouts[0].items[0].exercise_id).toBe('ex-1');
+            expect(draft.workouts[0].items[0].sets).toBe(3);
+            expect(currentWorkoutId).toBe(draft.workouts[0].id);
+        });
+
+        it('falls back to a placeholder Treino A when builderData has no workouts', () => {
+            useProgramBuilderStore.getState().initFromAiSnapshot(
+                'student-z',
+                { ...BUILDER_DATA, workout_templates: [] },
+                'gen-empty',
+                SNAPSHOT,
+            );
+            const { draft } = useProgramBuilderStore.getState();
+            expect(draft.workouts).toHaveLength(1);
+            expect(draft.workouts[0].name).toBe('Treino A');
+            expect(draft.workouts[0].items).toHaveLength(0);
+            expect(draft.originatedFromAi).toBe(true);
         });
     });
 });

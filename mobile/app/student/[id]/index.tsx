@@ -10,29 +10,30 @@ import {
     Platform,
     Alert,
 } from "react-native";
-import { StudentDetailSkeleton } from "../../components/shared/skeletons/StudentDetailSkeleton";
-import { toast } from "../../lib/toast";
+import { StudentDetailSkeleton } from "../../../components/shared/skeletons/StudentDetailSkeleton";
+import { toast } from "../../../lib/toast";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import * as Haptics from "expo-haptics";
 import {
     ChevronLeft,
     Dumbbell,
     Calendar,
-    Sparkles,
-    FileText,
     MessageCircle,
+    MoreVertical,
     User,
 } from "lucide-react-native";
-import { useStudentDetail } from "../../hooks/useStudentDetail";
-import { useTrainingRoomStore } from "../../stores/training-room-store";
-import { StudentOverviewTab } from "../../components/trainer/student/StudentOverviewTab";
-import { StudentProgramsTab } from "../../components/trainer/student/StudentProgramsTab";
-import { StudentFormsTab } from "../../components/trainer/student/StudentFormsTab";
-import { AssignProgramWizard } from "../../components/trainer/student/AssignProgramWizard";
-import { TextPrescriptionSheet } from "../../components/trainer/student/TextPrescriptionSheet";
-import { SubmissionDetailSheet } from "../../components/trainer/forms/SubmissionDetailSheet";
-import { useProgramBuilderStore } from "../../stores/program-builder-store";
+import { useStudentDetail } from "../../../hooks/useStudentDetail";
+import { useTrainingRoomStore } from "../../../stores/training-room-store";
+import { StudentOverviewTab } from "../../../components/trainer/student/StudentOverviewTab";
+import { StudentProgramsTab } from "../../../components/trainer/student/StudentProgramsTab";
+import { StudentFormsTab } from "../../../components/trainer/student/StudentFormsTab";
+import { ResetPasswordModal } from "../../../components/trainer/student/ResetPasswordModal";
+import { EditStudentModal } from "../../../components/trainer/student/EditStudentModal";
+import { SubmissionDetailSheet } from "../../../components/trainer/forms/SubmissionDetailSheet";
+import { useArchiveStudent } from "../../../hooks/useArchiveStudent";
 import { colors } from "@/theme";
+import type { Student, StudentModality } from "../../../types/student";
 
 type ProfileTab = "overview" | "programs" | "forms";
 
@@ -61,10 +62,11 @@ export default function StudentProfileScreen({
     const { data, isLoading, isRefreshing, refresh } = useStudentDetail(id || null);
 
     const [activeTab, setActiveTab] = useState<ProfileTab>("overview");
-    const [showAssignProgram, setShowAssignProgram] = useState(false);
-    const [showTextPrescription, setShowTextPrescription] = useState(false);
+    const [showResetPassword, setShowResetPassword] = useState(false);
+    const [showEditModal, setShowEditModal] = useState(false);
     const [detailSubmissionId, setDetailSubmissionId] = useState<string | null>(null);
-    const initFromParsedText = useProgramBuilderStore((s) => s.initFromParsedText);
+
+    const { archiveStudent, isArchiving } = useArchiveStudent();
 
     // Training room store for "Start Training Room" action
     const { sessions, addStudent, setActiveStudent } = useTrainingRoomStore();
@@ -94,78 +96,84 @@ export default function StudentProfileScreen({
         router.push("/(trainer-tabs)/training-room" as any);
     }, [data, sessions, setActiveStudent, router]);
 
-    const handleAssignProgram = useCallback(() => {
+    /**
+     * Single entry point — replaces "Atribuir Programa" / "Prescrever IA" /
+     * "Prescrever por Texto". The program builder is the hub; the choice of
+     * "novo programa" / "IA" / "texto" / "selecionar existente" lives inside
+     * the builder via the IA menu.
+     */
+    const handleOpenBuilder = useCallback(() => {
+        router.push({ pathname: '/program-builder', params: { studentId: id } } as any);
+    }, [id, router]);
+
+    const handleEditStudent = useCallback(() => {
+        if (!data) return;
+        Haptics.selectionAsync();
+        Alert.alert(
+            `Editar ${data.student.name}?`,
+            "Você poderá alterar nome, email, telefone e modalidade.",
+            [
+                { text: "Cancelar", style: "cancel" },
+                { text: "Editar", onPress: () => setShowEditModal(true) },
+            ]
+        );
+    }, [data]);
+
+    const handleArchiveStudent = useCallback(() => {
+        if (!data) return;
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        Alert.alert(
+            `Arquivar ${data.student.name}?`,
+            "O aluno sairá da sua lista e não poderá acessar mais treinos. Você pode restaurar depois em Configurações.",
+            [
+                { text: "Cancelar", style: "cancel" },
+                {
+                    text: "Arquivar",
+                    style: "destructive",
+                    onPress: async () => {
+                        const result = await archiveStudent(data.student.id);
+                        if (result.success) {
+                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                            toast.success("Aluno arquivado");
+                            router.back();
+                        } else {
+                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                            Alert.alert("Erro", result.error);
+                        }
+                    },
+                },
+            ]
+        );
+    }, [data, archiveStudent, router]);
+
+    const handleOpenStudentMenu = useCallback(() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         if (Platform.OS === 'ios') {
             ActionSheetIOS.showActionSheetWithOptions(
                 {
-                    options: ['Cancelar', 'Selecionar existente', 'Criar novo programa'],
+                    options: ['Cancelar', 'Editar aluno', 'Gerar nova senha', 'Arquivar'],
                     cancelButtonIndex: 0,
+                    destructiveButtonIndex: 3,
                 },
                 (buttonIndex) => {
-                    if (buttonIndex === 1) setShowAssignProgram(true);
-                    if (buttonIndex === 2) {
-                        router.push({ pathname: '/program-builder', params: { studentId: id, mode: 'new' } } as any);
-                    }
+                    if (buttonIndex === 1) handleEditStudent();
+                    else if (buttonIndex === 2) setShowResetPassword(true);
+                    else if (buttonIndex === 3) handleArchiveStudent();
                 }
             );
         } else {
             Alert.alert(
-                'Atribuir programa',
-                'Como deseja prosseguir?',
+                'Ações do aluno',
+                undefined,
                 [
                     { text: 'Cancelar', style: 'cancel' },
-                    { text: 'Selecionar existente', onPress: () => setShowAssignProgram(true) },
-                    { text: 'Criar novo', onPress: () => router.push({ pathname: '/program-builder', params: { studentId: id, mode: 'new' } } as any) },
+                    { text: 'Editar aluno', onPress: handleEditStudent },
+                    { text: 'Gerar nova senha', onPress: () => setShowResetPassword(true) },
+                    { text: 'Arquivar', style: 'destructive', onPress: handleArchiveStudent },
                 ]
             );
         }
-    }, [id, router]);
-
-    const handleTextPrescription = useCallback(() => {
-        setShowTextPrescription(true);
-    }, []);
-
-    const handleTextParsed = useCallback(
-        (result: { workouts: Array<{ name: string; exercises: Array<{ matched: boolean; exercise_id: string | null; catalog_name: string | null; original_text: string; sets: number; reps: string; rest_seconds: number | null; notes: string | null; superset_group: string | null }> }> }) => {
-            if (!id) return;
-
-            // Convert parsed result → format for program builder store
-            // Only include matched exercises (those found in catalog)
-            const workoutsForBuilder = result.workouts.map((w) => ({
-                name: w.name,
-                exercises: w.exercises
-                    .filter((ex) => ex.matched && ex.exercise_id && ex.catalog_name)
-                    .map((ex) => ({
-                        exercise_id: ex.exercise_id!,
-                        catalog_name: ex.catalog_name!,
-                        sets: ex.sets,
-                        reps: ex.reps,
-                        rest_seconds: ex.rest_seconds,
-                        notes: ex.notes,
-                        superset_group: ex.superset_group ?? null,
-                    })),
-            })).filter((w) => w.exercises.length > 0);
-
-            // Seed the program builder store with parsed data
-            initFromParsedText(id, workoutsForBuilder);
-
-            // Navigate to program builder
-            router.push({
-                pathname: "/program-builder",
-                params: { studentId: id, mode: "from-text" },
-            } as any);
-        },
-        [id, initFromParsedText, router]
-    );
-
-    const handlePrescribe = useCallback(() => {
-        if (!data) return;
-        if (!data.aiEnabled) {
-            toast.info("IA não habilitada", "O módulo de prescrição IA não está habilitado para sua conta. Entre em contato com o suporte.");
-            return;
-        }
-        router.push({ pathname: "/student/[id]/prescribe", params: { id: id! } } as any);
-    }, [data, id, router]);
+    }, [handleEditStudent, handleArchiveStudent]);
 
     if (isLoading || !data) {
         return (
@@ -244,6 +252,24 @@ export default function StudentProfileScreen({
                             )}
                         </View>
                     </View>
+                    {!student.is_trainer_profile && (
+                        <TouchableOpacity
+                            onPress={handleOpenStudentMenu}
+                            accessibilityRole="button"
+                            accessibilityLabel="Mais ações"
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            style={{
+                                width: 36,
+                                height: 36,
+                                borderRadius: 18,
+                                alignItems: "center",
+                                justifyContent: "center",
+                                marginLeft: 8,
+                            }}
+                        >
+                            <MoreVertical size={20} color={colors.text.secondary} />
+                        </TouchableOpacity>
+                    )}
                 </View>
 
                 {/* Action buttons */}
@@ -260,26 +286,14 @@ export default function StudentProfileScreen({
                     />
                     <ActionButton
                         icon={<Calendar size={14} color={colors.brand.primary} />}
-                        label="Atribuir Programa"
-                        onPress={handleAssignProgram}
+                        label="Prescrever"
+                        onPress={handleOpenBuilder}
                     />
                     <ActionButton
                         icon={<MessageCircle size={14} color={colors.brand.primary} />}
                         label="Conversar"
                         onPress={() => router.push({ pathname: "/messages/[studentId]" as any, params: { studentId: id } })}
                     />
-                    <ActionButton
-                        icon={<FileText size={14} color={colors.brand.primary} />}
-                        label="Prescrever por Texto"
-                        onPress={handleTextPrescription}
-                    />
-                    {data.aiEnabled && (
-                        <ActionButton
-                            icon={<Sparkles size={14} color={colors.brand.primary} />}
-                            label="Prescrever IA"
-                            onPress={handlePrescribe}
-                        />
-                    )}
                 </ScrollView>
 
                 {/* Tab bar */}
@@ -333,27 +347,8 @@ export default function StudentProfileScreen({
                 )}
             </View>
 
-            {/* Assign Program Wizard */}
-            <AssignProgramWizard
-                visible={showAssignProgram}
-                studentId={id!}
-                studentName={student.name}
-                hasActiveProgram={!!data.activeProgram}
-                onClose={() => setShowAssignProgram(false)}
-                onSuccess={() => {
-                    setShowAssignProgram(false);
-                    refresh();
-                }}
-            />
-
-            {/* Text Prescription Sheet */}
-            <TextPrescriptionSheet
-                visible={showTextPrescription}
-                studentId={id!}
-                studentName={student.name}
-                onClose={() => setShowTextPrescription(false)}
-                onParsed={handleTextParsed}
-            />
+            {/* AssignProgramWizard and TextPrescriptionSheet now live inside
+                the program builder (Fase 3 unification). */}
 
             {/* Submission Detail */}
             <SubmissionDetailSheet
@@ -361,6 +356,34 @@ export default function StudentProfileScreen({
                 submissionId={detailSubmissionId}
                 onClose={() => setDetailSubmissionId(null)}
                 onFeedbackSent={() => refresh()}
+            />
+
+            {/* Reset Password Modal */}
+            <ResetPasswordModal
+                visible={showResetPassword}
+                studentId={id!}
+                studentName={student.name}
+                studentEmail={student.email}
+                studentPhone={student.phone}
+                onClose={() => setShowResetPassword(false)}
+            />
+
+            {/* Edit Student Modal */}
+            <EditStudentModal
+                visible={showEditModal}
+                onClose={() => setShowEditModal(false)}
+                onSuccess={(updated: Student) => {
+                    setShowEditModal(false);
+                    toast.success("Aluno atualizado");
+                    refresh();
+                }}
+                student={{
+                    id: student.id,
+                    name: student.name,
+                    email: student.email,
+                    phone: student.phone,
+                    modality: (student.modality as StudentModality | null) ?? null,
+                }}
             />
         </View>
     );

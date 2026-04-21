@@ -33,12 +33,6 @@ const EQUIPMENT_OPTIONS = [
     { value: "apenas_peso_corporal", label: "Peso Corporal" },
 ];
 
-const AI_MODES = [
-    { value: "auto", label: "Automático", desc: "IA decide o nível de autonomia" },
-    { value: "copilot", label: "Copiloto", desc: "IA sugere, você edita" },
-    { value: "assistant", label: "Assistente", desc: "Você compõe, IA apoia" },
-] as const;
-
 const DURATION_OPTIONS = [30, 45, 60, 75, 90, 120];
 
 interface Props {
@@ -64,7 +58,6 @@ export function PrescriptionProfileForm({ existingProfile, isSaving, onSubmit }:
     const [restrictions, setRestrictions] = useState<{ description: string; severity?: string }[]>(
         existingProfile?.medical_restrictions || []
     );
-    const [aiMode, setAiMode] = useState(existingProfile?.ai_mode || "copilot");
     const [newRestriction, setNewRestriction] = useState("");
     const [error, setError] = useState<string | null>(null);
 
@@ -108,7 +101,10 @@ export function PrescriptionProfileForm({ existingProfile, isSaving, onSubmit }:
             session_duration_minutes: sessionDuration,
             available_equipment: equipment,
             medical_restrictions: restrictions,
-            ai_mode: aiMode,
+            // ai_mode é hardcoded como "copilot" porque os 3 modos (auto/copilot/assistant)
+            // geram o mesmo resultado na pipeline atual do web. Seletor removido da UI em
+            // abr/2026. Revisitar se/quando os modos voltarem a ramificar comportamento real.
+            ai_mode: "copilot",
         });
     };
 
@@ -315,28 +311,6 @@ export function PrescriptionProfileForm({ existingProfile, isSaving, onSubmit }:
                     <Plus size={20} color="#7c3aed" />
                 </TouchableOpacity>
             </View>
-
-            {/* AI Mode */}
-            <SectionLabel>Modo da IA</SectionLabel>
-            {AI_MODES.map((mode) => (
-                <TouchableOpacity
-                    key={mode.value}
-                    onPress={() => setAiMode(mode.value)}
-                    style={{
-                        backgroundColor: aiMode === mode.value ? "#f3f0ff" : "#ffffff",
-                        borderRadius: 12,
-                        padding: 14,
-                        marginBottom: 8,
-                        borderWidth: aiMode === mode.value ? 2 : 1,
-                        borderColor: aiMode === mode.value ? "#7c3aed" : "#e2e8f0",
-                    }}
-                >
-                    <Text style={{ fontSize: 14, fontWeight: "600", color: "#1a1a2e" }}>
-                        {mode.label}
-                    </Text>
-                    <Text style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{mode.desc}</Text>
-                </TouchableOpacity>
-            ))}
 
             {/* Error */}
             {error && (

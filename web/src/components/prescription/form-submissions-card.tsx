@@ -1,6 +1,7 @@
 'use client'
 
-import { ClipboardList, Check } from 'lucide-react'
+import { useState } from 'react'
+import { ClipboardList, Check, ChevronDown } from 'lucide-react'
 import type { FormSubmissionSummary } from '@/actions/prescription/get-prescription-data'
 
 // ============================================================================
@@ -39,6 +40,38 @@ export function FormSubmissionsCard({
     if (submissions.length === 0) return null
 
     const selectedSet = new Set(selectedIds)
+    const allSelected = submissions.length > 0 && selectedSet.size === submissions.length
+
+    // Collapsed by default when all forms are already selected (the common case).
+    // Opening the card is explicit, via the summary row.
+    // If the user deselects something, we auto-expand so they can see what's going on.
+    const [manuallyOpened, setManuallyOpened] = useState(false)
+    const isExpanded = manuallyOpened || !allSelected
+
+    if (!isExpanded) {
+        return (
+            <button
+                type="button"
+                onClick={() => setManuallyOpened(true)}
+                className="w-full flex items-center gap-3 px-4 py-3 mb-6 rounded-2xl bg-glass-bg backdrop-blur-md border border-k-border-primary hover:border-violet-500/30 hover:bg-white/[0.03] transition-colors text-left"
+            >
+                <div className="w-8 h-8 rounded-lg bg-violet-500/15 border border-violet-500/30 flex items-center justify-center flex-shrink-0">
+                    <ClipboardList className="w-4 h-4 text-violet-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                    <span className="text-sm font-medium text-k-text-primary block">
+                        {submissions.length === 1
+                            ? '1 formulário selecionado'
+                            : `${submissions.length} formulários selecionados`}
+                    </span>
+                    <span className="text-[11px] text-k-text-quaternary">
+                        Usados como contexto · toque para ajustar
+                    </span>
+                </div>
+                <ChevronDown className="w-4 h-4 text-k-text-quaternary flex-shrink-0" />
+            </button>
+        )
+    }
 
     return (
         <div className="bg-glass-bg backdrop-blur-md rounded-2xl border border-k-border-primary p-6 mb-6">

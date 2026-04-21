@@ -14,21 +14,28 @@
 //
 // Conservative estimate: 20-30% cache hit rate at scale.
 
+import { createHash } from 'crypto'
+
 import type { StudentPrescriptionProfile } from '@kinevo/shared/types/prescription'
 import type { CompactGenerationOutput } from './schemas'
+import type { EnrichedStudentContextV2 } from './context-enricher-v2'
 
 // ============================================================================
 // Config
 // ============================================================================
 
-/** Cache entries expire after this many milliseconds (24 hours) */
-const DEFAULT_TTL_MS = 24 * 60 * 60 * 1000
+/**
+ * Cache entries expire after 6 hours. Shorter than the previous 24h because
+ * smart-v2 wants to absorb new sessions / observations that land during the
+ * day; even with the richer key, we prefer to regenerate more often.
+ */
+const DEFAULT_TTL_MS = 6 * 60 * 60 * 1000
 
 /** Maximum number of cached entries (LRU eviction when exceeded) */
 const MAX_CACHE_SIZE = 500
 
 /** Current engine version — included in hash to auto-invalidate on upgrades */
-const CACHE_ENGINE_VERSION = '2.0.0'
+const CACHE_ENGINE_VERSION = '2.5.0'
 
 // ============================================================================
 // Types
@@ -70,9 +77,10 @@ let stats = { hits: 0, misses: 0, evictions: 0 }
  */
 export function lookupCache(
     profile: StudentPrescriptionProfile,
+    extraContext: EnrichedStudentContextV2 | null = null,
     ttlMs: number = DEFAULT_TTL_MS,
 ): CacheLookupResult {
-    const key = computeCacheKey(profile)
+    const key = computeCacheKey(profile, extraContext)
 
     const entry = cache.get(key)
     if (!entry) {
@@ -101,8 +109,9 @@ export function lookupCache(
 export function storeInCache(
     profile: StudentPrescriptionProfile,
     output: CompactGenerationOutput,
+    extraContext: EnrichedStudentContextV2 | null = null,
 ): string {
-    const key = computeCacheKey(profile)
+    const key = computeCacheKey(profile, extraContext)
 
     // LRU eviction if cache is full
     if (cache.size >= MAX_CACHE_SIZE && !cache.has(key)) {
@@ -166,8 +175,11 @@ export function getCacheStats(): CacheStats {
  *     should produce different constraints which means different prompts)
  *   - cycle_observation (free text, always bypasses cache)
  */
-export function computeCacheKey(profile: StudentPrescriptionProfile): string {
-    const input = {
+export function computeCacheKey(
+    profile: StudentPrescriptionProfile,
+    extra: EnrichedStudentContextV2 | null = null,
+): string {
+    const base = {
         v: CACHE_ENGINE_VERSION,
         l: profile.training_level,
         g: profile.goal,
@@ -181,7 +193,26 @@ export function computeCacheKey(profile: StudentPrescriptionProfile): string {
         x: [...profile.disliked_exercise_ids].sort(),
     }
 
-    return simpleHash(JSON.stringify(input))
+    // Extra context (smart-v2): short SHA-1 digests per field so two students
+    // with identical base profiles but different histories get distinct keys.
+    // The input strings are hashed so PII (raw notes, anamnese text) never
+    // ends up in the cache key or in logs.
+    if (extra) {
+        const extraPart = {
+            a: sha1Short(extra.anamnese_summary),
+            p: sha1Short(JSON.stringify(extra.performance_summary)),
+            b: sha1Short(extra.adherence.bucket),
+            o: sha1Short(extra.trainer_observations.map(o => o.note).join('|')),
+            i: sha1Short(JSON.stringify(extra.active_injuries)),
+        }
+        return simpleHash(JSON.stringify({ base, extraPart }))
+    }
+
+    return simpleHash(JSON.stringify(base))
+}
+
+function sha1Short(input: string): string {
+    return createHash('sha1').update(input ?? '').digest('hex').slice(0, 10)
 }
 
 /**

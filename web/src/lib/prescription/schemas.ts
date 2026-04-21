@@ -12,6 +12,13 @@
 import type { ExerciseFunction } from '@kinevo/shared/types/prescription'
 
 // ============================================================================
+// Prompt version
+// ============================================================================
+// Bumped whenever the smart-v2 prompt structure or schema changes. Logged with
+// every generation in prescription_generations.prompt_version for attribution.
+export const PROMPT_VERSION = 'v2.5.0'
+
+// ============================================================================
 // 1. Analysis Output (Phase 1 — Claude Haiku)
 // ============================================================================
 
@@ -200,8 +207,13 @@ export const GENERATION_JSON_SCHEMA = {
                                             null,
                                         ],
                                     },
+                                    // OpenAI Structured Outputs strict mode rejects any
+                                    // object that lacks properties/required/additionalProperties:false.
+                                    // We accept item_config as a JSON string (parsed by
+                                    // validateCompactGeneration below) so warmup/cardio
+                                    // payloads stay flexible without growing the schema.
                                     item_config: {
-                                        type: ['object', 'null'] as const,
+                                        type: ['string', 'null'] as const,
                                     },
                                 },
                             },
@@ -238,10 +250,14 @@ export function validateCompactGeneration(raw: unknown): CompactGenerationOutput
     if (!raw || typeof raw !== 'object') return null
     const obj = raw as Record<string, unknown>
 
-    // Validate program
+    // Validate program. Mirrors OpenAI strict mode: reject unknown fields so a
+    // Claude response can't smuggle in schema-creep through the fuzzy parser.
     const program = obj.program as Record<string, unknown> | undefined
     if (!program || typeof program.name !== 'string' || typeof program.duration_weeks !== 'number') {
         return null
+    }
+    for (const key of Object.keys(program)) {
+        if (key !== 'name' && key !== 'duration_weeks') return null
     }
 
     // Validate workouts array
@@ -250,6 +266,10 @@ export function validateCompactGeneration(raw: unknown): CompactGenerationOutput
     }
 
     const validFunctions = new Set(['warmup', 'activation', 'main', 'accessory', 'conditioning'])
+
+    // Track every item's resolved item_config so the normalization step below
+    // can reuse the parsed object without running JSON.parse twice.
+    const resolvedItemConfigs: Array<Record<string, unknown> | null> = []
 
     for (const workout of obj.workouts) {
         if (!workout || typeof workout !== 'object') return null
@@ -262,9 +282,13 @@ export function validateCompactGeneration(raw: unknown): CompactGenerationOutput
             const it = item as Record<string, unknown>
             const itemType = (it.item_type as string) || 'exercise'
 
+            const parsedConfig = parseItemConfig(it.item_config)
+            if (parsedConfig === PARSE_ERROR) return null
+            resolvedItemConfigs.push(parsedConfig)
+
             if (itemType === 'warmup' || itemType === 'cardio') {
-                // Warmup/cardio: item_config required, exercise fields optional
-                if (!it.item_config || typeof it.item_config !== 'object') return null
+                // Warmup/cardio: item_config required, exercise fields optional.
+                if (!parsedConfig) return null
             } else {
                 // Exercise: exercise_id, sets, reps, rest_seconds, exercise_function required
                 if (typeof it.exercise_id !== 'string') return null
@@ -281,7 +305,9 @@ export function validateCompactGeneration(raw: unknown): CompactGenerationOutput
     if (!meta || typeof meta.confidence !== 'number') return null
     if (!Array.isArray(meta.flags)) return null
 
-    // Normalize
+    // Normalize. We iterate again but align each item with the pre-parsed
+    // item_config captured above so JSON.parse runs exactly once per item.
+    let configIndex = 0
     return {
         program: {
             name: program.name as string,
@@ -291,8 +317,9 @@ export function validateCompactGeneration(raw: unknown): CompactGenerationOutput
             name: w.name,
             order_index: typeof w.order_index === 'number' ? w.order_index : wi,
             scheduled_days: Array.isArray(w.scheduled_days) ? w.scheduled_days : [],
-            items: (w.items as any[]).map((it: any, ii: number) => {
+            items: (w.items as any[]).map((it: any) => {
                 const itemType = it.item_type || 'exercise'
+                const parsedConfig = resolvedItemConfigs[configIndex++] ?? null
                 if (itemType === 'warmup' || itemType === 'cardio') {
                     return {
                         item_type: itemType,
@@ -303,7 +330,7 @@ export function validateCompactGeneration(raw: unknown): CompactGenerationOutput
                         exercise_function: undefined,
                         substitute_exercise_ids: [],
                         note_key: null,
-                        item_config: it.item_config ?? {},
+                        item_config: parsedConfig ?? {},
                     } as CompactWorkoutItem
                 }
                 return {
@@ -324,6 +351,50 @@ export function validateCompactGeneration(raw: unknown): CompactGenerationOutput
             flags: (meta.flags as any[]).filter((f: unknown) => typeof f === 'string').slice(0, 3),
         },
     }
+}
+
+/**
+ * Sentinel returned by parseItemConfig on parse failure. Keeps null as a
+ * valid "absent" value distinct from "attempted and failed".
+ */
+const PARSE_ERROR = Symbol('PARSE_ERROR')
+
+/**
+ * Accepts the three shapes OpenAI can legally emit for item_config:
+ *   - null / undefined → null
+ *   - string (new strict-mode shape) → JSON.parse in try/catch
+ *   - object (legacy callers like the heuristic builder) → passthrough
+ *
+ * Returns PARSE_ERROR when a string value is not valid JSON — the caller
+ * treats that as a validation failure so it gets logged via
+ * `[Smart-v2] abort: invalid_compact reason=item_config is not valid JSON`.
+ */
+function parseItemConfig(
+    raw: unknown,
+): Record<string, unknown> | null | typeof PARSE_ERROR {
+    if (raw == null) return null
+    if (typeof raw === 'string') {
+        const trimmed = raw.trim()
+        if (trimmed === '' || trimmed === 'null') return null
+        try {
+            const parsed = JSON.parse(trimmed)
+            if (parsed === null) return null
+            if (typeof parsed !== 'object' || Array.isArray(parsed)) {
+                console.warn('[schemas] item_config is not valid JSON: expected object, got', typeof parsed)
+                return PARSE_ERROR
+            }
+            return parsed as Record<string, unknown>
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err)
+            console.warn(`[schemas] item_config is not valid JSON: ${msg}`)
+            return PARSE_ERROR
+        }
+    }
+    if (typeof raw === 'object' && !Array.isArray(raw)) {
+        return raw as Record<string, unknown>
+    }
+    console.warn(`[schemas] item_config has unsupported type: ${typeof raw}`)
+    return PARSE_ERROR
 }
 
 /**

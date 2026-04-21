@@ -50,6 +50,13 @@ export async function updateSession(request: NextRequest) {
         !request.nextUrl.pathname.startsWith('/api/stripe/webhook') &&
         !request.nextUrl.pathname.startsWith('/api/stripe/cancel-subscription') &&
         !request.nextUrl.pathname.startsWith('/api/cron') &&
+        !request.nextUrl.pathname.startsWith('/api/financial') &&
+        !request.nextUrl.pathname.startsWith('/api/notifications') &&
+        !request.nextUrl.pathname.startsWith('/api/prescription/generate') &&
+        !request.nextUrl.pathname.startsWith('/api/programs/assign') &&
+        !request.nextUrl.pathname.startsWith('/api/messages/notify-trainer') &&
+        !request.nextUrl.pathname.startsWith('/api/messages/notify-student') &&
+        !request.nextUrl.pathname.startsWith('/api/stripe/portal') &&
         !request.nextUrl.pathname.startsWith('/subscription') &&
         request.nextUrl.pathname !== '/'
     ) {

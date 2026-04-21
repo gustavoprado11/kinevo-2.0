@@ -23,6 +23,7 @@ import type { EnrichedStudentContext } from './context-enricher'
 import type { GraphExerciseEdge } from './exercise-graph'
 import { getSubstitutesForBatch } from './exercise-graph'
 import { validateOutput } from './rules-engine'
+import { callLLM } from './llm-client'
 
 // ============================================================================
 // Types
@@ -508,13 +509,6 @@ export async function optimizeWithAI(
         return skipResult
     }
 
-    // Check API key
-    const apiKey = process.env.OPENAI_API_KEY
-    if (!apiKey) {
-        console.warn('[BuilderFirst] Optimizer skipped — missing OPENAI_API_KEY')
-        return skipResult
-    }
-
     try {
         const startMs = Date.now()
 
@@ -531,56 +525,39 @@ export async function optimizeWithAI(
         const estimatedTokens = Math.round((systemPrompt.length + userPrompt.length) / 4)
         console.log(`[BuilderFirst] Optimizer prompt: ~${estimatedTokens} tokens`)
 
-        // Call GPT-4.1-mini via OpenAI API
-        const controller = new AbortController()
-        const timeout = setTimeout(() => controller.abort(), OPTIMIZER_TIMEOUT_MS)
+        // Route through the unified llm-client. Legacy json_object mode preserved
+        // (parseOptimizerResponse does its own shape validation).
+        const llmResult = await callLLM({
+            model: OPTIMIZER_MODEL,
+            system: systemPrompt,
+            messages: [{ role: 'user', content: userPrompt }],
+            max_tokens: OPTIMIZER_MAX_TOKENS,
+            temperature: 0.3,
+            timeout_ms: OPTIMIZER_TIMEOUT_MS,
+            json_object_mode: true,
+        })
 
-        let fetchResponse: Response
-        try {
-            fetchResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${apiKey}`,
-                },
-                signal: controller.signal,
-                body: JSON.stringify({
-                    model: OPTIMIZER_MODEL,
-                    max_tokens: OPTIMIZER_MAX_TOKENS,
-                    temperature: 0.3,
-                    response_format: { type: 'json_object' },
-                    messages: [
-                        { role: 'system', content: systemPrompt },
-                        { role: 'user', content: userPrompt },
-                    ],
-                }),
-            })
-        } catch (err: any) {
-            clearTimeout(timeout)
-            if (err?.name === 'AbortError') {
-                console.warn('[BuilderFirst] Optimizer timeout')
-                return { ...skipResult, status: 'optimizer_failed' }
-            }
-            throw err
+        if (llmResult.status === 'missing_api_key') {
+            console.warn('[BuilderFirst] Optimizer skipped — missing OPENAI_API_KEY')
+            return skipResult
         }
-        clearTimeout(timeout)
-
-        if (!fetchResponse.ok) {
-            console.error('[BuilderFirst] OpenAI API error:', fetchResponse.status)
+        if (llmResult.status === 'timeout') {
+            console.warn('[BuilderFirst] Optimizer timeout')
+            return { ...skipResult, status: 'optimizer_failed' }
+        }
+        if (llmResult.status !== 'success' || !llmResult.data) {
+            console.error('[BuilderFirst] OpenAI call failed:', llmResult.status)
             return { ...skipResult, status: 'optimizer_failed' }
         }
 
-        const payload = await fetchResponse.json()
         const elapsedMs = Date.now() - startMs
-        const inputTokens = payload?.usage?.prompt_tokens ?? 0
-        const outputTokens = payload?.usage?.completion_tokens ?? 0
-
-        const costUsd = (inputTokens / 1_000_000) * 0.40 + (outputTokens / 1_000_000) * 1.60
+        const inputTokens = llmResult.usage?.input_tokens ?? 0
+        const outputTokens = llmResult.usage?.output_tokens ?? 0
+        const costUsd = llmResult.usage?.cost_usd ?? 0
         console.log(`[BuilderFirst] Optimizer completed in ${elapsedMs}ms — input: ${inputTokens}, output: ${outputTokens}, cost: $${costUsd.toFixed(4)}`)
 
-        // Extract text
-        const textContent = payload?.choices?.[0]?.message?.content
-        if (!textContent || typeof textContent !== 'string') {
+        const textContent = llmResult.data
+        if (typeof textContent !== 'string' || textContent.length === 0) {
             console.warn('[BuilderFirst] Optimizer returned no text content')
             return { ...skipResult, status: 'optimizer_failed' }
         }

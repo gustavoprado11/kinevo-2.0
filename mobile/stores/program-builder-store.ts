@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage, type StateStorage } from 'zustand/middleware';
 import * as Crypto from 'expo-crypto';
+import type { PrescriptionOutputSnapshot } from '@kinevo/shared/types/prescription';
+import type { BuilderProgramData } from '@kinevo/shared/lib/prescription/builder-mapper';
 
 // ---------------------------------------------------------------------------
 // Storage Adapter — MMKV with in-memory fallback for Expo Go
@@ -61,6 +63,20 @@ export interface ProgramDraft {
     duration_weeks: number | null;
     workouts: Workout[];
     studentId: string | null;
+    /**
+     * Set when the draft was hydrated from an AI generation. The save flow
+     * uses this to decide whether to round-trip the snapshot back to
+     * /api/programs/assign with isEdited=true (preserves audit linkage to
+     * `prescription_generations`).
+     */
+    generationId: string | null;
+    originatedFromAi: boolean;
+    /**
+     * Original snapshot from the AI, kept as a baseline so the save can
+     * inject `reasoning` back when the trainer didn't change it (see
+     * `buildSnapshotFromDraft`'s `preserveReasoning` option).
+     */
+    originalSnapshot: PrescriptionOutputSnapshot | null;
 }
 
 /** Parsed exercise from text prescription AI */
@@ -90,6 +106,17 @@ interface ProgramBuilderState {
     initNewProgram: (studentId?: string) => void;
     /** Initialize program builder pre-filled with AI-parsed workouts */
     initFromParsedText: (studentId: string, workouts: ParsedWorkoutForBuilder[]) => void;
+    /**
+     * Initialize program builder pre-filled from an AI generation's BuilderProgramData
+     * (the output of `mapAiOutputToBuilderData(snapshot)`). Sets `originatedFromAi=true`,
+     * `generationId`, and stores the `originalSnapshot` for later reasoning preservation.
+     */
+    initFromAiSnapshot: (
+        studentId: string,
+        builderData: BuilderProgramData,
+        generationId: string,
+        originalSnapshot: PrescriptionOutputSnapshot,
+    ) => void;
 
     // Program metadata
     updateName: (name: string) => void;
@@ -148,7 +175,43 @@ function createEmptyDraft(studentId?: string): ProgramDraft {
             frequency: [],
             items: [],
         }],
+        generationId: null,
+        originatedFromAi: false,
+        originalSnapshot: null,
     };
+}
+
+/**
+ * Convert a BuilderProgramData (output of mapAiOutputToBuilderData) into the
+ * mobile store's flat `Workout[]` shape. Preserves order_index, sets, reps,
+ * rest_seconds, notes; the AI snapshot is flat (no supersets), so every item
+ * is `item_type: 'exercise'` with `parent_item_id: null`.
+ */
+function workoutsFromBuilderData(builderData: BuilderProgramData): Workout[] {
+    const templates = builderData.workout_templates ?? [];
+    return templates.map((wt) => ({
+        id: Crypto.randomUUID(),
+        name: wt.name,
+        order_index: wt.order_index,
+        frequency: wt.frequency ?? [],
+        items: (wt.workout_item_templates ?? []).map((it) => ({
+            id: Crypto.randomUUID(),
+            item_type: 'exercise' as const,
+            order_index: it.order_index,
+            parent_item_id: null,
+            exercise_id: it.exercise_id ?? '',
+            exercise_name: '',
+            exercise_equipment: null,
+            exercise_muscle_groups: [],
+            sets: it.sets ?? 3,
+            reps: it.reps ?? '10',
+            rest_seconds: it.rest_seconds ?? 60,
+            notes: it.notes,
+            exercise_function: it.exercise_function ?? null,
+            item_config: it.item_config ?? {},
+            substitute_exercise_ids: it.substitute_exercise_ids ?? [],
+        })),
+    }));
 }
 
 // ---------------------------------------------------------------------------
@@ -288,8 +351,40 @@ export const useProgramBuilderStore = create<ProgramBuilderState>()(
                     duration_weeks: null,
                     studentId,
                     workouts,
+                    generationId: null,
+                    originatedFromAi: false,
+                    originalSnapshot: null,
                 };
 
+                set({
+                    draft,
+                    currentWorkoutId: workouts[0].id,
+                    isDirty: true,
+                    isSaving: false,
+                });
+            },
+
+            initFromAiSnapshot: (studentId, builderData, generationId, originalSnapshot) => {
+                let workouts = workoutsFromBuilderData(builderData);
+                if (workouts.length === 0) {
+                    workouts = [{
+                        id: Crypto.randomUUID(),
+                        name: 'Treino A',
+                        order_index: 0,
+                        frequency: [],
+                        items: [],
+                    }];
+                }
+                const draft: ProgramDraft = {
+                    name: builderData.name || '',
+                    description: builderData.description ?? '',
+                    duration_weeks: builderData.duration_weeks ?? null,
+                    studentId,
+                    workouts,
+                    generationId,
+                    originatedFromAi: true,
+                    originalSnapshot,
+                };
                 set({
                     draft,
                     currentWorkoutId: workouts[0].id,
@@ -460,6 +555,20 @@ export const useProgramBuilderStore = create<ProgramBuilderState>()(
         {
             name: 'kinevo-program-builder',
             storage: createJSONStorage(() => storageBackend),
+            // Backward compat: drafts persisted before Fase 3 lack the new
+            // `generationId` / `originatedFromAi` / `originalSnapshot` fields.
+            // Default them on rehydrate so the typed reads don't crash.
+            merge: (persisted, current) => {
+                const next = { ...current, ...(persisted as Partial<ProgramBuilderState>) };
+                if (next.draft) {
+                    const d = next.draft as Partial<ProgramDraft> & ProgramDraft;
+                    if (d.generationId === undefined) d.generationId = null;
+                    if (d.originatedFromAi === undefined) d.originatedFromAi = false;
+                    if (d.originalSnapshot === undefined) d.originalSnapshot = null;
+                    next.draft = d;
+                }
+                return next;
+            },
         }
     )
 );

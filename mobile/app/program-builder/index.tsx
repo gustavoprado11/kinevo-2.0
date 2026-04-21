@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ChevronLeft, Save, Plus, Trash2, Dumbbell } from "lucide-react-native";
+import { ChevronLeft, Save, Plus, Trash2, Dumbbell, Sparkles } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeInUp, FadeIn } from "react-native-reanimated";
 import DraggableFlatList, { type RenderItemParams } from "react-native-draggable-flatlist";
@@ -29,13 +29,29 @@ import { VolumeSummary } from "@/components/trainer/program-builder/VolumeSummar
 import { EmptyState } from "@/components/shared/EmptyState";
 import type { WorkoutItem } from "@/stores/program-builder-store";
 import type { Exercise } from "@/hooks/useExerciseLibrary";
+import { openAIPrescriptionMenu } from "@/components/trainer/program-builder/AIPrescriptionMenu";
+import { AIPrescriptionSheet } from "@/components/trainer/program-builder/AIPrescriptionSheet";
+import { TextPrescriptionSheet } from "@/components/trainer/student/TextPrescriptionSheet";
+import { AssignProgramWizard } from "@/components/trainer/student/AssignProgramWizard";
+import { useStudentDetail } from "@/hooks/useStudentDetail";
+import { mapAiOutputToBuilderData } from "@kinevo/shared/lib/prescription/builder-mapper";
+import { useProgramBuilderStore } from "@/stores/program-builder-store";
+import type { AgentResult } from "@/hooks/useAIPrescriptionAgent";
+import { toast } from "@/lib/toast";
 
 export default function ProgramBuilderScreen() {
     const insets = useSafeAreaInsets();
     const router = useRouter();
     const params = useLocalSearchParams<{ studentId?: string; mode?: string }>();
     const [showExercisePicker, setShowExercisePicker] = useState(false);
+    const [showAISheet, setShowAISheet] = useState(false);
+    const [showTextSheet, setShowTextSheet] = useState(false);
+    const [showAssignWizard, setShowAssignWizard] = useState(false);
     const { isTablet } = useResponsive();
+    const initFromAiSnapshot = useProgramBuilderStore((s) => s.initFromAiSnapshot);
+    const { data: studentDetail } = useStudentDetail(params.studentId ?? null);
+    const aiEnabled = studentDetail?.aiEnabled ?? false;
+    const studentName = studentDetail?.student.name ?? "";
 
     const {
         draft,
@@ -57,14 +73,28 @@ export default function ProgramBuilderScreen() {
         reset,
         saveAsTemplate,
         saveAndAssign,
+        saveAsNewProgramDiscardingAi,
     } = useProgramBuilder();
 
     useEffect(() => {
-        // When coming from text prescription, the store is already pre-filled
-        // via initFromParsedText — don't reset it.
-        if (params.mode === "from-text") return;
+        // When coming from text prescription or an AI hand-off, the store is
+        // already pre-filled (`initFromParsedText` / `initFromAiSnapshot`);
+        // don't blow it away.
+        if (params.mode === "from-text" || params.mode === "from-ai") return;
+        // mode=ai opens the AI sheet on a fresh draft, but only after we
+        // make sure the draft is initialized.
         initNewProgram(params.studentId);
     }, []);
+
+    // mode=ai: auto-open AI sheet on mount when a student is selected.
+    useEffect(() => {
+        if (params.mode !== "ai") return;
+        if (!params.studentId) {
+            toast.info("Selecione um aluno", "Para gerar com IA, abra o builder a partir de um aluno.");
+            return;
+        }
+        setShowAISheet(true);
+    }, [params.mode, params.studentId]);
 
     const currentWorkout = draft.workouts.find(w => w.id === currentWorkoutId) ?? draft.workouts[0] ?? null;
 
@@ -89,8 +119,31 @@ export default function ProgramBuilderScreen() {
 
         try {
             if (params.studentId) {
-                await saveAndAssign(params.studentId);
-                router.back();
+                const result = await saveAndAssign(params.studentId);
+                if (result.ok) {
+                    router.back();
+                    return;
+                }
+                if (result.reason === "SUPERSET_BLOCKED") {
+                    Alert.alert(
+                        "Supersets não suportados",
+                        "O snapshot de IA não suporta supersets. Remova os supersets adicionados, ou salve como programa novo (sem vincular à geração).",
+                        [
+                            { text: "Cancelar", style: "cancel" },
+                            { text: "Remover supersets", style: "default" },
+                            {
+                                text: "Salvar como programa novo",
+                                style: "destructive",
+                                onPress: async () => {
+                                    const r2 = await saveAsNewProgramDiscardingAi(params.studentId!);
+                                    if (r2.ok) router.back();
+                                },
+                            },
+                        ],
+                    );
+                    return;
+                }
+                // ERROR — toast already shown by the hook.
             } else {
                 await saveAsTemplate();
                 reset();
@@ -99,7 +152,82 @@ export default function ProgramBuilderScreen() {
         } catch {
             // Error already handled by toast in the hook
         }
-    }, [draft, params.studentId, saveAndAssign, saveAsTemplate, reset, router]);
+    }, [draft, params.studentId, saveAndAssign, saveAsNewProgramDiscardingAi, saveAsTemplate, reset, router]);
+
+    const handleAIGenerated = useCallback(
+        (result: AgentResult) => {
+            if (!params.studentId) return;
+            const builderData = mapAiOutputToBuilderData(result.outputSnapshot);
+            initFromAiSnapshot(params.studentId, builderData, result.generationId, result.outputSnapshot);
+            setShowAISheet(false);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+        },
+        [params.studentId, initFromAiSnapshot],
+    );
+
+    const openAIMenu = useCallback(() => {
+        if (!params.studentId) {
+            toast.info("Selecione um aluno", "Para usar o menu de IA, abra o builder a partir de um aluno.");
+            return;
+        }
+        openAIPrescriptionMenu({
+            aiEnabled,
+            onChoose: (choice) => {
+                if (choice === "ai_full") {
+                    if (draft.originatedFromAi) {
+                        Alert.alert(
+                            "Substituir programa gerado?",
+                            "Isso descartará o programa atual e gerará um novo. Continuar?",
+                            [
+                                { text: "Cancelar", style: "cancel" },
+                                {
+                                    text: "Substituir",
+                                    style: "destructive",
+                                    onPress: () => {
+                                        reset();
+                                        // Re-init with the studentId so the empty draft keeps it.
+                                        if (params.studentId) initNewProgram(params.studentId);
+                                        setShowAISheet(true);
+                                    },
+                                },
+                            ],
+                        );
+                    } else {
+                        setShowAISheet(true);
+                    }
+                } else if (choice === "text_paste") {
+                    setShowTextSheet(true);
+                } else if (choice === "select_existing") {
+                    setShowAssignWizard(true);
+                }
+            },
+        });
+    }, [aiEnabled, params.studentId, draft.originatedFromAi, reset, initNewProgram]);
+
+    const handleParsedText = useCallback(
+        (result: { workouts: Array<{ name: string; exercises: Array<{ matched: boolean; exercise_id: string | null; catalog_name: string | null; original_text: string; sets: number; reps: string; rest_seconds: number | null; notes: string | null; superset_group: string | null }> }> }) => {
+            if (!params.studentId) return;
+            const workoutsForBuilder = result.workouts
+                .map((w) => ({
+                    name: w.name,
+                    exercises: w.exercises
+                        .filter((ex) => ex.matched && ex.exercise_id && ex.catalog_name)
+                        .map((ex) => ({
+                            exercise_id: ex.exercise_id!,
+                            catalog_name: ex.catalog_name!,
+                            sets: ex.sets,
+                            reps: ex.reps,
+                            rest_seconds: ex.rest_seconds,
+                            notes: ex.notes,
+                            superset_group: ex.superset_group ?? null,
+                        })),
+                }))
+                .filter((w) => w.exercises.length > 0);
+            useProgramBuilderStore.getState().initFromParsedText(params.studentId, workoutsForBuilder);
+            setShowTextSheet(false);
+        },
+        [params.studentId],
+    );
 
     const handleBack = useCallback(() => {
         if (isDirty) {
@@ -198,31 +326,50 @@ export default function ProgramBuilderScreen() {
                             Novo programa
                         </Text>
 
-                        <TouchableOpacity
-                            onPress={handleSave}
-                            disabled={isSaving}
-                            accessibilityRole="button"
-                            accessibilityLabel="Salvar programa"
-                            style={{
-                                flexDirection: "row",
-                                alignItems: "center",
-                                backgroundColor: colors.brand.primary,
-                                paddingHorizontal: 14,
-                                paddingVertical: 8,
-                                borderRadius: 10,
-                                opacity: isSaving ? 0.6 : 1,
-                                gap: 4,
-                            }}
-                        >
-                            {isSaving ? (
-                                <ActivityIndicator size="small" color={colors.text.inverse} />
-                            ) : (
-                                <Save size={14} color={colors.text.inverse} />
-                            )}
-                            <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text.inverse }}>
-                                Salvar
-                            </Text>
-                        </TouchableOpacity>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                            <TouchableOpacity
+                                onPress={openAIMenu}
+                                disabled={params.studentId == null}
+                                accessibilityRole="button"
+                                accessibilityLabel="Como deseja prescrever"
+                                style={{
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    backgroundColor: colors.brand.primaryLight,
+                                    width: 38,
+                                    height: 38,
+                                    borderRadius: 10,
+                                    opacity: params.studentId == null ? 0.4 : 1,
+                                }}
+                            >
+                                <Sparkles size={18} color={colors.brand.primary} />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={handleSave}
+                                disabled={isSaving}
+                                accessibilityRole="button"
+                                accessibilityLabel="Salvar programa"
+                                style={{
+                                    flexDirection: "row",
+                                    alignItems: "center",
+                                    backgroundColor: colors.brand.primary,
+                                    paddingHorizontal: 14,
+                                    paddingVertical: 8,
+                                    borderRadius: 10,
+                                    opacity: isSaving ? 0.6 : 1,
+                                    gap: 4,
+                                }}
+                            >
+                                {isSaving ? (
+                                    <ActivityIndicator size="small" color={colors.text.inverse} />
+                                ) : (
+                                    <Save size={14} color={colors.text.inverse} />
+                                )}
+                                <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text.inverse }}>
+                                    Salvar
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
 
                     {/* Program metadata */}
@@ -475,6 +622,37 @@ export default function ProgramBuilderScreen() {
                     )}
                 </View>
               </View>
+
+              {/* AI / Text / Existing program sheets — anchored to the studentId path. */}
+              {params.studentId && (
+                <>
+                    <AIPrescriptionSheet
+                        visible={showAISheet}
+                        studentId={params.studentId}
+                        studentName={studentName}
+                        onClose={() => setShowAISheet(false)}
+                        onSuccess={handleAIGenerated}
+                    />
+                    <TextPrescriptionSheet
+                        visible={showTextSheet}
+                        studentId={params.studentId}
+                        studentName={studentName}
+                        onClose={() => setShowTextSheet(false)}
+                        onParsed={handleParsedText}
+                    />
+                    <AssignProgramWizard
+                        visible={showAssignWizard}
+                        studentId={params.studentId}
+                        studentName={studentName}
+                        hasActiveProgram={!!studentDetail?.activeProgram}
+                        onClose={() => setShowAssignWizard(false)}
+                        onSuccess={() => {
+                            setShowAssignWizard(false);
+                            router.back();
+                        }}
+                    />
+                </>
+              )}
             </KeyboardAvoidingView>
         </GestureHandlerRootView>
     );

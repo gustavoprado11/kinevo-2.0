@@ -12,7 +12,7 @@ export interface TrainerStudent {
     name: string;
     email: string;
     phone: string | null;
-    status: "active" | "inactive" | "pending";
+    status: "active" | "inactive" | "pending" | "archived";
     modality: string | null;
     avatar_url: string | null;
     created_at: string;
@@ -38,7 +38,9 @@ export function useTrainerStudentsList() {
     const fetcher = useCallback(async (): Promise<TrainerStudent[]> => {
         const { data, error } = await supabase.rpc("get_trainer_students_list" as any);
         if (error) throw new Error(error.message);
-        return (data || []) as TrainerStudent[];
+        // TODO: mover filtro pro RPC quando houver tela de restaurados.
+        const all = (data || []) as TrainerStudent[];
+        return all.filter((s) => s.status !== "archived");
     }, [trainerId]);
 
     const { data: students, isLoading, isRefreshing, error, refresh } = useCachedQuery<TrainerStudent[]>({

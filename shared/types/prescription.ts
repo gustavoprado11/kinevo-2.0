@@ -481,6 +481,45 @@ export interface PrescriptionAgentState {
 export const MAX_AGENT_STATE_BYTES = 50_000
 
 // ============================================================================
+// PROGRAM DRAFT (structural type for snapshot-from-draft)
+// ============================================================================
+// Captures only the fields snapshot-from-draft needs from the mobile
+// program-builder draft. Lives here so shared/ has zero dependency on the
+// mobile workspace (no Zustand, no MMKV).
+
+export interface ProgramDraftWorkoutItemLike {
+    item_type: 'exercise' | 'superset'
+    order_index: number
+    parent_item_id: string | null
+    exercise_id: string
+    exercise_name: string
+    exercise_muscle_groups: string[]
+    exercise_equipment: string | null
+    exercise_function: string | null
+    sets: number
+    reps: string
+    rest_seconds: number
+    notes: string | null
+    substitute_exercise_ids: string[]
+    item_config: Record<string, unknown>
+}
+
+export interface ProgramDraftWorkoutLike {
+    name: string
+    order_index: number
+    /** English lowercase day strings: 'sun','mon','tue','wed','thu','fri','sat'. */
+    frequency: string[]
+    items: ProgramDraftWorkoutItemLike[]
+}
+
+export interface ProgramDraftLike {
+    name: string
+    description: string
+    duration_weeks: number | null
+    workouts: ProgramDraftWorkoutLike[]
+}
+
+// ============================================================================
 // TRAINER FEEDBACK LOOP TYPES
 // ============================================================================
 

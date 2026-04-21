@@ -103,7 +103,9 @@ export function useTrainerChatRoom(studentId: string): UseTrainerChatRoomReturn 
         }
 
         // Notify student via push (fire-and-forget)
-        notifyStudent(studentId, content.trim()).catch(() => {});
+        notifyStudent(studentId, content.trim()).catch((err) => {
+            if (__DEV__) console.error('[useTrainerChatRoom] notifyStudent error:', err);
+        });
 
         return data as ChatMessage;
     }, [user, studentId]);
@@ -115,7 +117,6 @@ export function useTrainerChatRoom(studentId: string): UseTrainerChatRoomReturn 
             if (!session?.access_token) return;
 
             const baseUrl = process.env.EXPO_PUBLIC_WEB_URL || 'https://app.kinevo.com.br';
-            // TODO: Create /api/messages/notify-student endpoint if it doesn't exist
             await fetch(`${baseUrl}/api/messages/notify-student`, {
                 method: 'POST',
                 headers: {

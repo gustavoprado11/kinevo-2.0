@@ -177,7 +177,9 @@ export function useTrainerChat() {
         }
 
         // Notify trainer (fire-and-forget)
-        notifyTrainer(sid, content.trim()).catch(() => {});
+        notifyTrainer(sid, content.trim()).catch((err) => {
+            if (__DEV__) console.error('[useTrainerChat] notifyTrainer (text) error:', err);
+        });
 
         return data as ChatMessage;
     }, [user]);
@@ -238,7 +240,9 @@ export function useTrainerChat() {
             return null;
         }
 
-        notifyTrainer(sid, content?.trim() || 'Enviou uma imagem').catch(() => {});
+        notifyTrainer(sid, content?.trim() || 'Enviou uma imagem').catch((err) => {
+            if (__DEV__) console.error('[useTrainerChat] notifyTrainer (image) error:', err);
+        });
 
         return data as ChatMessage;
     }, [user]);

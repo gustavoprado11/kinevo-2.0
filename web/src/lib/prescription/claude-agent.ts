@@ -21,6 +21,7 @@ import type { EnrichedStudentContext } from './context-enricher'
 import type { PrescriptionConstraints } from './constraints-engine'
 import { buildAgentSystemPrompt, buildAgentContextMessage, buildAgentGenerationMessage } from './prompt-builder'
 import { parseAiResponse } from './prompt-builder'
+import { callLLM } from './llm-client'
 
 // ============================================================================
 // Config
@@ -35,9 +36,7 @@ const ANALYSIS_TIMEOUT_MS = 30_000
 const GENERATION_MAX_TOKENS = 8000
 const GENERATION_TIMEOUT_MS = 120_000
 
-// GPT-4.1-mini input/output cost per 1M tokens (USD)
-const COST_PER_1M_INPUT = 0.40
-const COST_PER_1M_OUTPUT = 1.60
+// Pricing lives in llm-client.ts; removed the old duplicate constants.
 
 // ============================================================================
 // Types
@@ -79,101 +78,47 @@ export async function analyzeContextAndAsk(
     studentNarrative?: string | null,
 ): Promise<AnalyzeResult> {
     console.log('[AgentePrescitor] analyzeContextAndAsk chamado')
-    const apiKey = process.env.OPENAI_API_KEY
-    if (!apiKey) {
-        return {
-            analysis: emptyAnalysis(),
-            questions: [],
-            conversationMessages: [],
-            status: 'missing_api_key',
-        }
-    }
 
     const systemPrompt = buildAgentSystemPrompt()
     const userMessage = buildAgentContextMessage(profile, exercises, enrichedContext, serverQuestions, studentNarrative)
 
-    try {
-        const controller = new AbortController()
-        const timeout = setTimeout(() => controller.abort(), ANALYSIS_TIMEOUT_MS)
+    const llmResult = await callLLM({
+        model: OPENAI_MODEL,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userMessage }],
+        max_tokens: ANALYSIS_MAX_TOKENS,
+        temperature: 0.4,
+        timeout_ms: ANALYSIS_TIMEOUT_MS,
+        json_object_mode: true,
+    })
 
-        const fetchResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${apiKey}`,
-            },
-            signal: controller.signal,
-            body: JSON.stringify({
-                model: OPENAI_MODEL,
-                max_tokens: ANALYSIS_MAX_TOKENS,
-                temperature: 0.4,
-                response_format: { type: 'json_object' },
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: userMessage },
-                ],
-            }),
-        })
-        clearTimeout(timeout)
+    if (llmResult.status === 'missing_api_key') {
+        return { analysis: emptyAnalysis(), questions: [], conversationMessages: [], status: 'missing_api_key' }
+    }
+    if (llmResult.status === 'timeout') {
+        return { analysis: emptyAnalysis(), questions: [], conversationMessages: [], status: 'timeout' }
+    }
+    if (llmResult.status === 'http_error') {
+        return { analysis: emptyAnalysis(), questions: [], conversationMessages: [], status: 'http_error' }
+    }
+    if (llmResult.status !== 'success' || !llmResult.data) {
+        return { analysis: emptyAnalysis(), questions: [], conversationMessages: [], status: 'invalid_response' }
+    }
 
-        if (!fetchResponse.ok) {
-            console.error('[AgentePrescitor] OpenAI API error:', fetchResponse.status)
-            return {
-                analysis: emptyAnalysis(),
-                questions: [],
-                conversationMessages: [],
-                status: 'http_error',
-            }
-        }
+    const textContent = llmResult.data
+    logTokenUsageFromUsage('analysis', llmResult.usage)
 
-        const payload = await fetchResponse.json()
-        logTokenUsage('analysis', payload)
+    const parsed = parseAnalysisResponse(textContent)
+    const conversationMessages: PrescriptionAgentState['conversation_messages'] = [
+        { role: 'user', content: userMessage },
+        { role: 'assistant', content: textContent },
+    ]
 
-        const textContent = payload?.choices?.[0]?.message?.content
-        if (!textContent || typeof textContent !== 'string') {
-            return {
-                analysis: emptyAnalysis(),
-                questions: [],
-                conversationMessages: [],
-                status: 'invalid_response',
-            }
-        }
-
-        // Check finish reason
-        if (payload?.choices?.[0]?.finish_reason === 'length') {
-            console.warn('[AgentePrescitor] Analysis output truncated')
-            return {
-                analysis: emptyAnalysis(),
-                questions: [],
-                conversationMessages: [],
-                status: 'agent_truncated',
-            }
-        }
-
-        // Parse the analysis JSON from the response
-        const parsed = parseAnalysisResponse(textContent)
-
-        // Build conversation history for the next turn
-        const conversationMessages: PrescriptionAgentState['conversation_messages'] = [
-            { role: 'user', content: userMessage },
-            { role: 'assistant', content: textContent },
-        ]
-
-        return {
-            analysis: parsed.analysis,
-            questions: parsed.questions,
-            conversationMessages,
-            status: 'agent_used',
-        }
-    } catch (err: any) {
-        console.error('[AgentePrescitor] Analysis failed:', err?.message || err)
-        const status: AgentLLMStatus = err?.name === 'AbortError' ? 'timeout' : 'network_error'
-        return {
-            analysis: emptyAnalysis(),
-            questions: [],
-            conversationMessages: [],
-            status,
-        }
+    return {
+        analysis: parsed.analysis,
+        questions: parsed.questions,
+        conversationMessages,
+        status: 'agent_used',
     }
 }
 
@@ -190,11 +135,6 @@ export async function generateWithAgent(
     trainerPatterns?: TrainerPatterns | null,
     studentNarrative?: string | null,
 ): Promise<GenerateWithAgentResult> {
-    const apiKey = process.env.OPENAI_API_KEY
-    if (!apiKey) {
-        return { output: null, reasoning: null, status: 'missing_api_key', model: OPENAI_MODEL }
-    }
-
     const systemPrompt = buildAgentSystemPrompt(constraints, trainerPatterns)
 
     // Build messages: conversation history + generation instruction (with exercises)
@@ -217,75 +157,54 @@ export async function generateWithAgent(
         `[AgentePrescitor] Generation input — system: ${systemPromptChars} chars, messages: ${messagesChars} chars, total: ${totalChars} chars, ~${estimatedTokens} tokens`
     )
 
-    try {
-        const controller = new AbortController()
-        const timeout = setTimeout(() => controller.abort(), GENERATION_TIMEOUT_MS)
+    const llmResult = await callLLM({
+        model: OPENAI_MODEL,
+        system: systemPrompt,
+        messages,
+        max_tokens: GENERATION_MAX_TOKENS,
+        temperature: 0.3,
+        timeout_ms: GENERATION_TIMEOUT_MS,
+        json_object_mode: true,
+    })
 
-        const fetchResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${apiKey}`,
-            },
-            signal: controller.signal,
-            body: JSON.stringify({
-                model: OPENAI_MODEL,
-                max_tokens: GENERATION_MAX_TOKENS,
-                temperature: 0.3,
-                response_format: { type: 'json_object' },
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    ...messages,
-                ],
-            }),
-        })
-        clearTimeout(timeout)
+    if (llmResult.status === 'missing_api_key') {
+        return { output: null, reasoning: null, status: 'missing_api_key', model: OPENAI_MODEL }
+    }
+    if (llmResult.status === 'http_error' || llmResult.status === 'network_error') {
+        return { output: null, reasoning: null, status: llmResult.status, model: OPENAI_MODEL, fallback: true }
+    }
+    if (llmResult.status === 'timeout') {
+        return { output: null, reasoning: null, status: 'timeout', model: OPENAI_MODEL, fallback: true }
+    }
+    if (llmResult.status !== 'success' || !llmResult.data) {
+        return { output: null, reasoning: null, status: 'invalid_response', model: OPENAI_MODEL }
+    }
 
-        if (!fetchResponse.ok) {
-            console.error('[AgentePrescitor] OpenAI API error:', fetchResponse.status)
-            return { output: null, reasoning: null, status: 'http_error', model: OPENAI_MODEL, fallback: true }
-        }
+    const textContent = llmResult.data
+    logTokenUsageFromUsage('generation', llmResult.usage)
 
-        const payload = await fetchResponse.json()
-        logTokenUsage('generation', payload)
+    // Extract JSON from the response (may contain markdown code blocks)
+    const jsonStr = extractJsonFromText(textContent)
+    const output = parseAiResponse(jsonStr)
 
-        if (payload?.choices?.[0]?.finish_reason === 'length') {
-            console.warn('[AgentePrescitor] Generation output truncated — triggering fallback')
-            return { output: null, reasoning: null, status: 'agent_truncated', model: OPENAI_MODEL, fallback: true }
-        }
+    if (!output) {
+        console.warn('[AgentePrescitor] Failed to parse agent generation response')
+        return { output: null, reasoning: null, status: 'invalid_response', model: OPENAI_MODEL }
+    }
 
-        const textContent = payload?.choices?.[0]?.message?.content
-        if (!textContent || typeof textContent !== 'string') {
-            return { output: null, reasoning: null, status: 'invalid_response', model: OPENAI_MODEL }
-        }
+    // Build extended reasoning
+    const reasoning: PrescriptionReasoningExtended = {
+        ...output.reasoning,
+        context_analysis: agentState.context_analysis || undefined,
+        evidence_references: [],
+        trainer_answers: agentState.answers.length > 0 ? agentState.answers : undefined,
+    }
 
-        // Extract JSON from the response (may contain markdown code blocks)
-        const jsonStr = extractJsonFromText(textContent)
-        const output = parseAiResponse(jsonStr)
-
-        if (!output) {
-            console.warn('[AgentePrescitor] Failed to parse agent generation response')
-            return { output: null, reasoning: null, status: 'invalid_response', model: OPENAI_MODEL }
-        }
-
-        // Build extended reasoning
-        const reasoning: PrescriptionReasoningExtended = {
-            ...output.reasoning,
-            context_analysis: agentState.context_analysis || undefined,
-            evidence_references: [],
-            trainer_answers: agentState.answers.length > 0 ? agentState.answers : undefined,
-        }
-
-        return {
-            output: { ...output, reasoning },
-            reasoning,
-            status: 'agent_used',
-            model: OPENAI_MODEL,
-        }
-    } catch (err: any) {
-        console.error('[AgentePrescitor] Generation failed:', err?.message || err)
-        const status: AgentLLMStatus = err?.name === 'AbortError' ? 'timeout' : 'network_error'
-        return { output: null, reasoning: null, status, model: OPENAI_MODEL, fallback: true }
+    return {
+        output: { ...output, reasoning },
+        reasoning,
+        status: 'agent_used',
+        model: OPENAI_MODEL,
     }
 }
 
@@ -293,13 +212,10 @@ export async function generateWithAgent(
 // Helpers
 // ============================================================================
 
-function logTokenUsage(phase: string, payload: any): void {
-    const input = payload?.usage?.prompt_tokens ?? 0
-    const output = payload?.usage?.completion_tokens ?? 0
-    const costUsd = (input / 1_000_000) * COST_PER_1M_INPUT + (output / 1_000_000) * COST_PER_1M_OUTPUT
-    const finishReason = payload?.choices?.[0]?.finish_reason ?? 'unknown'
+function logTokenUsageFromUsage(phase: string, usage: { input_tokens: number; output_tokens: number; cost_usd: number } | null): void {
+    if (!usage) return
     console.log(
-        `[AgentePrescitor] ${phase} tokens — input: ${input}, output: ${output}, cost: $${costUsd.toFixed(4)}, stop: ${finishReason}`
+        `[AgentePrescitor] ${phase} tokens — input: ${usage.input_tokens}, output: ${usage.output_tokens}, cost: $${usage.cost_usd.toFixed(4)}`,
     )
 }
 

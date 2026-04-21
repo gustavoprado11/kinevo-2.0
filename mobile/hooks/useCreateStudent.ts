@@ -1,4 +1,9 @@
 import { useState, useCallback } from "react";
+import {
+    FunctionsHttpError,
+    FunctionsRelayError,
+    FunctionsFetchError,
+} from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
 
 interface CreateStudentData {
@@ -34,12 +39,39 @@ export function useCreateStudent() {
             });
 
             if (response.error) {
+                if (response.error instanceof FunctionsHttpError) {
+                    try {
+                        const errorBody = await response.error.context.json();
+                        return {
+                            success: false,
+                            error:
+                                errorBody?.error ??
+                                errorBody?.message ??
+                                "Erro ao criar aluno.",
+                        };
+                    } catch {
+                        return {
+                            success: false,
+                            error: "Erro ao criar aluno. Tente novamente.",
+                        };
+                    }
+                }
+                if (
+                    response.error instanceof FunctionsRelayError ||
+                    response.error instanceof FunctionsFetchError
+                ) {
+                    return {
+                        success: false,
+                        error: "Erro de rede. Verifique sua conexão.",
+                    };
+                }
                 return { success: false, error: response.error.message || "Erro ao criar aluno" };
             }
 
             return response.data as CreateStudentResult;
-        } catch (err: any) {
-            return { success: false, error: err.message || "Erro inesperado" };
+        } catch (err) {
+            const message = err instanceof Error ? err.message : "Erro inesperado.";
+            return { success: false, error: message };
         } finally {
             setIsCreating(false);
         }

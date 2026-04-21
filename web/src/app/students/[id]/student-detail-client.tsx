@@ -262,10 +262,6 @@ export function StudentDetailClient({
         router.push(`/students/${student.id}/program/new`)
     }
 
-    const handlePrescribeAI = () => {
-        router.push(`/students/${student.id}/prescribe`)
-    }
-
     // --- Student Actions ---
     const handleEditStudent = () => {
         setIsEditModalOpen(true)
@@ -529,7 +525,6 @@ export function StudentDetailClient({
                             onCompleteProgram={handleCompleteProgram}
                             onExtendProgram={handleExtendProgram}
                             onCreateProgram={handleCreateProgram}
-                            onPrescribeAI={trainer.ai_prescriptions_enabled ? handlePrescribeAI : undefined}
                             onViewReport={activeProgram ? () => window.open(`/reports/program/${activeProgram.id}`, '_blank') : undefined}
                             hasActiveProgram={!!activeProgram}
                             studentId={student.id}
@@ -681,14 +676,6 @@ export function StudentDetailClient({
                                         >
                                             Atribuir
                                         </button>
-                                        {trainer.ai_prescriptions_enabled && (
-                                            <button
-                                                onClick={handlePrescribeAI}
-                                                className="px-3 py-1.5 text-xs font-bold text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 border border-violet-300 dark:border-violet-500/30 rounded-lg transition-all"
-                                            >
-                                                Novo com IA
-                                            </button>
-                                        )}
                                     </div>
                                 </div>
                             ) : (

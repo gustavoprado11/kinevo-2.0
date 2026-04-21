@@ -362,27 +362,28 @@ export function PrescriptionProfileForm({
                 Estado B: Card de contexto (aluno com histórico)
                ══════════════════════════════════════════════════════════════════ */}
             {!isFirstPrescription && (
-                <div className="bg-glass-bg backdrop-blur-md rounded-2xl border border-violet-500/20 overflow-hidden">
+                <div className="bg-glass-bg backdrop-blur-md rounded-2xl border border-violet-500/30 overflow-hidden">
                     <button
                         onClick={() => setContextExpanded(!contextExpanded)}
-                        className="w-full flex items-center justify-between px-6 py-4 hover:bg-white/[0.02] transition-colors"
+                        aria-expanded={contextExpanded}
+                        className="w-full flex items-center justify-between px-6 py-4 hover:bg-violet-500/[0.04] transition-colors"
                     >
                         <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-lg bg-violet-500/15 border border-violet-500/30 flex items-center justify-center">
                                 <Brain className="w-4 h-4 text-violet-400" />
                             </div>
-                            <div>
-                                <span className="text-sm font-semibold text-violet-300">
+                            <div className="text-left">
+                                <span className="text-sm font-semibold text-k-text-primary">
                                     Contexto do Aluno
                                 </span>
-                                <p className="text-[10px] text-k-text-quaternary">
+                                <p className="text-[11px] text-k-text-tertiary mt-0.5">
                                     Dados que a IA vai considerar na prescrição
                                 </p>
                             </div>
                         </div>
                         {contextExpanded
-                            ? <ChevronUp className="w-4 h-4 text-k-text-quaternary" />
-                            : <ChevronDown className="w-4 h-4 text-k-text-quaternary" />
+                            ? <ChevronUp className="w-4 h-4 text-k-text-tertiary" />
+                            : <ChevronDown className="w-4 h-4 text-k-text-tertiary" />
                         }
                     </button>
 

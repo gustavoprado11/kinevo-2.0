@@ -145,7 +145,6 @@ interface ActiveProgramDashboardProps {
     onCompleteProgram?: () => void
     onExtendProgram?: () => void
     onCreateProgram?: () => void
-    onPrescribeAI?: () => void
     onViewReport?: () => void
     hasActiveProgram?: boolean
     /** Pass to show full student history in calendar, not just current program */
@@ -164,7 +163,6 @@ export function ActiveProgramDashboard({
     onCompleteProgram,
     onExtendProgram,
     onCreateProgram,
-    onPrescribeAI,
     onViewReport,
     hasActiveProgram = false,
     studentId,
@@ -286,14 +284,6 @@ export function ActiveProgramDashboard({
                         >
                             Atribuir
                         </button>
-                        {onPrescribeAI && (
-                            <button
-                                onClick={onPrescribeAI}
-                                className="px-3 py-1.5 text-xs font-bold text-violet-400 hover:text-violet-300 border border-violet-500/30 rounded-lg transition-all"
-                            >
-                                Novo com IA
-                            </button>
-                        )}
                     </div>
                 </div>
             </div>
@@ -362,14 +352,6 @@ export function ActiveProgramDashboard({
                         >
                             Trocar
                         </button>
-                        {onPrescribeAI && (
-                            <button
-                                onClick={onPrescribeAI}
-                                className="px-3 py-1.5 text-[10px] font-bold text-indigo-600 dark:text-indigo-300 hover:text-white hover:bg-gradient-to-r hover:from-violet-600 hover:to-indigo-500 rounded-lg transition-all border border-indigo-500/20"
-                            >
-                                Novo com IA
-                            </button>
-                        )}
                         {onViewReport && (
                             <button
                                 onClick={onViewReport}

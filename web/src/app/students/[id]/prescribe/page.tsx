@@ -1,55 +1,16 @@
-export const maxDuration = 120
+import { redirect, permanentRedirect } from 'next/navigation'
 
-import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
-import { getTrainerWithSubscription } from '@/lib/auth/get-trainer'
-import { fetchPrescriptionDataDirect } from '@/actions/prescription/get-prescription-data'
-import type { PrescriptionData } from '@/actions/prescription/get-prescription-data'
-import { PrescribeClient } from './prescribe-client'
+interface PrescribeRedirectProps {
+    params: Promise<{ id: string }>
+    searchParams: Promise<Record<string, string | string[] | undefined>>
+}
 
-export default async function PrescribePage({ params }: { params: Promise<{ id: string }> }) {
+export default async function PrescribeRedirect({ params, searchParams }: PrescribeRedirectProps) {
     const { id } = await params
-    const { trainer } = await getTrainerWithSubscription()
-    const supabase = await createClient()
-
-    // Same pattern as students/[id]/page.tsx — direct query, RLS handles ownership
-    const { data: student } = await supabase
-        .from('students')
-        .select('id, name, email, avatar_url')
-        .eq('id', id)
-        .single()
-
-    if (!student) {
-        redirect('/students')
-    }
-
-    // Fetch prescription data using the same authenticated supabase client.
-    // Wrapped in try-catch: if prescription tables (migrations 034-036) don't
-    // exist yet, we still render the page with safe defaults.
-    let prescriptionData: PrescriptionData
-    try {
-        prescriptionData = await fetchPrescriptionDataDirect(supabase, id, trainer.id)
-    } catch (err) {
-        console.error('[PrescribePage] fetchPrescriptionDataDirect error:', err)
-        prescriptionData = {
-            profile: null,
-            exercises: [],
-            recentSessions: [],
-            activeProgram: null,
-            aiEnabled: false,
-            previousProgramCount: 0,
-            lastFormSubmissionDate: null,
-            questionnaireSubmission: null,
-            questionnaireTemplateId: null,
-            formSubmissions: [],
-        }
-    }
-
-    return (
-        <PrescribeClient
-            trainer={trainer}
-            student={student as any}
-            prescriptionData={prescriptionData}
-        />
-    )
+    const sp = await searchParams
+    const scheduled = sp?.scheduled === 'true' ? '&scheduled=true' : ''
+    // 308 permanent redirect — preserves method and indicates the move to search engines / clients.
+    permanentRedirect(`/students/${id}/program/new?mode=ai${scheduled}`)
+    // Unreachable, but keeps TS happy if permanentRedirect signature changes.
+    redirect(`/students/${id}/program/new?mode=ai${scheduled}`)
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback, useId, useMemo, useRef, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { AppLayout } from '@/components/layout'
 import { createClient } from '@/lib/supabase/client'
 import { WorkoutPanel } from './workout-panel'
@@ -12,7 +12,7 @@ import { SortableWorkoutTab } from './sortable-workout-tab'
 import { ExerciseLibraryPanel } from './exercise-library-panel'
 import { VolumeSummary } from './volume-summary'
 import { Button } from '@/components/ui/button'
-import { ChevronLeft, Loader2, Calendar, AlertCircle, Smartphone, GitCompareArrows, X, ListChecks, FileText } from 'lucide-react'
+import { ChevronLeft, Loader2, Calendar, AlertCircle, Smartphone, GitCompareArrows, X, ListChecks, FileText, Sparkles } from 'lucide-react'
 
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
 import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
@@ -25,6 +25,10 @@ import { saveProgramFormTriggers } from '@/actions/programs/save-program-form-tr
 import type { FormTemplateOption } from '@/actions/programs/get-form-templates-for-triggers'
 import { WorkoutExecutionPreview } from './workout-preview/workout-execution-preview'
 import { AiPrescribePanel } from './ai-prescribe-panel'
+import { AiPrescriptionPanel } from './ai-prescription-panel'
+import type { PrescriptionData } from '@/actions/prescription/get-prescription-data'
+import { usePrescriptionGenerationStream } from '@/hooks/use-prescription-generation-stream'
+import { consumePrescriptionAnimateFlag, setPrescriptionAnimateFlag } from './helpers/prescription-animate-flag'
 import { ProgramSelector } from '@/components/builder/context-panel/program-selector'
 import { getPastProgramsForStudent, getFullProgramForCompare } from '@/actions/programs/get-program-for-compare'
 import type { CompareProgramSummary, CompareProgramData } from '@/actions/programs/get-program-for-compare'
@@ -90,6 +94,7 @@ interface Trainer {
     email: string
     avatar_url?: string | null
     theme?: 'light' | 'dark' | 'system' | null
+    ai_prescriptions_enabled?: boolean
 }
 
 interface StudentContext {
@@ -115,13 +120,16 @@ interface ProgramBuilderClientProps {
         preWorkout: InitialTrigger | null
         postWorkout: InitialTrigger | null
     }
+    /** Prescription data for the AI panel (Fase 1). Fetched only when trainer.ai_prescriptions_enabled. */
+    prescriptionData?: PrescriptionData | null
 }
 
 // Generate temp ID for new items
 const tempId = () => `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 
-export function ProgramBuilderClient({ trainer, program, exercises, studentContext, initialAssignmentType = 'immediate', prescriptionGenerationId, prescriptionReasoning, formTriggerTemplates = [], initialFormTriggers }: ProgramBuilderClientProps) {
+export function ProgramBuilderClient({ trainer, program, exercises, studentContext, initialAssignmentType = 'immediate', prescriptionGenerationId, prescriptionReasoning, formTriggerTemplates = [], initialFormTriggers, prescriptionData }: ProgramBuilderClientProps) {
     const router = useRouter()
+    const searchParams = useSearchParams()
     const tabDndId = useId()
     const isEditing = !!program && !!program.id && !program.id.startsWith('temp_')
     const isStudentContext = !!studentContext
@@ -267,6 +275,47 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
         setBuilderViewMode('normal')
     }, [])
 
+    // ── AI Prescription Panel (Fase 1) ──
+    const aiPanelAvailable = trainer.ai_prescriptions_enabled === true
+        && !!studentContext
+        && !!prescriptionData
+    const [aiPanelOpen, setAiPanelOpen] = useState(false)
+    const aiPanelAutoOpenedRef = useRef(false)
+
+    // ── AI Panel lifecycle ──
+    // Auto-open once on mount if ?mode=ai or a deeplink generation id is present.
+    useEffect(() => {
+        if (!aiPanelAvailable || aiPanelAutoOpenedRef.current) return
+        const modeAi = searchParams?.get('mode') === 'ai'
+        const hasGen = !!prescriptionGenerationId
+        if (modeAi || hasGen) {
+            setAiPanelOpen(true)
+            aiPanelAutoOpenedRef.current = true
+        }
+    }, [aiPanelAvailable, searchParams, prescriptionGenerationId])
+
+    const toggleAiPanel = useCallback(() => {
+        setAiPanelOpen(prev => !prev)
+    }, [])
+
+    const closeAiPanel = useCallback(() => {
+        setAiPanelOpen(false)
+    }, [])
+
+    const handleAcceptGeneratedProgram = useCallback((generationId: string) => {
+        if (!studentContext) return
+        // Arm the animate flag BEFORE navigation. The new mount consumes it
+        // to trigger the reveal. Refresh = no flag = full program at once.
+        setPrescriptionAnimateFlag(generationId)
+        // Re-render the Server Component with the new generation, which triggers
+        // the existing SSR hydration path (program/new/page.tsx loads output_snapshot).
+        const qs = new URLSearchParams()
+        qs.set('source', 'prescription')
+        qs.set('generationId', generationId)
+        if (assignmentType === 'scheduled') qs.set('scheduled', 'true')
+        router.replace(`/students/${studentContext.id}/program/new?${qs.toString()}`)
+    }, [router, studentContext, assignmentType])
+
     const handleEnterAiPrescribe = useCallback(() => {
         setBuilderViewMode('ai_prescribe')
     }, [])
@@ -349,6 +398,68 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
     const [activeWorkoutId, setActiveWorkoutId] = useState<string | null>(
         workouts.length > 0 ? workouts[0].id : null
     )
+
+    // ── Fase 1.5 progressive reveal ──
+    // Read the sessionStorage flag once on mount. The flag is set by the AI
+    // panel right before it navigates here with ?generationId=…; if present,
+    // we animate workouts appearing one by one. Absent = full reveal
+    // (refresh, deeplink, shared URL).
+    // Pure read: we only *check* if the flag exists during initial render.
+    // The consume (which has the side effect of removing the key) happens in a
+    // one-shot useEffect below. This keeps the useState initializer pure, so
+    // React StrictMode's double-invoke doesn't burn the flag on the first
+    // shadow render.
+    const [streamAnimate] = useState<boolean>(() => {
+        if (typeof window === 'undefined') return false
+        if (!prescriptionGenerationId) return false
+        return window.sessionStorage.getItem(`prescription:animate:${prescriptionGenerationId}`) === '1'
+    })
+    const streamHandoffDoneRef = useRef(false)
+    const streamClearedRef = useRef(false)
+    const streamFlagConsumedRef = useRef(false)
+
+    // Consume (delete) the flag exactly once post-mount, so a real remount with
+    // the same generationId (shouldn't happen in practice, but StrictMode in
+    // dev does mount → unmount → mount) doesn't double-trigger the reveal.
+    useEffect(() => {
+        if (!streamAnimate) return
+        if (!prescriptionGenerationId) return
+        if (streamFlagConsumedRef.current) return
+        streamFlagConsumedRef.current = true
+        consumePrescriptionAnimateFlag(prescriptionGenerationId)
+    }, [streamAnimate, prescriptionGenerationId])
+    const stream = usePrescriptionGenerationStream({
+        generationId: streamAnimate ? (prescriptionGenerationId ?? null) : null,
+        exercises: localExercises,
+        revealIntervalMs: 450,
+    })
+
+    // When animation is active, clear whatever SSR hydrated (via initializeWorkouts)
+    // so the reveal starts from an empty canvas. Done once per mount, post-hydration
+    // to avoid an SSR mismatch.
+    useEffect(() => {
+        if (!streamAnimate) return
+        if (streamClearedRef.current) return
+        streamClearedRef.current = true
+        setWorkouts([])
+        setActiveWorkoutId(null)
+    }, [streamAnimate])
+
+    // Mirror the hook's growing workouts list into local state while streaming.
+    // Once `isDone`, we stop copying — local state becomes soberano so the
+    // trainer can edit freely without the hook snapping it back.
+    useEffect(() => {
+        if (!streamAnimate) return
+        if (streamHandoffDoneRef.current) return
+        // Keep local state in sync while the reveal progresses.
+        setWorkouts(stream.workouts)
+        if (stream.workouts.length > 0) {
+            setActiveWorkoutId(prev => prev ?? stream.workouts[0].id)
+        }
+        if (stream.isDone) {
+            streamHandoffDoneRef.current = true
+        }
+    }, [streamAnimate, stream.workouts, stream.isDone])
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [nameShake, setNameShake] = useState(false)
@@ -1284,6 +1395,24 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
 
                     {/* View mode icons — Check-in · Preview · Compare */}
                     <div className="flex items-center gap-1 ml-auto flex-shrink-0 mr-3">
+                        {aiPanelAvailable && (
+                            <>
+                                <button
+                                    onClick={toggleAiPanel}
+                                    data-testid="ai-panel-toggle"
+                                    className={`flex items-center gap-1.5 px-3 h-8 rounded-lg text-sm font-medium transition-colors duration-150 ${
+                                        aiPanelOpen
+                                            ? 'text-violet-600 dark:text-violet-400 bg-violet-100/80 dark:bg-violet-500/[0.08]'
+                                            : 'text-violet-600 dark:text-violet-400 hover:bg-violet-100/60 dark:hover:bg-violet-500/[0.08]'
+                                    }`}
+                                    title="Gerar programa com IA"
+                                >
+                                    <Sparkles className="w-4 h-4" />
+                                    <span>Gerar com IA</span>
+                                </button>
+                                <span className="mx-1 h-5 w-px bg-k-border-subtle" aria-hidden />
+                            </>
+                        )}
                         {formTriggerTemplates.length > 0 && (
                             <button
                                 onClick={() => setCheckinExpanded(!checkinExpanded)}
@@ -1951,6 +2080,20 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
 
             {/* Tour: Program Builder (auto-start on first visit) */}
             <TourRunner tourId="program_builder" steps={TOUR_STEPS.program_builder} autoStart />
+
+            {/* AI Prescription Panel (Fase 1) */}
+            {aiPanelAvailable && studentContext && prescriptionData && (
+                <AiPrescriptionPanel
+                    open={aiPanelOpen}
+                    studentId={studentContext.id}
+                    studentName={studentContext.name}
+                    prescriptionData={prescriptionData}
+                    initialPageState={prescriptionGenerationId ? 'done' : undefined}
+                    initialGenerationId={prescriptionGenerationId}
+                    onClose={closeAiPanel}
+                    onAcceptGeneratedProgram={handleAcceptGeneratedProgram}
+                />
+            )}
 
             {/* Confirmation dialog — activate as current program */}
             {showActivateConfirm && (

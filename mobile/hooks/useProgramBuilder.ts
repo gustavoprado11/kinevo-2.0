@@ -2,6 +2,17 @@ import { useCallback } from "react";
 import { useProgramBuilderStore } from "../stores/program-builder-store";
 import { supabase } from "../lib/supabase";
 import { toast } from "../lib/toast";
+import {
+    buildSnapshotFromDraft,
+    SupersetInSnapshotError,
+} from "@kinevo/shared/lib/prescription/snapshot-from-draft";
+import type { ProgramDraftLike } from "@kinevo/shared/types/prescription";
+import { assignProgram, AIPrescriptionFetchError } from "../lib/ai-prescription/fetch-client";
+
+export type SaveAndAssignResult =
+    | { ok: true }
+    | { ok: false; reason: "SUPERSET_BLOCKED" }
+    | { ok: false; reason: "ERROR"; message: string };
 
 export function useProgramBuilder() {
     const store = useProgramBuilderStore();
@@ -115,11 +126,88 @@ export function useProgramBuilder() {
         }
     }, [store]);
 
-    const saveAndAssign = useCallback(async (targetStudentId: string): Promise<void> => {
+    const saveAndAssign = useCallback(async (targetStudentId: string): Promise<SaveAndAssignResult> => {
+        const draft = store.draft;
+
+        // ── AI path: round-trip the snapshot to /api/programs/assign with isEdited=true ──
+        if (draft.originatedFromAi && draft.generationId) {
+            // Convert the mobile Workout[] into the structural ProgramDraftLike
+            // shape the shared serializer expects.
+            const draftLike: ProgramDraftLike = {
+                name: draft.name,
+                description: draft.description,
+                duration_weeks: draft.duration_weeks,
+                workouts: draft.workouts.map((w) => ({
+                    name: w.name,
+                    order_index: w.order_index,
+                    frequency: w.frequency,
+                    items: w.items.map((it) => ({
+                        item_type: it.item_type,
+                        order_index: it.order_index,
+                        parent_item_id: it.parent_item_id,
+                        exercise_id: it.exercise_id,
+                        exercise_name: it.exercise_name,
+                        exercise_muscle_groups: it.exercise_muscle_groups,
+                        exercise_equipment: it.exercise_equipment,
+                        exercise_function: it.exercise_function,
+                        sets: it.sets,
+                        reps: it.reps,
+                        rest_seconds: it.rest_seconds,
+                        notes: it.notes,
+                        substitute_exercise_ids: it.substitute_exercise_ids,
+                        item_config: it.item_config,
+                    })),
+                })),
+            };
+
+            let snapshot;
+            try {
+                snapshot = buildSnapshotFromDraft(draftLike, {
+                    preserveReasoning: draft.originalSnapshot?.reasoning,
+                });
+            } catch (err) {
+                if (err instanceof SupersetInSnapshotError) {
+                    return { ok: false, reason: "SUPERSET_BLOCKED" };
+                }
+                throw err;
+            }
+
+            store.setSaving(true);
+            try {
+                const result = await assignProgram({
+                    studentId: targetStudentId,
+                    generationId: draft.generationId,
+                    isEdited: true,
+                    outputSnapshot: snapshot,
+                    startDate: new Date().toISOString(),
+                    isScheduled: false,
+                });
+                if (!result.success) {
+                    const message = result.error || "Falha ao salvar programa.";
+                    toast.error("Erro", message);
+                    return { ok: false, reason: "ERROR", message };
+                }
+                toast.success("Programa atribuído!", `"${draft.name}" foi atribuído ao aluno.`);
+                store.reset();
+                return { ok: true };
+            } catch (err) {
+                const message =
+                    err instanceof AIPrescriptionFetchError
+                        ? err.message
+                        : err instanceof Error
+                            ? err.message
+                            : "Falha ao salvar programa.";
+                toast.error("Erro", message);
+                return { ok: false, reason: "ERROR", message };
+            } finally {
+                store.setSaving(false);
+            }
+        }
+
+        // ── Manual / parsed-text path: save as template, then assign via Edge Function (legacy) ──
         try {
             const programId = await saveAsTemplate();
 
-            // Call assign Edge Function (same pattern as AssignProgramWizard)
             const { data: result, error } = await supabase.functions.invoke("assign-program", {
                 body: {
                     studentId: targetStudentId,
@@ -132,13 +220,38 @@ export function useProgramBuilder() {
             if (error) throw new Error(error.message || "Falha ao atribuir programa");
             if (result?.error) throw new Error(result.error);
 
-            toast.success("Programa criado!", `"${store.draft.name}" foi atribuído ao aluno.`);
+            toast.success("Programa criado!", `"${draft.name}" foi atribuído ao aluno.`);
             store.reset();
-        } catch (err: any) {
-            toast.error("Erro", err.message || "Falha ao salvar programa.");
-            throw err;
+            return { ok: true };
+        } catch (err) {
+            const message = err instanceof Error ? err.message : "Falha ao salvar programa.";
+            toast.error("Erro", message);
+            return { ok: false, reason: "ERROR", message };
         }
     }, [saveAsTemplate, store]);
+
+    /**
+     * Escape hatch for the supersets case: drop the AI linkage from the draft
+     * and re-run the save through the legacy template path. Used when the
+     * trainer added supersets after the AI generation and chose "Salvar como
+     * programa novo" in the Alert.
+     */
+    const saveAsNewProgramDiscardingAi = useCallback(
+        async (targetStudentId: string): Promise<SaveAndAssignResult> => {
+            // Mutate the draft in-place (single transactional set) to drop AI
+            // metadata, then reuse the legacy save path.
+            useProgramBuilderStore.setState((state) => ({
+                draft: {
+                    ...state.draft,
+                    generationId: null,
+                    originatedFromAi: false,
+                    originalSnapshot: null,
+                },
+            }));
+            return saveAndAssign(targetStudentId);
+        },
+        [saveAndAssign],
+    );
 
     return {
         draft: store.draft,
@@ -161,5 +274,6 @@ export function useProgramBuilder() {
         reset: store.reset,
         saveAsTemplate,
         saveAndAssign,
+        saveAsNewProgramDiscardingAi,
     };
 }

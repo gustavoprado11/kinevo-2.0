@@ -7,6 +7,7 @@ import type { BuilderProgramData } from '@/lib/prescription/builder-mapper'
 import type { Exercise } from '@/types/exercise'
 import type { PrescriptionOutputSnapshot, PrescriptionReasoningExtended } from '@kinevo/shared/types/prescription'
 import { getFormTemplatesForTriggers } from '@/actions/programs/get-form-templates-for-triggers'
+import { fetchPrescriptionDataDirect, type PrescriptionData } from '@/actions/prescription/get-prescription-data'
 
 interface PageProps {
     params: Promise<{
@@ -112,8 +113,24 @@ export default async function NewStudentProgramPage({ params, searchParams }: Pa
     // Fetch form templates for trigger configuration
     const triggerResult = await getFormTemplatesForTriggers()
 
+    // Prescription data for the AI panel — only when the trainer has the feature enabled.
+    let prescriptionData: PrescriptionData | null = null
+    if (trainer.ai_prescriptions_enabled) {
+        try {
+            prescriptionData = await fetchPrescriptionDataDirect(supabase, studentId, trainer.id)
+        } catch (err) {
+            console.error('[program/new] failed to load prescription data:', err)
+        }
+    }
+
     return (
         <ProgramBuilderClient
+            // Force full remount when a prescription generation is hydrated.
+            // ProgramBuilderClient initializes `workouts` from `program` via
+            // useState(initializer) — so a prop change alone doesn't repopulate
+            // the canvas. Keying on generationId makes React discard the empty
+            // instance and remount with the AI-generated workouts.
+            key={generationId ?? 'blank'}
             trainer={trainer}
             program={programData}
             exercises={mappedExercises}
@@ -126,6 +143,7 @@ export default async function NewStudentProgramPage({ params, searchParams }: Pa
             prescriptionGenerationId={generationId}
             prescriptionReasoning={prescriptionReasoning}
             formTriggerTemplates={triggerResult.templates || []}
+            prescriptionData={prescriptionData}
         />
     )
 }
