@@ -1116,7 +1116,7 @@ export async function buildSmartV2InputSnapshot(args: {
     exercises: PrescriptionExerciseRef[]
     performanceContext: PrescriptionPerformanceContext | null
     enriched: import('@/lib/prescription/context-enricher-v2').EnrichedStudentContextV2
-}): Record<string, unknown> {
+}): Promise<Record<string, unknown>> {
     return {
         profile: {
             student_id: args.profile.student_id,
