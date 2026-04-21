@@ -191,7 +191,6 @@ export function StudentDetailClient({
     studentInsights = [],
     bodyMetricsHistory = [],
 }: StudentDetailClientProps) {
-    console.log('StudentDetailClient Rendered. Scheduled:', scheduledPrograms) // DEBUG LOG
     const router = useRouter()
     const [student, setStudent] = useState<Student>(initialStudent)
     const [isAssignModalOpen, setIsAssignModalOpen] = useState(false)

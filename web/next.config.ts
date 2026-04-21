@@ -17,6 +17,14 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: "10mb",
     },
+    // Tree-shake lucide-react (1400+ ícones) e framer-motion — o auditor de
+    // performance (web/specs/audits/2026-04-21-performance-baseline.md)
+    // identificou um chunk de 607 KB só com `createLucideIcon` carregado em
+    // toda navegação. Este flag faz o Next.js reescrever os imports barrel
+    // como imports diretos, cortando o bundle compartilhado drasticamente.
+    // Esperado: LCP -1.5–2s, RES 34 → ~65–75. Medir via Vercel Speed Insights
+    // 5–7 dias após deploy.
+    optimizePackageImports: ["lucide-react", "framer-motion"],
   },
   async headers() {
     const isProd = process.env.NODE_ENV === "production";
