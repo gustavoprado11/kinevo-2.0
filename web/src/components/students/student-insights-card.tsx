@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef } from 'react'
 import {
     Sparkles, AlertTriangle, TrendingUp, Lightbulb, BarChart3,
-    X, ChevronRight, Pin, Plus, Send,
+    X, ChevronRight, Pin, Plus, Send, MessageCircle, Dumbbell, ClipboardList, Eye, PlusCircle,
 } from 'lucide-react'
 import { dismissInsight, markInsightRead, createPinnedNote, deletePinnedNote } from '@/actions/insights'
 import type { InsightItem } from '@/actions/insights'
@@ -11,6 +11,25 @@ import type { InsightItem } from '@/actions/insights'
 interface StudentInsightsCardProps {
     studentId: string
     insights: InsightItem[]
+    /**
+     * Optional callback invoked when the user clicks a contextual CTA on an
+     * insight. Receives the raw action_type + full insight so the parent can
+     * decide what to do (navigate, open modal, scroll to section, etc.).
+     * When omitted, the CTAs fallback to smooth-scrolling to a section
+     * derived from the action_type — enough to be useful in isolation.
+     */
+    onInsightAction?: (actionType: string, insight: InsightItem) => void
+}
+
+// Maps backend action_type to a compact label + icon for inline CTAs.
+// Keep the set small; unknown action_types render with a generic "Ver" fallback.
+const ACTION_CTA: Record<string, { label: string; icon: typeof MessageCircle; scrollTarget?: string }> = {
+    contact_student: { label: 'Enviar mensagem', icon: MessageCircle, scrollTarget: 'quick-message' },
+    adjust_load: { label: 'Ajustar carga', icon: Dumbbell, scrollTarget: 'student-actions' },
+    generate_program: { label: 'Criar programa', icon: PlusCircle, scrollTarget: 'student-actions' },
+    review_program: { label: 'Revisar programa', icon: Eye, scrollTarget: 'student-actions' },
+    review_anamnese: { label: 'Ver avaliação', icon: ClipboardList, scrollTarget: 'assessments' },
+    review_checkin: { label: 'Ver check-in', icon: ClipboardList, scrollTarget: 'assessments' },
 }
 
 const CATEGORY_CONFIG: Record<string, {
@@ -51,7 +70,7 @@ const CATEGORY_CONFIG: Record<string, {
     },
 }
 
-export function StudentInsightsCard({ studentId, insights: initialInsights }: StudentInsightsCardProps) {
+export function StudentInsightsCard({ studentId, insights: initialInsights, onInsightAction }: StudentInsightsCardProps) {
     const [insights, setInsights] = useState(initialInsights)
     const [expandedId, setExpandedId] = useState<string | null>(null)
     const [isAddingNote, setIsAddingNote] = useState(false)
@@ -62,7 +81,24 @@ export function StudentInsightsCard({ studentId, insights: initialInsights }: St
     // Split into pinned notes and AI insights
     const studentInsights = insights.filter(i => i.student_id === studentId)
     const pinnedNotes = studentInsights.filter(i => i.category === 'pinned_note')
-    const aiInsights = studentInsights.filter(i => i.category !== 'pinned_note')
+    // Prioritize AI insights: category (alert > progression > suggestion > summary) then priority DESC.
+    // Rationale: alerts represent risk that needs action today; progression is celebratory next;
+    // suggestions are proactive ideas; summaries are informational.
+    const CATEGORY_ORDER: Record<string, number> = { alert: 0, progression: 1, suggestion: 2, summary: 3 }
+    const PRIORITY_ORDER: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 }
+    const aiInsights = studentInsights
+        .filter(i => i.category !== 'pinned_note')
+        .slice() // copy before sort (state immutability)
+        .sort((a, b) => {
+            const ca = CATEGORY_ORDER[a.category] ?? 99
+            const cb = CATEGORY_ORDER[b.category] ?? 99
+            if (ca !== cb) return ca - cb
+            const pa = PRIORITY_ORDER[a.priority] ?? 99
+            const pb = PRIORITY_ORDER[b.priority] ?? 99
+            if (pa !== pb) return pa - pb
+            // Newest first as tie-breaker
+            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        })
     const newCount = aiInsights.filter(i => i.status === 'new').length
 
     const handleDismiss = useCallback(async (id: string, e: React.MouseEvent) => {
@@ -89,6 +125,21 @@ export function StudentInsightsCard({ studentId, insights: initialInsights }: St
             }
         }
     }, [expandedId, insights])
+
+    const handleAction = useCallback((insight: InsightItem, e: React.MouseEvent) => {
+        e.stopPropagation()
+        if (!insight.action_type) return
+        if (onInsightAction) {
+            onInsightAction(insight.action_type, insight)
+            return
+        }
+        // Default behavior: scroll to a section marked with data-onboarding=<scrollTarget>
+        const cta = ACTION_CTA[insight.action_type]
+        if (cta?.scrollTarget) {
+            const el = document.querySelector(`[data-onboarding="${cta.scrollTarget}"]`)
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+    }, [onInsightAction])
 
     const handleAddNote = useCallback(async () => {
         if (!noteText.trim() || saving) return
@@ -236,9 +287,24 @@ export function StudentInsightsCard({ studentId, insights: initialInsights }: St
                                         )}
                                     </div>
                                     {isExpanded && (
-                                        <p className="text-[11px] text-[#6E6E73] dark:text-k-text-tertiary mt-1 leading-relaxed">
-                                            {insight.body}
-                                        </p>
+                                        <>
+                                            <p className="text-[11px] text-[#6E6E73] dark:text-k-text-tertiary mt-1 leading-relaxed">
+                                                {insight.body}
+                                            </p>
+                                            {insight.action_type && ACTION_CTA[insight.action_type] && (() => {
+                                                const cta = ACTION_CTA[insight.action_type!]
+                                                const CtaIcon = cta.icon
+                                                return (
+                                                    <button
+                                                        onClick={(e) => handleAction(insight, e)}
+                                                        className={`mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-colors ${config.color} bg-white/70 dark:bg-white/5 hover:bg-white dark:hover:bg-white/10 border ${config.border}`}
+                                                    >
+                                                        <CtaIcon className="w-3 h-3" />
+                                                        {cta.label}
+                                                    </button>
+                                                )
+                                            })()}
+                                        </>
                                     )}
                                 </div>
                                 <div className="flex items-center gap-1 shrink-0">

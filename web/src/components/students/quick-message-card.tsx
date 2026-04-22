@@ -3,7 +3,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { Send, Loader2, Check, MessageCircle } from 'lucide-react'
 import { sendMessage } from '@/app/messages/actions'
-import { useRouter } from 'next/navigation'
 
 interface QuickSuggestion {
     emoji: string
@@ -15,10 +14,16 @@ interface QuickMessageCardProps {
     studentId: string
     studentName: string
     suggestions?: QuickSuggestion[]
+    /**
+     * Callback disparado ao clicar em "Ver conversa". Se não for passado,
+     * o link fica oculto. A versão antiga do componente fazia
+     * `router.push('/messages?student=...')` — agora preferimos abrir o
+     * painel lateral sem sair da página, então o parent controla.
+     */
+    onOpenThread?: () => void
 }
 
-export function QuickMessageCard({ studentId, studentName, suggestions = [] }: QuickMessageCardProps) {
-    const router = useRouter()
+export function QuickMessageCard({ studentId, studentName, suggestions = [], onOpenThread }: QuickMessageCardProps) {
     const [text, setText] = useState('')
     const [isSending, setIsSending] = useState(false)
     const [showSuccess, setShowSuccess] = useState(false)
@@ -72,12 +77,14 @@ export function QuickMessageCard({ studentId, studentName, suggestions = [] }: Q
                     <MessageCircle className="w-4 h-4 text-blue-500" />
                     Mensagem Rápida
                 </h3>
-                <button
-                    onClick={() => router.push(`/messages?student=${studentId}`)}
-                    className="text-[10px] font-bold text-[#007AFF] dark:text-violet-400 hover:underline"
-                >
-                    Ver conversa
-                </button>
+                {onOpenThread && (
+                    <button
+                        onClick={onOpenThread}
+                        className="text-[10px] font-bold text-[#007AFF] dark:text-violet-400 hover:underline"
+                    >
+                        Ver conversa
+                    </button>
+                )}
             </div>
 
             {/* Success feedback */}

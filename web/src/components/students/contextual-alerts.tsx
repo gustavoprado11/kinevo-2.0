@@ -1,7 +1,7 @@
 'use client'
 
-import { useMemo } from 'react'
-import { AlertTriangle, TrendingDown, Flame, BatteryLow, CalendarClock, ArrowDown } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { AlertTriangle, TrendingDown, Flame, BatteryLow, CalendarClock, ArrowDown, X } from 'lucide-react'
 
 interface ContextualAlertsProps {
     historySummary: {
@@ -50,7 +50,7 @@ export function ContextualAlerts({
             if (avgRpe >= 9) {
                 result.push({
                     id: 'high-rpe',
-                    icon: <Flame className="w-4 h-4 text-red-500" />,
+                    icon: <Flame className="w-3.5 h-3.5" />,
                     message: `PSE média muito alta (${avgRpe.toFixed(1)})`,
                     detail: 'Considere reduzir intensidade ou volume para evitar overtraining.',
                     severity: 'danger',
@@ -58,7 +58,7 @@ export function ContextualAlerts({
             } else if (avgRpe >= 8) {
                 result.push({
                     id: 'elevated-rpe',
-                    icon: <Flame className="w-4 h-4 text-amber-500" />,
+                    icon: <Flame className="w-3.5 h-3.5" />,
                     message: `PSE média elevada (${avgRpe.toFixed(1)})`,
                     detail: 'Monitore fadiga acumulada nas próximas sessões.',
                     severity: 'warning',
@@ -73,7 +73,7 @@ export function ContextualAlerts({
             if (avgChange <= -10) {
                 result.push({
                     id: 'load-decrease',
-                    icon: <TrendingDown className="w-4 h-4 text-red-500" />,
+                    icon: <TrendingDown className="w-3.5 h-3.5" />,
                     message: `Carga caiu ${Math.abs(avgChange).toFixed(0)}% nos últimos treinos`,
                     detail: 'Possível fadiga, dor ou desmotivação. Converse com o aluno.',
                     severity: 'danger',
@@ -81,7 +81,7 @@ export function ContextualAlerts({
             } else if (avgChange <= -5) {
                 result.push({
                     id: 'load-slight-decrease',
-                    icon: <ArrowDown className="w-4 h-4 text-amber-500" />,
+                    icon: <ArrowDown className="w-3.5 h-3.5" />,
                     message: `Carga reduzida (${avgChange.toFixed(1)}%)`,
                     detail: 'Queda leve — pode ser deload planejado ou fadiga pontual.',
                     severity: 'warning',
@@ -96,7 +96,7 @@ export function ContextualAlerts({
             if (avgAdherence < 50) {
                 result.push({
                     id: 'low-adherence',
-                    icon: <BatteryLow className="w-4 h-4 text-red-500" />,
+                    icon: <BatteryLow className="w-3.5 h-3.5" />,
                     message: 'Adesão abaixo de 50% nas últimas 2 semanas',
                     detail: 'O aluno pode precisar de ajuste na frequência ou motivação extra.',
                     severity: 'danger',
@@ -104,7 +104,7 @@ export function ContextualAlerts({
             } else if (avgAdherence < 70) {
                 result.push({
                     id: 'adherence-warning',
-                    icon: <BatteryLow className="w-4 h-4 text-amber-500" />,
+                    icon: <BatteryLow className="w-3.5 h-3.5" />,
                     message: `Adesão em queda (${Math.round(avgAdherence)}%)`,
                     detail: 'Tendência de queda na frequência de treinos.',
                     severity: 'warning',
@@ -120,7 +120,7 @@ export function ContextualAlerts({
             if (daysLeft <= 7 && daysLeft > 0 && activeProgram.status === 'active') {
                 result.push({
                     id: 'program-ending',
-                    icon: <CalendarClock className="w-4 h-4 text-amber-500" />,
+                    icon: <CalendarClock className="w-3.5 h-3.5" />,
                     message: `Programa termina em ${daysLeft} dia${daysLeft > 1 ? 's' : ''}`,
                     detail: 'Planeje a transição para o próximo programa.',
                     severity: 'warning',
@@ -133,44 +133,85 @@ export function ContextualAlerts({
 
     if (alerts.length === 0) return null
 
+    return <ContextualAlertsView alerts={alerts} />
+}
+
+// ── Presentational ──
+//
+// Alerts used to render as stacked full-width banners — even collapsed, 2–3
+// of them in a row cut the viewport into horizontal slices before the main
+// dashboard could start. That's the "cortando a tela" problem.
+//
+// New layout: a single compact row of pill-shaped chips (one per alert).
+// Severity is encoded via a colored dot + subtle tinted background; the text
+// stays neutral so the row reads as a status bar instead of a warning banner.
+// Clicking a chip reveals that alert's detail inline, below the row.
+
+function ContextualAlertsView({ alerts }: { alerts: Alert[] }) {
+    const [expandedId, setExpandedId] = useState<string | null>(null)
+    const expanded = alerts.find(a => a.id === expandedId) ?? null
+
     return (
         <div className="space-y-2">
-            {alerts.map(alert => (
-                <div
-                    key={alert.id}
-                    className={`flex items-start gap-3 px-4 py-3 rounded-xl border transition-all ${
+            <div className="flex flex-wrap items-center gap-1.5">
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-k-text-tertiary pr-1">
+                    <AlertTriangle className="w-3 h-3" />
+                    Alertas
+                </span>
+                {alerts.map(alert => {
+                    const isActive = expandedId === alert.id
+                    const dotColor =
                         alert.severity === 'danger'
-                            ? 'bg-red-50 dark:bg-red-500/5 border-red-200 dark:border-red-500/20'
+                            ? 'bg-red-500'
                             : alert.severity === 'warning'
-                                ? 'bg-amber-50 dark:bg-amber-500/5 border-amber-200 dark:border-amber-500/20'
-                                : 'bg-blue-50 dark:bg-blue-500/5 border-blue-200 dark:border-blue-500/20'
+                                ? 'bg-amber-500'
+                                : 'bg-blue-500'
+                    return (
+                        <button
+                            key={alert.id}
+                            type="button"
+                            onClick={() => setExpandedId(isActive ? null : alert.id)}
+                            className={`inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full border text-[12px] font-medium transition-colors ${
+                                isActive
+                                    ? 'bg-k-surface-raised border-k-border-default text-k-text-primary shadow-sm'
+                                    : 'bg-k-surface border-k-border-subtle text-k-text-secondary hover:bg-k-surface-raised hover:text-k-text-primary'
+                            }`}
+                            aria-expanded={isActive}
+                        >
+                            <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
+                            <span className="truncate max-w-[220px]">{alert.message}</span>
+                        </button>
+                    )
+                })}
+            </div>
+
+            {expanded && (
+                <div
+                    className={`flex items-start gap-2 px-3 py-2 rounded-lg border text-[12.5px] leading-relaxed ${
+                        expanded.severity === 'danger'
+                            ? 'bg-red-50/70 dark:bg-red-500/5 border-red-200/70 dark:border-red-500/20 text-red-700 dark:text-red-300'
+                            : expanded.severity === 'warning'
+                                ? 'bg-amber-50/70 dark:bg-amber-500/5 border-amber-200/70 dark:border-amber-500/20 text-amber-800 dark:text-amber-300'
+                                : 'bg-blue-50/70 dark:bg-blue-500/5 border-blue-200/70 dark:border-blue-500/20 text-blue-700 dark:text-blue-300'
                     }`}
                 >
-                    <div className="mt-0.5 shrink-0">{alert.icon}</div>
-                    <div className="min-w-0">
-                        <p className={`text-sm font-semibold ${
-                            alert.severity === 'danger'
-                                ? 'text-red-700 dark:text-red-400'
-                                : alert.severity === 'warning'
-                                    ? 'text-amber-700 dark:text-amber-400'
-                                    : 'text-blue-700 dark:text-blue-400'
-                        }`}>
-                            {alert.message}
-                        </p>
-                        {alert.detail && (
-                            <p className={`text-xs mt-0.5 ${
-                                alert.severity === 'danger'
-                                    ? 'text-red-600/70 dark:text-red-400/60'
-                                    : alert.severity === 'warning'
-                                        ? 'text-amber-600/70 dark:text-amber-400/60'
-                                        : 'text-blue-600/70 dark:text-blue-400/60'
-                            }`}>
-                                {alert.detail}
-                            </p>
+                    <div className="shrink-0 mt-0.5 opacity-80">{expanded.icon}</div>
+                    <div className="flex-1">
+                        <p className="font-semibold">{expanded.message}</p>
+                        {expanded.detail && (
+                            <p className="mt-0.5 opacity-80">{expanded.detail}</p>
                         )}
                     </div>
+                    <button
+                        type="button"
+                        onClick={() => setExpandedId(null)}
+                        className="shrink-0 p-1 -m-1 rounded hover:bg-black/5 dark:hover:bg-white/5 opacity-60 hover:opacity-100"
+                        aria-label="Fechar detalhe"
+                    >
+                        <X className="w-3.5 h-3.5" />
+                    </button>
                 </div>
-            ))}
+            )}
         </div>
     )
 }

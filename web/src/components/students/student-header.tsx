@@ -290,7 +290,10 @@ export function StudentHeader({ student, onEdit, onDelete, quickStats, children 
                     </div>
                 </div>
 
-                {/* Quick Stats Bar */}
+                {/* Quick Stats Bar (legado — prop `quickStats`).
+                    A página principal do aluno hoje usa `children` (StudentStatusBar)
+                    para consolidar stats + alertas numa única faixa. Esta branch
+                    é mantida apenas para callers que ainda passam `quickStats`. */}
                 {(quickStats && quickStats.length > 0) && (
                     <div className="border-t border-[#E8E8ED] dark:border-k-border-subtle px-6 py-3">
                         <div className="flex items-center gap-3 overflow-x-auto scrollbar-hide">
@@ -316,9 +319,12 @@ export function StudentHeader({ student, onEdit, onDelete, quickStats, children 
                     </div>
                 )}
 
-                {/* Legacy children slot (backward compat) */}
+                {/* Slot de barra de status (usado quando `quickStats` não é passado).
+                    Ocupa a largura inteira do header — sem o offset do avatar
+                    que o layout anterior tinha — para que a faixa horizontal
+                    ocupe toda a largura disponível do card. */}
                 {!quickStats && children && (
-                    <div className="border-t border-[#E8E8ED] dark:border-k-border-subtle px-6 py-3 ml-[84px]">
+                    <div className="border-t border-[#E8E8ED] dark:border-k-border-subtle px-6 py-3">
                         {children}
                     </div>
                 )}

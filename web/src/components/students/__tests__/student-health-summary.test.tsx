@@ -111,7 +111,10 @@ describe('StudentHealthSummary', () => {
         expect(allText).toContain('Adesão')
     })
 
-    it('shows intensity dimension based on high RPE data', () => {
+    it('does NOT show an Intensidade dimension (moved to ContextualAlerts)', () => {
+        // Dimension removed to avoid duplication with ContextualAlerts banner.
+        // See student-health-summary.tsx — the "Intensidade" block was intentionally
+        // removed; PSE feedback now lives only in ContextualAlerts.
         const { container } = render(
             <StudentHealthSummary
                 {...defaultProps}
@@ -123,6 +126,6 @@ describe('StudentHealthSummary', () => {
             />
         )
         const allText = container.textContent || ''
-        expect(allText).toContain('Intensidade')
+        expect(allText).not.toContain('Intensidade')
     })
 })

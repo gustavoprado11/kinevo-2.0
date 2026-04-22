@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { ClipboardList, FileCheck, Clock, Loader2, Send, ChevronDown } from 'lucide-react'
 import { assignFormToStudents } from '@/actions/forms/assign-form'
 import { ActiveSchedulesList } from './active-schedules-list'
+import { BodyMetricsTrend } from './body-metrics-trend'
 import type { FormScheduleRow } from '@/actions/forms/form-schedules'
 
 interface LastSubmission {
@@ -33,11 +34,23 @@ interface FormTemplate {
     category: string
 }
 
+interface BodyMetricsHistoryPoint {
+    weight: number | null
+    bodyFat: number | null
+    date: string
+}
+
 interface AssessmentSidebarCardProps {
     studentId: string
     lastSubmission: LastSubmission | null
     pendingForms: PendingForm[]
     bodyMetrics: BodyMetrics | null
+    /**
+     * Histórico de métricas corporais. Quando houver ≥ 2 pontos com dados,
+     * renderizamos o `BodyMetricsTrend` (sparkline + variação) em vez do
+     * bloco estático. Assim evitamos um card adicional na sidebar.
+     */
+    bodyMetricsHistory?: BodyMetricsHistoryPoint[]
     formTemplates: FormTemplate[]
     formSchedules?: FormScheduleRow[]
 }
@@ -53,6 +66,7 @@ export function AssessmentSidebarCard({
     lastSubmission,
     pendingForms,
     bodyMetrics,
+    bodyMetricsHistory = [],
     formTemplates,
     formSchedules = [],
 }: AssessmentSidebarCardProps) {
@@ -182,30 +196,42 @@ export function AssessmentSidebarCard({
                     </div>
                 )}
 
-                {/* Body metrics */}
-                {(bodyMetrics?.weight || bodyMetrics?.bodyFat) && (
-                    <div className="rounded-lg bg-[#F5F5F7] dark:bg-white/5 p-3">
-                        <div className="grid grid-cols-2 gap-3">
-                            {bodyMetrics.weight && (
-                                <div>
-                                    <p className="text-xs text-[#86868B] dark:text-k-text-quaternary">Peso</p>
-                                    <p className="text-base font-semibold text-[#1C1C1E] dark:text-white mt-0.5">{bodyMetrics.weight} kg</p>
-                                </div>
-                            )}
-                            {bodyMetrics.bodyFat && (
-                                <div>
-                                    <p className="text-xs text-[#86868B] dark:text-k-text-quaternary">Gordura corporal</p>
-                                    <p className="text-base font-semibold text-[#1C1C1E] dark:text-white mt-0.5">{bodyMetrics.bodyFat}%</p>
-                                </div>
+                {/* Body metrics — com trend quando há histórico, estático caso contrário */}
+                {(bodyMetrics?.weight || bodyMetrics?.bodyFat) && (() => {
+                    const hasTrend = bodyMetricsHistory.length >= 2
+                    if (hasTrend) {
+                        return (
+                            <BodyMetricsTrend
+                                history={bodyMetricsHistory}
+                                currentWeight={bodyMetrics?.weight ?? null}
+                                currentBodyFat={bodyMetrics?.bodyFat ?? null}
+                            />
+                        )
+                    }
+                    return (
+                        <div className="rounded-lg bg-[#F5F5F7] dark:bg-white/5 p-3">
+                            <div className="grid grid-cols-2 gap-3">
+                                {bodyMetrics?.weight && (
+                                    <div>
+                                        <p className="text-xs text-[#86868B] dark:text-k-text-quaternary">Peso</p>
+                                        <p className="text-base font-semibold text-[#1C1C1E] dark:text-white mt-0.5">{bodyMetrics.weight} kg</p>
+                                    </div>
+                                )}
+                                {bodyMetrics?.bodyFat && (
+                                    <div>
+                                        <p className="text-xs text-[#86868B] dark:text-k-text-quaternary">Gordura corporal</p>
+                                        <p className="text-base font-semibold text-[#1C1C1E] dark:text-white mt-0.5">{bodyMetrics.bodyFat}%</p>
+                                    </div>
+                                )}
+                            </div>
+                            {bodyMetrics?.updatedAt && (
+                                <p className="text-[11px] text-[#AEAEB2] dark:text-k-text-quaternary mt-2">
+                                    Atualizado em {new Date(bodyMetrics.updatedAt).toLocaleDateString('pt-BR')}
+                                </p>
                             )}
                         </div>
-                        {bodyMetrics.updatedAt && (
-                            <p className="text-[11px] text-[#AEAEB2] dark:text-k-text-quaternary mt-2">
-                                Atualizado em {new Date(bodyMetrics.updatedAt).toLocaleDateString('pt-BR')}
-                            </p>
-                        )}
-                    </div>
-                )}
+                    )
+                })()}
             </div>
 
         </div>

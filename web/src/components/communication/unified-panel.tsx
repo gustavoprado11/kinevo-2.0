@@ -34,6 +34,18 @@ export function UnifiedCommunicationPanel() {
         }
     }, [searchParams, openPanel, openConversation, openChat])
 
+    // Fechar o painel ao pressionar ESC. Complementa o botão X, o backdrop e
+    // o gesto de deslizar: os três padrões "de fechar" que o usuário pode
+    // esperar já estão cobertos.
+    useEffect(() => {
+        if (!isOpen) return
+        const handleKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') closePanel()
+        }
+        window.addEventListener('keydown', handleKey)
+        return () => window.removeEventListener('keydown', handleKey)
+    }, [isOpen, closePanel])
+
     return (
         <AnimatePresence>
             {isOpen && (

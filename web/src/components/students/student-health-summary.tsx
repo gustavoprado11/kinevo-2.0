@@ -75,18 +75,9 @@ export function StudentHealthSummary({
             }
         }
 
-        // 3. RPE load
-        const rpeValues = recentSessions.map((s: any) => s.rpe).filter((r: any) => r != null && r > 0) as number[]
-        if (rpeValues.length >= 2) {
-            const avg = rpeValues.reduce((a, b) => a + b, 0) / rpeValues.length
-            if (avg >= 9) {
-                dims.push({ label: 'Intensidade', level: 'critical', detail: `PSE ${avg.toFixed(1)}` })
-            } else if (avg >= 8) {
-                dims.push({ label: 'Intensidade', level: 'attention', detail: `PSE ${avg.toFixed(1)}` })
-            } else {
-                dims.push({ label: 'Intensidade', level: 'good', detail: `PSE ${avg.toFixed(1)}` })
-            }
-        }
+        // Intensidade (PSE) foi removida daqui para evitar duplicação.
+        // A análise de PSE elevada é exibida pelo `ContextualAlerts`
+        // como um banner expandido com recomendação. Manter somente ali.
 
         // 4. Financial
         if (financialStatus === 'expired' || financialStatus === 'overdue' || financialStatus === 'past_due') {
