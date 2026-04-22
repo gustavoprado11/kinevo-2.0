@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import {
     ArrowRight,
     Play,
@@ -31,6 +31,8 @@ import {
 /* ================================================================== */
 /*  Dashboard Replica — pixel-perfect, embedded in hero browser frame  */
 /* ================================================================== */
+
+type HeroScene = 'overview' | 'assistant-acting'
 
 /* Sidebar */
 function DashSidebar() {
@@ -119,7 +121,6 @@ function DashHeader({ assistantOpen, glowing }: { assistantOpen: boolean; glowin
                             : 'border-violet-200 bg-violet-50 text-violet-700'
                     }`}
                 >
-                    {/* Glow ring on button before auto-click */}
                     {glowing && (
                         <motion.div
                             initial={{ opacity: 0, scale: 0.9 }}
@@ -271,8 +272,9 @@ function DashWidgets() {
     )
 }
 
-/* Assistant Panel */
-function AssistantPanel({ open }: { open: boolean }) {
+/* Assistant Panel — adds typing + final reply for scene 2 */
+function AssistantPanel({ open, scene }: { open: boolean; scene: HeroScene }) {
+    const acting = scene === 'assistant-acting'
     return (
         <AnimatePresence>
             {open && (
@@ -336,6 +338,48 @@ function AssistantPanel({ open }: { open: boolean }) {
                                 </div>
                             ))}
                         </motion.div>
+
+                        {/* Scene 2 — typing + final reply */}
+                        <AnimatePresence>
+                            {acting && (
+                                <>
+                                    <motion.div
+                                        key="typing"
+                                        initial={{ opacity: 0, y: 6 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0 }}
+                                        transition={{ duration: 0.2 }}
+                                        className="flex items-start gap-2"
+                                    >
+                                        <div className="w-6 h-6 rounded-full bg-violet-100 flex items-center justify-center shrink-0 mt-0.5">
+                                            <Sparkles className="w-3 h-3 text-violet-600" />
+                                        </div>
+                                        <div className="bg-[#F5F5F7] rounded-2xl rounded-bl-md px-3 py-2.5 flex items-center gap-1">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-violet-400/70 animate-bounce" style={{ animationDelay: '0ms' }} />
+                                            <span className="w-1.5 h-1.5 rounded-full bg-violet-400/70 animate-bounce" style={{ animationDelay: '150ms' }} />
+                                            <span className="w-1.5 h-1.5 rounded-full bg-violet-400/70 animate-bounce" style={{ animationDelay: '300ms' }} />
+                                        </div>
+                                    </motion.div>
+                                    <motion.div
+                                        key="reply"
+                                        initial={{ opacity: 0, y: 8 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0 }}
+                                        transition={{ duration: 0.35, delay: 1 }}
+                                        className="flex items-start gap-2"
+                                    >
+                                        <div className="w-6 h-6 rounded-full bg-violet-100 flex items-center justify-center shrink-0 mt-0.5">
+                                            <Sparkles className="w-3 h-3 text-violet-600" />
+                                        </div>
+                                        <div className="bg-violet-50 border border-violet-100 rounded-2xl rounded-bl-md px-3 py-2.5 max-w-[90%]">
+                                            <p className="font-jakarta text-[11px] text-[#1D1D1F] leading-relaxed">
+                                                Rascunhei uma mensagem empática lembrando do treino de hoje. <span className="font-semibold text-violet-700">Revise antes de enviar.</span>
+                                            </p>
+                                        </div>
+                                    </motion.div>
+                                </>
+                            )}
+                        </AnimatePresence>
                     </div>
                     <div className="px-3 pb-3 pt-2">
                         <div className="flex items-center gap-2 border border-[#D2D2D7] rounded-full px-3.5 py-2 bg-white">
@@ -351,23 +395,42 @@ function AssistantPanel({ open }: { open: boolean }) {
     )
 }
 
-/* Assembled dashboard with auto-play animation */
-function DashboardReplica() {
+/* Assembled dashboard with auto-play scene cycle */
+function DashboardReplica({ paused }: { paused: boolean }) {
+    const [scene, setScene] = useState<HeroScene>('overview')
     const [assistantOpen, setAssistantOpen] = useState(false)
     const [glowing, setGlowing] = useState(false)
+    const reducedMotion = useReducedMotion()
 
     useEffect(() => {
-        // Auto-play: glow the button at 2.5s, open assistant at 4s
-        const glowTimer = setTimeout(() => setGlowing(true), 2500)
-        const openTimer = setTimeout(() => {
+        if (reducedMotion) return
+        if (paused) return
+
+        let cancelled = false
+        const timers: ReturnType<typeof setTimeout>[] = []
+
+        const cycle = () => {
+            if (cancelled) return
+            setScene('overview')
+            setAssistantOpen(false)
             setGlowing(false)
-            setAssistantOpen(true)
-        }, 4000)
-        return () => {
-            clearTimeout(glowTimer)
-            clearTimeout(openTimer)
+
+            timers.push(setTimeout(() => { if (!cancelled) setGlowing(true) }, 3000))
+            timers.push(setTimeout(() => {
+                if (cancelled) return
+                setGlowing(false)
+                setAssistantOpen(true)
+                setScene('assistant-acting')
+            }, 4500))
+            timers.push(setTimeout(cycle, 9000))
         }
-    }, [])
+        cycle()
+
+        return () => {
+            cancelled = true
+            timers.forEach(clearTimeout)
+        }
+    }, [paused, reducedMotion])
 
     return (
         <div className="relative bg-[#F5F5F7] overflow-hidden" style={{ height: 520 }}>
@@ -384,7 +447,7 @@ function DashboardReplica() {
                         <DashStatCards />
                         <DashWidgets />
                     </motion.div>
-                    <AssistantPanel open={assistantOpen} />
+                    <AssistantPanel open={assistantOpen} scene={scene} />
                 </div>
             </div>
         </div>
@@ -397,6 +460,8 @@ function DashboardReplica() {
 
 export function LandingHero() {
     const [showDashboard, setShowDashboard] = useState(false)
+    const [paused, setPaused] = useState(false)
+    const reducedMotion = useReducedMotion()
 
     return (
         <section className="relative min-h-screen flex flex-col items-center pt-28 pb-12 overflow-hidden">
@@ -404,8 +469,25 @@ export function LandingHero() {
             <div className="absolute inset-0 bg-[#FAFAFA]" />
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(124,58,237,0.1),transparent)]" />
             <div className="absolute inset-0 grain-overlay" />
-            <div className="absolute top-1/4 -left-40 w-96 h-96 bg-[#7C3AED]/[0.05] rounded-full blur-3xl" />
-            <div className="absolute bottom-1/3 -right-40 w-80 h-80 bg-[#A855F7]/[0.05] rounded-full blur-3xl" />
+            {reducedMotion ? (
+                <>
+                    <div className="absolute top-1/4 -left-40 w-96 h-96 bg-[#7C3AED]/[0.06] rounded-full blur-3xl" />
+                    <div className="absolute bottom-1/3 -right-40 w-80 h-80 bg-[#A855F7]/[0.06] rounded-full blur-3xl" />
+                </>
+            ) : (
+                <>
+                    <motion.div
+                        animate={{ x: [0, 30, 0], y: [0, -20, 0] }}
+                        transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }}
+                        className="absolute top-1/4 -left-40 w-96 h-96 bg-[#7C3AED]/[0.06] rounded-full blur-3xl"
+                    />
+                    <motion.div
+                        animate={{ x: [0, -40, 0], y: [0, 30, 0] }}
+                        transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
+                        className="absolute bottom-1/3 -right-40 w-80 h-80 bg-[#A855F7]/[0.06] rounded-full blur-3xl"
+                    />
+                </>
+            )}
 
             <div className="relative mx-auto max-w-5xl px-6 w-full text-center">
                 {/* Badge */}
@@ -419,7 +501,7 @@ export function LandingHero() {
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#7C3AED] opacity-75" />
                             <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#7C3AED]" />
                         </span>
-                        50+ personal trainers no Brasil
+                        Em uso por personal trainers no Brasil
                     </span>
                 </motion.div>
 
@@ -430,11 +512,10 @@ export function LandingHero() {
                     transition={{ duration: 0.7, delay: 0.08 }}
                     className="font-jakarta text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.05] text-[#1D1D1F] mt-6"
                 >
-                    Prescreva, acompanhe
+                    Tudo que o personal moderno precisa
                     <br />
-                    e{' '}
                     <span className="bg-gradient-to-r from-[#7C3AED] to-[#A855F7] bg-clip-text text-transparent">
-                        receba sem taxas.
+                        em um só lugar.
                     </span>
                 </motion.h1>
 
@@ -445,7 +526,11 @@ export function LandingHero() {
                     transition={{ duration: 0.6, delay: 0.18 }}
                     className="font-jakarta text-lg text-[#6E6E73] mt-5 max-w-xl mx-auto"
                 >
-                    O sistema completo para personal trainers — do programa ao pagamento.
+                    <strong className="font-semibold text-[#1D1D1F]">Prescreva</strong> programas com IA,{' '}
+                    <strong className="font-semibold text-[#1D1D1F]">acompanhe</strong> cada treino em tempo real e seu aluno treina no{' '}
+                    <strong className="font-semibold text-[#1D1D1F]">iPhone</strong>, no{' '}
+                    <strong className="font-semibold text-[#1D1D1F]">Android</strong> e até no{' '}
+                    <strong className="font-semibold text-[#1D1D1F]">Apple Watch</strong>.
                 </motion.p>
 
                 {/* CTAs */}
@@ -471,14 +556,17 @@ export function LandingHero() {
                     </a>
                 </motion.div>
 
-                {/* Trust line */}
+                {/* Microcopy */}
                 <motion.p
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.6, delay: 0.4 }}
-                    className="font-jakarta text-[#AEAEB2] text-xs mt-5"
+                    className="font-jakarta text-[#6E6E73] text-xs mt-5"
                 >
-                    7 dias grátis &bull; Setup em 2 min &bull; Cancele quando quiser
+                    <strong className="font-semibold text-[#1D1D1F]">7 dias grátis</strong>
+                    {' • '}
+                    <strong className="font-semibold text-[#1D1D1F]">cancele quando quiser</strong>
+                    {' • comece em 2 minutos'}
                 </motion.p>
             </div>
 
@@ -488,6 +576,8 @@ export function LandingHero() {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 transition={{ duration: 1, ease: [0.16, 1, 0.3, 1], delay: 0.35 }}
                 onAnimationComplete={() => setShowDashboard(true)}
+                onMouseEnter={() => setPaused(true)}
+                onMouseLeave={() => setPaused(false)}
                 className="relative mt-12 w-full max-w-6xl mx-auto px-6"
             >
                 {/* Glow */}
@@ -505,14 +595,18 @@ export function LandingHero() {
                         <div className="flex-1 flex justify-center">
                             <div className="bg-white/80 rounded-md px-4 py-1 border border-black/[0.04] inline-flex items-center gap-1.5">
                                 <div className="w-2.5 h-2.5 rounded-full bg-[#34C759]" />
-                                <span className="font-jakarta text-[10px] text-[#6E6E73]">app.kinevo.com.br</span>
+                                <span className="font-jakarta text-[10px] text-[#6E6E73]">app.kinevo.com.br/dashboard</span>
                             </div>
                         </div>
                         <div className="w-16" />
                     </div>
 
                     {/* Dashboard replica */}
-                    {showDashboard && <DashboardReplica />}
+                    {showDashboard ? (
+                        <DashboardReplica paused={paused} />
+                    ) : (
+                        <div className="bg-[#F5F5F7] hero-skeleton" style={{ height: 520 }} />
+                    )}
                 </div>
             </motion.div>
         </section>

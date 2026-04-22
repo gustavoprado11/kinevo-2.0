@@ -27,6 +27,6 @@ export const config = {
          *   and reject with 401 if absent/invalid. Do not add cookie-auth routes
          *   here — create them elsewhere.)
          */
-        '/((?!_next/static|_next/image|favicon.ico|api/webhooks|api/stripe/webhook|api/stripe/cancel-subscription|api/cron|api/financial|api/notifications|api/prescription/generate|api/programs/assign|api/messages/notify-trainer|api/messages/notify-student|api/stripe/portal|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+        '/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|api/webhooks|api/stripe/webhook|api/stripe/cancel-subscription|api/cron|api/financial|api/notifications|api/prescription/generate|api/programs/assign|api/messages/notify-trainer|api/messages/notify-student|api/stripe/portal|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
     ],
 }

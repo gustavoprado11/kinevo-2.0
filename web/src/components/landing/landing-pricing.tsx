@@ -6,13 +6,13 @@ import { motion } from 'framer-motion'
 import { Check, X, Calculator } from 'lucide-react'
 
 const included = [
+    'Receba direto via Stripe — 0% de taxa do Kinevo',
     'Alunos ilimitados',
     'App iOS e Android',
     'Apple Watch',
     'Assistente de prescrição IA',
     'Formulários inteligentes',
     'Sala de Treino (tempo real)',
-    'Pagamentos com 0% taxa Kinevo',
     'Dashboard completo',
     'Suporte prioritário',
 ]
@@ -22,10 +22,12 @@ const comparison = [
     { feature: 'Taxa sobre pagamentos', kinevo: '0%', others: '5-20%' },
     { feature: 'Alunos ilimitados', kinevo: true, others: false },
     { feature: 'App nativo iOS/Android', kinevo: true, others: 'Parcial' },
-    { feature: 'Apple Watch', kinevo: true, others: false },
+    { feature: 'Apple Watch nativo', kinevo: true, others: false },
     { feature: 'Assistente IA', kinevo: true, others: false },
     { feature: 'Sala de Treino (tempo real)', kinevo: true, others: false },
     { feature: 'Modo offline', kinevo: true, others: false },
+    { feature: 'Em português brasileiro', kinevo: true, others: 'Parcial' },
+    { feature: 'Suporte humano em PT-BR', kinevo: true, others: false },
 ]
 
 function ComparisonValue({ value }: { value: boolean | string }) {
@@ -38,8 +40,8 @@ export function LandingPricing() {
     const [students, setStudents] = useState(15)
     const avgPrice = 350
     const competitorFee = 0.1 // 10%
-    const monthlyLoss = Math.round(students * avgPrice * competitorFee)
-    const yearlyLoss = monthlyLoss * 12
+    const monthlyEconomy = Math.round(students * avgPrice * competitorFee)
+    const yearlyEconomy = monthlyEconomy * 12
 
     return (
         <section className="bg-white py-24 md:py-32">
@@ -89,12 +91,22 @@ export function LandingPricing() {
                                 <div className="w-full h-px bg-white/10 my-7" />
 
                                 <ul className="space-y-3">
-                                    {included.map((f) => (
-                                        <li key={f} className="font-jakarta text-sm text-white/70 flex items-center gap-2.5">
-                                            <Check className="w-4 h-4 text-[#34C759] shrink-0" />
-                                            {f}
-                                        </li>
-                                    ))}
+                                    {included.map((f, i) => {
+                                        const highlight = i === 0
+                                        return (
+                                            <li
+                                                key={f}
+                                                className={
+                                                    highlight
+                                                        ? 'font-jakarta text-sm text-white font-semibold flex items-center gap-2.5 bg-[#34C759]/10 border border-[#34C759]/25 rounded-lg px-3 py-2 -mx-1'
+                                                        : 'font-jakarta text-sm text-white/70 flex items-center gap-2.5'
+                                                }
+                                            >
+                                                <Check className="w-4 h-4 text-[#34C759] shrink-0" />
+                                                {f}
+                                            </li>
+                                        )
+                                    })}
                                 </ul>
 
                                 <motion.div
@@ -132,7 +144,7 @@ export function LandingPricing() {
                         </div>
 
                         <p className="font-jakarta text-sm text-[#6E6E73] mb-6">
-                            Veja quanto você perde por mês com taxas de outras plataformas:
+                            Veja quanto você economiza por mês sem taxa de plataforma:
                         </p>
 
                         {/* Slider */}
@@ -160,27 +172,15 @@ export function LandingPricing() {
                                 </div>
                             </div>
 
-                            <div className="bg-white rounded-xl p-5 border border-[#E8E8ED]">
-                                <p className="font-jakarta text-xs text-[#86868B] uppercase tracking-wider font-semibold">
-                                    Com 10% de taxa (outras plataformas)
-                                </p>
-                                <p className="font-jakarta text-3xl font-extrabold text-[#FF3B30] mt-2">
-                                    -R$ {monthlyLoss.toLocaleString('pt-BR')}/mês
-                                </p>
-                                <p className="font-jakarta text-sm text-[#86868B] mt-1">
-                                    R$ {yearlyLoss.toLocaleString('pt-BR')} perdidos por ano
-                                </p>
-                            </div>
-
                             <div className="bg-white rounded-xl p-5 border border-[#34C759]/20">
                                 <p className="font-jakarta text-xs text-[#86868B] uppercase tracking-wider font-semibold">
-                                    Com o Kinevo
+                                    Quanto você economiza por mês
                                 </p>
                                 <p className="font-jakarta text-3xl font-extrabold text-[#34C759] mt-2">
-                                    R$ 0/mês em taxas
+                                    +R$ {monthlyEconomy.toLocaleString('pt-BR')}
                                 </p>
                                 <p className="font-jakarta text-sm text-[#86868B] mt-1">
-                                    Apenas R$ 39,90/mês pela plataforma completa
+                                    vs. plataformas com 10% de taxa — R$ {yearlyEconomy.toLocaleString('pt-BR')} por ano
                                 </p>
                             </div>
                         </div>
@@ -199,6 +199,9 @@ export function LandingPricing() {
                         <h3 className="font-jakarta text-xl font-bold text-[#1D1D1F]">
                             Kinevo vs. alternativas
                         </h3>
+                        <p className="font-jakarta text-xs text-[#86868B] mt-2">
+                            Comparação com plataformas de personal training disponíveis no Brasil, em planos profissionais equivalentes. Valores e taxas verificados em abril/2026.
+                        </p>
                     </div>
 
                     <div className="overflow-x-auto">

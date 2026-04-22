@@ -2,12 +2,12 @@
 
 import Image from 'next/image'
 import { motion } from 'framer-motion'
-import { Timer, Dumbbell, Watch, Calendar, Smartphone, WifiOff, Share2, Trophy } from 'lucide-react'
+import { Timer, Dumbbell, Bell, Calendar, Smartphone, WifiOff, Share2, Trophy } from 'lucide-react'
 
 const features = [
     { icon: Timer, label: 'Timer inteligente' },
     { icon: Dumbbell, label: 'Cargas automáticas' },
-    { icon: Watch, label: 'Apple Watch' },
+    { icon: Bell, label: 'Push notifications' },
     { icon: Calendar, label: 'Calendário visual' },
     { icon: Smartphone, label: 'Live Activity' },
     { icon: WifiOff, label: 'Modo offline' },

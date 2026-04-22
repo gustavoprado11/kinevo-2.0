@@ -1,33 +1,41 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { ArrowDown } from 'lucide-react'
+import { ChevronDown, FileText, UserX, MessagesSquare, type LucideIcon } from 'lucide-react'
 
-const painPoints = [
+type PainPoint = {
+    Icon: LucideIcon
+    title: string
+    stat: string
+    statLabel: string
+}
+
+const painPoints: PainPoint[] = [
     {
-        emoji: '📋',
+        Icon: FileText,
         title: 'Planilhas e PDFs',
         stat: '2h+',
         statLabel: 'perdidas por programa',
     },
     {
-        emoji: '👻',
+        Icon: UserX,
         title: 'Aluno sumiu?',
-        stat: '0',
+        stat: '0%',
         statLabel: 'visibilidade de aderência',
     },
     {
-        emoji: '💸',
-        title: 'Taxas e Pix',
-        stat: '10-20%',
-        statLabel: 'perdido em cada cobrança',
+        Icon: MessagesSquare,
+        title: 'WhatsApp sem fim',
+        stat: '50+',
+        statLabel: 'mensagens por dia só de dúvidas',
     },
 ]
 
 export function LandingProblem() {
     return (
-        <section className="relative bg-[#0A0A0B] py-24 md:py-32 overflow-hidden">
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_50%_0%,rgba(124,58,237,0.06),transparent)]" />
+        <section className="relative bg-gradient-to-b from-[#0A0A0B] via-[#111113] to-[#0A0A0B] py-24 md:py-32 overflow-hidden border-t border-white/5">
+            {/* Soft violet halo at top — smooths transition from bg-white above */}
+            <div className="absolute inset-x-0 top-0 h-48 bg-[radial-gradient(ellipse_60%_100%_at_50%_0%,rgba(124,58,237,0.08),transparent)]" />
 
             <div className="relative mx-auto max-w-7xl px-6">
                 {/* Header */}
@@ -44,7 +52,7 @@ export function LandingProblem() {
                     </h2>
                 </motion.div>
 
-                {/* Visual cards — stat-driven */}
+                {/* Pain cards — icon-driven, unified violet palette */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
                     {painPoints.map((card, i) => (
                         <motion.div
@@ -53,14 +61,16 @@ export function LandingProblem() {
                             whileInView={{ opacity: 1, y: 0 }}
                             viewport={{ once: true, margin: '-40px' }}
                             transition={{ duration: 0.5, delay: i * 0.08 }}
-                            className="group bg-white/[0.03] border border-white/[0.05] rounded-2xl p-6 text-center hover:bg-white/[0.05] hover:border-white/[0.08] transition-all"
+                            className="group bg-white/[0.03] backdrop-blur-sm border border-white/10 rounded-2xl p-8 text-center hover:bg-white/[0.05] hover:border-[#7C3AED]/20 transition-all"
                         >
-                            <span className="text-4xl">{card.emoji}</span>
-                            <p className="font-jakarta text-4xl md:text-5xl font-extrabold text-[#FF3B30]/80 mt-4">
+                            <div className="inline-flex items-center justify-center w-11 h-11 rounded-xl bg-[#7C3AED]/10 border border-[#7C3AED]/20">
+                                <card.Icon className="w-5 h-5 text-[#A855F7]" strokeWidth={1.8} />
+                            </div>
+                            <p className="font-jakarta text-sm font-semibold text-white mt-5">{card.title}</p>
+                            <p className="font-jakarta text-4xl md:text-5xl font-extrabold bg-gradient-to-br from-[#A855F7] to-[#7C3AED] bg-clip-text text-transparent mt-3 tracking-tight whitespace-nowrap">
                                 {card.stat}
                             </p>
-                            <p className="font-jakarta text-xs text-white/30 mt-1">{card.statLabel}</p>
-                            <p className="font-jakarta text-sm font-semibold text-white/60 mt-4">{card.title}</p>
+                            <p className="font-jakarta text-xs text-white/40 mt-2">{card.statLabel}</p>
                         </motion.div>
                     ))}
                 </div>
@@ -71,17 +81,17 @@ export function LandingProblem() {
                     whileInView={{ opacity: 1 }}
                     viewport={{ once: true }}
                     transition={{ duration: 0.6, delay: 0.3 }}
-                    className="mt-14 text-center"
+                    className="mt-20 flex flex-col items-center gap-5"
                 >
                     <p className="font-jakarta text-xl md:text-2xl font-bold text-white">
                         O Kinevo muda isso.
                     </p>
                     <motion.div
-                        animate={{ y: [0, 5, 0] }}
+                        animate={{ y: [0, 4, 0] }}
                         transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-                        className="mt-4"
+                        className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-[#7C3AED]/10 border border-[#7C3AED]/20"
                     >
-                        <ArrowDown className="w-4 h-4 text-[#7C3AED] mx-auto" />
+                        <ChevronDown className="w-5 h-5 text-[#A855F7]" strokeWidth={2} />
                     </motion.div>
                 </motion.div>
             </div>

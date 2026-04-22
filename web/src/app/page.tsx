@@ -1,6 +1,8 @@
 'use client'
 
 import dynamic from 'next/dynamic'
+import { LandingHero } from '@/components/landing/landing-hero'
+import { FaqJsonLd } from '@/components/landing/faq-jsonld'
 
 // Navbar keeps SSR enabled — it contains critical navigation links (/login, /signup,
 // anchor hrefs) that must be present in the initial HTML for SEO and usability.
@@ -9,12 +11,7 @@ const Navbar = dynamic(
     { loading: () => <div className="h-16" /> }
 )
 
-// Below-the-fold sections use ssr: false to keep framer-motion (~40KB gzipped)
-// out of the initial bundle, improving FCP and LCP.
-const LandingHero = dynamic(
-    () => import('@/components/landing/landing-hero').then(mod => mod.LandingHero),
-    { loading: () => <div className="min-h-screen" />, ssr: false }
-)
+// Hero is statically imported — it's the LCP target and must be in the initial HTML.
 const LandingSocialProof = dynamic(
     () => import('@/components/landing/landing-social-proof').then(mod => mod.LandingSocialProof),
     { loading: () => <div className="h-16" />, ssr: false }
@@ -31,8 +28,16 @@ const LandingPillars = dynamic(
     () => import('@/components/landing/landing-pillars').then(mod => mod.LandingPillars),
     { loading: () => <div className="h-96" />, ssr: false }
 )
-const LandingStudentApp = dynamic(
-    () => import('@/components/landing/landing-student-app').then(mod => mod.LandingStudentApp),
+const LandingSalaDeTreino = dynamic(
+    () => import('@/components/landing/landing-sala-de-treino').then(mod => mod.LandingSalaDeTreino),
+    { loading: () => <div className="h-96" />, ssr: false }
+)
+const LandingParaAluno = dynamic(
+    () => import('@/components/landing/landing-para-aluno').then(mod => mod.LandingParaAluno),
+    { loading: () => <div className="h-96" />, ssr: false }
+)
+const LandingAiAssistant = dynamic(
+    () => import('@/components/landing/landing-ai-assistant').then(mod => mod.LandingAiAssistant),
     { loading: () => <div className="h-96" />, ssr: false }
 )
 const LandingTestimonials = dynamic(
@@ -47,10 +52,6 @@ const LandingFaq = dynamic(
     () => import('@/components/landing/landing-faq').then(mod => mod.LandingFaq),
     { loading: () => <div className="h-48" />, ssr: false }
 )
-const LandingAiAssistant = dynamic(
-    () => import('@/components/landing/landing-ai-assistant').then(mod => mod.LandingAiAssistant),
-    { loading: () => <div className="h-96" />, ssr: false }
-)
 const LandingCtaFooter = dynamic(
     () => import('@/components/landing/landing-cta-footer').then(mod => mod.LandingCtaFooter),
     { loading: () => <div className="h-48" />, ssr: false }
@@ -59,21 +60,21 @@ const LandingCtaFooter = dynamic(
 export default function Home() {
     return (
         <div className="min-h-screen bg-white selection:bg-[#7C3AED]/15 selection:text-[#7C3AED]">
+            <FaqJsonLd />
             <Navbar />
 
             <main>
                 <LandingHero />
                 <LandingSocialProof />
                 <LandingProblem />
-                <div id="assistente-ia">
-                    <LandingAiAssistant />
-                </div>
                 <div id="como-funciona">
                     <LandingHowItWorks />
                     <LandingPillars />
                 </div>
-                <div id="app-aluno">
-                    <LandingStudentApp />
+                <LandingSalaDeTreino />
+                <LandingParaAluno />
+                <div id="assistente-ia">
+                    <LandingAiAssistant />
                 </div>
                 <LandingTestimonials />
                 <div id="precos">

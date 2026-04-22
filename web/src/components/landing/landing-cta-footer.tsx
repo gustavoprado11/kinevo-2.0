@@ -7,10 +7,9 @@ import { ArrowRight } from 'lucide-react'
 
 const footerLinks = {
     produto: [
-        { label: 'Prescrição', href: '#como-funciona' },
-        { label: 'Acompanhamento', href: '#como-funciona' },
-        { label: 'Financeiro', href: '#como-funciona' },
-        { label: 'App do Aluno', href: '#app-aluno' },
+        { label: 'Como funciona', href: '#como-funciona' },
+        { label: 'Assistente IA', href: '#assistente-ia' },
+        { label: 'App do Aluno', href: '#para-aluno' },
         { label: 'Preços', href: '#precos' },
     ],
     recursos: [

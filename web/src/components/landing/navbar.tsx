@@ -7,8 +7,8 @@ import { Menu, X, ArrowRight } from 'lucide-react'
 
 const navLinks = [
     { label: 'Como funciona', href: '#como-funciona' },
-    { label: 'App do Aluno', href: '#app-aluno' },
-    { label: 'Assistente IA', href: '#assistente-ia' },
+    { label: 'App do Aluno', href: '#para-aluno' },
+    { label: 'Assistente IA', href: '#assistente-ia', hideOnSmallDesktop: true },
     { label: 'Preços', href: '#precos' },
     { label: 'FAQ', href: '#faq' },
 ]
@@ -69,7 +69,7 @@ export function Navbar() {
                             <a
                                 key={link.href}
                                 href={link.href}
-                                className="font-jakarta text-sm text-[#6E6E73] hover:text-[#1D1D1F] transition-colors px-3.5 py-2 rounded-lg hover:bg-black/[0.03]"
+                                className={`font-jakarta text-sm text-[#6E6E73] hover:text-[#1D1D1F] transition-colors px-3.5 py-2 rounded-lg hover:bg-black/[0.03] ${link.hideOnSmallDesktop ? 'hidden xl:inline-block' : ''}`}
                             >
                                 {link.label}
                             </a>

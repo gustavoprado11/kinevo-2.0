@@ -3,45 +3,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown } from 'lucide-react'
-
-const faqs = [
-    {
-        question: 'Preciso pagar para testar?',
-        answer: 'Não. Você tem 7 dias grátis com acesso completo. Cancele a qualquer momento se não gostar.',
-    },
-    {
-        question: 'Quanto o Kinevo cobra sobre meus pagamentos?',
-        answer: 'Zero. Nós não cobramos nenhum percentual. Você paga apenas as taxas padrão do Stripe (processador de pagamentos internacional).',
-    },
-    {
-        question: 'Meus alunos precisam pagar algo?',
-        answer: 'Não. O app do aluno é 100% gratuito. Eles baixam, criam a conta e já podem treinar.',
-    },
-    {
-        question: 'O assistente de prescrição substitui o personal trainer?',
-        answer: 'De jeito nenhum. Ele gera rascunhos de programas baseados no perfil do aluno para você ganhar tempo. Você edita, ajusta e aprova tudo antes de chegar ao aluno. E quanto mais você edita, mais ele aprende o seu estilo de prescrever.',
-    },
-    {
-        question: 'Funciona para treino presencial e online?',
-        answer: 'Sim. Para presencial, você tem a Sala de Treino — um modo exclusivo para acompanhar múltiplos alunos na academia em tempo real. Para online, o app + dashboard de aderência te dão visibilidade total.',
-    },
-    {
-        question: 'Posso cancelar quando quiser?',
-        answer: 'Sim. Sem fidelidade, sem multa. Cancele direto no painel, sem precisar falar com ninguém.',
-    },
-    {
-        question: 'O app funciona no iPhone e Android?',
-        answer: 'Sim. App nativo para ambos, com Apple Watch e Live Activity no iOS.',
-    },
-    {
-        question: 'E se a internet da academia for ruim?',
-        answer: 'O app funciona offline. O aluno treina normalmente e os dados sincronizam quando a conexão volta.',
-    },
-    {
-        question: 'O Kinevo usa inteligência artificial?',
-        answer: 'Sim, mas como ferramenta, não como substituto. O assistente de prescrição gera rascunhos de programas para agilizar seu trabalho. Você sempre tem a palavra final. Também usamos IA nos formulários, gerando anamneses e check-ins em segundos a partir de templates.',
-    },
-]
+import { faqs } from './faqs-data'
 
 export function LandingFaq() {
     const [openIndex, setOpenIndex] = useState<number | null>(null)
@@ -68,6 +30,8 @@ export function LandingFaq() {
                     {faqs.map((faq, i) => {
                         const isOpen = openIndex === i
                         const isLast = i === faqs.length - 1
+                        const buttonId = `faq-button-${i}`
+                        const panelId = `faq-panel-${i}`
 
                         return (
                             <motion.div
@@ -79,8 +43,11 @@ export function LandingFaq() {
                                 className={!isLast ? 'border-b border-[#E8E8ED]' : ''}
                             >
                                 <button
+                                    id={buttonId}
                                     onClick={() => setOpenIndex(isOpen ? null : i)}
-                                    className="w-full flex items-center justify-between py-5 px-6 text-left hover:bg-[#F5F5F7]/50 transition-colors"
+                                    aria-expanded={isOpen}
+                                    aria-controls={panelId}
+                                    className="w-full flex items-center justify-between py-5 px-6 text-left hover:bg-[#F5F5F7]/50 transition-colors focus-visible:bg-[#F5F5F7]/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/40"
                                 >
                                     <span className="font-jakarta text-sm md:text-base font-semibold text-[#1D1D1F] pr-4">
                                         {faq.question}
@@ -89,6 +56,7 @@ export function LandingFaq() {
                                         animate={{ rotate: isOpen ? 180 : 0 }}
                                         transition={{ duration: 0.2 }}
                                         className="shrink-0"
+                                        aria-hidden
                                     >
                                         <ChevronDown className="w-4 h-4 text-[#86868B]" />
                                     </motion.span>
@@ -97,6 +65,9 @@ export function LandingFaq() {
                                 <AnimatePresence initial={false}>
                                     {isOpen && (
                                         <motion.div
+                                            id={panelId}
+                                            role="region"
+                                            aria-labelledby={buttonId}
                                             initial={{ height: 0, opacity: 0 }}
                                             animate={{ height: 'auto', opacity: 1 }}
                                             exit={{ height: 0, opacity: 0 }}

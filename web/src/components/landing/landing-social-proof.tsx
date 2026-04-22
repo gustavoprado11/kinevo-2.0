@@ -3,12 +3,12 @@
 import { motion } from 'framer-motion'
 
 const badges = [
-    { label: 'iOS & Android', emoji: '📱' },
-    { label: 'Apple Watch', emoji: '⌚' },
-    { label: 'Stripe Payments', emoji: '💳' },
-    { label: 'Modo Offline', emoji: '📡' },
-    { label: 'IA Integrada', emoji: '🤖' },
-    { label: 'Live Activity', emoji: '🔴' },
+    { label: 'Prescrição em minutos', emoji: '⚡' },
+    { label: 'Apple Watch no pulso do aluno', emoji: '⌚' },
+    { label: 'IA que aprende seu estilo', emoji: '🤖' },
+    { label: 'Aplicativo para iPhone e Android', emoji: '📱' },
+    { label: 'Funciona sem internet', emoji: '🔋' },
+    { label: 'Receba direto na sua conta', emoji: '💳' },
 ]
 
 // Duplicate for seamless marquee loop
