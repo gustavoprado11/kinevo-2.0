@@ -1,20 +1,10 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Bell, Dumbbell, FileText, CreditCard, AlertTriangle, X } from 'lucide-react'
+import { Bell, Dumbbell, FileText, CreditCard, AlertTriangle, MessageCircle, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-
-function timeAgo(dateStr: string): string {
-    const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000)
-    if (seconds < 60) return 'agora'
-    const minutes = Math.floor(seconds / 60)
-    if (minutes < 60) return `há ${minutes}min`
-    const hours = Math.floor(minutes / 60)
-    if (hours < 24) return `há ${hours}h`
-    const days = Math.floor(hours / 24)
-    if (days < 7) return `há ${days}d`
-    return `há ${Math.floor(days / 7)} sem.`
-}
+import { timeAgo } from '@/lib/time-ago'
+import { useCommunicationStore } from '@/stores/communication-store'
 
 interface Notification {
     id: string
@@ -35,6 +25,7 @@ const TYPE_ICONS: Record<string, typeof Bell> = {
     financial_alert: AlertTriangle,
     cancellation_alert: AlertTriangle,
     subscription_canceled: AlertTriangle,
+    student_message: MessageCircle,
 }
 
 const TYPE_COLORS: Record<string, string> = {
@@ -45,6 +36,7 @@ const TYPE_COLORS: Record<string, string> = {
     financial_alert: 'text-amber-500 bg-amber-500/10',
     cancellation_alert: 'text-red-500 bg-red-500/10',
     subscription_canceled: 'text-red-500 bg-red-500/10',
+    student_message: 'text-blue-500 bg-blue-500/10',
 }
 
 interface NotificationBellProps {
@@ -56,6 +48,8 @@ export function NotificationBell({ sidebarMode }: NotificationBellProps = {}) {
     const [unreadCount, setUnreadCount] = useState(0)
     const [isOpen, setIsOpen] = useState(false)
     const dropdownRef = useRef<HTMLDivElement>(null)
+    const openMessagesConversation = useCommunicationStore(s => s.openConversation)
+    const openPanel = useCommunicationStore(s => s.openPanel)
 
     const fetchNotifications = useCallback(async () => {
         try {
@@ -244,6 +238,12 @@ export function NotificationBell({ sidebarMode }: NotificationBellProps = {}) {
                                         key={notif.id}
                                         onClick={() => {
                                             if (!notif.is_read) handleMarkOneRead(notif.id)
+                                            if (notif.type === 'student_message') {
+                                                const studentId = typeof notif.data?.student_id === 'string' ? notif.data.student_id : null
+                                                openPanel('messages')
+                                                if (studentId) openMessagesConversation(studentId)
+                                                setIsOpen(false)
+                                            }
                                         }}
                                         className={`
                                             w-full text-left px-4 py-3 flex gap-3 transition-colors border-b border-[#F5F5F7] dark:border-k-border-subtle last:border-b-0

@@ -431,6 +431,12 @@ html {
   from { opacity: 0; transform: translateY(-10px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
+/* Inline search dropdown enter */
+@keyframes fadeSlide {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 /* ================================================================== */
 /*  Landing Hero / AI — phase 1 utilities                              */
 /* ================================================================== */
