@@ -10,7 +10,7 @@ export type WidgetId =
     | 'activity-feed'
     | 'weekly-goals'
     | 'student-ranking'
-    | 'upcoming-schedules'
+    | 'upcoming-appointments'
 
 export type WidgetSize = 'full' | 'half' | 'third'
 
@@ -79,8 +79,8 @@ export const WIDGET_REGISTRY: Record<WidgetId, WidgetConfig> = {
         removable: true,
         defaultEnabled: false,
     },
-    'upcoming-schedules': {
-        id: 'upcoming-schedules',
+    'upcoming-appointments': {
+        id: 'upcoming-appointments',
         label: 'Próximos agendamentos',
         description: 'Sessões agendadas para os próximos dias',
         size: 'full',
@@ -152,6 +152,26 @@ export const useDashboardLayoutStore = create<DashboardLayoutState>()(
         }),
         {
             name: 'kinevo:dashboard-layout',
+            // Silent migration: layouts persisted before Fase 4 used the id
+            // 'upcoming-schedules' for the placeholder widget. Rename in-place
+            // on hydrate so saved layouts don't break. No user-facing change.
+            migrate: (state: unknown) => {
+                if (
+                    state &&
+                    typeof state === 'object' &&
+                    'widgets' in state &&
+                    Array.isArray((state as { widgets: unknown }).widgets)
+                ) {
+                    const s = state as { widgets: Array<{ id: string; order: number }> }
+                    s.widgets = s.widgets.map((w) =>
+                        w.id === 'upcoming-schedules'
+                            ? { ...w, id: 'upcoming-appointments' }
+                            : w,
+                    )
+                }
+                return state as DashboardLayoutState
+            },
+            version: 1,
         }
     )
 )

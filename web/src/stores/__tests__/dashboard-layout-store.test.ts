@@ -58,7 +58,7 @@ describe('dashboard-layout-store', () => {
     it('all other widgets are removable', () => {
       const removableIds: WidgetId[] = [
         'insights', 'expiring-programs', 'activity-feed',
-        'weekly-goals', 'student-ranking', 'upcoming-schedules',
+        'weekly-goals', 'student-ranking', 'upcoming-appointments',
       ]
       removableIds.forEach(id => {
         expect(WIDGET_REGISTRY[id].removable).toBe(true)
@@ -112,7 +112,7 @@ describe('dashboard-layout-store', () => {
       act(() => {
         getState().addWidget('weekly-goals')
         getState().addWidget('student-ranking')
-        getState().addWidget('upcoming-schedules')
+        getState().addWidget('upcoming-appointments')
       })
 
       expect(getState().widgets).toHaveLength(7)

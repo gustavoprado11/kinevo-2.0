@@ -9,6 +9,7 @@ import { DashboardHeader } from '@/components/dashboard/dashboard-header'
 import { StatCards } from '@/components/dashboard/stat-cards'
 import { QuickActions } from '@/components/dashboard/quick-actions'
 import { ExpiringPrograms } from '@/components/dashboard/expiring-programs'
+import { UpcomingAppointmentsWidget } from '@/components/dashboard/upcoming-appointments-widget'
 import { WidgetGrid } from '@/components/dashboard/widget-grid'
 import { WidgetPicker } from '@/components/dashboard/widget-picker'
 import { WelcomeModal } from '@/components/onboarding/widgets/welcome-modal'
@@ -155,16 +156,11 @@ export function DashboardClient({ trainer, data, initialStudents, selfStudentId,
                 <StudentRankingWidget students={rankedStudents} />
             </Suspense>
         ),
-        'upcoming-schedules': (
-            <div className="flex flex-col rounded-xl border border-[#D2D2D7] dark:border-k-border-primary bg-white dark:bg-surface-card shadow-apple-card dark:shadow-xl">
-                <div className="flex items-center justify-between border-b border-[#E8E8ED] dark:border-k-border-subtle px-6 py-4">
-                    <h2 className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary">Próximos agendamentos</h2>
-                </div>
-                <div className="py-8 text-center">
-                    <p className="text-sm text-[#6E6E73] dark:text-k-text-secondary">Em breve</p>
-                    <p className="text-xs text-[#86868B] dark:text-k-text-tertiary mt-1">Sessões agendadas aparecerão aqui</p>
-                </div>
-            </div>
+        'upcoming-appointments': (
+            <UpcomingAppointmentsWidget
+                appointments={data.upcomingAppointments}
+                studentsById={data.upcomingAppointmentStudents}
+            />
         ),
     }), [data, trainer.id, rankedStudents, handleMarkAsPaid, handleSellPlan, handleArchiveStudent])
 

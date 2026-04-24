@@ -1,6 +1,12 @@
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { createClient } from '@/lib/supabase/server'
 import { getWeekRange, getProgramEndDate, getProgramWeek, getScheduledWorkoutsForDate } from '@kinevo/shared/utils/schedule-projection'
+import { getNextOccurrences } from '@kinevo/shared/utils/appointments-projection'
+import type {
+    AppointmentException,
+    AppointmentOccurrence,
+    RecurringAppointment,
+} from '@kinevo/shared/types/appointments'
 
 // ── Types ──
 
@@ -100,6 +106,11 @@ export interface AssistantInsightItem {
     created_at: string
 }
 
+export interface UpcomingAppointmentStudent {
+    name: string
+    avatarUrl: string | null
+}
+
 export interface DashboardData {
     stats: DashboardStats
     pendingFinancial: PendingFinancialItem[]
@@ -110,6 +121,17 @@ export interface DashboardData {
     dailyActivity: DailyActivityItem[]
     assistantInsights: AssistantInsightItem[]
     studentRanking: RankedStudentItem[]
+    /**
+     * Próximas ocorrências de agendamentos (até 5, 14 dias à frente). Já
+     * processadas via `getNextOccurrences` para incluir remarcações e
+     * cancelamentos de ocorrências individuais.
+     */
+    upcomingAppointments: AppointmentOccurrence[]
+    /**
+     * Map `studentId → { name, avatarUrl }` pra cada aluno referenciado em
+     * `upcomingAppointments`. Lookup O(1) no widget sem nova query.
+     */
+    upcomingAppointmentStudents: Record<string, UpcomingAppointmentStudent>
 }
 
 // ── Helpers ──
@@ -161,7 +183,7 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
     const prevWeekStart = new Date(weekRange.start.getTime() - 7 * 24 * 60 * 60 * 1000)
     const prevWeekEnd = new Date(weekRange.end.getTime() - 7 * 24 * 60 * 60 * 1000)
 
-    // 12 parallel queries
+    // 14 parallel queries
     const [
         studentsResult,
         activeContractsResult,
@@ -175,6 +197,8 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
         insightsResult,
         expiredProgramsResult,
         prevWeekSessionsResult,
+        recurringAppointmentsResult,
+        appointmentExceptionsResult,
     ] = await Promise.all([
         // 1. Students
         supabaseAdmin
@@ -287,6 +311,20 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
             .eq('status', 'completed')
             .gte('completed_at', prevWeekStart.toISOString())
             .lte('completed_at', prevWeekEnd.toISOString()),
+
+        // 13. Active recurring appointments — regras pro widget "Próximos agendamentos"
+        supabaseAdmin
+            .from('recurring_appointments')
+            .select('*')
+            .eq('trainer_id', trainerId)
+            .eq('status', 'active'),
+
+        // 14. Exceptions pros próximos 90 dias (janela que o helper de projeção consulta)
+        supabaseAdmin
+            .from('appointment_exceptions')
+            .select('*')
+            .eq('trainer_id', trainerId)
+            .gte('occurrence_date', brDateStr),
     ])
 
     const students = studentsResult.data ?? []
@@ -588,6 +626,46 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
         return b.streak - a.streak
     })
 
+    // ── Upcoming appointments (widget Fase 4) ──
+    const recurringRules = (recurringAppointmentsResult.data ?? []) as unknown as RecurringAppointment[]
+    const exceptions = (appointmentExceptionsResult.data ?? []) as unknown as AppointmentException[]
+    const upcomingAppointments = getNextOccurrences(
+        recurringRules,
+        exceptions,
+        today,
+        5,
+    )
+    const upcomingAppointmentStudents: Record<string, UpcomingAppointmentStudent> = {}
+    if (upcomingAppointments.length > 0) {
+        const referencedIds = Array.from(
+            new Set(upcomingAppointments.map((o) => o.studentId)),
+        )
+        for (const s of students) {
+            if (referencedIds.includes(s.id)) {
+                upcomingAppointmentStudents[s.id] = {
+                    name: s.name,
+                    avatarUrl: s.avatar_url ?? null,
+                }
+            }
+        }
+        // Se por algum motivo o aluno não estiver na lista de `students` já
+        // carregada (ex: status inactive), faz uma busca de fallback pra
+        // evitar placeholder "Aluno" no widget.
+        const missing = referencedIds.filter((id) => !upcomingAppointmentStudents[id])
+        if (missing.length > 0) {
+            const { data: extraStudents } = await supabaseAdmin
+                .from('students')
+                .select('id, name, avatar_url')
+                .in('id', missing)
+            for (const s of extraStudents ?? []) {
+                upcomingAppointmentStudents[s.id] = {
+                    name: s.name,
+                    avatarUrl: s.avatar_url ?? null,
+                }
+            }
+        }
+    }
+
     return {
         stats: {
             activeStudentsCount,
@@ -610,6 +688,8 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
         scheduledToday,
         assistantInsights,
         studentRanking,
+        upcomingAppointments,
+        upcomingAppointmentStudents,
     }
 }
 
