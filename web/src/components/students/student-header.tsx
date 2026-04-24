@@ -5,7 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import {
-    ChevronLeft, Mail, Calendar, Pencil, Key, Trash2,
+    ChevronLeft, Mail, Calendar, CalendarPlus, Pencil, Key, Trash2,
     MoreHorizontal, Copy, Check, Loader2, MapPin, Wifi,
     Flame, Dumbbell, Activity, TrendingUp, TrendingDown,
     Target, Tag,
@@ -39,6 +39,7 @@ interface StudentHeaderProps {
     student: Student
     onEdit: () => void
     onDelete: () => void
+    onSchedule?: () => void
     quickStats?: QuickStat[]
     children?: React.ReactNode
 }
@@ -76,7 +77,7 @@ const STAT_COLORS = {
 
 // ── Component ──
 
-export function StudentHeader({ student, onEdit, onDelete, quickStats, children }: StudentHeaderProps) {
+export function StudentHeader({ student, onEdit, onDelete, onSchedule, quickStats, children }: StudentHeaderProps) {
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
     const [showResetConfirm, setShowResetConfirm] = useState(false)
     const [isResetting, setIsResetting] = useState(false)
@@ -234,6 +235,15 @@ export function StudentHeader({ student, onEdit, onDelete, quickStats, children 
 
                         {/* Actions */}
                         <div data-onboarding="student-header-actions" className="flex items-center gap-2 flex-shrink-0">
+                            {onSchedule && (
+                                <button
+                                    onClick={onSchedule}
+                                    className="px-3.5 py-2 text-[11px] font-semibold text-white bg-violet-500 dark:bg-violet-600 hover:bg-violet-600 dark:hover:bg-violet-500 rounded-xl transition-all flex items-center gap-1.5 shadow-sm dark:shadow-lg dark:shadow-violet-500/20 active:scale-95"
+                                >
+                                    <CalendarPlus className="w-3.5 h-3.5" />
+                                    Agendar
+                                </button>
+                            )}
                             <button
                                 onClick={onEdit}
                                 className="px-3.5 py-2 text-[11px] font-semibold text-[#6E6E73] dark:text-k-text-secondary hover:text-[#1D1D1F] dark:hover:text-k-text-primary bg-[#F5F5F7] dark:bg-white/5 hover:bg-[#E8E8ED] dark:hover:bg-white/10 rounded-xl transition-all flex items-center gap-1.5 border border-[#D2D2D7] dark:border-k-border-primary"

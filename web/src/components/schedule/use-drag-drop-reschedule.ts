@@ -24,14 +24,38 @@ export interface UseDragDropResult {
 }
 
 /**
- * Encapsula a lógica de drag-drop pro calendário:
- *  - recebe o `onDragEnd` do dnd-kit
- *  - calcula nova data+hora a partir dos dados dos droppables e do delta Y
- *  - chama `rescheduleOccurrence` com `scope='only_this'`
- *  - expõe loading/error pra UI
+ * Encapsula a lógica de drag-drop pro calendário.
+ *
+ * Fluxo optimistic:
+ * 1. Ao soltar, `onOptimisticMove` é chamado imediatamente — o caller
+ *    (schedule-client) atualiza o state local pra mover o card na UI sem
+ *    esperar o server.
+ * 2. Em paralelo, `rescheduleOccurrence` é disparado.
+ * 3. Se falhar, `onRevert` é chamado e o caller reverte o state. O erro
+ *    aparece em `result.error` (consumido pelo alerta do WeeklyCalendar).
+ * 4. Se suceder, `onRescheduled` é chamado pra eventual refetch silencioso
+ *    (reconciliar com banco — google_sync_status, etc).
  */
 export function useDragDropReschedule(options: {
     onRescheduled?: () => void
+    /**
+     * Movida antes da chamada ao server. Deve atualizar o state local pra
+     * que o card apareça na nova data/hora imediatamente.
+     */
+    onOptimisticMove?: (args: {
+        recurringAppointmentId: string
+        originalDate: string
+        newDate: string
+        newStartTime: string
+    }) => void
+    /**
+     * Chamada quando o server falha — deve reverter a mudança feita em
+     * `onOptimisticMove`.
+     */
+    onRevert?: (args: {
+        recurringAppointmentId: string
+        originalDate: string
+    }) => void
 }): UseDragDropResult {
     const [isDropping, setIsDropping] = useState(false)
     const [error, setError] = useState<string | null>(null)
@@ -46,14 +70,10 @@ export function useDragDropReschedule(options: {
             const overData = over.data.current as DroppableData | undefined
             if (!activeData || !overData) return
 
-            // A nova hora é a hora original + delta.y convertido em minutos
-            // (snap de 30 em 30). Data vem do droppable.
             const { occurrence } = activeData
             const newDate = overData.date
 
-            // timeToPixels pra hora original + delta.y
-            const originalTop = hhmmToMinutes(occurrence.startTime) * (1 / 60)
-            const deltaMinutes = Math.round((delta.y / (56 / 60)) / 1) // pixels/(px per min)
+            const deltaMinutes = Math.round(delta.y / (56 / 60)) // pixels → minutos
             const newTopMinutes = hhmmToMinutes(occurrence.startTime) + deltaMinutes
             const newTime = minutesToHHMM(Math.round(newTopMinutes / 30) * 30)
 
@@ -64,6 +84,14 @@ export function useDragDropReschedule(options: {
             ) {
                 return
             }
+
+            // Optimistic: move na UI imediatamente.
+            options.onOptimisticMove?.({
+                recurringAppointmentId: activeData.recurringAppointmentId,
+                originalDate: activeData.originalDate,
+                newDate,
+                newStartTime: newTime,
+            })
 
             void (async () => {
                 setIsDropping(true)
@@ -77,18 +105,31 @@ export function useDragDropReschedule(options: {
                         scope: 'only_this',
                     })
                     if (!result.success) {
-                        setError(result.error ?? 'Erro ao remarcar')
+                        // Reverte o move optimistic.
+                        options.onRevert?.({
+                            recurringAppointmentId:
+                                activeData.recurringAppointmentId,
+                            originalDate: activeData.originalDate,
+                        })
+                        setError(
+                            result.error ?? 'Não foi possível remarcar este treino. Tente novamente.',
+                        )
                         return
                     }
+                    // Sucesso: refetch silencioso pra reconciliar com banco.
                     options.onRescheduled?.()
+                } catch (err) {
+                    options.onRevert?.({
+                        recurringAppointmentId:
+                            activeData.recurringAppointmentId,
+                        originalDate: activeData.originalDate,
+                    })
+                    setError('Não foi possível remarcar este treino. Tente novamente.')
+                    console.error('[useDragDropReschedule] error:', err)
                 } finally {
                     setIsDropping(false)
                 }
             })()
-
-            // Silence unused-var linter for `originalTop` which exists only
-            // pra tornar a ideia do cálculo mais legível durante debug.
-            void originalTop
         },
         [options],
     )

@@ -14,25 +14,11 @@ import {
     type CreateRecurringInput,
 } from './schemas'
 
-export interface CreateRecurringConflict {
-    id: string
-    studentName: string
-    startTime: string
-    durationMinutes: number
-}
-
 export interface CreateRecurringResult {
     success: boolean
     error?: string
-    /**
-     * Present when the server detected conflicts and is waiting for the
-     * trainer to confirm. No row was inserted — caller should re-submit with
-     * `confirmConflicts: true` if the trainer chooses to proceed.
-     */
-    pendingConflicts?: CreateRecurringConflict[]
     data?: {
         id: string
-        conflicts: CreateRecurringConflict[]
     }
 }
 
@@ -42,37 +28,16 @@ function dayOfWeekFromDateKey(dateKey: string): number {
     return new Date(Date.UTC(y, m - 1, d)).getUTCDay()
 }
 
-/** Detects overlapping [start, end) intervals on the same weekday. */
-function intervalsOverlap(
-    aStart: string,
-    aMinutes: number,
-    bStart: string,
-    bMinutes: number,
-): boolean {
-    const toMin = (hhmm: string): number => {
-        const [h, m] = hhmm.slice(0, 5).split(':').map(Number)
-        return h * 60 + m
-    }
-    const aS = toMin(aStart)
-    const aE = aS + aMinutes
-    const bS = toMin(bStart)
-    const bE = bS + bMinutes
-    return aS < bE && bS < aE
-}
-
 /**
  * Cria uma nova rotina recorrente.
  *
- * Fluxo de conflitos (decisão 12 da Seção 2 do plano — "avisa mas permite"):
- * - `confirmConflicts=false` (default): se houver conflitos, retorna a lista
- *   SEM inserir. UI mostra alerta e pede confirmação.
- * - `confirmConflicts=true`: insere mesmo com conflitos (trainer já confirmou).
- *
- * Quando não há conflitos, insere direto independente de `confirmConflicts`.
+ * Sobreposição com outras rotinas no mesmo horário é **permitida** por design —
+ * aula em dupla/grupo é caso comum em personal trainer, tratado como intenção.
+ * O calendário renderiza cards lado-a-lado quando há overlap (não sinaliza
+ * como erro/conflito).
  */
 export async function createRecurringAppointment(
     input: CreateRecurringInput,
-    options: { confirmConflicts?: boolean } = {},
 ): Promise<CreateRecurringResult> {
     const parsed = createRecurringInputSchema.safeParse(input)
     if (!parsed.success) {
@@ -141,52 +106,6 @@ export async function createRecurringAppointment(
         return { success: false, error: 'Sem permissão' }
     }
 
-    // Conflict detection: same day_of_week, overlapping time window, ativos.
-    const { data: siblings } = await supabase
-        .from('recurring_appointments')
-        .select('id, start_time, duration_minutes, student_id')
-        .eq('trainer_id', trainer.id)
-        .eq('status', 'active')
-        .eq('day_of_week', payload.dayOfWeek)
-
-    const conflicts: CreateRecurringConflict[] = []
-    if (siblings && siblings.length > 0) {
-        const conflictingSiblings = siblings.filter((s) =>
-            intervalsOverlap(
-                payload.startTime,
-                payload.durationMinutes,
-                s.start_time,
-                s.duration_minutes,
-            ),
-        )
-
-        if (conflictingSiblings.length > 0) {
-            const studentIds = Array.from(
-                new Set(conflictingSiblings.map((s) => s.student_id)),
-            )
-            const { data: conflictStudents } = await supabase
-                .from('students')
-                .select('id, name')
-                .in('id', studentIds)
-            const nameById = new Map(
-                (conflictStudents ?? []).map((s) => [s.id, s.name]),
-            )
-            for (const s of conflictingSiblings) {
-                conflicts.push({
-                    id: s.id,
-                    studentName: nameById.get(s.student_id) ?? 'Aluno',
-                    startTime: s.start_time.slice(0, 5),
-                    durationMinutes: s.duration_minutes,
-                })
-            }
-        }
-    }
-
-    // Conflicts exist and trainer hasn't confirmed: bail out before INSERT.
-    if (conflicts.length > 0 && !options.confirmConflicts) {
-        return { success: false, pendingConflicts: conflicts }
-    }
-
     const { data: inserted, error: insertError } = await supabase
         .from('recurring_appointments')
         .insert({
@@ -238,7 +157,7 @@ export async function createRecurringAppointment(
     revalidatePath('/dashboard')
     revalidatePath(`/students/${payload.studentId}`)
 
-    return { success: true, data: { id: inserted.id, conflicts } }
+    return { success: true, data: { id: inserted.id } }
 }
 
 type SupabaseFromServer = Awaited<ReturnType<typeof createClient>>

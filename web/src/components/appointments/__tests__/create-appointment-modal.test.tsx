@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { CreateAppointmentModal } from '../create-appointment-modal'
 
 const createActionMock = vi.fn()
@@ -46,49 +46,6 @@ describe('CreateAppointmentModal', () => {
         expect(terca).toBeDisabled()
     })
 
-    it('renderiza 4° botão "Única" no segmented control de frequência', () => {
-        render(<CreateAppointmentModal {...baseProps} />)
-        expect(screen.getByRole('button', { name: /^Única$/i })).toBeInTheDocument()
-    })
-
-    it('selecionar "Única" desabilita Adicionar dia e dia da semana', () => {
-        render(<CreateAppointmentModal {...baseProps} />)
-        fireEvent.click(screen.getByRole('button', { name: /^Única$/i }))
-        expect(screen.getByRole('button', { name: /Adicionar dia/i })).toBeDisabled()
-        const terca = screen.getByRole('button', { name: /Ter — dia 1/i })
-        expect(terca).toBeDisabled()
-        expect(screen.getByText(/^Horário$/i)).toBeInTheDocument()
-    })
-
-    it('trocar de Semanal com múltiplos slots para "Única" reduz pra 1 slot', () => {
-        render(<CreateAppointmentModal {...baseProps} />)
-        // Adiciona 2 slots extras (total 3)
-        fireEvent.click(screen.getByRole('button', { name: /Adicionar dia/i }))
-        fireEvent.click(screen.getByRole('button', { name: /Adicionar dia/i }))
-        expect(screen.getAllByText(/^Dia \d/i)).toHaveLength(3)
-
-        fireEvent.click(screen.getByRole('button', { name: /^Única$/i }))
-        // Agora só 1 "Dia 1"
-        expect(screen.getAllByText(/^Dia \d/i)).toHaveLength(1)
-        expect(screen.getByText(/^Dia 1$/i)).toBeInTheDocument()
-    })
-
-    it('submit com frequência "Única" envia frequency: once', async () => {
-        createActionMock.mockResolvedValueOnce({
-            success: true,
-            data: { id: 'ra-once', conflicts: [] },
-        })
-        render(<CreateAppointmentModal {...baseProps} />)
-        fireEvent.click(screen.getByRole('button', { name: /^Única$/i }))
-        fireEvent.click(screen.getByRole('button', { name: /Criar agendamento/i }))
-
-        await waitFor(() => {
-            expect(createActionMock).toHaveBeenCalledTimes(1)
-        })
-        const [input] = createActionMock.mock.calls[0]
-        expect(input.frequency).toBe('once')
-    })
-
     it('chama createRecurringAppointment ao submeter', async () => {
         createActionMock.mockResolvedValueOnce({
             success: true,
@@ -100,71 +57,9 @@ describe('CreateAppointmentModal', () => {
         await waitFor(() => {
             expect(createActionMock).toHaveBeenCalledTimes(1)
         })
-        const [input, options] = createActionMock.mock.calls[0]
+        const [input] = createActionMock.mock.calls[0]
         expect(input.studentId).toBe(baseProps.preselectedStudentId)
         expect(input.frequency).toBe('weekly')
-        expect(options).toEqual({ confirmConflicts: false })
-    })
-
-    it('exibe AppointmentConflictAlert quando há pendingConflicts', async () => {
-        createActionMock.mockResolvedValueOnce({
-            success: false,
-            pendingConflicts: [
-                {
-                    id: 'ra-conflict',
-                    studentName: 'Maria',
-                    startTime: '07:30',
-                    durationMinutes: 60,
-                },
-            ],
-        })
-
-        render(<CreateAppointmentModal {...baseProps} />)
-        fireEvent.click(screen.getByRole('button', { name: /Criar agendamento/i }))
-
-        await waitFor(() => {
-            expect(screen.getByText(/Conflito de horário/i)).toBeInTheDocument()
-        })
-        expect(screen.getByText(/Maria às 07:30/i)).toBeInTheDocument()
-        expect(screen.getByRole('button', { name: /Continuar mesmo assim/i })).toBeInTheDocument()
-    })
-
-    it('ao confirmar conflito, re-submete com confirmConflicts=true', async () => {
-        createActionMock
-            .mockResolvedValueOnce({
-                success: false,
-                pendingConflicts: [
-                    {
-                        id: 'ra-conflict',
-                        studentName: 'Maria',
-                        startTime: '07:30',
-                        durationMinutes: 60,
-                    },
-                ],
-            })
-            .mockResolvedValueOnce({
-                success: true,
-                data: { id: 'ra-new', conflicts: [] },
-            })
-
-        const onClose = vi.fn()
-        render(<CreateAppointmentModal {...baseProps} onClose={onClose} />)
-        fireEvent.click(screen.getByRole('button', { name: /Criar agendamento/i }))
-
-        await waitFor(() => {
-            expect(screen.getByText(/Conflito de horário/i)).toBeInTheDocument()
-        })
-
-        await act(async () => {
-            fireEvent.click(screen.getByRole('button', { name: /Continuar mesmo assim/i }))
-        })
-
-        await waitFor(() => {
-            expect(createActionMock).toHaveBeenCalledTimes(2)
-        })
-        const [, secondOptions] = createActionMock.mock.calls[1]
-        expect(secondOptions).toEqual({ confirmConflicts: true })
-        expect(onClose).toHaveBeenCalled()
     })
 
     it('fecha o modal em sucesso e chama onSuccess com recurringId', async () => {

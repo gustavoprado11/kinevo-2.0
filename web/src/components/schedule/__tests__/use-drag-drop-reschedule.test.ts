@@ -156,6 +156,76 @@ describe('useDragDropReschedule', () => {
         })
     })
 
+    it('sucesso: onOptimisticMove dispara ANTES do server, onRevert NÃO é chamado', async () => {
+        rescheduleMock.mockResolvedValueOnce({ success: true })
+        const onOptimisticMove = vi.fn()
+        const onRevert = vi.fn()
+        const onRescheduled = vi.fn()
+        const { result } = renderHook(() =>
+            useDragDropReschedule({ onOptimisticMove, onRevert, onRescheduled }),
+        )
+
+        const occ = makeOcc({ startTime: '07:00', date: '2026-04-14' })
+        act(() => {
+            result.current.handleDragEnd(
+                makeEvent({ occurrence: occ, overDate: '2026-04-16', deltaY: 0 }),
+            )
+        })
+
+        // optimistic deve disparar SYNC (mesma tick que handleDragEnd),
+        // não depende de await no rescheduleMock.
+        expect(onOptimisticMove).toHaveBeenCalledTimes(1)
+        expect(onOptimisticMove).toHaveBeenCalledWith({
+            recurringAppointmentId: occ.recurringAppointmentId,
+            originalDate: occ.originalDate,
+            newDate: '2026-04-16',
+            newStartTime: '07:00',
+        })
+
+        await waitFor(() => expect(onRescheduled).toHaveBeenCalled())
+        expect(onRevert).not.toHaveBeenCalled()
+    })
+
+    it('erro do server chama onRevert com a chave correta', async () => {
+        rescheduleMock.mockResolvedValueOnce({
+            success: false,
+            error: 'Conflito',
+        })
+        const onOptimisticMove = vi.fn()
+        const onRevert = vi.fn()
+        const { result } = renderHook(() =>
+            useDragDropReschedule({ onOptimisticMove, onRevert }),
+        )
+
+        const occ = makeOcc({ recurringAppointmentId: 'ra-err', originalDate: '2026-04-14' })
+        act(() => {
+            result.current.handleDragEnd(
+                makeEvent({ occurrence: occ, overDate: '2026-04-16', deltaY: 0 }),
+            )
+        })
+
+        expect(onOptimisticMove).toHaveBeenCalled()
+        await waitFor(() => expect(onRevert).toHaveBeenCalledTimes(1))
+        expect(onRevert).toHaveBeenCalledWith({
+            recurringAppointmentId: 'ra-err',
+            originalDate: '2026-04-14',
+        })
+    })
+
+    it('no-op (mesmo slot) NÃO chama onOptimisticMove', () => {
+        const onOptimisticMove = vi.fn()
+        const { result } = renderHook(() =>
+            useDragDropReschedule({ onOptimisticMove }),
+        )
+        const occ = makeOcc()
+        act(() => {
+            result.current.handleDragEnd(
+                makeEvent({ occurrence: occ, overDate: occ.date, deltaY: 0 }),
+            )
+        })
+        expect(onOptimisticMove).not.toHaveBeenCalled()
+    })
+
     it('clearError reseta o erro', async () => {
         rescheduleMock.mockResolvedValueOnce({
             success: false,

@@ -30,6 +30,22 @@ interface Props {
     studentsById: Record<string, ScheduleStudent>
     onSlotClick: (date: string, time: string) => void
     onOccurrenceChanged: () => void
+    /**
+     * Move optimistic imediato ao soltar o drag. Caller atualiza state local
+     * antes do server responder. Se ausente, comportamento cai no fluxo
+     * antigo (apenas refetch via onOccurrenceChanged).
+     */
+    onOptimisticMove?: (args: {
+        recurringAppointmentId: string
+        originalDate: string
+        newDate: string
+        newStartTime: string
+    }) => void
+    /** Revert pro state original quando o server falha. */
+    onOptimisticRevert?: (args: {
+        recurringAppointmentId: string
+        originalDate: string
+    }) => void
 }
 
 const DAY_ABBR_PT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
@@ -49,48 +65,81 @@ function todayKeyBR(): string {
     return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
 }
 
+interface OverlapSlot {
+    /** Índice horizontal (0-based) dentro do grupo de overlap. */
+    index: number
+    /** Total de cards do grupo de overlap. */
+    count: number
+}
+
+function hhmmToMinutes(hhmm: string): number {
+    const [h, m] = hhmm.slice(0, 5).split(':').map(Number)
+    return h * 60 + m
+}
+
+function occurrenceKey(o: AppointmentOccurrence): string {
+    return `${o.recurringAppointmentId}::${o.originalDate}`
+}
+
 /**
- * Detecta sobreposições de treinos no mesmo dia (intervalos colidem).
- * Retorna um Set de `occurrenceKey` (recurringId::originalDate) com conflitos.
+ * Agrupa ocorrências que se sobrepõem temporalmente (transitivamente) num
+ * mesmo dia e calcula a posição horizontal de cada uma: 2 cards → 50% cada,
+ * 3 cards → 33% cada, etc. Simplificação intencional da spec: se qualquer
+ * par do grupo tem overlap, todos os cards do grupo dividem largura — mesmo
+ * que A-B overlap e B-C overlap mas A-C não.
+ *
+ * Resultado: mapa `occurrenceKey → { index, count }` que o card usa pra se
+ * posicionar com `width: 100/count%` e `left: (index * 100/count)%`.
  */
-function findConflicts(
+export function computeOverlapLayout(
     occurrences: AppointmentOccurrence[],
-): Set<string> {
-    const conflicts = new Set<string>()
+): Map<string, OverlapSlot> {
+    const layout = new Map<string, OverlapSlot>()
     const byDay = new Map<string, AppointmentOccurrence[]>()
     for (const o of occurrences) {
         const arr = byDay.get(o.date) ?? []
         arr.push(o)
         byDay.set(o.date, arr)
     }
+
     for (const list of byDay.values()) {
-        for (let i = 0; i < list.length; i++) {
-            for (let j = i + 1; j < list.length; j++) {
-                if (overlaps(list[i], list[j])) {
-                    conflicts.add(
-                        `${list[i].recurringAppointmentId}::${list[i].originalDate}`,
-                    )
-                    conflicts.add(
-                        `${list[j].recurringAppointmentId}::${list[j].originalDate}`,
-                    )
-                }
+        // Ordem estável: por startTime asc, depois por studentId pra
+        // determinismo entre renders quando dois começam na mesma hora.
+        const sorted = [...list].sort((a, b) => {
+            if (a.startTime !== b.startTime)
+                return a.startTime < b.startTime ? -1 : 1
+            return a.studentId < b.studentId ? -1 : 1
+        })
+
+        // Union-find simplificado: percorre em ordem; se card atual overlap
+        // com o grupo corrente (que contém qualquer um do grupo), adiciona.
+        // Senão, fecha o grupo anterior e começa novo.
+        let group: AppointmentOccurrence[] = []
+        let groupEnd = 0
+        const flush = () => {
+            if (group.length === 0) return
+            group.forEach((o, i) => {
+                layout.set(occurrenceKey(o), { index: i, count: group.length })
+            })
+            group = []
+            groupEnd = 0
+        }
+        for (const o of sorted) {
+            const start = hhmmToMinutes(o.startTime)
+            const end = start + o.durationMinutes
+            if (group.length === 0 || start < groupEnd) {
+                group.push(o)
+                if (end > groupEnd) groupEnd = end
+            } else {
+                flush()
+                group.push(o)
+                groupEnd = end
             }
         }
+        flush()
     }
-    return conflicts
-}
 
-function overlaps(a: AppointmentOccurrence, b: AppointmentOccurrence): boolean {
-    const aStart = hhmmToMinutes(a.startTime)
-    const aEnd = aStart + a.durationMinutes
-    const bStart = hhmmToMinutes(b.startTime)
-    const bEnd = bStart + b.durationMinutes
-    return aStart < bEnd && bStart < aEnd
-}
-
-function hhmmToMinutes(hhmm: string): number {
-    const [h, m] = hhmm.slice(0, 5).split(':').map(Number)
-    return h * 60 + m
+    return layout
 }
 
 // ────────── Droppable column ──────────
@@ -100,7 +149,8 @@ interface DayColumnProps {
     isToday: boolean
     occurrences: AppointmentOccurrence[]
     studentsById: Record<string, ScheduleStudent>
-    conflicts: Set<string>
+    /** Layout horizontal (index/count) por occurrence key. */
+    layoutByKey: Map<string, OverlapSlot>
     onSlotClick: (date: string, time: string) => void
     onChanged: () => void
 }
@@ -110,7 +160,7 @@ function DayColumn({
     isToday,
     occurrences,
     studentsById,
-    conflicts,
+    layoutByKey,
     onSlotClick,
     onChanged,
 }: DayColumnProps) {
@@ -151,7 +201,10 @@ function DayColumn({
 
                 {/* Cards */}
                 {occurrences.map((occ) => {
-                    const key = `${occ.recurringAppointmentId}::${occ.originalDate}`
+                    const key = occurrenceKey(occ)
+                    const slot = layoutByKey.get(key) ?? { index: 0, count: 1 }
+                    const widthPercent = 100 / slot.count
+                    const leftPercent = slot.index * widthPercent
                     return (
                         <AppointmentCard
                             key={key}
@@ -162,7 +215,8 @@ function DayColumn({
                                     avatarUrl: null,
                                 }
                             }
-                            isConflicting={conflicts.has(key)}
+                            widthPercent={widthPercent}
+                            leftPercent={leftPercent}
                             onChanged={onChanged}
                         />
                     )
@@ -181,6 +235,8 @@ export function WeeklyCalendar({
     studentsById,
     onSlotClick,
     onOccurrenceChanged,
+    onOptimisticMove,
+    onOptimisticRevert,
 }: Props) {
     const days = useMemo(() => {
         const result: string[] = []
@@ -198,13 +254,18 @@ export function WeeklyCalendar({
         return map
     }, [days, occurrences])
 
-    const conflicts = useMemo(() => findConflicts(occurrences), [occurrences])
+    const layoutByKey = useMemo(
+        () => computeOverlapLayout(occurrences),
+        [occurrences],
+    )
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     )
     const { handleDragEnd, error, clearError } = useDragDropReschedule({
         onRescheduled: onOccurrenceChanged,
+        onOptimisticMove,
+        onRevert: onOptimisticRevert,
     })
 
     const todayKey = todayKeyBR()
@@ -294,7 +355,7 @@ export function WeeklyCalendar({
                                 isToday={day === todayKey}
                                 occurrences={occurrencesByDay.get(day) ?? []}
                                 studentsById={studentsById}
-                                conflicts={conflicts}
+                                layoutByKey={layoutByKey}
                                 onSlotClick={onSlotClick}
                                 onChanged={onOccurrenceChanged}
                             />

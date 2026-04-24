@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState, useTransition } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { AppLayout } from '@/components/layout'
 import { WeeklyCalendar } from '@/components/schedule/weekly-calendar'
 import { WeekNavigator } from '@/components/schedule/week-navigator'
@@ -71,6 +71,74 @@ export function ScheduleClient({
 
     const weekEnd = useMemo(() => addDaysKey(weekStart, 6), [weekStart])
 
+    /**
+     * Snapshots pra reverter `onOptimisticMove` quando o server falha.
+     * Chave: `recurringAppointmentId::originalDate`. Valor: estado prévio
+     * da ocorrência antes do move optimistic.
+     */
+    const optimisticSnapshots = useRef<Map<string, AppointmentOccurrence>>(
+        new Map(),
+    )
+
+    const handleOptimisticMove = useCallback(
+        (args: {
+            recurringAppointmentId: string
+            originalDate: string
+            newDate: string
+            newStartTime: string
+        }) => {
+            const key = `${args.recurringAppointmentId}::${args.originalDate}`
+            setOccurrences((prev) => {
+                const next = prev.map((o) => {
+                    if (
+                        o.recurringAppointmentId === args.recurringAppointmentId &&
+                        o.originalDate === args.originalDate
+                    ) {
+                        // Snapshot só se ainda não temos (primeiro move desde
+                        // o último commit/refetch).
+                        if (!optimisticSnapshots.current.has(key)) {
+                            optimisticSnapshots.current.set(key, o)
+                        }
+                        return {
+                            ...o,
+                            date: args.newDate,
+                            startTime: args.newStartTime,
+                            status:
+                                o.status === 'scheduled'
+                                    ? 'rescheduled'
+                                    : o.status,
+                            hasException: true,
+                        }
+                    }
+                    return o
+                })
+                return next
+            })
+        },
+        [],
+    )
+
+    const handleOptimisticRevert = useCallback(
+        (args: { recurringAppointmentId: string; originalDate: string }) => {
+            const key = `${args.recurringAppointmentId}::${args.originalDate}`
+            const snapshot = optimisticSnapshots.current.get(key)
+            if (!snapshot) return
+            optimisticSnapshots.current.delete(key)
+            setOccurrences((prev) =>
+                prev.map((o) => {
+                    if (
+                        o.recurringAppointmentId === args.recurringAppointmentId &&
+                        o.originalDate === args.originalDate
+                    ) {
+                        return snapshot
+                    }
+                    return o
+                }),
+            )
+        },
+        [],
+    )
+
     const refetch = useCallback(
         async (start: string, end: string) => {
             const result = await listAppointmentsInRange({
@@ -79,6 +147,9 @@ export function ScheduleClient({
             })
             if (result.success && result.data) {
                 setOccurrences(result.data)
+                // Server commit reconciliou o state — descarta snapshots
+                // antigos de moves optimistic já confirmados.
+                optimisticSnapshots.current.clear()
                 // Estende o map de alunos pra incluir novos referenciados
                 const referenced = Array.from(
                     new Set(result.data.map((o) => o.studentId)),
@@ -201,6 +272,8 @@ export function ScheduleClient({
                     onOccurrenceChanged={() =>
                         void refetch(weekStart, weekEnd)
                     }
+                    onOptimisticMove={handleOptimisticMove}
+                    onOptimisticRevert={handleOptimisticRevert}
                 />
             </div>
 

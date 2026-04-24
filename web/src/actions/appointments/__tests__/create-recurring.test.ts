@@ -69,12 +69,11 @@ describe('createRecurringAppointment', () => {
         expect(tables).toContain('student_inbox_items')
     })
 
-    it('cria rotina válida e retorna id sem conflitos', async () => {
+    it('cria rotina válida e retorna id', async () => {
         const { createRecurringAppointment } = await import('../create-recurring')
         const result = await createRecurringAppointment(VALID_INPUT)
         expect(result.success).toBe(true)
         expect(result.data?.id).toBe('ra-1')
-        expect(result.data?.conflicts).toEqual([])
     })
 
     it('rejeita usuário não autenticado', async () => {
@@ -116,7 +115,9 @@ describe('createRecurringAppointment', () => {
         expect(result.error).toBe('Sem permissão')
     })
 
-    it('detecta conflitos e NÃO insere quando confirmConflicts=false (default)', async () => {
+    it('cria rotina no mesmo horário de outra (aula em dupla) sem alertar', async () => {
+        // Antes, isso gerava `pendingConflicts` e bloqueava. Agora é caso
+        // comum (aula em dupla/grupo) — deve inserir direto.
         mockSupabase = createSupabaseMock({
             trainers: { single: { data: { id: 'trainer-1' }, error: null } },
             students: {
@@ -147,45 +148,6 @@ describe('createRecurringAppointment', () => {
 
         const { createRecurringAppointment } = await import('../create-recurring')
         const result = await createRecurringAppointment(VALID_INPUT)
-
-        expect(result.success).toBe(false)
-        expect(result.pendingConflicts?.length).toBeGreaterThan(0)
-        expect(result.data).toBeUndefined()
-    })
-
-    it('insere quando há conflitos E confirmConflicts=true', async () => {
-        mockSupabase = createSupabaseMock({
-            trainers: { single: { data: { id: 'trainer-1' }, error: null } },
-            students: {
-                single: {
-                    data: {
-                        id: VALID_INPUT.studentId,
-                        coach_id: 'trainer-1',
-                        name: 'João',
-                    },
-                    error: null,
-                },
-            },
-            recurring_appointments: {
-                select: {
-                    data: [
-                        {
-                            id: 'ra-conflict',
-                            start_time: '07:30',
-                            duration_minutes: 60,
-                            student_id: 'other-student',
-                        },
-                    ],
-                    error: null,
-                },
-                insert: { data: { id: 'ra-new' }, error: null },
-            },
-        })
-
-        const { createRecurringAppointment } = await import('../create-recurring')
-        const result = await createRecurringAppointment(VALID_INPUT, {
-            confirmConflicts: true,
-        })
 
         expect(result.success).toBe(true)
         expect(result.data?.id).toBe('ra-new')

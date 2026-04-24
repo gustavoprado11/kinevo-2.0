@@ -115,46 +115,9 @@ describe('createRecurringAppointmentGroup', () => {
         expect(result.error).toMatch(/duplicados/i)
     })
 
-    it('retorna pendingConflicts quando há conflito e confirmConflicts=false', async () => {
-        mockSupabase = createSupabaseMock({
-            trainers: { single: { data: { id: 'trainer-1' }, error: null } },
-            students: {
-                single: {
-                    data: {
-                        id: VALID_INPUT.studentId,
-                        coach_id: 'trainer-1',
-                        name: 'João',
-                    },
-                    error: null,
-                },
-            },
-            recurring_appointments: {
-                select: {
-                    data: [
-                        {
-                            id: 'ra-conflict',
-                            day_of_week: 1,
-                            start_time: '07:30',
-                            duration_minutes: 60,
-                            student_id: 'other-student',
-                        },
-                    ],
-                    error: null,
-                },
-                insert: { data: [], error: null },
-            },
-        })
-
-        const { createRecurringAppointmentGroup } = await import(
-            '../create-recurring-group'
-        )
-        const result = await createRecurringAppointmentGroup(VALID_INPUT)
-        expect(result.success).toBe(false)
-        expect(result.pendingConflicts?.length).toBeGreaterThan(0)
-        expect(result.pendingConflicts?.[0].slotIndex).toBe(0)
-    })
-
-    it('insere mesmo com conflitos quando confirmConflicts=true', async () => {
+    it('cria pacote mesmo quando slots sobrepõem outras rotinas (aula em dupla)', async () => {
+        // Antes, isso devolvia pendingConflicts. Agora sobrepor é caso comum
+        // (aula em dupla/grupo) — insere direto.
         mockSupabase = createSupabaseMock({
             trainers: { single: { data: { id: 'trainer-1' }, error: null } },
             students: {
@@ -189,9 +152,7 @@ describe('createRecurringAppointmentGroup', () => {
         const { createRecurringAppointmentGroup } = await import(
             '../create-recurring-group'
         )
-        const result = await createRecurringAppointmentGroup(VALID_INPUT, {
-            confirmConflicts: true,
-        })
+        const result = await createRecurringAppointmentGroup(VALID_INPUT)
         expect(result.success).toBe(true)
         expect(result.data?.groupId).toBeDefined()
     })

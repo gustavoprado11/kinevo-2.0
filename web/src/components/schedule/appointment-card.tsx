@@ -11,8 +11,14 @@ interface Props {
     occurrence: AppointmentOccurrence
     student: ScheduleStudent
     onChanged?: () => void
-    /** Oferece destaque visual quando há conflito no mesmo slot (sobreposto). */
-    isConflicting?: boolean
+    /**
+     * Largura do card em percentual da coluna do dia. Default 100 (card
+     * ocupa coluna inteira). Quando há overlap com outros cards, cada um
+     * recebe 100/N. Calculado em `weekly-calendar.computeOverlapLayout`.
+     */
+    widthPercent?: number
+    /** Offset horizontal (left) em percentual da coluna. Default 0. */
+    leftPercent?: number
 }
 
 /**
@@ -49,7 +55,8 @@ export function AppointmentCard({
     occurrence,
     student,
     onChanged,
-    isConflicting,
+    widthPercent = 100,
+    leftPercent = 0,
 }: Props) {
     const top = timeToPixels(occurrence.startTime)
     const heightPx = (occurrence.durationMinutes / 60) * HOUR_HEIGHT_PX
@@ -75,8 +82,13 @@ export function AppointmentCard({
 
     return (
         <div
-            className="absolute inset-x-0.5 z-10"
-            style={{ top: `${top}px`, height: `${Math.max(heightPx, 22)}px` }}
+            className="absolute z-10 px-0.5"
+            style={{
+                top: `${top}px`,
+                height: `${Math.max(heightPx, 22)}px`,
+                left: `${leftPercent}%`,
+                width: `${widthPercent}%`,
+            }}
         >
             <div
                 ref={setNodeRef}
@@ -104,11 +116,7 @@ export function AppointmentCard({
                             borderLeftStyle: 'solid',
                             boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
                         }}
-                        className={`h-full rounded-lg px-2 py-1.5 bg-white dark:bg-surface-card border border-[#D2D2D7] dark:border-k-border-primary overflow-hidden ${
-                            isConflicting
-                                ? 'outline outline-2 outline-[#FF3B30]/60'
-                                : ''
-                        }`}
+                        className="h-full rounded-lg px-2 py-1.5 bg-white dark:bg-surface-card border border-[#D2D2D7] dark:border-k-border-primary overflow-hidden"
                     >
                         <div className="flex items-start gap-1.5">
                             <div className="min-w-0 flex-1">

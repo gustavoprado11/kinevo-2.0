@@ -15,13 +15,9 @@ import {
     X,
 } from 'lucide-react'
 import { createRecurringAppointment } from '@/actions/appointments/create-recurring'
-import {
-    createRecurringAppointmentGroup,
-    type SlotConflictBundle,
-} from '@/actions/appointments/create-recurring-group'
-import { AppointmentConflictAlert, type ConflictItem } from './appointment-conflict-alert'
+import { createRecurringAppointmentGroup } from '@/actions/appointments/create-recurring-group'
 
-type Frequency = 'once' | 'weekly' | 'biweekly' | 'monthly'
+type Frequency = 'weekly' | 'biweekly' | 'monthly'
 
 interface Slot {
     id: string
@@ -54,15 +50,6 @@ interface Props {
 }
 
 const DAY_LABELS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
-const DAY_NAMES_FULL = [
-    'domingo',
-    'segunda',
-    'terça',
-    'quarta',
-    'quinta',
-    'sexta',
-    'sábado',
-]
 const DURATION_CHIPS = [45, 60, 90] as const
 const MAX_SLOTS = 7
 
@@ -137,8 +124,6 @@ export function CreateAppointmentModal({
 
     const [error, setError] = useState<string | null>(null)
     const [loading, setLoading] = useState(false)
-    const [singleConflicts, setSingleConflicts] = useState<ConflictItem[] | null>(null)
-    const [groupConflicts, setGroupConflicts] = useState<SlotConflictBundle[] | null>(null)
 
     // Student picker (standalone flow)
     const hasPreselectedStudent = !!preselectedStudentId
@@ -156,8 +141,6 @@ export function CreateAppointmentModal({
         setStartsOn(preselectedDate ?? nextOccurrenceDate(todayKey, initialDow))
         setNotes('')
         setError(null)
-        setSingleConflicts(null)
-        setGroupConflicts(null)
         setLoading(false)
         setSelectedStudentId(null)
         setStudentQuery('')
@@ -194,13 +177,10 @@ export function CreateAppointmentModal({
     const effectiveStudentId = preselectedStudentId ?? selectedStudentId
 
     const isMonthly = frequency === 'monthly'
-    const isOnce = frequency === 'once'
-    /** Monthly e Once: força 1 slot só; day_of_week derivado de startsOn. */
-    const isSingleSlotMode = isMonthly || isOnce
 
-    // Single-slot modes: force exactly 1 slot and align its dayOfWeek to startsOn.
+    // Monthly: force exactly 1 slot and align its dayOfWeek to startsOn.
     useEffect(() => {
-        if (!isSingleSlotMode) return
+        if (!isMonthly) return
         const expectedDow = dayOfWeekFromKey(startsOn)
         setSlots((prev) => {
             const only = prev[0]
@@ -208,14 +188,14 @@ export function CreateAppointmentModal({
                 : makeInitialSlot(expectedDow, '07:00')
             return [only]
         })
-    }, [isSingleSlotMode, startsOn])
+    }, [isMonthly, startsOn])
 
     const updateSlot = (id: string, patch: Partial<Slot>) => {
         setSlots((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)))
     }
 
     const addSlot = () => {
-        if (isSingleSlotMode) return
+        if (isMonthly) return
         if (slots.length >= MAX_SLOTS) return
         setSlots((prev) => [
             ...prev,
@@ -242,10 +222,7 @@ export function CreateAppointmentModal({
         return null
     }, [slots])
 
-    const handleSubmit = async (
-        event: React.FormEvent,
-        opts: { confirmConflicts?: boolean } = {},
-    ) => {
+    const handleSubmit = async (event: React.FormEvent) => {
         event.preventDefault()
         setError(null)
 
@@ -268,23 +245,16 @@ export function CreateAppointmentModal({
 
             // Single slot → keep using the simple action (preserves group_id=NULL)
             if (normalizedSlots.length === 1) {
-                const result = await createRecurringAppointment(
-                    {
-                        studentId: effectiveStudentId,
-                        ...normalizedSlots[0],
-                        frequency,
-                        startsOn,
-                        notes: notes.trim() ? notes.trim() : null,
-                    },
-                    { confirmConflicts: opts.confirmConflicts ?? false },
-                )
+                const result = await createRecurringAppointment({
+                    studentId: effectiveStudentId,
+                    ...normalizedSlots[0],
+                    frequency,
+                    startsOn,
+                    notes: notes.trim() ? notes.trim() : null,
+                })
                 if (result.success && result.data) {
                     onSuccess?.({ recurringId: result.data.id })
                     onClose()
-                    return
-                }
-                if (result.pendingConflicts && result.pendingConflicts.length > 0) {
-                    setSingleConflicts(result.pendingConflicts)
                     return
                 }
                 setError(result.error ?? 'Erro ao criar rotina')
@@ -292,23 +262,16 @@ export function CreateAppointmentModal({
             }
 
             // Multi slot → group action
-            const result = await createRecurringAppointmentGroup(
-                {
-                    studentId: effectiveStudentId,
-                    slots: normalizedSlots,
-                    frequency,
-                    startsOn,
-                    notes: notes.trim() ? notes.trim() : null,
-                },
-                { confirmConflicts: opts.confirmConflicts ?? false },
-            )
+            const result = await createRecurringAppointmentGroup({
+                studentId: effectiveStudentId,
+                slots: normalizedSlots,
+                frequency,
+                startsOn,
+                notes: notes.trim() ? notes.trim() : null,
+            })
             if (result.success && result.data) {
                 onSuccess?.({ groupId: result.data.groupId })
                 onClose()
-                return
-            }
-            if (result.pendingConflicts && result.pendingConflicts.length > 0) {
-                setGroupConflicts(result.pendingConflicts)
                 return
             }
             setError(result.error ?? 'Erro ao criar pacote')
@@ -319,16 +282,11 @@ export function CreateAppointmentModal({
 
     if (!isOpen) return null
 
-    const addDisabledReason = isOnce
-        ? 'Agendamento único tem apenas 1 dia'
-        : isMonthly
-          ? 'Rotinas mensais permitem apenas um dia'
-          : slots.length >= MAX_SLOTS
-            ? `Máximo de ${MAX_SLOTS} dias`
-            : null
-    const hasPendingConflicts =
-        !!singleConflicts?.length || !!groupConflicts?.length
-
+    const addDisabledReason = isMonthly
+        ? 'Rotinas mensais permitem apenas um dia'
+        : slots.length >= MAX_SLOTS
+          ? `Máximo de ${MAX_SLOTS} dias`
+          : null
     return (
         <div className="fixed inset-0 z-modal flex items-center justify-center p-4">
             <div
@@ -371,79 +329,6 @@ export function CreateAppointmentModal({
                         >
                             <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" strokeWidth={1.5} />
                             {error}
-                        </div>
-                    )}
-
-                    {singleConflicts && (
-                        <AppointmentConflictAlert
-                            conflicts={singleConflicts}
-                            onCancel={() => setSingleConflicts(null)}
-                            onConfirm={() => {
-                                setSingleConflicts(null)
-                                void handleSubmit(
-                                    { preventDefault: () => {} } as React.FormEvent,
-                                    { confirmConflicts: true },
-                                )
-                            }}
-                            isConfirming={loading}
-                        />
-                    )}
-
-                    {groupConflicts && (
-                        <div className="rounded-xl border border-amber-200 dark:border-amber-500/20 bg-amber-50 dark:bg-amber-500/10 p-4 space-y-3">
-                            <div className="text-sm font-semibold text-amber-900 dark:text-amber-300">
-                                Conflitos no pacote
-                            </div>
-                            <div className="space-y-2">
-                                {groupConflicts.map((bundle) => {
-                                    const bundleDow = slots[bundle.slotIndex]?.dayOfWeek
-                                    const bundleLabel =
-                                        bundleDow !== undefined
-                                            ? `Treino de ${DAY_NAMES_FULL[bundleDow]}`
-                                            : `Dia ${bundle.slotIndex + 1}`
-                                    return (
-                                    <div key={bundle.slotIndex} className="text-xs">
-                                        <div className="font-semibold text-amber-900 dark:text-amber-200">
-                                            {bundleLabel}
-                                        </div>
-                                        <ul className="mt-0.5 space-y-0.5">
-                                            {bundle.conflicts.map((c) => (
-                                                <li
-                                                    key={c.id}
-                                                    className="text-amber-900 dark:text-amber-200"
-                                                >
-                                                    • {c.studentName} às {c.startTime} ({c.durationMinutes} min)
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                    )
-                                })}
-                            </div>
-                            <div className="flex gap-2 justify-end pt-1">
-                                <button
-                                    type="button"
-                                    onClick={() => setGroupConflicts(null)}
-                                    disabled={loading}
-                                    className="px-3 py-1.5 text-xs font-semibold text-amber-900 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-500/10 rounded-lg transition-colors disabled:opacity-50"
-                                >
-                                    Cancelar
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setGroupConflicts(null)
-                                        void handleSubmit(
-                                            { preventDefault: () => {} } as React.FormEvent,
-                                            { confirmConflicts: true },
-                                        )
-                                    }}
-                                    disabled={loading}
-                                    className="px-3 py-1.5 text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700 rounded-lg transition-colors disabled:opacity-50"
-                                >
-                                    {loading ? 'Salvando...' : 'Continuar mesmo assim'}
-                                </button>
-                            </div>
                         </div>
                     )}
 
@@ -570,10 +455,9 @@ export function CreateAppointmentModal({
                         <label className="mb-2 block text-[11px] font-bold text-[#6E6E73] dark:text-k-text-quaternary uppercase tracking-wide">
                             Frequência
                         </label>
-                        <div className="grid grid-cols-4 gap-1 bg-[#F5F5F7] dark:bg-surface-inset p-1 rounded-lg">
+                        <div className="grid grid-cols-3 gap-1 bg-[#F5F5F7] dark:bg-surface-inset p-1 rounded-lg">
                             {(
                                 [
-                                    { value: 'once', label: 'Única' },
                                     { value: 'weekly', label: 'Semanal' },
                                     { value: 'biweekly', label: 'Quinzenal' },
                                     { value: 'monthly', label: 'Mensal' },
@@ -599,15 +483,10 @@ export function CreateAppointmentModal({
                     {/* Slots */}
                     <div>
                         <label className="mb-2 flex items-center justify-between text-[11px] font-bold text-[#6E6E73] dark:text-k-text-quaternary uppercase tracking-wide">
-                            <span>{isOnce ? 'Horário' : 'Dias e horários'}</span>
+                            <span>Dias e horários</span>
                             {isMonthly && (
                                 <span className="text-[10px] font-medium normal-case text-[#86868B] dark:text-k-text-quaternary">
                                     (apenas 1 dia em mensal)
-                                </span>
-                            )}
-                            {isOnce && (
-                                <span className="text-[10px] font-medium normal-case text-[#86868B] dark:text-k-text-quaternary">
-                                    (1 dia na data escolhida)
                                 </span>
                             )}
                         </label>
@@ -637,7 +516,7 @@ export function CreateAppointmentModal({
                                     <div className="grid grid-cols-7 gap-1">
                                         {DAY_LABELS.map((lbl, dow) => {
                                             const selected = slot.dayOfWeek === dow
-                                            const disabled = isSingleSlotMode
+                                            const disabled = isMonthly
                                             return (
                                                 <button
                                                     type="button"
@@ -743,7 +622,7 @@ export function CreateAppointmentModal({
                             htmlFor="startsOn"
                             className="mb-1.5 block text-[11px] font-bold text-[#6E6E73] dark:text-k-text-quaternary uppercase tracking-wide"
                         >
-                            {isOnce ? 'Data' : 'Data de início'}
+                            Data de início
                         </label>
                         <div className="relative">
                             <CalendarIcon
@@ -799,7 +678,6 @@ export function CreateAppointmentModal({
                             type="submit"
                             disabled={
                                 loading ||
-                                hasPendingConflicts ||
                                 !!duplicateError ||
                                 !effectiveStudentId
                             }

@@ -107,17 +107,44 @@ describe('AppointmentCard', () => {
         expect(screen.queryByLabelText(/pacote multi-dia/i)).not.toBeInTheDocument()
     })
 
-    it('aplica outline de conflito quando isConflicting=true', () => {
+    it('posiciona com width/left percentuais quando há overlap (aula em dupla)', () => {
         const { container } = render(
             wrap(
                 <AppointmentCard
                     occurrence={makeOcc()}
                     student={{ name: 'João', avatarUrl: null }}
-                    isConflicting
+                    widthPercent={50}
+                    leftPercent={50}
                 />,
             ),
         )
-        // Outline usa cor Apple #FF3B30 (pode aparecer com escape no HTML).
-        expect(container.innerHTML).toMatch(/outline-\[#FF3B30\]/)
+        // Wrapper externo (posicionamento absoluto) ganha left/width inline.
+        expect(container.innerHTML).toMatch(/left:\s*50%/)
+        expect(container.innerHTML).toMatch(/width:\s*50%/)
+    })
+
+    it('default: ocupa 100% quando sem overlap', () => {
+        const { container } = render(
+            wrap(
+                <AppointmentCard
+                    occurrence={makeOcc()}
+                    student={{ name: 'João', avatarUrl: null }}
+                />,
+            ),
+        )
+        expect(container.innerHTML).toMatch(/left:\s*0%/)
+        expect(container.innerHTML).toMatch(/width:\s*100%/)
+    })
+
+    it('NÃO aplica mais outline vermelho de conflito (aula em dupla é intenção)', () => {
+        const { container } = render(
+            wrap(
+                <AppointmentCard
+                    occurrence={makeOcc()}
+                    student={{ name: 'João', avatarUrl: null }}
+                />,
+            ),
+        )
+        expect(container.innerHTML).not.toMatch(/outline-\[#FF3B30\]/)
     })
 })
