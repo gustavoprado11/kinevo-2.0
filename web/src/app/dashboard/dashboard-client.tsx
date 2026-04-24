@@ -21,7 +21,6 @@ const DailyActivityFeed = lazy(() => import('@/components/dashboard/daily-activi
 const WeeklyGoalsWidget = lazy(() => import('@/components/dashboard/weekly-goals-widget').then(m => ({ default: m.WeeklyGoalsWidget })))
 const StudentRankingWidget = lazy(() => import('@/components/dashboard/student-ranking-widget').then(m => ({ default: m.StudentRankingWidget })))
 
-import type { RankedStudent } from '@/components/dashboard/student-ranking-widget'
 import { FolderArchive, Loader2 } from 'lucide-react'
 import { markAsPaid } from '@/actions/financial/mark-as-paid'
 import { archiveStudent } from '@/actions/financial/archive-student'
@@ -115,21 +114,8 @@ export function DashboardClient({ trainer, data, initialStudents, selfStudentId,
         setArchiveLoading(false)
     }
 
-    // Build student ranking from daily activity data
-    const rankedStudents: RankedStudent[] = useMemo(() => {
-        const map = new Map<string, { name: string; sessions: number }>()
-        for (const a of data.dailyActivity) {
-            const entry = map.get(a.studentId) || { name: a.studentName, sessions: 0 }
-            entry.sessions++
-            map.set(a.studentId, entry)
-        }
-        return Array.from(map.entries()).map(([id, info]) => ({
-            id,
-            name: info.name,
-            sessionsThisWeek: info.sessions,
-            streak: 0, // TODO: compute from historical data
-        }))
-    }, [data.dailyActivity])
+    // Ranking now comes pre-computed from the server (weekly adherence).
+    const rankedStudents = data.studentRanking
 
     // Widget render map — each widget ID maps to its JSX
     // Heavy widgets are wrapped in Suspense for code-split lazy loading

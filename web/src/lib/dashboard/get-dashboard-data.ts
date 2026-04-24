@@ -74,6 +74,16 @@ export interface ScheduledTodayItem {
     workoutName: string
 }
 
+export interface RankedStudentItem {
+    studentId: string
+    studentName: string
+    studentAvatar: string | null
+    completed: number
+    expected: number
+    adherence: number  // 0..1, NaN-safe (0 when expected=0)
+    streak: number
+}
+
 export interface AssistantInsightItem {
     id: string
     student_id: string | null
@@ -99,6 +109,7 @@ export interface DashboardData {
     scheduledToday: ScheduledTodayItem[]
     dailyActivity: DailyActivityItem[]
     assistantInsights: AssistantInsightItem[]
+    studentRanking: RankedStudentItem[]
 }
 
 // ── Helpers ──
@@ -496,6 +507,87 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     })
 
+    // ── Student Ranking (weekly adherence) ──
+    //
+    // For each active student with a program, count sessions completed this week
+    // vs. sessions scheduled this week. Rank by adherence (completed/expected),
+    // tie-break by completed (volume).
+
+    // Count completed sessions per student this week
+    const completedByStudent = new Map<string, number>()
+    for (const s of weekSessions) {
+        completedByStudent.set(s.student_id, (completedByStudent.get(s.student_id) || 0) + 1)
+    }
+
+    // Iterate 7 days of the current week to compute expected per student
+    type WorkoutRef = { id: string; name: string; scheduled_days: number[] | null }
+    const expectedByStudent = new Map<string, number>()
+    for (let i = 0; i < 7; i++) {
+        const day = new Date(weekRange.start.getTime() + i * 24 * 60 * 60 * 1000)
+        for (const program of activePrograms) {
+            if (!program.started_at) continue
+            const workouts = ((program as unknown as { assigned_workouts?: WorkoutRef[] }).assigned_workouts) ?? []
+            const scheduled = getScheduledWorkoutsForDate(
+                day,
+                workouts.map(w => ({ id: w.id, name: w.name, scheduled_days: w.scheduled_days ?? [] })),
+                program.started_at,
+                program.duration_weeks,
+            )
+            if (scheduled.length > 0) {
+                expectedByStudent.set(
+                    program.student_id,
+                    (expectedByStudent.get(program.student_id) || 0) + scheduled.length,
+                )
+            }
+        }
+    }
+
+    // Simple consecutive-day streak: count days back from today where the student
+    // had at least one completed session. Uses allSessions (already ordered desc).
+    const sessionDaysByStudent = new Map<string, Set<string>>()
+    for (const s of allSessions) {
+        const key = new Date(s.completed_at).toLocaleDateString('en-CA', { timeZone: TZ })
+        const set = sessionDaysByStudent.get(s.student_id) ?? new Set<string>()
+        set.add(key)
+        sessionDaysByStudent.set(s.student_id, set)
+    }
+    function streakFor(studentId: string): number {
+        const days = sessionDaysByStudent.get(studentId)
+        if (!days) return 0
+        let streak = 0
+        const cursor = new Date(todayStart)
+        while (streak < 60) {
+            const key = cursor.toLocaleDateString('en-CA', { timeZone: TZ })
+            if (!days.has(key)) break
+            streak++
+            cursor.setTime(cursor.getTime() - 24 * 60 * 60 * 1000)
+        }
+        return streak
+    }
+
+    const studentRanking: RankedStudentItem[] = activeStudents
+        .filter(s => expectedByStudent.has(s.id) || completedByStudent.has(s.id))
+        .map(s => {
+            const completed = completedByStudent.get(s.id) || 0
+            const expected = expectedByStudent.get(s.id) || 0
+            const adherence = expected > 0 ? Math.min(completed / expected, 1) : 0
+            return {
+                studentId: s.id,
+                studentName: s.name,
+                studentAvatar: s.avatar_url,
+                completed,
+                expected,
+                adherence,
+                streak: streakFor(s.id),
+            }
+        })
+
+    studentRanking.sort((a, b) => {
+        if (b.adherence !== a.adherence) return b.adherence - a.adherence
+        if (b.completed !== a.completed) return b.completed - a.completed
+        return b.streak - a.streak
+    })
+
     return {
         stats: {
             activeStudentsCount,
@@ -517,6 +609,7 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
         dailyActivity,
         scheduledToday,
         assistantInsights,
+        studentRanking,
     }
 }
 
