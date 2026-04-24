@@ -1,6 +1,10 @@
 {
   "crons": [
     {
+      "path": "/api/cron/activate-scheduled-programs",
+      "schedule": "0 7 * * *"
+    },
+    {
       "path": "/api/cron/check-manual-overdue",
       "schedule": "0 11 * * *"
     },

@@ -17,6 +17,7 @@ import { deleteProgram } from './actions/delete-program'
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
 import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
 import { getProgramWeek } from '@kinevo/shared/utils/schedule-projection'
+import { formatBrDate } from '@kinevo/shared/utils/format-br-date'
 import { FinancialSidebarCard } from '@/components/students/financial-sidebar-card'
 import { AssessmentSidebarCard } from '@/components/students/assessment-sidebar-card'
 import { AlertCircle, Dumbbell, Clock } from 'lucide-react'
@@ -41,6 +42,14 @@ const StudentModal = dynamic(
     () => import('@/components/student-modal').then(m => m.StudentModal),
     { ssr: false, loading: () => null },
 )
+const CreateAppointmentModal = dynamic(
+    () => import('@/components/appointments/create-appointment-modal').then(m => m.CreateAppointmentModal),
+    { ssr: false, loading: () => null },
+)
+const StudentScheduleSection = dynamic(
+    () => import('@/components/appointments/student-schedule-section').then(m => m.StudentScheduleSection),
+    { ssr: false, loading: () => null },
+)
 
 // Below-the-fold charts — don't block FCP.
 const LoadProgressionChart = dynamic(
@@ -51,6 +60,19 @@ const ProgramComparisonCard = dynamic(
     () => import('@/components/students/program-comparison-card').then(m => m.ProgramComparisonCard),
     { ssr: false, loading: () => null },
 )
+
+function getTodayInSaoPaulo(): string {
+    return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
+}
+
+function getScheduledActivationLabel(date: string | null | undefined): string {
+    if (!date) return 'Ativação automática pendente'
+
+    const today = getTodayInSaoPaulo()
+    if (date < today) return `Ativação automática atrasada desde ${formatBrDate(date)}`
+    if (date === today) return 'Ativação automática hoje'
+    return `Ativação automática em ${formatBrDate(date)}`
+}
 
 interface Student {
     id: string
@@ -209,6 +231,8 @@ export function StudentDetailClient({
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
     const [processingId, setProcessingId] = useState<string | null>(null)
     const [activationBlock, setActivationBlock] = useState<{ workoutNames: string[] } | null>(null)
+    const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false)
+    const [scheduleRefreshKey, setScheduleRefreshKey] = useState(0)
 
     const handleAssignProgram = () => {
         setAssignModalMode('immediate')
@@ -353,6 +377,7 @@ export function StudentDetailClient({
                     student={student}
                     onEdit={handleEditStudent}
                     onDelete={handleDeleteStudent}
+                    onSchedule={student.is_trainer_profile ? undefined : () => setIsScheduleModalOpen(true)}
                 >
                     <StudentStatusBar
                         historySummary={historySummary}
@@ -505,6 +530,18 @@ export function StudentDetailClient({
                                 </div>
                             ) : (
                                 <div className="space-y-3">
+                                    <div className="rounded-xl border border-violet-200 dark:border-violet-500/20 bg-violet-50 dark:bg-violet-500/5 p-4">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <Clock className="w-4 h-4 text-violet-500" />
+                                            <span className="text-sm font-semibold text-violet-700 dark:text-violet-300">
+                                                {getScheduledActivationLabel(scheduledPrograms[0]?.scheduled_start_date)}
+                                            </span>
+                                        </div>
+                                        <p className="text-xs text-violet-700/70 dark:text-violet-300/70">
+                                            O programa mais antigo elegível na fila será ativado automaticamente nessa data.
+                                        </p>
+                                    </div>
+
                                     {scheduledPrograms.map(program => (
                                         <div key={program.id} className="bg-glass-bg rounded-xl p-4 border border-k-border-subtle hover:border-violet-500/30 transition-all group relative overflow-hidden">
                                             <div className="flex justify-between items-start">
@@ -514,10 +551,13 @@ export function StudentDetailClient({
                                                         {program.duration_weeks && <span>{program.duration_weeks} sem</span>}
                                                         {program.scheduled_start_date && (
                                                             <span className="text-violet-400">
-                                                                {new Date(program.scheduled_start_date).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
+                                                                {formatBrDate(program.scheduled_start_date)}
                                                             </span>
                                                         )}
                                                     </div>
+                                                    <p className="mt-2 text-[11px] font-medium text-violet-600/80 dark:text-violet-300/80">
+                                                        {getScheduledActivationLabel(program.scheduled_start_date)}
+                                                    </p>
                                                 </div>
                                                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all relative z-sticky">
                                                     <button onClick={() => handleActivateScheduled(program.id)} disabled={!!processingId} className="p-1.5 text-violet-400 hover:text-white hover:bg-violet-600 rounded-lg transition-all">
@@ -537,6 +577,14 @@ export function StudentDetailClient({
                                 </div>
                             )}
                         </div>
+
+                        {/* Recurring appointments rotina atual */}
+                        {!student.is_trainer_profile && (
+                            <StudentScheduleSection
+                                studentId={student.id}
+                                refreshKey={scheduleRefreshKey}
+                            />
+                        )}
 
                         {/* Quick Message with context-aware suggestions */}
                         {/* data-onboarding acts as a scroll anchor for inline insight CTAs ("Enviar mensagem"). */}
@@ -611,6 +659,15 @@ export function StudentDetailClient({
                 onStudentUpdated={handleStudentUpdated}
                 trainerId={trainer.id}
                 initialData={student}
+            />
+
+            {/* Create Recurring Appointment Modal */}
+            <CreateAppointmentModal
+                isOpen={isScheduleModalOpen}
+                onClose={() => setIsScheduleModalOpen(false)}
+                preselectedStudentId={student.id}
+                preselectedStudentName={student.name}
+                onSuccess={() => setScheduleRefreshKey((k) => k + 1)}
             />
 
             {/* Assign Program Modal */}

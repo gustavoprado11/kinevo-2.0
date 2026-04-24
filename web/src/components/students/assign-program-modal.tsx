@@ -326,7 +326,7 @@ export function AssignProgramModal({
                                             </div>
                                             <div>
                                                 <span className={`block font-bold mb-1 transition-colors ${assignmentType === 'scheduled' ? 'text-violet-300' : 'text-k-text-secondary'}`}>Agendar Futuro</span>
-                                                <span className="text-xs text-k-text-quaternary font-medium leading-relaxed block">Ficará na fila de próximos e aguardará ativação.</span>
+                                                <span className="text-xs text-k-text-quaternary font-medium leading-relaxed block">Entrará na fila de próximos e será ativado automaticamente na data escolhida.</span>
                                             </div>
                                         </div>
 

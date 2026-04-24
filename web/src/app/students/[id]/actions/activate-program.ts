@@ -2,8 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { insertStudentNotification } from '@/lib/student-notifications'
-import { sendStudentPush } from '@/lib/push-notifications'
+import { activateAssignedProgram } from '@/lib/programs/activate-assigned-program'
 
 export async function activateProgram(assignedProgramId: string) {
     const supabase = await createClient()
@@ -24,17 +23,12 @@ export async function activateProgram(assignedProgramId: string) {
         // 2. Get program details — with trainer_id ownership filter
         const { data: program } = await supabase
             .from('assigned_programs')
-            .select('student_id, status, name, trainer_id, duration_weeks')
+            .select('student_id')
             .eq('id', assignedProgramId)
             .eq('trainer_id', trainer.id)
             .single()
 
         if (!program) throw new Error('Program not found')
-
-        // Prevent re-activating an already active program
-        if (program.status === 'active') {
-            return { success: true }
-        }
 
         const studentId = program.student_id
 
@@ -47,56 +41,19 @@ export async function activateProgram(assignedProgramId: string) {
             .single()
         if (!student) throw new Error('Student not found')
 
-        // 4. Archive/Complete current active or expired program (scoped to trainer)
-        await supabase
-            .from('assigned_programs')
-            .update({
-                status: 'completed',
-                completed_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-            })
-            .eq('student_id', studentId)
-            .eq('trainer_id', trainer.id)
-            .in('status', ['active', 'expired'])
-
-        // 5. Activate the new program
-        const now = new Date()
-        const durationWeeks = (program as any).duration_weeks as number | null
-        const expiresAt = durationWeeks
-            ? new Date(now.getTime() + durationWeeks * 7 * 24 * 60 * 60 * 1000).toISOString()
-            : null
-
-        const { error: updateError } = await supabase
-            .from('assigned_programs')
-            .update({
-                status: 'active',
-                started_at: now.toISOString(),
-                updated_at: now.toISOString(),
-                expires_at: expiresAt,
-            })
-            .eq('id', assignedProgramId)
-            .eq('trainer_id', trainer.id)
-
-        if (updateError) throw updateError
-
-        // 6. Notify student (fire-and-forget)
-        const programName = program.name ?? 'Novo programa'
-        insertStudentNotification({
-            studentId,
+        // 4. Activate using shared logic so manual and automatic flows stay in sync.
+        const result = await activateAssignedProgram({
+            assignedProgramId,
             trainerId: trainer.id,
-            type: 'program_assigned',
-            title: 'Novo programa de treino!',
-            subtitle: `${programName} está disponível no seu app.`,
-            payload: { program_id: assignedProgramId, program_name: programName },
-        }).then((inboxItemId) => {
-            sendStudentPush({
-                studentId,
-                title: 'Novo programa de treino!',
-                body: `${programName} está disponível no seu app.`,
-                inboxItemId: inboxItemId ?? undefined,
-                data: { type: 'program_assigned', program_id: assignedProgramId },
-            })
+            source: 'manual',
         })
+
+        if (!result.success) {
+            if (result.reason === 'missing_scheduled_days') {
+                return { success: false, error: 'O programa possui treinos sem dia agendado.' }
+            }
+            throw new Error(result.error || 'Failed to activate program')
+        }
 
         revalidatePath(`/students/${studentId}`)
         return { success: true }
