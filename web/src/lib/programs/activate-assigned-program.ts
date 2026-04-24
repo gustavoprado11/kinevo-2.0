@@ -27,6 +27,8 @@ export interface ActivateAssignedProgramResult {
     workoutNames?: string[]
 }
 
+type ActivatedRow = { id: string }
+
 function computeExpiresAt(startedAtIso: string, durationWeeks: number | null): string | null {
     if (!durationWeeks) return null
     return new Date(
@@ -103,21 +105,13 @@ export async function activateAssignedProgram(params: {
         }
     }
 
-    await supabaseAdmin
-        .from('assigned_programs')
-        .update({
-            status: 'completed',
-            completed_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-        })
-        .eq('student_id', program.student_id)
-        .eq('trainer_id', trainerId)
-        .in('status', ['active', 'expired'])
-
     const nowIso = new Date().toISOString()
     const expiresAt = computeExpiresAt(nowIso, (program.duration_weeks as number | null) ?? null)
 
-    const { error: updateError } = await supabaseAdmin
+    const {
+        data: activatedRows,
+        error: updateError,
+    } = await supabaseAdmin
         .from('assigned_programs')
         .update({
             status: 'active',
@@ -127,6 +121,8 @@ export async function activateAssignedProgram(params: {
         })
         .eq('id', assignedProgramId)
         .eq('trainer_id', trainerId)
+        .eq('status', 'scheduled')
+        .select('id')
 
     if (updateError) {
         return {
@@ -139,6 +135,29 @@ export async function activateAssignedProgram(params: {
             programName: program.name ?? 'Novo programa',
         }
     }
+
+    if (!activatedRows || (activatedRows as ActivatedRow[]).length === 0) {
+        return {
+            success: true,
+            activated: false,
+            reason: 'already_active',
+            studentId: program.student_id,
+            trainerId: program.trainer_id,
+            programName: program.name ?? 'Novo programa',
+        }
+    }
+
+    await supabaseAdmin
+        .from('assigned_programs')
+        .update({
+            status: 'completed',
+            completed_at: nowIso,
+            updated_at: nowIso,
+        })
+        .eq('student_id', program.student_id)
+        .eq('trainer_id', trainerId)
+        .neq('id', assignedProgramId)
+        .in('status', ['active', 'expired'])
 
     const programName = program.name ?? 'Novo programa'
 

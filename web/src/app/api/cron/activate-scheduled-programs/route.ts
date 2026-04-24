@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { activateAssignedProgram } from '@/lib/programs/activate-assigned-program'
+import { insertTrainerNotification } from '@/lib/trainer-notifications'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 30
@@ -15,6 +16,54 @@ type DueProgramRow = {
     trainer_id: string
     scheduled_start_date: string
     created_at: string
+}
+
+async function notifyActivationBlocked(params: {
+    trainerId: string
+    studentId: string
+    programId: string
+    workoutNames: string[]
+}) {
+    const sinceIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+
+    const { data: existingNotifications, error: existingError } = await supabaseAdmin
+        .from('trainer_notifications')
+        .select('id')
+        .eq('trainer_id', params.trainerId)
+        .eq('type', 'program_activation_blocked')
+        .contains('data', { program_id: params.programId })
+        .gte('created_at', sinceIso)
+        .limit(1)
+
+    if (existingError) {
+        console.error('[cron:activate-scheduled-programs] Failed to check blocked notification dedupe', {
+            programId: params.programId,
+            error: existingError,
+        })
+        return
+    }
+
+    if (existingNotifications && existingNotifications.length > 0) {
+        return
+    }
+
+    const { data: student } = await supabaseAdmin
+        .from('students')
+        .select('name')
+        .eq('id', params.studentId)
+        .single()
+
+    await insertTrainerNotification({
+        trainerId: params.trainerId,
+        type: 'program_activation_blocked',
+        title: 'Programa não pôde ser ativado',
+        message: `O programa de ${student?.name ?? 'Aluno'} tem workouts sem dias agendados e precisa ser corrigido.`,
+        metadata: {
+            program_id: params.programId,
+            student_id: params.studentId,
+            workoutNames: params.workoutNames,
+        },
+    })
 }
 
 export async function GET(request: NextRequest) {
@@ -76,6 +125,12 @@ export async function GET(request: NextRequest) {
 
             if (result.reason === 'missing_scheduled_days') {
                 skippedInvalid++
+                await notifyActivationBlocked({
+                    trainerId: program.trainer_id,
+                    studentId: program.student_id,
+                    programId: program.id,
+                    workoutNames: result.workoutNames ?? [],
+                })
                 console.warn('[cron:activate-scheduled-programs] Skipped program without scheduled days', {
                     programId: program.id,
                     studentId: program.student_id,
