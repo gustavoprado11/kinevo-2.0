@@ -5,7 +5,11 @@ export default defineConfig({
     test: {
         environment: 'node',
         globals: true,
-        include: ['lib/**/*.test.ts', 'utils/**/*.test.ts'],
+        include: [
+            'lib/**/*.test.ts',
+            'utils/**/*.test.ts',
+            'constants/**/*.test.ts',
+        ],
         exclude: ['node_modules'],
     },
     resolve: {

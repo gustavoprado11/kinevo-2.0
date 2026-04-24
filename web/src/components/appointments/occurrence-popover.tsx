@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import {
@@ -91,13 +91,13 @@ export function OccurrencePopover({
     const [confirming, setConfirming] = useState<'cancel' | 'end' | null>(null)
     const [canceling, setCanceling] = useState(false)
     const [ending, setEnding] = useState(false)
-    const todayKey = (() => {
+    const todayKey = useMemo(() => {
         const d = new Date()
         const y = d.getFullYear()
         const m = String(d.getMonth() + 1).padStart(2, '0')
         const day = String(d.getDate()).padStart(2, '0')
         return `${y}-${m}-${day}`
-    })()
+    }, [])
     const [endDate, setEndDate] = useState<string>(todayKey)
     const [error, setError] = useState<string | null>(null)
 
@@ -119,7 +119,7 @@ export function OccurrencePopover({
         }
         document.addEventListener('mousedown', handle)
         return () => document.removeEventListener('mousedown', handle)
-    }, [open])
+    }, [open, todayKey])
 
     // Close on escape
     useEffect(() => {
@@ -134,7 +134,7 @@ export function OccurrencePopover({
         }
         document.addEventListener('keydown', handle)
         return () => document.removeEventListener('keydown', handle)
-    }, [open])
+    }, [open, todayKey])
 
     const handleCancelConfirmed = async () => {
         setCanceling(true)

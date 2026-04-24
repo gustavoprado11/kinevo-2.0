@@ -17,7 +17,7 @@ import {
 import { createRecurringAppointment } from '@/actions/appointments/create-recurring'
 import { createRecurringAppointmentGroup } from '@/actions/appointments/create-recurring-group'
 
-type Frequency = 'weekly' | 'biweekly' | 'monthly'
+type Frequency = 'once' | 'weekly' | 'biweekly' | 'monthly'
 
 interface Slot {
     id: string
@@ -177,10 +177,13 @@ export function CreateAppointmentModal({
     const effectiveStudentId = preselectedStudentId ?? selectedStudentId
 
     const isMonthly = frequency === 'monthly'
+    const isOnce = frequency === 'once'
+    /** Monthly e Once: força 1 slot só; day_of_week derivado de startsOn. */
+    const isSingleSlotMode = isMonthly || isOnce
 
-    // Monthly: force exactly 1 slot and align its dayOfWeek to startsOn.
+    // Single-slot modes: force exactly 1 slot and align its dayOfWeek to startsOn.
     useEffect(() => {
-        if (!isMonthly) return
+        if (!isSingleSlotMode) return
         const expectedDow = dayOfWeekFromKey(startsOn)
         setSlots((prev) => {
             const only = prev[0]
@@ -188,14 +191,14 @@ export function CreateAppointmentModal({
                 : makeInitialSlot(expectedDow, '07:00')
             return [only]
         })
-    }, [isMonthly, startsOn])
+    }, [isSingleSlotMode, startsOn])
 
     const updateSlot = (id: string, patch: Partial<Slot>) => {
         setSlots((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)))
     }
 
     const addSlot = () => {
-        if (isMonthly) return
+        if (isSingleSlotMode) return
         if (slots.length >= MAX_SLOTS) return
         setSlots((prev) => [
             ...prev,
@@ -282,11 +285,13 @@ export function CreateAppointmentModal({
 
     if (!isOpen) return null
 
-    const addDisabledReason = isMonthly
-        ? 'Rotinas mensais permitem apenas um dia'
-        : slots.length >= MAX_SLOTS
-          ? `Máximo de ${MAX_SLOTS} dias`
-          : null
+    const addDisabledReason = isOnce
+        ? 'Agendamento único tem apenas 1 dia'
+        : isMonthly
+          ? 'Rotinas mensais permitem apenas um dia'
+          : slots.length >= MAX_SLOTS
+            ? `Máximo de ${MAX_SLOTS} dias`
+            : null
     return (
         <div className="fixed inset-0 z-modal flex items-center justify-center p-4">
             <div
@@ -455,9 +460,10 @@ export function CreateAppointmentModal({
                         <label className="mb-2 block text-[11px] font-bold text-[#6E6E73] dark:text-k-text-quaternary uppercase tracking-wide">
                             Frequência
                         </label>
-                        <div className="grid grid-cols-3 gap-1 bg-[#F5F5F7] dark:bg-surface-inset p-1 rounded-lg">
+                        <div className="grid grid-cols-4 gap-1 bg-[#F5F5F7] dark:bg-surface-inset p-1 rounded-lg">
                             {(
                                 [
+                                    { value: 'once', label: 'Única' },
                                     { value: 'weekly', label: 'Semanal' },
                                     { value: 'biweekly', label: 'Quinzenal' },
                                     { value: 'monthly', label: 'Mensal' },
@@ -483,10 +489,15 @@ export function CreateAppointmentModal({
                     {/* Slots */}
                     <div>
                         <label className="mb-2 flex items-center justify-between text-[11px] font-bold text-[#6E6E73] dark:text-k-text-quaternary uppercase tracking-wide">
-                            <span>Dias e horários</span>
+                            <span>{isOnce ? 'Horário' : 'Dias e horários'}</span>
                             {isMonthly && (
                                 <span className="text-[10px] font-medium normal-case text-[#86868B] dark:text-k-text-quaternary">
                                     (apenas 1 dia em mensal)
+                                </span>
+                            )}
+                            {isOnce && (
+                                <span className="text-[10px] font-medium normal-case text-[#86868B] dark:text-k-text-quaternary">
+                                    (1 dia na data escolhida)
                                 </span>
                             )}
                         </label>
@@ -516,7 +527,7 @@ export function CreateAppointmentModal({
                                     <div className="grid grid-cols-7 gap-1">
                                         {DAY_LABELS.map((lbl, dow) => {
                                             const selected = slot.dayOfWeek === dow
-                                            const disabled = isMonthly
+                                            const disabled = isSingleSlotMode
                                             return (
                                                 <button
                                                     type="button"
@@ -622,7 +633,7 @@ export function CreateAppointmentModal({
                             htmlFor="startsOn"
                             className="mb-1.5 block text-[11px] font-bold text-[#6E6E73] dark:text-k-text-quaternary uppercase tracking-wide"
                         >
-                            Data de início
+                            {isOnce ? 'Data' : 'Data de início'}
                         </label>
                         <div className="relative">
                             <CalendarIcon

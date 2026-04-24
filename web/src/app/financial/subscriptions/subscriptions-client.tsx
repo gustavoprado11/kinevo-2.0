@@ -18,7 +18,7 @@ import { InfoTooltip } from '@/components/ui/info-tooltip'
 import {
     Plus, Search, Users, Loader2, CheckCircle, ArrowLeft, Copy,
     RefreshCw, MessageCircle, Settings2, ChevronDown,
-    Heart, DollarSign, CheckCircle2, FolderArchive
+    Heart, DollarSign, CheckCircle2, FolderArchive, CalendarOff
 } from 'lucide-react'
 
 interface Trainer {
@@ -149,6 +149,11 @@ export function SubscriptionsClient({
     const [blockConfirmId, setBlockConfirmId] = useState<string | null>(null)
     const [howToOpen, setHowToOpen] = useState(false)
     const [archiveTarget, setArchiveTarget] = useState<FinancialStudent | null>(null)
+    const [appointmentPrompt, setAppointmentPrompt] = useState<{
+        studentId: string
+        studentName: string
+        count: number
+    } | null>(null)
     const [archiveLoading, setArchiveLoading] = useState(false)
 
     // Sync local state with server data
@@ -270,8 +275,39 @@ export function SubscriptionsClient({
         try {
             const { archiveStudent } = await import('@/actions/financial/archive-student')
             const result = await archiveStudent({ studentId: archiveTarget.student_id })
+            if (result.needsAppointmentDecision) {
+                setAppointmentPrompt({
+                    studentId: archiveTarget.student_id,
+                    studentName: archiveTarget.student_name ?? 'este aluno',
+                    count: result.activeRoutinesCount ?? 0,
+                })
+                setArchiveTarget(null)
+                return
+            }
             if (result.success) {
                 setArchiveTarget(null)
+                router.refresh()
+            } else {
+                alert(result.error || 'Erro ao arquivar')
+            }
+        } catch {
+            alert('Erro ao arquivar aluno')
+        } finally {
+            setArchiveLoading(false)
+        }
+    }
+
+    const continueArchiveWithDecision = async (decision: 'keep' | 'cancel') => {
+        if (!appointmentPrompt) return
+        setArchiveLoading(true)
+        try {
+            const { archiveStudent } = await import('@/actions/financial/archive-student')
+            const result = await archiveStudent({
+                studentId: appointmentPrompt.studentId,
+                appointmentDecision: decision,
+            })
+            setAppointmentPrompt(null)
+            if (result.success) {
                 router.refresh()
             } else {
                 alert(result.error || 'Erro ao arquivar')
@@ -835,6 +871,63 @@ export function SubscriptionsClient({
                                 ) : (
                                     'Sim, Arquivar'
                                 )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Appointment Decision Modal (segunda etapa quando há rotinas ativas) */}
+            {appointmentPrompt && (
+                <div className="fixed inset-0 z-float flex items-center justify-center p-4">
+                    <div
+                        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+                        onClick={() => !archiveLoading && setAppointmentPrompt(null)}
+                    />
+                    <div className="relative bg-background border border-border rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+                        <div className="w-12 h-12 bg-red-500/10 rounded-full flex items-center justify-center mb-4 mx-auto">
+                            <CalendarOff className="w-6 h-6 text-red-500" />
+                        </div>
+                        <h3 className="text-lg font-bold text-foreground text-center mb-2">
+                            E os agendamentos?
+                        </h3>
+                        <p className="text-muted-foreground text-sm text-center mb-6">
+                            <span className="text-foreground font-medium">{appointmentPrompt.studentName}</span>{' '}
+                            tem{' '}
+                            <span className="text-foreground font-medium">
+                                {appointmentPrompt.count}{' '}
+                                {appointmentPrompt.count === 1 ? 'rotina ativa' : 'rotinas ativas'}
+                            </span>
+                            . Deseja encerrá-las também?
+                        </p>
+                        <div className="flex flex-col gap-2">
+                            <button
+                                onClick={() => void continueArchiveWithDecision('cancel')}
+                                disabled={archiveLoading}
+                                className="w-full px-4 py-2.5 bg-red-600 hover:bg-red-500 text-white text-sm font-semibold rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                            >
+                                {archiveLoading ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        Processando...
+                                    </>
+                                ) : (
+                                    'Arquivar e encerrar agendamentos'
+                                )}
+                            </button>
+                            <button
+                                onClick={() => void continueArchiveWithDecision('keep')}
+                                disabled={archiveLoading}
+                                className="w-full px-4 py-2.5 bg-muted hover:bg-muted/80 text-foreground text-sm font-medium rounded-xl transition-colors disabled:opacity-50"
+                            >
+                                Só arquivar aluno
+                            </button>
+                            <button
+                                onClick={() => setAppointmentPrompt(null)}
+                                disabled={archiveLoading}
+                                className="w-full px-4 py-2 text-muted-foreground hover:text-foreground text-xs font-medium transition-colors disabled:opacity-50"
+                            >
+                                Voltar
                             </button>
                         </div>
                     </div>

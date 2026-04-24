@@ -46,6 +46,49 @@ describe('CreateAppointmentModal', () => {
         expect(terca).toBeDisabled()
     })
 
+    it('renderiza 4° botão "Única" no segmented control de frequência', () => {
+        render(<CreateAppointmentModal {...baseProps} />)
+        expect(screen.getByRole('button', { name: /^Única$/i })).toBeInTheDocument()
+    })
+
+    it('selecionar "Única" desabilita Adicionar dia e dia da semana', () => {
+        render(<CreateAppointmentModal {...baseProps} />)
+        fireEvent.click(screen.getByRole('button', { name: /^Única$/i }))
+        expect(screen.getByRole('button', { name: /Adicionar dia/i })).toBeDisabled()
+        const terca = screen.getByRole('button', { name: /Ter — dia 1/i })
+        expect(terca).toBeDisabled()
+        expect(screen.getByText(/^Horário$/i)).toBeInTheDocument()
+    })
+
+    it('trocar de Semanal com múltiplos slots para "Única" reduz pra 1 slot', () => {
+        render(<CreateAppointmentModal {...baseProps} />)
+        // Adiciona 2 slots extras (total 3)
+        fireEvent.click(screen.getByRole('button', { name: /Adicionar dia/i }))
+        fireEvent.click(screen.getByRole('button', { name: /Adicionar dia/i }))
+        expect(screen.getAllByText(/^Dia \d/i)).toHaveLength(3)
+
+        fireEvent.click(screen.getByRole('button', { name: /^Única$/i }))
+        // Agora só 1 "Dia 1"
+        expect(screen.getAllByText(/^Dia \d/i)).toHaveLength(1)
+        expect(screen.getByText(/^Dia 1$/i)).toBeInTheDocument()
+    })
+
+    it('submit com frequência "Única" envia frequency: once', async () => {
+        createActionMock.mockResolvedValueOnce({
+            success: true,
+            data: { id: 'ra-once', conflicts: [] },
+        })
+        render(<CreateAppointmentModal {...baseProps} />)
+        fireEvent.click(screen.getByRole('button', { name: /^Única$/i }))
+        fireEvent.click(screen.getByRole('button', { name: /Criar agendamento/i }))
+
+        await waitFor(() => {
+            expect(createActionMock).toHaveBeenCalledTimes(1)
+        })
+        const [input] = createActionMock.mock.calls[0]
+        expect(input.frequency).toBe('once')
+    })
+
     it('chama createRecurringAppointment ao submeter', async () => {
         createActionMock.mockResolvedValueOnce({
             success: true,

@@ -7,7 +7,27 @@ import { logContractEvent } from '@/lib/contract-events'
 import { sendStudentPush } from '@/lib/push-notifications'
 import { revalidatePath } from 'next/cache'
 
-export async function archiveStudent({ studentId }: { studentId: string }) {
+export type ArchiveAppointmentDecision = 'keep' | 'cancel'
+
+export interface ArchiveStudentResult {
+    success?: boolean
+    error?: string
+    /**
+     * Quando presente, o trainer precisa decidir o que fazer com as rotinas
+     * ativas do aluno antes de prosseguir. UI mostra diálogo e re-chama
+     * `archiveStudent` passando `appointmentDecision: 'keep' | 'cancel'`.
+     */
+    needsAppointmentDecision?: boolean
+    activeRoutinesCount?: number
+}
+
+export async function archiveStudent({
+    studentId,
+    appointmentDecision,
+}: {
+    studentId: string
+    appointmentDecision?: ArchiveAppointmentDecision
+}): Promise<ArchiveStudentResult> {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
@@ -38,6 +58,37 @@ export async function archiveStudent({ studentId }: { studentId: string }) {
 
     if (student.coach_id !== trainer.id) {
         return { error: 'Sem permissão' }
+    }
+
+    // Se ainda não há decisão sobre agendamentos, conta rotinas ativas.
+    // Caso haja, pede decisão ao trainer antes de prosseguir.
+    if (appointmentDecision === undefined) {
+        const { count: activeRoutinesCount } = await supabaseAdmin
+            .from('recurring_appointments')
+            .select('id', { count: 'exact', head: true })
+            .eq('student_id', studentId)
+            .eq('trainer_id', trainer.id)
+            .eq('status', 'active')
+        if ((activeRoutinesCount ?? 0) > 0) {
+            return {
+                needsAppointmentDecision: true,
+                activeRoutinesCount: activeRoutinesCount ?? 0,
+            }
+        }
+    }
+
+    // Se trainer optou por cancelar, dispara bulk antes de arquivar.
+    // Reusa a action existente (ownership + push agregado + Google sync).
+    if (appointmentDecision === 'cancel') {
+        try {
+            const { cancelAllAppointmentsForStudent } = await import(
+                '@/actions/appointments/cancel-all-for-student'
+            )
+            await cancelAllAppointmentsForStudent({ studentId })
+        } catch (err) {
+            console.error('[archive-student] cancel appointments error:', err)
+            // Não bloqueia o archive — é best-effort. Aluno ainda é arquivado.
+        }
     }
 
     try {
