@@ -35,6 +35,13 @@ supabase/.temp/
 # tmp artifacts
 tmp/
 
+# container mount artifacts (e.g. WSL / dev-container writes that captured
+# absolute-path writes during local development)
+mnt/
+
+# HTML prototypes dropped at repo root — keep design work out of the tree
+/dashboard-*.html
+
 # MCP config (local per-developer)
 .mcp.json
 .vscode/mcp.json
