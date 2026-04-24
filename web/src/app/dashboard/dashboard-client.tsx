@@ -195,7 +195,10 @@ export function DashboardClient({ trainer, data, initialStudents, selfStudentId,
             <TrainerProfileBanner selfStudentId={selfStudentId} />
 
             {/* 1. Saudação — always fixed */}
-            <DashboardHeader trainerName={trainer.name} />
+            <DashboardHeader
+                trainerName={trainer.name}
+                students={students.map(s => ({ id: s.id, name: s.name, status: s.status }))}
+            />
 
             {/* 2. Quick Actions — always fixed */}
             <div className="mb-5">

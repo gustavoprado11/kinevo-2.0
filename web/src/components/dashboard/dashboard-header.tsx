@@ -1,13 +1,16 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { Monitor, Sparkles, MessageCircle, Search } from 'lucide-react'
+import { Monitor, Sparkles, MessageCircle } from 'lucide-react'
 import { useCommunicationStore } from '@/stores/communication-store'
 import { NotificationBell } from '@/components/layout/notification-bell'
 import { useUnreadMessagesCount } from '@/hooks/use-unread-messages-count'
+import { InlineSearchBar } from '@/components/search/inline-search-bar'
+import type { SearchStudent } from '@/components/search/search-results'
 
 interface DashboardHeaderProps {
     trainerName: string
+    students?: SearchStudent[]
 }
 
 function getGreeting(): string {
@@ -28,12 +31,7 @@ function formatDate(): string {
     return raw.replace(/^(\w)/, (_, c: string) => c.toUpperCase())
 }
 
-function openCommandPalette() {
-    // Dispatch the same keyboard event that cmdk listens for
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))
-}
-
-export function DashboardHeader({ trainerName }: DashboardHeaderProps) {
+export function DashboardHeader({ trainerName, students = [] }: DashboardHeaderProps) {
     const router = useRouter()
     const { isOpen, activeTab, openPanel, closePanel, switchTab, openChat, unreadMessagesCount } = useCommunicationStore()
     const firstName = trainerName.split(' ')[0]
@@ -73,15 +71,8 @@ export function DashboardHeader({ trainerName }: DashboardHeaderProps) {
                 <span className="text-[13px] text-k-text-tertiary mt-1.5 block" suppressHydrationWarning>{formatDate()}</span>
             </div>
             <div className="flex items-center gap-2">
-                {/* Search / Command Palette trigger */}
-                <button
-                    onClick={openCommandPalette}
-                    className="flex items-center gap-2 px-3 py-1.5 border border-[#D2D2D7] dark:border-k-border-primary bg-white dark:bg-surface-card text-[#86868B] dark:text-k-text-quaternary hover:text-[#1D1D1F] dark:hover:text-k-text-primary hover:border-[#AEAEB2] dark:hover:border-k-border-primary text-sm rounded-xl transition-colors"
-                >
-                    <Search className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">Buscar</span>
-                    <kbd className="hidden sm:inline text-[10px] bg-[#F5F5F7] dark:bg-glass-bg px-1.5 py-0.5 rounded font-mono ml-1">⌘K</kbd>
-                </button>
+                {/* Inline search bar — expands on click/⌘K, overlay so siblings stay still */}
+                <InlineSearchBar students={students} />
 
                 <NotificationBell />
 
