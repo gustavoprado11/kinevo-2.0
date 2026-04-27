@@ -1,7 +1,17 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Alert } from 'react-native';
 import { BlurView } from 'expo-blur';
-import { ArrowRightLeft, PlayCircle, Check } from 'lucide-react-native';
+import {
+    ArrowRightLeft,
+    PlayCircle,
+    Check,
+    TrendingUp,
+    TrendingDown,
+    ChevronsDown,
+    Layers,
+    Dumbbell,
+    Pencil,
+} from 'lucide-react-native';
 import type { MethodKey } from '@kinevo/shared/types/prescription';
 import { getMethodChipLabel } from '@kinevo/shared/lib/prescription/method-labels';
 import { SetRow } from './SetRow';
@@ -92,6 +102,18 @@ export function ExerciseCard({
     const displayReps = hasScheme ? summary!.reps : reps;
     const displayRest = hasScheme ? summary!.rest : restSeconds;
     const methodChip = getMethodChipLabel(methodKey);
+    const MethodIcon = (() => {
+        switch (methodKey) {
+            case 'pyramid_down': return TrendingDown;
+            case 'pyramid_up':   return TrendingUp;
+            case 'drop_set':     return ChevronsDown;
+            case 'cluster':      return Layers;
+            case 'top_backoff':  return TrendingUp;
+            case '5x5':          return Dumbbell;
+            case 'custom':       return Pencil;
+            default:             return Dumbbell;
+        }
+    })();
 
     return (
         <BlurView
@@ -116,19 +138,26 @@ export function ExerciseCard({
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
                 <View style={{ flex: 1, marginRight: 8 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 2 }}>
-                        <Text style={{ fontSize: 15, fontWeight: '700', color: '#0f172a' }}>
+                        <Text style={{ fontSize: 15, fontWeight: '700', color: '#0f172a', flexShrink: 1 }}>
                             {exerciseName}
                         </Text>
                         {methodChip ? (
                             <View
+                                accessibilityLabel={`Método: ${methodChip}`}
                                 style={{
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    gap: 4,
                                     paddingHorizontal: 8,
-                                    paddingVertical: 2,
+                                    paddingVertical: 3,
                                     borderRadius: 999,
-                                    backgroundColor: 'rgba(124, 58, 237, 0.10)',
+                                    backgroundColor: 'rgba(124, 58, 237, 0.12)',
+                                    borderWidth: 1,
+                                    borderColor: 'rgba(124, 58, 237, 0.25)',
                                 }}
                             >
-                                <Text style={{ fontSize: 10, fontWeight: '700', color: '#6d28d9' }}>
+                                <MethodIcon size={11} color="#6d28d9" strokeWidth={2.4} />
+                                <Text style={{ fontSize: 11, fontWeight: '700', color: '#6d28d9', letterSpacing: 0.2 }}>
                                     {methodChip}
                                 </Text>
                             </View>

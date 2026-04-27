@@ -10,68 +10,77 @@ import {
     Infinity as InfinityIcon,
 } from 'lucide-react-native';
 import type { SetType } from '@kinevo/shared/types/prescription';
+import {
+    SET_TYPE_LABELS,
+    SET_TYPE_BADGE_LABELS,
+} from '@kinevo/shared/lib/prescription/set-type-labels';
 
 interface SetTypeBadgeProps {
     setType: SetType;
-    /** When `compact`, renders only the icon dot (used inside SetRow alongside #). */
+    /** When `compact`, renders only the icon dot (used to the left of the
+     *  set number — saves horizontal space inside the row). */
     compact?: boolean;
 }
 
 interface BadgeStyle {
-    label: string;
     bg: string;
     fg: string;
     Icon: React.ComponentType<{ size: number; color: string; strokeWidth?: number }>;
 }
 
 const STYLE_BY_TYPE: Record<Exclude<SetType, 'normal'>, BadgeStyle> = {
-    warmup:  { label: 'Aq.',    bg: 'rgba(148, 163, 184, 0.18)', fg: '#475569', Icon: Flame },
-    top:     { label: 'Top',    bg: 'rgba(249, 115, 22, 0.16)',  fg: '#c2410c', Icon: ArrowUp },
-    backoff: { label: 'Back',   bg: 'rgba(100, 116, 139, 0.16)', fg: '#475569', Icon: ArrowDown },
-    drop:    { label: 'Drop',   bg: 'rgba(239, 68, 68, 0.16)',   fg: '#b91c1c', Icon: ChevronsDown },
-    failure: { label: 'Falha',  bg: 'rgba(127, 29, 29, 0.18)',   fg: '#7f1d1d', Icon: Zap },
-    cluster: { label: 'Cluster',bg: 'rgba(124, 58, 237, 0.16)',  fg: '#6d28d9', Icon: Layers },
-    amrap:   { label: 'AMRAP',  bg: 'rgba(59, 130, 246, 0.16)',  fg: '#1d4ed8', Icon: InfinityIcon },
+    warmup:  { bg: 'rgba(148, 163, 184, 0.18)', fg: '#475569', Icon: Flame },
+    top:     { bg: 'rgba(249, 115, 22, 0.16)',  fg: '#c2410c', Icon: ArrowUp },
+    backoff: { bg: 'rgba(14, 165, 233, 0.14)',  fg: '#0369a1', Icon: ArrowDown },
+    drop:    { bg: 'rgba(244, 63, 94, 0.16)',   fg: '#be123c', Icon: ChevronsDown },
+    failure: { bg: 'rgba(127, 29, 29, 0.20)',   fg: '#7f1d1d', Icon: Zap },
+    cluster: { bg: 'rgba(124, 58, 237, 0.16)',  fg: '#6d28d9', Icon: Layers },
+    amrap:   { bg: 'rgba(59, 130, 246, 0.16)',  fg: '#1d4ed8', Icon: InfinityIcon },
 };
 
 export function SetTypeBadge({ setType, compact }: SetTypeBadgeProps) {
     if (setType === 'normal') return null;
     const style = STYLE_BY_TYPE[setType];
     if (!style) return null;
-    const { label, bg, fg, Icon } = style;
+    const { bg, fg, Icon } = style;
+    const badgeText = SET_TYPE_BADGE_LABELS[setType];
+    const fullLabel = SET_TYPE_LABELS[setType];
 
     if (compact) {
         return (
             <View
-                accessibilityLabel={label}
+                accessibilityLabel={fullLabel}
                 style={{
-                    width: 20,
-                    height: 20,
-                    borderRadius: 10,
+                    width: 22,
+                    height: 22,
+                    borderRadius: 11,
                     backgroundColor: bg,
                     alignItems: 'center',
                     justifyContent: 'center',
                 }}
             >
-                <Icon size={12} color={fg} strokeWidth={2.4} />
+                <Icon size={13} color={fg} strokeWidth={2.4} />
             </View>
         );
     }
 
     return (
         <View
+            accessibilityLabel={fullLabel}
             style={{
                 flexDirection: 'row',
                 alignItems: 'center',
-                paddingHorizontal: 6,
-                paddingVertical: 2,
+                paddingHorizontal: 7,
+                paddingVertical: 3,
                 borderRadius: 6,
                 backgroundColor: bg,
-                gap: 3,
+                gap: 4,
             }}
         >
-            <Icon size={11} color={fg} strokeWidth={2.4} />
-            <Text style={{ fontSize: 10, fontWeight: '700', color: fg }}>{label}</Text>
+            <Icon size={11} color={fg} strokeWidth={2.5} />
+            <Text style={{ fontSize: 10, fontWeight: '800', color: fg, letterSpacing: 0.3 }}>
+                {badgeText}
+            </Text>
         </View>
     );
 }

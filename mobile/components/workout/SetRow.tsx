@@ -15,11 +15,11 @@ interface SetRowProps {
     onToggleComplete: () => void;
     previousWeight?: number;
     previousReps?: number;
-    /** Per-set type prescribed by the trainer (badge to the left). Defaults to normal. */
+    /** Per-set type prescribed by the trainer (badge to the left of #). Defaults to normal. */
     setType?: SetType;
-    /** Per-set rep target prescribed by the trainer (used as placeholder + cluster hint). */
+    /** Per-set rep target prescribed by the trainer ("Meta: …" label above the reps input). */
     repsTarget?: string;
-    /** When true, hides inputs and the check button — preview / read-only rendering. */
+    /** When true, hides inputs / check button — preview / read-only rendering. */
     readOnly?: boolean;
 }
 
@@ -52,15 +52,25 @@ export function SetRow({
 
     const hasPrevious = previousWeight !== undefined && previousReps !== undefined;
     const target = (repsTarget ?? '').trim();
-    const cluster = target.length > 0 && isClusterReps(target);
-    const amrap = setType === 'amrap' || (target.length > 0 && isAmrapReps(target));
+    const hasTarget = target.length > 0;
+    const cluster = hasTarget && isClusterReps(target);
+    const amrap = setType === 'amrap' || (hasTarget && isAmrapReps(target));
 
+    // Placeholder priority: target → previous → empty.
     const repsPlaceholder = (() => {
         if (amrap) return 'AMRAP';
         if (cluster) return target;
-        if (target.length > 0) return target;
+        if (hasTarget) return target;
         if (hasPrevious) return String(previousReps);
         return '';
+    })();
+
+    // Meta label shown above the reps input — uses target when present.
+    const metaLabel = (() => {
+        if (amrap) return 'Meta: até a falha';
+        if (cluster) return `Meta: ${target} · cluster`;
+        if (hasTarget) return `Meta: ${target}`;
+        return null;
     })();
 
     return (
@@ -72,7 +82,7 @@ export function SetRow({
                     paddingVertical: 5,
                     paddingHorizontal: 4,
                     borderRadius: 10,
-                    marginBottom: cluster ? 0 : 4,
+                    marginBottom: 4,
                 },
                 isCompleted && { backgroundColor: 'rgba(124, 58, 237, 0.06)' },
             ]}>
@@ -98,7 +108,7 @@ export function SetRow({
                     </Text>
                 </View>
 
-                {/* Type badge — shrinks the previous-set column when present */}
+                {/* Type badge — to the left of the previous-set column when present */}
                 {setType !== 'normal' ? (
                     <View style={{ marginRight: 6 }}>
                         <SetTypeBadge setType={setType} compact />
@@ -146,32 +156,47 @@ export function SetRow({
                     editable={!isCompleted && !readOnly}
                 />
 
-                {/* Reps Input */}
-                <TextInput
-                    style={[
-                        {
-                            flex: 1,
-                            height: 38,
-                            backgroundColor: '#f5f5f7',
-                            borderRadius: 10,
-                            textAlign: 'center',
-                            fontWeight: '600',
-                            fontSize: 15,
-                            color: '#0f172a',
-                            marginRight: 6,
-                            fontVariant: ['tabular-nums'],
-                        },
-                        isCompleted && { backgroundColor: 'rgba(124, 58, 237, 0.08)', color: '#7c3aed' },
-                        readOnly && { opacity: 0.85 },
-                    ]}
-                    placeholder={repsPlaceholder}
-                    placeholderTextColor={target.length > 0 || hasPrevious ? '#94a3b8' : '#cbd5e1'}
-                    keyboardType="number-pad"
-                    returnKeyType="done"
-                    value={reps}
-                    onChangeText={onRepsChange}
-                    editable={!isCompleted && !readOnly}
-                />
+                {/* Reps cell — stacks "Meta: …" label above the input. */}
+                <View style={{ flex: 1, marginRight: 6 }}>
+                    {metaLabel ? (
+                        <Text
+                            numberOfLines={1}
+                            style={{
+                                fontSize: 10,
+                                fontWeight: '700',
+                                color: '#7c3aed',
+                                textAlign: 'center',
+                                marginBottom: 2,
+                                letterSpacing: 0.2,
+                            }}
+                        >
+                            {metaLabel}
+                        </Text>
+                    ) : null}
+                    <TextInput
+                        style={[
+                            {
+                                height: 38,
+                                backgroundColor: '#f5f5f7',
+                                borderRadius: 10,
+                                textAlign: 'center',
+                                fontWeight: '600',
+                                fontSize: 15,
+                                color: '#0f172a',
+                                fontVariant: ['tabular-nums'],
+                            },
+                            isCompleted && { backgroundColor: 'rgba(124, 58, 237, 0.08)', color: '#7c3aed' },
+                            readOnly && { opacity: 0.85 },
+                        ]}
+                        placeholder={repsPlaceholder}
+                        placeholderTextColor={hasTarget ? 'rgba(124, 58, 237, 0.55)' : (hasPrevious ? '#94a3b8' : '#cbd5e1')}
+                        keyboardType="number-pad"
+                        returnKeyType="done"
+                        value={reps}
+                        onChangeText={onRepsChange}
+                        editable={!isCompleted && !readOnly}
+                    />
+                </View>
 
                 {/* Check Button — circular, gray → violet (hidden in readOnly) */}
                 {readOnly ? (
@@ -207,21 +232,6 @@ export function SetRow({
                     </TouchableOpacity>
                 )}
             </View>
-
-            {/* Cluster hint — visible quebra de reps abaixo da linha */}
-            {cluster ? (
-                <Text
-                    style={{
-                        marginLeft: 38,
-                        marginBottom: 4,
-                        fontSize: 11,
-                        color: '#6d28d9',
-                        fontWeight: '500',
-                    }}
-                >
-                    Meta: {target}
-                </Text>
-            ) : null}
         </View>
     );
 }
