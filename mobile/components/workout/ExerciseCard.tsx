@@ -242,6 +242,8 @@ export function ExerciseCard({
                             previousReps={prev?.reps}
                             setType={prescription?.set_type ?? 'normal'}
                             repsTarget={prescription?.reps_target}
+                            weightTargetKg={prescription?.weight_target_kg ?? null}
+                            weightTargetPct1rm={prescription?.weight_target_pct1rm ?? null}
                             readOnly={readOnly}
                         />
                     );

@@ -3,6 +3,10 @@ import { View, Text, TextInput, TouchableOpacity } from 'react-native';
 import { Check } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import type { SetType } from '@kinevo/shared/types/prescription';
+import {
+    buildWeightMetaLabel,
+    formatWeightKg,
+} from '@kinevo/shared/lib/prescription/set-scheme';
 import { SetTypeBadge } from './SetTypeBadge';
 
 interface SetRowProps {
@@ -19,6 +23,10 @@ interface SetRowProps {
     setType?: SetType;
     /** Per-set rep target prescribed by the trainer ("Meta: …" label above the reps input). */
     repsTarget?: string;
+    /** Per-set absolute weight target in kg (rendered as "Meta: 80 kg" above the weight input). */
+    weightTargetKg?: number | null;
+    /** Per-set weight target as % of 1RM (rendered as "Meta: 75% 1RM"; combined with kg when both are set). */
+    weightTargetPct1rm?: number | null;
     /** When true, hides inputs / check button — preview / read-only rendering. */
     readOnly?: boolean;
 }
@@ -38,6 +46,8 @@ export function SetRow({
     previousReps,
     setType = 'normal',
     repsTarget,
+    weightTargetKg,
+    weightTargetPct1rm,
     readOnly = false,
 }: SetRowProps) {
 
@@ -71,6 +81,16 @@ export function SetRow({
         if (cluster) return `Meta: ${target} · cluster`;
         if (hasTarget) return `Meta: ${target}`;
         return null;
+    })();
+
+    // Weight meta (kg / %1RM). Optional — null hides the label entirely.
+    const weightMetaLabel = buildWeightMetaLabel(weightTargetKg, weightTargetPct1rm);
+    const weightTargetKgFormatted = formatWeightKg(weightTargetKg);
+    const hasWeightTarget = weightMetaLabel !== null;
+    const weightPlaceholder = (() => {
+        if (weightTargetKgFormatted !== null) return weightTargetKgFormatted;
+        if (hasPrevious) return String(previousWeight);
+        return 'kg';
     })();
 
     return (
@@ -129,32 +149,47 @@ export function SetRow({
                     </Text>
                 </View>
 
-                {/* Weight Input */}
-                <TextInput
-                    style={[
-                        {
-                            flex: 1,
-                            height: 38,
-                            backgroundColor: '#f5f5f7',
-                            borderRadius: 10,
-                            textAlign: 'center',
-                            fontWeight: '600',
-                            fontSize: 15,
-                            color: '#0f172a',
-                            marginRight: 6,
-                            fontVariant: ['tabular-nums'],
-                        },
-                        isCompleted && { backgroundColor: 'rgba(124, 58, 237, 0.08)', color: '#7c3aed' },
-                        readOnly && { opacity: 0.85 },
-                    ]}
-                    placeholder={hasPrevious ? String(previousWeight) : 'kg'}
-                    placeholderTextColor={hasPrevious ? '#94a3b8' : '#cbd5e1'}
-                    keyboardType="decimal-pad"
-                    returnKeyType="next"
-                    value={weight}
-                    onChangeText={onWeightChange}
-                    editable={!isCompleted && !readOnly}
-                />
+                {/* Weight cell — stacks "Meta: …" label above the input when prescribed. */}
+                <View style={{ flex: 1, marginRight: 6 }}>
+                    {weightMetaLabel ? (
+                        <Text
+                            numberOfLines={1}
+                            style={{
+                                fontSize: 10,
+                                fontWeight: '700',
+                                color: '#7c3aed',
+                                textAlign: 'center',
+                                marginBottom: 2,
+                                letterSpacing: 0.2,
+                            }}
+                        >
+                            {weightMetaLabel}
+                        </Text>
+                    ) : null}
+                    <TextInput
+                        style={[
+                            {
+                                height: 38,
+                                backgroundColor: '#f5f5f7',
+                                borderRadius: 10,
+                                textAlign: 'center',
+                                fontWeight: '600',
+                                fontSize: 15,
+                                color: '#0f172a',
+                                fontVariant: ['tabular-nums'],
+                            },
+                            isCompleted && { backgroundColor: 'rgba(124, 58, 237, 0.08)', color: '#7c3aed' },
+                            readOnly && { opacity: 0.85 },
+                        ]}
+                        placeholder={weightPlaceholder}
+                        placeholderTextColor={hasWeightTarget ? 'rgba(124, 58, 237, 0.55)' : (hasPrevious ? '#94a3b8' : '#cbd5e1')}
+                        keyboardType="decimal-pad"
+                        returnKeyType="next"
+                        value={weight}
+                        onChangeText={onWeightChange}
+                        editable={!isCompleted && !readOnly}
+                    />
+                </View>
 
                 {/* Reps cell — stacks "Meta: …" label above the input. */}
                 <View style={{ flex: 1, marginRight: 6 }}>
