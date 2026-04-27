@@ -244,6 +244,51 @@ export const expandSchemeByRounds = (
     return expanded
 }
 
+/** Inverse of `expandSchemeByRounds`: given a materialized scheme stored in
+ *  `workout_item_set_templates` / `assigned_workout_item_sets`, reconstruct
+ *  the per-round scheme (one round only) plus the rounds count.
+ *
+ *  Used by the web builder load to display the editable per-round structure
+ *  while the persisted layout remains the materialized N×M grid.
+ *
+ *  Strategy:
+ *  - When `roundsHint <= 1` or the input is empty: returns the input as a
+ *    single-round scheme (rounds = 1). Linear methods always take this path.
+ *  - When `roundsHint > 1` and the input length is divisible by it: returns
+ *    the first round only with `set_number` reset to 1..M.
+ *  - When the data is inconsistent (length not divisible): falls back to the
+ *    safe single-round shape and rounds=1, so the UI still renders.
+ *
+ *  Precondition the save flow guarantees: every round materializes the same
+ *  per-round structure, so reading the first round is enough.
+ */
+export const collapseExpandedScheme = (
+    expandedScheme: WorkoutSet[] | null | undefined,
+    roundsHint: number | null | undefined,
+): { scheme: WorkoutSet[]; rounds: number } => {
+    const rounds = Number.isFinite(roundsHint as number)
+        ? Math.max(1, Math.floor(roundsHint as number))
+        : 1
+    if (!Array.isArray(expandedScheme) || expandedScheme.length === 0) {
+        return { scheme: [], rounds: 1 }
+    }
+    if (rounds <= 1) {
+        return { scheme: expandedScheme.map((s) => ({ ...s })), rounds: 1 }
+    }
+    const phasesPerRound = Math.floor(expandedScheme.length / rounds)
+    if (phasesPerRound <= 0 || phasesPerRound * rounds !== expandedScheme.length) {
+        // Inconsistent materialization — fall back to flat single round.
+        return { scheme: expandedScheme.map((s) => ({ ...s })), rounds: 1 }
+    }
+    const sorted = [...expandedScheme].sort((a, b) => a.set_number - b.set_number)
+    const firstRound = sorted.slice(0, phasesPerRound).map((s, idx) => ({
+        ...s,
+        set_number: idx + 1,
+        round_number: null,
+    }))
+    return { scheme: firstRound, rounds }
+}
+
 /** Given a 1-based `set_number` and the number of phases per round, derive
  *  the `{ round, phase }` pair (both 1-based). For `phasesPerRound <= 0`,
  *  returns `{ round: 1, phase: setNumber }` — defensive default for callers

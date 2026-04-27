@@ -4,6 +4,7 @@ import type { WorkoutSet, MethodKey } from '@kinevo/shared/types/prescription'
 import {
     applyPreset,
     buildWeightMetaLabel,
+    collapseExpandedScheme,
     deriveRoundAndPhase,
     expandSchemeByRounds,
     expandToSetScheme,
@@ -360,5 +361,72 @@ describe('summarizeWithRounds', () => {
 
     it('throws on empty input', () => {
         expect(() => summarizeWithRounds([], 3)).toThrow()
+    })
+})
+
+describe('collapseExpandedScheme', () => {
+    it('returns the input flat when rounds <= 1 (linear methods)', () => {
+        const flat = [
+            sampleSet({ set_number: 1, reps: '12' }),
+            sampleSet({ set_number: 2, reps: '10' }),
+            sampleSet({ set_number: 3, reps: '8' }),
+        ]
+        const out = collapseExpandedScheme(flat, 1)
+        expect(out.rounds).toBe(1)
+        expect(out.scheme).toHaveLength(3)
+        expect(out.scheme.map((s) => s.reps)).toEqual(['12', '10', '8'])
+    })
+
+    it('reconstructs the per-round scheme from a materialized array', () => {
+        const expanded = expandSchemeByRounds(
+            [
+                sampleSet({ set_number: 1, reps: '10', set_type: 'normal' }),
+                sampleSet({ set_number: 2, reps: '8', set_type: 'drop' }),
+                sampleSet({ set_number: 3, reps: '8', set_type: 'drop' }),
+            ],
+            3,
+        )
+        expect(expanded).toHaveLength(9)
+        const out = collapseExpandedScheme(expanded, 3)
+        expect(out.rounds).toBe(3)
+        expect(out.scheme).toHaveLength(3)
+        expect(out.scheme.map((s) => s.set_number)).toEqual([1, 2, 3])
+        expect(out.scheme.map((s) => s.reps)).toEqual(['10', '8', '8'])
+        expect(out.scheme.map((s) => s.set_type)).toEqual(['normal', 'drop', 'drop'])
+        // round_number is reset to null in the per-round shape (UI doesn't
+        // need it; the rounds count is the source of truth in the editor).
+        expect(out.scheme.every((s) => s.round_number === null)).toBe(true)
+    })
+
+    it('roundtrip: expand → collapse equals the original per-round structure', () => {
+        const perRound = [
+            sampleSet({ set_number: 1, reps: '12', rest_seconds: 90 }),
+            sampleSet({ set_number: 2, reps: '10', rest_seconds: 90 }),
+        ]
+        const out = collapseExpandedScheme(expandSchemeByRounds(perRound, 4), 4)
+        expect(out.rounds).toBe(4)
+        expect(out.scheme).toHaveLength(2)
+        expect(out.scheme.map((s) => s.reps)).toEqual(['12', '10'])
+        expect(out.scheme.map((s) => s.rest_seconds)).toEqual([90, 90])
+    })
+
+    it('falls back to flat when the materialization is inconsistent', () => {
+        // 5 rows tagged for 3 rounds is impossible (5/3 is not integer).
+        const inconsistent = [
+            sampleSet({ set_number: 1, reps: '10' }),
+            sampleSet({ set_number: 2, reps: '10' }),
+            sampleSet({ set_number: 3, reps: '10' }),
+            sampleSet({ set_number: 4, reps: '10' }),
+            sampleSet({ set_number: 5, reps: '10' }),
+        ]
+        const out = collapseExpandedScheme(inconsistent, 3)
+        expect(out.rounds).toBe(1)
+        expect(out.scheme).toHaveLength(5)
+    })
+
+    it('handles null/undefined safely', () => {
+        expect(collapseExpandedScheme(null, 3)).toEqual({ scheme: [], rounds: 1 })
+        expect(collapseExpandedScheme(undefined, null)).toEqual({ scheme: [], rounds: 1 })
+        expect(collapseExpandedScheme([], 5)).toEqual({ scheme: [], rounds: 1 })
     })
 })
