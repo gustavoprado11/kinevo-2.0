@@ -541,6 +541,11 @@ export interface WorkoutSet {
     /** Tempo string, e.g. "3-1-1-0". */
     tempo: string | null
     notes: string | null
+    /** Round this phase belongs to (1-based) for compound methods (drop-set,
+     *  cluster). NULL for linear methods and legacy rows pre-Fase-4.3. The
+     *  builder save flow materializes N rounds × M phases into N*M physical
+     *  rows, each tagged with its `round_number`. */
+    round_number?: number | null
 }
 
 /** Row in `training_method_presets`. */

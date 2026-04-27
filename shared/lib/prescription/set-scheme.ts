@@ -213,6 +213,88 @@ export const applyPreset = (
     return preset.defaultSetsConfig.map((s) => ({ ...s }))
 }
 
+/** Expand a per-round `set_scheme` into the materialized list that gets
+ *  persisted to `workout_item_set_templates`/`assigned_workout_item_sets`.
+ *
+ *  - `rounds <= 1`: identity (returns the input as is). Linear methods stay
+ *    untouched and `round_number` ends up null on every row.
+ *  - `rounds > 1`: repeats the per-round scheme N times. Each output row gets
+ *    a sequential `set_number` (1..rounds*phases) and a 1-based
+ *    `round_number`. Used by the mobile builder save flow and by the
+ *    `assign-program` Edge Function. */
+export const expandSchemeByRounds = (
+    scheme: WorkoutSet[],
+    rounds: number,
+): WorkoutSet[] => {
+    if (!Array.isArray(scheme) || scheme.length === 0) return []
+    const safeRounds = Math.max(1, Math.min(20, Math.floor(rounds)))
+    if (safeRounds <= 1) return scheme.map((s) => ({ ...s }))
+    const phasesPerRound = scheme.length
+    const expanded: WorkoutSet[] = []
+    for (let r = 0; r < safeRounds; r++) {
+        for (let p = 0; p < phasesPerRound; p++) {
+            const phase = scheme[p]
+            expanded.push({
+                ...phase,
+                set_number: r * phasesPerRound + p + 1,
+                round_number: r + 1,
+            })
+        }
+    }
+    return expanded
+}
+
+/** Given a 1-based `set_number` and the number of phases per round, derive
+ *  the `{ round, phase }` pair (both 1-based). For `phasesPerRound <= 0`,
+ *  returns `{ round: 1, phase: setNumber }` — defensive default for callers
+ *  that don't know whether the scheme was materialized. */
+export const deriveRoundAndPhase = (
+    setNumber: number,
+    phasesPerRound: number,
+): { round: number; phase: number } => {
+    if (!Number.isFinite(setNumber) || setNumber < 1) return { round: 1, phase: 1 }
+    if (!Number.isFinite(phasesPerRound) || phasesPerRound <= 0) {
+        return { round: 1, phase: Math.max(1, Math.floor(setNumber)) }
+    }
+    const round = Math.floor((setNumber - 1) / phasesPerRound) + 1
+    const phase = ((setNumber - 1) % phasesPerRound) + 1
+    return { round, phase }
+}
+
+/** Variant of `summarizeSetScheme` that respects `rounds` for compound
+ *  methods. The aggregate `(sets, reps, rest_seconds)` is what the parent
+ *  template stores, so when `rounds > 1` we need a compact representation
+ *  that survives the round trip — for example "3× 10/8/8" instead of joining
+ *  every materialized phase with dashes ("10-8-8-10-8-8-10-8-8").
+ *
+ *  - `rounds <= 1` or scheme not yet expanded: behaves like
+ *    `summarizeSetScheme` (joins distinct reps with `-`).
+ *  - `rounds > 1`: `sets` = phasesPerRound × rounds; `reps` = `${rounds}× ${a/b/c}`
+ *    where `a/b/c` are the per-round phase reps; `rest_seconds` is the rest
+ *    AFTER the first phase (i.e. the inner micro-rest, not the inter-round
+ *    pause). This keeps the legacy aggregate readable for clients that
+ *    haven't yet been updated to read `rounds`. */
+export const summarizeWithRounds = (
+    perRoundScheme: WorkoutSet[],
+    rounds: number,
+): SetSchemeSummary => {
+    if (!Array.isArray(perRoundScheme) || perRoundScheme.length === 0) {
+        throw new Error('summarizeWithRounds: scheme must contain at least one phase')
+    }
+    const safeRounds = Math.max(1, Math.min(20, Math.floor(rounds)))
+    const phasesPerRound = perRoundScheme.length
+
+    if (safeRounds <= 1) {
+        return summarizeSetScheme(perRoundScheme)
+    }
+
+    const phaseReps = perRoundScheme.map((s) => (s.reps?.trim() ?? '').length > 0 ? s.reps.trim() : '0').join('/')
+    const reps = `${safeRounds}× ${phaseReps}`
+    const sets = phasesPerRound * safeRounds
+    const rest_seconds = Math.max(0, perRoundScheme[0]?.rest_seconds ?? 0)
+    return { sets, reps, rest_seconds }
+}
+
 /** Format an absolute kg value as the human-readable string used in meta
  *  labels. Strips trailing zeros for whole numbers (`40.0` → `40`) and keeps
  *  one decimal otherwise (`22.5`). Returns null for null/undefined/non-finite.
