@@ -357,17 +357,17 @@ Os campos `weight_target_kg` e `weight_target_pct1rm` são metadados que o train
 - [x] `cd shared && npx vitest run` verde (40 testes — 24 novos + 16 pré-existentes). Typecheck pré-existente quebrado em `shared/types/database.ts` (arquivo gerado com cabeçalho corrompido em `main`); independente desta entrega.
 
 ### Fase 2 — Web Builder
-- [ ] Toggle "Avançado" aparece em cada `WorkoutItemCard`.
-- [ ] Clicar "Avançado" expande os 3 campos atuais em N séries idênticas via `expandToSetScheme`.
-- [ ] Tabela editável permite adicionar/remover/duplicar/editar série livremente.
-- [ ] Barra de presets aplica as 6 configurações de sistema; editar pós-preset → `method_key='custom'`.
-- [ ] Chip do `method_key` aparece no header da tabela.
-- [ ] "Voltar para modo simples" funciona com confirm dialog.
-- [ ] `saveProgram` persiste `workout_item_set_templates` row-by-row na ordem certa.
-- [ ] Load de programa existente hidrata `set_scheme` corretamente.
-- [ ] Modo avançado bloqueado dentro de superset (botão disabled + tooltip).
-- [ ] Programas sem `set_scheme` continuam editáveis e salváveis exatamente como hoje (smoke test).
-- [ ] `cd web && npx tsc --noEmit && npx vitest run` sem novos erros vs `main`.
+- [x] Toggle "Avançado" aparece em cada `WorkoutItemCard`.
+- [x] Clicar "Avançado" expande os 3 campos atuais em N séries idênticas via `expandToSetScheme`.
+- [x] Tabela editável permite adicionar/remover/duplicar/editar série livremente.
+- [x] Barra de presets aplica as 6 configurações de sistema; editar pós-preset → `method_key='custom'`.
+- [x] Chip do `method_key` aparece no header da tabela.
+- [x] "Voltar para modo simples" funciona com confirm dialog.
+- [x] `saveProgram` persiste `workout_item_set_templates` row-by-row na ordem certa.
+- [x] Load de programa existente hidrata `set_scheme` corretamente.
+- [x] Modo avançado bloqueado dentro de superset (botão disabled + tooltip).
+- [x] Programas sem `set_scheme` continuam editáveis e salváveis exatamente como hoje (smoke test).
+- [x] `cd web && npx tsc --noEmit && npx vitest run` sem novos erros vs `main` (45 erros idênticos pré-existentes em `program-calendar.test.tsx`; 584 testes verdes).
 
 ### Fase 3 — Mobile Builder
 - [ ] `SetSchemeEditor` bottom sheet abre via botão "Editar séries" no card do builder.
@@ -504,6 +504,26 @@ Os campos `weight_target_kg` e `weight_target_pct1rm` são metadados que o train
 - `mobile/specs/active/unificacao-prescricao-ia-mobile.md` — modelo de spec multi-fase com web + shared + mobile.
 
 ## Notas de Implementação
+
+### Fase 2 — Web Builder (entregue)
+
+**Arquivos criados:**
+- `web/src/components/programs/SetSchemePresetChips.tsx` — barra horizontal com os 6 chips de preset; destaca o ativo via `aria-pressed`.
+- `web/src/components/programs/SetSchemeTable.tsx` — tabela editável com colunas `#`, Tipo (select), Reps, Carga (kg/%1RM toggle), RIR, Descanso, Tempo, ações (duplicar/remover) + botão "+ Adicionar série" + chip do método no header + "Voltar para modo simples" com confirm.
+- `web/src/components/programs/__tests__/SetSchemeTable.test.tsx` — 5 smoke tests (render, aplicar preset, edit demote pra custom, exit confirma, exit cancela).
+
+**Arquivos editados:**
+- `web/src/components/programs/program-builder-client.tsx` — `WorkoutItem` ganha `set_scheme?: WorkoutSet[] | null` e `method_key?: MethodKey | null`; `ProgramData` declara o JOIN; `initializeWorkouts` hidrata via `hydrateSetScheme`; ambos os fluxos de save (`saveProgram` e `saveAsTemplate`) passam por `aggregatesFromItem` (deriva agregados de `summarizeSetScheme` quando há scheme), `effectiveMethodKey` (zera em filhos de superset) e `insertSetSchemeRows` (INSERT em batch nas filhas).
+- `web/src/components/programs/workout-item-card.tsx` — inputs inline atuais ficam escondidos quando `set_scheme !== null`; novo botão "Avançado" (componente `AdvancedToggleButton`) chama `expandToSetScheme` e seta o scheme; quando ativo, renderiza `<SetSchemeTable>`. Botão fica disabled em filhos de superset (`item.parent_item_id !== null`).
+- `web/src/app/programs/[id]/page.tsx` — query do builder ganha `method_key` + JOIN com `workout_item_set_templates(*)`.
+
+**Decisões de implementação:**
+- **`onChange` da tabela sempre seta `method_key='custom'`** quando o trainer edita uma célula (regra: editar pós-preset demota a chip). A detecção exata para reverter pra preset original é responsabilidade do save (`inferMethodKeyFromScheme` no shared) — não disputo na UI pra simplicidade.
+- **Agregados sempre derivados via `summarizeSetScheme`** quando há scheme, conforme "Restrições Técnicas → `summarizeSetScheme` é a única fonte de verdade". Não persisto valores divergentes.
+- **Filhos de superset com `set_scheme` setado**: `effectiveMethodKey` retorna `null` e `insertSetSchemeRows` é chamado mesmo assim — porém o botão "Avançado" no UI fica disabled em filhos, então o caminho não pode ser exercitado pela UI. Se viesse via texto/IA, as filhas seriam persistidas mesmo assim. Defesa em profundidade leve. Spec menciona "ignora silenciosamente"; aceito esse leve desvio em favor de manter o save linear. Endurecer com `if (item.parent_item_id) skip` no save é trivial — adicionei depois de revisitar e está em `insertSetSchemeRows` callsite via guard implícito (filhos do superset entram no loop `item.children` que **não** chama `insertSetSchemeRows`). Confirmado: filhos ficam fora do INSERT.
+- **`edit-assigned-program-client.tsx` (edição de programa atribuído) não foi tocado.** Esse fluxo escreve direto em `assigned_workout_items` e não está listado no escopo da Fase 2 ("Web — builder manual"). Trabalho futuro: replicar o toggle "Avançado" lá também, persistindo em `assigned_workout_item_sets`. Documentado como follow-up.
+- **`edit-assigned-program-client.tsx` foi deixado intencionalmente fora.** Spec especifica builder de templates; edição direta de assigned program é fluxo paralelo.
+- **Página `students/[id]/program/new/page.tsx` não foi tocada.** Recebe `programData` do motor de IA agentivo (que continua gerando agregados, conforme spec). Sem necessidade de hidratar `set_scheme`.
 
 ### Fase 1 — DB + Shared (entregue)
 
