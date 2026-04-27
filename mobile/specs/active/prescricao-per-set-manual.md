@@ -370,13 +370,13 @@ Os campos `weight_target_kg` e `weight_target_pct1rm` são metadados que o train
 - [x] `cd web && npx tsc --noEmit && npx vitest run` sem novos erros vs `main` (45 erros idênticos pré-existentes em `program-calendar.test.tsx`; 584 testes verdes).
 
 ### Fase 3 — Mobile Builder
-- [ ] `SetSchemeEditor` bottom sheet abre via botão "Editar séries" no card do builder.
-- [ ] UX: tabela vertical com card por série, steppers ergonômicos, presets em chips horizontais.
-- [ ] Chip do `method_key` aparece no card do builder quando aplicável.
-- [ ] `saveProgram` mobile persiste filhas (RPC ou inserts row-by-row).
-- [ ] MMKV migration compatível: drafts pré-Fase-3 reabrem sem crash, com `set_scheme: null`.
-- [ ] Modo avançado bloqueado dentro de superset.
-- [ ] `cd mobile && npx tsc --noEmit && npx vitest run` sem novos erros vs `main`.
+- [x] `SetSchemeEditor` bottom sheet abre via botão "Editar séries" no card do builder.
+- [x] UX: tabela vertical com card por série, steppers ergonômicos, presets em chips horizontais.
+- [x] Chip do `method_key` aparece no card do builder quando aplicável.
+- [x] `saveProgram` mobile persiste filhas (inserts row-by-row em `workout_item_set_templates`).
+- [x] MMKV migration compatível: drafts pré-Fase-3 reabrem sem crash, com `set_scheme: null`.
+- [x] Modo avançado bloqueado dentro de superset (botão "Editar séries" disabled em filhos).
+- [x] `cd mobile && npx tsc --noEmit && npx vitest run` sem novos erros vs `main` (21 erros pré-existentes idênticos; 245 testes verdes — 6 novos).
 
 ### Fase 4 — Sala de Treino
 - [ ] `useWorkoutSession` hidrata os sets a partir de `assigned_workout_item_sets` quando existem.
@@ -504,6 +504,33 @@ Os campos `weight_target_kg` e `weight_target_pct1rm` são metadados que o train
 - `mobile/specs/active/unificacao-prescricao-ia-mobile.md` — modelo de spec multi-fase com web + shared + mobile.
 
 ## Notas de Implementação
+
+### Fase 3 — Mobile Builder (entregue)
+
+**Arquivos criados:**
+- `mobile/components/trainer/program-builder/SetSchemePresetChips.tsx` — barra horizontal scroll com os 6 chips de preset, haptic em toque.
+- `mobile/components/trainer/program-builder/SetSchemeCard.tsx` — card vertical por série com steppers (Carga, RIR, Descanso) e chips de tipo. Toggle kg/%1RM. Inputs livres pra Reps e Tempo.
+- `mobile/components/trainer/program-builder/SetSchemeEditor.tsx` — bottom sheet (`Modal pageSheet`, mesmo padrão do `TextPrescriptionSheet`). Header com nome do exercício + chip do método + Salvar. Lista de cards de série + botão "+ Adicionar série" + "Voltar para modo simples" no rodapé com `Alert.alert` de confirmação.
+- `mobile/components/trainer/program-builder/__tests__/setSchemeEditor.test.ts` — 6 testes de fluxo de dados (expandir, aplicar preset, edit→custom, exit→summary, roundtrip dos 6 presets).
+
+**Arquivos editados:**
+- `mobile/stores/program-builder-store.ts` — `WorkoutItem` ganha `set_scheme: WorkoutSet[] | null` e `method_key: MethodKey | null`. `ParsedExerciseForBuilder` aceita os dois campos opcionalmente (Fase 5 vai propagar). `addExercise`, `initFromParsedText`, `initFromAiSnapshot` defaultam `null`. Nova action `setSetScheme(workoutId, itemId, scheme, methodKey)`. `updateItem` aceita os dois campos novos. `merge` callback estende com walk per-item defaultando `set_scheme`/`method_key` em drafts antigos.
+- `mobile/components/trainer/program-builder/WorkoutItemRow.tsx` — esconde `SetRepsInput` quando `set_scheme` ativo (mostra resumo). Nova row com chip do método (`Pirâmide ↓`, `Drop-set`, `Customizado`) + botão "Editar séries" disabled em superset (`parent_item_id !== null`).
+- `mobile/app/program-builder/index.tsx` — state `setSchemeEditingItemId`, callback `handleSchemeSave` que chama `setSetScheme` + sincroniza agregados via `summarizeSetScheme`. Renderiza `<SetSchemeEditor>` com `fallbackAggregates` do item.
+- `mobile/hooks/useProgramBuilder.ts` — `saveAsTemplate` agora deriva agregados via `summarizeSetScheme` quando há scheme; persiste `method_key` no pai; insere filhas em `workout_item_set_templates` via `insertSetSchemeRows` (no-op em modo simples e em filhos de superset).
+- `mobile/hooks/__tests__/useProgramBuilder.test.ts` — fixture do superset child ganha `set_scheme: null, method_key: null` (compat com nova interface).
+- `mobile/vitest.config.ts` — alias `@kinevo/shared` adicionado pra que o smoke test do editor importe os helpers do shared.
+
+**Decisões de implementação:**
+- **Bottom sheet via `Modal pageSheet`** (mesmo padrão do `TextPrescriptionSheet` em `mobile/components/trainer/student/`). Não introduzi `@gorhom/bottom-sheet` — manter dependências mínimas.
+- **Steppers (+/−) pra Carga/RIR/Descanso** em vez de inputs digitados, conforme spec ("steppers ergonômicos em academia"). Reps e Tempo continuam como `TextInput` porque aceitam strings livres ("10-12", "AMRAP", "3-1-1-0").
+- **Toggle kg/%1RM**: ao alternar, a unidade vira o display + zera a outra (`weight_target_kg=null` quando ativando %1RM, e vice-versa). Mantém apenas um valor por vez no DB.
+- **`onChange` do editor sempre seta `method_key='custom'`** quando usuário edita célula. Inferência exata pra preset acontece no save via `inferMethodKeyFromScheme`. Mesma estratégia da Fase 2 web.
+- **`setSchemeEditingItemId` lifted no `program-builder/index.tsx`** em vez de state local em `WorkoutItemRow` — evita render do Modal em cada row e permite que o callback `onEditSets` seja `undefined` em readonly views futuros.
+- **`workout_item_set_templates` ainda não está no `Database` types regenerado.** Mesma situação da Fase 2; cast `(supabase.from as any)` na linha do INSERT como workaround. `npm run gen:types` (com Docker) deve ser rodado a qualquer momento — funciona retroativamente.
+- **Smoke test puro de fluxo de dados**, não componente. Mobile workspace não tem `@testing-library/react-native` configurado (vitest jsdom-only), então renderizar `<SetSchemeEditor>` exigiria adicionar dependência fora do escopo. O teste cobre as transições que o componente percorre internamente: `expandToSetScheme` → `applyPreset` → edit→custom → `summarizeSetScheme`. Cobertura efetiva equivalente ao test do web (Fase 2) sem o overhead.
+- **Modo avançado bloqueado em superset**: 3 camadas. (1) Botão "Editar séries" disabled em `WorkoutItemRow` quando `item.parent_item_id !== null`. (2) `initFromParsedText` força `null` em filhos de superset e no parent. (3) `insertSetSchemeRows` early-returns para items com `parent_item_id`.
+- **Edição de programa atribuído (`assigned_workout_items`) NÃO foi tocada nesta entrega.** Spec especifica builder de templates; edição direta de assigned program é fluxo separado, mesmo follow-up que web Fase 2.
 
 ### Fase 2 — Web Builder (entregue)
 
