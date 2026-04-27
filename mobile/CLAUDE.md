@@ -432,3 +432,40 @@ npm run gen:types              # Regenerar tipos compartilhados
 - `APPLE_WATCH.md` — Guia completo da integração Apple Watch.
 - `targets/watch-app/` — Código SwiftUI do Watch app.
 - `modules/` — Módulos nativos (watch-connectivity, live-activity-controller).
+
+---
+
+## Execução Autônoma (agentes)
+
+Esta seção define o que agentes (Claude Code, Cowork, qualquer LLM) podem fazer
+sem confirmar com Gustavo a cada passo.
+
+### Permitido sem confirmar
+
+- `git add`, `git commit`, `git push` em branches `feat/*`, `fix/*`, `chore/*`, `docs/*`.
+- `gh pr create --fill --body-file <arquivo>` quando há body preparado.
+- `gh pr merge --auto --squash` SOMENTE em PRs que satisfaçam todas estas condições:
+  - PR é doc-only (`docs/*`) OU test-only (apenas arquivos `**/*.test.ts(x)` e `**/__tests__/**`).
+  - CI verde.
+  - Sem reviewers humanos pendentes.
+- Rodar testes (`npx vitest run`, `npx tsc --noEmit`) e linters localmente.
+- Criar/atualizar arquivos em `mobile/specs/active/`.
+- Stash de arquivos não relacionados ao escopo da tarefa (com nome descritivo).
+
+### Sempre parar e perguntar antes
+
+- Merge de PR de feature (`feat/*`) — mesmo com CI verde, espera Gustavo aprovar.
+- Push para `main` direto (qualquer push direto pra main exige confirmação).
+- `git rebase` interativo, `git reset --hard`, `git push --force` em branch
+  compartilhada.
+- Mudanças em `supabase/migrations/*.sql` aplicadas em produção.
+- Adicionar/remover dependências do `package.json` (npm install/uninstall).
+- Mudanças em CI, GitHub settings, ou `.github/`.
+- Alterações em `CLAUDE.md` (esta seção inclusa).
+- Qualquer mudança que afete `web/src/lib/prescription/` (motor de IA — protegido).
+
+### Convenção de PR body
+
+PR de feature/fase: usar template em `mobile/specs/active/<spec>.md` como base.
+PR doc/test-only: pode ser `gh pr create --fill` (usa título + descrição do commit).
+PR chore: descrição curta apontando o que mudou e por quê.
