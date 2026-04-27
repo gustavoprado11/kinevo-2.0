@@ -505,6 +505,47 @@ Os campos `weight_target_kg` e `weight_target_pct1rm` são metadados que o train
 
 ## Notas de Implementação
 
+### Fase 4.3 — Modelo de rodadas para métodos compostos (entregue)
+
+**Decisão de modelagem (caminho A — materialização):** o trainer prescreve UMA rodada no editor e indica `rounds`. No save, `expandSchemeByRounds(perRound, rounds)` materializa N×M linhas físicas em `workout_item_set_templates`, cada uma com `set_number` único (1..N×M) e `round_number` 1..N. Mantém invariante `UNIQUE(item_id, set_number)` e compatibilidade total com `set_logs` / `get_previous_exercise_sets`. Programas lineares ficam com `rounds=1` e `round_number=NULL` — comportamento atual byte-a-byte.
+
+**Migration 112** (`112_rounds_for_compound_methods.sql`):
+- `workout_item_templates.rounds INTEGER NOT NULL DEFAULT 1 CHECK(1..20)`
+- `assigned_workout_items.rounds` (espelho)
+- `workout_item_set_templates.round_number INTEGER NULL CHECK(>=1)`
+- `assigned_workout_item_sets.round_number` (espelho)
+- Aplicada via `mcp__claude_ai_Supabase__apply_migration` no projeto `lylksbtgrihzepbteest`.
+
+**Shared (`shared/lib/prescription/`):**
+- `set-scheme.ts`: `expandSchemeByRounds(perRound, rounds)` (materializa, clamp 1..20, taggea `round_number`); `deriveRoundAndPhase(setNumber, phasesPerRound)` (helper inverso); `summarizeWithRounds(perRound, rounds)` (formato compacto "3× 10/8/8" para compostos, fallback `summarizeSetScheme` para lineares).
+- `set-scheme-presets.ts`: `SystemPresetDefinition` ganha `defaultRounds`. Presets compostos (`drop_set`, `cluster`) viram `defaultRounds: 3` e descrevem UMA rodada. Cluster reformulado: 3 fases (8 / 4 / 2 reps) com micro-rest interno e rest longo no final da rodada. Lineares ficam `defaultRounds: 1`.
+- `COMPOUND_METHOD_KEYS` + `isCompoundMethod()` — fonte única para a UI decidir mostrar campo "Rodadas" e fazer agrupamento.
+- 11 testes novos cobrindo `expandSchemeByRounds`, `deriveRoundAndPhase`, `summarizeWithRounds`. Total shared: 119.
+
+**Mobile builder:**
+- `program-builder-store.ts`: `WorkoutItem.rounds: number` (default 1). MMKV merge defaulta pra 1 em drafts pré-Fase-4.3. `setSetScheme` aceita `rounds` opcional.
+- `SetSchemeEditor.tsx`: campo "Rodadas" com stepper [-/+] (1..20) só visível para métodos compostos. Texto "Estrutura de uma rodada" acima da lista. Botão "Adicionar fase" (vs "Adicionar série") quando compound. Aplicar preset auto-popula `rounds` com `defaultRounds`. Save retorna `{ scheme, methodKey, rounds, aggregates }` — agregados via `summarizeWithRounds` quando compound.
+- `WorkoutItemRow.tsx`: badge "3 rodadas × 2 fases" ao lado do chip do método quando `rounds > 1`.
+- `useProgramBuilder.ts`: `effectiveRoundsForItem` (clamp + skip lineares); `aggregatesFromItem` usa `summarizeWithRounds` para compostos; `insertSetSchemeRows` materializa via `expandSchemeByRounds` e taggea `round_number`. Parent INSERT propaga `rounds`.
+
+**Edge Function `assign-program` (v5 deployada via MCP):**
+- SELECT inclui `rounds` (já vinha via `*`) e `round_number` (explícito) das filhas.
+- INSERT em `assigned_workout_items` propaga `rounds` (raiz e filhos de superset, `?? 1` defesa em profundidade).
+- INSERT em `assigned_workout_item_sets` propaga `round_number` 1:1 (filhas já vêm materializadas pelo `saveAsTemplate`).
+
+**Mobile execução:**
+- `useWorkoutSession.ts` + `useTrainerWorkoutSession.ts`: SELECT inclui `rounds` no item e `round_number` na linha. `ExerciseData.rounds` populado.
+- `lib/hydrateWorkoutSets.ts`: `SetPrescription.round_number: number | null` propagado.
+- `stores/training-room-store.ts`: `ExerciseData.rounds` (required). MMKV merge defaulta pra 1.
+- `components/workout/ExerciseCard.tsx`: prop `rounds`. Quando `rounds > 1` e há `round_number`, agrupa renderização em N seções "Rodada X de Y" com indicador ✓ (todas as fases concluídas) e separador violeta. Header de resumo vira "3 rodadas · 2 fases · 10/8 reps". Linear / legacy mantém renderização atual byte-a-byte.
+- `program-builder/preview.tsx`: expande `set_scheme` localmente via `expandSchemeByRounds` antes de passar pro `<ExerciseCard>` — preview mostra exatamente o que o aluno verá pós-save.
+
+**Decisões:**
+- **Caminho A escolhido sobre B (round/phase numbers semânticos relaxando UNIQUE)** porque preserva invariantes do `set_logs` e `get_previous_exercise_sets` sem mexer em índices em produção. Custo da expansão: localizado no save (uma vez), não em runtime.
+- **Cluster preset reformulado**: legado tinha 1 fase com reps "8+4+2"; novo modelo tem 3 fases per-round com defaultRounds=3. Programas pré-Fase-4.3 com cluster antigo continuam renderizando como hoje (rounds=1, 1 fase) — sem migração de dados.
+- **`summarizeWithRounds` separado, não substitui `summarizeSetScheme`**: callers existentes não quebram; novo formato "3× 10/8/8" só aparece quando compound. Rest_seconds do agregado pega o micro-rest da fase 1 (não o inter-round) — leitor legado vê o descanso curto, o que é mais conservador.
+- **Watch app não foi atualizado**: continua lendo agregados (já estava assim na Fase 4). Programas com rounds expandidos chegam no Watch como N×M séries lineares — funciona graceful, sem chip de método. Pendência futura.
+
 ### Fase 4.2 — Meta de carga visível por série (entregue)
 
 - `shared/lib/prescription/set-scheme.ts` — adicionados `formatWeightKg` e `buildWeightMetaLabel`. O segundo cobre os 4 cenários: só kg → "Meta: 80 kg"; só %1RM → "Meta: 75% 1RM"; ambos → "Meta: 80 kg (75% 1RM)"; nenhum → `null` (UI esconde a label). `formatWeightKg` strip de `40.0` → `40` e mantém `22.5`. 7 novos testes.
