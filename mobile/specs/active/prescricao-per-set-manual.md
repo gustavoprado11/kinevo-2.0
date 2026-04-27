@@ -505,6 +505,80 @@ Os campos `weight_target_kg` e `weight_target_pct1rm` são metadados que o train
 
 ## Notas de Implementação
 
+### Fase 4.4 — Paridade web do modelo de rodadas (entregue)
+
+Gap conhecido da Fase 4.3 fechado: o builder web agora entende o modelo
+`rounds × phases` que o mobile já entregava. Programa criado/editado pelo
+treinador via web salva exatamente como o mobile, e programas vindos do
+mobile abrem no web preservando a estrutura per-round visível.
+
+**Shared:**
+- `set-scheme.ts` ganha `collapseExpandedScheme(expandedScheme, roundsHint)`
+  — inverso do `expandSchemeByRounds`. Lê linhas materializadas do DB e
+  reduz pra forma per-round (1 rodada visível + `rounds: N`). Tolera
+  inconsistências (length não divisível por rounds → fallback para flat
+  rounds=1) e null/undefined safely. 5 testes novos cobrem roundtrip,
+  fallback, null safety e edge cases. Total shared: 124/124.
+
+**Web (apenas paridade — sem polimento UX, esse é Fase 4.5):**
+- `program-builder-client.tsx`:
+  - `WorkoutItem` ganha `rounds?: number | null` (opcional pra não quebrar
+    callers existentes; default 1 nas inserções).
+  - `ProgramData['workout_item_templates']` ganha `rounds`. `page.tsx`
+    SELECT inclui `rounds` no parent e `round_number` nas filhas.
+  - `hydrateSetScheme(rows, roundsHint)` agora retorna
+    `{ scheme, rounds }` via `collapseExpandedScheme`. Linear e legacy
+    (rounds=1 default) seguem renderizando flat.
+  - `addExerciseFromLibrary` e `addExerciseToWorkout` defaultam
+    `rounds: 1` + `set_scheme: null` + `method_key: null`.
+  - `aggregatesFromItem` usa `summarizeWithRounds` quando compound;
+    `summarizeSetScheme` quando linear. Mantém invariante: agregados
+    salvos sempre derivados via summarize.
+  - `effectiveRoundsForItem(item)` clamp 1..20 + force 1 para linear /
+    sem scheme, defesa em profundidade igual ao mobile.
+  - `insertSetSchemeRows` materializa via `expandSchemeByRounds` antes de
+    inserir e taggea `round_number` 1..N (NULL para linear).
+  - Ambos os save paths (saveProgram + saveAsTemplate) propagam `rounds`
+    no INSERT do parent.
+- `SetSchemeTable.tsx`:
+  - Aceita props `rounds?: number | null`. `onChange` agora é
+    `(scheme, methodKey, rounds) => void`.
+  - Apply preset → seta `rounds = SYSTEM_PRESETS[key].defaultRounds`
+    (3 para drop-set/cluster, 1 para lineares).
+  - Stepper "Rodadas" [-/+] visível só quando `isCompoundMethod(displayKey)`.
+    Range 1..20. Editar uma fase preserva o `rounds` (chip vira `'custom'`
+    mas a estrutura composta continua sendo composta).
+  - Section title "Estrutura de uma rodada" acima da tabela quando compound.
+  - Botão "+ Adicionar fase" (vs "+ Adicionar série") quando compound.
+  - Footer informativo "Aluno verá: N rodadas × M fases = (N×M) fases no
+    total" quando compound + rounds > 1.
+- `workout-item-card.tsx`:
+  - Wire `rounds` via `<SetSchemeTable rounds={...} onChange={...} />`.
+  - Ao entrar em Avançado pela primeira vez (`expandToSetScheme`) seta
+    `rounds: 1`.
+  - `onExitAdvanced` usa `summarizeWithRounds` quando compound (preserva
+    o total real no agregado), `summarizeSetScheme` quando linear.
+- `__tests__/SetSchemeTable.test.tsx`: testes existentes adaptados pra
+  nova assinatura + 5 testes novos (apply preset compound seeds rounds=3,
+  cell edit preserva rounds, stepper aparece só pra compound, "Adicionar
+  fase" condicional, footer "Aluno verá").
+- `edit-assigned-program-client.tsx`: `WorkoutItem` ganha
+  `set_scheme/method_key/rounds` opcionais (read-only — esse fluxo de
+  edição direta de assigned program **não foi tocado no save**, mantém
+  pendência geral desde a Fase 2).
+
+**Validações:**
+- Web TS = 11 erros — IDÊNTICO ao baseline pré-Fase-4.4. Todos pré-existentes
+  em `program-calendar.test.tsx` e `student-insights-card.test.tsx`.
+- Web vitest: 589/590 (5 novos no SetSchemeTable.test.tsx; 1 skip pré-existente).
+- Shared: 124/124 (5 novos).
+
+**Pendências documentadas (Fase 4.5):**
+- Toggle "+ Mais campos" (esconder RIR/Tempo por default no web e mobile).
+- Banner azul "Esta estrutura será repetida N vezes…".
+- Chip do método no card colapsado simple-mode.
+- Botão "Avançado" → "Editar séries" com ícone Sliders (web + mobile).
+
 ### Fase 4.3 — Modelo de rodadas para métodos compostos (entregue)
 
 **Decisão de modelagem (caminho A — materialização):** o trainer prescreve UMA rodada no editor e indica `rounds`. No save, `expandSchemeByRounds(perRound, rounds)` materializa N×M linhas físicas em `workout_item_set_templates`, cada uma com `set_number` único (1..N×M) e `round_number` 1..N. Mantém invariante `UNIQUE(item_id, set_number)` e compatibilidade total com `set_logs` / `get_previous_exercise_sets`. Programas lineares ficam com `rounds=1` e `round_number=NULL` — comportamento atual byte-a-byte.
