@@ -505,6 +505,61 @@ Os campos `weight_target_kg` e `weight_target_pct1rm` são metadados que o train
 
 ## Notas de Implementação
 
+### Fase 4.5c — UX overhaul (parte 1: pontos 3, 4, 6) (entregue)
+
+Os 6 pontos do prompt original foram divididos em duas entregas:
+- **4.5c (esta)** = pontos 3, 4, 6 — baixo risco, polish visual incremental.
+- **4.5d (futura)** = pontos 1, 2, 5 — reestruturação maior, pendente
+  validação visual da 4.5c primeiro.
+
+**Ponto 3 — "Voltar para modo simples" e "Mais campos" separados:**
+- Web (`SetSchemeTable.tsx`): botão "Voltar" agora vive em sua própria
+  linha no topo da seção (canto esquerdo) com ícone `Undo2` + hover
+  background. "Mais campos" continua à direita, na linha do chip do
+  método. Conceitualmente: ação destrutiva (esquerda) ≠ toggle de
+  visualização (direita).
+- Mobile (`SetSchemeEditor.tsx`): "Voltar" foi movido do rodapé do
+  ScrollView pro topo da lista (esquerda da linha do toggle). Mesma
+  separação visual web/mobile.
+
+**Ponto 4 — Borda esquerda colorida por `set_type`:**
+- Web: `<tr>` ganha `border-l-4` colorida quando `set_type !== 'normal'`.
+  Paleta: warmup zinc, top orange, backoff sky, drop rose, failure red,
+  cluster violet, amrap blue. Cores ajustadas pra modo dark via
+  variantes `dark:` do Tailwind.
+- Mobile: `<View>` do `SetSchemeCard` ganha `borderLeftWidth: 3` +
+  `borderLeftColor` na mesma paleta (hex direto). Type `normal` sem
+  borda colorida, comportamento atual byte-a-byte.
+
+**Ponto 6 — Ícones de ação mais legíveis:**
+- Web: `Copy`/`Trash2` aumentados de 14px → 16px, padding `p-1` → `p-1.5`,
+  hover background `hover:bg-zinc-100 dark:hover:bg-zinc-800`. Cor padrão
+  mais clara (`text-zinc-400`) com hover mais escuro pra dar feedback
+  visível. Tooltips e aria-labels renomeados de "série"/"fase" pra
+  "linha" (termo neutro que cobre ambos os contextos linear/composto).
+- Mobile: hit area aumentada de 28×28 (padding 6) → 36×36 com `hitSlop`
+  de 8 em todos os lados → área efetiva ≥ 52px (ultrapassa o mínimo de
+  44px da Apple HIG). Ícones 14px → 16px. `activeOpacity={0.6}` pra
+  feedback visual ao toque.
+- **Decisão**: mantive `TouchableOpacity` em vez de migrar pra
+  `PressableScale` (sugerido no prompt). PressableScale traz animação
+  Reanimated que tem risco maior de regressão visual; `activeOpacity`
+  + `hitSlop` resolve a UX sem deps adicionais nem risco animação.
+  Trabalho de animação fica como pendência futura se a UX atual não
+  for satisfatória após validação visual.
+
+**Pendente (Fase 4.5d):**
+- Ponto 1 — Chips em segmented control + "Customizado" como 7º chip dinâmico.
+- Ponto 2 — Picker inline kg/%1RM substituindo o toggle.
+- Ponto 5 — Pílula de síntese substituindo o footer "Aluno verá...".
+
+**Validações:**
+- shared: 129/129 (sem código novo).
+- web TS: 11 erros (idem baseline pré-Fase-4.5c — todos em test files).
+- web vitest: 592/593 (sem novos testes; 1 skip pré-existente).
+- mobile TS: 10 erros (idem baseline).
+- mobile vitest: 255/255.
+
 ### Fase 4.5b — UX polish do modo Avançado (entregue)
 
 Quatro melhorias coordenadas web + mobile pra fechar a feature pra produção.
