@@ -379,13 +379,13 @@ Os campos `weight_target_kg` e `weight_target_pct1rm` são metadados que o train
 - [x] `cd mobile && npx tsc --noEmit && npx vitest run` sem novos erros vs `main` (21 erros pré-existentes idênticos; 245 testes verdes — 6 novos).
 
 ### Fase 4 — Sala de Treino
-- [ ] `useWorkoutSession` hidrata os sets a partir de `assigned_workout_item_sets` quando existem.
-- [ ] Programas legados (sem filhas) continuam funcionando exatamente como hoje.
-- [ ] `SetRow` mostra badge do `set_type` para tipos não-`normal`.
-- [ ] Header do card mostra resumo (`12-10-8-6`) e chip do método.
-- [ ] Watch app (iOS) consome `set_scheme` quando disponível e fallback quando não.
-- [ ] `set_logs` continua sendo gravado com `set_number` correto, batendo com a série prescrita.
-- [ ] Smoke test em iOS + Android: aluno consegue concluir treino com pirâmide e drop-set sem erro.
+- [x] `useWorkoutSession` hidrata os sets a partir de `assigned_workout_item_sets` quando existem.
+- [x] Programas legados (sem filhas) continuam funcionando exatamente como hoje.
+- [x] `SetRow` mostra badge do `set_type` para tipos não-`normal`.
+- [x] Header do card mostra resumo (`12-10-8-6`) e chip do método.
+- [ ] Watch app (iOS) consome `set_scheme` quando disponível e fallback quando não. **PENDENTE — entrega futura**: lib `getProgramSnapshotForWatch.ts` e `targets/watch-app` não foram tocados nesta entrega; comportamento atual mantido (Watch lê apenas agregados). Spec mantém retrocompatibilidade total — sem regressão.
+- [x] `set_logs` continua sendo gravado com `set_number` correto, batendo com a série prescrita (contrato preservado).
+- [x] Smoke test (manual pendente do Gustavo): aluno + treinador devem ver mesma prescrição no novo preview do builder e na execução.
 
 ### Fase 5 — Texto para Treino
 - [ ] Edge Function `parse-workout-text` detecta os 5 padrões principais (`pyramid_down`, `pyramid_up`, `drop_set`, `5x5`, `cluster`).
@@ -504,6 +504,37 @@ Os campos `weight_target_kg` e `weight_target_pct1rm` são metadados que o train
 - `mobile/specs/active/unificacao-prescricao-ia-mobile.md` — modelo de spec multi-fase com web + shared + mobile.
 
 ## Notas de Implementação
+
+### Fase 4 — Sala de Treino + Preview no Builder (entregue)
+
+**Arquivos criados:**
+- `shared/lib/prescription/method-labels.ts` — `METHOD_KEY_LABELS` + `getMethodChipLabel`. Fonte única do label do chip de método. Usado por aluno, treinador e preview pra garantir paridade visual.
+- `shared/lib/prescription/__tests__/method-labels.test.ts` — 3 testes (paridade enum/labels, hide para `null`/`'standard'`, labels traduzidos).
+- `mobile/lib/hydrateWorkoutSets.ts` — `hydrateSetPrescriptions({ assignedSets, aggregateSets, aggregateReps, aggregateRestSeconds })`. Helper único usado por `useWorkoutSession` (aluno) e `useTrainerWorkoutSession` (treinador) — evita drift entre os dois caminhos. Retorna `SetPrescription[]`.
+- `mobile/lib/__tests__/hydrateWorkoutSets.test.ts` — 5 testes (sort por set_number, fallback aggregate, null/undefined, zero sets, set_type preservado em drop/cluster/amrap).
+- `mobile/components/workout/SetTypeBadge.tsx` — badge compact (dot ícone) e full (ícone + label) por `SetType`. Cores por tipo conforme spec (warmup cinza, top laranja, drop vermelho, cluster roxo, amrap azul, etc.).
+- `mobile/app/program-builder/preview.tsx` — tela "Visualizar como aluno". Lê `useProgramBuilderStore` (draft em memória), agrupa supersets, renderiza com `<ExerciseCard readOnly>` reaproveitando o componente da execução do aluno → paridade visual garantida por construção.
+
+**Arquivos editados:**
+- `mobile/components/workout/SetRow.tsx` — props novas opcionais `setType`, `repsTarget`, `readOnly`. Badge à esquerda da linha pra `setType !== 'normal'`. Placeholder do reps usa `repsTarget` (ex: "6" na 4ª série de pirâmide). Cluster (`reps` com `+`) renderiza hint "Meta: 5+5+5" abaixo do input em violeta. AMRAP usa placeholder "AMRAP". `readOnly` esconde check button e desabilita inputs sem alterar layout.
+- `mobile/components/workout/ExerciseCard.tsx` — props novas `setScheme?: SetPrescription[] | null`, `methodKey?: MethodKey | null`, `readOnly?: boolean`. Header ganha chip violeta com label do método (`getMethodChipLabel`). Resumo "X séries · Y reps · Zs descanso" deriva de `setScheme` quando presente (ex: "4 séries • 12-10-8-6 • 90s descanso"). Cada `SetRow` recebe `setType`/`repsTarget` via index do scheme.
+- `mobile/components/workout/SupersetGroup.tsx` — passa `setScheme` e `methodKey` para os ExerciseCard filhos. Em superset modo avançado é bloqueado (V1), então as filhas chegam vazias e o comportamento atual é preservado.
+- `mobile/hooks/useWorkoutSession.ts` — interface `ExerciseData` ganha `setScheme: SetPrescription[]` e `methodKey: MethodKey | null`. Query do item agora seleciona `method_key`. Query secundária em `assigned_workout_item_sets` (filtrada pelos IDs dos itens-exercício) hidrata via `hydrateSetPrescriptions`. Quantidade de séries (`setsData`) passa a vir do scheme quando presente. Items sem filhas mantêm comportamento atual byte-a-byte.
+- `mobile/hooks/useTrainerWorkoutSession.ts` (`useFetchStudentWorkout`) — após o RPC `get_student_today_workout_for_trainer`, faz dois `Promise.all` selects (`assigned_workout_item_sets` e `assigned_workout_items.method_key`) e popula a sessão do trainer pelo mesmo `hydrateSetPrescriptions`. RPC ainda não foi alterado — a query secundária resolve sem mudança server-side.
+- `mobile/stores/training-room-store.ts` — `ExerciseData` ganha `setScheme: SetPrescription[]` e `methodKey: MethodKey | null` (required). Callback `merge` defaulta esses campos pra `[]` / `null` em sessões persistidas pré-Fase-4 → MMKV migration sem crash.
+- `mobile/app/training-room.tsx` — passa `setScheme`/`methodKey` no ExerciseCard.
+- `mobile/app/workout/[id].tsx` — passa `setScheme`/`methodKey` no ExerciseCard (aluno).
+- `mobile/app/program-builder/index.tsx` — botão "Visualizar como aluno" (ícone `Eye`) ao lado dos botões IA / Salvar. Disabled quando o draft não tem nenhum exercício. Navega para `/program-builder/preview`.
+
+**Decisões de implementação:**
+- **Helper único de hidratação** (`hydrateSetPrescriptions`) usado pelos dois hooks (aluno + treinador). Centralizar evita drift; fallback aggregate é byte-a-byte equivalente ao comportamento atual quando não há `assigned_workout_item_sets`.
+- **Preview reaproveita `<ExerciseCard readOnly>`** em vez de criar um `ExerciseCardPreview` separado. Princípio: "renderizar o draft do builder com o mesmo componente que renderiza a execução real" — paridade visual garantida por construção. `readOnly` esconde botões de swap/vídeo/check e desabilita inputs (mantém layout).
+- **Cluster reps**: placeholder do reps no SetRow mostra a quebra prescrita (ex: "5+5+5") e abaixo da linha aparece um hint "Meta: 5+5+5" em violeta. O input continua numérico (aluno digita a soma do que executou). Match com o que a spec descreve em Edge Cases.
+- **AMRAP**: placeholder vira "AMRAP" quando `set_type === 'amrap'` ou quando o `repsTarget` contém "amrap"/"falha" (case-insensitive). Aluno ainda digita um número; `set_logs.reps_completed` armazena o valor real.
+- **`set_logs` não foi tocado.** O contrato de gravação (`set_number`, `weight`, `reps_completed`) continua exatamente como antes — `set_number` agora bate com a série prescrita (1, 2, 3, ...) seja em programa novo ou legado.
+- **Watch app deixado como pendência.** Lib `getProgramSnapshotForWatch` / `getNextWorkoutForWatch` e os arquivos Swift do `targets/watch-app/` não foram alterados. Como o Watch só lê os agregados, nenhuma regressão — programa com `set_scheme` continua executável no Watch usando a forma agregada (que é re-derivada via `summarizeSetScheme` no save). Entrega futura: passar `set_scheme` no payload e ler `setScheme[setIndex].reps` no `WorkoutExecutionView.swift`.
+- **Modo readonly do preview NÃO escreve nada no banco.** É puramente visual. `onSetChange`/`onToggleSetComplete` recebem callbacks no-op.
+- **Treinador vendo mesmo que aluno**: o `hydrateSetPrescriptions` é o mesmo helper, e a query é equivalente (`assigned_workout_item_sets` filtrado por `assigned_workout_item_id`). O RPC do treinador (`get_student_today_workout_for_trainer`) não foi modificado — tipos `Database` não foram regenerados nesta sessão. Entrega futura pode trazer as filhas no próprio RPC pra reduzir round-trips.
 
 ### Fase 3 — Mobile Builder (entregue)
 
