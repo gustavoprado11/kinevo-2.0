@@ -8,6 +8,19 @@ import { SET_TYPE_OPTIONS } from "@kinevo/shared/types/prescription";
 
 import { colors } from "@/theme";
 
+/** Cor da borda esquerda por tipo (Fase 4.5c §4). Mantém o card sem borda
+ *  colorida quando o tipo é `normal` — comportamento atual byte-a-byte. */
+const SET_TYPE_BORDER_COLOR: Record<SetType, string | null> = {
+    normal: null,
+    warmup: "#a1a1aa",   // zinc-400
+    top: "#fb923c",      // orange-400
+    backoff: "#38bdf8",  // sky-400
+    drop: "#f43f5e",     // rose-500
+    failure: "#dc2626",  // red-600
+    cluster: "#8b5cf6",  // violet-500
+    amrap: "#3b82f6",    // blue-500
+};
+
 interface SetSchemeCardProps {
     set: WorkoutSet;
     index: number;
@@ -77,6 +90,8 @@ export function SetSchemeCard({
         );
     };
 
+    const leftBorderColor = SET_TYPE_BORDER_COLOR[set.set_type];
+
     return (
         <View
             style={{
@@ -86,6 +101,10 @@ export function SetSchemeCard({
                 marginBottom: 10,
                 borderWidth: 1,
                 borderColor: colors.border.primary,
+                // Borda esquerda colorida pra tipos != normal (Fase 4.5c §4).
+                ...(leftBorderColor
+                    ? { borderLeftWidth: 3, borderLeftColor: leftBorderColor }
+                    : {}),
                 shadowColor: "#000",
                 shadowOffset: { width: 0, height: 1 },
                 shadowOpacity: 0.04,
@@ -113,16 +132,27 @@ export function SetSchemeCard({
                 <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text.primary, flex: 1 }}>
                     Série {index + 1}
                 </Text>
+                {/* Ações com hit area mínima 44×44 (Apple HIG — Fase 4.5c §6).
+                 *  Ícones aumentados pra 16px com fundo translúcido sutil. */}
                 <TouchableOpacity
                     onPress={() => {
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                         onDuplicate();
                     }}
                     accessibilityRole="button"
-                    accessibilityLabel={`Duplicar série ${index + 1}`}
-                    style={{ padding: 6 }}
+                    accessibilityLabel={`Duplicar linha ${index + 1}`}
+                    activeOpacity={0.6}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 8,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        marginRight: 2,
+                    }}
                 >
-                    <Copy size={14} color={colors.text.tertiary} />
+                    <Copy size={16} color={colors.text.tertiary} />
                 </TouchableOpacity>
                 <TouchableOpacity
                     onPress={() => {
@@ -132,10 +162,19 @@ export function SetSchemeCard({
                     }}
                     disabled={!canRemove}
                     accessibilityRole="button"
-                    accessibilityLabel={`Remover série ${index + 1}`}
-                    style={{ padding: 6, opacity: canRemove ? 1 : 0.3 }}
+                    accessibilityLabel={`Remover linha ${index + 1}`}
+                    activeOpacity={0.6}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 8,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        opacity: canRemove ? 1 : 0.3,
+                    }}
                 >
-                    <Trash2 size={14} color={colors.error.default} />
+                    <Trash2 size={16} color={colors.error.default} />
                 </TouchableOpacity>
             </View>
 

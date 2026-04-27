@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
-import { ChevronDown, ChevronUp, Plus, Repeat, X } from "lucide-react-native";
+import { ChevronDown, ChevronUp, Plus, Repeat, Undo2, X } from "lucide-react-native";
 
 import type { MethodKey, WorkoutSet } from "@kinevo/shared/types/prescription";
 import {
@@ -404,7 +404,9 @@ export function SetSchemeEditor({
                         contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 24 }}
                         keyboardShouldPersistTaps="handled"
                     >
-                        {/* Toggle "+ Mais campos" + título condicional. */}
+                        {/* Linha 1 (Fase 4.5c §3): "Voltar para modo simples"
+                         *  à esquerda como botão secundário discreto, separado
+                         *  visualmente do toggle "Mais campos" à direita. */}
                         <View
                             style={{
                                 flexDirection: "row",
@@ -413,19 +415,17 @@ export function SetSchemeEditor({
                                 marginBottom: 8,
                             }}
                         >
-                            {isCompound ? (
-                                <Text
-                                    style={{
-                                        fontSize: 11,
-                                        fontWeight: "700",
-                                        color: colors.text.tertiary,
-                                        letterSpacing: 0.6,
-                                        textTransform: "uppercase",
-                                    }}
-                                >
-                                    Estrutura de uma rodada
+                            <TouchableOpacity
+                                onPress={handleExitAdvanced}
+                                accessibilityRole="button"
+                                accessibilityLabel="Voltar para modo simples"
+                                style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 4, paddingHorizontal: 6, marginLeft: -6 }}
+                            >
+                                <Undo2 size={12} color={colors.text.secondary} />
+                                <Text style={{ fontSize: 11, fontWeight: "500", color: colors.text.secondary }}>
+                                    Voltar para modo simples
                                 </Text>
-                            ) : <View />}
+                            </TouchableOpacity>
                             <TouchableOpacity
                                 onPress={toggleAdvancedFields}
                                 accessibilityRole="button"
@@ -443,6 +443,22 @@ export function SetSchemeEditor({
                                 </Text>
                             </TouchableOpacity>
                         </View>
+
+                        {/* Linha 2: título condicional (compound only). */}
+                        {isCompound ? (
+                            <Text
+                                style={{
+                                    fontSize: 11,
+                                    fontWeight: "700",
+                                    color: colors.text.tertiary,
+                                    letterSpacing: 0.6,
+                                    textTransform: "uppercase",
+                                    marginBottom: 8,
+                                }}
+                            >
+                                Estrutura de uma rodada
+                            </Text>
+                        ) : null}
                         {scheme.map((s, idx) => (
                             <SetSchemeCard
                                 key={`set-${idx}`}
@@ -480,16 +496,9 @@ export function SetSchemeEditor({
                             </Text>
                         </TouchableOpacity>
 
-                        <TouchableOpacity
-                            onPress={handleExitAdvanced}
-                            accessibilityRole="button"
-                            accessibilityLabel="Voltar para modo simples"
-                            style={{ alignItems: "center", paddingVertical: 16, marginTop: 8 }}
-                        >
-                            <Text style={{ fontSize: 13, color: colors.text.secondary, textDecorationLine: "underline" }}>
-                                Voltar para modo simples
-                            </Text>
-                        </TouchableOpacity>
+                        {/* "Voltar para modo simples" foi movido pro topo da
+                         *  lista (Fase 4.5c §3), separado visualmente do
+                         *  toggle "Mais campos". */}
                     </ScrollView>
                 </View>
             </KeyboardAvoidingView>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronDown, ChevronUp, Copy, Minus, Plus, Repeat, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronUp, Copy, Minus, Plus, Repeat, Trash2, Undo2 } from 'lucide-react'
 
 import type { MethodKey, SetType, WorkoutSet } from '@kinevo/shared/types/prescription'
 import { SET_TYPE_OPTIONS } from '@kinevo/shared/types/prescription'
@@ -43,6 +43,19 @@ const ROUND_MIN = 1
 const ROUND_MAX = 20
 
 const ADVANCED_FIELDS_STORAGE_KEY = 'kinevo_setscheme_advanced_fields'
+
+/** Tailwind classes for the colored left-border per set type (Fase 4.5c §4).
+ *  Returns an empty string for `normal` so the row keeps its current look. */
+const SET_TYPE_BORDER_CLASS: Record<SetType, string> = {
+    normal: '',
+    warmup: 'border-l-4 border-l-zinc-400 dark:border-l-zinc-500',
+    top: 'border-l-4 border-l-orange-400 dark:border-l-orange-500',
+    backoff: 'border-l-4 border-l-sky-400 dark:border-l-sky-500',
+    drop: 'border-l-4 border-l-rose-500 dark:border-l-rose-400',
+    failure: 'border-l-4 border-l-red-600 dark:border-l-red-500',
+    cluster: 'border-l-4 border-l-violet-500 dark:border-l-violet-400',
+    amrap: 'border-l-4 border-l-blue-500 dark:border-l-blue-400',
+}
 
 /** Read the persisted "show advanced fields" preference. Defaults to false on
  *  first render (SSR-safe) — useEffect rehydrates client-side. */
@@ -183,7 +196,22 @@ export function SetSchemeTable({
 
     return (
         <div className="mt-3 rounded-lg border border-[#E8E8ED] dark:border-k-border-subtle bg-[#F9F9FB] dark:bg-surface-card-elevated p-3 space-y-3">
-            {/* Header: chip + toggle Mais campos + voltar */}
+            {/* "Voltar para modo simples" — botão secundário pequeno no canto
+             *  superior esquerdo, separado da área de toggle (Fase 4.5c §3). */}
+            {!readonly && (
+                <div>
+                    <button
+                        type="button"
+                        onClick={handleExit}
+                        className="inline-flex items-center gap-1 text-xs text-k-text-secondary hover:text-k-text-primary dark:hover:text-k-text-primary px-2 py-1 -ml-2 rounded hover:bg-[#F5F5F7] dark:hover:bg-glass-bg-active transition-colors"
+                    >
+                        <Undo2 className="w-3 h-3" />
+                        Voltar para modo simples
+                    </button>
+                </div>
+            )}
+
+            {/* Header: chip do método + toggle Mais campos */}
             <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="flex items-center gap-2">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-k-text-tertiary">
@@ -194,28 +222,19 @@ export function SetSchemeTable({
                     </span>
                 </div>
                 {!readonly && (
-                    <div className="flex items-center gap-3">
-                        <button
-                            type="button"
-                            onClick={toggleAdvancedFields}
-                            aria-pressed={showAdvancedFields}
-                            className="flex items-center gap-1 text-[11px] font-medium text-k-text-secondary hover:text-[#007AFF] dark:hover:text-violet-400 transition-colors"
-                        >
-                            {showAdvancedFields ? (
-                                <ChevronUp className="w-3 h-3" />
-                            ) : (
-                                <ChevronDown className="w-3 h-3" />
-                            )}
-                            {showAdvancedFields ? 'Menos campos' : 'Mais campos'}
-                        </button>
-                        <button
-                            type="button"
-                            onClick={handleExit}
-                            className="text-xs text-k-text-secondary hover:text-[#FF3B30] dark:hover:text-red-400 transition-colors"
-                        >
-                            Voltar para modo simples
-                        </button>
-                    </div>
+                    <button
+                        type="button"
+                        onClick={toggleAdvancedFields}
+                        aria-pressed={showAdvancedFields}
+                        className="flex items-center gap-1 text-[11px] font-medium text-k-text-secondary hover:text-[#007AFF] dark:hover:text-violet-400 transition-colors"
+                    >
+                        {showAdvancedFields ? (
+                            <ChevronUp className="w-3 h-3" />
+                        ) : (
+                            <ChevronDown className="w-3 h-3" />
+                        )}
+                        {showAdvancedFields ? 'Menos campos' : 'Mais campos'}
+                    </button>
                 )}
             </div>
 
@@ -371,9 +390,11 @@ function SetRow({
     const inputClass =
         'w-full bg-transparent text-k-text-primary text-xs px-1.5 py-1 border-b border-transparent focus:border-[#007AFF]/50 dark:focus:border-violet-500/50 focus:outline-none'
 
+    const typeBorderClass = SET_TYPE_BORDER_CLASS[set.set_type] ?? ''
+
     return (
-        <tr className="border-t border-[#E8E8ED]/60 dark:border-k-border-subtle/60">
-            <td className="py-1.5 pr-2 font-semibold text-k-text-primary">{set.set_number}</td>
+        <tr className={`border-t border-[#E8E8ED]/60 dark:border-k-border-subtle/60 ${typeBorderClass}`}>
+            <td className={`py-1.5 pr-2 font-semibold text-k-text-primary ${typeBorderClass ? 'pl-2' : ''}`}>{set.set_number}</td>
 
             <td className="py-1.5 pr-2">
                 {readonly ? (
@@ -512,25 +533,25 @@ function SetRow({
 
             {!readonly && (
                 <td className="py-1.5 pr-2">
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-0.5">
                         <button
                             type="button"
                             onClick={onDuplicate}
-                            className="p-1 rounded text-k-text-quaternary hover:text-[#007AFF] dark:hover:text-violet-400 transition-colors"
-                            title="Duplicar série"
-                            aria-label={`Duplicar série ${index + 1}`}
+                            className="p-1.5 rounded text-zinc-400 hover:text-zinc-700 dark:text-k-text-quaternary dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                            title="Duplicar linha"
+                            aria-label={`Duplicar linha ${index + 1}`}
                         >
-                            <Copy className="w-3.5 h-3.5" />
+                            <Copy className="w-4 h-4" />
                         </button>
                         <button
                             type="button"
                             onClick={onRemove}
                             disabled={!canRemove}
-                            className="p-1 rounded text-k-text-quaternary hover:text-[#FF3B30] dark:hover:text-red-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                            title={canRemove ? 'Remover série' : 'Pelo menos 1 série é obrigatória'}
-                            aria-label={`Remover série ${index + 1}`}
+                            className="p-1.5 rounded text-zinc-400 hover:text-[#FF3B30] dark:text-k-text-quaternary dark:hover:text-red-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                            title={canRemove ? 'Remover linha' : 'Pelo menos 1 linha é obrigatória'}
+                            aria-label={`Remover linha ${index + 1}`}
                         >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Trash2 className="w-4 h-4" />
                         </button>
                     </div>
                 </td>
