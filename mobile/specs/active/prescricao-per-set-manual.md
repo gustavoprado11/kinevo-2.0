@@ -505,6 +505,66 @@ Os campos `weight_target_kg` e `weight_target_pct1rm` são metadados que o train
 
 ## Notas de Implementação
 
+### Fase 4.5b — UX polish do modo Avançado (entregue)
+
+Quatro melhorias coordenadas web + mobile pra fechar a feature pra produção.
+
+**1. Toggle "+ Mais campos"** — RIR e Tempo escondidos por default
+(poucos trainers preenchem; reduz densidade visual). Persiste por device:
+- Web: `localStorage` chave `kinevo_setscheme_advanced_fields` (SSR-safe:
+  primeiro render é `false`, `useEffect` rehidrata client-side).
+- Mobile: MMKV bucket `kinevo-setscheme-prefs` chave `advanced_fields_mobile`,
+  com fallback in-memory pra Expo Go / testes (igual ao padrão do
+  `program-builder-store.ts`).
+- Botão "Mais campos" / "Menos campos" com ícone `ChevronDown`/`ChevronUp`,
+  alinhado à direita do header da tabela / acima da lista de fases.
+
+**2. Banner azul "rounds × phases"** — visível só pra métodos compostos
+com `rounds > 1`. Texto:
+> Esta estrutura de N fases será repetida X vezes. Cada rodada inteira
+> conta como 1 série efetiva no volume semanal.
+
+A segunda frase **propositalmente** menciona o helper de volume da Fase
+4.5a — ensina o trainer que o cálculo está alinhado com a literatura.
+Também evita colisão com o footer "Aluno verá: N rodadas × M fases =
+(N×M) fases no total" que continua existindo (são informações
+complementares, não duplicadas).
+
+**3. Chip do método no card colapsado**:
+- Web (`workout-item-card.tsx`): chip violeta inline com ícone `Sliders`
+  ao lado das pílulas de muscle group, na simple-mode também. Aparece
+  só quando `getMethodChipLabel(method_key) !== null` (esconde para
+  `'standard'` e `null`).
+- Mobile: já existia desde Fase 4.3 (`WorkoutItemRow.tsx` linha 154 —
+  Row 3 com chip + badge de rodadas + botão "Editar séries"). Verificado:
+  satisfaz o item 3. Sem mudança extra.
+
+**4. Renomear "Avançado" → "Editar séries"** (com ícone `Sliders`):
+- Web (`AdvancedToggleButton`): texto trocado, ícone preservado.
+- Mobile: já estava correto desde a Fase 4.3.
+
+**Arquivos tocados:**
+- `web/src/components/programs/SetSchemeTable.tsx` — toggle, banner,
+  conditional headers/cells, ChevronDown/ChevronUp/Repeat imports.
+- `web/src/components/programs/workout-item-card.tsx` — chip inline,
+  rename do botão.
+- `web/src/components/programs/__tests__/SetSchemeTable.test.tsx` —
+  3 testes novos: banner aparece, banner ausente em linear, toggle
+  esconde/revela RIR e Tempo.
+- `mobile/components/trainer/program-builder/SetSchemeEditor.tsx` —
+  state + MMKV helper + banner + toggle button + título conditional
+  + propaga `showAdvancedFields` aos cards.
+- `mobile/components/trainer/program-builder/SetSchemeCard.tsx` —
+  prop `showAdvancedFields` (default false) escondendo FieldRow de
+  RIR e Tempo.
+
+**Validações:**
+- Shared: 129/129 (sem novos testes — sem código shared).
+- Web TS: 11 erros (idem baseline pré-Fase-4.5b — todos em test files).
+- Web vitest: 592/593 (3 testes novos no SetSchemeTable.test.tsx).
+- Mobile TS: 10 erros (idem baseline).
+- Mobile vitest: 255/255.
+
 ### Fase 4.5a — Volume correto para métodos compostos (entregue)
 
 Bug reportado pelo Gustavo: o cálculo de volume no builder superestimava
