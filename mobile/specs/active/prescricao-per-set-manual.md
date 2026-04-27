@@ -505,6 +505,58 @@ Os campos `weight_target_kg` e `weight_target_pct1rm` são metadados que o train
 
 ## Notas de Implementação
 
+### Fase 4.5a — Volume correto para métodos compostos (entregue)
+
+Bug reportado pelo Gustavo: o cálculo de volume no builder superestimava
+2-3× drop-set e cluster. `weeklySets = item.sets * frequency` lia o `sets`
+materializado (3 rondas × 3 fases = 9), produzindo "drop-set 3 rondas ×
+2x/semana = 18 sets/semana" quando o correto é 6.
+
+**Convenção**: 1 ronda = 1 série efetiva. Drop-set 3 rondas = 3 effective
+sets, cluster idem. Linear (pirâmide, 5×5, top+backoff) mantém: cada fase
+é uma série. Alinha com Schoenfeld et al. e com o contador de progresso
+do aluno ("Rodada N de M").
+
+**Helper único** (`shared/lib/prescription/volume.ts`):
+- `effectiveSetsForVolume(item)` retorna `rounds` quando `rounds > 1`
+  (compound), `sets ?? 0` no resto. Defensivo contra null. 5 testes.
+
+**Aplicado em 4 superfícies:**
+- `mobile/components/trainer/program-builder/volume-helpers.ts` →
+  `calculateVolume` aceita `rounds` e usa o helper. 5 testes novos no
+  mobile cobrindo linear, compound, mix e edge cases.
+- `web/src/components/programs/volume-summary.tsx` → `processItem`
+  usa o helper; superset children entram pelo mesmo caminho.
+- `web/src/app/students/[id]/actions/get-program-muscle-volume.ts` →
+  SELECT inclui `rounds`; loop usa `effectiveSetsForVolume`.
+- `web/src/lib/reports/program-report-service.ts` → **não tocado**. Esse
+  serviço lê `set_logs` (execução real), não prescrição: cada fase
+  executada é um log próprio, e o cálculo "X sets per muscle" sobre logs
+  reais já está correto e documentado nos comments do arquivo (linhas
+  50-65).
+
+**Excluído (mantém comportamento atual):**
+- Motor de IA (`web/src/lib/prescription/`): não conhece compound
+  methods e gera tudo com rounds=1; volume permanece correto.
+- Programas pré-Fase-4.3 com drop-set salvo como linear (rounds=null,
+  sets=9): continuam mostrando 9 sets — não é regressão, é o que está
+  no DB. Solução: trainer re-prescrever pra atualizar pro modelo de
+  rondas.
+
+**Validações:**
+- shared:  129/129 (5 novos)
+- mobile:  255/255 (5 novos), TS 10 erros pré-existentes (idem baseline)
+- web TS:  11 erros (idem baseline pré-Fase-4.5a — todos em test files)
+- web vitest: 589/590 (1 skip pré-existente)
+
+**Antes/depois:**
+- Drop-set 3 rondas × 3 fases × 2x/semana
+  - Antes: 9 × 2 = 18 sets/semana
+  - Depois: 3 × 2 = 6 sets/semana ✓
+- Pirâmide ↓ 4 séries × 2x/semana
+  - Antes: 4 × 2 = 8 sets/semana
+  - Depois: 4 × 2 = 8 sets/semana (idêntico) ✓
+
 ### Fase 4.4 — Paridade web do modelo de rodadas (entregue)
 
 Gap conhecido da Fase 4.3 fechado: o builder web agora entende o modelo
