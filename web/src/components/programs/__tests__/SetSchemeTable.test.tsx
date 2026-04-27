@@ -10,9 +10,11 @@ const initialScheme: WorkoutSet[] = [
     { set_number: 3, set_type: 'normal', reps: '10', rest_seconds: 60, weight_target_kg: null, weight_target_pct1rm: null, rir: null, tempo: null, notes: null },
 ]
 
+type OnChangeMock = (s: WorkoutSet[], k: MethodKey, r: number) => void
+
 describe('SetSchemeTable', () => {
     it('renders one row per set with editable reps', () => {
-        const onChange = vi.fn()
+        const onChange = vi.fn<OnChangeMock>()
         render(
             <SetSchemeTable
                 value={initialScheme}
@@ -24,8 +26,8 @@ describe('SetSchemeTable', () => {
         expect(screen.getAllByRole('row')).toHaveLength(initialScheme.length + 1) // +1 for thead
     })
 
-    it('applying a preset chip rewrites the scheme and sets methodKey', () => {
-        const onChange = vi.fn<(s: WorkoutSet[], k: MethodKey) => void>()
+    it('applying a preset chip rewrites the scheme and sets methodKey + defaultRounds', () => {
+        const onChange = vi.fn<OnChangeMock>()
         render(
             <SetSchemeTable
                 value={initialScheme}
@@ -38,17 +40,38 @@ describe('SetSchemeTable', () => {
         fireEvent.click(screen.getByRole('button', { name: /pirâmide ↓/i }))
 
         expect(onChange).toHaveBeenCalledTimes(1)
-        const [next, key] = onChange.mock.calls[0]
+        const [next, key, rounds] = onChange.mock.calls[0]
         expect(key).toBe('pyramid_down')
         expect(next.map((s) => s.reps)).toEqual(['12', '10', '8', '6'])
+        // Pyramid is linear → defaultRounds = 1
+        expect(rounds).toBe(1)
     })
 
-    it('editing a cell after a preset demotes methodKey to custom', () => {
-        const onChange = vi.fn<(s: WorkoutSet[], k: MethodKey) => void>()
+    it('applying a compound preset (drop-set) seeds rounds = SYSTEM_PRESETS.defaultRounds (3)', () => {
+        const onChange = vi.fn<OnChangeMock>()
+        render(
+            <SetSchemeTable
+                value={initialScheme}
+                methodKey={'standard'}
+                onChange={onChange}
+                onExitAdvanced={() => {}}
+            />,
+        )
+
+        fireEvent.click(screen.getByRole('button', { name: /drop-set/i }))
+
+        const [, key, rounds] = onChange.mock.calls[0]
+        expect(key).toBe('drop_set')
+        expect(rounds).toBe(3)
+    })
+
+    it('editing a cell after a preset demotes methodKey to custom but preserves rounds', () => {
+        const onChange = vi.fn<OnChangeMock>()
         render(
             <SetSchemeTable
                 value={initialScheme}
                 methodKey={'pyramid_down'}
+                rounds={1}
                 onChange={onChange}
                 onExitAdvanced={() => {}}
             />,
@@ -58,8 +81,80 @@ describe('SetSchemeTable', () => {
         fireEvent.change(repsInput, { target: { value: '15' } })
 
         expect(onChange).toHaveBeenCalledTimes(1)
-        const [, key] = onChange.mock.calls[0]
+        const [, key, rounds] = onChange.mock.calls[0]
         expect(key).toBe('custom')
+        expect(rounds).toBe(1)
+    })
+
+    it('rounds stepper appears for compound methods and clamps to [1, 20]', () => {
+        const onChange = vi.fn<OnChangeMock>()
+        render(
+            <SetSchemeTable
+                value={initialScheme}
+                methodKey={'drop_set'}
+                rounds={3}
+                onChange={onChange}
+                onExitAdvanced={() => {}}
+            />,
+        )
+
+        // The stepper buttons exist for compound methods.
+        const inc = screen.getByRole('button', { name: /aumentar rodadas/i })
+        const dec = screen.getByRole('button', { name: /diminuir rodadas/i })
+
+        fireEvent.click(inc)
+        let [, , rounds] = onChange.mock.calls[onChange.mock.calls.length - 1]
+        expect(rounds).toBe(4)
+
+        fireEvent.click(dec)
+        ;[, , rounds] = onChange.mock.calls[onChange.mock.calls.length - 1]
+        // dec triggers from the prop value (3), not from the just-emitted 4 —
+        // SetSchemeTable is controlled, so the component still sees rounds=3
+        // until the parent re-renders. Both invocations therefore go through
+        // clamp from the SAME baseline.
+        expect(rounds).toBe(2)
+    })
+
+    it('rounds stepper is hidden for linear methods', () => {
+        render(
+            <SetSchemeTable
+                value={initialScheme}
+                methodKey={'pyramid_down'}
+                rounds={1}
+                onChange={() => {}}
+                onExitAdvanced={() => {}}
+            />,
+        )
+        expect(screen.queryByRole('button', { name: /aumentar rodadas/i })).toBeNull()
+    })
+
+    it('shows "Adicionar fase" instead of "Adicionar série" for compound methods', () => {
+        render(
+            <SetSchemeTable
+                value={initialScheme}
+                methodKey={'drop_set'}
+                rounds={3}
+                onChange={() => {}}
+                onExitAdvanced={() => {}}
+            />,
+        )
+        expect(screen.getByText(/adicionar fase/i)).toBeTruthy()
+        expect(screen.queryByText(/adicionar série/i)).toBeNull()
+    })
+
+    it('renders the "Aluno verá" footer when rounds > 1', () => {
+        render(
+            <SetSchemeTable
+                value={initialScheme}
+                methodKey={'drop_set'}
+                rounds={3}
+                onChange={() => {}}
+                onExitAdvanced={() => {}}
+            />,
+        )
+        // 3 rounds × 3 phases = 9 phases total
+        expect(screen.getByText(/aluno verá/i)).toBeTruthy()
+        expect(screen.getByText(/9 fases no total/i)).toBeTruthy()
     })
 
     it('exit advanced asks for confirmation', () => {

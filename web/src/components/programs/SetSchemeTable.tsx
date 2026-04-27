@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import { Copy, Plus, Trash2 } from 'lucide-react'
+import { Copy, Minus, Plus, Trash2 } from 'lucide-react'
 
 import type { MethodKey, SetType, WorkoutSet } from '@kinevo/shared/types/prescription'
 import { SET_TYPE_OPTIONS } from '@kinevo/shared/types/prescription'
@@ -9,14 +9,21 @@ import {
     applyPreset,
     inferMethodKeyFromScheme,
 } from '@kinevo/shared/lib/prescription/set-scheme'
-import { SYSTEM_PRESETS } from '@kinevo/shared/lib/prescription/set-scheme-presets'
+import {
+    SYSTEM_PRESETS,
+    isCompoundMethod,
+} from '@kinevo/shared/lib/prescription/set-scheme-presets'
 
 import { SetSchemePresetChips } from './SetSchemePresetChips'
 
 interface SetSchemeTableProps {
     value: WorkoutSet[]
     methodKey: MethodKey | null
-    onChange: (next: WorkoutSet[], nextMethodKey: MethodKey) => void
+    /** Rodadas (Fase 4.4). 1 para métodos lineares (default). 2..20 para
+     *  compostos. O componente só mostra o stepper de rodadas quando o método
+     *  ativo é compound. */
+    rounds?: number | null
+    onChange: (next: WorkoutSet[], nextMethodKey: MethodKey, nextRounds: number) => void
     onExitAdvanced: () => void
     readonly?: boolean
 }
@@ -31,6 +38,9 @@ const SET_TYPE_LABELS: Record<SetType, string> = {
     cluster: 'Cluster',
     amrap: 'AMRAP',
 }
+
+const ROUND_MIN = 1
+const ROUND_MAX = 20
 
 const newEmptySet = (setNumber: number): WorkoutSet => ({
     set_number: setNumber,
@@ -53,9 +63,15 @@ const methodLabel = (key: MethodKey | null): string => {
     return SYSTEM_PRESETS[key]?.name ?? 'Customizado'
 }
 
+const clampRounds = (n: number | null | undefined): number => {
+    const v = Number.isFinite(n as number) ? Math.floor(n as number) : 1
+    return Math.max(ROUND_MIN, Math.min(ROUND_MAX, v))
+}
+
 export function SetSchemeTable({
     value,
     methodKey,
+    rounds,
     onChange,
     onExitAdvanced,
     readonly,
@@ -63,12 +79,21 @@ export function SetSchemeTable({
     const sets = value
     const inferredKey = useMemo(() => inferMethodKeyFromScheme(sets), [sets])
     const displayKey: MethodKey = methodKey ?? inferredKey
+    const compound = isCompoundMethod(displayKey)
+    const safeRounds = clampRounds(rounds ?? 1)
+    // Effective rounds for the footer math: linear methods always run as 1
+    // round even if `rounds` was set incidentally; compound methods honor the
+    // value the trainer typed.
+    const effectiveRounds = compound ? safeRounds : 1
+    const phasesPerRound = sets.length
+    const totalPhases = phasesPerRound * effectiveRounds
 
     const updateSet = (index: number, patch: Partial<WorkoutSet>) => {
         const next = sets.map((s, i) => (i === index ? { ...s, ...patch } : s))
-        // Manual edit always demotes the chip to 'custom' — re-detection via
-        // inferMethodKeyFromScheme on save still recovers exact preset matches.
-        onChange(renumber(next), 'custom')
+        // Manual edit demotes the chip to 'custom' but PRESERVES rounds — the
+        // trainer kept the same compound structure; the per-phase tweak is
+        // their refinement on top of it.
+        onChange(renumber(next), 'custom', safeRounds)
     }
 
     const addSet = () => {
@@ -76,25 +101,34 @@ export function SetSchemeTable({
         const newSet: WorkoutSet = last
             ? { ...last, set_number: sets.length + 1 }
             : newEmptySet(1)
-        onChange([...sets, newSet], 'custom')
+        onChange([...sets, newSet], 'custom', safeRounds)
     }
 
     const duplicateSet = (index: number) => {
         const original = sets[index]
         const dup: WorkoutSet = { ...original }
         const next = [...sets.slice(0, index + 1), dup, ...sets.slice(index + 1)]
-        onChange(renumber(next), 'custom')
+        onChange(renumber(next), 'custom', safeRounds)
     }
 
     const removeSet = (index: number) => {
         if (sets.length <= 1) return
         const next = sets.filter((_, i) => i !== index)
-        onChange(renumber(next), 'custom')
+        onChange(renumber(next), 'custom', safeRounds)
     }
 
     const applyPresetKey = (key: Exclude<MethodKey, 'standard' | 'custom'>) => {
         const next = applyPreset(key)
-        onChange(next, key)
+        const presetRounds = SYSTEM_PRESETS[key]?.defaultRounds ?? 1
+        onChange(next, key, clampRounds(presetRounds))
+    }
+
+    const adjustRounds = (delta: number) => {
+        const nextRounds = clampRounds(safeRounds + delta)
+        if (nextRounds === safeRounds) return
+        // Changing rounds keeps the per-round structure and the chip — trainer
+        // is just deciding how many times to repeat it.
+        onChange(sets, displayKey, nextRounds)
     }
 
     const handleExit = () => {
@@ -106,6 +140,9 @@ export function SetSchemeTable({
         }
         onExitAdvanced()
     }
+
+    const phaseSingular = compound ? 'fase' : 'série'
+    const phasePlural = compound ? 'fases' : 'séries'
 
     return (
         <div className="mt-3 rounded-lg border border-[#E8E8ED] dark:border-k-border-subtle bg-[#F9F9FB] dark:bg-surface-card-elevated p-3 space-y-3">
@@ -133,6 +170,55 @@ export function SetSchemeTable({
             {/* Preset chips */}
             {!readonly && (
                 <SetSchemePresetChips activeKey={displayKey} onApply={applyPresetKey} />
+            )}
+
+            {/* Rodadas (apenas métodos compostos) */}
+            {compound && (
+                <div className="flex items-center justify-between gap-3 px-2 py-2 rounded-md bg-white dark:bg-surface-card border border-[#E8E8ED] dark:border-k-border-subtle">
+                    <div className="min-w-0">
+                        <div className="text-xs font-bold text-k-text-primary">Rodadas</div>
+                        <div className="text-[11px] text-k-text-tertiary">
+                            Quantas vezes a estrutura abaixo se repete.
+                        </div>
+                    </div>
+                    {!readonly && (
+                        <div className="flex items-center gap-2 shrink-0">
+                            <button
+                                type="button"
+                                onClick={() => adjustRounds(-1)}
+                                disabled={safeRounds <= ROUND_MIN}
+                                aria-label="Diminuir rodadas"
+                                className="w-7 h-7 rounded-md flex items-center justify-center bg-[#F5F5F7] dark:bg-surface-card-elevated text-[#007AFF] dark:text-violet-400 hover:bg-[#E8E8ED] dark:hover:bg-glass-bg-active disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                            >
+                                <Minus className="w-3.5 h-3.5" />
+                            </button>
+                            <span className="min-w-[1.75rem] text-center text-base font-extrabold tabular-nums text-[#007AFF] dark:text-violet-400">
+                                {safeRounds}
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => adjustRounds(1)}
+                                disabled={safeRounds >= ROUND_MAX}
+                                aria-label="Aumentar rodadas"
+                                className="w-7 h-7 rounded-md flex items-center justify-center bg-[#F5F5F7] dark:bg-surface-card-elevated text-[#007AFF] dark:text-violet-400 hover:bg-[#E8E8ED] dark:hover:bg-glass-bg-active disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                            >
+                                <Plus className="w-3.5 h-3.5" />
+                            </button>
+                        </div>
+                    )}
+                    {readonly && (
+                        <span className="text-base font-extrabold tabular-nums text-[#007AFF] dark:text-violet-400">
+                            {safeRounds}
+                        </span>
+                    )}
+                </div>
+            )}
+
+            {/* Section title — only for compound methods, before the table */}
+            {compound && (
+                <div className="text-[10px] font-bold uppercase tracking-wider text-k-text-tertiary px-1">
+                    Estrutura de uma rodada
+                </div>
             )}
 
             {/* Tabela */}
@@ -174,8 +260,19 @@ export function SetSchemeTable({
                     className="flex items-center gap-1.5 text-xs font-medium text-[#007AFF] dark:text-violet-400 hover:underline"
                 >
                     <Plus className="w-3.5 h-3.5" />
-                    Adicionar série
+                    {compound ? 'Adicionar fase' : 'Adicionar série'}
                 </button>
+            )}
+
+            {/* Footer informativo: só quando há mais de uma rodada */}
+            {compound && safeRounds > 1 && phasesPerRound > 0 && (
+                <div className="text-[11px] text-k-text-tertiary pt-1 border-t border-[#E8E8ED]/60 dark:border-k-border-subtle/60">
+                    Aluno verá: <span className="font-semibold text-k-text-secondary">{safeRounds} rodadas</span>
+                    {' × '}
+                    <span className="font-semibold text-k-text-secondary">{phasesPerRound} {phasesPerRound === 1 ? phaseSingular : phasePlural}</span>
+                    {' = '}
+                    <span className="font-semibold text-k-text-secondary">{totalPhases} {phasePlural} no total</span>.
+                </div>
             )}
         </div>
     )
