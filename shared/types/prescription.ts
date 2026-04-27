@@ -481,6 +481,82 @@ export interface PrescriptionAgentState {
 export const MAX_AGENT_STATE_BYTES = 50_000
 
 // ============================================================================
+// PER-SET PRESCRIPTION (migration 111 — pyramid / drop-set / cluster / etc.)
+// ============================================================================
+// These types describe the per-set prescription schema introduced by the
+// "Prescrição Manual com Repetições e Descanso por Série" feature.
+// They mirror tables `workout_item_set_templates`, `assigned_workout_item_sets`
+// and `training_method_presets` (and the nullable `method_key` column added
+// to `workout_item_templates` and `assigned_workout_items`).
+
+/** SQL CHECK constraint on `set_type`. Keep aligned with the migration and the
+ * Edge Function system prompt — adding a value here means updating both. */
+export type SetType =
+    | 'warmup'
+    | 'normal'
+    | 'top'
+    | 'backoff'
+    | 'drop'
+    | 'failure'
+    | 'cluster'
+    | 'amrap'
+
+export const SET_TYPE_OPTIONS: readonly SetType[] = [
+    'warmup', 'normal', 'top', 'backoff', 'drop', 'failure', 'cluster', 'amrap',
+] as const
+
+/** Method/preset key. `'standard'` = simple aggregate (no scheme). `'custom'` =
+ * trainer-defined scheme that does not match any preset. Other values are
+ * system presets seeded in `training_method_presets`. */
+export type MethodKey =
+    | 'standard'
+    | 'custom'
+    | 'pyramid_down'
+    | 'pyramid_up'
+    | 'drop_set'
+    | 'top_backoff'
+    | '5x5'
+    | 'cluster'
+
+export const METHOD_KEY_OPTIONS: readonly MethodKey[] = [
+    'standard', 'custom', 'pyramid_down', 'pyramid_up', 'drop_set', 'top_backoff', '5x5', 'cluster',
+] as const
+
+/** A single set inside a scheme — mirrors a row in
+ * `workout_item_set_templates` / `assigned_workout_item_sets`. */
+export interface WorkoutSet {
+    /** 1-based, unique and contiguous within the parent item. */
+    set_number: number
+    set_type: SetType
+    /** Free-form rep target: "8", "10-12", "AMRAP", "8+4+2" (cluster). */
+    reps: string
+    /** Rest in seconds AFTER this set. */
+    rest_seconds: number
+    /** Suggested absolute load (read-only hint for the student). */
+    weight_target_kg: number | null
+    /** Suggested load as % of 1RM (read-only hint for the student). */
+    weight_target_pct1rm: number | null
+    /** Reps in reserve target. */
+    rir: number | null
+    /** Tempo string, e.g. "3-1-1-0". */
+    tempo: string | null
+    notes: string | null
+}
+
+/** Row in `training_method_presets`. */
+export interface TrainingMethodPreset {
+    id: string
+    /** NULL for system presets, otherwise the trainer that owns it. */
+    trainer_id: string | null
+    name: string
+    description: string | null
+    key: MethodKey
+    /** Default `WorkoutSet[]` applied when the preset is selected. */
+    sets_config: WorkoutSet[]
+    created_at: string
+}
+
+// ============================================================================
 // PROGRAM DRAFT (structural type for snapshot-from-draft)
 // ============================================================================
 // Captures only the fields snapshot-from-draft needs from the mobile
