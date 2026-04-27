@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ChevronLeft, Save, Plus, Trash2, Dumbbell, Sparkles } from "lucide-react-native";
+import { ChevronLeft, Save, Plus, Trash2, Dumbbell, Sparkles, Eye } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeInUp, FadeIn } from "react-native-reanimated";
 import DraggableFlatList, { type RenderItemParams } from "react-native-draggable-flatlist";
@@ -358,6 +358,31 @@ export default function ProgramBuilderScreen() {
                         </Text>
 
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                            {(() => {
+                                const hasExercises = draft.workouts.some((w) => w.items.length > 0);
+                                return (
+                                    <TouchableOpacity
+                                        onPress={() => {
+                                            Haptics.selectionAsync();
+                                            router.push('/program-builder/preview');
+                                        }}
+                                        disabled={!hasExercises}
+                                        accessibilityRole="button"
+                                        accessibilityLabel="Visualizar como aluno"
+                                        style={{
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                            backgroundColor: colors.brand.primaryLight,
+                                            width: 38,
+                                            height: 38,
+                                            borderRadius: 10,
+                                            opacity: hasExercises ? 1 : 0.4,
+                                        }}
+                                    >
+                                        <Eye size={18} color={colors.brand.primary} />
+                                    </TouchableOpacity>
+                                );
+                            })()}
                             <TouchableOpacity
                                 onPress={openAIMenu}
                                 disabled={params.studentId == null}
