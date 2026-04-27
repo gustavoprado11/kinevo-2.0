@@ -51,6 +51,9 @@ interface ExerciseCardProps {
     setScheme?: SetPrescription[] | null;
     /** Method preset marker. `null`/`'standard'` hides the chip. */
     methodKey?: MethodKey | null;
+    /** Rodadas (Fase 4.3). > 1 ativa o agrupamento por rodada na lista de
+     *  séries. Default 1 (comportamento atual). */
+    rounds?: number;
     /** Read-only rendering for the builder preview. */
     readOnly?: boolean;
 }
@@ -85,6 +88,7 @@ export function ExerciseCard({
     supersetBadge,
     setScheme,
     methodKey,
+    rounds = 1,
     readOnly = false,
 }: ExerciseCardProps) {
 
@@ -98,10 +102,27 @@ export function ExerciseCard({
 
     const hasScheme = Array.isArray(setScheme) && setScheme.length > 0;
     const summary = hasScheme ? buildSchemeSummary(setScheme!) : null;
-    const displaySets = hasScheme ? setScheme!.length : sets;
-    const displayReps = hasScheme ? summary!.reps : reps;
-    const displayRest = hasScheme ? summary!.rest : restSeconds;
     const methodChip = getMethodChipLabel(methodKey);
+
+    // Compound layout: when rounds > 1 and the scheme has round_number tags
+    // (Fase 4.3+), group rows by round and render with a section header per
+    // round. Linear methods or legacy programs render the flat list.
+    const isCompoundLayout = hasScheme
+        && rounds > 1
+        && setScheme!.some((s) => typeof s.round_number === 'number');
+    const phasesPerRound = isCompoundLayout ? Math.max(1, Math.floor(setScheme!.length / rounds)) : 0;
+
+    // Header summary: "3 rodadas · 2 fases · 10/8 reps" for compound; legacy
+    // "N séries · X reps · Ys descanso" for linear.
+    let headerSummary: string;
+    if (isCompoundLayout) {
+        const firstRoundReps = setScheme!.slice(0, phasesPerRound).map((s) => s.reps_target.trim() || '0').join('/');
+        headerSummary = `${rounds} rodadas · ${phasesPerRound} fases · ${firstRoundReps} reps`;
+    } else if (hasScheme) {
+        headerSummary = `${setScheme!.length} séries • ${summary!.reps} reps • ${summary!.rest}s descanso`;
+    } else {
+        headerSummary = `${sets} séries • ${reps} reps • ${restSeconds}s descanso`;
+    }
     const MethodIcon = (() => {
         switch (methodKey) {
             case 'pyramid_down': return TrendingDown;
@@ -164,7 +185,7 @@ export function ExerciseCard({
                         ) : null}
                     </View>
                     <Text style={{ color: '#64748b', fontSize: 12 }}>
-                        {displaySets} séries • {displayReps} reps • {displayRest}s descanso
+                        {headerSummary}
                     </Text>
                     {/* Fallback: show "Carga anterior" only when per-set data is unavailable */}
                     {!previousSets?.length && previousLoad && (
@@ -225,29 +246,92 @@ export function ExerciseCard({
 
             {/* Sets List */}
             <View>
-                {setsData.map((set, index) => {
-                    const prev = previousSets?.[index];
-                    const prescription = hasScheme ? setScheme![index] : null;
-                    return (
-                        <SetRow
-                            key={index}
-                            index={index}
-                            weight={set.weight}
-                            reps={set.reps}
-                            isCompleted={set.completed}
-                            onWeightChange={(val) => onSetChange(index, 'weight', val)}
-                            onRepsChange={(val) => onSetChange(index, 'reps', val)}
-                            onToggleComplete={() => onToggleSetComplete(index)}
-                            previousWeight={prev?.weight}
-                            previousReps={prev?.reps}
-                            setType={prescription?.set_type ?? 'normal'}
-                            repsTarget={prescription?.reps_target}
-                            weightTargetKg={prescription?.weight_target_kg ?? null}
-                            weightTargetPct1rm={prescription?.weight_target_pct1rm ?? null}
-                            readOnly={readOnly}
-                        />
-                    );
-                })}
+                {isCompoundLayout
+                    ? Array.from({ length: rounds }, (_, roundIdx) => {
+                        const startIdx = roundIdx * phasesPerRound;
+                        const endIdx = startIdx + phasesPerRound;
+                        const roundSlice = setsData.slice(startIdx, endIdx);
+                        const allDone = roundSlice.length > 0 && roundSlice.every((s) => s.completed);
+                        return (
+                            <View
+                                key={`round-${roundIdx + 1}`}
+                                style={{
+                                    marginTop: roundIdx === 0 ? 0 : 10,
+                                    paddingTop: roundIdx === 0 ? 0 : 6,
+                                    borderTopWidth: roundIdx === 0 ? 0 : 1,
+                                    borderTopColor: 'rgba(124, 58, 237, 0.12)',
+                                }}
+                            >
+                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 4, marginBottom: 4 }}>
+                                    <Text style={{ fontSize: 11, fontWeight: '700', color: '#6d28d9', letterSpacing: 0.4, textTransform: 'uppercase' }}>
+                                        Rodada {roundIdx + 1} de {rounds}
+                                    </Text>
+                                    <View
+                                        accessibilityLabel={allDone ? 'Rodada concluída' : 'Rodada em andamento'}
+                                        style={{
+                                            width: 18,
+                                            height: 18,
+                                            borderRadius: 9,
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            backgroundColor: allDone ? '#7c3aed' : 'transparent',
+                                            borderWidth: allDone ? 0 : 1.5,
+                                            borderColor: '#cbd5e1',
+                                        }}
+                                    >
+                                        {allDone ? <Check size={12} color="#fff" strokeWidth={3} /> : null}
+                                    </View>
+                                </View>
+                                {roundSlice.map((set, localIdx) => {
+                                    const globalIdx = startIdx + localIdx;
+                                    const prev = previousSets?.[globalIdx];
+                                    const prescription = setScheme![globalIdx];
+                                    return (
+                                        <SetRow
+                                            key={globalIdx}
+                                            index={globalIdx}
+                                            weight={set.weight}
+                                            reps={set.reps}
+                                            isCompleted={set.completed}
+                                            onWeightChange={(val) => onSetChange(globalIdx, 'weight', val)}
+                                            onRepsChange={(val) => onSetChange(globalIdx, 'reps', val)}
+                                            onToggleComplete={() => onToggleSetComplete(globalIdx)}
+                                            previousWeight={prev?.weight}
+                                            previousReps={prev?.reps}
+                                            setType={prescription?.set_type ?? 'normal'}
+                                            repsTarget={prescription?.reps_target}
+                                            weightTargetKg={prescription?.weight_target_kg ?? null}
+                                            weightTargetPct1rm={prescription?.weight_target_pct1rm ?? null}
+                                            readOnly={readOnly}
+                                        />
+                                    );
+                                })}
+                            </View>
+                        );
+                    })
+                    : setsData.map((set, index) => {
+                        const prev = previousSets?.[index];
+                        const prescription = hasScheme ? setScheme![index] : null;
+                        return (
+                            <SetRow
+                                key={index}
+                                index={index}
+                                weight={set.weight}
+                                reps={set.reps}
+                                isCompleted={set.completed}
+                                onWeightChange={(val) => onSetChange(index, 'weight', val)}
+                                onRepsChange={(val) => onSetChange(index, 'reps', val)}
+                                onToggleComplete={() => onToggleSetComplete(index)}
+                                previousWeight={prev?.weight}
+                                previousReps={prev?.reps}
+                                setType={prescription?.set_type ?? 'normal'}
+                                repsTarget={prescription?.reps_target}
+                                weightTargetKg={prescription?.weight_target_kg ?? null}
+                                weightTargetPct1rm={prescription?.weight_target_pct1rm ?? null}
+                                readOnly={readOnly}
+                            />
+                        );
+                    })}
             </View>
         </BlurView>
     );

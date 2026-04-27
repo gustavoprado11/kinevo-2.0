@@ -845,6 +845,7 @@ export default function TrainingRoomScreen() {
                             notes={exercise.notes}
                             setScheme={exercise.setScheme}
                             methodKey={exercise.methodKey}
+                            rounds={exercise.rounds}
                         />
                     ),
                 });

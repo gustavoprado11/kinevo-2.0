@@ -104,6 +104,7 @@ export function SupersetGroup({
                             supersetBadge={`Exercício ${localIdx + 1} de ${exercises.length}`}
                             setScheme={exercise.setScheme}
                             methodKey={exercise.methodKey}
+                            rounds={exercise.rounds}
                         />
                         {/* "sem descanso" connector between exercises */}
                         {localIdx < exercises.length - 1 && (

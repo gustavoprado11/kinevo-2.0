@@ -49,6 +49,9 @@ export interface ExerciseData {
     setScheme: SetPrescription[];
     /** Method/preset marker stored on the parent `assigned_workout_items` row. */
     methodKey: MethodKey | null;
+    /** Rodadas (Fase 4.3). 1 para métodos lineares (default). > 1 para
+     *  compostos — UI agrupa o setScheme em N rodadas via `round_number`. */
+    rounds: number;
 }
 
 export interface WorkoutNote {
@@ -442,6 +445,7 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                         exercise_function,
                         item_config,
                         method_key,
+                        rounds,
                         exercises ( id, video_url )
                     `)
                     .eq('assigned_workout_id', workoutId)
@@ -459,7 +463,7 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                 if (exerciseItemIdsForSets.length > 0) {
                     const { data: setRows, error: setRowsError }: { data: any; error: any } = await supabase
                         .from('assigned_workout_item_sets' as any)
-                        .select('assigned_workout_item_id, set_number, set_type, reps, rest_seconds, weight_target_kg, weight_target_pct1rm, rir, tempo, notes')
+                        .select('assigned_workout_item_id, set_number, set_type, reps, rest_seconds, weight_target_kg, weight_target_pct1rm, rir, tempo, notes, round_number')
                         .in('assigned_workout_item_id', exerciseItemIdsForSets);
                     if (setRowsError && __DEV__) {
                         console.warn('[useWorkoutSession] set rows query failed:', setRowsError?.message);
@@ -476,6 +480,7 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                             rir: row.rir,
                             tempo: row.tempo,
                             notes: row.notes,
+                            round_number: row.round_number ?? null,
                         });
                         setSchemeByItem.set(row.assigned_workout_item_id, list);
                     }
@@ -569,6 +574,7 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                         item_config: item.item_config || {},
                         setScheme: assignedSets && assignedSets.length > 0 ? setPrescriptions : [],
                         methodKey: (item.method_key as MethodKey | null) ?? null,
+                        rounds: typeof item.rounds === 'number' && item.rounds >= 1 ? item.rounds : 1,
                     };
                 }));
 
@@ -591,6 +597,7 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                         item_config: item.item_config || {},
                         setScheme: [],
                         methodKey: null,
+                        rounds: 1,
                     });
                 }
 

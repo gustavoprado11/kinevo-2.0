@@ -152,15 +152,16 @@ export function useFetchStudentWorkout() {
 
                 const setSchemeByItem = new Map<string, WorkoutSet[]>();
                 const methodKeyByItem = new Map<string, MethodKey | null>();
+                const roundsByItem = new Map<string, number>();
                 if (exerciseItemIds.length > 0) {
                     const [{ data: setRows }, { data: methodRows }]: [{ data: any }, { data: any }] = await Promise.all([
                         (supabase as any)
                             .from('assigned_workout_item_sets')
-                            .select('assigned_workout_item_id, set_number, set_type, reps, rest_seconds, weight_target_kg, weight_target_pct1rm, rir, tempo, notes')
+                            .select('assigned_workout_item_id, set_number, set_type, reps, rest_seconds, weight_target_kg, weight_target_pct1rm, rir, tempo, notes, round_number')
                             .in('assigned_workout_item_id', exerciseItemIds),
                         (supabase as any)
                             .from('assigned_workout_items')
-                            .select('id, method_key')
+                            .select('id, method_key, rounds')
                             .in('id', exerciseItemIds),
                     ]);
                     for (const row of setRows || []) {
@@ -175,11 +176,13 @@ export function useFetchStudentWorkout() {
                             rir: row.rir,
                             tempo: row.tempo,
                             notes: row.notes,
+                            round_number: row.round_number ?? null,
                         });
                         setSchemeByItem.set(row.assigned_workout_item_id, list);
                     }
                     for (const row of methodRows || []) {
                         methodKeyByItem.set(row.id, (row.method_key as MethodKey | null) ?? null);
+                        roundsByItem.set(row.id, typeof row.rounds === 'number' && row.rounds >= 1 ? row.rounds : 1);
                     }
                 }
 
@@ -195,6 +198,7 @@ export function useFetchStudentWorkout() {
                             exerciseFunction: ex.exercise_function ?? null,
                             setScheme: [],
                             methodKey: null,
+                            rounds: 1,
                         };
                     }
                     const assignedSets = setSchemeByItem.get(ex.id) ?? null;
@@ -220,6 +224,7 @@ export function useFetchStudentWorkout() {
                         exerciseFunction: ex.exercise_function ?? null,
                         setScheme: assignedSets && assignedSets.length > 0 ? setPrescriptions : [],
                         methodKey: methodKeyByItem.get(ex.id) ?? null,
+                        rounds: roundsByItem.get(ex.id) ?? 1,
                     };
                 });
 

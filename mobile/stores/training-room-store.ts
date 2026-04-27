@@ -70,6 +70,8 @@ export interface ExerciseData {
     setScheme: SetPrescription[];
     /** Method/preset marker used for the chip in the trainer view. */
     methodKey: MethodKey | null;
+    /** Rodadas (Fase 4.3). 1 para métodos lineares (default). */
+    rounds: number;
 }
 
 export interface WorkoutNote {
@@ -487,6 +489,9 @@ export const useTrainingRoomStore = create<TrainingRoomStore>()(
                                     ? ((ex as ExerciseData).setScheme)
                                     : [],
                                 methodKey: (ex as Partial<ExerciseData>).methodKey ?? null,
+                                rounds: typeof (ex as Partial<ExerciseData>).rounds === 'number' && (ex as ExerciseData).rounds >= 1
+                                    ? (ex as ExerciseData).rounds
+                                    : 1,
                             }));
                             merged.sessions[sid] = s;
                         }

@@ -14,6 +14,8 @@ import { ChevronLeft, Eye } from 'lucide-react-native';
 import { ExerciseCard } from '@/components/workout/ExerciseCard';
 import { useProgramBuilderStore } from '@/stores/program-builder-store';
 import { hydrateSetPrescriptions } from '@/lib/hydrateWorkoutSets';
+import { expandSchemeByRounds } from '@kinevo/shared/lib/prescription/set-scheme';
+import { isCompoundMethod } from '@kinevo/shared/lib/prescription/set-scheme-presets';
 import type { WorkoutItem } from '@/stores/program-builder-store';
 
 interface PreviewItem {
@@ -230,15 +232,27 @@ interface PreviewExerciseCardProps {
 }
 
 function PreviewExerciseCard({ item, supersetBadge }: PreviewExerciseCardProps) {
+    // Preview reads the in-memory draft (per-round shape) and expands locally
+    // so the trainer sees exactly what the student will see post-save. The
+    // builder never persists materialized rows in the draft; expansion only
+    // happens at save time and at preview time.
+    const effectiveRounds = isCompoundMethod(item.method_key) ? Math.max(1, item.rounds ?? 1) : 1;
+    const expandedScheme = useMemo(() => {
+        if (!item.set_scheme || item.set_scheme.length === 0) return null;
+        return effectiveRounds > 1
+            ? expandSchemeByRounds(item.set_scheme, effectiveRounds)
+            : item.set_scheme;
+    }, [item.set_scheme, effectiveRounds]);
+
     const setPrescriptions = useMemo(
         () =>
             hydrateSetPrescriptions({
-                assignedSets: item.set_scheme,
+                assignedSets: expandedScheme,
                 aggregateSets: item.sets,
                 aggregateReps: item.reps,
                 aggregateRestSeconds: item.rest_seconds,
             }),
-        [item.set_scheme, item.sets, item.reps, item.rest_seconds],
+        [expandedScheme, item.sets, item.reps, item.rest_seconds],
     );
 
     const setsData = useMemo(
@@ -257,8 +271,9 @@ function PreviewExerciseCard({ item, supersetBadge }: PreviewExerciseCardProps) 
             onToggleSetComplete={() => {}}
             notes={item.notes}
             supersetBadge={supersetBadge}
-            setScheme={item.set_scheme && item.set_scheme.length > 0 ? setPrescriptions : null}
+            setScheme={expandedScheme && expandedScheme.length > 0 ? setPrescriptions : null}
             methodKey={item.method_key}
+            rounds={effectiveRounds}
             readOnly
         />
     );

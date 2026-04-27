@@ -847,6 +847,7 @@ export default function WorkoutPlayerScreen() {
                                                 notes={item.exercise.notes}
                                                 setScheme={item.exercise.setScheme}
                                                 methodKey={item.exercise.methodKey}
+                                                rounds={item.exercise.rounds}
                                             />
                                         );
                                     }

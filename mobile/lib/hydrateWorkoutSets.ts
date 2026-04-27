@@ -20,6 +20,9 @@ export interface SetPrescription {
     rir: number | null
     tempo: string | null
     notes: string | null
+    /** Round this phase belongs to (1-based) for compound methods. NULL for
+     *  linear methods and legacy programs — UI treats null as "no grouping". */
+    round_number: number | null
 }
 
 /** Build the per-set prescription for one item.
@@ -49,6 +52,7 @@ export function hydrateSetPrescriptions(opts: {
                 rir: s.rir,
                 tempo: s.tempo,
                 notes: s.notes,
+                round_number: s.round_number ?? null,
             }))
     }
 
@@ -66,5 +70,6 @@ export function hydrateSetPrescriptions(opts: {
         rir: null,
         tempo: null,
         notes: null,
+        round_number: null,
     }))
 }
