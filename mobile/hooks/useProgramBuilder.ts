@@ -1,13 +1,52 @@
 import { useCallback } from "react";
-import { useProgramBuilderStore } from "../stores/program-builder-store";
+import { useProgramBuilderStore, type WorkoutItem } from "../stores/program-builder-store";
 import { supabase } from "../lib/supabase";
 import { toast } from "../lib/toast";
 import {
     buildSnapshotFromDraft,
     SupersetInSnapshotError,
 } from "@kinevo/shared/lib/prescription/snapshot-from-draft";
-import type { ProgramDraftLike } from "@kinevo/shared/types/prescription";
+import type { ProgramDraftLike, WorkoutSet } from "@kinevo/shared/types/prescription";
+import { summarizeSetScheme } from "@kinevo/shared/lib/prescription/set-scheme";
 import { assignProgram, AIPrescriptionFetchError } from "../lib/ai-prescription/fetch-client";
+
+// ── Per-set helpers (Fase 3) ──
+
+/** Derive coerced aggregates from a per-set scheme. Returns the item's own
+ *  aggregates when no scheme exists. */
+function aggregatesFromItem(item: WorkoutItem): { sets: number; reps: string; rest_seconds: number } {
+    if (item.set_scheme && item.set_scheme.length > 0) {
+        return summarizeSetScheme(item.set_scheme);
+    }
+    return { sets: item.sets, reps: item.reps, rest_seconds: item.rest_seconds };
+}
+
+/** Insert children rows in workout_item_set_templates. No-op when empty.
+ *  Skipped silently for items inside superset (defesa em profundidade). */
+async function insertSetSchemeRows(
+    workoutItemTemplateId: string,
+    item: WorkoutItem,
+): Promise<void> {
+    if (item.parent_item_id) return; // V1: superset bloqueado
+    const scheme = item.set_scheme;
+    if (!scheme || scheme.length === 0) return;
+    const rows = scheme.map((s: WorkoutSet, i: number) => ({
+        workout_item_template_id: workoutItemTemplateId,
+        set_number: i + 1,
+        set_type: s.set_type,
+        reps: s.reps,
+        rest_seconds: s.rest_seconds,
+        weight_target_kg: s.weight_target_kg,
+        weight_target_pct1rm: s.weight_target_pct1rm,
+        rir: s.rir,
+        tempo: s.tempo,
+        notes: s.notes,
+    }));
+    // The migration 111 table is not yet in the generated Database types;
+    // cast to any so this compiles until `npm run gen:types` is regenerated.
+    const { error } = await (supabase.from as any)('workout_item_set_templates').insert(rows as any);
+    if (error) throw error;
+}
 
 export type SaveAndAssignResult =
     | { ok: true }
@@ -70,6 +109,7 @@ export function useProgramBuilder() {
                 // Pass 1: Insert root items (parent_item_id is null)
                 const rootItems = workout.items.filter(i => !i.parent_item_id);
                 for (const item of rootItems) {
+                    const aggs = aggregatesFromItem(item);
                     const { data: savedItem, error: itemError } = await supabase
                         .from('workout_item_templates')
                         .insert({
@@ -79,18 +119,23 @@ export function useProgramBuilder() {
                             parent_item_id: null,
                             exercise_id: item.item_type === 'superset' ? null : item.exercise_id,
                             substitute_exercise_ids: item.substitute_exercise_ids,
-                            sets: item.sets,
-                            reps: item.reps,
-                            rest_seconds: item.rest_seconds,
+                            sets: aggs.sets,
+                            reps: aggs.reps,
+                            rest_seconds: aggs.rest_seconds,
                             notes: item.notes,
                             exercise_function: item.exercise_function || null,
                             item_config: item.item_config,
+                            method_key: item.method_key ?? null,
                         } as any)
                         .select('id')
                         .single();
 
                     if (itemError) throw itemError;
-                    idMap.set(item.id, (savedItem as any).id);
+                    const dbId = (savedItem as any).id as string;
+                    idMap.set(item.id, dbId);
+
+                    // Per-set children (Fase 3). No-op for items in modo simples.
+                    await insertSetSchemeRows(dbId, item);
                 }
 
                 // Pass 2: Insert child items (exercises inside supersets)
