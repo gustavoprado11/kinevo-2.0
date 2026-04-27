@@ -6,6 +6,8 @@ import type {
     WorkoutNote,
     SessionSetupData,
 } from '../stores/training-room-store';
+import type { MethodKey, WorkoutSet } from '@kinevo/shared/types/prescription';
+import { hydrateSetPrescriptions } from '../lib/hydrateWorkoutSets';
 
 // Re-export types used by components
 export type { ExerciseData, WorkoutNote };
@@ -140,6 +142,47 @@ export function useFetchStudentWorkout() {
                     }
                 }
 
+                // Fetch per-set prescription rows for this workout's items.
+                // The RPC `get_student_today_workout_for_trainer` does not yet
+                // surface per-set rows or `method_key`, so we top up here.
+                const exerciseItemIds = rawExercises
+                    .filter((ex: any) => ex.item_type !== 'warmup' && ex.item_type !== 'cardio')
+                    .map((ex: any) => ex.id)
+                    .filter((id: any): id is string => typeof id === 'string' && id.length > 0);
+
+                const setSchemeByItem = new Map<string, WorkoutSet[]>();
+                const methodKeyByItem = new Map<string, MethodKey | null>();
+                if (exerciseItemIds.length > 0) {
+                    const [{ data: setRows }, { data: methodRows }]: [{ data: any }, { data: any }] = await Promise.all([
+                        (supabase as any)
+                            .from('assigned_workout_item_sets')
+                            .select('assigned_workout_item_id, set_number, set_type, reps, rest_seconds, weight_target_kg, weight_target_pct1rm, rir, tempo, notes')
+                            .in('assigned_workout_item_id', exerciseItemIds),
+                        (supabase as any)
+                            .from('assigned_workout_items')
+                            .select('id, method_key')
+                            .in('id', exerciseItemIds),
+                    ]);
+                    for (const row of setRows || []) {
+                        const list = setSchemeByItem.get(row.assigned_workout_item_id) ?? [];
+                        list.push({
+                            set_number: row.set_number,
+                            set_type: row.set_type,
+                            reps: row.reps,
+                            rest_seconds: row.rest_seconds,
+                            weight_target_kg: row.weight_target_kg,
+                            weight_target_pct1rm: row.weight_target_pct1rm,
+                            rir: row.rir,
+                            tempo: row.tempo,
+                            notes: row.notes,
+                        });
+                        setSchemeByItem.set(row.assigned_workout_item_id, list);
+                    }
+                    for (const row of methodRows || []) {
+                        methodKeyByItem.set(row.id, (row.method_key as MethodKey | null) ?? null);
+                    }
+                }
+
                 // The RPC returns exercises with setsData as empty — we need to init them
                 const exercises: ExerciseData[] = rawExercises.map((ex: any) => {
                     // Warmup/cardio items: no set tracking, no swaps, no video
@@ -150,20 +193,33 @@ export function useFetchStudentWorkout() {
                             swap_source: 'none',
                             setsData: [],
                             exerciseFunction: ex.exercise_function ?? null,
+                            setScheme: [],
+                            methodKey: null,
                         };
                     }
+                    const assignedSets = setSchemeByItem.get(ex.id) ?? null;
+                    const setPrescriptions = hydrateSetPrescriptions({
+                        assignedSets,
+                        aggregateSets: ex.sets || 3,
+                        aggregateReps: ex.reps || '10',
+                        aggregateRestSeconds: ex.rest_seconds || 60,
+                    });
+                    const setCount = setPrescriptions.length || ex.sets || 3;
                     return {
                         ...ex,
+                        sets: setCount,
                         video_url: trainerVideoMap.get(ex.exercise_id) || ex.video_url,
                         substitute_exercise_ids: ex.substitute_exercise_ids || [],
                         swap_source: ex.swap_source || 'none',
-                        setsData: Array.from({ length: ex.sets || 3 }, () => ({
+                        setsData: Array.from({ length: setCount }, () => ({
                             weight: '',
                             reps: '',
                             completed: false,
                         })),
                         previousSets: ex.previousSets?.length > 0 ? ex.previousSets : undefined,
                         exerciseFunction: ex.exercise_function ?? null,
+                        setScheme: assignedSets && assignedSets.length > 0 ? setPrescriptions : [],
+                        methodKey: methodKeyByItem.get(ex.id) ?? null,
                     };
                 });
 

@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage, type StateStorage } from 'zustand/middleware';
+import type { MethodKey } from '@kinevo/shared/types/prescription';
+import type { SetPrescription } from '../lib/hydrateWorkoutSets';
 
 // ---------------------------------------------------------------------------
 // Storage Adapter — MMKV with in-memory fallback for Expo Go
@@ -63,6 +65,11 @@ export interface ExerciseData {
     order_index: number;                  // position in workout (local for superset children)
     exerciseFunction?: string | null;     // 'warmup' | 'activation' | 'main' | 'accessory' | 'conditioning'
     item_config?: Record<string, any>;    // warmup/cardio configuration (mode, duration, intervals, etc.)
+    /** Per-set prescription hydrated from `assigned_workout_item_sets`. Empty
+     *  array when the item uses legacy aggregate prescription. */
+    setScheme: SetPrescription[];
+    /** Method/preset marker used for the chip in the trainer view. */
+    methodKey: MethodKey | null;
 }
 
 export interface WorkoutNote {
@@ -467,6 +474,23 @@ export const useTrainingRoomStore = create<TrainingRoomStore>()(
                     Object.keys(merged.sessions).length > 0
                 ) {
                     merged.sessionOrder = Object.keys(merged.sessions);
+                }
+                // Pre-Fase-4 sessions don't have setScheme/methodKey on each
+                // exercise — default them so typed reads don't crash.
+                if (merged.sessions) {
+                    for (const [sid, session] of Object.entries(merged.sessions)) {
+                        const s = session as ActiveSession;
+                        if (Array.isArray(s.exercises)) {
+                            s.exercises = s.exercises.map((ex) => ({
+                                ...ex,
+                                setScheme: Array.isArray((ex as Partial<ExerciseData>).setScheme)
+                                    ? ((ex as ExerciseData).setScheme)
+                                    : [],
+                                methodKey: (ex as Partial<ExerciseData>).methodKey ?? null,
+                            }));
+                            merged.sessions[sid] = s;
+                        }
+                    }
                 }
                 return merged;
             },

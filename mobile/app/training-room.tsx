@@ -843,6 +843,8 @@ export default function TrainingRoomScreen() {
                             previousSets={exercise.previousSets}
                             isSwapped={exercise.swap_source !== 'none'}
                             notes={exercise.notes}
+                            setScheme={exercise.setScheme}
+                            methodKey={exercise.methodKey}
                         />
                     ),
                 });
