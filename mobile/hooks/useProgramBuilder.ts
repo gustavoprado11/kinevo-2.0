@@ -7,22 +7,42 @@ import {
     SupersetInSnapshotError,
 } from "@kinevo/shared/lib/prescription/snapshot-from-draft";
 import type { ProgramDraftLike, WorkoutSet } from "@kinevo/shared/types/prescription";
-import { summarizeSetScheme } from "@kinevo/shared/lib/prescription/set-scheme";
+import {
+    expandSchemeByRounds,
+    summarizeSetScheme,
+    summarizeWithRounds,
+} from "@kinevo/shared/lib/prescription/set-scheme";
+import { isCompoundMethod } from "@kinevo/shared/lib/prescription/set-scheme-presets";
 import { assignProgram, AIPrescriptionFetchError } from "../lib/ai-prescription/fetch-client";
 
-// ── Per-set helpers (Fase 3) ──
+// ── Per-set helpers (Fase 3 / 4.3) ──
 
-/** Derive coerced aggregates from a per-set scheme. Returns the item's own
- *  aggregates when no scheme exists. */
+/** Effective rounds for an item. Compound methods (drop-set, cluster) honor
+ *  `item.rounds`; linear methods are forced to 1 even if the trainer typed a
+ *  larger value somewhere — defesa em profundidade. */
+function effectiveRoundsForItem(item: WorkoutItem): number {
+    if (!item.set_scheme || item.set_scheme.length === 0) return 1;
+    if (!isCompoundMethod(item.method_key)) return 1;
+    const r = Number.isFinite(item.rounds) ? Math.floor(item.rounds) : 1;
+    return Math.max(1, Math.min(20, r));
+}
+
+/** Derive coerced aggregates from a per-set scheme + rounds. Returns the
+ *  item's own aggregates when no scheme exists. */
 function aggregatesFromItem(item: WorkoutItem): { sets: number; reps: string; rest_seconds: number } {
     if (item.set_scheme && item.set_scheme.length > 0) {
-        return summarizeSetScheme(item.set_scheme);
+        const rounds = effectiveRoundsForItem(item);
+        return rounds > 1
+            ? summarizeWithRounds(item.set_scheme, rounds)
+            : summarizeSetScheme(item.set_scheme);
     }
     return { sets: item.sets, reps: item.reps, rest_seconds: item.rest_seconds };
 }
 
 /** Insert children rows in workout_item_set_templates. No-op when empty.
- *  Skipped silently for items inside superset (defesa em profundidade). */
+ *  Skipped silently for items inside superset (defesa em profundidade).
+ *  Materializes per-round schemes via `expandSchemeByRounds` and tags each
+ *  output row with `round_number` (Fase 4.3). */
 async function insertSetSchemeRows(
     workoutItemTemplateId: string,
     item: WorkoutItem,
@@ -30,7 +50,10 @@ async function insertSetSchemeRows(
     if (item.parent_item_id) return; // V1: superset bloqueado
     const scheme = item.set_scheme;
     if (!scheme || scheme.length === 0) return;
-    const rows = scheme.map((s: WorkoutSet, i: number) => ({
+    const rounds = effectiveRoundsForItem(item);
+    const expanded = expandSchemeByRounds(scheme, rounds);
+    const isCompound = rounds > 1;
+    const rows = expanded.map((s: WorkoutSet, i: number) => ({
         workout_item_template_id: workoutItemTemplateId,
         set_number: i + 1,
         set_type: s.set_type,
@@ -41,9 +64,10 @@ async function insertSetSchemeRows(
         rir: s.rir,
         tempo: s.tempo,
         notes: s.notes,
+        round_number: isCompound ? (s.round_number ?? null) : null,
     }));
-    // The migration 111 table is not yet in the generated Database types;
-    // cast to any so this compiles until `npm run gen:types` is regenerated.
+    // The migration 111/112 columns may not be in the generated Database types
+    // yet; cast to any so this compiles until `npm run gen:types` is regenerated.
     const { error } = await (supabase.from as any)('workout_item_set_templates').insert(rows as any);
     if (error) throw error;
 }
@@ -126,6 +150,7 @@ export function useProgramBuilder() {
                             exercise_function: item.exercise_function || null,
                             item_config: item.item_config,
                             method_key: item.method_key ?? null,
+                            rounds: effectiveRoundsForItem(item),
                         } as any)
                         .select('id')
                         .single();
@@ -134,7 +159,7 @@ export function useProgramBuilder() {
                     const dbId = (savedItem as any).id as string;
                     idMap.set(item.id, dbId);
 
-                    // Per-set children (Fase 3). No-op for items in modo simples.
+                    // Per-set children (Fase 3 / 4.3 — expanded by rounds).
                     await insertSetSchemeRows(dbId, item);
                 }
 

@@ -42,6 +42,9 @@ export function WorkoutItemRow({
     const inSuperset = item.parent_item_id !== null;
     const methodChip = methodChipLabel(item.method_key ?? null);
     const advancedActive = !!(item.set_scheme && item.set_scheme.length > 0);
+    const rounds = item.rounds ?? 1;
+    const phasesPerRound = item.set_scheme?.length ?? 0;
+    const showRoundsBadge = advancedActive && rounds > 1 && phasesPerRound > 0;
 
     return (
         <Animated.View
@@ -160,6 +163,21 @@ export function WorkoutItemRow({
                         >
                             <Text style={{ fontSize: 10, fontWeight: "700", color: colors.brand.primary }}>
                                 {methodChip}
+                            </Text>
+                        </View>
+                    )}
+                    {showRoundsBadge && (
+                        <View
+                            style={{
+                                paddingHorizontal: 8,
+                                paddingVertical: 2,
+                                borderRadius: 999,
+                                backgroundColor: "rgba(124, 58, 237, 0.06)",
+                                marginRight: 8,
+                            }}
+                        >
+                            <Text style={{ fontSize: 10, fontWeight: "700", color: colors.brand.primary }}>
+                                {rounds} rodadas × {phasesPerRound} fases
                             </Text>
                         </View>
                     )}

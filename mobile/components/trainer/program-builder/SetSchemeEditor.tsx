@@ -19,8 +19,13 @@ import {
     expandToSetScheme,
     inferMethodKeyFromScheme,
     summarizeSetScheme,
+    summarizeWithRounds,
 } from "@kinevo/shared/lib/prescription/set-scheme";
-import { SYSTEM_PRESETS } from "@kinevo/shared/lib/prescription/set-scheme-presets";
+import {
+    SYSTEM_PRESETS,
+    isCompoundMethod,
+} from "@kinevo/shared/lib/prescription/set-scheme-presets";
+import { Minus } from "lucide-react-native";
 
 import { colors } from "@/theme";
 import { SetSchemeCard } from "./SetSchemeCard";
@@ -29,6 +34,8 @@ import { SetSchemePresetChips } from "./SetSchemePresetChips";
 export interface SetSchemeEditorResult {
     scheme: WorkoutSet[] | null;
     methodKey: MethodKey | null;
+    /** Rodadas (Fase 4.3). 1 para métodos lineares, 2..20 para compostos. */
+    rounds: number;
     /** When true, also overwrite the parent aggregates with the summary. */
     aggregates: { sets: number; reps: string; rest_seconds: number } | null;
 }
@@ -38,6 +45,8 @@ interface SetSchemeEditorProps {
     /** Initial scheme (null = trainer is opening "advanced" for the first time). */
     initialScheme: WorkoutSet[] | null;
     initialMethodKey: MethodKey | null;
+    /** Initial rounds (Fase 4.3). Defaults to 1 when omitted. */
+    initialRounds?: number;
     /** Aggregates from the parent item — used by `expandToSetScheme` on first open. */
     fallbackAggregates: { sets: number | null; reps: string | null; rest_seconds: number | null };
     exerciseName: string;
@@ -57,6 +66,7 @@ export function SetSchemeEditor({
     visible,
     initialScheme,
     initialMethodKey,
+    initialRounds,
     fallbackAggregates,
     exerciseName,
     onSave,
@@ -74,6 +84,7 @@ export function SetSchemeEditor({
             ),
     );
     const [methodKey, setMethodKey] = useState<MethodKey | null>(initialMethodKey);
+    const [rounds, setRounds] = useState<number>(() => Math.max(1, initialRounds ?? 1));
 
     // Reset when visible toggles to true with new initial values.
     useEffect(() => {
@@ -87,9 +98,12 @@ export function SetSchemeEditor({
             );
         setScheme(next);
         setMethodKey(initialMethodKey);
-    }, [visible, initialScheme, initialMethodKey, fallbackAggregates.sets, fallbackAggregates.reps, fallbackAggregates.rest_seconds]);
+        setRounds(Math.max(1, initialRounds ?? 1));
+    }, [visible, initialScheme, initialMethodKey, initialRounds, fallbackAggregates.sets, fallbackAggregates.reps, fallbackAggregates.rest_seconds]);
 
     const displayKey: MethodKey = methodKey ?? inferMethodKeyFromScheme(scheme);
+    const isCompound = isCompoundMethod(displayKey);
+    const effectiveRounds = isCompound ? rounds : 1;
 
     const updateSet = (index: number, patch: Partial<WorkoutSet>) => {
         setScheme((prev) => renumber(prev.map((s, i) => (i === index ? { ...s, ...patch } : s))));
@@ -138,6 +152,17 @@ export function SetSchemeEditor({
         const next = applyPreset(key);
         setScheme(next);
         setMethodKey(key);
+        const presetDefault = SYSTEM_PRESETS[key]?.defaultRounds ?? 1;
+        setRounds(Math.max(1, presetDefault));
+    };
+
+    const incrementRounds = () => {
+        Haptics.selectionAsync();
+        setRounds((r) => Math.min(20, r + 1));
+    };
+    const decrementRounds = () => {
+        Haptics.selectionAsync();
+        setRounds((r) => Math.max(1, r - 1));
     };
 
     const handleExitAdvanced = () => {
@@ -153,7 +178,7 @@ export function SetSchemeEditor({
                         const summary = scheme.length > 0
                             ? summarizeSetScheme(scheme)
                             : { sets: 3, reps: "10", rest_seconds: 60 };
-                        onSave({ scheme: null, methodKey: null, aggregates: summary });
+                        onSave({ scheme: null, methodKey: null, rounds: 1, aggregates: summary });
                     },
                 },
             ],
@@ -162,10 +187,13 @@ export function SetSchemeEditor({
 
     const handleSave = () => {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        const summary = summarizeSetScheme(scheme);
+        const summary = isCompound
+            ? summarizeWithRounds(scheme, effectiveRounds)
+            : summarizeSetScheme(scheme);
         onSave({
             scheme,
             methodKey: methodKey ?? inferMethodKeyFromScheme(scheme),
+            rounds: effectiveRounds,
             aggregates: summary,
         });
     };
@@ -228,11 +256,99 @@ export function SetSchemeEditor({
                         <SetSchemePresetChips activeKey={displayKey} onApply={applyPresetKey} />
                     </View>
 
+                    {/* Rodadas (compound methods only) */}
+                    {isCompound ? (
+                        <View
+                            style={{
+                                flexDirection: "row",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                                paddingHorizontal: 16,
+                                paddingVertical: 10,
+                                backgroundColor: colors.background.card,
+                                borderBottomWidth: 1,
+                                borderBottomColor: colors.border.primary,
+                                gap: 12,
+                            }}
+                        >
+                            <View style={{ flex: 1 }}>
+                                <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text.primary }}>
+                                    Rodadas
+                                </Text>
+                                <Text style={{ fontSize: 11, color: colors.text.tertiary, marginTop: 2 }}>
+                                    Quantas vezes a estrutura abaixo se repete.
+                                </Text>
+                            </View>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                                <TouchableOpacity
+                                    onPress={decrementRounds}
+                                    disabled={rounds <= 1}
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Diminuir rodadas"
+                                    style={{
+                                        width: 32,
+                                        height: 32,
+                                        borderRadius: 8,
+                                        backgroundColor: rounds <= 1 ? colors.background.primary : colors.brand.primaryLight,
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        opacity: rounds <= 1 ? 0.4 : 1,
+                                    }}
+                                >
+                                    <Minus size={16} color={colors.brand.primary} />
+                                </TouchableOpacity>
+                                <Text
+                                    style={{
+                                        minWidth: 28,
+                                        textAlign: "center",
+                                        fontSize: 17,
+                                        fontWeight: "800",
+                                        color: colors.brand.primary,
+                                        fontVariant: ["tabular-nums"],
+                                    }}
+                                >
+                                    {rounds}
+                                </Text>
+                                <TouchableOpacity
+                                    onPress={incrementRounds}
+                                    disabled={rounds >= 20}
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Aumentar rodadas"
+                                    style={{
+                                        width: 32,
+                                        height: 32,
+                                        borderRadius: 8,
+                                        backgroundColor: rounds >= 20 ? colors.background.primary : colors.brand.primaryLight,
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        opacity: rounds >= 20 ? 0.4 : 1,
+                                    }}
+                                >
+                                    <Plus size={16} color={colors.brand.primary} />
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    ) : null}
+
                     {/* Lista de cards de série */}
                     <ScrollView
                         contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 24 }}
                         keyboardShouldPersistTaps="handled"
                     >
+                        {isCompound ? (
+                            <Text
+                                style={{
+                                    fontSize: 11,
+                                    fontWeight: "700",
+                                    color: colors.text.tertiary,
+                                    letterSpacing: 0.6,
+                                    textTransform: "uppercase",
+                                    marginBottom: 8,
+                                }}
+                            >
+                                Estrutura de uma rodada
+                            </Text>
+                        ) : null}
                         {scheme.map((s, idx) => (
                             <SetSchemeCard
                                 key={`set-${idx}`}
@@ -265,7 +381,7 @@ export function SetSchemeEditor({
                         >
                             <Plus size={16} color={colors.brand.primary} />
                             <Text style={{ fontSize: 13, fontWeight: "600", color: colors.brand.primary }}>
-                                Adicionar série
+                                {isCompound ? "Adicionar fase" : "Adicionar série"}
                             </Text>
                         </TouchableOpacity>
 

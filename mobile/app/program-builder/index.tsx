@@ -302,8 +302,8 @@ export default function ProgramBuilderScreen() {
                 setSetSchemeEditingItemId(null);
                 return;
             }
-            // Persist new scheme + method on the item.
-            setSetScheme(currentWorkout.id, editingItem.id, result.scheme, result.methodKey);
+            // Persist new scheme + method + rounds on the item.
+            setSetScheme(currentWorkout.id, editingItem.id, result.scheme, result.methodKey, result.rounds);
             // When user exited advanced or saved, also re-sync aggregates so
             // the inline simple-mode inputs reflect the new summary.
             if (result.aggregates) {
@@ -712,6 +712,7 @@ export default function ProgramBuilderScreen() {
                             visible={!!setSchemeEditingItemId}
                             initialScheme={editingItem.set_scheme ?? null}
                             initialMethodKey={editingItem.method_key ?? null}
+                            initialRounds={editingItem.rounds ?? 1}
                             fallbackAggregates={{
                                 sets: editingItem.sets,
                                 reps: editingItem.reps,

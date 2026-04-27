@@ -57,6 +57,10 @@ export interface WorkoutItem {
     set_scheme: WorkoutSet[] | null;
     /** Method/preset marker shown como chip no card. */
     method_key: MethodKey | null;
+    /** Rodadas (Fase 4.3). 1 para métodos lineares (default). 2..20 para
+     *  métodos compostos (drop-set, cluster). Quando > 1, `set_scheme`
+     *  descreve UMA rodada e é materializado N vezes no save (`expandSchemeByRounds`). */
+    rounds: number;
 }
 
 export interface Workout {
@@ -151,9 +155,10 @@ interface ProgramBuilderState {
         equipment: string | null;
         muscle_groups: { id: string; name: string }[];
     }) => void;
-    updateItem: (workoutId: string, itemId: string, updates: Partial<Pick<WorkoutItem, 'sets' | 'reps' | 'rest_seconds' | 'notes' | 'set_scheme' | 'method_key'>>) => void;
-    /** Replace per-set scheme + method on an item. Used by SetSchemeEditor. */
-    setSetScheme: (workoutId: string, itemId: string, scheme: WorkoutSet[] | null, methodKey: MethodKey | null) => void;
+    updateItem: (workoutId: string, itemId: string, updates: Partial<Pick<WorkoutItem, 'sets' | 'reps' | 'rest_seconds' | 'notes' | 'set_scheme' | 'method_key' | 'rounds'>>) => void;
+    /** Replace per-set scheme + method + rounds on an item. Used by SetSchemeEditor.
+     *  `rounds` defaults to 1 when omitted (linear method). */
+    setSetScheme: (workoutId: string, itemId: string, scheme: WorkoutSet[] | null, methodKey: MethodKey | null, rounds?: number) => void;
     removeItem: (workoutId: string, itemId: string) => void;
     reorderItems: (workoutId: string, newItems: WorkoutItem[]) => void;
 
@@ -228,6 +233,7 @@ function workoutsFromBuilderData(builderData: BuilderProgramData): Workout[] {
             substitute_exercise_ids: it.substitute_exercise_ids ?? [],
             set_scheme: null,
             method_key: null,
+            rounds: 1,
         })),
     }));
 }
@@ -287,6 +293,7 @@ export const useProgramBuilderStore = create<ProgramBuilderState>()(
                                 substitute_exercise_ids: [],
                                 set_scheme: ex.set_scheme ?? null,
                                 method_key: ex.method_key ?? null,
+                                rounds: 1,
                             });
                         } else if (!processedGroups.has(ex.superset_group)) {
                             // First exercise of a superset group — create parent + all children
@@ -321,6 +328,7 @@ export const useProgramBuilderStore = create<ProgramBuilderState>()(
                                 substitute_exercise_ids: [],
                                 set_scheme: null,
                                 method_key: null,
+                                rounds: 1,
                             });
 
                             // Create child exercise items
@@ -344,6 +352,7 @@ export const useProgramBuilderStore = create<ProgramBuilderState>()(
                                     // Modo avançado bloqueado em superset (V1).
                                     set_scheme: null,
                                     method_key: null,
+                                    rounds: 1,
                                 });
                             });
                         }
@@ -509,6 +518,7 @@ export const useProgramBuilderStore = create<ProgramBuilderState>()(
                     substitute_exercise_ids: [],
                     set_scheme: null,
                     method_key: null,
+                    rounds: 1,
                 };
 
                 return {
@@ -541,7 +551,7 @@ export const useProgramBuilderStore = create<ProgramBuilderState>()(
                 isDirty: true,
             })),
 
-            setSetScheme: (workoutId, itemId, scheme, methodKey) => set((state) => ({
+            setSetScheme: (workoutId, itemId, scheme, methodKey, rounds) => set((state) => ({
                 draft: {
                     ...state.draft,
                     workouts: state.draft.workouts.map(w =>
@@ -550,7 +560,7 @@ export const useProgramBuilderStore = create<ProgramBuilderState>()(
                                 ...w,
                                 items: w.items.map(item =>
                                     item.id === itemId
-                                        ? { ...item, set_scheme: scheme, method_key: methodKey }
+                                        ? { ...item, set_scheme: scheme, method_key: methodKey, rounds: rounds ?? 1 }
                                         : item
                                 ),
                             }
@@ -620,6 +630,9 @@ export const useProgramBuilderStore = create<ProgramBuilderState>()(
                                     ...it,
                                     set_scheme: (it as Partial<WorkoutItem>).set_scheme ?? null,
                                     method_key: (it as Partial<WorkoutItem>).method_key ?? null,
+                                    rounds: typeof (it as Partial<WorkoutItem>).rounds === 'number' && (it as WorkoutItem).rounds >= 1
+                                        ? (it as WorkoutItem).rounds
+                                        : 1,
                                 }))
                                 : [],
                         }));

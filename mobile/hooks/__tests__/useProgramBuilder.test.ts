@@ -235,6 +235,7 @@ describe('useProgramBuilder.saveAndAssign', () => {
                                 substitute_exercise_ids: [],
                                 set_scheme: null,
                                 method_key: null,
+                                rounds: 1,
                             },
                         ],
                     }],
