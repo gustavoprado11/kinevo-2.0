@@ -189,7 +189,11 @@ Deno.serve(async (req: Request) => {
 
                 if (workoutError) throw workoutError;
 
-                // Fetch items with exercise info
+                // Fetch items with exercise info + per-set scheme rows
+                // (`workout_item_set_templates`). The per-set rows are copied
+                // 1:1 into `assigned_workout_item_sets` after each root item
+                // is inserted. Supersets (V1) keep aggregate-only behaviour —
+                // they have no per-set children by design.
                 const { data: items } = await supabase
                     .from("workout_item_templates")
                     .select(`
@@ -199,6 +203,17 @@ Deno.serve(async (req: Request) => {
                             exercise_muscle_groups (
                                 muscle_groups (name)
                             )
+                        ),
+                        workout_item_set_templates (
+                            set_number,
+                            set_type,
+                            reps,
+                            rest_seconds,
+                            weight_target_kg,
+                            weight_target_pct1rm,
+                            rir,
+                            tempo,
+                            notes
                         )
                     `)
                     .eq("workout_template_id", workout.id)
@@ -239,12 +254,36 @@ Deno.serve(async (req: Request) => {
                                 exercise_function: item.exercise_function || null,
                                 item_config: item.item_config || {},
                                 parent_item_id: null,
+                                method_key: (item as any).method_key ?? null,
                             })
                             .select("id")
                             .single();
 
                         if (itemError) throw itemError;
                         parentMap.set(item.id, assignedItem.id);
+
+                        // Copy per-set scheme rows (Fase 4.1). Only root
+                        // items can have per-set rows — supersets (V1) keep
+                        // aggregate-only behaviour.
+                        const setRows: any[] = (item as any).workout_item_set_templates || [];
+                        if (setRows.length > 0) {
+                            const setsPayload = setRows.map((s: any) => ({
+                                assigned_workout_item_id: assignedItem.id,
+                                set_number: s.set_number,
+                                set_type: s.set_type,
+                                reps: s.reps,
+                                rest_seconds: s.rest_seconds,
+                                weight_target_kg: s.weight_target_kg,
+                                weight_target_pct1rm: s.weight_target_pct1rm,
+                                rir: s.rir,
+                                tempo: s.tempo,
+                                notes: s.notes,
+                            }));
+                            const { error: setsError } = await supabase
+                                .from("assigned_workout_item_sets")
+                                .insert(setsPayload);
+                            if (setsError) throw setsError;
+                        }
                     }
 
                     // Second pass: child items (supersets)
@@ -282,6 +321,7 @@ Deno.serve(async (req: Request) => {
                                 exercise_function: item.exercise_function || null,
                                 item_config: item.item_config || {},
                                 parent_item_id: parentAssignedId,
+                                method_key: (item as any).method_key ?? null,
                             });
 
                         if (childError) throw childError;
