@@ -505,6 +505,22 @@ Os campos `weight_target_kg` e `weight_target_pct1rm` são metadados que o train
 
 ## Notas de Implementação
 
+### Fase 4.1 — Fix do fluxo de atribuição + polimento visual (entregue)
+
+**Bug encontrado e corrigido:**
+- `supabase/functions/assign-program/index.ts` (Edge Function chamado pelo builder mobile manual em `saveAndAssign`) **não estava propagando `method_key`** para `assigned_workout_items` nem **copiando as linhas** de `workout_item_set_templates` → `assigned_workout_item_sets`. Resultado: programa salvo com pirâmide/drop-set caía no fallback agregado quando o aluno abria a sessão. O screenshot do "Supino Inclinado Articulado" (Drop-set 10/8/8) bateu com esse cenário.
+- Fix: SELECT do template agora inclui `workout_item_set_templates(*)` no JOIN; INSERT raiz e filho propagam `method_key`; após cada item raiz, INSERT em batch das filhas em `assigned_workout_item_sets` (supersets V1 ficam fora — não têm per-set por design).
+- Edge Function deployada via Supabase MCP no projeto `lylksbtgrihzepbteest` (Kinevo 2.0) — versão 4 ativa.
+- **Programas atribuídos antes do fix continuam com dados per-set vazios.** Backfill retroativo é possível (copiar de `workout_item_set_templates` pra `assigned_workout_item_sets` via SQL) mas não foi feito nesta sessão — pendente confirmação após teste manual.
+- **Path de atribuição via IA** (`/api/programs/assign` no web, usado quando `originatedFromAi=true`) também não propaga per-set hoje. Fora do escopo da Fase 4.1 (Gustavo usa fluxo manual). Documentado como pendência.
+
+**Polimento visual** (3 superfícies, paridade automática via `ExerciseCard` compartilhado):
+- `shared/lib/prescription/set-type-labels.ts` — `SET_TYPE_LABELS` (full pt-BR) + `SET_TYPE_BADGE_LABELS` (compact uppercase: TOP/DROP/BACK/CLUSTER/AMRAP/W/FAIL). Fonte única, com test de paridade contra `SET_TYPE_OPTIONS`.
+- `mobile/components/workout/SetTypeBadge.tsx` — badge agora lê texto do shared (`SET_TYPE_BADGE_LABELS`), removendo strings hardcoded ("Aq./Top/Back" antigo).
+- `mobile/components/workout/SetRow.tsx` — **label "Meta: 10"** (violeta, peso 700, 10pt) renderizada **acima** do input de Reps quando há `repsTarget`. Casos especiais: cluster vira "Meta: 5+5+5 · cluster"; AMRAP vira "Meta: até a falha". Placeholder do input também ganha tom violeta translúcido. Layout do reps virou stack (label em cima + input embaixo) dentro da mesma célula.
+- `mobile/components/workout/ExerciseCard.tsx` — chip do método ganhou **ícone Lucide específico** por chave (`TrendingDown` pirâmide↓, `TrendingUp` pirâmide↑/top+backoff, `ChevronsDown` drop, `Layers` cluster, `Dumbbell` 5×5, `Pencil` custom), borda sutil e tipografia ligeiramente maior. Acessibilidade: `accessibilityLabel="Método: …"`.
+- Training-room (treinador) e preview (builder) reaproveitam o `<ExerciseCard>` modificado → ganham os mesmos refinos sem mudança extra.
+
 ### Fase 4 — Sala de Treino + Preview no Builder (entregue)
 
 **Arquivos criados:**
