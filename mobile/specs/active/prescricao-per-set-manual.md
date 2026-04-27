@@ -505,6 +505,16 @@ Os campos `weight_target_kg` e `weight_target_pct1rm` são metadados que o train
 
 ## Notas de Implementação
 
+### Fase 4.2 — Meta de carga visível por série (entregue)
+
+- `shared/lib/prescription/set-scheme.ts` — adicionados `formatWeightKg` e `buildWeightMetaLabel`. O segundo cobre os 4 cenários: só kg → "Meta: 80 kg"; só %1RM → "Meta: 75% 1RM"; ambos → "Meta: 80 kg (75% 1RM)"; nenhum → `null` (UI esconde a label). `formatWeightKg` strip de `40.0` → `40` e mantém `22.5`. 7 novos testes.
+- `mobile/components/workout/SetRow.tsx` — props novas opcionais `weightTargetKg` e `weightTargetPct1rm`. A célula de Peso agora é stack ("Meta: 80 kg" violeta acima do input) idêntica à célula de Reps. Placeholder do input prioriza target → previous → "kg". Label só aparece quando `buildWeightMetaLabel` retorna não-null — comportamento atual preservado byte-a-byte para programas sem prescrição de carga.
+- `mobile/components/workout/ExerciseCard.tsx` — propaga `prescription.weight_target_kg` e `prescription.weight_target_pct1rm` (já hidratados pelo `SetPrescription`) pro SetRow. Paridade automática nas 3 superfícies (aluno / treinador / preview).
+
+**Decisões:**
+- Helper foi parar em `set-scheme.ts` (não em `method-labels.ts`) porque é meta de carga, não de método. Ambos exportados via re-export do `set-scheme.ts`.
+- Layout do peso virou stack (label + input) só quando há meta — quando não há, é só o input simples. Linhas sem prescrição de carga ficam visualmente idênticas ao comportamento atual.
+
 ### Fase 4.1 — Fix do fluxo de atribuição + polimento visual (entregue)
 
 **Bug encontrado e corrigido:**
