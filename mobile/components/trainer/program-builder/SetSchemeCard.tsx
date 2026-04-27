@@ -12,6 +12,10 @@ interface SetSchemeCardProps {
     set: WorkoutSet;
     index: number;
     canRemove: boolean;
+    /** Fase 4.5b — when false (default in the editor), RIR and Tempo rows are
+     *  hidden to reduce visual density. The trainer reveals them via
+     *  "+ Mais campos" in the editor header. */
+    showAdvancedFields?: boolean;
     onUpdate: (patch: Partial<WorkoutSet>) => void;
     onDuplicate: () => void;
     onRemove: () => void;
@@ -32,6 +36,7 @@ export function SetSchemeCard({
     set,
     index,
     canRemove,
+    showAdvancedFields = false,
     onUpdate,
     onDuplicate,
     onRemove,
@@ -209,15 +214,17 @@ export function SetSchemeCard({
                 </TouchableOpacity>
             </FieldRow>
 
-            {/* RIR (stepper) */}
-            <FieldRow label="RIR">
-                <Stepper
-                    value={set.rir ?? 0}
-                    suffix=""
-                    onDec={() => stepRir(-1)}
-                    onInc={() => stepRir(1)}
-                />
-            </FieldRow>
+            {/* RIR (stepper) — escondido por default (Fase 4.5b) */}
+            {showAdvancedFields ? (
+                <FieldRow label="RIR">
+                    <Stepper
+                        value={set.rir ?? 0}
+                        suffix=""
+                        onDec={() => stepRir(-1)}
+                        onInc={() => stepRir(1)}
+                    />
+                </FieldRow>
+            ) : null}
 
             {/* Descanso (stepper) */}
             <FieldRow label="Descanso">
@@ -229,17 +236,19 @@ export function SetSchemeCard({
                 />
             </FieldRow>
 
-            {/* Tempo (free text) */}
-            <FieldRow label="Tempo">
-                <TextInput
-                    value={set.tempo ?? ""}
-                    onChangeText={(text) => onUpdate({ tempo: text || null })}
-                    placeholder="3-1-1-0"
-                    placeholderTextColor={colors.text.quaternary}
-                    accessibilityLabel={`Tempo da série ${index + 1}`}
-                    style={inputStyle}
-                />
-            </FieldRow>
+            {/* Tempo (free text) — escondido por default (Fase 4.5b) */}
+            {showAdvancedFields ? (
+                <FieldRow label="Tempo">
+                    <TextInput
+                        value={set.tempo ?? ""}
+                        onChangeText={(text) => onUpdate({ tempo: text || null })}
+                        placeholder="3-1-1-0"
+                        placeholderTextColor={colors.text.quaternary}
+                        accessibilityLabel={`Tempo da série ${index + 1}`}
+                        style={inputStyle}
+                    />
+                </FieldRow>
+            ) : null}
         </View>
     );
 }

@@ -1,7 +1,7 @@
 'use client'
 
-import { useMemo } from 'react'
-import { Copy, Minus, Plus, Trash2 } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { ChevronDown, ChevronUp, Copy, Minus, Plus, Repeat, Trash2 } from 'lucide-react'
 
 import type { MethodKey, SetType, WorkoutSet } from '@kinevo/shared/types/prescription'
 import { SET_TYPE_OPTIONS } from '@kinevo/shared/types/prescription'
@@ -42,6 +42,29 @@ const SET_TYPE_LABELS: Record<SetType, string> = {
 const ROUND_MIN = 1
 const ROUND_MAX = 20
 
+const ADVANCED_FIELDS_STORAGE_KEY = 'kinevo_setscheme_advanced_fields'
+
+/** Read the persisted "show advanced fields" preference. Defaults to false on
+ *  first render (SSR-safe) — useEffect rehydrates client-side. */
+const readAdvancedFieldsPref = (): boolean => {
+    if (typeof window === 'undefined') return false
+    try {
+        return window.localStorage.getItem(ADVANCED_FIELDS_STORAGE_KEY) === '1'
+    } catch {
+        return false
+    }
+}
+
+const writeAdvancedFieldsPref = (value: boolean) => {
+    if (typeof window === 'undefined') return
+    try {
+        window.localStorage.setItem(ADVANCED_FIELDS_STORAGE_KEY, value ? '1' : '0')
+    } catch {
+        // localStorage may be unavailable (private mode, quota exceeded, etc.)
+        // — toggle still works in memory, preference just isn't persisted.
+    }
+}
+
 const newEmptySet = (setNumber: number): WorkoutSet => ({
     set_number: setNumber,
     set_type: 'normal',
@@ -81,6 +104,20 @@ export function SetSchemeTable({
     const displayKey: MethodKey = methodKey ?? inferredKey
     const compound = isCompoundMethod(displayKey)
     const safeRounds = clampRounds(rounds ?? 1)
+
+    // "+ Mais campos" toggle (Fase 4.5b) — persists per device. SSR-safe:
+    // first render is always false; useEffect rehydrates on the client.
+    const [showAdvancedFields, setShowAdvancedFields] = useState<boolean>(false)
+    useEffect(() => {
+        setShowAdvancedFields(readAdvancedFieldsPref())
+    }, [])
+    const toggleAdvancedFields = () => {
+        setShowAdvancedFields((prev) => {
+            const next = !prev
+            writeAdvancedFieldsPref(next)
+            return next
+        })
+    }
     // Effective rounds for the footer math: linear methods always run as 1
     // round even if `rounds` was set incidentally; compound methods honor the
     // value the trainer typed.
@@ -146,8 +183,8 @@ export function SetSchemeTable({
 
     return (
         <div className="mt-3 rounded-lg border border-[#E8E8ED] dark:border-k-border-subtle bg-[#F9F9FB] dark:bg-surface-card-elevated p-3 space-y-3">
-            {/* Header: chip + voltar */}
-            <div className="flex items-center justify-between gap-2">
+            {/* Header: chip + toggle Mais campos + voltar */}
+            <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="flex items-center gap-2">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-k-text-tertiary">
                         Método
@@ -157,15 +194,43 @@ export function SetSchemeTable({
                     </span>
                 </div>
                 {!readonly && (
-                    <button
-                        type="button"
-                        onClick={handleExit}
-                        className="text-xs text-k-text-secondary hover:text-[#FF3B30] dark:hover:text-red-400 transition-colors"
-                    >
-                        Voltar para modo simples
-                    </button>
+                    <div className="flex items-center gap-3">
+                        <button
+                            type="button"
+                            onClick={toggleAdvancedFields}
+                            aria-pressed={showAdvancedFields}
+                            className="flex items-center gap-1 text-[11px] font-medium text-k-text-secondary hover:text-[#007AFF] dark:hover:text-violet-400 transition-colors"
+                        >
+                            {showAdvancedFields ? (
+                                <ChevronUp className="w-3 h-3" />
+                            ) : (
+                                <ChevronDown className="w-3 h-3" />
+                            )}
+                            {showAdvancedFields ? 'Menos campos' : 'Mais campos'}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleExit}
+                            className="text-xs text-k-text-secondary hover:text-[#FF3B30] dark:hover:text-red-400 transition-colors"
+                        >
+                            Voltar para modo simples
+                        </button>
+                    </div>
                 )}
             </div>
+
+            {/* Banner explicativo de rodadas (Fase 4.5b) — só compound + rounds > 1. */}
+            {compound && safeRounds > 1 && phasesPerRound > 0 && (
+                <div className="flex items-start gap-2 px-3 py-2 rounded-md bg-blue-50 border border-blue-200 text-blue-900 dark:bg-blue-950/40 dark:border-blue-800 dark:text-blue-200">
+                    <Repeat className="w-4 h-4 mt-0.5 shrink-0" />
+                    <p className="text-[11px] leading-snug">
+                        <span className="font-semibold">
+                            Esta estrutura de {phasesPerRound} {phasesPerRound === 1 ? 'fase' : 'fases'} será repetida {safeRounds} vezes.
+                        </span>{' '}
+                        Cada rodada inteira conta como 1 série efetiva no volume semanal.
+                    </p>
+                </div>
+            )}
 
             {/* Preset chips */}
             {!readonly && (
@@ -230,9 +295,9 @@ export function SetSchemeTable({
                             <th className="py-2 pr-2 font-bold">Tipo</th>
                             <th className="py-2 pr-2 font-bold">Reps</th>
                             <th className="py-2 pr-2 font-bold">Carga</th>
-                            <th className="py-2 pr-2 font-bold">RIR</th>
+                            {showAdvancedFields && <th className="py-2 pr-2 font-bold">RIR</th>}
                             <th className="py-2 pr-2 font-bold">Descanso</th>
-                            <th className="py-2 pr-2 font-bold">Tempo</th>
+                            {showAdvancedFields && <th className="py-2 pr-2 font-bold">Tempo</th>}
                             {!readonly && <th className="py-2 pr-2 w-16" aria-label="Ações" />}
                         </tr>
                     </thead>
@@ -243,6 +308,7 @@ export function SetSchemeTable({
                                 set={set}
                                 index={index}
                                 readonly={readonly}
+                                showAdvancedFields={showAdvancedFields}
                                 onUpdate={(patch) => updateSet(index, patch)}
                                 onDuplicate={() => duplicateSet(index)}
                                 onRemove={() => removeSet(index)}
@@ -282,6 +348,8 @@ interface SetRowProps {
     set: WorkoutSet
     index: number
     readonly?: boolean
+    /** When false, RIR and Tempo cells are hidden (Fase 4.5b). */
+    showAdvancedFields: boolean
     onUpdate: (patch: Partial<WorkoutSet>) => void
     onDuplicate: () => void
     onRemove: () => void
@@ -292,6 +360,7 @@ function SetRow({
     set,
     index,
     readonly,
+    showAdvancedFields,
     onUpdate,
     onDuplicate,
     onRemove,
@@ -385,23 +454,25 @@ function SetRow({
                 )}
             </td>
 
-            <td className="py-1.5 pr-2">
-                {readonly ? (
-                    <span className="text-k-text-primary">{set.rir ?? '—'}</span>
-                ) : (
-                    <input
-                        type="number"
-                        min={0}
-                        step={1}
-                        aria-label={`RIR da série ${index + 1}`}
-                        value={set.rir ?? ''}
-                        onChange={(e) =>
-                            onUpdate({ rir: e.target.value === '' ? null : Number(e.target.value) })
-                        }
-                        className={`${inputClass} max-w-[50px]`}
-                    />
-                )}
-            </td>
+            {showAdvancedFields && (
+                <td className="py-1.5 pr-2">
+                    {readonly ? (
+                        <span className="text-k-text-primary">{set.rir ?? '—'}</span>
+                    ) : (
+                        <input
+                            type="number"
+                            min={0}
+                            step={1}
+                            aria-label={`RIR da série ${index + 1}`}
+                            value={set.rir ?? ''}
+                            onChange={(e) =>
+                                onUpdate({ rir: e.target.value === '' ? null : Number(e.target.value) })
+                            }
+                            className={`${inputClass} max-w-[50px]`}
+                        />
+                    )}
+                </td>
+            )}
 
             <td className="py-1.5 pr-2">
                 {readonly ? (
@@ -422,20 +493,22 @@ function SetRow({
                 )}
             </td>
 
-            <td className="py-1.5 pr-2">
-                {readonly ? (
-                    <span className="text-k-text-primary">{set.tempo ?? '—'}</span>
-                ) : (
-                    <input
-                        type="text"
-                        aria-label={`Tempo da série ${index + 1}`}
-                        value={set.tempo ?? ''}
-                        onChange={(e) => onUpdate({ tempo: e.target.value || null })}
-                        placeholder="3-1-1-0"
-                        className={`${inputClass} max-w-[80px]`}
-                    />
-                )}
-            </td>
+            {showAdvancedFields && (
+                <td className="py-1.5 pr-2">
+                    {readonly ? (
+                        <span className="text-k-text-primary">{set.tempo ?? '—'}</span>
+                    ) : (
+                        <input
+                            type="text"
+                            aria-label={`Tempo da série ${index + 1}`}
+                            value={set.tempo ?? ''}
+                            onChange={(e) => onUpdate({ tempo: e.target.value || null })}
+                            placeholder="3-1-1-0"
+                            className={`${inputClass} max-w-[80px]`}
+                        />
+                    )}
+                </td>
+            )}
 
             {!readonly && (
                 <td className="py-1.5 pr-2">

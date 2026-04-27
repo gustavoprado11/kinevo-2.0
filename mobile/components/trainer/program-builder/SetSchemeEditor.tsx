@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
-import { Plus, X } from "lucide-react-native";
+import { ChevronDown, ChevronUp, Plus, Repeat, X } from "lucide-react-native";
 
 import type { MethodKey, WorkoutSet } from "@kinevo/shared/types/prescription";
 import {
@@ -30,6 +30,33 @@ import { Minus } from "lucide-react-native";
 import { colors } from "@/theme";
 import { SetSchemeCard } from "./SetSchemeCard";
 import { SetSchemePresetChips } from "./SetSchemePresetChips";
+
+// ---------------------------------------------------------------------------
+// "Mais campos" preference — persisted in MMKV with in-memory fallback.
+// ---------------------------------------------------------------------------
+
+const ADVANCED_FIELDS_MMKV_ID = "kinevo-setscheme-prefs";
+const ADVANCED_FIELDS_KEY = "advanced_fields_mobile";
+
+const advancedFieldsStorage: { read: () => boolean; write: (v: boolean) => void } = (() => {
+    try {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const { createMMKV } = require("react-native-mmkv");
+        const mmkv = createMMKV({ id: ADVANCED_FIELDS_MMKV_ID });
+        return {
+            read: () => mmkv.getBoolean(ADVANCED_FIELDS_KEY) === true,
+            write: (v: boolean) => { mmkv.set(ADVANCED_FIELDS_KEY, v); },
+        };
+    } catch {
+        // Expo Go / Jest / unavailable native module — toggle still works in
+        // memory, preference just isn't persisted across app restarts.
+        let value = false;
+        return {
+            read: () => value,
+            write: (v: boolean) => { value = v; },
+        };
+    }
+})();
 
 export interface SetSchemeEditorResult {
     scheme: WorkoutSet[] | null;
@@ -85,6 +112,16 @@ export function SetSchemeEditor({
     );
     const [methodKey, setMethodKey] = useState<MethodKey | null>(initialMethodKey);
     const [rounds, setRounds] = useState<number>(() => Math.max(1, initialRounds ?? 1));
+    // "+ Mais campos" toggle (Fase 4.5b) — persists per device via MMKV.
+    const [showAdvancedFields, setShowAdvancedFields] = useState<boolean>(() => advancedFieldsStorage.read());
+    const toggleAdvancedFields = () => {
+        Haptics.selectionAsync();
+        setShowAdvancedFields((prev) => {
+            const next = !prev;
+            advancedFieldsStorage.write(next);
+            return next;
+        });
+    };
 
     // Reset when visible toggles to true with new initial values.
     useEffect(() => {
@@ -330,31 +367,89 @@ export function SetSchemeEditor({
                         </View>
                     ) : null}
 
+                    {/* Banner explicativo de rodadas (Fase 4.5b). Só aparece em
+                     *  métodos compostos com mais de uma rodada. */}
+                    {isCompound && rounds > 1 && scheme.length > 0 ? (
+                        <View
+                            style={{
+                                flexDirection: "row",
+                                alignItems: "flex-start",
+                                gap: 8,
+                                paddingHorizontal: 16,
+                                paddingVertical: 10,
+                                backgroundColor: "rgba(59, 130, 246, 0.10)",
+                                borderBottomWidth: 1,
+                                borderBottomColor: "rgba(59, 130, 246, 0.20)",
+                            }}
+                        >
+                            <Repeat size={14} color="#1d4ed8" style={{ marginTop: 2 }} />
+                            <Text
+                                style={{
+                                    flex: 1,
+                                    fontSize: 11,
+                                    lineHeight: 15,
+                                    color: "#1e3a8a",
+                                }}
+                            >
+                                <Text style={{ fontWeight: "700" }}>
+                                    Esta estrutura de {scheme.length} {scheme.length === 1 ? "fase" : "fases"} será repetida {rounds} vezes.
+                                </Text>{" "}
+                                Cada rodada inteira conta como 1 série efetiva no volume semanal.
+                            </Text>
+                        </View>
+                    ) : null}
+
                     {/* Lista de cards de série */}
                     <ScrollView
                         contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 24 }}
                         keyboardShouldPersistTaps="handled"
                     >
-                        {isCompound ? (
-                            <Text
-                                style={{
-                                    fontSize: 11,
-                                    fontWeight: "700",
-                                    color: colors.text.tertiary,
-                                    letterSpacing: 0.6,
-                                    textTransform: "uppercase",
-                                    marginBottom: 8,
-                                }}
+                        {/* Toggle "+ Mais campos" + título condicional. */}
+                        <View
+                            style={{
+                                flexDirection: "row",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                                marginBottom: 8,
+                            }}
+                        >
+                            {isCompound ? (
+                                <Text
+                                    style={{
+                                        fontSize: 11,
+                                        fontWeight: "700",
+                                        color: colors.text.tertiary,
+                                        letterSpacing: 0.6,
+                                        textTransform: "uppercase",
+                                    }}
+                                >
+                                    Estrutura de uma rodada
+                                </Text>
+                            ) : <View />}
+                            <TouchableOpacity
+                                onPress={toggleAdvancedFields}
+                                accessibilityRole="button"
+                                accessibilityLabel={showAdvancedFields ? "Esconder campos avançados" : "Mostrar campos avançados"}
+                                accessibilityState={{ expanded: showAdvancedFields }}
+                                style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 4, paddingHorizontal: 6 }}
                             >
-                                Estrutura de uma rodada
-                            </Text>
-                        ) : null}
+                                {showAdvancedFields ? (
+                                    <ChevronUp size={12} color={colors.brand.primary} />
+                                ) : (
+                                    <ChevronDown size={12} color={colors.brand.primary} />
+                                )}
+                                <Text style={{ fontSize: 11, fontWeight: "600", color: colors.brand.primary }}>
+                                    {showAdvancedFields ? "Menos campos" : "Mais campos"}
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
                         {scheme.map((s, idx) => (
                             <SetSchemeCard
                                 key={`set-${idx}`}
                                 set={s}
                                 index={idx}
                                 canRemove={scheme.length > 1}
+                                showAdvancedFields={showAdvancedFields}
                                 onUpdate={(patch) => updateSet(idx, patch)}
                                 onDuplicate={() => duplicateSet(idx)}
                                 onRemove={() => removeSet(idx)}

@@ -157,6 +157,58 @@ describe('SetSchemeTable', () => {
         expect(screen.getByText(/9 fases no total/i)).toBeTruthy()
     })
 
+    it('renders the rounds banner explaining repeated structure for compound methods', () => {
+        render(
+            <SetSchemeTable
+                value={initialScheme}
+                methodKey={'drop_set'}
+                rounds={3}
+                onChange={() => {}}
+                onExitAdvanced={() => {}}
+            />,
+        )
+        // Banner mentions "3 fases ... repetida 3 vezes" for the visible scheme.
+        expect(screen.getByText(/repetida 3 vezes/i)).toBeTruthy()
+        expect(screen.getByText(/Cada rodada inteira conta como 1 série efetiva/i)).toBeTruthy()
+    })
+
+    it('does not render the rounds banner for linear methods (rounds=1)', () => {
+        render(
+            <SetSchemeTable
+                value={initialScheme}
+                methodKey={'pyramid_down'}
+                rounds={1}
+                onChange={() => {}}
+                onExitAdvanced={() => {}}
+            />,
+        )
+        expect(screen.queryByText(/repetida \d+ vezes/i)).toBeNull()
+    })
+
+    it('hides RIR and Tempo columns by default and reveals them when "Mais campos" is clicked', () => {
+        // Reset localStorage so the test starts in the default (collapsed) state.
+        window.localStorage.removeItem('kinevo_setscheme_advanced_fields')
+
+        render(
+            <SetSchemeTable
+                value={initialScheme}
+                methodKey={'standard'}
+                rounds={1}
+                onChange={() => {}}
+                onExitAdvanced={() => {}}
+            />,
+        )
+
+        // Collapsed by default — RIR / Tempo headers are not in the DOM.
+        expect(screen.queryByText(/^RIR$/i)).toBeNull()
+        expect(screen.queryByText(/^Tempo$/i)).toBeNull()
+
+        fireEvent.click(screen.getByRole('button', { name: /mais campos/i }))
+
+        expect(screen.getByText(/^RIR$/i)).toBeTruthy()
+        expect(screen.getByText(/^Tempo$/i)).toBeTruthy()
+    })
+
     it('exit advanced asks for confirmation', () => {
         const onExitAdvanced = vi.fn()
         const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
