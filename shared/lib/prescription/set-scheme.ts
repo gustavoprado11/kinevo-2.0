@@ -213,6 +213,38 @@ export const applyPreset = (
     return preset.defaultSetsConfig.map((s) => ({ ...s }))
 }
 
+/** Format an absolute kg value as the human-readable string used in meta
+ *  labels. Strips trailing zeros for whole numbers (`40.0` → `40`) and keeps
+ *  one decimal otherwise (`22.5`). Returns null for null/undefined/non-finite.
+ */
+export const formatWeightKg = (value: number | null | undefined): string | null => {
+    if (value === null || value === undefined) return null
+    const num = Number(value)
+    if (!Number.isFinite(num)) return null
+    return Number.isInteger(num) ? `${num}` : num.toFixed(1).replace(/\.0$/, '')
+}
+
+/** Build the per-set "Meta: …" label for the **weight** column.
+ *
+ *  - Both fields filled  → "Meta: 80 kg (75% 1RM)"
+ *  - Only kg             → "Meta: 80 kg"
+ *  - Only %1RM           → "Meta: 75% 1RM"
+ *  - Neither             → null  (UI hides the label, falls back to placeholder)
+ */
+export const buildWeightMetaLabel = (
+    weightKg: number | null | undefined,
+    weightPct1rm: number | null | undefined,
+): string | null => {
+    const kg = formatWeightKg(weightKg)
+    const pct = (weightPct1rm === null || weightPct1rm === undefined || !Number.isFinite(Number(weightPct1rm)))
+        ? null
+        : `${Number(weightPct1rm)}% 1RM`
+    if (kg !== null && pct !== null) return `Meta: ${kg} kg (${pct})`
+    if (kg !== null) return `Meta: ${kg} kg`
+    if (pct !== null) return `Meta: ${pct}`
+    return null
+}
+
 /** Heuristic: try to identify which preset (if any) a scheme corresponds to.
  * Returns `'standard'` for an empty scheme and `'custom'` when no preset
  * matches. Tolerant to ±10% on rest_seconds and exact match on reps. */

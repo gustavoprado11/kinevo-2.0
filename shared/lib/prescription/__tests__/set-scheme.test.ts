@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest'
 import type { WorkoutSet, MethodKey } from '@kinevo/shared/types/prescription'
 import {
     applyPreset,
+    buildWeightMetaLabel,
     expandToSetScheme,
+    formatWeightKg,
     inferMethodKeyFromScheme,
     summarizeSetScheme,
     validateSetScheme,
@@ -204,5 +206,48 @@ describe('inferMethodKeyFromScheme', () => {
             sampleSet({ set_number: 2, reps: '5', rest_seconds: 44 }),
         ]
         expect(inferMethodKeyFromScheme(scheme)).toBe('custom')
+    })
+})
+
+describe('formatWeightKg', () => {
+    it('strips trailing zeros from whole numbers', () => {
+        expect(formatWeightKg(40)).toBe('40')
+        expect(formatWeightKg(40.0)).toBe('40')
+        expect(formatWeightKg(80)).toBe('80')
+    })
+
+    it('keeps a decimal for non-integer values', () => {
+        expect(formatWeightKg(22.5)).toBe('22.5')
+        expect(formatWeightKg(7.5)).toBe('7.5')
+    })
+
+    it('returns null for null/undefined/non-finite input', () => {
+        expect(formatWeightKg(null)).toBeNull()
+        expect(formatWeightKg(undefined)).toBeNull()
+        expect(formatWeightKg(Number.NaN)).toBeNull()
+        expect(formatWeightKg(Number.POSITIVE_INFINITY)).toBeNull()
+    })
+})
+
+describe('buildWeightMetaLabel', () => {
+    it('returns null when neither value is provided', () => {
+        expect(buildWeightMetaLabel(null, null)).toBeNull()
+        expect(buildWeightMetaLabel(undefined, undefined)).toBeNull()
+    })
+
+    it('formats kg only', () => {
+        expect(buildWeightMetaLabel(80, null)).toBe('Meta: 80 kg')
+        expect(buildWeightMetaLabel(22.5, null)).toBe('Meta: 22.5 kg')
+        expect(buildWeightMetaLabel(40.0, undefined)).toBe('Meta: 40 kg')
+    })
+
+    it('formats %1RM only', () => {
+        expect(buildWeightMetaLabel(null, 75)).toBe('Meta: 75% 1RM')
+        expect(buildWeightMetaLabel(undefined, 80)).toBe('Meta: 80% 1RM')
+    })
+
+    it('combines both when present', () => {
+        expect(buildWeightMetaLabel(80, 75)).toBe('Meta: 80 kg (75% 1RM)')
+        expect(buildWeightMetaLabel(22.5, 60)).toBe('Meta: 22.5 kg (60% 1RM)')
     })
 })
