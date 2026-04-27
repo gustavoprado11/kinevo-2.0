@@ -1,7 +1,11 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage, type StateStorage } from 'zustand/middleware';
 import * as Crypto from 'expo-crypto';
-import type { PrescriptionOutputSnapshot } from '@kinevo/shared/types/prescription';
+import type {
+    MethodKey,
+    PrescriptionOutputSnapshot,
+    WorkoutSet,
+} from '@kinevo/shared/types/prescription';
 import type { BuilderProgramData } from '@kinevo/shared/lib/prescription/builder-mapper';
 
 // ---------------------------------------------------------------------------
@@ -47,6 +51,12 @@ export interface WorkoutItem {
     exercise_function: string | null;
     item_config: Record<string, unknown>;
     substitute_exercise_ids: string[];
+    /** Per-set prescription (Fase 3). Null = modo simples (3 agregados acima
+     * são a fonte da verdade). Quando preenchido, agregados são derivados via
+     * summarizeSetScheme antes de persistir. */
+    set_scheme: WorkoutSet[] | null;
+    /** Method/preset marker shown como chip no card. */
+    method_key: MethodKey | null;
 }
 
 export interface Workout {
@@ -88,6 +98,10 @@ export interface ParsedExerciseForBuilder {
     rest_seconds: number | null;
     notes: string | null;
     superset_group: string | null;
+    /** Optional per-set scheme (Fase 5 will populate this; Fase 3 just propagates). */
+    set_scheme?: WorkoutSet[] | null;
+    /** Optional method marker (Fase 5 will populate). */
+    method_key?: MethodKey | null;
 }
 
 /** Parsed workout from text prescription AI */
@@ -137,7 +151,9 @@ interface ProgramBuilderState {
         equipment: string | null;
         muscle_groups: { id: string; name: string }[];
     }) => void;
-    updateItem: (workoutId: string, itemId: string, updates: Partial<Pick<WorkoutItem, 'sets' | 'reps' | 'rest_seconds' | 'notes'>>) => void;
+    updateItem: (workoutId: string, itemId: string, updates: Partial<Pick<WorkoutItem, 'sets' | 'reps' | 'rest_seconds' | 'notes' | 'set_scheme' | 'method_key'>>) => void;
+    /** Replace per-set scheme + method on an item. Used by SetSchemeEditor. */
+    setSetScheme: (workoutId: string, itemId: string, scheme: WorkoutSet[] | null, methodKey: MethodKey | null) => void;
     removeItem: (workoutId: string, itemId: string) => void;
     reorderItems: (workoutId: string, newItems: WorkoutItem[]) => void;
 
@@ -210,6 +226,8 @@ function workoutsFromBuilderData(builderData: BuilderProgramData): Workout[] {
             exercise_function: it.exercise_function ?? null,
             item_config: it.item_config ?? {},
             substitute_exercise_ids: it.substitute_exercise_ids ?? [],
+            set_scheme: null,
+            method_key: null,
         })),
     }));
 }
@@ -250,7 +268,7 @@ export const useProgramBuilderStore = create<ProgramBuilderState>()(
                         const ex = pw.exercises[ei];
 
                         if (!ex.superset_group) {
-                            // Regular exercise (no superset)
+                            // Regular exercise (no superset). Fase 5 propagates set_scheme/method_key from the parser.
                             items.push({
                                 id: Crypto.randomUUID(),
                                 item_type: 'exercise',
@@ -267,6 +285,8 @@ export const useProgramBuilderStore = create<ProgramBuilderState>()(
                                 exercise_function: null,
                                 item_config: {},
                                 substitute_exercise_ids: [],
+                                set_scheme: ex.set_scheme ?? null,
+                                method_key: ex.method_key ?? null,
                             });
                         } else if (!processedGroups.has(ex.superset_group)) {
                             // First exercise of a superset group — create parent + all children
@@ -299,6 +319,8 @@ export const useProgramBuilderStore = create<ProgramBuilderState>()(
                                 exercise_function: null,
                                 item_config: {},
                                 substitute_exercise_ids: [],
+                                set_scheme: null,
+                                method_key: null,
                             });
 
                             // Create child exercise items
@@ -319,6 +341,9 @@ export const useProgramBuilderStore = create<ProgramBuilderState>()(
                                     exercise_function: null,
                                     item_config: {},
                                     substitute_exercise_ids: [],
+                                    // Modo avançado bloqueado em superset (V1).
+                                    set_scheme: null,
+                                    method_key: null,
                                 });
                             });
                         }
@@ -482,6 +507,8 @@ export const useProgramBuilderStore = create<ProgramBuilderState>()(
                     exercise_function: null,
                     item_config: {},
                     substitute_exercise_ids: [],
+                    set_scheme: null,
+                    method_key: null,
                 };
 
                 return {
@@ -506,6 +533,25 @@ export const useProgramBuilderStore = create<ProgramBuilderState>()(
                                 ...w,
                                 items: w.items.map(item =>
                                     item.id === itemId ? { ...item, ...updates } : item
+                                ),
+                            }
+                            : w
+                    ),
+                },
+                isDirty: true,
+            })),
+
+            setSetScheme: (workoutId, itemId, scheme, methodKey) => set((state) => ({
+                draft: {
+                    ...state.draft,
+                    workouts: state.draft.workouts.map(w =>
+                        w.id === workoutId
+                            ? {
+                                ...w,
+                                items: w.items.map(item =>
+                                    item.id === itemId
+                                        ? { ...item, set_scheme: scheme, method_key: methodKey }
+                                        : item
                                 ),
                             }
                             : w
@@ -555,9 +601,10 @@ export const useProgramBuilderStore = create<ProgramBuilderState>()(
         {
             name: 'kinevo-program-builder',
             storage: createJSONStorage(() => storageBackend),
-            // Backward compat: drafts persisted before Fase 3 lack the new
-            // `generationId` / `originatedFromAi` / `originalSnapshot` fields.
-            // Default them on rehydrate so the typed reads don't crash.
+            // Backward compat: drafts persisted before earlier mobile updates
+            // lack `generationId` / `originatedFromAi` / `originalSnapshot`,
+            // and drafts pre per-set lack `set_scheme` / `method_key` per item.
+            // Default everything on rehydrate so the typed reads don't crash.
             merge: (persisted, current) => {
                 const next = { ...current, ...(persisted as Partial<ProgramBuilderState>) };
                 if (next.draft) {
@@ -565,6 +612,18 @@ export const useProgramBuilderStore = create<ProgramBuilderState>()(
                     if (d.generationId === undefined) d.generationId = null;
                     if (d.originatedFromAi === undefined) d.originatedFromAi = false;
                     if (d.originalSnapshot === undefined) d.originalSnapshot = null;
+                    if (Array.isArray(d.workouts)) {
+                        d.workouts = d.workouts.map((w) => ({
+                            ...w,
+                            items: Array.isArray(w.items)
+                                ? w.items.map((it) => ({
+                                    ...it,
+                                    set_scheme: (it as Partial<WorkoutItem>).set_scheme ?? null,
+                                    method_key: (it as Partial<WorkoutItem>).method_key ?? null,
+                                }))
+                                : [],
+                        }));
+                    }
                     next.draft = d;
                 }
                 return next;
