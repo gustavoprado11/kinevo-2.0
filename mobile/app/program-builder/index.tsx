@@ -22,6 +22,7 @@ import { useProgramBuilder } from "@/hooks/useProgramBuilder";
 import { useResponsive } from "@/hooks/useResponsive";
 import { WorkoutTabBar } from "@/components/trainer/program-builder/WorkoutTabBar";
 import { WorkoutItemRow } from "@/components/trainer/program-builder/WorkoutItemRow";
+import { SetSchemeEditor, type SetSchemeEditorResult } from "@/components/trainer/program-builder/SetSchemeEditor";
 import { ExercisePickerModal } from "@/components/trainer/program-builder/ExercisePickerModal";
 import { ExercisePanel } from "@/components/trainer/program-builder/ExercisePanel";
 import { DaySelector, computeOccupiedDays } from "@/components/trainer/program-builder/DaySelector";
@@ -49,6 +50,8 @@ export default function ProgramBuilderScreen() {
     const [showAssignWizard, setShowAssignWizard] = useState(false);
     const { isTablet } = useResponsive();
     const initFromAiSnapshot = useProgramBuilderStore((s) => s.initFromAiSnapshot);
+    const setSetScheme = useProgramBuilderStore((s) => s.setSetScheme);
+    const [setSchemeEditingItemId, setSetSchemeEditingItemId] = useState<string | null>(null);
     const { data: studentDetail } = useStudentDetail(params.studentId ?? null);
     const aiEnabled = studentDetail?.aiEnabled ?? false;
     const studentName = studentDetail?.student.name ?? "";
@@ -281,11 +284,39 @@ export default function ProgramBuilderScreen() {
                 workoutId={currentWorkout.id}
                 onUpdate={(updates) => updateItem(currentWorkout.id, item.id, updates)}
                 onDelete={() => removeItem(currentWorkout.id, item.id)}
+                onEditSets={() => setSetSchemeEditingItemId(item.id)}
                 drag={drag}
                 isActive={isActive}
             />
         );
     }, [currentWorkout, updateItem, removeItem]);
+
+    const editingItem = useMemo(() => {
+        if (!setSchemeEditingItemId || !currentWorkout) return null;
+        return currentWorkout.items.find((it) => it.id === setSchemeEditingItemId) ?? null;
+    }, [setSchemeEditingItemId, currentWorkout]);
+
+    const handleSchemeSave = useCallback(
+        (result: SetSchemeEditorResult) => {
+            if (!currentWorkout || !editingItem) {
+                setSetSchemeEditingItemId(null);
+                return;
+            }
+            // Persist new scheme + method on the item.
+            setSetScheme(currentWorkout.id, editingItem.id, result.scheme, result.methodKey);
+            // When user exited advanced or saved, also re-sync aggregates so
+            // the inline simple-mode inputs reflect the new summary.
+            if (result.aggregates) {
+                updateItem(currentWorkout.id, editingItem.id, {
+                    sets: result.aggregates.sets,
+                    reps: result.aggregates.reps,
+                    rest_seconds: result.aggregates.rest_seconds,
+                });
+            }
+            setSetSchemeEditingItemId(null);
+        },
+        [currentWorkout, editingItem, setSetScheme, updateItem],
+    );
 
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
@@ -651,6 +682,21 @@ export default function ProgramBuilderScreen() {
                             router.back();
                         }}
                     />
+                    {editingItem && (
+                        <SetSchemeEditor
+                            visible={!!setSchemeEditingItemId}
+                            initialScheme={editingItem.set_scheme ?? null}
+                            initialMethodKey={editingItem.method_key ?? null}
+                            fallbackAggregates={{
+                                sets: editingItem.sets,
+                                reps: editingItem.reps,
+                                rest_seconds: editingItem.rest_seconds,
+                            }}
+                            exerciseName={editingItem.exercise_name}
+                            onSave={handleSchemeSave}
+                            onClose={() => setSetSchemeEditingItemId(null)}
+                        />
+                    )}
                 </>
               )}
             </KeyboardAvoidingView>

@@ -1,12 +1,14 @@
 import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
-import { GripVertical, Trash2, Dumbbell } from "lucide-react-native";
+import { GripVertical, Trash2, Dumbbell, Sliders } from "lucide-react-native";
 import Animated, { FadeInRight } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { colors } from "@/theme";
 import { useResponsive } from "@/hooks/useResponsive";
 import { SetRepsInput } from "./SetRepsInput";
 import type { WorkoutItem } from "@/stores/program-builder-store";
+import type { MethodKey } from "@kinevo/shared/types/prescription";
+import { SYSTEM_PRESETS } from "@kinevo/shared/lib/prescription/set-scheme-presets";
 
 interface WorkoutItemRowProps {
     item: WorkoutItem;
@@ -14,9 +16,16 @@ interface WorkoutItemRowProps {
     workoutId: string;
     onUpdate: (updates: Partial<Pick<WorkoutItem, 'sets' | 'reps' | 'rest_seconds' | 'notes'>>) => void;
     onDelete: () => void;
+    onEditSets?: () => void;
     drag?: () => void;
     isActive?: boolean;
 }
+
+const methodChipLabel = (key: MethodKey | null): string | null => {
+    if (!key || key === "standard") return null;
+    if (key === "custom") return "Customizado";
+    return SYSTEM_PRESETS[key]?.name ?? "Customizado";
+};
 
 export function WorkoutItemRow({
     item,
@@ -24,11 +33,15 @@ export function WorkoutItemRow({
     workoutId,
     onUpdate,
     onDelete,
+    onEditSets,
     drag,
     isActive,
 }: WorkoutItemRowProps) {
     const { isTablet } = useResponsive();
     const padding = isTablet ? 14 : 10;
+    const inSuperset = item.parent_item_id !== null;
+    const methodChip = methodChipLabel(item.method_key ?? null);
+    const advancedActive = !!(item.set_scheme && item.set_scheme.length > 0);
 
     return (
         <Animated.View
@@ -83,16 +96,26 @@ export function WorkoutItemRow({
                     {item.exercise_name}
                 </Text>
 
-                {/* Sets × Reps · Rest (inline) */}
-                <View style={{ marginLeft: 8 }}>
-                    <SetRepsInput
-                        sets={item.sets}
-                        reps={item.reps}
-                        restSeconds={item.rest_seconds}
-                        onUpdate={(updates) => onUpdate(updates)}
-                        compact
-                    />
-                </View>
+                {/* Sets × Reps · Rest (inline) — escondido em modo avançado */}
+                {!advancedActive && (
+                    <View style={{ marginLeft: 8 }}>
+                        <SetRepsInput
+                            sets={item.sets}
+                            reps={item.reps}
+                            restSeconds={item.rest_seconds}
+                            onUpdate={(updates) => onUpdate(updates)}
+                            compact
+                        />
+                    </View>
+                )}
+                {advancedActive && (
+                    <Text
+                        style={{ marginLeft: 8, fontSize: 11, fontWeight: "600", color: colors.text.secondary }}
+                        numberOfLines={1}
+                    >
+                        {item.sets} × {item.reps} · {item.rest_seconds}s
+                    </Text>
+                )}
 
                 {/* Delete */}
                 <TouchableOpacity
@@ -120,6 +143,44 @@ export function WorkoutItemRow({
                 >
                     {item.exercise_muscle_groups.join(", ")}
                 </Text>
+            )}
+
+            {/* Row 3: chip do método + Editar séries (modo avançado) */}
+            {item.item_type === "exercise" && onEditSets && (
+                <View style={{ flexDirection: "row", alignItems: "center", marginTop: 6, marginLeft: 37 }}>
+                    {methodChip && (
+                        <View
+                            style={{
+                                paddingHorizontal: 8,
+                                paddingVertical: 2,
+                                borderRadius: 999,
+                                backgroundColor: colors.brand.primaryLight,
+                                marginRight: 8,
+                            }}
+                        >
+                            <Text style={{ fontSize: 10, fontWeight: "700", color: colors.brand.primary }}>
+                                {methodChip}
+                            </Text>
+                        </View>
+                    )}
+                    <TouchableOpacity
+                        onPress={() => {
+                            if (inSuperset) return;
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            onEditSets();
+                        }}
+                        disabled={inSuperset}
+                        accessibilityRole="button"
+                        accessibilityLabel={inSuperset ? "Não suportado dentro de superset" : "Editar séries"}
+                        accessibilityState={{ disabled: inSuperset }}
+                        style={{ flexDirection: "row", alignItems: "center", opacity: inSuperset ? 0.4 : 1 }}
+                    >
+                        <Sliders size={11} color={colors.text.tertiary} style={{ marginRight: 4 }} />
+                        <Text style={{ fontSize: 10, fontWeight: "700", color: colors.text.tertiary, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                            Editar séries
+                        </Text>
+                    </TouchableOpacity>
+                </View>
             )}
         </Animated.View>
     );
