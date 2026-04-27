@@ -39,7 +39,19 @@ export default async function EditProgramPage({ params }: { params: Promise<{ id
                     rest_seconds,
                     notes,
                     exercise_function,
-                    item_config
+                    item_config,
+                    method_key,
+                    workout_item_set_templates (
+                        set_number,
+                        set_type,
+                        reps,
+                        rest_seconds,
+                        weight_target_kg,
+                        weight_target_pct1rm,
+                        rir,
+                        tempo,
+                        notes
+                    )
                 )
             )
         `)

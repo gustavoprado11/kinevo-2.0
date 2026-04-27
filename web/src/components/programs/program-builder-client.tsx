@@ -51,6 +51,11 @@ export interface WorkoutItem {
     exercise_function?: string | null
     item_config?: Record<string, any>
     children?: WorkoutItem[]
+    /** Per-set prescription (Fase 2). When set, takes precedence over the
+     * aggregates and the saved aggregates are derived via summarizeSetScheme. */
+    set_scheme?: import('@kinevo/shared/types/prescription').WorkoutSet[] | null
+    /** Method/preset marker for the chip in the UI. */
+    method_key?: import('@kinevo/shared/types/prescription').MethodKey | null
 }
 
 export interface Workout {
@@ -84,6 +89,8 @@ interface ProgramData {
             notes: string | null
             exercise_function?: string | null
             item_config?: Record<string, any>
+            method_key?: string | null
+            workout_item_set_templates?: Array<import('@kinevo/shared/types/prescription').WorkoutSet> | null
         }>
     }>
 }
@@ -126,6 +133,63 @@ interface ProgramBuilderClientProps {
 
 // Generate temp ID for new items
 const tempId = () => `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+
+// ── Per-set helpers (Fase 2) ──
+import { summarizeSetScheme as _summarizeSetScheme } from '@kinevo/shared/lib/prescription/set-scheme'
+import type { WorkoutSet } from '@kinevo/shared/types/prescription'
+
+/** Convert raw rows from the join into a sorted WorkoutSet[] (or null if empty). */
+function hydrateSetScheme(rows: WorkoutSet[] | null | undefined): WorkoutSet[] | null {
+    if (!rows || rows.length === 0) return null
+    return [...rows].sort((a, b) => a.set_number - b.set_number)
+}
+
+/** Persist the children rows for a saved workout_item_template. No-op when empty. */
+async function insertSetSchemeRows(
+    supabase: ReturnType<typeof createClient>,
+    workoutItemTemplateId: string,
+    scheme: WorkoutSet[] | null | undefined,
+): Promise<void> {
+    if (!scheme || scheme.length === 0) return
+    const rows = scheme.map((s, i) => ({
+        workout_item_template_id: workoutItemTemplateId,
+        set_number: i + 1,
+        set_type: s.set_type,
+        reps: s.reps,
+        rest_seconds: s.rest_seconds,
+        weight_target_kg: s.weight_target_kg,
+        weight_target_pct1rm: s.weight_target_pct1rm,
+        rir: s.rir,
+        tempo: s.tempo,
+        notes: s.notes,
+    }))
+    const { error } = await supabase.from('workout_item_set_templates').insert(rows)
+    if (error) throw error
+}
+
+/** Coerce the parent aggregates so they always mirror summarizeSetScheme(scheme). */
+function aggregatesFromItem(item: WorkoutItem): {
+    sets: number | null
+    reps: string | null
+    rest_seconds: number | null
+} {
+    if (item.set_scheme && item.set_scheme.length > 0) {
+        const summary = _summarizeSetScheme(item.set_scheme)
+        return {
+            sets: summary.sets,
+            reps: summary.reps,
+            rest_seconds: summary.rest_seconds,
+        }
+    }
+    return { sets: item.sets, reps: item.reps, rest_seconds: item.rest_seconds }
+}
+
+/** Effective method_key honouring the "supersets bloqueados em V1" rule:
+ * children with parent_item_id !== null never persist a scheme. */
+function effectiveMethodKey(item: WorkoutItem): string | null {
+    if (item.parent_item_id) return null
+    return item.method_key ?? null
+}
 
 export function ProgramBuilderClient({ trainer, program, exercises, studentContext, initialAssignmentType = 'immediate', prescriptionGenerationId, prescriptionReasoning, formTriggerTemplates = [], initialFormTriggers, prescriptionData }: ProgramBuilderClientProps) {
     const router = useRouter()
@@ -364,6 +428,8 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                 notes: c.notes,
                                 exercise_function: c.exercise_function || null,
                                 item_config: c.item_config || {},
+                                set_scheme: hydrateSetScheme(c.workout_item_set_templates),
+                                method_key: (c.method_key as WorkoutItem['method_key']) ?? null,
                             }))
 
                         return {
@@ -380,6 +446,8 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                             notes: p.notes,
                             exercise_function: p.exercise_function || null,
                             item_config: p.item_config || {},
+                            set_scheme: hydrateSetScheme(p.workout_item_set_templates),
+                            method_key: (p.method_key as WorkoutItem['method_key']) ?? null,
                             children: itemChildren
                         }
                     })
@@ -1073,6 +1141,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
 
                 // Save items
                 for (const item of workout.items) {
+                    const aggs = aggregatesFromItem(item)
                     const { data: savedItem, error: itemError } = await supabase
                         .from('workout_item_templates')
                         .insert({
@@ -1082,17 +1151,21 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                             parent_item_id: null,
                             exercise_id: item.exercise_id,
                             substitute_exercise_ids: item.substitute_exercise_ids || [],
-                            sets: item.sets,
-                            reps: item.reps,
-                            rest_seconds: item.rest_seconds,
+                            sets: aggs.sets,
+                            reps: aggs.reps,
+                            rest_seconds: aggs.rest_seconds,
                             notes: item.notes,
                             exercise_function: item.exercise_function || null,
                             item_config: item.item_config || {},
+                            method_key: effectiveMethodKey(item),
                         })
                         .select('id')
                         .single()
 
                     if (itemError) throw itemError
+
+                    // Per-set children (Fase 2). Skipped silently for items inside superset.
+                    await insertSetSchemeRows(supabase, savedItem.id, item.set_scheme)
 
                     // Save children (for supersets)
                     if (item.children) {
@@ -1242,6 +1315,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                 if (workoutError) throw workoutError
 
                 for (const item of workout.items) {
+                    const aggs = aggregatesFromItem(item)
                     const { data: savedItem, error: itemError } = await supabase
                         .from('workout_item_templates')
                         .insert({
@@ -1251,17 +1325,20 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                             parent_item_id: null,
                             exercise_id: item.exercise_id,
                             substitute_exercise_ids: item.substitute_exercise_ids || [],
-                            sets: item.sets,
-                            reps: item.reps,
-                            rest_seconds: item.rest_seconds,
+                            sets: aggs.sets,
+                            reps: aggs.reps,
+                            rest_seconds: aggs.rest_seconds,
                             notes: item.notes,
                             exercise_function: item.exercise_function || null,
                             item_config: item.item_config || {},
+                            method_key: effectiveMethodKey(item),
                         })
                         .select('id')
                         .single()
 
                     if (itemError) throw itemError
+
+                    await insertSetSchemeRows(supabase, savedItem.id, item.set_scheme)
 
                     if (item.children) {
                         for (const child of item.children) {
