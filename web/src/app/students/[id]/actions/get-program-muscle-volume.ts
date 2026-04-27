@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { effectiveSetsForVolume } from '@kinevo/shared/lib/prescription/volume'
 
 export interface MuscleGroupVolume {
     muscleGroup: string
@@ -54,7 +55,7 @@ export async function getProgramMuscleVolume(
 
         const { data: items } = await supabase
             .from('assigned_workout_items')
-            .select('assigned_workout_id, exercise_muscle_group, sets')
+            .select('assigned_workout_id, exercise_muscle_group, sets, rounds')
             .in('assigned_workout_id', workoutIds)
             .eq('item_type', 'exercise')
             .not('exercise_muscle_group', 'is', null)
@@ -64,16 +65,23 @@ export async function getProgramMuscleVolume(
             return { success: true, data: { programId, programName: program.name, groups: [], totalSets: 0 } }
         }
 
-        // Group by PRIMARY muscle group, multiplying sets by workout weekly frequency
+        // Group by PRIMARY muscle group, multiplying effective sets (rounds
+        // for compound, sets for linear — Fase 4.5a) by workout weekly frequency.
         const volumeMap = new Map<string, number>()
 
-        for (const item of items) {
-            const primary = (item.exercise_muscle_group as string).split(',')[0].trim()
-            const sets = typeof item.sets === 'number' ? item.sets : parseInt(String(item.sets), 10)
-            if (isNaN(sets)) continue
+        for (const item of items as Array<{
+            assigned_workout_id: string
+            exercise_muscle_group: string
+            sets: number | null
+            rounds: number | null
+        }>) {
+            const primary = (item.exercise_muscle_group ?? '').split(',')[0].trim()
+            if (!primary) continue
+            const effective = effectiveSetsForVolume({ sets: item.sets, rounds: item.rounds })
+            if (effective <= 0) continue
 
-            const freq = freqMap.get(item.assigned_workout_id as string) || 1
-            volumeMap.set(primary, (volumeMap.get(primary) || 0) + (sets * freq))
+            const freq = freqMap.get(item.assigned_workout_id) || 1
+            volumeMap.set(primary, (volumeMap.get(primary) || 0) + (effective * freq))
         }
 
         // Sort by volume descending

@@ -3,6 +3,7 @@
 import { Workout, WorkoutItem } from './program-builder-client'
 import { Dumbbell } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { effectiveSetsForVolume } from '@kinevo/shared/lib/prescription/volume'
 
 interface VolumeSummaryProps {
     workouts: Workout[]
@@ -10,28 +11,31 @@ interface VolumeSummaryProps {
 
 export function VolumeSummary({ workouts }: VolumeSummaryProps) {
     // Calculate volume per muscle group across all workouts.
+    // Compound methods (drop-set, cluster) count rounds as effective sets;
+    // linear methods count `sets` directly (Fase 4.5a).
     const volumeByGroup = workouts.reduce((acc, workout) => {
         const frequency = Math.max(1, workout.frequency?.length || 0)
 
+        const processItem = (it: WorkoutItem) => {
+            const muscleGroups = it.exercise?.muscle_groups
+            if (!muscleGroups || muscleGroups.length === 0) return
+            const effective = effectiveSetsForVolume({ sets: it.sets, rounds: it.rounds })
+            if (effective <= 0) return
+            const weeklySets = effective * frequency
+
+            muscleGroups.forEach(group => {
+                const groupName = typeof group === 'object' ? group.name : group
+                if (groupName) {
+                    acc[groupName] = (acc[groupName] || 0) + weeklySets
+                }
+            })
+        }
+
         workout.items.forEach(item => {
-            const processSets = (sets: number | null, muscleGroups: any[] | undefined) => {
-                if (!sets || !muscleGroups || muscleGroups.length === 0) return
-                const weeklySets = sets * frequency
-
-                muscleGroups.forEach(group => {
-                    const groupName = typeof group === 'object' ? group.name : group
-                    if (groupName) {
-                        acc[groupName] = (acc[groupName] || 0) + weeklySets
-                    }
-                })
-            }
-
             if (item.item_type === 'exercise') {
-                processSets(item.sets, item.exercise?.muscle_groups)
+                processItem(item)
             } else if (item.item_type === 'superset' && item.children) {
-                item.children.forEach(child => {
-                    processSets(child.sets, child.exercise?.muscle_groups)
-                })
+                item.children.forEach(processItem)
             }
         })
 
