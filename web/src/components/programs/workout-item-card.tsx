@@ -48,6 +48,7 @@ import {
     summarizeWithRounds,
 } from '@kinevo/shared/lib/prescription/set-scheme'
 import { isCompoundMethod } from '@kinevo/shared/lib/prescription/set-scheme-presets'
+import { getMethodChipLabel } from '@kinevo/shared/lib/prescription/method-labels'
 import { SetSchemeTable } from './SetSchemeTable'
 
 export function WorkoutItemCard({
@@ -389,6 +390,23 @@ function ExerciseItemCard({
                                     {g.name}
                                 </span>
                             ))}
+                            {/* Chip do método (Fase 4.5b). Visível também na
+                             *  simple-mode pra o trainer reconhecer pirâmide /
+                             *  drop-set / customizado antes de entrar em
+                             *  "Editar séries". Hidden when standard / null. */}
+                            {item.item_type === 'exercise' && (() => {
+                                const chipLabel = getMethodChipLabel(item.method_key ?? null)
+                                if (!chipLabel) return null
+                                return (
+                                    <span
+                                        className="text-[9px] font-bold whitespace-nowrap inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700 border border-violet-200 dark:bg-violet-900/40 dark:text-violet-300 dark:border-violet-800"
+                                        title={`Método: ${chipLabel}`}
+                                    >
+                                        <Sliders className="w-2.5 h-2.5" />
+                                        {chipLabel}
+                                    </span>
+                                )
+                            })()}
                         </div>
 
                         {/* Hover Actions */}
@@ -668,7 +686,7 @@ function AdvancedToggleButton({
             className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-k-text-tertiary hover:text-[#007AFF] dark:hover:text-violet-400 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-k-text-tertiary transition-colors"
         >
             <Sliders className="w-3 h-3" />
-            Avançado
+            Editar séries
         </button>
     )
 }
