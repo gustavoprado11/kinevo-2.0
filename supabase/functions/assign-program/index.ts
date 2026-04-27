@@ -213,7 +213,8 @@ Deno.serve(async (req: Request) => {
                             weight_target_pct1rm,
                             rir,
                             tempo,
-                            notes
+                            notes,
+                            round_number
                         )
                     `)
                     .eq("workout_template_id", workout.id)
@@ -255,6 +256,7 @@ Deno.serve(async (req: Request) => {
                                 item_config: item.item_config || {},
                                 parent_item_id: null,
                                 method_key: (item as any).method_key ?? null,
+                                rounds: (item as any).rounds ?? 1,
                             })
                             .select("id")
                             .single();
@@ -262,9 +264,12 @@ Deno.serve(async (req: Request) => {
                         if (itemError) throw itemError;
                         parentMap.set(item.id, assignedItem.id);
 
-                        // Copy per-set scheme rows (Fase 4.1). Only root
-                        // items can have per-set rows — supersets (V1) keep
-                        // aggregate-only behaviour.
+                        // Copy per-set scheme rows (Fase 4.1 / 4.3). Only
+                        // root items can have per-set rows — supersets (V1)
+                        // keep aggregate-only behaviour. Compound methods
+                        // (drop-set, cluster) ship the already-materialized
+                        // rows from workout_item_set_templates with their
+                        // round_number tag preserved.
                         const setRows: any[] = (item as any).workout_item_set_templates || [];
                         if (setRows.length > 0) {
                             const setsPayload = setRows.map((s: any) => ({
@@ -278,6 +283,7 @@ Deno.serve(async (req: Request) => {
                                 rir: s.rir,
                                 tempo: s.tempo,
                                 notes: s.notes,
+                                round_number: s.round_number ?? null,
                             }));
                             const { error: setsError } = await supabase
                                 .from("assigned_workout_item_sets")
@@ -322,6 +328,7 @@ Deno.serve(async (req: Request) => {
                                 item_config: item.item_config || {},
                                 parent_item_id: parentAssignedId,
                                 method_key: (item as any).method_key ?? null,
+                                rounds: (item as any).rounds ?? 1,
                             });
 
                         if (childError) throw childError;
