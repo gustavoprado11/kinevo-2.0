@@ -233,6 +233,8 @@ describe('useProgramBuilder.saveAndAssign', () => {
                                 exercise_function: null,
                                 item_config: {},
                                 substitute_exercise_ids: [],
+                                set_scheme: null,
+                                method_key: null,
                             },
                         ],
                     }],
