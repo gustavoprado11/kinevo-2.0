@@ -156,13 +156,7 @@ function SupersetConnector({
             {/* Connect button */}
             <button
                 onClick={onConnect}
-                className="relative z-sticky flex items-center gap-1.5 px-2 py-1 rounded-full
-                           bg-white dark:bg-slate-900 border border-[#D2D2D7] dark:border-slate-800
-                           hover:bg-[#007AFF] dark:hover:bg-violet-600 hover:border-[#007AFF] dark:hover:border-violet-500
-                           text-[#6E6E73] dark:text-slate-400 hover:text-white dark:hover:text-foreground
-                           transition-all duration-200
-                           opacity-0 group-hover:opacity-100
-                           text-xs font-medium"
+                className="relative z-sticky flex items-center gap-1.5 px-2 py-1 rounded-full bg-white dark:bg-slate-900 border border-[#D2D2D7] dark:border-slate-800 hover:bg-[#007AFF] dark:hover:bg-violet-600 hover:border-[#007AFF] dark:hover:border-violet-500 text-[#6E6E73] dark:text-slate-400 hover:text-white dark:hover:text-foreground transition-all duration-200 opacity-0 group-hover:opacity-100 text-xs font-medium"
             >
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
