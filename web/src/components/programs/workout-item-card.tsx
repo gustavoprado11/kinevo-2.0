@@ -25,7 +25,7 @@ interface WorkoutItemCardProps {
     readonly?: boolean
 }
 
-import { GripVertical, Trash2, MessageSquare, Repeat, Check, PlayCircle, ArrowLeftRight, Search, X, Pencil, Flame, Activity, Clock, Timer, ChevronDown, ChevronUp, Zap } from 'lucide-react'
+import { GripVertical, Trash2, MessageSquare, Repeat, Check, PlayCircle, ArrowLeftRight, Search, X, Pencil, Flame, Activity, Clock, Timer, ChevronDown, ChevronUp, Zap, Sliders } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
     CARDIO_EQUIPMENT_LABELS,
@@ -41,6 +41,12 @@ import {
     type WarmupType,
 } from '@kinevo/shared/types/workout-items'
 import { FloatingExercisePlayer } from '@/components/exercises/floating-exercise-player'
+import type { MethodKey, WorkoutSet } from '@kinevo/shared/types/prescription'
+import {
+    expandToSetScheme,
+    summarizeSetScheme,
+} from '@kinevo/shared/lib/prescription/set-scheme'
+import { SetSchemeTable } from './SetSchemeTable'
 
 export function WorkoutItemCard({
     item,
@@ -403,7 +409,8 @@ function ExerciseItemCard({
                         )}
                     </div>
 
-                    {/* Inline Parameters */}
+                    {/* Inline Parameters (modo simples) — escondido quando set_scheme está ativo */}
+                    {!item.set_scheme && (
                     <div className="flex items-center gap-6">
                         {/* Sets */}
                         <div className="flex items-center gap-2">
@@ -462,7 +469,41 @@ function ExerciseItemCard({
                                 </div>
                             )}
                         </div>
+
+                        {/* Toggle modo avançado */}
+                        {!readonly && (
+                            <AdvancedToggleButton
+                                disabled={item.parent_item_id !== null}
+                                onClick={() => {
+                                    const initial = expandToSetScheme(item.sets, item.reps, item.rest_seconds)
+                                    onUpdate({ set_scheme: initial, method_key: 'standard' })
+                                }}
+                            />
+                        )}
                     </div>
+                    )}
+
+                    {/* Modo avançado: tabela editável de séries */}
+                    {item.set_scheme && (
+                        <SetSchemeTable
+                            value={item.set_scheme}
+                            methodKey={item.method_key ?? null}
+                            readonly={readonly}
+                            onChange={(scheme, nextKey) => onUpdate({ set_scheme: scheme, method_key: nextKey })}
+                            onExitAdvanced={() => {
+                                const summary = item.set_scheme && item.set_scheme.length > 0
+                                    ? summarizeSetScheme(item.set_scheme)
+                                    : { sets: item.sets ?? 3, reps: item.reps ?? '10', rest_seconds: item.rest_seconds ?? 60 }
+                                onUpdate({
+                                    set_scheme: null,
+                                    method_key: null,
+                                    sets: summary.sets,
+                                    reps: summary.reps,
+                                    rest_seconds: summary.rest_seconds,
+                                })
+                            }}
+                        />
+                    )}
 
                     {/* Exercise Function */}
                     <ExerciseFunctionSelect
@@ -590,6 +631,30 @@ const EXERCISE_FUNCTION_OPTIONS = [
     { value: 'accessory', label: 'Acessório' },
     { value: 'conditioning', label: 'Condicionamento' },
 ] as const
+
+function AdvancedToggleButton({
+    disabled,
+    onClick,
+}: {
+    disabled: boolean
+    onClick: () => void
+}) {
+    const title = disabled
+        ? 'Não suportado dentro de superset'
+        : 'Editar série a série (pirâmide, drop-set, etc)'
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            disabled={disabled}
+            title={title}
+            className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-k-text-tertiary hover:text-[#007AFF] dark:hover:text-violet-400 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-k-text-tertiary transition-colors"
+        >
+            <Sliders className="w-3 h-3" />
+            Avançado
+        </button>
+    )
+}
 
 function ExerciseFunctionSelect({
     value,
