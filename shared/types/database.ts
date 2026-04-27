@@ -1,1 +1,2966 @@
-{"types":"export type Json =\n  | string\n  | number\n  | boolean\n  | null\n  | { [key: string]: Json | undefined }\n  | Json[]\n\nexport type Database = {\n  // Allows to automatically instantiate createClient with right options\n  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)\n  __InternalSupabase: {\n    PostgrestVersion: \"14.1\"\n  }\n  public: {\n    Tables: {\n      android_tester_queue: {\n        Row: {\n          added_at: string | null\n          created_at: string | null\n          email: string\n          id: string\n          status: string | null\n          student_name: string | null\n        }\n        Insert: {\n          added_at?: string | null\n          created_at?: string | null\n          email: string\n          id?: string\n          status?: string | null\n          student_name?: string | null\n        }\n        Update: {\n          added_at?: string | null\n          created_at?: string | null\n          email?: string\n          id?: string\n          status?: string | null\n          student_name?: string | null\n        }\n        Relationships: []\n      }\n      appointment_exceptions: {\n        Row: {\n          created_at: string\n          id: string\n          kind: string\n          new_date: string | null\n          new_start_time: string | null\n          notes: string | null\n          occurrence_date: string\n          recurring_appointment_id: string\n          trainer_id: string\n        }\n        Insert: {\n          created_at?: string\n          id?: string\n          kind: string\n          new_date?: string | null\n          new_start_time?: string | null\n          notes?: string | null\n          occurrence_date: string\n          recurring_appointment_id: string\n          trainer_id: string\n        }\n        Update: {\n          created_at?: string\n          id?: string\n          kind?: string\n          new_date?: string | null\n          new_start_time?: string | null\n          notes?: string | null\n          occurrence_date?: string\n          recurring_appointment_id?: string\n          trainer_id?: string\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"appointment_exceptions_recurring_appointment_id_fkey\"\n            columns: [\"recurring_appointment_id\"]\n            isOneToOne: false\n            referencedRelation: \"recurring_appointments\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"appointment_exceptions_trainer_id_fkey\"\n            columns: [\"trainer_id\"]\n            isOneToOne: false\n            referencedRelation: \"trainers\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      assigned_programs: {\n        Row: {\n          ai_generated: boolean\n          completed_at: string | null\n          created_at: string\n          current_week: number | null\n          description: string | null\n          duration_weeks: number | null\n          expires_at: string | null\n          id: string\n          last_completed_workout_at: string | null\n          name: string\n          prescription_generation_id: string | null\n          scheduled_start_date: string | null\n          source_template_id: string | null\n          started_at: string | null\n          status: string\n          student_id: string\n          trainer_id: string\n          updated_at: string\n        }\n        Insert: {\n          ai_generated?: boolean\n          completed_at?: string | null\n          created_at?: string\n          current_week?: number | null\n          description?: string | null\n          duration_weeks?: number | null\n          expires_at?: string | null\n          id?: string\n          last_completed_workout_at?: string | null\n          name: string\n          prescription_generation_id?: string | null\n          scheduled_start_date?: string | null\n          source_template_id?: string | null\n          started_at?: string | null\n          status?: string\n          student_id: string\n          trainer_id: string\n          updated_at?: string\n        }\n        Update: {\n          ai_generated?: boolean\n          completed_at?: string | null\n          created_at?: string\n          current_week?: number | null\n          description?: string | null\n          duration_weeks?: number | null\n          expires_at?: string | null\n          id?: string\n          last_completed_workout_at?: string | null\n          name?: string\n          prescription_generation_id?: string | null\n          scheduled_start_date?: string | null\n          source_template_id?: string | null\n          started_at?: string | null\n          status?: string\n          student_id?: string\n          trainer_id?: string\n          updated_at?: string\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"assigned_programs_prescription_generation_id_fkey\"\n            columns: [\"prescription_generation_id\"]\n            isOneToOne: false\n            referencedRelation: \"prescription_generations\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"assigned_programs_source_template_id_fkey\"\n            columns: [\"source_template_id\"]\n            isOneToOne: false\n            referencedRelation: \"program_templates\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"assigned_programs_student_id_fkey\"\n            columns: [\"student_id\"]\n            isOneToOne: false\n            referencedRelation: \"students\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"assigned_programs_trainer_id_fkey\"\n            columns: [\"trainer_id\"]\n            isOneToOne: false\n            referencedRelation: \"trainers\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      assigned_workout_items: {\n        Row: {\n          assigned_workout_id: string\n          created_at: string\n          exercise_equipment: string | null\n          exercise_function: string | null\n          exercise_id: string | null\n          exercise_muscle_group: string | null\n          exercise_name: string | null\n          id: string\n          item_config: Json\n          item_type: string\n          notes: string | null\n          order_index: number\n          parent_item_id: string | null\n          reps: string | null\n          rest_seconds: number | null\n          sets: number | null\n          source_template_id: string | null\n          substitute_exercise_ids: string[]\n          updated_at: string\n        }\n        Insert: {\n          assigned_workout_id: string\n          created_at?: string\n          exercise_equipment?: string | null\n          exercise_function?: string | null\n          exercise_id?: string | null\n          exercise_muscle_group?: string | null\n          exercise_name?: string | null\n          id?: string\n          item_config?: Json\n          item_type: string\n          notes?: string | null\n          order_index: number\n          parent_item_id?: string | null\n          reps?: string | null\n          rest_seconds?: number | null\n          sets?: number | null\n          source_template_id?: string | null\n          substitute_exercise_ids?: string[]\n          updated_at?: string\n        }\n        Update: {\n          assigned_workout_id?: string\n          created_at?: string\n          exercise_equipment?: string | null\n          exercise_function?: string | null\n          exercise_id?: string | null\n          exercise_muscle_group?: string | null\n          exercise_name?: string | null\n          id?: string\n          item_config?: Json\n          item_type?: string\n          notes?: string | null\n          order_index?: number\n          parent_item_id?: string | null\n          reps?: string | null\n          rest_seconds?: number | null\n          sets?: number | null\n          source_template_id?: string | null\n          substitute_exercise_ids?: string[]\n          updated_at?: string\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"assigned_workout_items_assigned_workout_id_fkey\"\n            columns: [\"assigned_workout_id\"]\n            isOneToOne: false\n            referencedRelation: \"assigned_workouts\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"assigned_workout_items_exercise_id_fkey\"\n            columns: [\"exercise_id\"]\n            isOneToOne: false\n            referencedRelation: \"exercises\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"assigned_workout_items_parent_item_id_fkey\"\n            columns: [\"parent_item_id\"]\n            isOneToOne: false\n            referencedRelation: \"assigned_workout_items\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"assigned_workout_items_source_template_id_fkey\"\n            columns: [\"source_template_id\"]\n            isOneToOne: false\n            referencedRelation: \"workout_item_templates\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      assigned_workouts: {\n        Row: {\n          assigned_program_id: string\n          created_at: string\n          id: string\n          name: string\n          order_index: number\n          scheduled_days: number[] | null\n          source_template_id: string | null\n          updated_at: string\n        }\n        Insert: {\n          assigned_program_id: string\n          created_at?: string\n          id?: string\n          name: string\n          order_index: number\n          scheduled_days?: number[] | null\n          source_template_id?: string | null\n          updated_at?: string\n        }\n        Update: {\n          assigned_program_id?: string\n          created_at?: string\n          id?: string\n          name?: string\n          order_index?: number\n          scheduled_days?: number[] | null\n          source_template_id?: string | null\n          updated_at?: string\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"assigned_workouts_assigned_program_id_fkey\"\n            columns: [\"assigned_program_id\"]\n            isOneToOne: false\n            referencedRelation: \"assigned_programs\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"assigned_workouts_source_template_id_fkey\"\n            columns: [\"source_template_id\"]\n            isOneToOne: false\n            referencedRelation: \"workout_templates\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      assistant_insights: {\n        Row: {\n          action_metadata: Json | null\n          action_type: string | null\n          body: string\n          category: string\n          created_at: string | null\n          expires_at: string | null\n          id: string\n          insight_key: string\n          priority: string\n          source: string\n          status: string\n          student_id: string | null\n          title: string\n          trainer_id: string\n          updated_at: string | null\n        }\n        Insert: {\n          action_metadata?: Json | null\n          action_type?: string | null\n          body: string\n          category: string\n          created_at?: string | null\n          expires_at?: string | null\n          id?: string\n          insight_key: string\n          priority?: string\n          source?: string\n          status?: string\n          student_id?: string | null\n          title: string\n          trainer_id: string\n          updated_at?: string | null\n        }\n        Update: {\n          action_metadata?: Json | null\n          action_type?: string | null\n          body?: string\n          category?: string\n          created_at?: string | null\n          expires_at?: string | null\n          id?: string\n          insight_key?: string\n          priority?: string\n          source?: string\n          status?: string\n          student_id?: string | null\n          title?: string\n          trainer_id?: string\n          updated_at?: string | null\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"assistant_insights_student_id_fkey\"\n            columns: [\"student_id\"]\n            isOneToOne: false\n            referencedRelation: \"students\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"assistant_insights_trainer_id_fkey\"\n            columns: [\"trainer_id\"]\n            isOneToOne: false\n            referencedRelation: \"trainers\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      contract_events: {\n        Row: {\n          contract_id: string | null\n          created_at: string\n          event_type: string\n          id: string\n          metadata: Json | null\n          student_id: string\n          trainer_id: string\n        }\n        Insert: {\n          contract_id?: string | null\n          created_at?: string\n          event_type: string\n          id?: string\n          metadata?: Json | null\n          student_id: string\n          trainer_id: string\n        }\n        Update: {\n          contract_id?: string | null\n          created_at?: string\n          event_type?: string\n          id?: string\n          metadata?: Json | null\n          student_id?: string\n          trainer_id?: string\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"contract_events_contract_id_fkey\"\n            columns: [\"contract_id\"]\n            isOneToOne: false\n            referencedRelation: \"student_contracts\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"contract_events_student_id_fkey\"\n            columns: [\"student_id\"]\n            isOneToOne: false\n            referencedRelation: \"students\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"contract_events_trainer_id_fkey\"\n            columns: [\"trainer_id\"]\n            isOneToOne: false\n            referencedRelation: \"trainers\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      exercise_condition_constraints: {\n        Row: {\n          condition_id: string\n          constraint_type: string\n          created_at: string | null\n          exercise_id: string\n          id: string\n          notes: string | null\n        }\n        Insert: {\n          condition_id: string\n          constraint_type: string\n          created_at?: string | null\n          exercise_id: string\n          id?: string\n          notes?: string | null\n        }\n        Update: {\n          condition_id?: string\n          constraint_type?: string\n          created_at?: string | null\n          exercise_id?: string\n          id?: string\n          notes?: string | null\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"exercise_condition_constraints_exercise_id_fkey\"\n            columns: [\"exercise_id\"]\n            isOneToOne: false\n            referencedRelation: \"exercises\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      exercise_muscle_groups: {\n        Row: {\n          created_at: string\n          exercise_id: string\n          muscle_group_id: string\n        }\n        Insert: {\n          created_at?: string\n          exercise_id: string\n          muscle_group_id: string\n        }\n        Update: {\n          created_at?: string\n          exercise_id?: string\n          muscle_group_id?: string\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"exercise_muscle_groups_exercise_id_fkey\"\n            columns: [\"exercise_id\"]\n            isOneToOne: false\n            referencedRelation: \"exercises\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"exercise_muscle_groups_muscle_group_id_fkey\"\n            columns: [\"muscle_group_id\"]\n            isOneToOne: false\n            referencedRelation: \"muscle_groups\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      exercise_relationships: {\n        Row: {\n          created_at: string | null\n          id: string\n          metadata: Json | null\n          relationship_type: string\n          source: string\n          source_exercise_id: string\n          target_exercise_id: string\n          weight: number | null\n        }\n        Insert: {\n          created_at?: string | null\n          id?: string\n          metadata?: Json | null\n          relationship_type: string\n          source?: string\n          source_exercise_id: string\n          target_exercise_id: string\n          weight?: number | null\n        }\n        Update: {\n          created_at?: string | null\n          id?: string\n          metadata?: Json | null\n          relationship_type?: string\n          source?: string\n          source_exercise_id?: string\n          target_exercise_id?: string\n          weight?: number | null\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"exercise_relationships_source_exercise_id_fkey\"\n            columns: [\"source_exercise_id\"]\n            isOneToOne: false\n            referencedRelation: \"exercises\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"exercise_relationships_target_exercise_id_fkey\"\n            columns: [\"target_exercise_id\"]\n            isOneToOne: false\n            referencedRelation: \"exercises\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      exercise_synergies: {\n        Row: {\n          created_at: string | null\n          id: string\n          primary_group_id: string\n          secondary_group_id: string\n          weight: number\n        }\n        Insert: {\n          created_at?: string | null\n          id?: string\n          primary_group_id: string\n          secondary_group_id: string\n          weight: number\n        }\n        Update: {\n          created_at?: string | null\n          id?: string\n          primary_group_id?: string\n          secondary_group_id?: string\n          weight?: number\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"exercise_synergies_primary_group_id_fkey\"\n            columns: [\"primary_group_id\"]\n            isOneToOne: false\n            referencedRelation: \"muscle_groups\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"exercise_synergies_secondary_group_id_fkey\"\n            columns: [\"secondary_group_id\"]\n            isOneToOne: false\n            referencedRelation: \"muscle_groups\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      exercises: {\n        Row: {\n          created_at: string\n          difficulty_level: string\n          equipment: string | null\n          fatigue_class: string | null\n          id: string\n          image_url: string | null\n          instructions: string | null\n          is_ai_curated: boolean\n          is_archived: boolean\n          is_primary_movement: boolean\n          movement_pattern: string | null\n          movement_pattern_family: string | null\n          name: string\n          original_system_id: string | null\n          owner_id: string | null\n          prescription_notes: string | null\n          session_position: string\n          studio_id: string | null\n          thumbnail_url: string | null\n          updated_at: string\n          video_url: string | null\n        }\n        Insert: {\n          created_at?: string\n          difficulty_level?: string\n          equipment?: string | null\n          fatigue_class?: string | null\n          id?: string\n          image_url?: string | null\n          instructions?: string | null\n          is_ai_curated?: boolean\n          is_archived?: boolean\n          is_primary_movement?: boolean\n          movement_pattern?: string | null\n          movement_pattern_family?: string | null\n          name: string\n          original_system_id?: string | null\n          owner_id?: string | null\n          prescription_notes?: string | null\n          session_position?: string\n          studio_id?: string | null\n          thumbnail_url?: string | null\n          updated_at?: string\n          video_url?: string | null\n        }\n        Update: {\n          created_at?: string\n          difficulty_level?: string\n          equipment?: string | null\n          fatigue_class?: string | null\n          id?: string\n          image_url?: string | null\n          instructions?: string | null\n          is_ai_curated?: boolean\n          is_archived?: boolean\n          is_primary_movement?: boolean\n          movement_pattern?: string | null\n          movement_pattern_family?: string | null\n          name?: string\n          original_system_id?: string | null\n          owner_id?: string | null\n          prescription_notes?: string | null\n          session_position?: string\n          studio_id?: string | null\n          thumbnail_url?: string | null\n          updated_at?: string\n          video_url?: string | null\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"exercises_trainer_id_fkey\"\n            columns: [\"owner_id\"]\n            isOneToOne: false\n            referencedRelation: \"trainers\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      feedback: {\n        Row: {\n          coach_id: string | null\n          created_at: string | null\n          description: string\n          id: string\n          page_url: string | null\n          screenshot_url: string | null\n          status: string | null\n          type: string\n        }\n        Insert: {\n          coach_id?: string | null\n          created_at?: string | null\n          description: string\n          id?: string\n          page_url?: string | null\n          screenshot_url?: string | null\n          status?: string | null\n          type: string\n        }\n        Update: {\n          coach_id?: string | null\n          created_at?: string | null\n          description?: string\n          id?: string\n          page_url?: string | null\n          screenshot_url?: string | null\n          status?: string | null\n          type?: string\n        }\n        Relationships: []\n      }\n      financial_transactions: {\n        Row: {\n          amount_gross: number\n          amount_net: number\n          coach_id: string\n          created_at: string\n          currency: string\n          description: string | null\n          id: string\n          processed_at: string | null\n          status: string\n          stripe_invoice_id: string | null\n          stripe_payment_id: string\n          student_id: string | null\n          type: string\n        }\n        Insert: {\n          amount_gross: number\n          amount_net: number\n          coach_id: string\n          created_at?: string\n          currency?: string\n          description?: string | null\n          id?: string\n          processed_at?: string | null\n          status: string\n          stripe_invoice_id?: string | null\n          stripe_payment_id: string\n          student_id?: string | null\n          type: string\n        }\n        Update: {\n          amount_gross?: number\n          amount_net?: number\n          coach_id?: string\n          created_at?: string\n          currency?: string\n          description?: string | null\n          id?: string\n          processed_at?: string | null\n          status?: string\n          stripe_invoice_id?: string | null\n          stripe_payment_id?: string\n          student_id?: string | null\n          type?: string\n        }\n        Relationships: []\n      }\n      form_schedules: {\n        Row: {\n          created_at: string\n          form_template_id: string\n          frequency: string\n          id: string\n          is_active: boolean\n          last_sent_at: string | null\n          next_due_at: string\n          student_id: string\n          trainer_id: string\n          updated_at: string\n        }\n        Insert: {\n          created_at?: string\n          form_template_id: string\n          frequency: string\n          id?: string\n          is_active?: boolean\n          last_sent_at?: string | null\n          next_due_at: string\n          student_id: string\n          trainer_id: string\n          updated_at?: string\n        }\n        Update: {\n          created_at?: string\n          form_template_id?: string\n          frequency?: string\n          id?: string\n          is_active?: boolean\n          last_sent_at?: string | null\n          next_due_at?: string\n          student_id?: string\n          trainer_id?: string\n          updated_at?: string\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"form_schedules_form_template_id_fkey\"\n            columns: [\"form_template_id\"]\n            isOneToOne: false\n            referencedRelation: \"form_templates\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"form_schedules_student_id_fkey\"\n            columns: [\"student_id\"]\n            isOneToOne: false\n            referencedRelation: \"students\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"form_schedules_trainer_id_fkey\"\n            columns: [\"trainer_id\"]\n            isOneToOne: false\n            referencedRelation: \"trainers\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      form_submissions: {\n        Row: {\n          answers_json: Json | null\n          created_at: string\n          feedback_sent_at: string | null\n          form_template_id: string\n          form_template_version: number\n          id: string\n          inbox_item_id: string | null\n          schema_snapshot_json: Json\n          status: string\n          student_id: string\n          submitted_at: string | null\n          trainer_feedback: Json | null\n          trainer_id: string\n          trigger_context: string\n          updated_at: string\n        }\n        Insert: {\n          answers_json?: Json | null\n          created_at?: string\n          feedback_sent_at?: string | null\n          form_template_id: string\n          form_template_version: number\n          id?: string\n          inbox_item_id?: string | null\n          schema_snapshot_json: Json\n          status: string\n          student_id: string\n          submitted_at?: string | null\n          trainer_feedback?: Json | null\n          trainer_id: string\n          trigger_context?: string\n          updated_at?: string\n        }\n        Update: {\n          answers_json?: Json | null\n          created_at?: string\n          feedback_sent_at?: string | null\n          form_template_id?: string\n          form_template_version?: number\n          id?: string\n          inbox_item_id?: string | null\n          schema_snapshot_json?: Json\n          status?: string\n          student_id?: string\n          submitted_at?: string | null\n          trainer_feedback?: Json | null\n          trainer_id?: string\n          trigger_context?: string\n          updated_at?: string\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"form_submissions_form_template_id_fkey\"\n            columns: [\"form_template_id\"]\n            isOneToOne: false\n            referencedRelation: \"form_templates\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"form_submissions_inbox_item_id_fkey\"\n            columns: [\"inbox_item_id\"]\n            isOneToOne: false\n            referencedRelation: \"student_inbox_items\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"form_submissions_student_id_fkey\"\n            columns: [\"student_id\"]\n            isOneToOne: false\n            referencedRelation: \"students\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"form_submissions_trainer_id_fkey\"\n            columns: [\"trainer_id\"]\n            isOneToOne: false\n            referencedRelation: \"trainers\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      form_templates: {\n        Row: {\n          ai_confidence_score: number | null\n          ai_generation_version: string | null\n          ai_warnings: Json | null\n          category: string\n          created_at: string\n          created_source: string\n          description: string | null\n          id: string\n          is_active: boolean\n          is_default_for_new_students: boolean\n          schema_json: Json\n          system_key: string | null\n          title: string\n          trainer_id: string | null\n          updated_at: string\n          version: number\n        }\n        Insert: {\n          ai_confidence_score?: number | null\n          ai_generation_version?: string | null\n          ai_warnings?: Json | null\n          category: string\n          created_at?: string\n          created_source?: string\n          description?: string | null\n          id?: string\n          is_active?: boolean\n          is_default_for_new_students?: boolean\n          schema_json: Json\n          system_key?: string | null\n          title: string\n          trainer_id?: string | null\n          updated_at?: string\n          version?: number\n        }\n        Update: {\n          ai_confidence_score?: number | null\n          ai_generation_version?: string | null\n          ai_warnings?: Json | null\n          category?: string\n          created_at?: string\n          created_source?: string\n          description?: string | null\n          id?: string\n          is_active?: boolean\n          is_default_for_new_students?: boolean\n          schema_json?: Json\n          system_key?: string | null\n          title?: string\n          trainer_id?: string | null\n          updated_at?: string\n          version?: number\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"form_templates_trainer_id_fkey\"\n            columns: [\"trainer_id\"]\n            isOneToOne: false\n            referencedRelation: \"trainers\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      google_calendar_connections: {\n        Row: {\n          access_token: string\n          access_token_expires_at: string\n          calendar_id: string\n          connected_at: string\n          google_account_email: string\n          last_sync_at: string | null\n          last_sync_error: string | null\n          refresh_token: string\n          scope: string\n          status: string\n          trainer_id: string\n          updated_at: string\n          watch_channel_id: string | null\n          watch_expires_at: string | null\n          watch_resource_id: string | null\n        }\n        Insert: {\n          access_token: string\n          access_token_expires_at: string\n          calendar_id: string\n          connected_at?: string\n          google_account_email: string\n          last_sync_at?: string | null\n          last_sync_error?: string | null\n          refresh_token: string\n          scope: string\n          status?: string\n          trainer_id: string\n          updated_at?: string\n          watch_channel_id?: string | null\n          watch_expires_at?: string | null\n          watch_resource_id?: string | null\n        }\n        Update: {\n          access_token?: string\n          access_token_expires_at?: string\n          calendar_id?: string\n          connected_at?: string\n          google_account_email?: string\n          last_sync_at?: string | null\n          last_sync_error?: string | null\n          refresh_token?: string\n          scope?: string\n          status?: string\n          trainer_id?: string\n          updated_at?: string\n          watch_channel_id?: string | null\n          watch_expires_at?: string | null\n          watch_resource_id?: string | null\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"google_calendar_connections_trainer_id_fkey\"\n            columns: [\"trainer_id\"]\n            isOneToOne: true\n            referencedRelation: \"trainers\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      messages: {\n        Row: {\n          content: string | null\n          created_at: string | null\n          id: string\n          image_url: string | null\n          read_at: string | null\n          sender_id: string\n          sender_type: string\n          student_id: string\n        }\n        Insert: {\n          content?: string | null\n          created_at?: string | null\n          id?: string\n          image_url?: string | null\n          read_at?: string | null\n          sender_id: string\n          sender_type: string\n          student_id: string\n        }\n        Update: {\n          content?: string | null\n          created_at?: string | null\n          id?: string\n          image_url?: string | null\n          read_at?: string | null\n          sender_id?: string\n          sender_type?: string\n          student_id?: string\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"messages_student_id_fkey\"\n            columns: [\"student_id\"]\n            isOneToOne: false\n            referencedRelation: \"students\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      muscle_groups: {\n        Row: {\n          created_at: string\n          id: string\n          name: string\n          owner_id: string | null\n        }\n        Insert: {\n          created_at?: string\n          id?: string\n          name: string\n          owner_id?: string | null\n        }\n        Update: {\n          created_at?: string\n          id?: string\n          name?: string\n          owner_id?: string | null\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"muscle_groups_owner_id_fkey\"\n            columns: [\"owner_id\"]\n            isOneToOne: false\n            referencedRelation: \"trainers\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      payment_settings: {\n        Row: {\n          charges_enabled: boolean | null\n          created_at: string\n          details_submitted: boolean | null\n          payouts_enabled: boolean | null\n          stripe_connect_id: string | null\n          stripe_status: string | null\n          updated_at: string\n          user_id: string\n        }\n        Insert: {\n          charges_enabled?: boolean | null\n          created_at?: string\n          details_submitted?: boolean | null\n          payouts_enabled?: boolean | null\n          stripe_connect_id?: string | null\n          stripe_status?: string | null\n          updated_at?: string\n          user_id: string\n        }\n        Update: {\n          charges_enabled?: boolean | null\n          created_at?: string\n          details_submitted?: boolean | null\n          payouts_enabled?: boolean | null\n          stripe_connect_id?: string | null\n          stripe_status?: string | null\n          updated_at?: string\n          user_id?: string\n        }\n        Relationships: []\n      }\n      prescription_generations: {\n        Row: {\n          agent_conversation: Json | null\n          ai_mode_used: string\n          ai_model: string\n          ai_source: string\n          approval_notes: string | null\n          approved_at: string | null\n          assigned_program_id: string | null\n          confidence_score: number | null\n          context_analysis: Json | null\n          cost_usd: number | null\n          created_at: string\n          expires_at: string\n          generation_time_ms: number | null\n          id: string\n          input_snapshot: Json\n          model_used: string | null\n          output_snapshot: Json | null\n          prompt_version: string | null\n          rejected_at: string | null\n          retry_count: number | null\n          rules_violations: Json\n          rules_violations_count: number | null\n          rules_violations_json: Json | null\n          status: string\n          student_id: string\n          tokens_input_cached: number | null\n          tokens_input_new: number | null\n          tokens_output: number | null\n          trainer_edits_count: number\n          trainer_edits_diff: Json | null\n          trainer_id: string\n          updated_at: string\n          web_search_queries: string[] | null\n        }\n        Insert: {\n          agent_conversation?: Json | null\n          ai_mode_used: string\n          ai_model: string\n          ai_source?: string\n          approval_notes?: string | null\n          approved_at?: string | null\n          assigned_program_id?: string | null\n          confidence_score?: number | null\n          context_analysis?: Json | null\n          cost_usd?: number | null\n          created_at?: string\n          expires_at?: string\n          generation_time_ms?: number | null\n          id?: string\n          input_snapshot: Json\n          model_used?: string | null\n          output_snapshot?: Json | null\n          prompt_version?: string | null\n          rejected_at?: string | null\n          retry_count?: number | null\n          rules_violations?: Json\n          rules_violations_count?: number | null\n          rules_violations_json?: Json | null\n          status?: string\n          student_id: string\n          tokens_input_cached?: number | null\n          tokens_input_new?: number | null\n          tokens_output?: number | null\n          trainer_edits_count?: number\n          trainer_edits_diff?: Json | null\n          trainer_id: string\n          updated_at?: string\n          web_search_queries?: string[] | null\n        }\n        Update: {\n          agent_conversation?: Json | null\n          ai_mode_used?: string\n          ai_model?: string\n          ai_source?: string\n          approval_notes?: string | null\n          approved_at?: string | null\n          assigned_program_id?: string | null\n          confidence_score?: number | null\n          context_analysis?: Json | null\n          cost_usd?: number | null\n          created_at?: string\n          expires_at?: string\n          generation_time_ms?: number | null\n          id?: string\n          input_snapshot?: Json\n          model_used?: string | null\n          output_snapshot?: Json | null\n          prompt_version?: string | null\n          rejected_at?: string | null\n          retry_count?: number | null\n          rules_violations?: Json\n          rules_violations_count?: number | null\n          rules_violations_json?: Json | null\n          status?: string\n          student_id?: string\n          tokens_input_cached?: number | null\n          tokens_input_new?: number | null\n          tokens_output?: number | null\n          trainer_edits_count?: number\n          trainer_edits_diff?: Json | null\n          trainer_id?: string\n          updated_at?: string\n          web_search_queries?: string[] | null\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"prescription_generations_assigned_program_id_fkey\"\n            columns: [\"assigned_program_id\"]\n            isOneToOne: false\n            referencedRelation: \"assigned_programs\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"prescription_generations_student_id_fkey\"\n            columns: [\"student_id\"]\n            isOneToOne: false\n            referencedRelation: \"students\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"prescription_generations_trainer_id_fkey\"\n            columns: [\"trainer_id\"]\n            isOneToOne: false\n            referencedRelation: \"trainers\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      program_form_triggers: {\n        Row: {\n          created_at: string\n          form_template_id: string\n          id: string\n          is_active: boolean\n          program_template_id: string\n          trainer_id: string\n          trigger_type: string\n          updated_at: string\n        }\n        Insert: {\n          created_at?: string\n          form_template_id: string\n          id?: string\n          is_active?: boolean\n          program_template_id: string\n          trainer_id: string\n          trigger_type: string\n          updated_at?: string\n        }\n        Update: {\n          created_at?: string\n          form_template_id?: string\n          id?: string\n          is_active?: boolean\n          program_template_id?: string\n          trainer_id?: string\n          trigger_type?: string\n          updated_at?: string\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"program_form_triggers_form_template_id_fkey\"\n            columns: [\"form_template_id\"]\n            isOneToOne: false\n            referencedRelation: \"form_templates\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"program_form_triggers_program_template_id_fkey\"\n            columns: [\"program_template_id\"]\n            isOneToOne: false\n            referencedRelation: \"program_templates\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"program_form_triggers_trainer_id_fkey\"\n            columns: [\"trainer_id\"]\n            isOneToOne: false\n            referencedRelation: \"trainers\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      program_reports: {\n        Row: {\n          assigned_program_id: string\n          auto_notes_draft: string | null\n          created_at: string\n          generated_at: string\n          id: string\n          metrics_json: Json\n          program_completed_at: string | null\n          program_duration_weeks: number | null\n          program_name: string\n          program_started_at: string | null\n          published_at: string | null\n          status: string\n          student_id: string\n          trainer_id: string\n          trainer_notes: string | null\n          updated_at: string\n        }\n        Insert: {\n          assigned_program_id: string\n          auto_notes_draft?: string | null\n          created_at?: string\n          generated_at?: string\n          id?: string\n          metrics_json?: Json\n          program_completed_at?: string | null\n          program_duration_weeks?: number | null\n          program_name: string\n          program_started_at?: string | null\n          published_at?: string | null\n          status?: string\n          student_id: string\n          trainer_id: string\n          trainer_notes?: string | null\n          updated_at?: string\n        }\n        Update: {\n          assigned_program_id?: string\n          auto_notes_draft?: string | null\n          created_at?: string\n          generated_at?: string\n          id?: string\n          metrics_json?: Json\n          program_completed_at?: string | null\n          program_duration_weeks?: number | null\n          program_name?: string\n          program_started_at?: string | null\n          published_at?: string | null\n          status?: string\n          student_id?: string\n          trainer_id?: string\n          trainer_notes?: string | null\n          updated_at?: string\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"program_reports_assigned_program_id_fkey\"\n            columns: [\"assigned_program_id\"]\n            isOneToOne: false\n            referencedRelation: \"assigned_programs\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"program_reports_student_id_fkey\"\n            columns: [\"student_id\"]\n            isOneToOne: false\n            referencedRelation: \"students\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"program_reports_trainer_id_fkey\"\n            columns: [\"trainer_id\"]\n            isOneToOne: false\n            referencedRelation: \"trainers\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      program_templates: {\n        Row: {\n          created_at: string\n          description: string | null\n          duration_weeks: number | null\n          id: string\n          is_archived: boolean\n          is_template: boolean\n          name: string\n          trainer_id: string\n          updated_at: string\n        }\n        Insert: {\n          created_at?: string\n          description?: string | null\n          duration_weeks?: number | null\n          id?: string\n          is_archived?: boolean\n          is_template?: boolean\n          name: string\n          trainer_id: string\n          updated_at?: string\n        }\n        Update: {\n          created_at?: string\n          description?: string | null\n          duration_weeks?: number | null\n          id?: string\n          is_archived?: boolean\n          is_template?: boolean\n          name?: string\n          trainer_id?: string\n          updated_at?: string\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"program_templates_trainer_id_fkey\"\n            columns: [\"trainer_id\"]\n            isOneToOne: false\n            referencedRelation: \"trainers\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      push_tickets: {\n        Row: {\n          checked_at: string | null\n          created_at: string\n          id: string\n          notification_id: string | null\n          push_token_id: string | null\n          receipt_error_type: string | null\n          receipt_message: string | null\n          receipt_status: string | null\n          role: string\n          status: string\n          ticket_id: string\n          user_id: string\n        }\n        Insert: {\n          checked_at?: string | null\n          created_at?: string\n          id?: string\n          notification_id?: string | null\n          push_token_id?: string | null\n          receipt_error_type?: string | null\n          receipt_message?: string | null\n          receipt_status?: string | null\n          role: string\n          status?: string\n          ticket_id: string\n          user_id: string\n        }\n        Update: {\n          checked_at?: string | null\n          created_at?: string\n          id?: string\n          notification_id?: string | null\n          push_token_id?: string | null\n          receipt_error_type?: string | null\n          receipt_message?: string | null\n          receipt_status?: string | null\n          role?: string\n          status?: string\n          ticket_id?: string\n          user_id?: string\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"push_tickets_push_token_id_fkey\"\n            columns: [\"push_token_id\"]\n            isOneToOne: false\n            referencedRelation: \"push_tokens\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      push_tokens: {\n        Row: {\n          active: boolean | null\n          created_at: string | null\n          expo_push_token: string\n          id: string\n          platform: string | null\n          role: string\n          trainer_id: string | null\n          updated_at: string | null\n          user_id: string\n        }\n        Insert: {\n          active?: boolean | null\n          created_at?: string | null\n          expo_push_token: string\n          id?: string\n          platform?: string | null\n          role: string\n          trainer_id?: string | null\n          updated_at?: string | null\n          user_id: string\n        }\n        Update: {\n          active?: boolean | null\n          created_at?: string | null\n          expo_push_token?: string\n          id?: string\n          platform?: string | null\n          role?: string\n          trainer_id?: string | null\n          updated_at?: string | null\n          user_id?: string\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"push_tokens_trainer_id_fkey\"\n            columns: [\"trainer_id\"]\n            isOneToOne: false\n            referencedRelation: \"trainers\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      recurring_appointments: {\n        Row: {\n          created_at: string\n          day_of_week: number\n          duration_minutes: number\n          ends_on: string | null\n          frequency: string\n          google_event_id: string | null\n          google_sync_status: string | null\n          group_id: string | null\n          id: string\n          notes: string | null\n          start_time: string\n          starts_on: string\n          status: string\n          student_id: string\n          trainer_id: string\n          updated_at: string\n        }\n        Insert: {\n          created_at?: string\n          day_of_week: number\n          duration_minutes?: number\n          ends_on?: string | null\n          frequency?: string\n          google_event_id?: string | null\n          google_sync_status?: string | null\n          group_id?: string | null\n          id?: string\n          notes?: string | null\n          start_time: string\n          starts_on: string\n          status?: string\n          student_id: string\n          trainer_id: string\n          updated_at?: string\n        }\n        Update: {\n          created_at?: string\n          day_of_week?: number\n          duration_minutes?: number\n          ends_on?: string | null\n          frequency?: string\n          google_event_id?: string | null\n          google_sync_status?: string | null\n          group_id?: string | null\n          id?: string\n          notes?: string | null\n          start_time?: string\n          starts_on?: string\n          status?: string\n          student_id?: string\n          trainer_id?: string\n          updated_at?: string\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"recurring_appointments_student_id_fkey\"\n            columns: [\"student_id\"]\n            isOneToOne: false\n            referencedRelation: \"students\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"recurring_appointments_trainer_id_fkey\"\n            columns: [\"trainer_id\"]\n            isOneToOne: false\n            referencedRelation: \"trainers\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      scheduled_notifications: {\n        Row: {\n          body: string\n          created_at: string\n          data: Json\n          id: string\n          last_error: string | null\n          occurrence_date: string\n          recurring_appointment_id: string | null\n          scheduled_for: string\n          sent_at: string | null\n          source: string\n          status: string\n          student_id: string\n          title: string\n          trainer_id: string\n        }\n        Insert: {\n          body: string\n          created_at?: string\n          data?: Json\n          id?: string\n          last_error?: string | null\n          occurrence_date: string\n          recurring_appointment_id?: string | null\n          scheduled_for: string\n          sent_at?: string | null\n          source: string\n          status?: string\n          student_id: string\n          title: string\n          trainer_id: string\n        }\n        Update: {\n          body?: string\n          created_at?: string\n          data?: Json\n          id?: string\n          last_error?: string | null\n          occurrence_date?: string\n          recurring_appointment_id?: string | null\n          scheduled_for?: string\n          sent_at?: string | null\n          source?: string\n          status?: string\n          student_id?: string\n          title?: string\n          trainer_id?: string\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"scheduled_notifications_recurring_appointment_id_fkey\"\n            columns: [\"recurring_appointment_id\"]\n            isOneToOne: false\n            referencedRelation: \"recurring_appointments\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"scheduled_notifications_student_id_fkey\"\n            columns: [\"student_id\"]\n            isOneToOne: false\n            referencedRelation: \"students\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"scheduled_notifications_trainer_id_fkey\"\n            columns: [\"trainer_id\"]\n            isOneToOne: false\n            referencedRelation: \"trainers\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      set_logs: {\n        Row: {\n          assigned_workout_item_id: string\n          completed_at: string | null\n          created_at: string\n          device_id: string | null\n          executed_exercise_id: string | null\n          exercise_id: string | null\n          id: string\n          is_completed: boolean\n          local_id: string | null\n          notes: string | null\n          planned_exercise_id: string | null\n          reps_completed: number | null\n          rpe: number | null\n          set_number: number\n          swap_source: string\n          sync_status: string\n          updated_at: string\n          weight: number | null\n          weight_unit: string\n          workout_session_id: string\n        }\n        Insert: {\n          assigned_workout_item_id: string\n          completed_at?: string | null\n          created_at?: string\n          device_id?: string | null\n          executed_exercise_id?: string | null\n          exercise_id?: string | null\n          id?: string\n          is_completed?: boolean\n          local_id?: string | null\n          notes?: string | null\n          planned_exercise_id?: string | null\n          reps_completed?: number | null\n          rpe?: number | null\n          set_number: number\n          swap_source?: string\n          sync_status?: string\n          updated_at?: string\n          weight?: number | null\n          weight_unit?: string\n          workout_session_id: string\n        }\n        Update: {\n          assigned_workout_item_id?: string\n          completed_at?: string | null\n          created_at?: string\n          device_id?: string | null\n          executed_exercise_id?: string | null\n          exercise_id?: string | null\n          id?: string\n          is_completed?: boolean\n          local_id?: string | null\n          notes?: string | null\n          planned_exercise_id?: string | null\n          reps_completed?: number | null\n          rpe?: number | null\n          set_number?: number\n          swap_source?: string\n          sync_status?: string\n          updated_at?: string\n          weight?: number | null\n          weight_unit?: string\n          workout_session_id?: string\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"set_logs_assigned_workout_item_id_fkey\"\n            columns: [\"assigned_workout_item_id\"]\n            isOneToOne: false\n            referencedRelation: \"assigned_workout_items\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"set_logs_executed_exercise_id_fkey\"\n            columns: [\"executed_exercise_id\"]\n            isOneToOne: false\n            referencedRelation: \"exercises\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"set_logs_exercise_id_fkey\"\n            columns: [\"exercise_id\"]\n            isOneToOne: false\n            referencedRelation: \"exercises\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"set_logs_planned_exercise_id_fkey\"\n            columns: [\"planned_exercise_id\"]\n            isOneToOne: false\n            referencedRelation: \"exercises\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"set_logs_workout_session_id_fkey\"\n            columns: [\"workout_session_id\"]\n            isOneToOne: false\n            referencedRelation: \"workout_sessions\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      student_contracts: {\n        Row: {\n          amount: number\n          billing_type: Database[\"public\"][\"Enums\"][\"billing_type\"]\n          block_on_fail: boolean\n          cancel_at_period_end: boolean | null\n          canceled_at: string | null\n          canceled_by: string | null\n          created_at: string | null\n          current_period_end: string | null\n          end_date: string | null\n          id: string\n          plan_id: string | null\n          start_date: string | null\n          status: string\n          stripe_customer_id: string | null\n          stripe_subscription_id: string | null\n          student_id: string\n          trainer_id: string\n          updated_at: string | null\n        }\n        Insert: {\n          amount: number\n          billing_type?: Database[\"public\"][\"Enums\"][\"billing_type\"]\n          block_on_fail?: boolean\n          cancel_at_period_end?: boolean | null\n          canceled_at?: string | null\n          canceled_by?: string | null\n          created_at?: string | null\n          current_period_end?: string | null\n          end_date?: string | null\n          id?: string\n          plan_id?: string | null\n          start_date?: string | null\n          status?: string\n          stripe_customer_id?: string | null\n          stripe_subscription_id?: string | null\n          student_id: string\n          trainer_id: string\n          updated_at?: string | null\n        }\n        Update: {\n          amount?: number\n          billing_type?: Database[\"public\"][\"Enums\"][\"billing_type\"]\n          block_on_fail?: boolean\n          cancel_at_period_end?: boolean | null\n          canceled_at?: string | null\n          canceled_by?: string | null\n          created_at?: string | null\n          current_period_end?: string | null\n          end_date?: string | null\n          id?: string\n          plan_id?: string | null\n          start_date?: string | null\n          status?: string\n          stripe_customer_id?: string | null\n          stripe_subscription_id?: string | null\n          student_id?: string\n          trainer_id?: string\n          updated_at?: string | null\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"student_contracts_plan_id_fkey\"\n            columns: [\"plan_id\"]\n            isOneToOne: false\n            referencedRelation: \"trainer_plans\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"student_contracts_student_id_fkey\"\n            columns: [\"student_id\"]\n            isOneToOne: false\n            referencedRelation: \"students\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      student_inbox_items: {\n        Row: {\n          archived_at: string | null\n          completed_at: string | null\n          created_at: string\n          due_at: string | null\n          id: string\n          payload: Json\n          push_sent_at: string | null\n          read_at: string | null\n          status: string\n          student_id: string\n          subtitle: string | null\n          title: string\n          trainer_id: string\n          type: string\n          updated_at: string\n        }\n        Insert: {\n          archived_at?: string | null\n          completed_at?: string | null\n          created_at?: string\n          due_at?: string | null\n          id?: string\n          payload: Json\n          push_sent_at?: string | null\n          read_at?: string | null\n          status: string\n          student_id: string\n          subtitle?: string | null\n          title: string\n          trainer_id: string\n          type: string\n          updated_at?: string\n        }\n        Update: {\n          archived_at?: string | null\n          completed_at?: string | null\n          created_at?: string\n          due_at?: string | null\n          id?: string\n          payload?: Json\n          push_sent_at?: string | null\n          read_at?: string | null\n          status?: string\n          student_id?: string\n          subtitle?: string | null\n          title?: string\n          trainer_id?: string\n          type?: string\n          updated_at?: string\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"student_inbox_items_student_id_fkey\"\n            columns: [\"student_id\"]\n            isOneToOne: false\n            referencedRelation: \"students\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"student_inbox_items_trainer_id_fkey\"\n            columns: [\"trainer_id\"]\n            isOneToOne: false\n            referencedRelation: \"trainers\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      student_prescription_profiles: {\n        Row: {\n          adherence_rate: number | null\n          ai_mode: string\n          available_days: number[]\n          available_equipment: string[]\n          avg_session_duration_minutes: number | null\n          created_at: string\n          cycle_observation: string | null\n          disliked_exercise_ids: string[] | null\n          favorite_exercise_ids: string[] | null\n          goal: string\n          id: string\n          last_calculated_at: string | null\n          medical_restrictions: Json\n          session_duration_minutes: number\n          student_id: string\n          trainer_id: string\n          training_level: string\n          updated_at: string\n        }\n        Insert: {\n          adherence_rate?: number | null\n          ai_mode?: string\n          available_days?: number[]\n          available_equipment?: string[]\n          avg_session_duration_minutes?: number | null\n          created_at?: string\n          cycle_observation?: string | null\n          disliked_exercise_ids?: string[] | null\n          favorite_exercise_ids?: string[] | null\n          goal?: string\n          id?: string\n          last_calculated_at?: string | null\n          medical_restrictions?: Json\n          session_duration_minutes?: number\n          student_id: string\n          trainer_id: string\n          training_level?: string\n          updated_at?: string\n        }\n        Update: {\n          adherence_rate?: number | null\n          ai_mode?: string\n          available_days?: number[]\n          available_equipment?: string[]\n          avg_session_duration_minutes?: number | null\n          created_at?: string\n          cycle_observation?: string | null\n          disliked_exercise_ids?: string[] | null\n          favorite_exercise_ids?: string[] | null\n          goal?: string\n          id?: string\n          last_calculated_at?: string | null\n          medical_restrictions?: Json\n          session_duration_minutes?: number\n          student_id?: string\n          trainer_id?: string\n          training_level?: string\n          updated_at?: string\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"student_prescription_profiles_student_id_fkey\"\n            columns: [\"student_id\"]\n            isOneToOne: true\n            referencedRelation: \"students\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"student_prescription_profiles_trainer_id_fkey\"\n            columns: [\"trainer_id\"]\n            isOneToOne: false\n            referencedRelation: \"trainers\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      students: {\n        Row: {\n          auth_user_id: string | null\n          avatar_url: string | null\n          coach_id: string | null\n          created_at: string\n          email: string\n          id: string\n          is_trainer_profile: boolean | null\n          management_tags: string[] | null\n          modality: string\n          name: string\n          notification_preferences: Json | null\n          objective: string | null\n          phone: string | null\n          status: string\n          stripe_customer_id: string | null\n          stripe_subscription_id: string | null\n          trainer_notes: string | null\n          updated_at: string\n        }\n        Insert: {\n          auth_user_id?: string | null\n          avatar_url?: string | null\n          coach_id?: string | null\n          created_at?: string\n          email: string\n          id?: string\n          is_trainer_profile?: boolean | null\n          management_tags?: string[] | null\n          modality?: string\n          name: string\n          notification_preferences?: Json | null\n          objective?: string | null\n          phone?: string | null\n          status?: string\n          stripe_customer_id?: string | null\n          stripe_subscription_id?: string | null\n          trainer_notes?: string | null\n          updated_at?: string\n        }\n        Update: {\n          auth_user_id?: string | null\n          avatar_url?: string | null\n          coach_id?: string | null\n          created_at?: string\n          email?: string\n          id?: string\n          is_trainer_profile?: boolean | null\n          management_tags?: string[] | null\n          modality?: string\n          name?: string\n          notification_preferences?: Json | null\n          objective?: string | null\n          phone?: string | null\n          status?: string\n          stripe_customer_id?: string | null\n          stripe_subscription_id?: string | null\n          trainer_notes?: string | null\n          updated_at?: string\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"students_trainer_id_fkey\"\n            columns: [\"coach_id\"]\n            isOneToOne: false\n            referencedRelation: \"trainers\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      subscriptions: {\n        Row: {\n          cancel_at_period_end: boolean\n          created_at: string\n          current_period_end: string | null\n          id: string\n          status: string\n          stripe_customer_id: string\n          stripe_subscription_id: string\n          trainer_id: string\n          updated_at: string\n        }\n        Insert: {\n          cancel_at_period_end?: boolean\n          created_at?: string\n          current_period_end?: string | null\n          id?: string\n          status?: string\n          stripe_customer_id: string\n          stripe_subscription_id: string\n          trainer_id: string\n          updated_at?: string\n        }\n        Update: {\n          cancel_at_period_end?: boolean\n          created_at?: string\n          current_period_end?: string | null\n          id?: string\n          status?: string\n          stripe_customer_id?: string\n          stripe_subscription_id?: string\n          trainer_id?: string\n          updated_at?: string\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"subscriptions_trainer_id_fkey\"\n            columns: [\"trainer_id\"]\n            isOneToOne: false\n            referencedRelation: \"trainers\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      trainer_exercise_videos: {\n        Row: {\n          created_at: string | null\n          exercise_id: string\n          file_size_bytes: number | null\n          id: string\n          original_filename: string | null\n          storage_path: string | null\n          trainer_id: string\n          updated_at: string | null\n          video_type: string\n          video_url: string\n        }\n        Insert: {\n          created_at?: string | null\n          exercise_id: string\n          file_size_bytes?: number | null\n          id?: string\n          original_filename?: string | null\n          storage_path?: string | null\n          trainer_id: string\n          updated_at?: string | null\n          video_type: string\n          video_url: string\n        }\n        Update: {\n          created_at?: string | null\n          exercise_id?: string\n          file_size_bytes?: number | null\n          id?: string\n          original_filename?: string | null\n          storage_path?: string | null\n          trainer_id?: string\n          updated_at?: string | null\n          video_type?: string\n          video_url?: string\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"trainer_exercise_videos_exercise_id_fkey\"\n            columns: [\"exercise_id\"]\n            isOneToOne: false\n            referencedRelation: \"exercises\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"trainer_exercise_videos_trainer_id_fkey\"\n            columns: [\"trainer_id\"]\n            isOneToOne: false\n            referencedRelation: \"trainers\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      trainer_notifications: {\n        Row: {\n          body: string\n          category: string\n          created_at: string | null\n          data: Json | null\n          id: string\n          is_read: boolean | null\n          title: string\n          trainer_id: string\n          type: string\n        }\n        Insert: {\n          body: string\n          category: string\n          created_at?: string | null\n          data?: Json | null\n          id?: string\n          is_read?: boolean | null\n          title: string\n          trainer_id: string\n          type?: string\n        }\n        Update: {\n          body?: string\n          category?: string\n          created_at?: string | null\n          data?: Json | null\n          id?: string\n          is_read?: boolean | null\n          title?: string\n          trainer_id?: string\n          type?: string\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"trainer_notifications_trainer_id_fkey\"\n            columns: [\"trainer_id\"]\n            isOneToOne: false\n            referencedRelation: \"trainers\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      trainer_plans: {\n        Row: {\n          created_at: string | null\n          description: string | null\n          id: string\n          interval: string | null\n          interval_count: number | null\n          is_active: boolean | null\n          payment_method: string | null\n          price: number\n          stripe_price_id: string | null\n          stripe_product_id: string | null\n          title: string\n          trainer_id: string\n          updated_at: string | null\n          visibility: string | null\n        }\n        Insert: {\n          created_at?: string | null\n          description?: string | null\n          id?: string\n          interval?: string | null\n          interval_count?: number | null\n          is_active?: boolean | null\n          payment_method?: string | null\n          price: number\n          stripe_price_id?: string | null\n          stripe_product_id?: string | null\n          title: string\n          trainer_id: string\n          updated_at?: string | null\n          visibility?: string | null\n        }\n        Update: {\n          created_at?: string | null\n          description?: string | null\n          id?: string\n          interval?: string | null\n          interval_count?: number | null\n          is_active?: boolean | null\n          payment_method?: string | null\n          price?: number\n          stripe_price_id?: string | null\n          stripe_product_id?: string | null\n          title?: string\n          trainer_id?: string\n          updated_at?: string | null\n          visibility?: string | null\n        }\n        Relationships: []\n      }\n      trainer_student_links: {\n        Row: {\n          coach_id: string\n          created_at: string\n          end_reason: string | null\n          ended_at: string | null\n          id: string\n          is_current: boolean\n          started_at: string\n          status: string\n          student_id: string\n          updated_at: string\n        }\n        Insert: {\n          coach_id: string\n          created_at?: string\n          end_reason?: string | null\n          ended_at?: string | null\n          id?: string\n          is_current?: boolean\n          started_at?: string\n          status?: string\n          student_id: string\n          updated_at?: string\n        }\n        Update: {\n          coach_id?: string\n          created_at?: string\n          end_reason?: string | null\n          ended_at?: string | null\n          id?: string\n          is_current?: boolean\n          started_at?: string\n          status?: string\n          student_id?: string\n          updated_at?: string\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"trainer_student_links_coach_id_fkey\"\n            columns: [\"coach_id\"]\n            isOneToOne: false\n            referencedRelation: \"trainers\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"trainer_student_links_student_id_fkey\"\n            columns: [\"student_id\"]\n            isOneToOne: false\n            referencedRelation: \"students\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      trainers: {\n        Row: {\n          ai_prescriptions_enabled: boolean\n          auth_user_id: string\n          auto_publish_reports: boolean\n          avatar_url: string | null\n          created_at: string\n          email: string\n          financial_attention_seen_at: string | null\n          id: string\n          name: string\n          notification_preferences: Json | null\n          onboarding_state: Json | null\n          prescription_patterns: Json | null\n          smart_v2_enabled: boolean\n          theme: string\n          updated_at: string\n        }\n        Insert: {\n          ai_prescriptions_enabled?: boolean\n          auth_user_id: string\n          auto_publish_reports?: boolean\n          avatar_url?: string | null\n          created_at?: string\n          email: string\n          financial_attention_seen_at?: string | null\n          id?: string\n          name: string\n          notification_preferences?: Json | null\n          onboarding_state?: Json | null\n          prescription_patterns?: Json | null\n          smart_v2_enabled?: boolean\n          theme?: string\n          updated_at?: string\n        }\n        Update: {\n          ai_prescriptions_enabled?: boolean\n          auth_user_id?: string\n          auto_publish_reports?: boolean\n          avatar_url?: string | null\n          created_at?: string\n          email?: string\n          financial_attention_seen_at?: string | null\n          id?: string\n          name?: string\n          notification_preferences?: Json | null\n          onboarding_state?: Json | null\n          prescription_patterns?: Json | null\n          smart_v2_enabled?: boolean\n          theme?: string\n          updated_at?: string\n        }\n        Relationships: []\n      }\n      webhook_events: {\n        Row: {\n          event_id: string\n          event_type: string\n          id: string\n          metadata: Json | null\n          processed_at: string\n        }\n        Insert: {\n          event_id: string\n          event_type: string\n          id?: string\n          metadata?: Json | null\n          processed_at?: string\n        }\n        Update: {\n          event_id?: string\n          event_type?: string\n          id?: string\n          metadata?: Json | null\n          processed_at?: string\n        }\n        Relationships: []\n      }\n      workout_item_templates: {\n        Row: {\n          created_at: string\n          exercise_function: string | null\n          exercise_id: string | null\n          id: string\n          item_config: Json\n          item_type: string\n          notes: string | null\n          order_index: number\n          parent_item_id: string | null\n          reps: string | null\n          rest_seconds: number | null\n          sets: number | null\n          substitute_exercise_ids: string[]\n          updated_at: string\n          workout_template_id: string\n        }\n        Insert: {\n          created_at?: string\n          exercise_function?: string | null\n          exercise_id?: string | null\n          id?: string\n          item_config?: Json\n          item_type: string\n          notes?: string | null\n          order_index: number\n          parent_item_id?: string | null\n          reps?: string | null\n          rest_seconds?: number | null\n          sets?: number | null\n          substitute_exercise_ids?: string[]\n          updated_at?: string\n          workout_template_id: string\n        }\n        Update: {\n          created_at?: string\n          exercise_function?: string | null\n          exercise_id?: string | null\n          id?: string\n          item_config?: Json\n          item_type?: string\n          notes?: string | null\n          order_index?: number\n          parent_item_id?: string | null\n          reps?: string | null\n          rest_seconds?: number | null\n          sets?: number | null\n          substitute_exercise_ids?: string[]\n          updated_at?: string\n          workout_template_id?: string\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"workout_item_templates_exercise_id_fkey\"\n            columns: [\"exercise_id\"]\n            isOneToOne: false\n            referencedRelation: \"exercises\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"workout_item_templates_parent_item_id_fkey\"\n            columns: [\"parent_item_id\"]\n            isOneToOne: false\n            referencedRelation: \"workout_item_templates\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"workout_item_templates_workout_template_id_fkey\"\n            columns: [\"workout_template_id\"]\n            isOneToOne: false\n            referencedRelation: \"workout_templates\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      workout_sessions: {\n        Row: {\n          assigned_program_id: string\n          assigned_workout_id: string\n          completed_at: string | null\n          created_at: string\n          device_id: string | null\n          duration_seconds: number | null\n          feedback: string | null\n          id: string\n          notes: string | null\n          post_workout_submission_id: string | null\n          pre_workout_submission_id: string | null\n          program_week: number | null\n          rpe: number | null\n          scheduled_date: string | null\n          started_at: string\n          status: string\n          student_id: string\n          sync_status: string\n          trainer_id: string\n          updated_at: string\n        }\n        Insert: {\n          assigned_program_id: string\n          assigned_workout_id: string\n          completed_at?: string | null\n          created_at?: string\n          device_id?: string | null\n          duration_seconds?: number | null\n          feedback?: string | null\n          id?: string\n          notes?: string | null\n          post_workout_submission_id?: string | null\n          pre_workout_submission_id?: string | null\n          program_week?: number | null\n          rpe?: number | null\n          scheduled_date?: string | null\n          started_at?: string\n          status?: string\n          student_id: string\n          sync_status?: string\n          trainer_id: string\n          updated_at?: string\n        }\n        Update: {\n          assigned_program_id?: string\n          assigned_workout_id?: string\n          completed_at?: string | null\n          created_at?: string\n          device_id?: string | null\n          duration_seconds?: number | null\n          feedback?: string | null\n          id?: string\n          notes?: string | null\n          post_workout_submission_id?: string | null\n          pre_workout_submission_id?: string | null\n          program_week?: number | null\n          rpe?: number | null\n          scheduled_date?: string | null\n          started_at?: string\n          status?: string\n          student_id?: string\n          sync_status?: string\n          trainer_id?: string\n          updated_at?: string\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"workout_sessions_assigned_program_id_fkey\"\n            columns: [\"assigned_program_id\"]\n            isOneToOne: false\n            referencedRelation: \"assigned_programs\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"workout_sessions_assigned_workout_id_fkey\"\n            columns: [\"assigned_workout_id\"]\n            isOneToOne: false\n            referencedRelation: \"assigned_workouts\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"workout_sessions_post_workout_submission_id_fkey\"\n            columns: [\"post_workout_submission_id\"]\n            isOneToOne: false\n            referencedRelation: \"form_submissions\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"workout_sessions_pre_workout_submission_id_fkey\"\n            columns: [\"pre_workout_submission_id\"]\n            isOneToOne: false\n            referencedRelation: \"form_submissions\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"workout_sessions_student_id_fkey\"\n            columns: [\"student_id\"]\n            isOneToOne: false\n            referencedRelation: \"students\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"workout_sessions_trainer_id_fkey\"\n            columns: [\"trainer_id\"]\n            isOneToOne: false\n            referencedRelation: \"trainers\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      workout_templates: {\n        Row: {\n          created_at: string\n          frequency: string[] | null\n          id: string\n          name: string\n          order_index: number\n          program_template_id: string\n          updated_at: string\n        }\n        Insert: {\n          created_at?: string\n          frequency?: string[] | null\n          id?: string\n          name: string\n          order_index: number\n          program_template_id: string\n          updated_at?: string\n        }\n        Update: {\n          created_at?: string\n          frequency?: string[] | null\n          id?: string\n          name?: string\n          order_index?: number\n          program_template_id?: string\n          updated_at?: string\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"workout_templates_program_template_id_fkey\"\n            columns: [\"program_template_id\"]\n            isOneToOne: false\n            referencedRelation: \"program_templates\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n    }\n    Views: {\n      [_ in never]: never\n    }\n    Functions: {\n      assign_form_to_students: {\n        Args: {\n          p_due_at?: string\n          p_form_template_id: string\n          p_message?: string\n          p_student_ids: string[]\n        }\n        Returns: Json\n      }\n      assign_program_to_student: {\n        Args: {\n          p_start_date?: string\n          p_student_id: string\n          p_template_id: string\n        }\n        Returns: string\n      }\n      check_student_access: { Args: { p_student_id: string }; Returns: Json }\n      cleanup_stale_sessions: { Args: never; Returns: number }\n      current_student_coach_id: { Args: never; Returns: string }\n      current_student_id: { Args: never; Returns: string }\n      current_trainer_id: { Args: never; Returns: string }\n      delete_student_account: { Args: never; Returns: undefined }\n      detect_training_gaps: {\n        Args: { p_trainer_id: string }\n        Returns: {\n          days_since_last: number\n          last_completed_at: string\n          student_id: string\n          student_name: string\n        }[]\n      }\n      get_active_workout_triggers: {\n        Args: { p_assigned_program_id: string }\n        Returns: Json\n      }\n      get_contract_events: { Args: { p_contract_id: string }; Returns: Json }\n      get_financial_dashboard: { Args: never; Returns: Json }\n      get_financial_students: {\n        Args: { p_trainer_id: string }\n        Returns: {\n          amount: number\n          avatar_url: string\n          billing_type: string\n          block_on_fail: boolean\n          cancel_at_period_end: boolean\n          canceled_at: string\n          canceled_by: string\n          contract_id: string\n          contract_status: string\n          current_period_end: string\n          display_status: string\n          phone: string\n          plan_interval: string\n          plan_title: string\n          stripe_subscription_id: string\n          student_id: string\n          student_name: string\n        }[]\n      }\n      get_form_submission_detail: {\n        Args: { p_submission_id: string }\n        Returns: Json\n      }\n      get_last_exercise_metrics: {\n        Args: { p_exercise_id: string; p_student_id: string }\n        Returns: {\n          avg_reps: number\n          avg_weight: number\n          completed_at: string\n          max_weight: number\n          sets_count: number\n          workout_session_id: string\n        }[]\n      }\n      get_previous_exercise_sets: {\n        Args: { p_exercise_id: string; p_student_id: string }\n        Returns: {\n          reps: number\n          set_number: number\n          weight: number\n        }[]\n      }\n      get_program_form_triggers: {\n        Args: { p_program_template_id: string }\n        Returns: Json\n      }\n      get_smart_substitutes: {\n        Args: { match_limit?: number; target_exercise_id: string }\n        Returns: {\n          id: string\n          image_url: string\n          name: string\n          similarity_score: number\n        }[]\n      }\n      get_student_detail_v2: { Args: { p_student_id: string }; Returns: Json }\n      get_student_profile_detail: {\n        Args: { p_student_id: string }\n        Returns: Json\n      }\n      get_student_sessions_heatmap: {\n        Args: { p_end_date: string; p_start_date: string; p_student_id: string }\n        Returns: Json\n      }\n      get_student_today_workout_for_trainer: {\n        Args: { p_assigned_workout_id: string; p_student_id: string }\n        Returns: Json\n      }\n      get_trainer_daily_activity: { Args: never; Returns: Json }\n      get_trainer_form_submissions: { Args: never; Returns: Json }\n      get_trainer_form_templates: { Args: never; Returns: Json }\n      get_trainer_pending_actions: { Args: never; Returns: Json }\n      get_trainer_program_templates: { Args: never; Returns: Json }\n      get_trainer_stats: { Args: never; Returns: Json }\n      get_trainer_students_list: { Args: never; Returns: Json }\n      get_training_room_students: { Args: never; Returns: Json }\n      get_unread_notification_count: { Args: never; Returns: number }\n      is_student: { Args: never; Returns: boolean }\n      is_trainer: { Args: never; Returns: boolean }\n      mark_all_notifications_read: { Args: never; Returns: undefined }\n      mark_notification_read: {\n        Args: { p_notification_id: string }\n        Returns: undefined\n      }\n      send_submission_feedback: {\n        Args: { p_feedback: Json; p_submission_id: string }\n        Returns: Json\n      }\n      show_limit: { Args: never; Returns: number }\n      show_trgm: { Args: { \"\": string }; Returns: string[] }\n      submit_form_submission: {\n        Args: { p_answers_json: Json; p_submission_id: string }\n        Returns: Json\n      }\n      submit_inline_form: {\n        Args: {\n          p_answers_json: Json\n          p_form_template_id: string\n          p_student_id: string\n          p_trainer_id: string\n          p_trigger_context: string\n        }\n        Returns: Json\n      }\n      trainer_finish_workout_session: {\n        Args: {\n          p_assigned_program_id: string\n          p_assigned_workout_id: string\n          p_duration_seconds: number\n          p_feedback?: string\n          p_rpe?: number\n          p_sets: Json\n          p_started_at: string\n          p_student_id: string\n        }\n        Returns: string\n      }\n      unaccent: { Args: { \"\": string }; Returns: string }\n      update_student_avatar: {\n        Args: { p_avatar_url: string }\n        Returns: undefined\n      }\n      upsert_prescription_profile: {\n        Args: {\n          p_ai_mode?: string\n          p_available_days?: number[]\n          p_available_equipment?: string[]\n          p_goal?: string\n          p_medical_restrictions?: Json\n          p_session_duration_minutes?: number\n          p_student_id: string\n          p_training_level?: string\n        }\n        Returns: Json\n      }\n    }\n    Enums: {\n      billing_type:\n        | \"stripe_auto\"\n        | \"manual_recurring\"\n        | \"manual_one_off\"\n        | \"courtesy\"\n    }\n    CompositeTypes: {\n      [_ in never]: never\n    }\n  }\n}\n\ntype DatabaseWithoutInternals = Omit<Database, \"__InternalSupabase\">\n\ntype DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, \"public\">]\n\nexport type Tables<\n  DefaultSchemaTableNameOrOptions extends\n    | keyof (DefaultSchema[\"Tables\"] & DefaultSchema[\"Views\"])\n    | { schema: keyof DatabaseWithoutInternals },\n  TableName extends DefaultSchemaTableNameOrOptions extends {\n    schema: keyof DatabaseWithoutInternals\n  }\n    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions[\"schema\"]][\"Tables\"] &\n        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions[\"schema\"]][\"Views\"])\n    : never = never,\n> = DefaultSchemaTableNameOrOptions extends {\n  schema: keyof DatabaseWithoutInternals\n}\n  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions[\"schema\"]][\"Tables\"] &\n      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions[\"schema\"]][\"Views\"])[TableName] extends {\n      Row: infer R\n    }\n    ? R\n    : never\n  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema[\"Tables\"] &\n        DefaultSchema[\"Views\"])\n    ? (DefaultSchema[\"Tables\"] &\n        DefaultSchema[\"Views\"])[DefaultSchemaTableNameOrOptions] extends {\n        Row: infer R\n      }\n      ? R\n      : never\n    : never\n\nexport type TablesInsert<\n  DefaultSchemaTableNameOrOptions extends\n    | keyof DefaultSchema[\"Tables\"]\n    | { schema: keyof DatabaseWithoutInternals },\n  TableName extends DefaultSchemaTableNameOrOptions extends {\n    schema: keyof DatabaseWithoutInternals\n  }\n    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions[\"schema\"]][\"Tables\"]\n    : never = never,\n> = DefaultSchemaTableNameOrOptions extends {\n  schema: keyof DatabaseWithoutInternals\n}\n  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions[\"schema\"]][\"Tables\"][TableName] extends {\n      Insert: infer I\n    }\n    ? I\n    : never\n  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema[\"Tables\"]\n    ? DefaultSchema[\"Tables\"][DefaultSchemaTableNameOrOptions] extends {\n        Insert: infer I\n      }\n      ? I\n      : never\n    : never\n\nexport type TablesUpdate<\n  DefaultSchemaTableNameOrOptions extends\n    | keyof DefaultSchema[\"Tables\"]\n    | { schema: keyof DatabaseWithoutInternals },\n  TableName extends DefaultSchemaTableNameOrOptions extends {\n    schema: keyof DatabaseWithoutInternals\n  }\n    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions[\"schema\"]][\"Tables\"]\n    : never = never,\n> = DefaultSchemaTableNameOrOptions extends {\n  schema: keyof DatabaseWithoutInternals\n}\n  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions[\"schema\"]][\"Tables\"][TableName] extends {\n      Update: infer U\n    }\n    ? U\n    : never\n  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema[\"Tables\"]\n    ? DefaultSchema[\"Tables\"][DefaultSchemaTableNameOrOptions] extends {\n        Update: infer U\n      }\n      ? U\n      : never\n    : never\n\nexport type Enums<\n  DefaultSchemaEnumNameOrOptions extends\n    | keyof DefaultSchema[\"Enums\"]\n    | { schema: keyof DatabaseWithoutInternals },\n  EnumName extends DefaultSchemaEnumNameOrOptions extends {\n    schema: keyof DatabaseWithoutInternals\n  }\n    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions[\"schema\"]][\"Enums\"]\n    : never = never,\n> = DefaultSchemaEnumNameOrOptions extends {\n  schema: keyof DatabaseWithoutInternals\n}\n  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions[\"schema\"]][\"Enums\"][EnumName]\n  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema[\"Enums\"]\n    ? DefaultSchema[\"Enums\"][DefaultSchemaEnumNameOrOptions]\n    : never\n\nexport type CompositeTypes<\n  PublicCompositeTypeNameOrOptions extends\n    | keyof DefaultSchema[\"CompositeTypes\"]\n    | { schema: keyof DatabaseWithoutInternals },\n  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {\n    schema: keyof DatabaseWithoutInternals\n  }\n    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions[\"schema\"]][\"CompositeTypes\"]\n    : never = never,\n> = PublicCompositeTypeNameOrOptions extends {\n  schema: keyof DatabaseWithoutInternals\n}\n  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions[\"schema\"]][\"CompositeTypes\"][CompositeTypeName]\n  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema[\"CompositeTypes\"]\n    ? DefaultSchema[\"CompositeTypes\"][PublicCompositeTypeNameOrOptions]\n    : never\n\nexport const Constants = {\n  public: {\n    Enums: {\n      billing_type: [\n        \"stripe_auto\",\n        \"manual_recurring\",\n        \"manual_one_off\",\n        \"courtesy\",\n      ],\n    },\n  },\n} as const\n"}
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
+export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.1"
+  }
+  public: {
+    Tables: {
+      android_tester_queue: {
+        Row: {
+          added_at: string | null
+          created_at: string | null
+          email: string
+          id: string
+          status: string | null
+          student_name: string | null
+        }
+        Insert: {
+          added_at?: string | null
+          created_at?: string | null
+          email: string
+          id?: string
+          status?: string | null
+          student_name?: string | null
+        }
+        Update: {
+          added_at?: string | null
+          created_at?: string | null
+          email?: string
+          id?: string
+          status?: string | null
+          student_name?: string | null
+        }
+        Relationships: []
+      }
+      appointment_exceptions: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          new_date: string | null
+          new_start_time: string | null
+          notes: string | null
+          occurrence_date: string
+          recurring_appointment_id: string
+          trainer_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          new_date?: string | null
+          new_start_time?: string | null
+          notes?: string | null
+          occurrence_date: string
+          recurring_appointment_id: string
+          trainer_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          new_date?: string | null
+          new_start_time?: string | null
+          notes?: string | null
+          occurrence_date?: string
+          recurring_appointment_id?: string
+          trainer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_exceptions_recurring_appointment_id_fkey"
+            columns: ["recurring_appointment_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_exceptions_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assigned_programs: {
+        Row: {
+          ai_generated: boolean
+          completed_at: string | null
+          created_at: string
+          current_week: number | null
+          description: string | null
+          duration_weeks: number | null
+          expires_at: string | null
+          id: string
+          last_completed_workout_at: string | null
+          name: string
+          prescription_generation_id: string | null
+          scheduled_start_date: string | null
+          source_template_id: string | null
+          started_at: string | null
+          status: string
+          student_id: string
+          trainer_id: string
+          updated_at: string
+        }
+        Insert: {
+          ai_generated?: boolean
+          completed_at?: string | null
+          created_at?: string
+          current_week?: number | null
+          description?: string | null
+          duration_weeks?: number | null
+          expires_at?: string | null
+          id?: string
+          last_completed_workout_at?: string | null
+          name: string
+          prescription_generation_id?: string | null
+          scheduled_start_date?: string | null
+          source_template_id?: string | null
+          started_at?: string | null
+          status?: string
+          student_id: string
+          trainer_id: string
+          updated_at?: string
+        }
+        Update: {
+          ai_generated?: boolean
+          completed_at?: string | null
+          created_at?: string
+          current_week?: number | null
+          description?: string | null
+          duration_weeks?: number | null
+          expires_at?: string | null
+          id?: string
+          last_completed_workout_at?: string | null
+          name?: string
+          prescription_generation_id?: string | null
+          scheduled_start_date?: string | null
+          source_template_id?: string | null
+          started_at?: string | null
+          status?: string
+          student_id?: string
+          trainer_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assigned_programs_prescription_generation_id_fkey"
+            columns: ["prescription_generation_id"]
+            isOneToOne: false
+            referencedRelation: "prescription_generations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assigned_programs_source_template_id_fkey"
+            columns: ["source_template_id"]
+            isOneToOne: false
+            referencedRelation: "program_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assigned_programs_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assigned_programs_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assigned_workout_items: {
+        Row: {
+          assigned_workout_id: string
+          created_at: string
+          exercise_equipment: string | null
+          exercise_function: string | null
+          exercise_id: string | null
+          exercise_muscle_group: string | null
+          exercise_name: string | null
+          id: string
+          item_config: Json
+          item_type: string
+          notes: string | null
+          order_index: number
+          parent_item_id: string | null
+          reps: string | null
+          rest_seconds: number | null
+          sets: number | null
+          source_template_id: string | null
+          substitute_exercise_ids: string[]
+          updated_at: string
+        }
+        Insert: {
+          assigned_workout_id: string
+          created_at?: string
+          exercise_equipment?: string | null
+          exercise_function?: string | null
+          exercise_id?: string | null
+          exercise_muscle_group?: string | null
+          exercise_name?: string | null
+          id?: string
+          item_config?: Json
+          item_type: string
+          notes?: string | null
+          order_index: number
+          parent_item_id?: string | null
+          reps?: string | null
+          rest_seconds?: number | null
+          sets?: number | null
+          source_template_id?: string | null
+          substitute_exercise_ids?: string[]
+          updated_at?: string
+        }
+        Update: {
+          assigned_workout_id?: string
+          created_at?: string
+          exercise_equipment?: string | null
+          exercise_function?: string | null
+          exercise_id?: string | null
+          exercise_muscle_group?: string | null
+          exercise_name?: string | null
+          id?: string
+          item_config?: Json
+          item_type?: string
+          notes?: string | null
+          order_index?: number
+          parent_item_id?: string | null
+          reps?: string | null
+          rest_seconds?: number | null
+          sets?: number | null
+          source_template_id?: string | null
+          substitute_exercise_ids?: string[]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assigned_workout_items_assigned_workout_id_fkey"
+            columns: ["assigned_workout_id"]
+            isOneToOne: false
+            referencedRelation: "assigned_workouts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assigned_workout_items_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assigned_workout_items_parent_item_id_fkey"
+            columns: ["parent_item_id"]
+            isOneToOne: false
+            referencedRelation: "assigned_workout_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assigned_workout_items_source_template_id_fkey"
+            columns: ["source_template_id"]
+            isOneToOne: false
+            referencedRelation: "workout_item_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assigned_workouts: {
+        Row: {
+          assigned_program_id: string
+          created_at: string
+          id: string
+          name: string
+          order_index: number
+          scheduled_days: number[] | null
+          source_template_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          assigned_program_id: string
+          created_at?: string
+          id?: string
+          name: string
+          order_index: number
+          scheduled_days?: number[] | null
+          source_template_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          assigned_program_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          order_index?: number
+          scheduled_days?: number[] | null
+          source_template_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assigned_workouts_assigned_program_id_fkey"
+            columns: ["assigned_program_id"]
+            isOneToOne: false
+            referencedRelation: "assigned_programs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assigned_workouts_source_template_id_fkey"
+            columns: ["source_template_id"]
+            isOneToOne: false
+            referencedRelation: "workout_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assistant_insights: {
+        Row: {
+          action_metadata: Json | null
+          action_type: string | null
+          body: string
+          category: string
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          insight_key: string
+          priority: string
+          source: string
+          status: string
+          student_id: string | null
+          title: string
+          trainer_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          action_metadata?: Json | null
+          action_type?: string | null
+          body: string
+          category: string
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          insight_key: string
+          priority?: string
+          source?: string
+          status?: string
+          student_id?: string | null
+          title: string
+          trainer_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          action_metadata?: Json | null
+          action_type?: string | null
+          body?: string
+          category?: string
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          insight_key?: string
+          priority?: string
+          source?: string
+          status?: string
+          student_id?: string | null
+          title?: string
+          trainer_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assistant_insights_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assistant_insights_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contract_events: {
+        Row: {
+          contract_id: string | null
+          created_at: string
+          event_type: string
+          id: string
+          metadata: Json | null
+          student_id: string
+          trainer_id: string
+        }
+        Insert: {
+          contract_id?: string | null
+          created_at?: string
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          student_id: string
+          trainer_id: string
+        }
+        Update: {
+          contract_id?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          student_id?: string
+          trainer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_events_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "student_contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_events_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_events_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exercise_condition_constraints: {
+        Row: {
+          condition_id: string
+          constraint_type: string
+          created_at: string | null
+          exercise_id: string
+          id: string
+          notes: string | null
+        }
+        Insert: {
+          condition_id: string
+          constraint_type: string
+          created_at?: string | null
+          exercise_id: string
+          id?: string
+          notes?: string | null
+        }
+        Update: {
+          condition_id?: string
+          constraint_type?: string
+          created_at?: string | null
+          exercise_id?: string
+          id?: string
+          notes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exercise_condition_constraints_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exercise_muscle_groups: {
+        Row: {
+          created_at: string
+          exercise_id: string
+          muscle_group_id: string
+        }
+        Insert: {
+          created_at?: string
+          exercise_id: string
+          muscle_group_id: string
+        }
+        Update: {
+          created_at?: string
+          exercise_id?: string
+          muscle_group_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exercise_muscle_groups_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exercise_muscle_groups_muscle_group_id_fkey"
+            columns: ["muscle_group_id"]
+            isOneToOne: false
+            referencedRelation: "muscle_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exercise_relationships: {
+        Row: {
+          created_at: string | null
+          id: string
+          metadata: Json | null
+          relationship_type: string
+          source: string
+          source_exercise_id: string
+          target_exercise_id: string
+          weight: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          relationship_type: string
+          source?: string
+          source_exercise_id: string
+          target_exercise_id: string
+          weight?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          relationship_type?: string
+          source?: string
+          source_exercise_id?: string
+          target_exercise_id?: string
+          weight?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exercise_relationships_source_exercise_id_fkey"
+            columns: ["source_exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exercise_relationships_target_exercise_id_fkey"
+            columns: ["target_exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exercise_synergies: {
+        Row: {
+          created_at: string | null
+          id: string
+          primary_group_id: string
+          secondary_group_id: string
+          weight: number
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          primary_group_id: string
+          secondary_group_id: string
+          weight: number
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          primary_group_id?: string
+          secondary_group_id?: string
+          weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exercise_synergies_primary_group_id_fkey"
+            columns: ["primary_group_id"]
+            isOneToOne: false
+            referencedRelation: "muscle_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exercise_synergies_secondary_group_id_fkey"
+            columns: ["secondary_group_id"]
+            isOneToOne: false
+            referencedRelation: "muscle_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exercises: {
+        Row: {
+          created_at: string
+          difficulty_level: string
+          equipment: string | null
+          fatigue_class: string | null
+          id: string
+          image_url: string | null
+          instructions: string | null
+          is_ai_curated: boolean
+          is_archived: boolean
+          is_primary_movement: boolean
+          movement_pattern: string | null
+          movement_pattern_family: string | null
+          name: string
+          original_system_id: string | null
+          owner_id: string | null
+          prescription_notes: string | null
+          session_position: string
+          studio_id: string | null
+          thumbnail_url: string | null
+          updated_at: string
+          video_url: string | null
+        }
+        Insert: {
+          created_at?: string
+          difficulty_level?: string
+          equipment?: string | null
+          fatigue_class?: string | null
+          id?: string
+          image_url?: string | null
+          instructions?: string | null
+          is_ai_curated?: boolean
+          is_archived?: boolean
+          is_primary_movement?: boolean
+          movement_pattern?: string | null
+          movement_pattern_family?: string | null
+          name: string
+          original_system_id?: string | null
+          owner_id?: string | null
+          prescription_notes?: string | null
+          session_position?: string
+          studio_id?: string | null
+          thumbnail_url?: string | null
+          updated_at?: string
+          video_url?: string | null
+        }
+        Update: {
+          created_at?: string
+          difficulty_level?: string
+          equipment?: string | null
+          fatigue_class?: string | null
+          id?: string
+          image_url?: string | null
+          instructions?: string | null
+          is_ai_curated?: boolean
+          is_archived?: boolean
+          is_primary_movement?: boolean
+          movement_pattern?: string | null
+          movement_pattern_family?: string | null
+          name?: string
+          original_system_id?: string | null
+          owner_id?: string | null
+          prescription_notes?: string | null
+          session_position?: string
+          studio_id?: string | null
+          thumbnail_url?: string | null
+          updated_at?: string
+          video_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exercises_trainer_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      feedback: {
+        Row: {
+          coach_id: string | null
+          created_at: string | null
+          description: string
+          id: string
+          page_url: string | null
+          screenshot_url: string | null
+          status: string | null
+          type: string
+        }
+        Insert: {
+          coach_id?: string | null
+          created_at?: string | null
+          description: string
+          id?: string
+          page_url?: string | null
+          screenshot_url?: string | null
+          status?: string | null
+          type: string
+        }
+        Update: {
+          coach_id?: string | null
+          created_at?: string | null
+          description?: string
+          id?: string
+          page_url?: string | null
+          screenshot_url?: string | null
+          status?: string | null
+          type?: string
+        }
+        Relationships: []
+      }
+      financial_transactions: {
+        Row: {
+          amount_gross: number
+          amount_net: number
+          coach_id: string
+          created_at: string
+          currency: string
+          description: string | null
+          id: string
+          processed_at: string | null
+          status: string
+          stripe_invoice_id: string | null
+          stripe_payment_id: string
+          student_id: string | null
+          type: string
+        }
+        Insert: {
+          amount_gross: number
+          amount_net: number
+          coach_id: string
+          created_at?: string
+          currency?: string
+          description?: string | null
+          id?: string
+          processed_at?: string | null
+          status: string
+          stripe_invoice_id?: string | null
+          stripe_payment_id: string
+          student_id?: string | null
+          type: string
+        }
+        Update: {
+          amount_gross?: number
+          amount_net?: number
+          coach_id?: string
+          created_at?: string
+          currency?: string
+          description?: string | null
+          id?: string
+          processed_at?: string | null
+          status?: string
+          stripe_invoice_id?: string | null
+          stripe_payment_id?: string
+          student_id?: string | null
+          type?: string
+        }
+        Relationships: []
+      }
+      form_schedules: {
+        Row: {
+          created_at: string
+          form_template_id: string
+          frequency: string
+          id: string
+          is_active: boolean
+          last_sent_at: string | null
+          next_due_at: string
+          student_id: string
+          trainer_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          form_template_id: string
+          frequency: string
+          id?: string
+          is_active?: boolean
+          last_sent_at?: string | null
+          next_due_at: string
+          student_id: string
+          trainer_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          form_template_id?: string
+          frequency?: string
+          id?: string
+          is_active?: boolean
+          last_sent_at?: string | null
+          next_due_at?: string
+          student_id?: string
+          trainer_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "form_schedules_form_template_id_fkey"
+            columns: ["form_template_id"]
+            isOneToOne: false
+            referencedRelation: "form_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "form_schedules_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "form_schedules_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      form_submissions: {
+        Row: {
+          answers_json: Json | null
+          created_at: string
+          feedback_sent_at: string | null
+          form_template_id: string
+          form_template_version: number
+          id: string
+          inbox_item_id: string | null
+          schema_snapshot_json: Json
+          status: string
+          student_id: string
+          submitted_at: string | null
+          trainer_feedback: Json | null
+          trainer_id: string
+          trigger_context: string
+          updated_at: string
+        }
+        Insert: {
+          answers_json?: Json | null
+          created_at?: string
+          feedback_sent_at?: string | null
+          form_template_id: string
+          form_template_version: number
+          id?: string
+          inbox_item_id?: string | null
+          schema_snapshot_json: Json
+          status: string
+          student_id: string
+          submitted_at?: string | null
+          trainer_feedback?: Json | null
+          trainer_id: string
+          trigger_context?: string
+          updated_at?: string
+        }
+        Update: {
+          answers_json?: Json | null
+          created_at?: string
+          feedback_sent_at?: string | null
+          form_template_id?: string
+          form_template_version?: number
+          id?: string
+          inbox_item_id?: string | null
+          schema_snapshot_json?: Json
+          status?: string
+          student_id?: string
+          submitted_at?: string | null
+          trainer_feedback?: Json | null
+          trainer_id?: string
+          trigger_context?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "form_submissions_form_template_id_fkey"
+            columns: ["form_template_id"]
+            isOneToOne: false
+            referencedRelation: "form_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "form_submissions_inbox_item_id_fkey"
+            columns: ["inbox_item_id"]
+            isOneToOne: false
+            referencedRelation: "student_inbox_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "form_submissions_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "form_submissions_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      form_templates: {
+        Row: {
+          ai_confidence_score: number | null
+          ai_generation_version: string | null
+          ai_warnings: Json | null
+          category: string
+          created_at: string
+          created_source: string
+          description: string | null
+          id: string
+          is_active: boolean
+          is_default_for_new_students: boolean
+          schema_json: Json
+          system_key: string | null
+          title: string
+          trainer_id: string | null
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          ai_confidence_score?: number | null
+          ai_generation_version?: string | null
+          ai_warnings?: Json | null
+          category: string
+          created_at?: string
+          created_source?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_default_for_new_students?: boolean
+          schema_json: Json
+          system_key?: string | null
+          title: string
+          trainer_id?: string | null
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          ai_confidence_score?: number | null
+          ai_generation_version?: string | null
+          ai_warnings?: Json | null
+          category?: string
+          created_at?: string
+          created_source?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_default_for_new_students?: boolean
+          schema_json?: Json
+          system_key?: string | null
+          title?: string
+          trainer_id?: string | null
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "form_templates_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      google_calendar_connections: {
+        Row: {
+          access_token: string
+          access_token_expires_at: string
+          calendar_id: string
+          connected_at: string
+          google_account_email: string
+          last_sync_at: string | null
+          last_sync_error: string | null
+          refresh_token: string
+          scope: string
+          status: string
+          trainer_id: string
+          updated_at: string
+          watch_channel_id: string | null
+          watch_expires_at: string | null
+          watch_resource_id: string | null
+        }
+        Insert: {
+          access_token: string
+          access_token_expires_at: string
+          calendar_id: string
+          connected_at?: string
+          google_account_email: string
+          last_sync_at?: string | null
+          last_sync_error?: string | null
+          refresh_token: string
+          scope: string
+          status?: string
+          trainer_id: string
+          updated_at?: string
+          watch_channel_id?: string | null
+          watch_expires_at?: string | null
+          watch_resource_id?: string | null
+        }
+        Update: {
+          access_token?: string
+          access_token_expires_at?: string
+          calendar_id?: string
+          connected_at?: string
+          google_account_email?: string
+          last_sync_at?: string | null
+          last_sync_error?: string | null
+          refresh_token?: string
+          scope?: string
+          status?: string
+          trainer_id?: string
+          updated_at?: string
+          watch_channel_id?: string | null
+          watch_expires_at?: string | null
+          watch_resource_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "google_calendar_connections_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: true
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          content: string | null
+          created_at: string | null
+          id: string
+          image_url: string | null
+          read_at: string | null
+          sender_id: string
+          sender_type: string
+          student_id: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string | null
+          id?: string
+          image_url?: string | null
+          read_at?: string | null
+          sender_id: string
+          sender_type: string
+          student_id: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string | null
+          id?: string
+          image_url?: string | null
+          read_at?: string | null
+          sender_id?: string
+          sender_type?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      muscle_groups: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          owner_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          owner_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          owner_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "muscle_groups_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_settings: {
+        Row: {
+          charges_enabled: boolean | null
+          created_at: string
+          details_submitted: boolean | null
+          payouts_enabled: boolean | null
+          stripe_connect_id: string | null
+          stripe_status: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          charges_enabled?: boolean | null
+          created_at?: string
+          details_submitted?: boolean | null
+          payouts_enabled?: boolean | null
+          stripe_connect_id?: string | null
+          stripe_status?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          charges_enabled?: boolean | null
+          created_at?: string
+          details_submitted?: boolean | null
+          payouts_enabled?: boolean | null
+          stripe_connect_id?: string | null
+          stripe_status?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      prescription_generations: {
+        Row: {
+          agent_conversation: Json | null
+          ai_mode_used: string
+          ai_model: string
+          ai_source: string
+          approval_notes: string | null
+          approved_at: string | null
+          assigned_program_id: string | null
+          confidence_score: number | null
+          context_analysis: Json | null
+          cost_usd: number | null
+          created_at: string
+          expires_at: string
+          generation_time_ms: number | null
+          id: string
+          input_snapshot: Json
+          model_used: string | null
+          output_snapshot: Json | null
+          prompt_version: string | null
+          rejected_at: string | null
+          retry_count: number | null
+          rules_violations: Json
+          rules_violations_count: number | null
+          rules_violations_json: Json | null
+          status: string
+          student_id: string
+          tokens_input_cached: number | null
+          tokens_input_new: number | null
+          tokens_output: number | null
+          trainer_edits_count: number
+          trainer_edits_diff: Json | null
+          trainer_id: string
+          updated_at: string
+          web_search_queries: string[] | null
+        }
+        Insert: {
+          agent_conversation?: Json | null
+          ai_mode_used: string
+          ai_model: string
+          ai_source?: string
+          approval_notes?: string | null
+          approved_at?: string | null
+          assigned_program_id?: string | null
+          confidence_score?: number | null
+          context_analysis?: Json | null
+          cost_usd?: number | null
+          created_at?: string
+          expires_at?: string
+          generation_time_ms?: number | null
+          id?: string
+          input_snapshot: Json
+          model_used?: string | null
+          output_snapshot?: Json | null
+          prompt_version?: string | null
+          rejected_at?: string | null
+          retry_count?: number | null
+          rules_violations?: Json
+          rules_violations_count?: number | null
+          rules_violations_json?: Json | null
+          status?: string
+          student_id: string
+          tokens_input_cached?: number | null
+          tokens_input_new?: number | null
+          tokens_output?: number | null
+          trainer_edits_count?: number
+          trainer_edits_diff?: Json | null
+          trainer_id: string
+          updated_at?: string
+          web_search_queries?: string[] | null
+        }
+        Update: {
+          agent_conversation?: Json | null
+          ai_mode_used?: string
+          ai_model?: string
+          ai_source?: string
+          approval_notes?: string | null
+          approved_at?: string | null
+          assigned_program_id?: string | null
+          confidence_score?: number | null
+          context_analysis?: Json | null
+          cost_usd?: number | null
+          created_at?: string
+          expires_at?: string
+          generation_time_ms?: number | null
+          id?: string
+          input_snapshot?: Json
+          model_used?: string | null
+          output_snapshot?: Json | null
+          prompt_version?: string | null
+          rejected_at?: string | null
+          retry_count?: number | null
+          rules_violations?: Json
+          rules_violations_count?: number | null
+          rules_violations_json?: Json | null
+          status?: string
+          student_id?: string
+          tokens_input_cached?: number | null
+          tokens_input_new?: number | null
+          tokens_output?: number | null
+          trainer_edits_count?: number
+          trainer_edits_diff?: Json | null
+          trainer_id?: string
+          updated_at?: string
+          web_search_queries?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prescription_generations_assigned_program_id_fkey"
+            columns: ["assigned_program_id"]
+            isOneToOne: false
+            referencedRelation: "assigned_programs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prescription_generations_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prescription_generations_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      program_form_triggers: {
+        Row: {
+          created_at: string
+          form_template_id: string
+          id: string
+          is_active: boolean
+          program_template_id: string
+          trainer_id: string
+          trigger_type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          form_template_id: string
+          id?: string
+          is_active?: boolean
+          program_template_id: string
+          trainer_id: string
+          trigger_type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          form_template_id?: string
+          id?: string
+          is_active?: boolean
+          program_template_id?: string
+          trainer_id?: string
+          trigger_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "program_form_triggers_form_template_id_fkey"
+            columns: ["form_template_id"]
+            isOneToOne: false
+            referencedRelation: "form_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "program_form_triggers_program_template_id_fkey"
+            columns: ["program_template_id"]
+            isOneToOne: false
+            referencedRelation: "program_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "program_form_triggers_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      program_reports: {
+        Row: {
+          assigned_program_id: string
+          auto_notes_draft: string | null
+          created_at: string
+          generated_at: string
+          id: string
+          metrics_json: Json
+          program_completed_at: string | null
+          program_duration_weeks: number | null
+          program_name: string
+          program_started_at: string | null
+          published_at: string | null
+          status: string
+          student_id: string
+          trainer_id: string
+          trainer_notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          assigned_program_id: string
+          auto_notes_draft?: string | null
+          created_at?: string
+          generated_at?: string
+          id?: string
+          metrics_json?: Json
+          program_completed_at?: string | null
+          program_duration_weeks?: number | null
+          program_name: string
+          program_started_at?: string | null
+          published_at?: string | null
+          status?: string
+          student_id: string
+          trainer_id: string
+          trainer_notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          assigned_program_id?: string
+          auto_notes_draft?: string | null
+          created_at?: string
+          generated_at?: string
+          id?: string
+          metrics_json?: Json
+          program_completed_at?: string | null
+          program_duration_weeks?: number | null
+          program_name?: string
+          program_started_at?: string | null
+          published_at?: string | null
+          status?: string
+          student_id?: string
+          trainer_id?: string
+          trainer_notes?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "program_reports_assigned_program_id_fkey"
+            columns: ["assigned_program_id"]
+            isOneToOne: false
+            referencedRelation: "assigned_programs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "program_reports_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "program_reports_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      program_templates: {
+        Row: {
+          created_at: string
+          description: string | null
+          duration_weeks: number | null
+          id: string
+          is_archived: boolean
+          is_template: boolean
+          name: string
+          trainer_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          duration_weeks?: number | null
+          id?: string
+          is_archived?: boolean
+          is_template?: boolean
+          name: string
+          trainer_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          duration_weeks?: number | null
+          id?: string
+          is_archived?: boolean
+          is_template?: boolean
+          name?: string
+          trainer_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "program_templates_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      push_tickets: {
+        Row: {
+          checked_at: string | null
+          created_at: string
+          id: string
+          notification_id: string | null
+          push_token_id: string | null
+          receipt_error_type: string | null
+          receipt_message: string | null
+          receipt_status: string | null
+          role: string
+          status: string
+          ticket_id: string
+          user_id: string
+        }
+        Insert: {
+          checked_at?: string | null
+          created_at?: string
+          id?: string
+          notification_id?: string | null
+          push_token_id?: string | null
+          receipt_error_type?: string | null
+          receipt_message?: string | null
+          receipt_status?: string | null
+          role: string
+          status?: string
+          ticket_id: string
+          user_id: string
+        }
+        Update: {
+          checked_at?: string | null
+          created_at?: string
+          id?: string
+          notification_id?: string | null
+          push_token_id?: string | null
+          receipt_error_type?: string | null
+          receipt_message?: string | null
+          receipt_status?: string | null
+          role?: string
+          status?: string
+          ticket_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_tickets_push_token_id_fkey"
+            columns: ["push_token_id"]
+            isOneToOne: false
+            referencedRelation: "push_tokens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      push_tokens: {
+        Row: {
+          active: boolean | null
+          created_at: string | null
+          expo_push_token: string
+          id: string
+          platform: string | null
+          role: string
+          trainer_id: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string | null
+          expo_push_token: string
+          id?: string
+          platform?: string | null
+          role: string
+          trainer_id?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string | null
+          expo_push_token?: string
+          id?: string
+          platform?: string | null
+          role?: string
+          trainer_id?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_tokens_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recurring_appointments: {
+        Row: {
+          created_at: string
+          day_of_week: number
+          duration_minutes: number
+          ends_on: string | null
+          frequency: string
+          google_event_id: string | null
+          google_sync_status: string | null
+          group_id: string | null
+          id: string
+          notes: string | null
+          start_time: string
+          starts_on: string
+          status: string
+          student_id: string
+          trainer_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          day_of_week: number
+          duration_minutes?: number
+          ends_on?: string | null
+          frequency?: string
+          google_event_id?: string | null
+          google_sync_status?: string | null
+          group_id?: string | null
+          id?: string
+          notes?: string | null
+          start_time: string
+          starts_on: string
+          status?: string
+          student_id: string
+          trainer_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          day_of_week?: number
+          duration_minutes?: number
+          ends_on?: string | null
+          frequency?: string
+          google_event_id?: string | null
+          google_sync_status?: string | null
+          group_id?: string | null
+          id?: string
+          notes?: string | null
+          start_time?: string
+          starts_on?: string
+          status?: string
+          student_id?: string
+          trainer_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_appointments_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_appointments_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scheduled_notifications: {
+        Row: {
+          body: string
+          created_at: string
+          data: Json
+          id: string
+          last_error: string | null
+          occurrence_date: string
+          recurring_appointment_id: string | null
+          scheduled_for: string
+          sent_at: string | null
+          source: string
+          status: string
+          student_id: string
+          title: string
+          trainer_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          data?: Json
+          id?: string
+          last_error?: string | null
+          occurrence_date: string
+          recurring_appointment_id?: string | null
+          scheduled_for: string
+          sent_at?: string | null
+          source: string
+          status?: string
+          student_id: string
+          title: string
+          trainer_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          data?: Json
+          id?: string
+          last_error?: string | null
+          occurrence_date?: string
+          recurring_appointment_id?: string | null
+          scheduled_for?: string
+          sent_at?: string | null
+          source?: string
+          status?: string
+          student_id?: string
+          title?: string
+          trainer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_notifications_recurring_appointment_id_fkey"
+            columns: ["recurring_appointment_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduled_notifications_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduled_notifications_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      set_logs: {
+        Row: {
+          assigned_workout_item_id: string
+          completed_at: string | null
+          created_at: string
+          device_id: string | null
+          executed_exercise_id: string | null
+          exercise_id: string | null
+          id: string
+          is_completed: boolean
+          local_id: string | null
+          notes: string | null
+          planned_exercise_id: string | null
+          reps_completed: number | null
+          rpe: number | null
+          set_number: number
+          swap_source: string
+          sync_status: string
+          updated_at: string
+          weight: number | null
+          weight_unit: string
+          workout_session_id: string
+        }
+        Insert: {
+          assigned_workout_item_id: string
+          completed_at?: string | null
+          created_at?: string
+          device_id?: string | null
+          executed_exercise_id?: string | null
+          exercise_id?: string | null
+          id?: string
+          is_completed?: boolean
+          local_id?: string | null
+          notes?: string | null
+          planned_exercise_id?: string | null
+          reps_completed?: number | null
+          rpe?: number | null
+          set_number: number
+          swap_source?: string
+          sync_status?: string
+          updated_at?: string
+          weight?: number | null
+          weight_unit?: string
+          workout_session_id: string
+        }
+        Update: {
+          assigned_workout_item_id?: string
+          completed_at?: string | null
+          created_at?: string
+          device_id?: string | null
+          executed_exercise_id?: string | null
+          exercise_id?: string | null
+          id?: string
+          is_completed?: boolean
+          local_id?: string | null
+          notes?: string | null
+          planned_exercise_id?: string | null
+          reps_completed?: number | null
+          rpe?: number | null
+          set_number?: number
+          swap_source?: string
+          sync_status?: string
+          updated_at?: string
+          weight?: number | null
+          weight_unit?: string
+          workout_session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "set_logs_assigned_workout_item_id_fkey"
+            columns: ["assigned_workout_item_id"]
+            isOneToOne: false
+            referencedRelation: "assigned_workout_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "set_logs_executed_exercise_id_fkey"
+            columns: ["executed_exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "set_logs_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "set_logs_planned_exercise_id_fkey"
+            columns: ["planned_exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "set_logs_workout_session_id_fkey"
+            columns: ["workout_session_id"]
+            isOneToOne: false
+            referencedRelation: "workout_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      student_contracts: {
+        Row: {
+          amount: number
+          billing_type: Database["public"]["Enums"]["billing_type"]
+          block_on_fail: boolean
+          cancel_at_period_end: boolean | null
+          canceled_at: string | null
+          canceled_by: string | null
+          created_at: string | null
+          current_period_end: string | null
+          end_date: string | null
+          id: string
+          plan_id: string | null
+          start_date: string | null
+          status: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          student_id: string
+          trainer_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          amount: number
+          billing_type?: Database["public"]["Enums"]["billing_type"]
+          block_on_fail?: boolean
+          cancel_at_period_end?: boolean | null
+          canceled_at?: string | null
+          canceled_by?: string | null
+          created_at?: string | null
+          current_period_end?: string | null
+          end_date?: string | null
+          id?: string
+          plan_id?: string | null
+          start_date?: string | null
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          student_id: string
+          trainer_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          billing_type?: Database["public"]["Enums"]["billing_type"]
+          block_on_fail?: boolean
+          cancel_at_period_end?: boolean | null
+          canceled_at?: string | null
+          canceled_by?: string | null
+          created_at?: string | null
+          current_period_end?: string | null
+          end_date?: string | null
+          id?: string
+          plan_id?: string | null
+          start_date?: string | null
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          student_id?: string
+          trainer_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_contracts_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "trainer_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_contracts_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      student_inbox_items: {
+        Row: {
+          archived_at: string | null
+          completed_at: string | null
+          created_at: string
+          due_at: string | null
+          id: string
+          payload: Json
+          push_sent_at: string | null
+          read_at: string | null
+          status: string
+          student_id: string
+          subtitle: string | null
+          title: string
+          trainer_id: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          due_at?: string | null
+          id?: string
+          payload: Json
+          push_sent_at?: string | null
+          read_at?: string | null
+          status: string
+          student_id: string
+          subtitle?: string | null
+          title: string
+          trainer_id: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          archived_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          due_at?: string | null
+          id?: string
+          payload?: Json
+          push_sent_at?: string | null
+          read_at?: string | null
+          status?: string
+          student_id?: string
+          subtitle?: string | null
+          title?: string
+          trainer_id?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_inbox_items_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_inbox_items_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      student_prescription_profiles: {
+        Row: {
+          adherence_rate: number | null
+          ai_mode: string
+          available_days: number[]
+          available_equipment: string[]
+          avg_session_duration_minutes: number | null
+          created_at: string
+          cycle_observation: string | null
+          disliked_exercise_ids: string[] | null
+          favorite_exercise_ids: string[] | null
+          goal: string
+          id: string
+          last_calculated_at: string | null
+          medical_restrictions: Json
+          session_duration_minutes: number
+          student_id: string
+          trainer_id: string
+          training_level: string
+          updated_at: string
+        }
+        Insert: {
+          adherence_rate?: number | null
+          ai_mode?: string
+          available_days?: number[]
+          available_equipment?: string[]
+          avg_session_duration_minutes?: number | null
+          created_at?: string
+          cycle_observation?: string | null
+          disliked_exercise_ids?: string[] | null
+          favorite_exercise_ids?: string[] | null
+          goal?: string
+          id?: string
+          last_calculated_at?: string | null
+          medical_restrictions?: Json
+          session_duration_minutes?: number
+          student_id: string
+          trainer_id: string
+          training_level?: string
+          updated_at?: string
+        }
+        Update: {
+          adherence_rate?: number | null
+          ai_mode?: string
+          available_days?: number[]
+          available_equipment?: string[]
+          avg_session_duration_minutes?: number | null
+          created_at?: string
+          cycle_observation?: string | null
+          disliked_exercise_ids?: string[] | null
+          favorite_exercise_ids?: string[] | null
+          goal?: string
+          id?: string
+          last_calculated_at?: string | null
+          medical_restrictions?: Json
+          session_duration_minutes?: number
+          student_id?: string
+          trainer_id?: string
+          training_level?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_prescription_profiles_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: true
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_prescription_profiles_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      students: {
+        Row: {
+          auth_user_id: string | null
+          avatar_url: string | null
+          coach_id: string | null
+          created_at: string
+          email: string
+          id: string
+          is_trainer_profile: boolean | null
+          management_tags: string[] | null
+          modality: string
+          name: string
+          notification_preferences: Json | null
+          objective: string | null
+          phone: string | null
+          status: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          trainer_notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          auth_user_id?: string | null
+          avatar_url?: string | null
+          coach_id?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          is_trainer_profile?: boolean | null
+          management_tags?: string[] | null
+          modality?: string
+          name: string
+          notification_preferences?: Json | null
+          objective?: string | null
+          phone?: string | null
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          trainer_notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          auth_user_id?: string | null
+          avatar_url?: string | null
+          coach_id?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          is_trainer_profile?: boolean | null
+          management_tags?: string[] | null
+          modality?: string
+          name?: string
+          notification_preferences?: Json | null
+          objective?: string | null
+          phone?: string | null
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          trainer_notes?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "students_trainer_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subscriptions: {
+        Row: {
+          cancel_at_period_end: boolean
+          created_at: string
+          current_period_end: string | null
+          id: string
+          status: string
+          stripe_customer_id: string
+          stripe_subscription_id: string
+          trainer_id: string
+          updated_at: string
+        }
+        Insert: {
+          cancel_at_period_end?: boolean
+          created_at?: string
+          current_period_end?: string | null
+          id?: string
+          status?: string
+          stripe_customer_id: string
+          stripe_subscription_id: string
+          trainer_id: string
+          updated_at?: string
+        }
+        Update: {
+          cancel_at_period_end?: boolean
+          created_at?: string
+          current_period_end?: string | null
+          id?: string
+          status?: string
+          stripe_customer_id?: string
+          stripe_subscription_id?: string
+          trainer_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trainer_exercise_videos: {
+        Row: {
+          created_at: string | null
+          exercise_id: string
+          file_size_bytes: number | null
+          id: string
+          original_filename: string | null
+          storage_path: string | null
+          trainer_id: string
+          updated_at: string | null
+          video_type: string
+          video_url: string
+        }
+        Insert: {
+          created_at?: string | null
+          exercise_id: string
+          file_size_bytes?: number | null
+          id?: string
+          original_filename?: string | null
+          storage_path?: string | null
+          trainer_id: string
+          updated_at?: string | null
+          video_type: string
+          video_url: string
+        }
+        Update: {
+          created_at?: string | null
+          exercise_id?: string
+          file_size_bytes?: number | null
+          id?: string
+          original_filename?: string | null
+          storage_path?: string | null
+          trainer_id?: string
+          updated_at?: string | null
+          video_type?: string
+          video_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trainer_exercise_videos_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trainer_exercise_videos_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trainer_notifications: {
+        Row: {
+          body: string
+          category: string
+          created_at: string | null
+          data: Json | null
+          id: string
+          is_read: boolean | null
+          title: string
+          trainer_id: string
+          type: string
+        }
+        Insert: {
+          body: string
+          category: string
+          created_at?: string | null
+          data?: Json | null
+          id?: string
+          is_read?: boolean | null
+          title: string
+          trainer_id: string
+          type?: string
+        }
+        Update: {
+          body?: string
+          category?: string
+          created_at?: string | null
+          data?: Json | null
+          id?: string
+          is_read?: boolean | null
+          title?: string
+          trainer_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trainer_notifications_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trainer_plans: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          interval: string | null
+          interval_count: number | null
+          is_active: boolean | null
+          payment_method: string | null
+          price: number
+          stripe_price_id: string | null
+          stripe_product_id: string | null
+          title: string
+          trainer_id: string
+          updated_at: string | null
+          visibility: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          interval?: string | null
+          interval_count?: number | null
+          is_active?: boolean | null
+          payment_method?: string | null
+          price: number
+          stripe_price_id?: string | null
+          stripe_product_id?: string | null
+          title: string
+          trainer_id: string
+          updated_at?: string | null
+          visibility?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          interval?: string | null
+          interval_count?: number | null
+          is_active?: boolean | null
+          payment_method?: string | null
+          price?: number
+          stripe_price_id?: string | null
+          stripe_product_id?: string | null
+          title?: string
+          trainer_id?: string
+          updated_at?: string | null
+          visibility?: string | null
+        }
+        Relationships: []
+      }
+      trainer_student_links: {
+        Row: {
+          coach_id: string
+          created_at: string
+          end_reason: string | null
+          ended_at: string | null
+          id: string
+          is_current: boolean
+          started_at: string
+          status: string
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          coach_id: string
+          created_at?: string
+          end_reason?: string | null
+          ended_at?: string | null
+          id?: string
+          is_current?: boolean
+          started_at?: string
+          status?: string
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          coach_id?: string
+          created_at?: string
+          end_reason?: string | null
+          ended_at?: string | null
+          id?: string
+          is_current?: boolean
+          started_at?: string
+          status?: string
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trainer_student_links_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trainer_student_links_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trainers: {
+        Row: {
+          ai_prescriptions_enabled: boolean
+          auth_user_id: string
+          auto_publish_reports: boolean
+          avatar_url: string | null
+          created_at: string
+          email: string
+          financial_attention_seen_at: string | null
+          id: string
+          name: string
+          notification_preferences: Json | null
+          onboarding_state: Json | null
+          prescription_patterns: Json | null
+          smart_v2_enabled: boolean
+          theme: string
+          updated_at: string
+        }
+        Insert: {
+          ai_prescriptions_enabled?: boolean
+          auth_user_id: string
+          auto_publish_reports?: boolean
+          avatar_url?: string | null
+          created_at?: string
+          email: string
+          financial_attention_seen_at?: string | null
+          id?: string
+          name: string
+          notification_preferences?: Json | null
+          onboarding_state?: Json | null
+          prescription_patterns?: Json | null
+          smart_v2_enabled?: boolean
+          theme?: string
+          updated_at?: string
+        }
+        Update: {
+          ai_prescriptions_enabled?: boolean
+          auth_user_id?: string
+          auto_publish_reports?: boolean
+          avatar_url?: string | null
+          created_at?: string
+          email?: string
+          financial_attention_seen_at?: string | null
+          id?: string
+          name?: string
+          notification_preferences?: Json | null
+          onboarding_state?: Json | null
+          prescription_patterns?: Json | null
+          smart_v2_enabled?: boolean
+          theme?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      webhook_events: {
+        Row: {
+          event_id: string
+          event_type: string
+          id: string
+          metadata: Json | null
+          processed_at: string
+        }
+        Insert: {
+          event_id: string
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          processed_at?: string
+        }
+        Update: {
+          event_id?: string
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          processed_at?: string
+        }
+        Relationships: []
+      }
+      workout_item_templates: {
+        Row: {
+          created_at: string
+          exercise_function: string | null
+          exercise_id: string | null
+          id: string
+          item_config: Json
+          item_type: string
+          notes: string | null
+          order_index: number
+          parent_item_id: string | null
+          reps: string | null
+          rest_seconds: number | null
+          sets: number | null
+          substitute_exercise_ids: string[]
+          updated_at: string
+          workout_template_id: string
+        }
+        Insert: {
+          created_at?: string
+          exercise_function?: string | null
+          exercise_id?: string | null
+          id?: string
+          item_config?: Json
+          item_type: string
+          notes?: string | null
+          order_index: number
+          parent_item_id?: string | null
+          reps?: string | null
+          rest_seconds?: number | null
+          sets?: number | null
+          substitute_exercise_ids?: string[]
+          updated_at?: string
+          workout_template_id: string
+        }
+        Update: {
+          created_at?: string
+          exercise_function?: string | null
+          exercise_id?: string | null
+          id?: string
+          item_config?: Json
+          item_type?: string
+          notes?: string | null
+          order_index?: number
+          parent_item_id?: string | null
+          reps?: string | null
+          rest_seconds?: number | null
+          sets?: number | null
+          substitute_exercise_ids?: string[]
+          updated_at?: string
+          workout_template_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workout_item_templates_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workout_item_templates_parent_item_id_fkey"
+            columns: ["parent_item_id"]
+            isOneToOne: false
+            referencedRelation: "workout_item_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workout_item_templates_workout_template_id_fkey"
+            columns: ["workout_template_id"]
+            isOneToOne: false
+            referencedRelation: "workout_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workout_sessions: {
+        Row: {
+          assigned_program_id: string
+          assigned_workout_id: string
+          completed_at: string | null
+          created_at: string
+          device_id: string | null
+          duration_seconds: number | null
+          feedback: string | null
+          id: string
+          notes: string | null
+          post_workout_submission_id: string | null
+          pre_workout_submission_id: string | null
+          program_week: number | null
+          rpe: number | null
+          scheduled_date: string | null
+          started_at: string
+          status: string
+          student_id: string
+          sync_status: string
+          trainer_id: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_program_id: string
+          assigned_workout_id: string
+          completed_at?: string | null
+          created_at?: string
+          device_id?: string | null
+          duration_seconds?: number | null
+          feedback?: string | null
+          id?: string
+          notes?: string | null
+          post_workout_submission_id?: string | null
+          pre_workout_submission_id?: string | null
+          program_week?: number | null
+          rpe?: number | null
+          scheduled_date?: string | null
+          started_at?: string
+          status?: string
+          student_id: string
+          sync_status?: string
+          trainer_id: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_program_id?: string
+          assigned_workout_id?: string
+          completed_at?: string | null
+          created_at?: string
+          device_id?: string | null
+          duration_seconds?: number | null
+          feedback?: string | null
+          id?: string
+          notes?: string | null
+          post_workout_submission_id?: string | null
+          pre_workout_submission_id?: string | null
+          program_week?: number | null
+          rpe?: number | null
+          scheduled_date?: string | null
+          started_at?: string
+          status?: string
+          student_id?: string
+          sync_status?: string
+          trainer_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workout_sessions_assigned_program_id_fkey"
+            columns: ["assigned_program_id"]
+            isOneToOne: false
+            referencedRelation: "assigned_programs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workout_sessions_assigned_workout_id_fkey"
+            columns: ["assigned_workout_id"]
+            isOneToOne: false
+            referencedRelation: "assigned_workouts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workout_sessions_post_workout_submission_id_fkey"
+            columns: ["post_workout_submission_id"]
+            isOneToOne: false
+            referencedRelation: "form_submissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workout_sessions_pre_workout_submission_id_fkey"
+            columns: ["pre_workout_submission_id"]
+            isOneToOne: false
+            referencedRelation: "form_submissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workout_sessions_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workout_sessions_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workout_templates: {
+        Row: {
+          created_at: string
+          frequency: string[] | null
+          id: string
+          name: string
+          order_index: number
+          program_template_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          frequency?: string[] | null
+          id?: string
+          name: string
+          order_index: number
+          program_template_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          frequency?: string[] | null
+          id?: string
+          name?: string
+          order_index?: number
+          program_template_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workout_templates_program_template_id_fkey"
+            columns: ["program_template_id"]
+            isOneToOne: false
+            referencedRelation: "program_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      assign_form_to_students: {
+        Args: {
+          p_due_at?: string
+          p_form_template_id: string
+          p_message?: string
+          p_student_ids: string[]
+        }
+        Returns: Json
+      }
+      assign_program_to_student: {
+        Args: {
+          p_start_date?: string
+          p_student_id: string
+          p_template_id: string
+        }
+        Returns: string
+      }
+      check_student_access: { Args: { p_student_id: string }; Returns: Json }
+      cleanup_stale_sessions: { Args: never; Returns: number }
+      current_student_coach_id: { Args: never; Returns: string }
+      current_student_id: { Args: never; Returns: string }
+      current_trainer_id: { Args: never; Returns: string }
+      delete_student_account: { Args: never; Returns: undefined }
+      detect_training_gaps: {
+        Args: { p_trainer_id: string }
+        Returns: {
+          days_since_last: number
+          last_completed_at: string
+          student_id: string
+          student_name: string
+        }[]
+      }
+      get_active_workout_triggers: {
+        Args: { p_assigned_program_id: string }
+        Returns: Json
+      }
+      get_contract_events: { Args: { p_contract_id: string }; Returns: Json }
+      get_financial_dashboard: { Args: never; Returns: Json }
+      get_financial_students: {
+        Args: { p_trainer_id: string }
+        Returns: {
+          amount: number
+          avatar_url: string
+          billing_type: string
+          block_on_fail: boolean
+          cancel_at_period_end: boolean
+          canceled_at: string
+          canceled_by: string
+          contract_id: string
+          contract_status: string
+          current_period_end: string
+          display_status: string
+          phone: string
+          plan_interval: string
+          plan_title: string
+          stripe_subscription_id: string
+          student_id: string
+          student_name: string
+        }[]
+      }
+      get_form_submission_detail: {
+        Args: { p_submission_id: string }
+        Returns: Json
+      }
+      get_last_exercise_metrics: {
+        Args: { p_exercise_id: string; p_student_id: string }
+        Returns: {
+          avg_reps: number
+          avg_weight: number
+          completed_at: string
+          max_weight: number
+          sets_count: number
+          workout_session_id: string
+        }[]
+      }
+      get_previous_exercise_sets: {
+        Args: { p_exercise_id: string; p_student_id: string }
+        Returns: {
+          reps: number
+          set_number: number
+          weight: number
+        }[]
+      }
+      get_program_form_triggers: {
+        Args: { p_program_template_id: string }
+        Returns: Json
+      }
+      get_smart_substitutes: {
+        Args: { match_limit?: number; target_exercise_id: string }
+        Returns: {
+          id: string
+          image_url: string
+          name: string
+          similarity_score: number
+        }[]
+      }
+      get_student_detail_v2: { Args: { p_student_id: string }; Returns: Json }
+      get_student_profile_detail: {
+        Args: { p_student_id: string }
+        Returns: Json
+      }
+      get_student_sessions_heatmap: {
+        Args: { p_end_date: string; p_start_date: string; p_student_id: string }
+        Returns: Json
+      }
+      get_student_today_workout_for_trainer: {
+        Args: { p_assigned_workout_id: string; p_student_id: string }
+        Returns: Json
+      }
+      get_trainer_daily_activity: { Args: never; Returns: Json }
+      get_trainer_form_submissions: { Args: never; Returns: Json }
+      get_trainer_form_templates: { Args: never; Returns: Json }
+      get_trainer_pending_actions: { Args: never; Returns: Json }
+      get_trainer_program_templates: { Args: never; Returns: Json }
+      get_trainer_stats: { Args: never; Returns: Json }
+      get_trainer_students_list: { Args: never; Returns: Json }
+      get_training_room_students: { Args: never; Returns: Json }
+      get_unread_notification_count: { Args: never; Returns: number }
+      is_student: { Args: never; Returns: boolean }
+      is_trainer: { Args: never; Returns: boolean }
+      mark_all_notifications_read: { Args: never; Returns: undefined }
+      mark_notification_read: {
+        Args: { p_notification_id: string }
+        Returns: undefined
+      }
+      send_submission_feedback: {
+        Args: { p_feedback: Json; p_submission_id: string }
+        Returns: Json
+      }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
+      submit_form_submission: {
+        Args: { p_answers_json: Json; p_submission_id: string }
+        Returns: Json
+      }
+      submit_inline_form: {
+        Args: {
+          p_answers_json: Json
+          p_form_template_id: string
+          p_student_id: string
+          p_trainer_id: string
+          p_trigger_context: string
+        }
+        Returns: Json
+      }
+      trainer_finish_workout_session: {
+        Args: {
+          p_assigned_program_id: string
+          p_assigned_workout_id: string
+          p_duration_seconds: number
+          p_feedback?: string
+          p_rpe?: number
+          p_sets: Json
+          p_started_at: string
+          p_student_id: string
+        }
+        Returns: string
+      }
+      unaccent: { Args: { "": string }; Returns: string }
+      update_student_avatar: {
+        Args: { p_avatar_url: string }
+        Returns: undefined
+      }
+      upsert_prescription_profile: {
+        Args: {
+          p_ai_mode?: string
+          p_available_days?: number[]
+          p_available_equipment?: string[]
+          p_goal?: string
+          p_medical_restrictions?: Json
+          p_session_duration_minutes?: number
+          p_student_id: string
+          p_training_level?: string
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      billing_type:
+        | "stripe_auto"
+        | "manual_recurring"
+        | "manual_one_off"
+        | "courtesy"
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
+}
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {
+      billing_type: [
+        "stripe_auto",
+        "manual_recurring",
+        "manual_one_off",
+        "courtesy",
+      ],
+    },
+  },
+} as const
