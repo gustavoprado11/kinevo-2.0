@@ -102,6 +102,8 @@ export function SupersetGroup({
                             isSwapped={exercise.swap_source !== 'none'}
                             notes={exercise.notes}
                             supersetBadge={`Exercício ${localIdx + 1} de ${exercises.length}`}
+                            setScheme={exercise.setScheme}
+                            methodKey={exercise.methodKey}
                         />
                         {/* "sem descanso" connector between exercises */}
                         {localIdx < exercises.length - 1 && (

@@ -845,6 +845,8 @@ export default function WorkoutPlayerScreen() {
                                                 onSwapPress={() => openSwapModal(item.globalIndex)}
                                                 isSwapped={item.exercise.swap_source !== 'none'}
                                                 notes={item.exercise.notes}
+                                                setScheme={item.exercise.setScheme}
+                                                methodKey={item.exercise.methodKey}
                                             />
                                         );
                                     }

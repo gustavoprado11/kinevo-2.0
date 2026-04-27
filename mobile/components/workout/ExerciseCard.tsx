@@ -2,8 +2,11 @@ import React from 'react';
 import { View, Text, TouchableOpacity, Alert } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { ArrowRightLeft, PlayCircle, Check } from 'lucide-react-native';
+import type { MethodKey } from '@kinevo/shared/types/prescription';
+import { getMethodChipLabel } from '@kinevo/shared/lib/prescription/method-labels';
 import { SetRow } from './SetRow';
 import { TrainerNote } from './TrainerNote';
+import type { SetPrescription } from '../../lib/hydrateWorkoutSets';
 
 export interface SetData {
     weight: string;
@@ -33,6 +36,25 @@ interface ExerciseCardProps {
     isSwapped?: boolean;
     notes?: string | null;
     supersetBadge?: string;
+    /** Per-set prescription (Fase 4). When present, overrides the aggregate
+     * summary in the header and is used to render badges + reps targets. */
+    setScheme?: SetPrescription[] | null;
+    /** Method preset marker. `null`/`'standard'` hides the chip. */
+    methodKey?: MethodKey | null;
+    /** Read-only rendering for the builder preview. */
+    readOnly?: boolean;
+}
+
+function buildSchemeSummary(scheme: SetPrescription[]): { reps: string; rest: number } {
+    const repsValues = scheme.map((s) => s.reps_target.trim());
+    const allEqual = repsValues.every((r) => r === repsValues[0]);
+    const reps = allEqual ? (repsValues[0] || '0') : repsValues.join('-');
+    // Conservative rest: minimum across the scheme — matches summarizeSetScheme
+    const rest = scheme.reduce(
+        (min, s) => Math.min(min, Math.max(0, s.rest_seconds ?? 0)),
+        Number.POSITIVE_INFINITY,
+    );
+    return { reps, rest: Number.isFinite(rest) ? rest : 0 };
 }
 
 export function ExerciseCard({
@@ -51,6 +73,9 @@ export function ExerciseCard({
     isSwapped,
     notes,
     supersetBadge,
+    setScheme,
+    methodKey,
+    readOnly = false,
 }: ExerciseCardProps) {
 
     const handleOpenVideo = () => {
@@ -60,6 +85,13 @@ export function ExerciseCard({
             Alert.alert("Vídeo indisponível", "Este exercício não possui vídeo cadastrado.");
         }
     };
+
+    const hasScheme = Array.isArray(setScheme) && setScheme.length > 0;
+    const summary = hasScheme ? buildSchemeSummary(setScheme!) : null;
+    const displaySets = hasScheme ? setScheme!.length : sets;
+    const displayReps = hasScheme ? summary!.reps : reps;
+    const displayRest = hasScheme ? summary!.rest : restSeconds;
+    const methodChip = getMethodChipLabel(methodKey);
 
     return (
         <BlurView
@@ -83,11 +115,27 @@ export function ExerciseCard({
             {/* Header */}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
                 <View style={{ flex: 1, marginRight: 8 }}>
-                    <Text style={{ fontSize: 15, fontWeight: '700', color: '#0f172a', marginBottom: 2 }}>
-                        {exerciseName}
-                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 2 }}>
+                        <Text style={{ fontSize: 15, fontWeight: '700', color: '#0f172a' }}>
+                            {exerciseName}
+                        </Text>
+                        {methodChip ? (
+                            <View
+                                style={{
+                                    paddingHorizontal: 8,
+                                    paddingVertical: 2,
+                                    borderRadius: 999,
+                                    backgroundColor: 'rgba(124, 58, 237, 0.10)',
+                                }}
+                            >
+                                <Text style={{ fontSize: 10, fontWeight: '700', color: '#6d28d9' }}>
+                                    {methodChip}
+                                </Text>
+                            </View>
+                        ) : null}
+                    </View>
                     <Text style={{ color: '#64748b', fontSize: 12 }}>
-                        {sets} séries • {reps} reps • {restSeconds}s descanso
+                        {displaySets} séries • {displayReps} reps • {displayRest}s descanso
                     </Text>
                     {/* Fallback: show "Carga anterior" only when per-set data is unavailable */}
                     {!previousSets?.length && previousLoad && (
@@ -108,18 +156,22 @@ export function ExerciseCard({
                     {notes ? <TrainerNote note={notes} /> : null}
                 </View>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <TouchableOpacity
-                        onPress={onSwapPress}
-                        style={{ padding: 8, borderRadius: 20, backgroundColor: 'rgba(124, 58, 237, 0.1)' }}
-                    >
-                        <ArrowRightLeft size={18} color="#7c3aed" />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        onPress={handleOpenVideo}
-                        style={{ padding: 8, borderRadius: 20, backgroundColor: 'rgba(124, 58, 237, 0.1)' }}
-                    >
-                        <PlayCircle size={18} color="#7c3aed" />
-                    </TouchableOpacity>
+                    {!readOnly && (
+                        <TouchableOpacity
+                            onPress={onSwapPress}
+                            style={{ padding: 8, borderRadius: 20, backgroundColor: 'rgba(124, 58, 237, 0.1)' }}
+                        >
+                            <ArrowRightLeft size={18} color="#7c3aed" />
+                        </TouchableOpacity>
+                    )}
+                    {!readOnly && (
+                        <TouchableOpacity
+                            onPress={handleOpenVideo}
+                            style={{ padding: 8, borderRadius: 20, backgroundColor: 'rgba(124, 58, 237, 0.1)' }}
+                        >
+                            <PlayCircle size={18} color="#7c3aed" />
+                        </TouchableOpacity>
+                    )}
                 </View>
             </View>
 
@@ -146,6 +198,7 @@ export function ExerciseCard({
             <View>
                 {setsData.map((set, index) => {
                     const prev = previousSets?.[index];
+                    const prescription = hasScheme ? setScheme![index] : null;
                     return (
                         <SetRow
                             key={index}
@@ -158,6 +211,9 @@ export function ExerciseCard({
                             onToggleComplete={() => onToggleSetComplete(index)}
                             previousWeight={prev?.weight}
                             previousReps={prev?.reps}
+                            setType={prescription?.set_type ?? 'normal'}
+                            repsTarget={prescription?.reps_target}
+                            readOnly={readOnly}
                         />
                     );
                 })}

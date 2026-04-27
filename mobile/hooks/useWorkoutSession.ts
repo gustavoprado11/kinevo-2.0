@@ -5,7 +5,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { router } from 'expo-router';
 import { Alert } from 'react-native';
 import { getProgramWeek } from '@kinevo/shared/utils/schedule-projection';
+import type { MethodKey, WorkoutSet } from '@kinevo/shared/types/prescription';
 import { sortExerciseItems } from '../utils/sortExerciseItems';
+import { hydrateSetPrescriptions, type SetPrescription } from '../lib/hydrateWorkoutSets';
 
 export interface WorkoutSetData {
     weight: string;
@@ -41,6 +43,12 @@ export interface ExerciseData {
     order_index: number;
     exerciseFunction?: string | null;
     item_config?: Record<string, any>;
+    /** Per-set prescription hydrated from `assigned_workout_item_sets`. Empty
+     *  array when the item uses legacy aggregate prescription (programs created
+     *  before per-set rollout). */
+    setScheme: SetPrescription[];
+    /** Method/preset marker stored on the parent `assigned_workout_items` row. */
+    methodKey: MethodKey | null;
 }
 
 export interface WorkoutNote {
@@ -433,12 +441,45 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                         notes,
                         exercise_function,
                         item_config,
+                        method_key,
                         exercises ( id, video_url )
                     `)
                     .eq('assigned_workout_id', workoutId)
                     .order('order_index');
 
                 if (itemsError) throw itemsError;
+
+                // 2a. Per-set prescription rows (Fase 4). One round-trip per
+                //     workout — programs without per-set data return an empty
+                //     array and we fall back to aggregates.
+                const exerciseItemIdsForSets = (items || [])
+                    .filter((it: any) => it.item_type === 'exercise')
+                    .map((it: any) => it.id);
+                const setSchemeByItem = new Map<string, WorkoutSet[]>();
+                if (exerciseItemIdsForSets.length > 0) {
+                    const { data: setRows, error: setRowsError }: { data: any; error: any } = await supabase
+                        .from('assigned_workout_item_sets' as any)
+                        .select('assigned_workout_item_id, set_number, set_type, reps, rest_seconds, weight_target_kg, weight_target_pct1rm, rir, tempo, notes')
+                        .in('assigned_workout_item_id', exerciseItemIdsForSets);
+                    if (setRowsError && __DEV__) {
+                        console.warn('[useWorkoutSession] set rows query failed:', setRowsError?.message);
+                    }
+                    for (const row of setRows || []) {
+                        const list = setSchemeByItem.get(row.assigned_workout_item_id) ?? [];
+                        list.push({
+                            set_number: row.set_number,
+                            set_type: row.set_type,
+                            reps: row.reps,
+                            rest_seconds: row.rest_seconds,
+                            weight_target_kg: row.weight_target_kg,
+                            weight_target_pct1rm: row.weight_target_pct1rm,
+                            rir: row.rir,
+                            tempo: row.tempo,
+                            notes: row.notes,
+                        });
+                        setSchemeByItem.set(row.assigned_workout_item_id, list);
+                    }
+                }
 
                 // 3. Build superset map and extract notes
                 const supersetMap = new Map<string, { rest_seconds: number; order_index: number }>();
@@ -495,19 +536,28 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
 
                     const parentSuperset = item.parent_item_id ? supersetMap.get(item.parent_item_id) : null;
 
+                    const assignedSets = setSchemeByItem.get(item.id) ?? null;
+                    const setPrescriptions = hydrateSetPrescriptions({
+                        assignedSets,
+                        aggregateSets: item.sets || 3,
+                        aggregateReps: item.reps || '10',
+                        aggregateRestSeconds: item.rest_seconds || 60,
+                    });
+                    const effectiveSetCount = setPrescriptions.length;
+
                     return {
                         id: item.id,
                         item_type: 'exercise' as const,
                         planned_exercise_id: item.exercise_id,
                         exercise_id: item.exercise_id,
                         name: item.exercise_name,
-                        sets: item.sets || 3,
+                        sets: effectiveSetCount || (item.sets || 3),
                         reps: item.reps || '10',
                         rest_seconds: item.rest_seconds || 60,
                         video_url: trainerVideoMap.get(item.exercise_id) || item.exercises?.video_url,
                         substitute_exercise_ids: item.substitute_exercise_ids || [],
                         swap_source: 'none',
-                        setsData: createInitialSets(item.sets || 3),
+                        setsData: createInitialSets(effectiveSetCount || (item.sets || 3)),
                         previousLoad,
                         previousSets,
                         notes: item.notes || null,
@@ -517,6 +567,8 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                         order_index: item.order_index,
                         exerciseFunction: item.exercise_function || null,
                         item_config: item.item_config || {},
+                        setScheme: assignedSets && assignedSets.length > 0 ? setPrescriptions : [],
+                        methodKey: (item.method_key as MethodKey | null) ?? null,
                     };
                 }));
 
@@ -537,6 +589,8 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                         order_index: item.order_index,
                         exerciseFunction: item.exercise_function || null,
                         item_config: item.item_config || {},
+                        setScheme: [],
+                        methodKey: null,
                     });
                 }
 
