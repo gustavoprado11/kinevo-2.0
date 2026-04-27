@@ -45,7 +45,9 @@ import type { MethodKey, WorkoutSet } from '@kinevo/shared/types/prescription'
 import {
     expandToSetScheme,
     summarizeSetScheme,
+    summarizeWithRounds,
 } from '@kinevo/shared/lib/prescription/set-scheme'
+import { isCompoundMethod } from '@kinevo/shared/lib/prescription/set-scheme-presets'
 import { SetSchemeTable } from './SetSchemeTable'
 
 export function WorkoutItemCard({
@@ -476,7 +478,7 @@ function ExerciseItemCard({
                                 disabled={item.parent_item_id !== null}
                                 onClick={() => {
                                     const initial = expandToSetScheme(item.sets, item.reps, item.rest_seconds)
-                                    onUpdate({ set_scheme: initial, method_key: 'standard' })
+                                    onUpdate({ set_scheme: initial, method_key: 'standard', rounds: 1 })
                                 }}
                             />
                         )}
@@ -488,15 +490,30 @@ function ExerciseItemCard({
                         <SetSchemeTable
                             value={item.set_scheme}
                             methodKey={item.method_key ?? null}
+                            rounds={item.rounds ?? 1}
                             readonly={readonly}
-                            onChange={(scheme, nextKey) => onUpdate({ set_scheme: scheme, method_key: nextKey })}
+                            onChange={(scheme, nextKey, nextRounds) =>
+                                onUpdate({ set_scheme: scheme, method_key: nextKey, rounds: nextRounds })
+                            }
                             onExitAdvanced={() => {
+                                // Coerce simple-mode aggregates to reflect the
+                                // FULL materialized count (rounds × phases) so
+                                // the trainer sees the same totals as the
+                                // student. summarizeWithRounds falls back to
+                                // summarizeSetScheme for linear methods.
+                                const compound = isCompoundMethod(item.method_key ?? null)
+                                const effectiveRounds = compound
+                                    ? Math.max(1, Math.min(20, Math.floor(item.rounds ?? 1)))
+                                    : 1
                                 const summary = item.set_scheme && item.set_scheme.length > 0
-                                    ? summarizeSetScheme(item.set_scheme)
+                                    ? (effectiveRounds > 1
+                                        ? summarizeWithRounds(item.set_scheme, effectiveRounds)
+                                        : summarizeSetScheme(item.set_scheme))
                                     : { sets: item.sets ?? 3, reps: item.reps ?? '10', rest_seconds: item.rest_seconds ?? 60 }
                                 onUpdate({
                                     set_scheme: null,
                                     method_key: null,
+                                    rounds: 1,
                                     sets: summary.sets,
                                     reps: summary.reps,
                                     rest_seconds: summary.rest_seconds,

@@ -41,6 +41,7 @@ export default async function EditProgramPage({ params }: { params: Promise<{ id
                     exercise_function,
                     item_config,
                     method_key,
+                    rounds,
                     workout_item_set_templates (
                         set_number,
                         set_type,
@@ -50,7 +51,8 @@ export default async function EditProgramPage({ params }: { params: Promise<{ id
                         weight_target_pct1rm,
                         rir,
                         tempo,
-                        notes
+                        notes,
+                        round_number
                     )
                 )
             )

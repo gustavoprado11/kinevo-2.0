@@ -52,10 +52,17 @@ export interface WorkoutItem {
     item_config?: Record<string, any>
     children?: WorkoutItem[]
     /** Per-set prescription (Fase 2). When set, takes precedence over the
-     * aggregates and the saved aggregates are derived via summarizeSetScheme. */
+     * aggregates and the saved aggregates are derived via summarizeSetScheme.
+     * For compound methods (drop-set, cluster) this is the per-round shape
+     * collapsed from the materialized DB rows; the save flow expands it back
+     * `rounds` times via `expandSchemeByRounds`. */
     set_scheme?: import('@kinevo/shared/types/prescription').WorkoutSet[] | null
     /** Method/preset marker for the chip in the UI. */
     method_key?: import('@kinevo/shared/types/prescription').MethodKey | null
+    /** Rodadas (Fase 4.4). 1 para métodos lineares (default). 2..20 para
+     *  compostos. Quando > 1, `set_scheme` descreve UMA rodada e é
+     *  materializado N vezes no save. */
+    rounds?: number | null
 }
 
 export interface Workout {
@@ -90,6 +97,7 @@ interface ProgramData {
             exercise_function?: string | null
             item_config?: Record<string, any>
             method_key?: string | null
+            rounds?: number | null
             workout_item_set_templates?: Array<import('@kinevo/shared/types/prescription').WorkoutSet> | null
         }>
     }>
@@ -134,24 +142,60 @@ interface ProgramBuilderClientProps {
 // Generate temp ID for new items
 const tempId = () => `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 
-// ── Per-set helpers (Fase 2) ──
-import { summarizeSetScheme as _summarizeSetScheme } from '@kinevo/shared/lib/prescription/set-scheme'
+// ── Per-set helpers (Fase 2 / 4.4) ──
+import {
+    collapseExpandedScheme,
+    expandSchemeByRounds,
+    summarizeSetScheme as _summarizeSetScheme,
+    summarizeWithRounds as _summarizeWithRounds,
+} from '@kinevo/shared/lib/prescription/set-scheme'
+import { isCompoundMethod } from '@kinevo/shared/lib/prescription/set-scheme-presets'
 import type { WorkoutSet } from '@kinevo/shared/types/prescription'
 
-/** Convert raw rows from the join into a sorted WorkoutSet[] (or null if empty). */
-function hydrateSetScheme(rows: WorkoutSet[] | null | undefined): WorkoutSet[] | null {
-    if (!rows || rows.length === 0) return null
-    return [...rows].sort((a, b) => a.set_number - b.set_number)
+/** Hydrate the materialized rows from the DB into the per-round shape the
+ *  editor expects. Returns `{ scheme, rounds }`:
+ *  - linear methods → returns the rows unchanged with rounds=1
+ *  - compound methods → collapses N×M rows into M (one round) and rounds=N
+ *  - empty / null → returns `{ scheme: null, rounds: 1 }` */
+function hydrateSetScheme(
+    rows: WorkoutSet[] | null | undefined,
+    roundsHint: number | null | undefined,
+): { scheme: WorkoutSet[] | null; rounds: number } {
+    if (!rows || rows.length === 0) return { scheme: null, rounds: 1 }
+    const sorted = [...rows].sort((a, b) => a.set_number - b.set_number)
+    const collapsed = collapseExpandedScheme(sorted, roundsHint ?? 1)
+    return {
+        scheme: collapsed.scheme.length > 0 ? collapsed.scheme : null,
+        rounds: collapsed.rounds,
+    }
 }
 
-/** Persist the children rows for a saved workout_item_template. No-op when empty. */
+/** Effective rounds for an item. Compound methods honor `item.rounds`; linear
+ *  methods are forced to 1 even if the trainer accidentally typed something
+ *  else somewhere — defesa em profundidade matching the mobile save flow. */
+function effectiveRoundsForItem(item: WorkoutItem): number {
+    if (!item.set_scheme || item.set_scheme.length === 0) return 1
+    if (!isCompoundMethod(item.method_key ?? null)) return 1
+    const r = Number.isFinite(item.rounds as number) ? Math.floor(item.rounds as number) : 1
+    return Math.max(1, Math.min(20, r))
+}
+
+/** Persist the materialized children rows for a saved workout_item_template.
+ *  Linear methods write the scheme as-is; compound methods expand by `rounds`
+ *  via `expandSchemeByRounds` and tag each row with its `round_number`. */
 async function insertSetSchemeRows(
     supabase: ReturnType<typeof createClient>,
     workoutItemTemplateId: string,
     scheme: WorkoutSet[] | null | undefined,
+    rounds: number,
 ): Promise<void> {
     if (!scheme || scheme.length === 0) return
-    const rows = scheme.map((s, i) => ({
+    const safeRounds = Math.max(1, Math.min(20, Math.floor(rounds || 1)))
+    const expanded = safeRounds > 1
+        ? expandSchemeByRounds(scheme, safeRounds)
+        : scheme
+    const isCompound = safeRounds > 1
+    const rows = expanded.map((s, i) => ({
         workout_item_template_id: workoutItemTemplateId,
         set_number: i + 1,
         set_type: s.set_type,
@@ -162,19 +206,25 @@ async function insertSetSchemeRows(
         rir: s.rir,
         tempo: s.tempo,
         notes: s.notes,
+        round_number: isCompound ? (s.round_number ?? null) : null,
     }))
     const { error } = await supabase.from('workout_item_set_templates').insert(rows)
     if (error) throw error
 }
 
-/** Coerce the parent aggregates so they always mirror summarizeSetScheme(scheme). */
+/** Coerce the parent aggregates so they always mirror the canonical summary
+ *  for the item's effective rounds. Linear / no-scheme paths keep the legacy
+ *  behaviour byte-for-byte. */
 function aggregatesFromItem(item: WorkoutItem): {
     sets: number | null
     reps: string | null
     rest_seconds: number | null
 } {
     if (item.set_scheme && item.set_scheme.length > 0) {
-        const summary = _summarizeSetScheme(item.set_scheme)
+        const rounds = effectiveRoundsForItem(item)
+        const summary = rounds > 1
+            ? _summarizeWithRounds(item.set_scheme, rounds)
+            : _summarizeSetScheme(item.set_scheme)
         return {
             sets: summary.sets,
             reps: summary.reps,
@@ -414,24 +464,29 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                         const itemChildren = children
                             .filter(c => c.parent_item_id === p.id)
                             .sort((a, b) => a.order_index - b.order_index)
-                            .map(c => ({
-                                id: c.id,
-                                item_type: c.item_type as WorkoutItem['item_type'],
-                                order_index: c.order_index,
-                                parent_item_id: c.parent_item_id,
-                                exercise_id: c.exercise_id,
-                                substitute_exercise_ids: c.substitute_exercise_ids || [],
-                                exercise: c.exercise_id ? exercises.find(e => e.id === c.exercise_id) : undefined,
-                                sets: c.sets,
-                                reps: c.reps,
-                                rest_seconds: c.rest_seconds,
-                                notes: c.notes,
-                                exercise_function: c.exercise_function || null,
-                                item_config: c.item_config || {},
-                                set_scheme: hydrateSetScheme(c.workout_item_set_templates),
-                                method_key: (c.method_key as WorkoutItem['method_key']) ?? null,
-                            }))
+                            .map(c => {
+                                const childHydrated = hydrateSetScheme(c.workout_item_set_templates, c.rounds ?? 1)
+                                return {
+                                    id: c.id,
+                                    item_type: c.item_type as WorkoutItem['item_type'],
+                                    order_index: c.order_index,
+                                    parent_item_id: c.parent_item_id,
+                                    exercise_id: c.exercise_id,
+                                    substitute_exercise_ids: c.substitute_exercise_ids || [],
+                                    exercise: c.exercise_id ? exercises.find(e => e.id === c.exercise_id) : undefined,
+                                    sets: c.sets,
+                                    reps: c.reps,
+                                    rest_seconds: c.rest_seconds,
+                                    notes: c.notes,
+                                    exercise_function: c.exercise_function || null,
+                                    item_config: c.item_config || {},
+                                    set_scheme: childHydrated.scheme,
+                                    method_key: (c.method_key as WorkoutItem['method_key']) ?? null,
+                                    rounds: childHydrated.rounds,
+                                }
+                            })
 
+                        const parentHydrated = hydrateSetScheme(p.workout_item_set_templates, p.rounds ?? 1)
                         return {
                             id: p.id,
                             item_type: p.item_type as WorkoutItem['item_type'],
@@ -446,8 +501,9 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                             notes: p.notes,
                             exercise_function: p.exercise_function || null,
                             item_config: p.item_config || {},
-                            set_scheme: hydrateSetScheme(p.workout_item_set_templates),
+                            set_scheme: parentHydrated.scheme,
                             method_key: (p.method_key as WorkoutItem['method_key']) ?? null,
+                            rounds: parentHydrated.rounds,
                             children: itemChildren
                         }
                     })
@@ -698,6 +754,9 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                 reps: options?.reps ?? '10',
                 rest_seconds: options?.rest_seconds ?? 60,
                 notes: options?.notes ?? null,
+                set_scheme: null,
+                method_key: null,
+                rounds: 1,
                 children: []
             }
 
@@ -725,6 +784,9 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                 reps: options?.reps ?? '10',
                 rest_seconds: options?.rest_seconds ?? 60,
                 notes: options?.notes ?? null,
+                set_scheme: null,
+                method_key: null,
+                rounds: 1,
                 children: []
             }
 
@@ -1142,6 +1204,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                 // Save items
                 for (const item of workout.items) {
                     const aggs = aggregatesFromItem(item)
+                    const itemRounds = effectiveRoundsForItem(item)
                     const { data: savedItem, error: itemError } = await supabase
                         .from('workout_item_templates')
                         .insert({
@@ -1158,14 +1221,16 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                             exercise_function: item.exercise_function || null,
                             item_config: item.item_config || {},
                             method_key: effectiveMethodKey(item),
+                            rounds: itemRounds,
                         })
                         .select('id')
                         .single()
 
                     if (itemError) throw itemError
 
-                    // Per-set children (Fase 2). Skipped silently for items inside superset.
-                    await insertSetSchemeRows(supabase, savedItem.id, item.set_scheme)
+                    // Per-set children (Fase 2 / 4.4 — expanded by rounds).
+                    // Skipped silently for items inside superset.
+                    await insertSetSchemeRows(supabase, savedItem.id, item.set_scheme, itemRounds)
 
                     // Save children (for supersets)
                     if (item.children) {
@@ -1316,6 +1381,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
 
                 for (const item of workout.items) {
                     const aggs = aggregatesFromItem(item)
+                    const itemRounds = effectiveRoundsForItem(item)
                     const { data: savedItem, error: itemError } = await supabase
                         .from('workout_item_templates')
                         .insert({
@@ -1332,13 +1398,14 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                             exercise_function: item.exercise_function || null,
                             item_config: item.item_config || {},
                             method_key: effectiveMethodKey(item),
+                            rounds: itemRounds,
                         })
                         .select('id')
                         .single()
 
                     if (itemError) throw itemError
 
-                    await insertSetSchemeRows(supabase, savedItem.id, item.set_scheme)
+                    await insertSetSchemeRows(supabase, savedItem.id, item.set_scheme, itemRounds)
 
                     if (item.children) {
                         for (const child of item.children) {

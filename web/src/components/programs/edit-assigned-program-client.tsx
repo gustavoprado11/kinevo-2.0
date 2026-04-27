@@ -41,6 +41,12 @@ export interface WorkoutItem {
     exercise_function?: string | null
     item_config?: Record<string, any>
     children?: WorkoutItem[]
+    /** Per-set prescription (Fase 4.4 read-only). The edit-assigned flow does
+     *  not yet write per-set children — this is here so the UI can read and
+     *  display chips/badges consistently with the create flow. */
+    set_scheme?: import('@kinevo/shared/types/prescription').WorkoutSet[] | null
+    method_key?: import('@kinevo/shared/types/prescription').MethodKey | null
+    rounds?: number | null
 }
 
 export interface Workout {
