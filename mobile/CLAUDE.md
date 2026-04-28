@@ -432,3 +432,36 @@ npm run gen:types              # Regenerar tipos compartilhados
 - `APPLE_WATCH.md` — Guia completo da integração Apple Watch.
 - `targets/watch-app/` — Código SwiftUI do Watch app.
 - `modules/` — Módulos nativos (watch-connectivity, live-activity-controller).
+
+---
+
+## Workflow de Entrega (LEIA ANTES DE COMEÇAR)
+
+**Documento normativo:** [`mobile/specs/WORKFLOW.md`](specs/WORKFLOW.md). Releia no início de toda sessão de desenvolvimento de feature.
+
+### Regra de ouro
+
+**Uma funcionalidade = um batch de commits + push no fim, autorizado explicitamente pelo Gustavo.**
+
+Durante o desenvolvimento NÃO faça `git commit` nem `git push`. Working tree acumula as mudanças. Gustavo testa localmente. Quando ele autorizar ("commita tudo e dá push", "manda pro origin"), aí o agente organiza commits atômicos e empurra.
+
+### Por que essa regra existe
+
+Push automático = deploy imediato em produção (via Vercel) = usuários reais veem o código. Commit intermediário sem feature pronta = bug pra usuário real. **Já aconteceu** em abril/2026: usuários experimentaram erros porque commits parciais foram empurrados antes da funcionalidade estar completa.
+
+### Resumo do que SIM e NÃO fazer
+
+**SIM:**
+- Editar arquivos no working tree.
+- Validar localmente (`tsc --noEmit`, `vitest run`).
+- Aplicar migration via Supabase MCP **com autorização** (DDL backward-compat).
+- Deployar Edge Function via MCP **com autorização**.
+- Documentar mensagens de commit sugeridas no prompt da fase.
+
+**NÃO:**
+- `git commit` ou `git push` durante desenvolvimento sem autorização.
+- `gh pr create` (solo dev sem reviewer — fluxo é push direto autorizado).
+- Refatorar fora do escopo da feature.
+- Tocar em `web/src/lib/prescription/` (motor IA — protegido).
+
+Detalhes completos, exceções (hotfix), checklist pre-push: ver `mobile/specs/WORKFLOW.md`.
