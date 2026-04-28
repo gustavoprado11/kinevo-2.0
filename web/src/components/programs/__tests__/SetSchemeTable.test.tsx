@@ -26,46 +26,92 @@ describe('SetSchemeTable', () => {
         expect(screen.getAllByRole('row')).toHaveLength(initialScheme.length + 1) // +1 for thead
     })
 
-    it('applying a preset chip rewrites the scheme and sets methodKey + defaultRounds', () => {
+    it('applying a preset chip rewrites the scheme and sets methodKey + defaultRounds (no confirm)', () => {
+        // Fase 4.5e §2: applying a preset is a direct action — no confirm
+        // dialog gates it. Trainer is intentional when clicking a chip.
         const onChange = vi.fn<OnChangeMock>()
-        render(
-            <SetSchemeTable
-                value={initialScheme}
-                methodKey={'standard'}
-                onChange={onChange}
-                onExitAdvanced={() => {}}
-            />,
-        )
+        const confirmSpy = vi.spyOn(window, 'confirm')
+        try {
+            render(
+                <SetSchemeTable
+                    value={initialScheme}
+                    methodKey={'standard'}
+                    onChange={onChange}
+                    onExitAdvanced={() => {}}
+                />,
+            )
 
-        fireEvent.click(screen.getByRole('button', { name: /pirâmide ↓/i }))
+            fireEvent.click(screen.getByRole('button', { name: /pirâmide ↓/i }))
 
-        expect(onChange).toHaveBeenCalledTimes(1)
-        const [next, key, rounds] = onChange.mock.calls[0]
-        expect(key).toBe('pyramid_down')
-        expect(next.map((s) => s.reps)).toEqual(['12', '10', '8', '6'])
-        // Pyramid is linear → defaultRounds = 1
-        expect(rounds).toBe(1)
+            expect(confirmSpy).not.toHaveBeenCalled()
+            expect(onChange).toHaveBeenCalledTimes(1)
+            const [next, key, rounds] = onChange.mock.calls[0]
+            expect(key).toBe('pyramid_down')
+            expect(next.map((s) => s.reps)).toEqual(['12', '10', '8', '6'])
+            // Pyramid is linear → defaultRounds = 1
+            expect(rounds).toBe(1)
+        } finally {
+            confirmSpy.mockRestore()
+        }
     })
 
     it('applying a compound preset (drop-set) seeds rounds = SYSTEM_PRESETS.defaultRounds (3)', () => {
         const onChange = vi.fn<OnChangeMock>()
-        render(
-            <SetSchemeTable
-                value={initialScheme}
-                methodKey={'standard'}
-                onChange={onChange}
-                onExitAdvanced={() => {}}
-            />,
-        )
+        const confirmSpy = vi.spyOn(window, 'confirm')
+        try {
+            render(
+                <SetSchemeTable
+                    value={initialScheme}
+                    methodKey={'standard'}
+                    onChange={onChange}
+                    onExitAdvanced={() => {}}
+                />,
+            )
 
-        fireEvent.click(screen.getByRole('button', { name: /drop-set/i }))
+            fireEvent.click(screen.getByRole('button', { name: /drop-set/i }))
 
-        const [, key, rounds] = onChange.mock.calls[0]
-        expect(key).toBe('drop_set')
-        expect(rounds).toBe(3)
+            // Fase 4.5e §2: no confirm — preset applies directly.
+            expect(confirmSpy).not.toHaveBeenCalled()
+            expect(onChange).toHaveBeenCalledTimes(1)
+            const [, key, rounds] = onChange.mock.calls[0]
+            expect(key).toBe('drop_set')
+            expect(rounds).toBe(3)
+        } finally {
+            confirmSpy.mockRestore()
+        }
     })
 
-    it('editing a cell after a preset demotes methodKey to custom but preserves rounds', () => {
+    it('switching between presets applies directly without prompting', () => {
+        // Fase 4.5e §2: replaces the previous "cancel confirm" test from
+        // Fase 4.5d. Trainer can A/B between methods quickly.
+        const onChange = vi.fn<OnChangeMock>()
+        const confirmSpy = vi.spyOn(window, 'confirm')
+        try {
+            render(
+                <SetSchemeTable
+                    value={initialScheme}
+                    methodKey={'pyramid_down'}
+                    rounds={1}
+                    onChange={onChange}
+                    onExitAdvanced={() => {}}
+                />,
+            )
+
+            fireEvent.click(screen.getByRole('button', { name: /drop-set/i }))
+
+            expect(confirmSpy).not.toHaveBeenCalled()
+            expect(onChange).toHaveBeenCalledTimes(1)
+            const [, key, rounds] = onChange.mock.calls[0]
+            expect(key).toBe('drop_set')
+            expect(rounds).toBe(3)
+        } finally {
+            confirmSpy.mockRestore()
+        }
+    })
+
+    it('editing a cell PRESERVES methodKey and rounds (Fase 4.5d §7 — intent is sacred)', () => {
+        // Pre-Fase-4.5d this test asserted that editing flipped the chip to
+        // 'custom'. New behaviour: only clicking a chip changes method_key.
         const onChange = vi.fn<OnChangeMock>()
         render(
             <SetSchemeTable
@@ -82,8 +128,31 @@ describe('SetSchemeTable', () => {
 
         expect(onChange).toHaveBeenCalledTimes(1)
         const [, key, rounds] = onChange.mock.calls[0]
+        expect(key).toBe('pyramid_down')
+        expect(rounds).toBe(1)
+    })
+
+    it('clicking the Customizado chip preserves the scheme and rounds, only labels as custom', () => {
+        // Fase 4.5d §1+§7: 7th chip is manually clickable; preserves
+        // structure (no scheme overwrite, no confirm).
+        const onChange = vi.fn<OnChangeMock>()
+        render(
+            <SetSchemeTable
+                value={initialScheme}
+                methodKey={'pyramid_down'}
+                rounds={1}
+                onChange={onChange}
+                onExitAdvanced={() => {}}
+            />,
+        )
+
+        fireEvent.click(screen.getByRole('button', { name: /customizado/i }))
+
+        expect(onChange).toHaveBeenCalledTimes(1)
+        const [next, key, rounds] = onChange.mock.calls[0]
         expect(key).toBe('custom')
         expect(rounds).toBe(1)
+        expect(next.map((s) => s.reps)).toEqual(['10', '10', '10']) // unchanged
     })
 
     it('rounds stepper appears for compound methods and clamps to [1, 20]', () => {
@@ -142,7 +211,10 @@ describe('SetSchemeTable', () => {
         expect(screen.queryByText(/adicionar série/i)).toBeNull()
     })
 
-    it('renders the "Aluno verá" footer when rounds > 1', () => {
+    it('renders the structure summary pill at the TOP when rounds > 1', () => {
+        // Fase 4.5d §5: footer "Aluno verá: ..." was removed; the same info
+        // (rounds × phases = total) now lives in the summary pill at the top
+        // of the section so the trainer sees it BEFORE editing the table.
         render(
             <SetSchemeTable
                 value={initialScheme}
@@ -152,9 +224,42 @@ describe('SetSchemeTable', () => {
                 onExitAdvanced={() => {}}
             />,
         )
-        // 3 rounds × 3 phases = 9 phases total
-        expect(screen.getByText(/aluno verá/i)).toBeTruthy()
-        expect(screen.getByText(/9 fases no total/i)).toBeTruthy()
+        // 3 rounds × 3 phases = 9 phases total — pill text reads
+        // "3 rodadas × 3 fases · 9 fases totais"
+        expect(screen.getByText(/3 rodadas × 3 fases · 9 fases totais/i)).toBeTruthy()
+        // Footer text from previous Fase is gone.
+        expect(screen.queryByText(/aluno verá/i)).toBeNull()
+    })
+
+    it('renders the structure summary pill for linear customizado (rounds=1, length>1)', () => {
+        render(
+            <SetSchemeTable
+                value={initialScheme}
+                methodKey={'custom'}
+                rounds={1}
+                onChange={() => {}}
+                onExitAdvanced={() => {}}
+            />,
+        )
+        // Linear customizado with 3 phases shows just "N fases".
+        expect(screen.getByText(/^3 fases$/i)).toBeTruthy()
+    })
+
+    it('hides the structure summary pill for single-phase schemes', () => {
+        const singlePhase = [initialScheme[0]]
+        render(
+            <SetSchemeTable
+                value={singlePhase}
+                methodKey={'cluster'}
+                rounds={1}
+                onChange={() => {}}
+                onExitAdvanced={() => {}}
+            />,
+        )
+        // 1 phase, no rounds expansion — pill is hidden (no compelling
+        // structural summary to show).
+        expect(screen.queryByText(/fases totais/i)).toBeNull()
+        expect(screen.queryByText(/^1 fase$/i)).toBeNull()
     })
 
     it('renders the rounds banner explaining repeated structure for compound methods', () => {
@@ -185,7 +290,7 @@ describe('SetSchemeTable', () => {
         expect(screen.queryByText(/repetida \d+ vezes/i)).toBeNull()
     })
 
-    it('hides RIR and Tempo columns by default and reveals them when "Mais campos" is clicked', () => {
+    it('hides RIR and Cadência columns by default and reveals them when "Mais campos" is clicked', () => {
         // Reset localStorage so the test starts in the default (collapsed) state.
         window.localStorage.removeItem('kinevo_setscheme_advanced_fields')
 
@@ -199,14 +304,16 @@ describe('SetSchemeTable', () => {
             />,
         )
 
-        // Collapsed by default — RIR / Tempo headers are not in the DOM.
+        // Collapsed by default — RIR / Cadência headers are not in the DOM.
+        // Fase 4.5h: header was renamed from "Tempo" to "Cadência" (BR
+        // personal-training jargon). Internal field is still `tempo`.
         expect(screen.queryByText(/^RIR$/i)).toBeNull()
-        expect(screen.queryByText(/^Tempo$/i)).toBeNull()
+        expect(screen.queryByText(/^Cadência$/i)).toBeNull()
 
         fireEvent.click(screen.getByRole('button', { name: /mais campos/i }))
 
         expect(screen.getByText(/^RIR$/i)).toBeTruthy()
-        expect(screen.getByText(/^Tempo$/i)).toBeTruthy()
+        expect(screen.getByText(/^Cadência$/i)).toBeTruthy()
     })
 
     it('exit advanced asks for confirmation', () => {

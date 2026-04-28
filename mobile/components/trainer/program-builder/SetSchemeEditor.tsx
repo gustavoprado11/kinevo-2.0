@@ -17,7 +17,6 @@ import type { MethodKey, WorkoutSet } from "@kinevo/shared/types/prescription";
 import {
     applyPreset,
     expandToSetScheme,
-    inferMethodKeyFromScheme,
     summarizeSetScheme,
     summarizeWithRounds,
 } from "@kinevo/shared/lib/prescription/set-scheme";
@@ -82,7 +81,11 @@ interface SetSchemeEditorProps {
 }
 
 const methodLabel = (key: MethodKey | null): string => {
-    if (!key || key === "standard" || key === "custom") return "Customizado";
+    // Fase 4.5d §7: 'standard' = trainer não declarou um método ainda → não
+    // mostra "Customizado" (que era informação errada). 'custom' explícito
+    // continua "Customizado".
+    if (!key || key === "standard") return "Sem preset";
+    if (key === "custom") return "Customizado";
     return SYSTEM_PRESETS[key]?.name ?? "Customizado";
 };
 
@@ -138,13 +141,22 @@ export function SetSchemeEditor({
         setRounds(Math.max(1, initialRounds ?? 1));
     }, [visible, initialScheme, initialMethodKey, initialRounds, fallbackAggregates.sets, fallbackAggregates.reps, fallbackAggregates.rest_seconds]);
 
-    const displayKey: MethodKey = methodKey ?? inferMethodKeyFromScheme(scheme);
+    // Fase 4.5d §7: method_key é a intenção declarada do trainer, não é mais
+    // inferida da estrutura. Default 'standard' (segmented control sem chip
+    // ativo) até o trainer clicar em algum.
+    const displayKey: MethodKey = methodKey ?? "standard";
     const isCompound = isCompoundMethod(displayKey);
     const effectiveRounds = isCompound ? rounds : 1;
+    const phasesPerRound = scheme.length;
+    const totalPhases = phasesPerRound * effectiveRounds;
+    // Fase 4.5d §5: pílula de síntese aparece quando há mais de uma fase
+    // (compound expandido OU linear customizado com múltiplas fases).
+    const showStructurePill = phasesPerRound > 1;
 
+    // Fase 4.5d §7: edits, add/remove/duplicate de fase NÃO mudam mais o
+    // method_key. A intenção do trainer só muda quando ele clica num chip.
     const updateSet = (index: number, patch: Partial<WorkoutSet>) => {
         setScheme((prev) => renumber(prev.map((s, i) => (i === index ? { ...s, ...patch } : s))));
-        setMethodKey("custom");
     };
 
     const addSet = () => {
@@ -166,7 +178,6 @@ export function SetSchemeEditor({
                 };
             return [...prev, newSet];
         });
-        setMethodKey("custom");
     };
 
     const duplicateSet = (index: number) => {
@@ -174,7 +185,6 @@ export function SetSchemeEditor({
             const dup = { ...prev[index] };
             return renumber([...prev.slice(0, index + 1), dup, ...prev.slice(index + 1)]);
         });
-        setMethodKey("custom");
     };
 
     const removeSet = (index: number) => {
@@ -182,10 +192,19 @@ export function SetSchemeEditor({
             if (prev.length <= 1) return prev;
             return renumber(prev.filter((_, i) => i !== index));
         });
-        setMethodKey("custom");
     };
 
-    const applyPresetKey = (key: Exclude<MethodKey, "standard" | "custom">) => {
+    /** Fase 4.5d §1+§7 / Fase 4.5e §2: handler unificado para o segmented control.
+     *  - 'custom' preserva scheme + rounds, só rotula como Customizado.
+     *  - Preset real sobrescreve scheme + rounds direto (sem Alert.alert —
+     *    Fase 4.5e: trainer é intencional ao clicar; confirm era fricção
+     *    sem ganho. Se errar, basta clicar em outro preset ou em
+     *    Customizado pra manter a estrutura atual). */
+    const applyPresetKey = (key: Exclude<MethodKey, "standard">) => {
+        if (key === "custom") {
+            setMethodKey("custom");
+            return;
+        }
         const next = applyPreset(key);
         setScheme(next);
         setMethodKey(key);
@@ -227,9 +246,12 @@ export function SetSchemeEditor({
         const summary = isCompound
             ? summarizeWithRounds(scheme, effectiveRounds)
             : summarizeSetScheme(scheme);
+        // Fase 4.5d §7: salva o method_key declarado pelo trainer; não infere
+        // mais da estrutura. `null` é válido (modo simples convertido pra
+        // avançado sem chip clicado ainda).
         onSave({
             scheme,
-            methodKey: methodKey ?? inferMethodKeyFromScheme(scheme),
+            methodKey,
             rounds: effectiveRounds,
             aggregates: summary,
         });
@@ -292,6 +314,35 @@ export function SetSchemeEditor({
                     <View style={{ paddingVertical: 8, backgroundColor: colors.background.card, borderBottomWidth: 1, borderBottomColor: colors.border.primary }}>
                         <SetSchemePresetChips activeKey={displayKey} onApply={applyPresetKey} />
                     </View>
+
+                    {/* Pílula de síntese da estrutura (Fase 4.5d §5).
+                     *  Tons violeta-claro que diferem do banner azul abaixo
+                     *  pra evitar confusão visual. */}
+                    {showStructurePill ? (
+                        <View
+                            style={{
+                                flexDirection: "row",
+                                alignItems: "center",
+                                gap: 6,
+                                alignSelf: "flex-start",
+                                marginHorizontal: 16,
+                                marginTop: 8,
+                                paddingHorizontal: 12,
+                                paddingVertical: 5,
+                                borderRadius: 999,
+                                backgroundColor: "rgba(124, 58, 237, 0.10)",
+                                borderWidth: 1,
+                                borderColor: "rgba(124, 58, 237, 0.25)",
+                            }}
+                        >
+                            <Repeat size={12} color={colors.brand.primary} />
+                            <Text style={{ fontSize: 11, fontWeight: "700", color: colors.brand.primary }}>
+                                {isCompound && effectiveRounds > 1
+                                    ? `${effectiveRounds} rodadas × ${phasesPerRound} fases · ${totalPhases} fases totais`
+                                    : `${phasesPerRound} fases`}
+                            </Text>
+                        </View>
+                    ) : null}
 
                     {/* Rodadas (compound methods only) */}
                     {isCompound ? (

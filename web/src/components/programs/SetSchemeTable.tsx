@@ -1,13 +1,12 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ChevronDown, ChevronUp, Copy, Minus, Plus, Repeat, Trash2, Undo2 } from 'lucide-react'
 
 import type { MethodKey, SetType, WorkoutSet } from '@kinevo/shared/types/prescription'
 import { SET_TYPE_OPTIONS } from '@kinevo/shared/types/prescription'
 import {
     applyPreset,
-    inferMethodKeyFromScheme,
 } from '@kinevo/shared/lib/prescription/set-scheme'
 import {
     SYSTEM_PRESETS,
@@ -93,12 +92,6 @@ const newEmptySet = (setNumber: number): WorkoutSet => ({
 const renumber = (sets: WorkoutSet[]): WorkoutSet[] =>
     sets.map((s, i) => ({ ...s, set_number: i + 1 }))
 
-const methodLabel = (key: MethodKey | null): string => {
-    if (!key || key === 'standard') return 'Customizado'
-    if (key === 'custom') return 'Customizado'
-    return SYSTEM_PRESETS[key]?.name ?? 'Customizado'
-}
-
 const clampRounds = (n: number | null | undefined): number => {
     const v = Number.isFinite(n as number) ? Math.floor(n as number) : 1
     return Math.max(ROUND_MIN, Math.min(ROUND_MAX, v))
@@ -113,8 +106,12 @@ export function SetSchemeTable({
     readonly,
 }: SetSchemeTableProps) {
     const sets = value
-    const inferredKey = useMemo(() => inferMethodKeyFromScheme(sets), [sets])
-    const displayKey: MethodKey = methodKey ?? inferredKey
+    // Fase 4.5d §7: method_key reflete intenção declarada do trainer, não é
+    // mais inferido automaticamente da estrutura. `displayKey` cai pra
+    // 'standard' quando o trainer ainda não escolheu um chip — nesse caso o
+    // segmented control mostra todos como inativos exceto se o método for
+    // 'custom' (chip Customizado destacado).
+    const displayKey: MethodKey = methodKey ?? 'standard'
     const compound = isCompoundMethod(displayKey)
     const safeRounds = clampRounds(rounds ?? 1)
 
@@ -138,12 +135,12 @@ export function SetSchemeTable({
     const phasesPerRound = sets.length
     const totalPhases = phasesPerRound * effectiveRounds
 
+    // Fase 4.5d §7 (intenção sacra): edits, add/remove/duplicate de fase NÃO
+    // alteram mais o `method_key`. A intenção do trainer (qual preset ele
+    // declarou) só muda quando ele clica num chip ou em "Customizado".
     const updateSet = (index: number, patch: Partial<WorkoutSet>) => {
         const next = sets.map((s, i) => (i === index ? { ...s, ...patch } : s))
-        // Manual edit demotes the chip to 'custom' but PRESERVES rounds — the
-        // trainer kept the same compound structure; the per-phase tweak is
-        // their refinement on top of it.
-        onChange(renumber(next), 'custom', safeRounds)
+        onChange(renumber(next), displayKey, safeRounds)
     }
 
     const addSet = () => {
@@ -151,23 +148,33 @@ export function SetSchemeTable({
         const newSet: WorkoutSet = last
             ? { ...last, set_number: sets.length + 1 }
             : newEmptySet(1)
-        onChange([...sets, newSet], 'custom', safeRounds)
+        onChange([...sets, newSet], displayKey, safeRounds)
     }
 
     const duplicateSet = (index: number) => {
         const original = sets[index]
         const dup: WorkoutSet = { ...original }
         const next = [...sets.slice(0, index + 1), dup, ...sets.slice(index + 1)]
-        onChange(renumber(next), 'custom', safeRounds)
+        onChange(renumber(next), displayKey, safeRounds)
     }
 
     const removeSet = (index: number) => {
         if (sets.length <= 1) return
         const next = sets.filter((_, i) => i !== index)
-        onChange(renumber(next), 'custom', safeRounds)
+        onChange(renumber(next), displayKey, safeRounds)
     }
 
-    const applyPresetKey = (key: Exclude<MethodKey, 'standard' | 'custom'>) => {
+    /** Fase 4.5d §1+§7 / Fase 4.5e §2: handler unificado para o segmented control.
+     *  - 'custom' preserva scheme + rounds, só rotula como Customizado.
+     *  - Preset real sobrescreve scheme + rounds direto (sem confirm — Fase
+     *    4.5e: trainer é intencional ao clicar; o confirm era fricção
+     *    sem ganho. Se errar, basta clicar em outro preset ou em
+     *    Customizado pra manter o scheme atual). */
+    const applyPresetKey = (key: Exclude<MethodKey, 'standard'>) => {
+        if (key === 'custom') {
+            onChange(sets, 'custom', safeRounds)
+            return
+        }
         const next = applyPreset(key)
         const presetRounds = SYSTEM_PRESETS[key]?.defaultRounds ?? 1
         onChange(next, key, clampRounds(presetRounds))
@@ -191,9 +198,6 @@ export function SetSchemeTable({
         onExitAdvanced()
     }
 
-    const phaseSingular = compound ? 'fase' : 'série'
-    const phasePlural = compound ? 'fases' : 'séries'
-
     return (
         <div className="mt-3 rounded-lg border border-[#E8E8ED] dark:border-k-border-subtle bg-[#F9F9FB] dark:bg-surface-card-elevated p-3 space-y-3">
             {/* "Voltar para modo simples" — botão secundário pequeno no canto
@@ -211,17 +215,12 @@ export function SetSchemeTable({
                 </div>
             )}
 
-            {/* Header: chip do método + toggle Mais campos */}
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-                <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-k-text-tertiary">
-                        Método
-                    </span>
-                    <span className="text-xs font-semibold text-k-text-primary bg-white dark:bg-surface-card border border-[#E8E8ED] dark:border-k-border-subtle px-2 py-0.5 rounded-full">
-                        {methodLabel(displayKey)}
-                    </span>
-                </div>
-                {!readonly && (
+            {/* Header: toggle "Mais campos" alinhado à direita.
+             *  Fase 4.5d §1: o badge `MÉTODO [Customizado]` foi removido
+             *  porque o segmented control abaixo já comunica o estado
+             *  (chip ativo destacado). */}
+            {!readonly && (
+                <div className="flex items-center justify-end">
                     <button
                         type="button"
                         onClick={toggleAdvancedFields}
@@ -235,8 +234,28 @@ export function SetSchemeTable({
                         )}
                         {showAdvancedFields ? 'Menos campos' : 'Mais campos'}
                     </button>
-                )}
-            </div>
+                </div>
+            )}
+
+            {/* Pílula de síntese (Fase 4.5d §5) — header destacado da
+             *  estrutura. Substitui o footer "Aluno verá..." removido nesta
+             *  fase: a informação fica no topo onde o trainer percebe ANTES
+             *  de mexer na tabela.
+             *  - compound + rounds > 1 → "N rondas × M fases · NxM fases totais"
+             *  - linear customizado (rounds=1 + length>1) → "M fases"
+             *  - <= 1 fase → não exibe */}
+            {phasesPerRound > 1 && (
+                <div className="flex items-center gap-1.5 inline-flex self-start bg-violet-50 text-violet-700 border border-violet-200 dark:bg-violet-950/40 dark:text-violet-300 dark:border-violet-800 px-3 py-1 rounded-full text-xs font-semibold">
+                    <Repeat className="w-3.5 h-3.5" />
+                    {compound && safeRounds > 1 ? (
+                        <span>
+                            {safeRounds} rodadas × {phasesPerRound} fases · {totalPhases} fases totais
+                        </span>
+                    ) : (
+                        <span>{phasesPerRound} fases</span>
+                    )}
+                </div>
+            )}
 
             {/* Banner explicativo de rodadas (Fase 4.5b) — só compound + rounds > 1. */}
             {compound && safeRounds > 1 && phasesPerRound > 0 && (
@@ -316,7 +335,7 @@ export function SetSchemeTable({
                             <th className="py-2 pr-2 font-bold">Carga</th>
                             {showAdvancedFields && <th className="py-2 pr-2 font-bold">RIR</th>}
                             <th className="py-2 pr-2 font-bold">Descanso</th>
-                            {showAdvancedFields && <th className="py-2 pr-2 font-bold">Tempo</th>}
+                            {showAdvancedFields && <th className="py-2 pr-2 font-bold">Cadência</th>}
                             {!readonly && <th className="py-2 pr-2 w-16" aria-label="Ações" />}
                         </tr>
                     </thead>
@@ -349,16 +368,10 @@ export function SetSchemeTable({
                 </button>
             )}
 
-            {/* Footer informativo: só quando há mais de uma rodada */}
-            {compound && safeRounds > 1 && phasesPerRound > 0 && (
-                <div className="text-[11px] text-k-text-tertiary pt-1 border-t border-[#E8E8ED]/60 dark:border-k-border-subtle/60">
-                    Aluno verá: <span className="font-semibold text-k-text-secondary">{safeRounds} rodadas</span>
-                    {' × '}
-                    <span className="font-semibold text-k-text-secondary">{phasesPerRound} {phasesPerRound === 1 ? phaseSingular : phasePlural}</span>
-                    {' = '}
-                    <span className="font-semibold text-k-text-secondary">{totalPhases} {phasePlural} no total</span>.
-                </div>
-            )}
+            {/* Footer "Aluno verá: ..." removido na Fase 4.5d §5.
+             *  A informação migrou pra pílula no topo da seção (acima dos
+             *  chips do segmented control), pra ser percebida antes de mexer
+             *  na tabela em vez de depois. */}
         </div>
     )
 }
@@ -439,11 +452,15 @@ function SetRow({
                                 : '—'}
                     </span>
                 ) : (
+                    /* Fase 4.5d §2: input numérico + dropdown nativo de
+                     *  unidade (kg / %1RM). Trocar a unidade zera o valor —
+                     *  evita confusão visual ("100" virando "100% de 1RM"). */
                     <div className="flex items-center gap-1">
                         <input
                             type="number"
                             min={0}
                             step={usePct ? 1 : 0.5}
+                            placeholder="0"
                             aria-label={`Carga da série ${index + 1}`}
                             value={(usePct ? set.weight_target_pct1rm : set.weight_target_kg) ?? ''}
                             onChange={(e) => {
@@ -455,22 +472,24 @@ function SetRow({
                                         : { weight_target_kg: num, weight_target_pct1rm: null },
                                 )
                             }}
-                            className={`${inputClass} max-w-[70px]`}
+                            className={`${inputClass} max-w-[70px] placeholder:text-zinc-300 dark:placeholder:text-zinc-600`}
                         />
-                        <button
-                            type="button"
-                            onClick={() =>
-                                onUpdate(
-                                    usePct
-                                        ? { weight_target_pct1rm: null, weight_target_kg: set.weight_target_pct1rm }
-                                        : { weight_target_kg: null, weight_target_pct1rm: set.weight_target_kg },
-                                )
-                            }
-                            className="text-[10px] font-bold text-k-text-tertiary hover:text-[#007AFF] dark:hover:text-violet-400 px-1.5 py-0.5 rounded border border-[#E8E8ED] dark:border-k-border-subtle"
-                            title="Alternar entre kg e % de 1RM"
+                        <select
+                            aria-label={`Unidade da carga da série ${index + 1}`}
+                            value={usePct ? 'pct' : 'kg'}
+                            onChange={(e) => {
+                                const next = e.target.value
+                                if (next === 'pct' && !usePct) {
+                                    onUpdate({ weight_target_pct1rm: null, weight_target_kg: null })
+                                } else if (next === 'kg' && usePct) {
+                                    onUpdate({ weight_target_kg: null, weight_target_pct1rm: null })
+                                }
+                            }}
+                            className="text-xs font-medium text-k-text-secondary bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors focus:outline-none focus:ring-1 focus:ring-[#007AFF] dark:focus:ring-violet-500"
                         >
-                            {usePct ? '%1RM' : 'kg'}
-                        </button>
+                            <option value="kg">kg</option>
+                            <option value="pct">% 1RM</option>
+                        </select>
                     </div>
                 )}
             </td>
@@ -521,7 +540,7 @@ function SetRow({
                     ) : (
                         <input
                             type="text"
-                            aria-label={`Tempo da série ${index + 1}`}
+                            aria-label={`Cadência da série ${index + 1}`}
                             value={set.tempo ?? ''}
                             onChange={(e) => onUpdate({ tempo: e.target.value || null })}
                             placeholder="3-1-1-0"

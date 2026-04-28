@@ -1,7 +1,7 @@
 import React from "react";
-import { Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Alert, Text, TextInput, TouchableOpacity, View } from "react-native";
 import * as Haptics from "expo-haptics";
-import { Copy, Minus, Plus, Trash2 } from "lucide-react-native";
+import { ChevronDown, Copy, Minus, Plus, Trash2 } from "lucide-react-native";
 
 import type { SetType, WorkoutSet } from "@kinevo/shared/types/prescription";
 import { SET_TYPE_OPTIONS } from "@kinevo/shared/types/prescription";
@@ -81,12 +81,27 @@ export function SetSchemeCard({
         );
     };
 
-    const toggleWeightUnit = () => {
+    /** Fase 4.5d §2: picker via Alert nativo (cross-platform, sem deps).
+     *  Trocar a unidade zera o valor pra evitar interpretação ambígua —
+     *  100 não vira "100% de 1RM" automaticamente. Tap fora cancela. */
+    const pickWeightUnit = () => {
         Haptics.selectionAsync();
-        onUpdate(
-            usePct
-                ? { weight_target_pct1rm: null, weight_target_kg: weightValue }
-                : { weight_target_kg: null, weight_target_pct1rm: weightValue },
+        const onPick = (nextUsePct: boolean) => {
+            if (nextUsePct === usePct) return;
+            onUpdate(
+                nextUsePct
+                    ? { weight_target_pct1rm: null, weight_target_kg: null }
+                    : { weight_target_kg: null, weight_target_pct1rm: null },
+            );
+        };
+        Alert.alert(
+            "Unidade da carga",
+            "Como prescrever a carga desta série?",
+            [
+                { text: "kg", onPress: () => onPick(false) },
+                { text: "% 1RM", onPress: () => onPick(true) },
+            ],
+            { cancelable: true },
         );
     };
 
@@ -234,22 +249,27 @@ export function SetSchemeCard({
                     onDec={() => stepWeight(usePct ? -5 : -2.5)}
                     onInc={() => stepWeight(usePct ? 5 : 2.5)}
                 />
+                {/* Fase 4.5d §2: tap abre Alert.alert pra escolher kg / %1RM. */}
                 <TouchableOpacity
-                    onPress={toggleWeightUnit}
+                    onPress={pickWeightUnit}
                     accessibilityRole="button"
-                    accessibilityLabel="Alternar entre kg e % de 1RM"
+                    accessibilityLabel="Escolher unidade da carga"
+                    accessibilityHint={`Atualmente em ${usePct ? "% de 1RM" : "quilogramas"}`}
                     style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 3,
                         paddingHorizontal: 8,
                         paddingVertical: 4,
                         marginLeft: 6,
                         borderRadius: 6,
-                        borderWidth: 1,
-                        borderColor: colors.border.secondary,
+                        backgroundColor: colors.background.inset,
                     }}
                 >
                     <Text style={{ fontSize: 10, fontWeight: "700", color: colors.text.tertiary }}>
                         {usePct ? "%1RM" : "kg"}
                     </Text>
+                    <ChevronDown size={10} color={colors.text.tertiary} />
                 </TouchableOpacity>
             </FieldRow>
 
@@ -275,15 +295,18 @@ export function SetSchemeCard({
                 />
             </FieldRow>
 
-            {/* Tempo (free text) — escondido por default (Fase 4.5b) */}
+            {/* Cadência (free text) — escondido por default (Fase 4.5b).
+             *  Internal field is still `tempo`; the user-facing label
+             *  was renamed to "Cadência" in Fase 4.5h to match the BR
+             *  personal-training jargon (3-1-1-0 = ritmo da execução). */}
             {showAdvancedFields ? (
-                <FieldRow label="Tempo">
+                <FieldRow label="Cadência">
                     <TextInput
                         value={set.tempo ?? ""}
                         onChangeText={(text) => onUpdate({ tempo: text || null })}
                         placeholder="3-1-1-0"
                         placeholderTextColor={colors.text.quaternary}
-                        accessibilityLabel={`Tempo da série ${index + 1}`}
+                        accessibilityLabel={`Cadência da série ${index + 1}`}
                         style={inputStyle}
                     />
                 </FieldRow>

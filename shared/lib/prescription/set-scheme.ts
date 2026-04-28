@@ -374,7 +374,16 @@ export const buildWeightMetaLabel = (
 
 /** Heuristic: try to identify which preset (if any) a scheme corresponds to.
  * Returns `'standard'` for an empty scheme and `'custom'` when no preset
- * matches. Tolerant to ±10% on rest_seconds and exact match on reps. */
+ * matches. Tolerant to ±10% on rest_seconds and exact match on reps.
+ *
+ * @deprecated Fase 4.5d: `method_key` reflete a intenção declarada do trainer
+ *   (qual chip ele clicou no segmented control), não é mais derivado da
+ *   estrutura. Builders web e mobile não chamam mais essa função no save/edit.
+ *   Mantida pra retrocompat com qualquer caller externo (ex.: parser de
+ *   texto da Fase 5 pode usar pra sugerir o chip ativo após detectar um
+ *   padrão pirâmide / drop-set no texto livre). Não use em UIs novas — prefira
+ *   deixar `method_key = null` e que o trainer escolha manualmente.
+ */
 export const inferMethodKeyFromScheme = (
     scheme: WorkoutSet[] | null | undefined,
 ): MethodKey => {
