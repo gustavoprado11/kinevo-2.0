@@ -22,17 +22,27 @@ interface WorkoutExecutionPreviewProps {
 export function WorkoutExecutionPreview({ workoutName, items, scale }: WorkoutExecutionPreviewProps) {
     const renderItems = useMemo(() => builderItemsToPreview(items), [items])
 
-    // Count total sets for progress display
-    const totalSets = useMemo(() => {
+    // Total phases/sets for the progress display. The label flips between
+    // "fases" (compound — at least one item has rounds > 1) and "séries"
+    // (all linear) so the trainer sees the same wording the student will.
+    const { totalSets, hasCompound } = useMemo(() => {
         let count = 0
+        let compound = false
         for (const item of renderItems) {
-            if (item.type === 'exercise') count += item.exercise.setsData.length
+            if (item.type === 'exercise') {
+                count += item.exercise.setsData.length
+                if (item.exercise.rounds > 1) compound = true
+            }
             if (item.type === 'superset') {
-                for (const ex of item.exercises) count += ex.setsData.length
+                for (const ex of item.exercises) {
+                    count += ex.setsData.length
+                    if (ex.rounds > 1) compound = true
+                }
             }
         }
-        return count
+        return { totalSets: count, hasCompound: compound }
     }, [renderItems])
+    const progressUnitPlural = hasCompound ? 'fases' : 'séries'
 
     return (
         <PhoneFrame scale={scale}>
@@ -70,7 +80,7 @@ export function WorkoutExecutionPreview({ workoutName, items, scale }: WorkoutEx
                         <div style={{ height: '100%', width: '0%', backgroundColor: colors.progressFill, borderRadius: 2 }} />
                     </div>
                     <div style={{ color: colors.textTertiary, fontSize: typography.progressCount.fontSize, marginTop: 4, textAlign: 'right' }}>
-                        0/{totalSets} séries
+                        0/{totalSets} {progressUnitPlural}
                     </div>
                 </div>
             </div>
