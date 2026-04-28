@@ -7,6 +7,7 @@ import {
     buildWeightMetaLabel,
     formatWeightKg,
 } from '@kinevo/shared/lib/prescription/set-scheme';
+import { buildSetMetaLabel } from '@kinevo/shared/lib/prescription/set-meta-label';
 import { SetTypeBadge } from './SetTypeBadge';
 
 interface SetRowProps {
@@ -27,6 +28,10 @@ interface SetRowProps {
     weightTargetKg?: number | null;
     /** Per-set weight target as % of 1RM (rendered as "Meta: 75% 1RM"; combined with kg when both are set). */
     weightTargetPct1rm?: number | null;
+    /** Reps in reserve target (Fase 4.5f). 0 is valid (= "to failure"). */
+    rirTarget?: number | null;
+    /** Tempo string, e.g. "3-1-1-0" (Fase 4.5f). Empty string treated as not prescribed. */
+    tempoTarget?: string | null;
     /** When true, hides inputs / check button — preview / read-only rendering. */
     readOnly?: boolean;
 }
@@ -48,6 +53,8 @@ export function SetRow({
     repsTarget,
     weightTargetKg,
     weightTargetPct1rm,
+    rirTarget,
+    tempoTarget,
     readOnly = false,
 }: SetRowProps) {
 
@@ -75,13 +82,21 @@ export function SetRow({
         return '';
     })();
 
-    // Meta label shown above the reps input — uses target when present.
-    const metaLabel = (() => {
-        if (amrap) return 'Meta: até a falha';
-        if (cluster) return `Meta: ${target} · cluster`;
-        if (hasTarget) return `Meta: ${target}`;
-        return null;
+    // Meta label shown above the reps row — unified via shared helper
+    // (Fase 4.5f). Includes RIR and Tempo when prescribed. Synthesize an
+    // explicit "AMRAP" string when the trainer set `set_type='amrap'` but
+    // didn't put AMRAP-y text in `reps` — keeps the legacy detection rule
+    // (setType OR reps content) intact.
+    const metaInputReps = (() => {
+        if (setType === 'amrap' && !isAmrapReps(target)) return 'AMRAP';
+        return target;
     })();
+    const metaLabelRaw = buildSetMetaLabel({
+        reps: metaInputReps,
+        rir: rirTarget ?? null,
+        tempo: tempoTarget ?? null,
+    });
+    const metaLabel = metaLabelRaw.length > 0 ? metaLabelRaw : null;
 
     // Weight meta (kg / %1RM). Optional — null hides the label entirely.
     const weightMetaLabel = buildWeightMetaLabel(weightTargetKg, weightTargetPct1rm);
@@ -191,11 +206,15 @@ export function SetRow({
                     />
                 </View>
 
-                {/* Reps cell — stacks "Meta: …" label above the input. */}
+                {/* Reps cell — stacks "Meta: …" label above the input. The
+                 *  meta string can include RIR / Tempo (Fase 4.5f). Fase
+                 *  4.5g: removido `numberOfLines` — preferimos quebrar em
+                 *  N linhas a esconder informação prescrita. Linha quebra
+                 *  naturalmente em telas estreitas (iPhone SE pode ir pra
+                 *  3 linhas com "Cluster + RIR + Tempo"; aceitável). */}
                 <View style={{ flex: 1, marginRight: 6 }}>
                     {metaLabel ? (
                         <Text
-                            numberOfLines={1}
                             style={{
                                 fontSize: 10,
                                 fontWeight: '700',

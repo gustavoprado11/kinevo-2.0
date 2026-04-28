@@ -302,6 +302,8 @@ export function ExerciseCard({
                                             repsTarget={prescription?.reps_target}
                                             weightTargetKg={prescription?.weight_target_kg ?? null}
                                             weightTargetPct1rm={prescription?.weight_target_pct1rm ?? null}
+                                            rirTarget={prescription?.rir ?? null}
+                                            tempoTarget={prescription?.tempo ?? null}
                                             readOnly={readOnly}
                                         />
                                     );
@@ -328,6 +330,8 @@ export function ExerciseCard({
                                 repsTarget={prescription?.reps_target}
                                 weightTargetKg={prescription?.weight_target_kg ?? null}
                                 weightTargetPct1rm={prescription?.weight_target_pct1rm ?? null}
+                                rirTarget={prescription?.rir ?? null}
+                                tempoTarget={prescription?.tempo ?? null}
                                 readOnly={readOnly}
                             />
                         );
