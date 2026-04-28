@@ -601,12 +601,11 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
         setTimeout(() => { headerTransitionRef.current = false }, 200)
     }, [isHeaderHidden])
     const [previewScale, setPreviewScale] = useState(0.82)
-    const [isLibraryCollapsed, setIsLibraryCollapsed] = useState(() => {
-        if (typeof window !== 'undefined') {
-            return localStorage.getItem('kinevo-library-collapsed') === 'true'
-        }
-        return false
-    })
+    // Fase 4.5k: SSR-safe init (mesmo padrão do EditAssignedProgramClient).
+    // Default `false` no servidor; useEffect rehidrata do localStorage no
+    // client após mount. Resolve hydration mismatch reportado no painel da
+    // biblioteca.
+    const [isLibraryCollapsed, setIsLibraryCollapsed] = useState(false)
     const [isDraggingOver, setIsDraggingOver] = useState(false)
     const [formTriggers, setFormTriggers] = useState<TriggerSelection>({
         preWorkout: initialFormTriggers?.preWorkout?.formTemplateId ?? null,
@@ -660,6 +659,14 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
         update()
         window.addEventListener('resize', update)
         return () => window.removeEventListener('resize', update)
+    }, [])
+
+    // Fase 4.5k: rehidrata a preferência salva DEPOIS do mount. A transição
+    // animada do panel mascara o ajuste — sem flash perceptível.
+    useEffect(() => {
+        if (typeof window === 'undefined') return
+        const stored = localStorage.getItem('kinevo-library-collapsed')
+        if (stored === 'true') setIsLibraryCollapsed(true)
     }, [])
 
     const toggleLibrary = useCallback(() => {
