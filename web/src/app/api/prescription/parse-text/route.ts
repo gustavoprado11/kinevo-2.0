@@ -94,8 +94,70 @@ Para cada exercício mencionado no texto:
 - Se o texto especifica pegada (pronada, supinada, neutra), priorize o match com essa pegada
 - Extraia séries e repetições (ex: "3x10", "4x8-12", "3x15")
 - Extraia descanso se mencionado (ex: "descanso 90s", "1min rest", "90\"")
-- Qualquer informação extra (cadência, técnica, "até a falha", "drop set") vai no campo notes
+- Qualquer informação extra (cadência, "até a falha") que NÃO seja método avançado já reconhecido vai no campo notes
 - Identifique separações de treinos (ex: "Treino A", "Treino B", "Treino 1", "Dia 1", "---", ou linha em branco entre blocos distintos)
+
+MÉTODOS AVANÇADOS DE PRESCRIÇÃO:
+
+Quando o texto descrever séries com reps/cargas/descansos diferentes entre si,
+ou usar termos de métodos específicos, identifique o método e preencha os
+campos \`method_key\`, \`set_scheme\` e \`rounds\`. Cada item do \`set_scheme\` é
+uma "fase" descrevendo UMA rondada (não multiplique pelas rondas).
+
+Padrões a reconhecer:
+
+PIRÂMIDE DECRESCENTE (method_key: "pyramid_down", rounds: 1):
+- "pirâmide 12-10-8-6" → 4 fases decrescentes
+- "decrescente 10/8/6" → 3 fases
+- "10 a 6 reps" com indicação de pirâmide
+- Cada fase: set_type "normal", reps escalando pra baixo
+
+PIRÂMIDE CRESCENTE (method_key: "pyramid_up", rounds: 1):
+- "pirâmide crescente 6-8-10-12" → 4 fases crescentes
+- "6 a 12 reps em pirâmide"
+- Cada fase: set_type "normal", reps escalando pra cima
+
+DROP-SET (method_key: "drop_set", rounds >= 1):
+- "drop-set 3 rondas 10/8/6 com -20%" → rounds=3, scheme=[normal/drop/drop]
+- "10 reps + drop 8 + drop 6" → rounds=1, scheme=[normal/drop/drop]
+- "drop-set 2 rondas 12-8" → rounds=2, scheme=[normal 12, drop 8]
+- 1ª fase set_type "normal", demais "drop". Rest curto (0-15s) entre drops,
+  rest da ÚLTIMA fase = descanso entre rondas (60-120s).
+
+TOP + BACKOFF (method_key: "top_backoff", rounds: 1):
+- "1x5 top + 3x8 a 80%" → scheme=[top 5, backoff 8, backoff 8, backoff 8]
+- "top set 5RM, depois 3 backoff a 75%" → similar
+- 1ª fase set_type "top" reps mais baixas, demais "backoff". Use weight_target_pct1rm
+  no scheme quando o texto explicitar percentual (75-85% típico).
+
+5x5 (method_key: "5x5", rounds: 1):
+- "5x5" → 5 fases iguais de 5 reps, set_type "normal"
+- "5 séries de 5 reps" → idem
+
+CLUSTER / REST-PAUSE (method_key: "cluster", rounds >= 1):
+- "cluster 3 rondas 8+4+2" → rounds=3, scheme com 3 fases (8, 4, 2)
+- "rest-pause 8+4+2" → rounds=1, scheme=[fases com reps "8","4","2"]
+- "10 reps com mini-pausas" → cluster com fases set_type "cluster"
+- set_type "cluster" em todas as fases. Rest curto (15-20s) entre fases dentro
+  de uma rondada.
+
+REGRAS DE COERÊNCIA:
+- Quando \`set_scheme\` for preenchido: \`sets\` = total de fases × rounds,
+  \`reps\` agregado = resumo do scheme (ex: "12-10-8-6"), \`rest_seconds\` agregado
+  = rest da PRIMEIRA fase.
+- \`method_key\` deve ser EXATAMENTE um destes (ou null): "pyramid_down",
+  "pyramid_up", "drop_set", "top_backoff", "5x5", "cluster". Sem espaços, com
+  underscore. Texto livre como "drop set" → use "drop_set".
+- \`rounds\` >= 1, default 1 quando linear. Sempre número, nunca null se
+  \`set_scheme\` preenchido.
+- Se NÃO houver método ou variação entre séries, mantém comportamento simples:
+  \`set_scheme\`: null, \`method_key\`: null, \`rounds\`: null. NÃO preencha scheme
+  para "3x10" comum.
+
+Cada fase do \`set_scheme\` segue este shape:
+{ "set_number": 1, "set_type": "normal", "reps": "10", "rest_seconds": 60,
+  "weight_target_kg": null, "weight_target_pct1rm": null, "rir": null,
+  "tempo": null, "notes": null }
 
 Se um exercício do texto NÃO tem correspondência clara no catálogo, retorne matched: false e preserve o nome original.
 Se o texto mencionar apenas o exercício sem séries/reps, use os defaults: sets: 3, reps: "10".
@@ -103,7 +165,7 @@ Se o texto não separar em treinos distintos, coloque tudo em um treino chamado 
 
 Retorne APENAS o JSON válido, sem markdown, sem explicação, sem code blocks.
 
-Formato de resposta:
+Formato de resposta (exemplo simples e exemplo com método):
 {
   "workouts": [
     {
@@ -117,7 +179,28 @@ Formato de resposta:
           "sets": 3,
           "reps": "8-10",
           "rest_seconds": null,
-          "notes": null
+          "notes": null,
+          "method_key": null,
+          "rounds": null,
+          "set_scheme": null
+        },
+        {
+          "matched": true,
+          "exercise_id": "uuid-supino",
+          "catalog_name": "Supino Reto com Barra",
+          "original_text": "supino reto pirâmide 12-10-8-6 desc 90s",
+          "sets": 4,
+          "reps": "12-10-8-6",
+          "rest_seconds": 90,
+          "notes": null,
+          "method_key": "pyramid_down",
+          "rounds": 1,
+          "set_scheme": [
+            { "set_number": 1, "set_type": "normal", "reps": "12", "rest_seconds": 90, "weight_target_kg": null, "weight_target_pct1rm": null, "rir": null, "tempo": null, "notes": null },
+            { "set_number": 2, "set_type": "normal", "reps": "10", "rest_seconds": 90, "weight_target_kg": null, "weight_target_pct1rm": null, "rir": null, "tempo": null, "notes": null },
+            { "set_number": 3, "set_type": "normal", "reps": "8", "rest_seconds": 90, "weight_target_kg": null, "weight_target_pct1rm": null, "rir": null, "tempo": null, "notes": null },
+            { "set_number": 4, "set_type": "normal", "reps": "6", "rest_seconds": 90, "weight_target_kg": null, "weight_target_pct1rm": null, "rir": null, "tempo": null, "notes": null }
+          ]
         }
       ]
     }

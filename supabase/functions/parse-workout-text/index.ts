@@ -57,6 +57,71 @@ Para cada exercício mencionado no texto:
 - Qualquer informação extra (cadência, técnica, "até a falha", "drop set") vai no campo notes
 - Identifique separações de treinos (ex: "Treino A", "Treino B", "Treino 1", "Dia 1", "---", ou linha em branco entre blocos distintos)
 
+MÉTODOS AVANÇADOS DE PRESCRIÇÃO:
+
+Quando o texto descrever séries com reps/cargas/descansos diferentes entre si,
+ou usar termos de métodos específicos, identifique o método e preencha os
+campos \`method_key\`, \`set_scheme\` e \`rounds\`. Cada item do \`set_scheme\` é
+uma "fase" descrevendo UMA rondada (não multiplique pelas rondas).
+
+Padrões a reconhecer:
+
+PIRÂMIDE DECRESCENTE (method_key: "pyramid_down", rounds: 1):
+- "pirâmide 12-10-8-6" → 4 fases decrescentes
+- "decrescente 10/8/6" → 3 fases
+- "10 a 6 reps" com indicação de pirâmide
+- Cada fase: set_type "normal", reps escalando pra baixo
+
+PIRÂMIDE CRESCENTE (method_key: "pyramid_up", rounds: 1):
+- "pirâmide crescente 6-8-10-12" → 4 fases crescentes
+- "6 a 12 reps em pirâmide"
+- Cada fase: set_type "normal", reps escalando pra cima
+
+DROP-SET (method_key: "drop_set", rounds >= 1):
+- "drop-set 3 rondas 10/8/6 com -20%" → rounds=3, scheme=[normal/drop/drop]
+- "10 reps + drop 8 + drop 6" → rounds=1, scheme=[normal/drop/drop]
+- "drop-set 2 rondas 12-8" → rounds=2, scheme=[normal 12, drop 8]
+- 1ª fase set_type "normal", demais "drop". Rest curto (0-15s) entre drops,
+  rest da ÚLTIMA fase = descanso entre rondas (60-120s).
+
+TOP + BACKOFF (method_key: "top_backoff", rounds: 1):
+- "1x5 top + 3x8 a 80%" → scheme=[top 5, backoff 8, backoff 8, backoff 8]
+- "top set 5RM, depois 3 backoff a 75%" → similar
+- 1ª fase set_type "top" reps mais baixas, demais "backoff". Use weight_target_pct1rm
+  no scheme quando o texto explicitar percentual (75-85% típico).
+
+5x5 (method_key: "5x5", rounds: 1):
+- "5x5" → 5 fases iguais de 5 reps, set_type "normal"
+- "5 séries de 5 reps" → idem
+
+CLUSTER / REST-PAUSE (method_key: "cluster", rounds >= 1):
+- "cluster 3 rondas 8+4+2" → rounds=3, scheme com 3 fases (8, 4, 2)
+- "rest-pause 8+4+2" → rounds=1, scheme=[fases com reps "8","4","2"]
+- "10 reps com mini-pausas" → cluster com fases set_type "cluster"
+- set_type "cluster" em todas as fases. Rest curto (15-20s) entre fases dentro
+  de uma rondada.
+
+REGRAS DE COERÊNCIA:
+- Quando \`set_scheme\` for preenchido: \`sets\` = total de fases × rounds,
+  \`reps\` agregado = resumo do scheme (ex: "12-10-8-6"), \`rest_seconds\` agregado
+  = rest da PRIMEIRA fase.
+- \`method_key\` deve ser EXATAMENTE um destes (ou null): "pyramid_down",
+  "pyramid_up", "drop_set", "top_backoff", "5x5", "cluster". Sem espaços, com
+  underscore. Texto livre como "drop set" → use "drop_set".
+- \`rounds\` >= 1, default 1 quando linear. Sempre número, nunca null se
+  \`set_scheme\` preenchido.
+- Se NÃO houver método ou variação entre séries, mantém comportamento simples:
+  \`set_scheme\`: null, \`method_key\`: null, \`rounds\`: null. NÃO preencha scheme
+  para "3x10" comum.
+- Métodos avançados NÃO são compatíveis com supersets. Se um exercício faz
+  parte de um superset, mantenha \`set_scheme\`/\`method_key\`/\`rounds\` null
+  mesmo que o texto descreva variação entre séries.
+
+Cada fase do \`set_scheme\` segue este shape:
+{ "set_number": 1, "set_type": "normal", "reps": "10", "rest_seconds": 60,
+  "weight_target_kg": null, "weight_target_pct1rm": null, "rir": null,
+  "tempo": null, "notes": null }
+
 SUPERSETS / BI-SETS / TRI-SETS:
 - Identifique quando exercícios são marcados como superset, bi-set ou tri-set
 - Indicadores comuns de superset:
@@ -91,7 +156,29 @@ Formato de resposta:
           "reps": "8-10",
           "rest_seconds": null,
           "notes": null,
-          "superset_group": null
+          "superset_group": null,
+          "method_key": null,
+          "rounds": null,
+          "set_scheme": null
+        },
+        {
+          "matched": true,
+          "exercise_id": "uuid-supino",
+          "catalog_name": "Supino Reto com Barra",
+          "original_text": "supino reto pirâmide 12-10-8-6 desc 90s",
+          "sets": 4,
+          "reps": "12-10-8-6",
+          "rest_seconds": 90,
+          "notes": null,
+          "superset_group": null,
+          "method_key": "pyramid_down",
+          "rounds": 1,
+          "set_scheme": [
+            { "set_number": 1, "set_type": "normal", "reps": "12", "rest_seconds": 90, "weight_target_kg": null, "weight_target_pct1rm": null, "rir": null, "tempo": null, "notes": null },
+            { "set_number": 2, "set_type": "normal", "reps": "10", "rest_seconds": 90, "weight_target_kg": null, "weight_target_pct1rm": null, "rir": null, "tempo": null, "notes": null },
+            { "set_number": 3, "set_type": "normal", "reps": "8", "rest_seconds": 90, "weight_target_kg": null, "weight_target_pct1rm": null, "rir": null, "tempo": null, "notes": null },
+            { "set_number": 4, "set_type": "normal", "reps": "6", "rest_seconds": 90, "weight_target_kg": null, "weight_target_pct1rm": null, "rir": null, "tempo": null, "notes": null }
+          ]
         },
         {
           "matched": true,
@@ -102,7 +189,10 @@ Formato de resposta:
           "reps": "10",
           "rest_seconds": 60,
           "notes": null,
-          "superset_group": "ss1"
+          "superset_group": "ss1",
+          "method_key": null,
+          "rounds": null,
+          "set_scheme": null
         },
         {
           "matched": true,
@@ -113,7 +203,10 @@ Formato de resposta:
           "reps": "10",
           "rest_seconds": 60,
           "notes": null,
-          "superset_group": "ss1"
+          "superset_group": "ss1",
+          "method_key": null,
+          "rounds": null,
+          "set_scheme": null
         }
       ]
     }
@@ -360,6 +453,18 @@ function extractJson(text: string): unknown | null {
 // Validation (fix hallucinated IDs)
 // ─────────────────────────────────────────────────────────────────────────────
 
+interface WorkoutSetPhase {
+    set_number: number;
+    set_type: string;
+    reps: string;
+    rest_seconds: number;
+    weight_target_kg?: number | null;
+    weight_target_pct1rm?: number | null;
+    rir?: number | null;
+    tempo?: string | null;
+    notes?: string | null;
+}
+
 interface ParsedExercise {
     matched: boolean;
     exercise_id: string | null;
@@ -370,6 +475,9 @@ interface ParsedExercise {
     rest_seconds: number | null;
     notes: string | null;
     superset_group: string | null;
+    method_key: string | null;
+    rounds: number | null;
+    set_scheme: WorkoutSetPhase[] | null;
 }
 
 interface ParsedWorkout {
@@ -380,6 +488,15 @@ interface ParsedWorkout {
 interface ParseTextResponse {
     workouts: ParsedWorkout[];
 }
+
+const VALID_METHODS = new Set([
+    "standard", "custom",
+    "pyramid_down", "pyramid_up", "drop_set", "top_backoff", "5x5", "cluster",
+]);
+
+const VALID_SET_TYPES = new Set([
+    "warmup", "normal", "top", "backoff", "drop", "failure", "cluster", "amrap",
+]);
 
 function validateAndFixResponse(
     parsed: unknown,
@@ -392,11 +509,85 @@ function validateAndFixResponse(
 
     for (const workout of response.workouts) {
         if (!Array.isArray(workout.exercises)) continue;
-        for (const ex of workout.exercises) {
+        // deno-lint-ignore no-explicit-any
+        for (const ex of workout.exercises as any[]) {
             if (ex.matched && ex.exercise_id && !exerciseIds.has(ex.exercise_id)) {
                 ex.matched = false;
                 ex.exercise_id = null;
                 ex.catalog_name = null;
+            }
+
+            // method_key
+            if (ex.method_key != null && !VALID_METHODS.has(ex.method_key)) {
+                ex.method_key = null;
+            }
+            if (ex.method_key === undefined) ex.method_key = null;
+
+            // rounds
+            if (ex.rounds != null) {
+                if (typeof ex.rounds !== "number" || !Number.isFinite(ex.rounds) || ex.rounds < 1 || ex.rounds > 20) {
+                    ex.rounds = 1;
+                } else {
+                    ex.rounds = Math.floor(ex.rounds);
+                }
+            }
+            if (ex.rounds === undefined) ex.rounds = null;
+
+            // set_scheme
+            if (ex.set_scheme != null) {
+                if (!Array.isArray(ex.set_scheme) || ex.set_scheme.length === 0) {
+                    ex.set_scheme = null;
+                    ex.method_key = null;
+                    ex.rounds = null;
+                } else {
+                    let valid = true;
+                    for (let i = 0; i < ex.set_scheme.length; i++) {
+                        const phase = ex.set_scheme[i];
+                        if (typeof phase !== "object" || phase === null) {
+                            valid = false;
+                            break;
+                        }
+                        phase.set_number = i + 1;
+                        if (typeof phase.set_type !== "string" || !VALID_SET_TYPES.has(phase.set_type)) {
+                            phase.set_type = "normal";
+                        }
+                        if (typeof phase.reps !== "string" || !phase.reps) {
+                            phase.reps = "10";
+                        }
+                        if (typeof phase.rest_seconds !== "number" || !Number.isFinite(phase.rest_seconds) || phase.rest_seconds < 0) {
+                            phase.rest_seconds = 0;
+                        }
+                        if (phase.weight_target_kg === undefined) phase.weight_target_kg = null;
+                        if (phase.weight_target_pct1rm === undefined) phase.weight_target_pct1rm = null;
+                        if (phase.rir === undefined) phase.rir = null;
+                        if (phase.tempo === undefined) phase.tempo = null;
+                        if (phase.notes === undefined) phase.notes = null;
+                    }
+                    if (!valid) {
+                        ex.set_scheme = null;
+                        ex.method_key = null;
+                        ex.rounds = null;
+                    }
+                }
+            }
+            if (ex.set_scheme === undefined) ex.set_scheme = null;
+
+            // Métodos avançados são incompatíveis com superset (V1).
+            if (ex.superset_group && ex.set_scheme) {
+                ex.set_scheme = null;
+                ex.method_key = null;
+                ex.rounds = null;
+            }
+
+            // Coerência: se set_scheme está preenchido, ajusta agregados.
+            if (ex.set_scheme && ex.set_scheme.length > 0) {
+                const rounds = (ex.rounds ?? 1) as number;
+                ex.rounds = rounds;
+                ex.sets = ex.set_scheme.length * rounds;
+                // deno-lint-ignore no-explicit-any
+                ex.reps = ex.set_scheme.map((p: any) => String(p.reps ?? "10")).join("-");
+                const firstRest = ex.set_scheme[0].rest_seconds;
+                if (typeof firstRest === "number") ex.rest_seconds = firstRest;
             }
         }
     }
