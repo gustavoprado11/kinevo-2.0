@@ -25,6 +25,16 @@ import { getPastProgramsForStudent, getFullProgramForCompare } from '@/actions/p
 import type { CompareProgramSummary, CompareProgramData } from '@/actions/programs/get-program-for-compare'
 import { compareWorkoutToWorkout } from '@/lib/workouts/transformPastWorkout'
 import type { BuilderViewMode } from './program-builder-client'
+// Fase 4.5i — per-set helpers para hidratar/persistir set_scheme + rounds
+// no fluxo de edição de programa atribuído (paridade com ProgramBuilderClient).
+import {
+    collapseExpandedScheme,
+    expandSchemeByRounds,
+    summarizeSetScheme as _summarizeSetScheme,
+    summarizeWithRounds as _summarizeWithRounds,
+} from '@kinevo/shared/lib/prescription/set-scheme'
+import { isCompoundMethod } from '@kinevo/shared/lib/prescription/set-scheme-presets'
+import type { WorkoutSet } from '@kinevo/shared/types/prescription'
 
 export interface WorkoutItem {
     id: string
@@ -80,6 +90,13 @@ interface AssignedProgramData {
             reps: string | null
             rest_seconds: number | null
             notes: string | null
+            // Optional: only present after the page.tsx query was extended in
+            // Fase 4.5i. Older queries (or future trimmed projections) will
+            // omit these and the builder falls back to legacy linear mode.
+            item_config?: Record<string, unknown> | null
+            method_key?: import('@kinevo/shared/types/prescription').MethodKey | null
+            rounds?: number | null
+            assigned_workout_item_sets?: Array<import('@kinevo/shared/types/prescription').WorkoutSet> | null
         }>
     }>
 }
@@ -110,6 +127,110 @@ interface EditAssignedProgramClientProps {
 
 // Generate temp ID for new items
 const tempId = () => `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+
+// ── Per-set helpers (Fase 4.5i) — duplicados do ProgramBuilderClient pra
+//    manter o fluxo de edição de assigned program independente. Mesma
+//    semântica; se divergir, ProgramBuilderClient.tsx é a fonte canônica. ──
+
+/** Hidrata as linhas materializadas do DB na forma per-round que o editor
+ *  exibe. Programas atribuídos pré-Fase-4.5i (sem rounds nem filhas) caem
+ *  no caminho `{ scheme: null, rounds: 1 }` e abrem em modo simples. */
+function hydrateSetScheme(
+    rows: WorkoutSet[] | null | undefined,
+    roundsHint: number | null | undefined,
+): { scheme: WorkoutSet[] | null; rounds: number } {
+    if (!rows || rows.length === 0) return { scheme: null, rounds: 1 }
+    const sorted = [...rows].sort((a, b) => a.set_number - b.set_number)
+    const collapsed = collapseExpandedScheme(sorted, roundsHint ?? 1)
+    return {
+        scheme: collapsed.scheme.length > 0 ? collapsed.scheme : null,
+        rounds: collapsed.rounds,
+    }
+}
+
+/** Effective rounds para um item. Compound methods honram `item.rounds`;
+ *  linear / sem scheme são forçados a 1. Defesa em profundidade idêntica
+ *  ao ProgramBuilderClient.effectiveRoundsForItem. */
+function effectiveRoundsForItem(item: WorkoutItem): number {
+    if (!item.set_scheme || item.set_scheme.length === 0) return 1
+    if (!isCompoundMethod(item.method_key ?? null)) return 1
+    const r = Number.isFinite(item.rounds as number) ? Math.floor(item.rounds as number) : 1
+    return Math.max(1, Math.min(20, r))
+}
+
+/** Coerce os agregados do parent assigned_workout_item pra refletirem o
+ *  resumo canônico do scheme + rounds. Single source of truth: nunca
+ *  persistir sets/reps/rest_seconds divergentes do summarize. */
+function aggregatesFromItem(item: WorkoutItem): {
+    sets: number | null
+    reps: string | null
+    rest_seconds: number | null
+} {
+    if (item.set_scheme && item.set_scheme.length > 0) {
+        const rounds = effectiveRoundsForItem(item)
+        const summary = rounds > 1
+            ? _summarizeWithRounds(item.set_scheme, rounds)
+            : _summarizeSetScheme(item.set_scheme)
+        return {
+            sets: summary.sets,
+            reps: summary.reps,
+            rest_seconds: summary.rest_seconds,
+        }
+    }
+    return { sets: item.sets, reps: item.reps, rest_seconds: item.rest_seconds }
+}
+
+/** method_key efetivo respeitando "supersets bloqueados em V1": children
+ *  com parent_item_id !== null nunca persistem método. */
+function effectiveMethodKey(item: WorkoutItem): string | null {
+    if (item.parent_item_id) return null
+    return item.method_key ?? null
+}
+
+/** Persiste as linhas filhas em `assigned_workout_item_sets` para um item
+ *  recém-salvo. Materializa N rodadas × M fases via expandSchemeByRounds
+ *  e marca cada linha com seu round_number. Deleta as filhas órfãs antes
+ *  pra cobrir o caso de UPDATE (item pré-existente que ganhou/perdeu/
+ *  reorganizou fases). */
+async function persistAssignedSetSchemeRows(
+    supabase: ReturnType<typeof createClient>,
+    assignedItemId: string,
+    scheme: WorkoutSet[] | null | undefined,
+    rounds: number,
+    isPreExistingItem: boolean,
+): Promise<void> {
+    // UPDATE path: limpa filhas antigas antes de re-materializar.
+    if (isPreExistingItem) {
+        const { error: delError } = await supabase
+            .from('assigned_workout_item_sets')
+            .delete()
+            .eq('assigned_workout_item_id', assignedItemId)
+        if (delError) throw delError
+    }
+
+    if (!scheme || scheme.length === 0) return
+
+    const safeRounds = Math.max(1, Math.min(20, Math.floor(rounds || 1)))
+    const expanded = safeRounds > 1
+        ? expandSchemeByRounds(scheme, safeRounds)
+        : scheme
+    const isCompound = safeRounds > 1
+    const rows = expanded.map((s, i) => ({
+        assigned_workout_item_id: assignedItemId,
+        set_number: i + 1,
+        set_type: s.set_type,
+        reps: s.reps,
+        rest_seconds: s.rest_seconds,
+        weight_target_kg: s.weight_target_kg,
+        weight_target_pct1rm: s.weight_target_pct1rm,
+        rir: s.rir,
+        tempo: s.tempo,
+        notes: s.notes,
+        round_number: isCompound ? (s.round_number ?? null) : null,
+    }))
+    const { error } = await supabase.from('assigned_workout_item_sets').insert(rows)
+    if (error) throw error
+}
 
 export function EditAssignedProgramClient({ trainer, program, exercises, studentId, sourceTemplateId, formTriggers: initialFormTriggers, formTriggerTemplates = [] }: EditAssignedProgramClientProps) {
     const router = useRouter()
@@ -278,36 +399,58 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                 const parentItems = items
                     .filter(i => !i.parent_item_id)
                     .sort((a, b) => a.order_index - b.order_index)
-                    .map(item => ({
-                        id: item.id,
-                        item_type: item.item_type as WorkoutItem['item_type'],
-                        order_index: item.order_index,
-                        parent_item_id: null,
-                        exercise_id: item.exercise_id,
-                        substitute_exercise_ids: item.substitute_exercise_ids || [],
-                        exercise: localExercises.find(e => e.id === item.exercise_id), // Use localExercises
-                        sets: item.sets,
-                        reps: item.reps,
-                        rest_seconds: item.rest_seconds,
-                        notes: item.notes,
-                        item_config: (item as any).item_config || {},
-                        children: items
-                            .filter(child => child.parent_item_id === item.id)
-                            .sort((a, b) => a.order_index - b.order_index)
-                            .map(child => ({
-                                id: child.id,
-                                item_type: child.item_type as WorkoutItem['item_type'],
-                                order_index: child.order_index,
-                                parent_item_id: item.id,
-                                exercise_id: child.exercise_id,
-                                substitute_exercise_ids: child.substitute_exercise_ids || [],
-                                exercise: localExercises.find(e => e.id === child.exercise_id), // Use localExercises
-                                sets: child.sets,
-                                reps: child.reps,
-                                rest_seconds: child.rest_seconds,
-                                notes: child.notes,
-                            }))
-                    }))
+                    .map(item => {
+                        // Fase 4.5i: hidrata set_scheme/rounds a partir das
+                        // linhas materializadas em assigned_workout_item_sets.
+                        // Programas pré-Fase-4.5i sem essas linhas caem em
+                        // { scheme: null, rounds: 1 } e abrem em modo simples.
+                        const parentHydrated = hydrateSetScheme(
+                            (item as any).assigned_workout_item_sets,
+                            (item as any).rounds ?? 1,
+                        )
+                        return {
+                            id: item.id,
+                            item_type: item.item_type as WorkoutItem['item_type'],
+                            order_index: item.order_index,
+                            parent_item_id: null,
+                            exercise_id: item.exercise_id,
+                            substitute_exercise_ids: item.substitute_exercise_ids || [],
+                            exercise: localExercises.find(e => e.id === item.exercise_id),
+                            sets: item.sets,
+                            reps: item.reps,
+                            rest_seconds: item.rest_seconds,
+                            notes: item.notes,
+                            item_config: (item as any).item_config || {},
+                            set_scheme: parentHydrated.scheme,
+                            method_key: ((item as any).method_key as WorkoutItem['method_key']) ?? null,
+                            rounds: parentHydrated.rounds,
+                            children: items
+                                .filter(child => child.parent_item_id === item.id)
+                                .sort((a, b) => a.order_index - b.order_index)
+                                .map(child => {
+                                    const childHydrated = hydrateSetScheme(
+                                        (child as any).assigned_workout_item_sets,
+                                        (child as any).rounds ?? 1,
+                                    )
+                                    return {
+                                        id: child.id,
+                                        item_type: child.item_type as WorkoutItem['item_type'],
+                                        order_index: child.order_index,
+                                        parent_item_id: item.id,
+                                        exercise_id: child.exercise_id,
+                                        substitute_exercise_ids: child.substitute_exercise_ids || [],
+                                        exercise: localExercises.find(e => e.id === child.exercise_id),
+                                        sets: child.sets,
+                                        reps: child.reps,
+                                        rest_seconds: child.rest_seconds,
+                                        notes: child.notes,
+                                        set_scheme: childHydrated.scheme,
+                                        method_key: ((child as any).method_key as WorkoutItem['method_key']) ?? null,
+                                        rounds: childHydrated.rounds,
+                                    }
+                                })
+                        }
+                    })
 
                 const dayMap: Record<number, string> = { 0: 'sun', 1: 'mon', 2: 'tue', 3: 'wed', 4: 'thu', 5: 'fri', 6: 'sat' }
                 const frequency = (wt.scheduled_days || []).map(d => dayMap[d])
@@ -336,12 +479,12 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
     const lastDirectionRef = useRef<'up' | 'down' | null>(null)
     const headerTransitionRef = useRef(false)
     const [previewScale, setPreviewScale] = useState(0.82)
-    const [isLibraryCollapsed, setIsLibraryCollapsed] = useState(() => {
-        if (typeof window !== 'undefined') {
-            return localStorage.getItem('kinevo-library-collapsed') === 'true'
-        }
-        return false
-    })
+    // Fase 4.5k: SSR-safe init. Sempre começa `false` no servidor; useEffect
+    // logo abaixo lê o localStorage no client após mount. Evita o hydration
+    // mismatch que acontecia quando o lazy-init usava localStorage no render
+    // inicial — o servidor (Node, sem localStorage) entregava `false`, mas
+    // o client lia o valor real do storage e divergia.
+    const [isLibraryCollapsed, setIsLibraryCollapsed] = useState(false)
     const [isDraggingOver, setIsDraggingOver] = useState(false)
     const canvasScrollRef = useRef<HTMLDivElement>(null)
 
@@ -364,6 +507,15 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
         update()
         window.addEventListener('resize', update)
         return () => window.removeEventListener('resize', update)
+    }, [])
+
+    // Fase 4.5k: rehidrata a preferência salva DEPOIS do mount. A transição
+    // animada do panel (transition-all duration-250) mascara o ajuste, então
+    // não há "flash" perceptível pra quem tinha a biblioteca recolhida.
+    useEffect(() => {
+        if (typeof window === 'undefined') return
+        const stored = localStorage.getItem('kinevo-library-collapsed')
+        if (stored === 'true') setIsLibraryCollapsed(true)
     }, [])
 
     const toggleLibrary = useCallback(() => {
@@ -1011,6 +1163,12 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                 // Upsert items (Root first, then children)
                 for (const item of workout.items) {
                     let itemId = item.id
+                    const isPreExistingItem = !itemId.startsWith('temp_')
+
+                    // Fase 4.5i: agregados sempre derivados de
+                    // summarizeWithRounds quando há scheme + rounds.
+                    const aggs = aggregatesFromItem(item)
+                    const itemRounds = effectiveRoundsForItem(item)
 
                     const payload: any = {
                         assigned_workout_id: workoutId,
@@ -1018,12 +1176,14 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                         order_index: item.order_index,
                         exercise_id: item.exercise_id,
                         substitute_exercise_ids: item.substitute_exercise_ids || [],
-                        sets: item.sets,
-                        reps: item.reps,
-                        rest_seconds: item.rest_seconds,
+                        sets: aggs.sets,
+                        reps: aggs.reps,
+                        rest_seconds: aggs.rest_seconds,
                         notes: item.notes,
                         item_config: item.item_config || {},
                         parent_item_id: null,
+                        method_key: effectiveMethodKey(item),
+                        rounds: itemRounds,
                         // Snapshot data
                         exercise_name: item.exercise?.name,
                         exercise_muscle_group: (() => {
@@ -1049,7 +1209,25 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                             .eq('id', itemId)
                     }
 
-                    // Children (Supersets)
+                    // Fase 4.5i: persiste/repõe linhas filhas em
+                    // assigned_workout_item_sets. Para itens pré-existentes
+                    // (UPDATE path) deleta órfãs antes — cobre casos onde o
+                    // trainer mudou o método, número de fases ou reduziu
+                    // rounds. Itens recém-criados via temp_id pulam o
+                    // delete (não há linhas antigas).
+                    await persistAssignedSetSchemeRows(
+                        supabase,
+                        itemId,
+                        item.set_scheme,
+                        itemRounds,
+                        isPreExistingItem,
+                    )
+
+                    // Children (Supersets) — V1 não persiste set_scheme em
+                    // filhos de superset. Defesa em profundidade alinhada
+                    // com effectiveMethodKey (retorna null pra children) e
+                    // com a documentação da Fase 1: "supersets bloqueados
+                    // em modo avançado". method_key/rounds vão como null/1.
                     if (item.children) {
                         for (const child of item.children) {
                             let childId = child.id
@@ -1065,6 +1243,8 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                                 notes: child.notes,
                                 item_config: child.item_config || {},
                                 parent_item_id: itemId,
+                                method_key: null,
+                                rounds: 1,
                                 // Snapshot
                                 exercise_name: child.exercise?.name,
                                 exercise_muscle_group: (() => {
@@ -1104,8 +1284,13 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
             // Fire-and-forget: capture edits for AI learning (only processes AI-generated programs)
             capturePostAssignmentEdits(program.id).catch(() => {})
 
+            // Fase 4.5l: removido `router.refresh()` que disparava em sequência
+            // com `router.push()`. No Next 16 isso causava race condition entre
+            // dois RSC fetches paralelos (payload da rota destino + payload da
+            // rota atual), produzindo "An unexpected response was received from
+            // the server" no client e travando a navegação no /edit. O
+            // `router.push()` sozinho já busca dados frescos da rota destino.
             router.push(`/students/${studentId}`)
-            router.refresh()
 
         } catch (err: any) {
             console.error('Error saving program:', err)

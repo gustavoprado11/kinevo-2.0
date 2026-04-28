@@ -17,8 +17,15 @@ export default async function EditProgramPage({ params }: PageProps) {
     const { trainer } = await getTrainerWithSubscription()
     const supabase = await createClient()
 
-    // Get the assigned program with its workouts, items, and source template
-    const { data: program } = await supabase
+    // Get the assigned program with its workouts, items, and source template.
+    // Fase 4.5i: include method_key + rounds and JOIN with assigned_workout_item_sets
+    // so the builder can hydrate set_scheme via collapseExpandedScheme on load.
+    // Fase 4.5j: surface the Supabase error instead of swallowing it. Silent
+    // failures on this query were masking the real cause of "An unexpected
+    // response was received from the server" after save (RSC re-fetch via
+    // router.refresh produced an inconsistent payload because notFound() was
+    // firing on a hidden join failure).
+    const { data: program, error: programError } = await supabase
         .from('assigned_programs')
         .select(`
             id,
@@ -44,13 +51,44 @@ export default async function EditProgramPage({ params }: PageProps) {
                     reps,
                     rest_seconds,
                     notes,
-                    item_config
+                    item_config,
+                    method_key,
+                    rounds,
+                    assigned_workout_item_sets (
+                        set_number,
+                        set_type,
+                        reps,
+                        rest_seconds,
+                        weight_target_kg,
+                        weight_target_pct1rm,
+                        rir,
+                        tempo,
+                        notes,
+                        round_number
+                    )
                 )
             )
         `)
         .eq('id', programId)
         .eq('student_id', studentId)
         .single()
+
+    // Fase 4.5j: log the Supabase error explicitly. If we don't, an RLS
+    // rejection or schema mismatch on the LEFT JOIN comes back as a generic
+    // "program is null → notFound()" and we have no idea what actually
+    // broke. The log lands in the **Next.js dev server terminal** (the
+    // window where you ran `npm run dev`), NOT in the browser DevTools
+    // console — this is a Server Component running on the Node server.
+    if (programError) {
+        console.error('[EditProgramPage] Failed to load assigned program:', {
+            programId,
+            studentId,
+            code: programError.code,
+            message: programError.message,
+            details: programError.details,
+            hint: programError.hint,
+        })
+    }
 
     if (!program) {
         notFound()
