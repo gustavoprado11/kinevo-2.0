@@ -106,6 +106,8 @@ export interface ParsedExerciseForBuilder {
     set_scheme?: WorkoutSet[] | null;
     /** Optional method marker (Fase 5 will populate). */
     method_key?: MethodKey | null;
+    /** Optional round count for compound methods (Fase 5). Defaults to 1. */
+    rounds?: number | null;
 }
 
 /** Parsed workout from text prescription AI */
@@ -293,7 +295,7 @@ export const useProgramBuilderStore = create<ProgramBuilderState>()(
                                 substitute_exercise_ids: [],
                                 set_scheme: ex.set_scheme ?? null,
                                 method_key: ex.method_key ?? null,
-                                rounds: 1,
+                                rounds: ex.rounds ?? 1,
                             });
                         } else if (!processedGroups.has(ex.superset_group)) {
                             // First exercise of a superset group — create parent + all children

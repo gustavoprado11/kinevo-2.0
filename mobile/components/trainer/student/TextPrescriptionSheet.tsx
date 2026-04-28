@@ -30,6 +30,8 @@ import { colors } from "@/theme";
 // Types (mirrored from web)
 // ─────────────────────────────────────────────────────────────────────────────
 
+import type { WorkoutSet, MethodKey } from "@kinevo/shared/types/prescription";
+
 interface ParsedExercise {
     matched: boolean;
     exercise_id: string | null;
@@ -40,6 +42,12 @@ interface ParsedExercise {
     rest_seconds: number | null;
     notes: string | null;
     superset_group: string | null;
+    /** Fase 5 — método avançado detectado pelo parser. */
+    method_key: MethodKey | null;
+    /** Fase 5 — esquema per-set descrevendo UMA rondada. */
+    set_scheme: WorkoutSet[] | null;
+    /** Fase 5 — número de rondadas (>=1). */
+    rounds: number | null;
 }
 
 interface ParsedWorkout {

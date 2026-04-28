@@ -208,7 +208,25 @@ export default function ProgramBuilderScreen() {
     }, [aiEnabled, params.studentId, draft.originatedFromAi, reset, initNewProgram]);
 
     const handleParsedText = useCallback(
-        (result: { workouts: Array<{ name: string; exercises: Array<{ matched: boolean; exercise_id: string | null; catalog_name: string | null; original_text: string; sets: number; reps: string; rest_seconds: number | null; notes: string | null; superset_group: string | null }> }> }) => {
+        (result: {
+            workouts: Array<{
+                name: string;
+                exercises: Array<{
+                    matched: boolean;
+                    exercise_id: string | null;
+                    catalog_name: string | null;
+                    original_text: string;
+                    sets: number;
+                    reps: string;
+                    rest_seconds: number | null;
+                    notes: string | null;
+                    superset_group: string | null;
+                    method_key?: import("@kinevo/shared/types/prescription").MethodKey | null;
+                    set_scheme?: import("@kinevo/shared/types/prescription").WorkoutSet[] | null;
+                    rounds?: number | null;
+                }>;
+            }>;
+        }) => {
             if (!params.studentId) return;
             const workoutsForBuilder = result.workouts
                 .map((w) => ({
@@ -223,6 +241,9 @@ export default function ProgramBuilderScreen() {
                             rest_seconds: ex.rest_seconds,
                             notes: ex.notes,
                             superset_group: ex.superset_group ?? null,
+                            method_key: ex.method_key ?? null,
+                            set_scheme: ex.set_scheme ?? null,
+                            rounds: ex.rounds ?? null,
                         })),
                 }))
                 .filter((w) => w.exercises.length > 0);
