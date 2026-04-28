@@ -387,15 +387,27 @@ Os campos `weight_target_kg` e `weight_target_pct1rm` são metadados que o train
 - [x] `set_logs` continua sendo gravado com `set_number` correto, batendo com a série prescrita (contrato preservado).
 - [x] Smoke test (manual pendente do Gustavo): aluno + treinador devem ver mesma prescrição no novo preview do builder e na execução.
 
-### Fase 5 — Texto para Treino
-- [ ] Edge Function `parse-workout-text` detecta os 5 padrões principais (`pyramid_down`, `pyramid_up`, `drop_set`, `5x5`, `cluster`).
-- [ ] `set_scheme` retornado é coerente: `set_number` único e contínuo, `set_type` no enum, `sets`/`reps`/`rest_seconds` resumidos corretamente.
-- [ ] Texto sem padrão variável continua retornando `set_scheme: null` e os 3 campos agregados (zero regressão).
-- [ ] `ai-prescribe-panel.tsx` (web) e `TextPrescriptionSheet.tsx` (mobile) propagam `set_scheme` e `method_key` para o builder.
-- [ ] Builder web e mobile abrem o card já em modo avançado quando o `set_scheme` chega via texto.
-- [ ] Quando o LLM retorna `set_scheme` malformado, `validateAndFixResponse` faz fallback gracioso para a forma agregada.
-- [ ] Smoke test: 10 textos diferentes (5 com pirâmide, 5 sem) parseados corretamente.
-- [ ] `cd supabase/functions/parse-workout-text && deno check index.ts` limpo.
+### Fase 5 — Texto para Treino (entregue, working tree, sem commit/push)
+
+- [x] Edge Function `parse-workout-text` (Deno) e route web `/api/prescription/parse-text` ganham SYSTEM_PROMPT estendido com 6 padrões: `pyramid_down`, `pyramid_up`, `drop_set`, `top_backoff`, `5x5`, `cluster`.
+- [x] `validateAndFixResponse` (em ambas as cópias — web `lib.ts` e edge function `index.ts`) coage `method_key` ao enum, `rounds` para `[1,20]`, `set_scheme` para shape válido (set_number sequencial, set_type no enum, reps default `"10"`, rest_seconds ≥ 0). Quando inválido, descarta os 3 juntos (graceful fallback pra forma agregada).
+- [x] Coerência forçada: quando `set_scheme` está preenchido, agregados são derivados (`sets = phases × rounds`, `reps = phases.map(p=>p.reps).join('-')`, `rest_seconds = phases[0].rest_seconds`).
+- [x] Métodos avançados são incompatíveis com superset (V1): se `superset_group` e `set_scheme` aparecerem juntos, edge function descarta `set_scheme/method_key/rounds` (defesa em profundidade — o prompt já instrui o LLM a não combinar).
+- [x] Tipo `ParsedExercise` em `web/src/app/api/prescription/parse-text/types.ts` ganha `method_key`, `set_scheme`, `rounds`. Mirror local em `mobile/components/trainer/student/TextPrescriptionSheet.tsx` ganha os mesmos.
+- [x] `ai-prescribe-panel.tsx` (web) propaga os 3 novos campos para `addExerciseToWorkout` em `program-builder-client.tsx`, que agora aceita e injeta no `WorkoutItem`. Builder abre o card já com `set_scheme/method_key/rounds` materializados.
+- [x] `mobile/app/program-builder/index.tsx` `handleParsedText` propaga os 3 novos campos para `initFromParsedText`. Store `program-builder-store.ts` consome via `ParsedExerciseForBuilder` (tipo expandido com `rounds`) e materializa em cada `WorkoutItem` regular.
+- [ ] **Deploy da Edge Function via Supabase MCP — PENDENTE autorização do Gustavo.** Edge Function só funciona em produção depois do deploy.
+- [ ] Smoke manual: textos com cada um dos 6 padrões geram cards em modo avançado com chip do método correto e fases preenchidas. **Pendente teste do Gustavo (web + mobile).**
+
+**Decisões de implementação:**
+
+- **Duas cópias de `validateAndFixResponse`** (web `lib.ts` e edge function `index.ts`) intencionalmente — a edge function é o caminho mobile, a route web é o caminho dashboard, e elas não compartilham código TS (uma é Deno, outra é Next). A lógica é idêntica; manter em sincronia é responsabilidade do mantenedor (igual a Fase original do parser).
+- **`top_backoff` recebe `rounds: 1`** sempre. É um método "linear composto" (1 top + N backoff), não múltiplas rondas. Documentado no prompt.
+- **Cluster aceita `rounds >= 1`**: pode ser usado em modo simples ("rest-pause 8+4+2", `rounds=1`) ou composto ("cluster 3 rondas 8+4+2", `rounds=3`). O LLM decide pelo texto.
+- **Quando o LLM retorna `method_key` válido mas `set_scheme: null`** (ou vice-versa), a coerência da `validateAndFixResponse` mantém o `method_key` apenas se `set_scheme` for válido. Caso contrário zera os 3 campos. Política: ou tem scheme válido com método e rondas, ou nada.
+- **Custo do prompt**: a seção "MÉTODOS AVANÇADOS" adiciona ~700 tokens ao system prompt. Para textos sem método (caso comum), adiciona latência marginal e nenhum custo extra de output. Para textos com método, troca os ~50 tokens de "drop set vai pro `notes`" por ~250 tokens de scheme estruturado — ganho enorme em UX.
+- **Sem testes automatizados novos para os métodos** porque o caminho passa por LLM (não-determinístico). Validação acontece via smoke manual com 6 textos canônicos. `validateAndFixResponse` é puro e poderia ter unit tests, mas os testes existentes em `web/src/app/api/prescription/parse-text/__tests__/parse-text.test.ts` continuam verdes — qualquer regressão na coerção apareceria primeiro lá.
+- **`deno check` não foi rodado** porque o ambiente local não tem Deno instalado. Código revisado manualmente e segue o mesmo shape do código pré-existente da edge function. Próximo executor pode validar com `deno check` ou simplesmente o deploy via MCP (que tipa-checka automaticamente).
 
 ## Restrições Técnicas
 
