@@ -13,7 +13,19 @@ interface AiPrescribePanelProps {
     exercises: Exercise[]
     workouts: Workout[]
     activeWorkoutId: string | null
-    onAddExerciseToWorkout: (workoutId: string, exercise: Exercise, options?: { sets?: number; reps?: string; rest_seconds?: number | null; notes?: string | null }) => void
+    onAddExerciseToWorkout: (
+        workoutId: string,
+        exercise: Exercise,
+        options?: {
+            sets?: number
+            reps?: string
+            rest_seconds?: number | null
+            notes?: string | null
+            method_key?: import('@kinevo/shared/types/prescription').MethodKey | null
+            set_scheme?: import('@kinevo/shared/types/prescription').WorkoutSet[] | null
+            rounds?: number | null
+        },
+    ) => void
     onCreateWorkout: (name: string) => string
 }
 
@@ -88,6 +100,9 @@ export function AiPrescribePanel({
                                 reps: parsedEx.reps,
                                 rest_seconds: parsedEx.rest_seconds,
                                 notes: parsedEx.notes,
+                                method_key: parsedEx.method_key,
+                                set_scheme: parsedEx.set_scheme,
+                                rounds: parsedEx.rounds ?? 1,
                             })
                             matchedCount++
                         } else {

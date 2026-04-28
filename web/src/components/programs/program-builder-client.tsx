@@ -775,7 +775,19 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
         }))
     }, [activeWorkoutId])
 
-    const addExerciseToWorkout = useCallback((workoutId: string, exercise: Exercise, options?: { sets?: number; reps?: string; rest_seconds?: number | null; notes?: string | null }) => {
+    const addExerciseToWorkout = useCallback((
+        workoutId: string,
+        exercise: Exercise,
+        options?: {
+            sets?: number
+            reps?: string
+            rest_seconds?: number | null
+            notes?: string | null
+            method_key?: import('@kinevo/shared/types/prescription').MethodKey | null
+            set_scheme?: WorkoutSet[] | null
+            rounds?: number | null
+        },
+    ) => {
         setWorkouts(prev => prev.map(w => {
             if (w.id !== workoutId) return w
 
@@ -791,9 +803,9 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                 reps: options?.reps ?? '10',
                 rest_seconds: options?.rest_seconds ?? 60,
                 notes: options?.notes ?? null,
-                set_scheme: null,
-                method_key: null,
-                rounds: 1,
+                set_scheme: options?.set_scheme ?? null,
+                method_key: options?.method_key ?? null,
+                rounds: options?.rounds ?? 1,
                 children: []
             }
 

@@ -66,6 +66,10 @@ const successResponse: ParseTextResponse = {
                 reps: '8-10',
                 rest_seconds: 90,
                 notes: null,
+                superset_group: null,
+                method_key: null,
+                set_scheme: null,
+                rounds: null,
             },
             {
                 matched: false,
@@ -76,6 +80,10 @@ const successResponse: ParseTextResponse = {
                 reps: '12',
                 rest_seconds: null,
                 notes: null,
+                superset_group: null,
+                method_key: null,
+                set_scheme: null,
+                rounds: null,
             },
         ],
     }],
@@ -188,6 +196,9 @@ describe('AiPrescribePanel', () => {
             reps: '8-10',
             rest_seconds: 90,
             notes: null,
+            method_key: null,
+            set_scheme: null,
+            rounds: 1,
         })
     })
 
@@ -275,11 +286,11 @@ describe('AiPrescribePanel', () => {
             workouts: [
                 {
                     name: 'Treino A',
-                    exercises: [{ matched: true, exercise_id: 'ex-1', catalog_name: 'Supino Inclinado com Halteres', original_text: 'supino', sets: 3, reps: '10', rest_seconds: null, notes: null }],
+                    exercises: [{ matched: true, exercise_id: 'ex-1', catalog_name: 'Supino Inclinado com Halteres', original_text: 'supino', sets: 3, reps: '10', rest_seconds: null, notes: null, superset_group: null, method_key: null, set_scheme: null, rounds: null }],
                 },
                 {
                     name: 'Treino B',
-                    exercises: [{ matched: true, exercise_id: 'ex-2', catalog_name: 'Puxada Aberta Barra reta', original_text: 'puxada', sets: 3, reps: '12', rest_seconds: null, notes: null }],
+                    exercises: [{ matched: true, exercise_id: 'ex-2', catalog_name: 'Puxada Aberta Barra reta', original_text: 'puxada', sets: 3, reps: '12', rest_seconds: null, notes: null, superset_group: null, method_key: null, set_scheme: null, rounds: null }],
                 },
             ],
         }
