@@ -505,6 +505,716 @@ Os campos `weight_target_kg` e `weight_target_pct1rm` são metadados que o train
 
 ## Notas de Implementação
 
+### Fase 4.5l — Fix do race condition `router.push + router.refresh` pós-save (working tree)
+
+**Status: working tree (não commitado).** Sai junto com 4.5d-k quando o
+Gustavo autorizar push do batch.
+
+**Bug reproduzível confirmado pelo Gustavo** (não era o glitch one-time
+que eu havia descartado erroneamente na 4.5j). Ao salvar programa
+atribuído em `/students/[id]/program/[programId]/edit`:
+- `alert('Programa atualizado com sucesso!')` aparece
+- Console mostra `Uncaught (in promise) Error: An unexpected response was
+  received from the server. at fetchServerAction (...)` — **2 ocorrências**
+- URL **continua em `/edit`** (push não completou)
+- "Rendering..." indicator do Next 16 trava por minutos
+- F5 manual: dados persistiram corretamente no DB (save funcionou)
+
+**Root cause:** combinação `router.push() + router.refresh()` em
+sequência síncrona em `saveProgram` pós-save. No Next 16:
+- `router.push()` inicia navegação pra rota destino e dispara fetch do
+  RSC payload da nova rota.
+- `router.refresh()` em paralelo dispara fetch do RSC da rota ATUAL.
+- Os dois fetches conflitam — um dos payloads chega malformado/abortado.
+- Cliente não consegue parsear → `fetchServerAction` lança "An unexpected
+  response was received from the server".
+- Navegação fica travada, URL não muda.
+
+**Fix aplicado em 1 arquivo:**
+
+- `web/src/components/programs/edit-assigned-program-client.tsx` linha
+  ~1287: removido `router.refresh()` que vinha logo após
+  `router.push()`. Comentário inline documenta o motivo. O `push()`
+  sozinho já busca dados frescos da rota destino — `refresh()` era
+  redundante e prejudicial nesse contexto.
+
+```ts
+// ANTES
+router.push(`/students/${studentId}`)
+router.refresh()  // race condition
+
+// DEPOIS
+router.push(`/students/${studentId}`)
+```
+
+**Log defensivo da Fase 4.5j permanece** em
+`web/src/app/students/[id]/program/[programId]/edit/page.tsx`. Embora
+o root cause não tenha sido a query do load (era o race condition
+client-side), o log defensivo é útil pra futuro debugging silent-failure
+de queries Supabase. Sem custo em prod (Server Component).
+
+**Auditoria de outros `push + refresh`:**
+3 outros lugares no web usam o mesmo padrão `router.push() + router.refresh()`
+síncrono:
+- `web/src/app/settings/integrations/google-calendar/google-calendar-client.tsx:89-90`
+- `web/src/app/forms/templates/new/builder-client.tsx:400-401`
+- `web/src/app/login/page.tsx:35-36`
+
+**Não tocados** nesta fase — ficam fora do escopo do bug reportado.
+Cada um pode ter motivos próprios pra usar `refresh` (ex.: invalidar
+cache de OAuth token, refetch de lista de forms). Auditar individualmente
+quando o trainer reportar comportamento similar nessas rotas. Documentado
+como pendência futura.
+
+**Validações:**
+- shared: 142/142 (sem mudança).
+- web TS: 11 erros (idem baseline pré-Fase-4.5l — todos em test files
+  pré-existentes).
+- web vitest: 596/597 (sem testes novos; 1 skip pré-existente).
+- mobile TS: 10 (idem baseline).
+- mobile vitest: 255/255.
+
+**Round-trip esperado:**
+1. Edita programa atribuído com Drop-set 3×3, salva.
+2. Toast "Programa atualizado com sucesso!" aparece.
+3. URL muda pra `/students/[id]` (página de detalhe do aluno).
+4. Console **limpo** — sem `fetchServerAction error`, sem 4× "Rendering...".
+5. Volta pro programa atribuído: dados preservados em modo Avançado.
+
+**Se o erro persistir:** sinaliza que há uma segunda causa (provavelmente
+algo na rota destino `/students/[id]` falhando). Reportar pra
+investigação focada nessa rota.
+
+**Mensagem de commit sugerida (1 fix):**
+1. `fix(per-set): remove redundant router.refresh after save (race condition with push)`
+
+### Fase 4.5k — Fix do hydration mismatch no painel da biblioteca (working tree)
+
+**Status: working tree (não commitado).** Sai junto com 4.5d-i (e o
+log defensivo da 4.5j) quando o Gustavo autorizar push do batch.
+
+**Bug:** console mostrava hydration mismatch no painel da biblioteca
+de exercícios:
+```
++ title="Expandir biblioteca"   (client)
+- title="Minimizar biblioteca"  (server)
+```
+
+Causa raiz: ambos `EditAssignedProgramClient` e `ProgramBuilderClient`
+inicializavam o estado `isLibraryCollapsed` via lazy init lendo
+`localStorage` no render inicial:
+```ts
+useState(() => {
+    if (typeof window !== 'undefined') {
+        return localStorage.getItem('kinevo-library-collapsed') === 'true'
+    }
+    return false
+})
+```
+
+Server-side (Node, sem `localStorage`) sempre retornava `false` (panel
+expandido, title "Minimizar biblioteca"). Client lia o storage real e
+retornava `true` em devices onde o trainer tinha recolhido — divergência
+percebida pelo React durante hydration.
+
+**Fix aplicado em 2 arquivos** com o padrão SSR-safe canônico do Next
+App Router:
+- `web/src/components/programs/edit-assigned-program-client.tsx`
+- `web/src/components/programs/program-builder-client.tsx`
+
+```ts
+// useState com default fixo — mesmo valor em server e client.
+const [isLibraryCollapsed, setIsLibraryCollapsed] = useState(false)
+
+// Rehidrata APÓS o mount, só no client.
+useEffect(() => {
+    if (typeof window === 'undefined') return
+    const stored = localStorage.getItem('kinevo-library-collapsed')
+    if (stored === 'true') setIsLibraryCollapsed(true)
+}, [])
+```
+
+A transição animada do panel (`transition-all duration-250`) mascara
+o ajuste pós-mount — sem flash perceptível pra trainers que tinham a
+biblioteca recolhida.
+
+**Auditoria de outros padrões similares:**
+- `SetSchemeTable.tsx` (toggle "Mais campos") — **já estava correto**
+  desde a Fase 4.5b. Usa `useState(false)` + `useEffect` que chama
+  `readAdvancedFieldsPref()`. Padrão SSR-safe canônico, sem mismatch.
+- Outros lazy inits no web (`prescription-profile-form.tsx`,
+  `edit-assigned-program-client.tsx:243` startDate) **NÃO usam**
+  `localStorage` nem `window`/`document` — são puras computações com
+  props. Sem risco de mismatch. Não tocados.
+
+**Bug A da 4.5j** (server action error pós-save) **confirmado pelo
+Gustavo como glitch one-time de cache do dev server**. O log defensivo
+adicionado em `page.tsx` na Fase 4.5j permanece — útil pra futuro
+debugging silent-failure de queries Supabase.
+
+**Validações:**
+- shared: 142/142 (sem mudança).
+- web TS: 11 erros (idem baseline pré-Fase-4.5k — todos em test files
+  pré-existentes).
+- web vitest: 596/597 (sem testes novos; 1 skip pré-existente).
+- mobile TS: 10 (idem baseline).
+- mobile vitest: 255/255.
+
+**Mensagem de commit sugerida (1 fix):**
+1. `fix(per-set): resolve hydration mismatch on collapsible library panel`
+
+### Fase 4.5j — Investigação inicial do "fetchServerAction error" + log defensivo retido (working tree)
+
+**Status: log defensivo retido no working tree. Root cause real
+identificado e fixado na Fase 4.5l (race condition `push + refresh`).**
+
+Reportado: ao salvar programa atribuído com Drop-set 3×3, navegador
+travava com `Uncaught (in promise) Error: An unexpected response was
+received from the server.` no DevTools, "Initializing workouts with
+program: undefined" 4× no console, "Rendering..." preso.
+
+**Investigação na 4.5j:** após inspeção estática, descartei
+incorretamente como glitch one-time de cache HMR. **Estava errado.**
+O Gustavo continuou reproduzindo. Voltei pra investigar mais a fundo
+na 4.5l e identifiquei o root cause real: race condition entre
+`router.push()` e `router.refresh()` síncronos no saveProgram. Fix
+aplicado na Fase 4.5l.
+
+**O que ficou no working tree:** o **log defensivo** adicionado em
+`web/src/app/students/[id]/program/[programId]/edit/page.tsx` durante
+a investigação. A query original descartava silenciosamente o `error`
+do Supabase:
+```ts
+const { data: program } = await supabase.from(...).select(...)
+```
+Foi alterada pra capturar e logar:
+```ts
+const { data: program, error: programError } = await supabase.from(...).select(...)
+if (programError) {
+    console.error('[EditProgramPage] Failed to load assigned program:', {
+        programId, studentId,
+        code: programError.code,
+        message: programError.message,
+        details: programError.details,
+        hint: programError.hint,
+    })
+}
+```
+
+**Decisão:** manter o log no working tree mesmo após o falso alarme.
+Custo: nenhum em prod (Server Component, log fica no servidor). Ganho:
+próxima vez que uma query falhar silenciosamente (RLS, schema drift,
+PostgREST limit), o trainer vê a mensagem real em vez de um genérico
+`notFound()`. Comentário inline explica a motivação.
+
+**Mensagem de commit sugerida (sai junto com 4.5i):**
+- Pode ir no mesmo commit do fix da 4.5i:
+  `fix(per-set): persist and reload method_key/rounds/set_scheme in assigned program editor`
+- Ou em commit separado se preferir granularidade:
+  `chore(per-set): surface Supabase load errors in assigned program edit page`
+
+### Fase 4.5i — Fix do save/load no fluxo de programa atribuído (working tree)
+
+**Status: working tree (não commitado).** Sai junto com 4.5d-h quando o
+Gustavo autorizar push do batch.
+
+**Bug crítico** reportado pelo Gustavo após validar a Fase 4.5h:
+trainer abria programa atribuído com pirâmide ou drop-set via
+`/students/[id]/program/[programId]/edit`, salvava, voltava → **tudo
+voltava pra modo simples**, perdia método/rondas/fases.
+
+**Diagnóstico (root cause confirmado por inspeção estática + reportado
+ao Gustavo antes do fix):**
+
+- Existem dois fluxos de edição no web:
+  - **Fluxo A** — `/programs/[id]` (template) via `ProgramBuilderClient`.
+    Save + load **estruturalmente corretos** desde a Fase 4.4. Sem bug.
+  - **Fluxo B** — `/students/[id]/program/[programId]/edit` (programa
+    atribuído) via `EditAssignedProgramClient`. Documentado como
+    pendência desde a Fase 2 ("não foi tocado"); o tipo
+    `WorkoutItem` foi estendido com `set_scheme`/`method_key`/`rounds`
+    em Fase 4.4 mas marcado como **read-only** na época — nem o save nem
+    o load eram escritos pra refletir o modelo per-set.
+- **Save broken:** payload do parent (`assigned_workout_items`) não
+  incluía `method_key` nem `rounds`. Função de inserção em
+  `assigned_workout_item_sets` simplesmente não existia nesse arquivo.
+  Children (superset) idem.
+- **Load broken:** SELECT em
+  `web/src/app/students/[id]/program/[programId]/edit/page.tsx` não
+  pedia `method_key` nem `rounds`, e não tinha JOIN com
+  `assigned_workout_item_sets`. Resultado: `program` chegava no client
+  sem esses campos, `initializeWorkouts` mapeava `set_scheme` como
+  `undefined`, builder caía em modo simples no primeiro render → save
+  sobrescrevia o DB com modo simples.
+
+**Mobile:** auditado. **Sem bug** — o app mobile só edita templates
+(via `useProgramBuilder.ts`, já correto desde Fase 4.3); não tem
+fluxo de edição direto de assigned program.
+
+**Fix aplicado em 2 arquivos web:**
+
+1. `web/src/app/students/[id]/program/[programId]/edit/page.tsx` —
+   query SELECT estendida com `method_key`, `rounds` em
+   `assigned_workout_items` + JOIN com `assigned_workout_item_sets`
+   (todos os campos: `set_number`, `set_type`, `reps`, `rest_seconds`,
+   `weight_target_kg`, `weight_target_pct1rm`, `rir`, `tempo`, `notes`,
+   `round_number`).
+
+2. `web/src/components/programs/edit-assigned-program-client.tsx`:
+   - `AssignedProgramData` ganha campos opcionais `item_config`,
+     `method_key`, `rounds`, `assigned_workout_item_sets`.
+   - **Helpers locais** duplicados do `ProgramBuilderClient`
+     (`hydrateSetScheme`, `effectiveRoundsForItem`, `aggregatesFromItem`,
+     `effectiveMethodKey`) — decisão conservadora: duplicação é mais
+     segura que extrair pra módulo compartilhado num fluxo crítico.
+     Comentário inline aponta `ProgramBuilderClient.tsx` como fonte
+     canônica caso divirjam no futuro.
+   - **Helper local novo** `persistAssignedSetSchemeRows`: mesma
+     semântica do `insertSetSchemeRows` do template builder, mas
+     escrevendo em `assigned_workout_item_sets` em vez de
+     `workout_item_set_templates`. Para itens pré-existentes (UPDATE
+     path) **deleta as linhas órfãs antes** de re-inserir — cobre o
+     caso de o trainer ter mudado método, número de fases ou reduzido
+     rounds. Materializa via `expandSchemeByRounds` quando `rounds > 1`.
+   - `initializeWorkouts` hidrata `set_scheme`/`method_key`/`rounds`
+     dos parents e children via `hydrateSetScheme`. Programas
+     pré-Fase-4.5i (sem rounds nem filhas) caem em
+     `{ scheme: null, rounds: 1 }` → modo simples preservado.
+   - Save: `payload` do parent ganha `method_key` (via
+     `effectiveMethodKey`) e `rounds` (via `effectiveRoundsForItem`).
+     Agregados (`sets`, `reps`, `rest_seconds`) agora vêm de
+     `aggregatesFromItem` — preserva o invariante "summarize é a única
+     fonte de verdade". Após cada parent INSERT/UPDATE chama
+     `persistAssignedSetSchemeRows`.
+   - Children (superset): payload ganha `method_key: null` e
+     `rounds: 1` explicitamente — defesa em profundidade ("supersets
+     bloqueados em modo avançado V1"). Sem persistência de filhas em
+     `assigned_workout_item_sets` pra children (alinha com regra V1).
+
+**Edge cases cobertos:**
+- Programa atribuído pré-Fase-4.5i (sem rounds, sem filhas em
+  `assigned_workout_item_sets`): abre em modo simples, salva em modo
+  simples. **Backward compat byte a byte** — não quebra programas
+  existentes, não força conversão.
+- Trainer abre programa avançado, edita reps de uma fase, salva → o
+  delete-then-insert cobre o caso. Round-trip preservado.
+- Trainer reduz rounds de 3 → 2 num drop-set: `persistAssignedSetSchemeRows`
+  deleta as 9 filhas antigas e re-insere 6 novas (3 fases × 2 rondas).
+- Trainer converte método compound → linear (clica "Customizado" sem
+  mexer): rounds vai pra 1, set_scheme preserva, filhas re-materializadas
+  como linear (round_number = null em todas).
+
+**Validações:**
+- shared: 142/142 (sem mudança).
+- web TS: 11 erros — IDÊNTICO ao baseline pré-Fase-4.5i. Todos pré-
+  existentes em test files (program-calendar.test.tsx,
+  student-insights-card.test.tsx).
+- web vitest: 596/597 (sem testes novos; 1 skip pré-existente).
+- mobile TS: 10 (idem baseline).
+- mobile vitest: 255/255.
+
+**Round-trip a validar manualmente (próximo passo do Gustavo):**
+1. Web local → criar programa novo com Drop-set 3×3 via `/programs/new`,
+   salvar.
+2. Atribuir o programa pra um aluno via fluxo de assignment.
+3. Abrir `/students/[id]/program/[programId]/edit` → confirmar que abre
+   em **modo Avançado** com 3 fases visíveis e chip "Drop-set" + stepper
+   "Rodadas: 3".
+4. Editar reps de uma fase, salvar, recarregar → mudança preservada.
+5. Programa antigo (criado antes da Fase 4.5i e atribuído sem
+   `set_scheme` populado): abre em modo simples, salva em modo simples,
+   sem regressão visual.
+
+**Mensagem de commit sugerida (1 fix, sai junto do batch):**
+1. `fix(per-set): persist and reload method_key/rounds/set_scheme in assigned program editor`
+
+### Fase 4.5h — Rename "Tempo" → "Cadência" + passada de testes (working tree)
+
+**Status: working tree (não commitado).** Sai junto com 4.5d-g quando o
+Gustavo autorizar push do batch.
+
+**Decisão de produto:** "Tempo" no UI causa confusão com tempo
+cronológico. Em personal training BR, o termo correto pra "3-1-1-0"
+(ritmo concêntrica-pausa-excêntrica-pausa) é **"Cadência"**. Renomeei
+em todas as strings user-facing.
+
+**Princípio: nome interno do campo permanece `tempo`** — DB column,
+TypeScript property (`WorkoutSet.tempo: string | null`), JSON payload e
+variáveis no código continuam com `tempo`. Só strings renderizadas na UI
+e em aria-labels (acessibilidade) foram renomeadas. Refatorar nome de
+coluna seria churn sem ganho.
+
+**Strings alteradas:**
+- `shared/lib/prescription/set-meta-label.ts`: output do helper
+  `Tempo X-X-X-X` → `Cadência X-X-X-X`. JSDoc atualizado.
+- `shared/lib/prescription/__tests__/set-meta-label.test.ts`: 4
+  assertions atualizadas (`Tempo X-X-X-X` → `Cadência X-X-X-X`) +
+  3 nomes de testes que mencionavam "Tempo" passam a dizer "Cadência".
+- `web/src/components/programs/SetSchemeTable.tsx`: header da coluna
+  `<th>Tempo</th>` → `<th>Cadência</th>`. `aria-label` do input
+  `Tempo da série N` → `Cadência da série N`.
+- `web/src/components/programs/__tests__/SetSchemeTable.test.tsx`: 1
+  teste atualizado (regex `^Tempo$` → `^Cadência$` em 2 lugares + nome
+  do teste).
+- `mobile/components/trainer/program-builder/SetSchemeCard.tsx`:
+  `<FieldRow label="Tempo">` → `label="Cadência"`. `accessibilityLabel`
+  do input idem.
+
+**Strings preservadas (NÃO tocadas):**
+- `mobile/components/workout/WarmupCardioCard.tsx` linha 313
+  ("Tempo real: 00:42") — é o **timer cronológico** do warmup/cardio
+  rodando, não tem nada a ver com cadência. Deixar como está confirma
+  o porquê do rename: a palavra "Tempo" tem outro significado nesse
+  contexto.
+- Comentários internos em código (`// Fase 4.5b — RIR and Tempo rows
+  are hidden`) — não user-facing.
+- Variáveis, propriedades, tipos, colunas SQL com nome `tempo`.
+
+**Passada rigorosa de testes (alvo desta fase):**
+
+| Workspace | TS errors antes | TS errors depois | Vitest antes | Vitest depois |
+|-----------|----------------:|-----------------:|--------------|---------------|
+| shared    | 0               | 0                | 142/142      | 142/142       |
+| web       | 11              | 11               | 596/597      | 596/597       |
+| mobile    | 10              | 10               | 255/255      | 255/255       |
+
+Zero regressões. Working tree saudável após acumular Fase 4.5d-h.
+
+**Mensagem de commit sugerida (1 feature, fica junto do batch da 4.5d-g):**
+1. `feat(per-set): rename "Tempo" to "Cadência" in user-facing strings (BR jargon)`
+
+### Fase 4.5g — Fix do truncamento da meta line (working tree)
+
+**Status: working tree (não commitado).** Sai junto com 4.5d/4.5e/4.5f
+quando o Gustavo autorizar push do batch.
+
+**Bug:** quando o trainer prescrevia reps + RIR + Tempo na mesma fase, a
+meta line ficava `Meta: 10-12 reps · RIR 2 · ...` no app do aluno. O
+`numberOfLines={2}` (mobile) e `-webkit-line-clamp: 2` (web) que adicionei
+na Fase 4.5f truncavam a string com elipses, **escondendo informação
+prescrita pelo trainer**. Bug funcional (não cosmético) — o aluno
+literalmente não via o tempo prescrito.
+
+**Decisão de produto:** remover o limite de linhas. Linha quebra
+livremente em quantas linhas couberem. Custo visual (ocupar 2-3 linhas
+verticais em telas estreitas) é menor que o custo de esconder dados.
+
+**Fix em 2 superfícies (training-room herda via SetRow):**
+
+- `mobile/components/workout/SetRow.tsx`: removido `numberOfLines={2}` do
+  `<Text>` que renderiza `metaLabel`. O `numberOfLines={1}` que ainda
+  existe na linha 171 é do **meta de peso** ("Meta: 80 kg") — não foi
+  reportado como bug e a string é curta por natureza, mantido. Comentário
+  atualizado pra documentar a decisão.
+- `web/src/components/programs/workout-preview/preview-set-row.tsx`:
+  removidos `display: '-webkit-box'`, `WebkitLineClamp: 2`,
+  `WebkitBoxOrient: 'vertical'` e `overflow: 'hidden'`. Adicionado
+  `wordBreak: 'break-word'` pra evitar overflow horizontal no mock
+  estreito. `lineHeight: 1.2` mantido (legibilidade quando quebra).
+- `mobile/app/training-room.tsx`: NÃO tocado. Auditado: o
+  `numberOfLines={1}` da linha 278 é do **nome do aluno** numa pílula
+  compacta de coaching (chip de seleção), nada a ver com meta. A tela
+  reusa `<ExerciseCard>` → `<SetRow>` e herda o fix automaticamente.
+
+**Validações:**
+- shared: 142/142.
+- web TS: 11 erros (idem baseline pré-Fase-4.5g — todos em test files
+  pré-existentes).
+- web vitest: 596/597 (sem testes novos; 1 skip pré-existente).
+- mobile TS: 10 erros (idem baseline).
+- mobile vitest: 255/255.
+
+**Mensagem de commit sugerida (1 fix):**
+1. `fix(per-set): allow meta label to wrap freely instead of truncating`
+   - mobile/components/workout/SetRow.tsx
+   - web/src/components/programs/workout-preview/preview-set-row.tsx
+
+### Fase 4.5f — RIR e Tempo visíveis pro aluno (working tree)
+
+**Status: working tree (não commitado).** Sai junto com 4.5d/4.5e quando o
+Gustavo autorizar push do batch.
+
+**Gap fechado:** trainer prescrevia `rir` (Reps in Reserve) ou `tempo`
+(cadência tipo "3-1-1-0") no editor, dados gravavam corretamente no DB
+(`assigned_workout_item_sets` desde a Fase 1), mas **nenhuma das 3 telas
+de execução exibia esses campos**. Quebrava a intenção do trainer — RIR
+e Tempo determinam intensidade e técnica.
+
+**Decisão de produto:**
+- "Meta: X reps" continua sendo a primeira parte da linha (já existia).
+- "· RIR N" aparece quando `rir != null && rir != undefined`. **`RIR=0`
+  é valor válido** (= "até a falha") e DEVE aparecer.
+- "· Tempo 3-1-1-0" aparece quando `tempo` é string não-vazia (após trim).
+- Carga continua tendo seu próprio "Meta: Y kg" acima do input de Peso
+  (Fase 4.2 — não mexido aqui).
+- Descanso continua sendo consumido pelo rest timer overlay; nunca inline.
+
+**Helper compartilhado:**
+- `shared/lib/prescription/set-meta-label.ts` (NOVO) — `buildSetMetaLabel`.
+  Aceita uma `SetMetaInput` estrutural (compatível com `WorkoutSet` shared
+  e com o `SetPrescription` local do mobile), retorna a string unificada
+  ou `''` quando nada foi prescrito.
+- 13 testes Vitest: só reps, +RIR, +Tempo, ambos, RIR=0 explicitamente
+  visível, RIR null/undefined escondido, Tempo vazio/whitespace escondido,
+  AMRAP, AMRAP+Tempo, cluster, cluster+RIR, vazio, RIR/Tempo only (sem reps).
+
+**Aplicado nas 3 superfícies pra paridade:**
+- `mobile/components/workout/SetRow.tsx` — props novas opcionais
+  `rirTarget?` e `tempoTarget?`. Substitui o cálculo inline antigo de
+  `metaLabel` pelo `buildSetMetaLabel`. Sintetiza `'AMRAP'` quando
+  `setType === 'amrap'` mas o reps target não contém AMRAP/falha
+  (preserva regra OR legada). Texto agora aceita até 2 linhas
+  (`numberOfLines={2}`) pra acomodar a string mais longa.
+- `mobile/components/workout/ExerciseCard.tsx` — propaga
+  `prescription?.rir` e `prescription?.tempo` para `SetRow` em ambos os
+  paths (compound layout agrupado por rodada + linear). Como o
+  `ExerciseCard` é reusado pela tela do aluno (`workout/[id].tsx`),
+  pelo treinador (`training-room.tsx`) e pelo preview do builder mobile
+  (`program-builder/preview.tsx`), as 3 superfícies mobile herdam de uma
+  vez só.
+- `web/src/components/programs/workout-preview/preview-set-row.tsx` —
+  importa o helper, substitui o cálculo inline. Texto da meta vira
+  `-webkit-line-clamp: 2` pra quebrar legível em 2 linhas em vez de
+  truncar com elipses.
+- `web/src/components/programs/workout-preview/builder-to-preview.ts` —
+  `PreviewPhase` ganha `rir: number | null` e `tempo: string | null`;
+  `toPhase` propaga do `WorkoutSet` shared.
+
+**Sala de treino do treinador:** `mobile/app/training-room.tsx` reusa
+`<ExerciseCard>` (linha 830) — herdou automaticamente. Confirmado por
+inspeção: a query do `useTrainerWorkoutSession` (linha 160) já lia
+`rir` e `tempo` do DB desde a Fase 4. Mesmo no `useWorkoutSession`
+do aluno (linha 466). Ou seja: o gap era puramente de display, não
+de dados.
+
+**Validações:**
+- shared: 142/142 (13 novos no `set-meta-label.test.ts`).
+- web TS: 11 erros (idem baseline pré-Fase-4.5f — todos em test files
+  pré-existentes).
+- web vitest: 596/597 (sem testes novos no web; 1 skip pré-existente).
+- mobile TS: 10 erros (idem baseline).
+- mobile vitest: 255/255.
+
+**Mensagens de commit sugeridas (1 feature shared + 1 feature aplicação + 1 doc):**
+1. `feat(per-set): add buildSetMetaLabel helper for unified meta string with RIR and Tempo`
+   - shared/lib/prescription/set-meta-label.ts (NOVO)
+   - shared/lib/prescription/__tests__/set-meta-label.test.ts (NOVO, 13 testes)
+2. `feat(per-set): show RIR and Tempo per phase across student, trainer and preview`
+   - mobile/components/workout/SetRow.tsx (props novas + helper)
+   - mobile/components/workout/ExerciseCard.tsx (propagação)
+   - web/src/components/programs/workout-preview/builder-to-preview.ts (PreviewPhase)
+   - web/src/components/programs/workout-preview/preview-set-row.tsx (helper)
+3. `docs(per-set): document Fase 4.5f RIR and Tempo display`
+
+### Fase 4.5e — Paridade do mock celular + confirm removido (working tree)
+
+**Status: working tree (não commitado).** Sai junto com a Fase 4.5d quando
+o Gustavo autorizar push da funcionalidade inteira.
+
+**§1 — Mock celular (web preview) reflete `set_scheme` com paridade total
+ao app do aluno:**
+
+- `builder-to-preview.ts` — `PreviewExercise` ganha `methodKey`, `rounds`
+  e `phases: PreviewPhase[]`. O transform materializa o draft (per-round
+  shape) via `expandSchemeByRounds` antes de gerar `phases`, igual ao
+  fluxo de save. Programas legados (sem `set_scheme`) caem no caminho
+  antigo (`phases: []`) e renderizam como antes — backward compat byte
+  a byte.
+- `preview-set-row.tsx` — aceita `phase?: PreviewPhase`. Quando presente:
+  - Borda esquerda colorida por `set_type` (mesma paleta do
+    `SetSchemeTable.tsx` web e do `SetSchemeCard.tsx` mobile da Fase 4.5c).
+  - "Meta: X" em violeta acima do input de Reps (cluster vira
+    "Meta: 5+5+5 · cluster"; AMRAP vira "Meta: até a falha").
+  - "Meta: 80 kg" / "Meta: 75% 1RM" / "Meta: 80 kg (75% 1RM)" acima do
+    input de Carga via `buildWeightMetaLabel` do shared.
+  - Placeholder do reps usa `repsTarget`; placeholder do peso usa
+    `weight_target_kg` formatado.
+- `preview-exercise-card.tsx`:
+  - Chip violeta do método inline com o nome (ícone `TrendingDown`/`TrendingUp`/
+    `ChevronsDown`/`Layers`/`Dumbbell`/`Pencil` por método, mesma paleta
+    do `ExerciseCard.tsx` mobile).
+  - Subtítulo dinâmico: "3 rodadas · 3 fases · 10/8/8 reps" (compound),
+    "4 séries • 12-10-8-6 reps • 90s descanso" (linear customizado),
+    ou o legacy "3 séries • 10-12 reps • 60s descanso" (sem scheme).
+  - Body agrupa fases por rodada quando `rounds > 1`: cada rodada com
+    header "Rodada N de M" + indicador `◯` (vazio, igual ao card do
+    aluno mobile na Fase 4.3) e separador violeta sutil entre grupos.
+- `workout-execution-preview.tsx` — contador no header e no botão
+  "Finalizar" alterna entre "X/N fases" (algum item compound) e
+  "X/N séries" (todos lineares).
+
+**§2 — Confirm dialog removido ao trocar de preset:**
+
+- Web `SetSchemeTable.applyPresetKey` — `window.confirm` removido. Aplica
+  preset direto.
+- Mobile `SetSchemeEditor.applyPresetKey` — `Alert.alert` removido. Mesmo
+  comportamento direto. Import de `Alert` mantido (ainda usado por
+  `handleExitAdvanced`).
+- Custom continua sem confirm (label-only — comportamento da 4.5d).
+- 3 testes do `SetSchemeTable.test.tsx` reescritos: 2 que validavam o
+  apply path agora explicitamente afirmam `confirmSpy not called`; o
+  3º (que era "cancelling the confirm dialog") foi convertido em
+  "switching between presets applies directly without prompting".
+
+**Edge cases:**
+- Preview de programa antigo (sem set_scheme): card sem chip, sem meta,
+  sem agrupamento. Backward compat byte a byte.
+- Trainer mexeu manualmente nas fases e clica em outro preset: aplica
+  direto, perde edits sem confirm. Decisão de produto (Fase 4.5e):
+  trainer é intencional ao clicar; se errar, clica no Customizado pra
+  preservar a estrutura (chip Customizado é o "save point" implícito).
+- Preview com `rounds=1` mas `phases.length > 1`: cai no caminho linear
+  do `groupByRound` (1 grupo único, sem header de "Rodada 1 de 1").
+- Mock atualiza em real-time conforme o trainer mexe — useMemo do
+  `renderItems` recalcula quando `items` muda.
+
+**Arquivos modificados (working tree):**
+- `shared/lib/prescription/set-scheme.ts` — sem mudança nesta fase.
+- `web/src/components/programs/workout-preview/builder-to-preview.ts`
+  (extensão de tipos + materialização).
+- `web/src/components/programs/workout-preview/preview-set-row.tsx`
+  (borda colorida + meta labels + placeholders).
+- `web/src/components/programs/workout-preview/preview-exercise-card.tsx`
+  (chip + subtítulo + agrupamento por rodada).
+- `web/src/components/programs/workout-preview/workout-execution-preview.tsx`
+  (contador adapta entre fases/séries).
+- `web/src/components/programs/SetSchemeTable.tsx` (confirm removido).
+- `web/src/components/programs/__tests__/SetSchemeTable.test.tsx`
+  (3 testes reescritos pra novo comportamento).
+- `mobile/components/trainer/program-builder/SetSchemeEditor.tsx`
+  (Alert.alert removido do `applyPresetKey`).
+
+**Validações:**
+- shared: 129/129 (sem mudança).
+- web TS: 11 erros (idem baseline pré-Fase-4.5e).
+- web vitest: 596/597 (3 testes reescritos no SetSchemeTable; 1 skip
+  pré-existente).
+- mobile TS: 10 erros (idem baseline).
+- mobile vitest: 255/255.
+
+**Mensagens de commit sugeridas (2 feature + 1 doc — junto com Fase 4.5d):**
+1. `feat(per-set): web mock preview reflects set_scheme with full parity to student app`
+   - builder-to-preview.ts, preview-exercise-card.tsx, preview-set-row.tsx,
+     workout-execution-preview.tsx
+2. `feat(per-set): remove confirm dialog when switching between presets`
+   - web/SetSchemeTable.tsx, web/__tests__/SetSchemeTable.test.tsx,
+     mobile/SetSchemeEditor.tsx
+3. `docs(per-set): document Fase 4.5e mock parity and confirm removal`
+
+### Fase 4.5d — UX overhaul (parte 2: pontos 1, 2, 5 + intenção sacra) (working tree)
+
+**Status: working tree (não commitado).** Quando o Gustavo autorizar
+("commita tudo e dá push"), seguir o agrupamento de commits abaixo.
+
+**Os 4 pontos:**
+
+**§1 — Segmented control unificado de 7 chips:**
+- `SetSchemePresetChips` (web e mobile) reescrito como segmented control
+  com fundo cinza (`bg-zinc-100`/`colors.background.inset`) e chips
+  internos. Ativo: violeta sólido com texto branco. Inativo: transparente.
+- 7º chip "Customizado" sempre visível no fim, manualmente clicável.
+- Container web: `inline-flex bg-zinc-100 rounded-lg p-0.5` com
+  `flex-wrap` pra quebrar em telas pequenas.
+- Container mobile: `<View>` interno do `<ScrollView horizontal>` com
+  `bg: colors.background.inset` + `borderRadius: 10` + `padding: 2`.
+- Badge "MÉTODO [Customizado]" removido do header do `SetSchemeTable`
+  no web — virou redundante com o chip ativo destacado.
+- Confirm dialog ao trocar de preset com edits: `window.confirm` (web)
+  e `Alert.alert` com botões Cancelar/Aplicar (mobile).
+
+**§2 — Picker inline kg / % 1RM:**
+- Web: input numérico + `<select>` nativo logo após (com classes
+  `bg-zinc-100 rounded`). Trocar a unidade **zera o valor** (decisão
+  documentada em §8 do prompt — evita "100 vira 100% de 1RM"). Placeholder
+  "0" cinza claro.
+- Mobile: stepper continua + chip clicável ganha `ChevronDown` à direita
+  pra sinalizar interativo. Tap abre `Alert.alert` com 2 botões "kg" e
+  "% 1RM" (`cancelable: true` — tap fora cancela). Valor zera ao trocar.
+
+**§5 — Pílula de síntese substituindo footer:**
+- Pílula no topo (acima dos chips, abaixo de "Voltar"): violeta-claro
+  com ícone `Repeat`. Texto:
+  - compound + rounds > 1 → `N rodadas × M fases · NxM fases totais`
+  - linear customizado (rounds=1, length>1) → `M fases`
+  - length ≤ 1 → não exibe
+- Footer "Aluno verá: ..." (introduzido na Fase 4.4) **removido** no web.
+  Mobile nunca chegou a ter esse footer (a Fase 4.4 era web-only nesse
+  ponto), então só ganhou a pílula.
+- Teste do footer convertido (não deletado): asserção movida pra pílula.
+  Adicionados 2 testes complementares: pílula em linear customizado e
+  pílula escondida em single-phase.
+
+**§7 — Preservação da intenção do trainer (mudança de comportamento):**
+- `method_key` agora reflete **intenção declarada** (qual chip o trainer
+  clicou), não estrutura derivada.
+- `updateSet`/`addSet`/`duplicateSet`/`removeSet` em web e mobile **não**
+  forçam mais `method_key='custom'`. A regra "edit demote" foi removida.
+- `applyPresetKey` aceita `'custom'` separadamente — preserva
+  `set_scheme` e `rounds`, só rotula como Customizado.
+- `displayKey` cai pra `'standard'` (segmented control sem chip ativo)
+  quando trainer ainda não declarou método; `methodLabel` mostra "Sem
+  preset" no header do bottom sheet mobile (antes mostrava "Customizado"
+  incorretamente).
+- `inferMethodKeyFromScheme` mantido em `shared/lib/prescription/set-scheme.ts`
+  com `@deprecated` no JSDoc — pode ser usado pelo parser de texto da
+  Fase 5 pra sugerir o chip ativo após detectar padrão no texto livre.
+  Não é mais chamado pelos builders.
+
+**Edge cases:**
+- Programa antigo com `method_key='custom'` flipado pelo bug antigo:
+  fica como está. Trainer pode reabrir e clicar num preset pra
+  re-categorizar. Não é regressão — é histórico.
+- Trainer aplica Drop-set, edita uma fase, salva: chip Drop-set continua
+  ativo, salvo com `method_key='drop_set'`. Aluno vê chip Drop-set.
+- Picker kg/%1RM com valor preenchido: troca zera o input. Trainer
+  digita de novo na unidade nova.
+- Pílula com `rounds=1` em compound: cai no else "M fases". Edge case
+  raro (compound com rounds=1 é tratado como linear pelo `isCompound &&
+  effectiveRounds > 1` da pílula).
+
+**Arquivos modificados (working tree):**
+- `shared/lib/prescription/set-scheme.ts` — `@deprecated` no
+  `inferMethodKeyFromScheme`.
+- `web/src/components/programs/SetSchemePresetChips.tsx` — segmented
+  control + 7º chip Customizado.
+- `web/src/components/programs/SetSchemeTable.tsx` — handlers preservam
+  method_key, picker dropdown, pílula no topo, footer removido, badge
+  "MÉTODO [Customizado]" removido, `methodLabel` removida (não usada).
+- `web/src/components/programs/__tests__/SetSchemeTable.test.tsx` — 4
+  testes alterados/adicionados (preset com confirm, cancel confirm,
+  edit preserva intent, chip Customizado preserva scheme), teste do
+  footer convertido pra pílula + 2 novos pra estados da pílula.
+- `mobile/components/trainer/program-builder/SetSchemePresetChips.tsx` —
+  segmented control + 7º chip Customizado.
+- `mobile/components/trainer/program-builder/SetSchemeEditor.tsx` —
+  handlers preservam method_key, `applyPresetKey` aceita `'custom'`,
+  Alert de confirm pra trocar preset com edits, pílula de síntese,
+  `methodLabel` "Sem preset" pra `'standard'`.
+- `mobile/components/trainer/program-builder/SetSchemeCard.tsx` —
+  picker kg/%1RM via `Alert.alert`, chip ganha `ChevronDown`.
+
+**Validações:**
+- shared: 129/129 (sem novos testes — só depreciação).
+- web TS: 11 (idem baseline pré-Fase-4.5d — todos em test files
+  pré-existentes: program-calendar.test.tsx, student-insights-card.test.tsx).
+- web vitest: 596/597 (4 novos testes; 1 skip pré-existente).
+- mobile TS: 10 (idem baseline).
+- mobile vitest: 255/255.
+
+**Mensagens de commit sugeridas (3 feature + 1 doc):**
+1. `feat(per-set): unified segmented control with manual Customizado + preserve method_key on edits`
+   - shared/set-scheme.ts (deprecation)
+   - web/SetSchemePresetChips.tsx, SetSchemeTable.tsx, __tests__/
+   - mobile/SetSchemePresetChips.tsx, SetSchemeEditor.tsx
+2. `feat(per-set): inline unit picker (kg / % 1RM) replaces toggle in CARGA cell`
+   - web/SetSchemeTable.tsx (cell de carga)
+   - mobile/SetSchemeCard.tsx
+3. `feat(per-set): structure summary pill at top of advanced editor (replaces footer)`
+   - web/SetSchemeTable.tsx (pílula + remoção do footer)
+   - web/__tests__/SetSchemeTable.test.tsx (testes de pílula)
+   - mobile/SetSchemeEditor.tsx (pílula no header)
+4. `docs(per-set): document Fase 4.5d UX overhaul (segmented control, picker, pill)`
+
 ### Fase 4.5c — UX overhaul (parte 1: pontos 3, 4, 6) (entregue)
 
 Os 6 pontos do prompt original foram divididos em duas entregas:
