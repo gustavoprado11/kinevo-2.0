@@ -1,5 +1,5 @@
 const IOS_LINK = 'https://apps.apple.com/br/app/kinevo/id6759053587'
-const ANDROID_LINK = 'https://kinevoapp.com/android'
+const ANDROID_LINK = 'https://play.google.com/store/apps/details?id=com.kinevo.mobile'
 
 interface WelcomeMessageParams {
     studentName: string
