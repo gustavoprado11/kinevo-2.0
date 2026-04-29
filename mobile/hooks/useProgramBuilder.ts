@@ -301,6 +301,266 @@ export function useProgramBuilder() {
     }, [saveAsTemplate, store]);
 
     /**
+     * Persist the full edit of an assigned program: program metadata, all
+     * workouts (UPDATE existing / INSERT new / DELETE removed), all items
+     * (same upsert semantics) and the materialized per-set rows in
+     * `assigned_workout_item_sets`.
+     *
+     * Mirrors the web `EditAssignedProgramClient.saveProgram` handler. We
+     * intentionally duplicate the logic here rather than extracting to
+     * shared/lib (Round 2 trade-off: ship; extract when both sides start
+     * needing the same audit-trail evolution).
+     *
+     * NOT covered (Round 2):
+     * - Form triggers — mobile UI doesn't expose them yet.
+     * - `prescription_generation_edits` audit log — fire-and-forget on web
+     *   via Server Action; will be ported in a future round when the
+     *   mobile build needs trainer-pattern learning from edited programs.
+     * - Children of supersets carrying per-set scheme — same V1 block
+     *   that exists on web.
+     */
+    const saveAssignedProgramFull = useCallback(async (): Promise<SaveAndAssignResult> => {
+        const draft = store.draft;
+        const programId = draft.editingAssignedProgramId;
+        if (!programId) {
+            return { ok: false, reason: "ERROR", message: "Programa não está em modo edição." };
+        }
+        if (!draft.name.trim()) {
+            return { ok: false, reason: "ERROR", message: "Nome do programa é obrigatório." };
+        }
+        const hasExercises = draft.workouts.some((w) => w.items.length > 0);
+        if (!hasExercises) {
+            return { ok: false, reason: "ERROR", message: "Adicione pelo menos um exercício." };
+        }
+
+        const originalWorkoutIds = new Set(draft.originalWorkoutIds);
+        const originalItemIds = new Set(draft.originalItemIds);
+
+        const dayKeyToInt: Record<string, number> = {
+            sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6,
+        };
+        const frequencyToScheduledDays = (freq: string[]): number[] =>
+            freq.map((d) => dayKeyToInt[d]).filter((n): n is number => typeof n === "number");
+
+        store.setSaving(true);
+        try {
+            // 1. Update program-level metadata.
+            const { error: updateProgramError } = await supabase
+                .from("assigned_programs")
+                .update({
+                    name: draft.name.trim(),
+                    description: draft.description.trim() || null,
+                    duration_weeks: draft.duration_weeks,
+                } as any)
+                .eq("id", programId);
+            if (updateProgramError) throw updateProgramError;
+
+            // 2. Delete workouts the trainer removed since the load. We use
+            //    the live workouts list as the survivors set; anything that
+            //    was originally on the program but isn't on the survivors
+            //    list anymore must be deleted (cascades to items + sets).
+            const liveWorkoutIds = new Set(
+                draft.workouts.filter((w) => originalWorkoutIds.has(w.id)).map((w) => w.id),
+            );
+            const removedWorkoutIds = [...originalWorkoutIds].filter((id) => !liveWorkoutIds.has(id));
+            if (removedWorkoutIds.length > 0) {
+                const { error: deleteWorkoutsError } = await supabase
+                    .from("assigned_workouts")
+                    .delete()
+                    .in("id", removedWorkoutIds);
+                if (deleteWorkoutsError) throw deleteWorkoutsError;
+            }
+
+            // 3. Upsert each workout, then upsert its items.
+            for (const workout of draft.workouts) {
+                const isNewWorkout = !originalWorkoutIds.has(workout.id);
+                let workoutDbId = workout.id;
+
+                if (isNewWorkout) {
+                    const { data: insertedWorkout, error: insertWorkoutError } = await supabase
+                        .from("assigned_workouts")
+                        .insert({
+                            assigned_program_id: programId,
+                            name: workout.name,
+                            order_index: workout.order_index,
+                            scheduled_days: frequencyToScheduledDays(workout.frequency),
+                        } as any)
+                        .select("id")
+                        .single();
+                    if (insertWorkoutError) throw insertWorkoutError;
+                    workoutDbId = (insertedWorkout as any).id as string;
+                } else {
+                    const { error: updateWorkoutError } = await supabase
+                        .from("assigned_workouts")
+                        .update({
+                            name: workout.name,
+                            order_index: workout.order_index,
+                            scheduled_days: frequencyToScheduledDays(workout.frequency),
+                        } as any)
+                        .eq("id", workoutDbId);
+                    if (updateWorkoutError) throw updateWorkoutError;
+                }
+
+                // 3a. Delete items removed since the load (only for
+                //     pre-existing workouts; new workouts have no DB items).
+                if (!isNewWorkout) {
+                    const liveItemIds = workout.items
+                        .map((it) => it.id)
+                        .filter((id) => originalItemIds.has(id));
+                    if (liveItemIds.length > 0) {
+                        const { error: delItemsError } = await (supabase as any)
+                            .from("assigned_workout_items")
+                            .delete()
+                            .eq("assigned_workout_id", workoutDbId)
+                            .not("id", "in", `(${liveItemIds.join(",")})`);
+                        if (delItemsError) throw delItemsError;
+                    } else {
+                        const { error: delItemsError } = await supabase
+                            .from("assigned_workout_items")
+                            .delete()
+                            .eq("assigned_workout_id", workoutDbId);
+                        if (delItemsError) throw delItemsError;
+                    }
+                }
+
+                // 3b. Upsert root items (parent_item_id = null) first.
+                const rootItems = workout.items.filter((it) => !it.parent_item_id);
+                const localToDbItemId = new Map<string, string>();
+
+                for (const item of rootItems) {
+                    const isPreExistingItem = originalItemIds.has(item.id);
+                    const aggs = aggregatesFromItem(item);
+                    const itemRounds = effectiveRoundsForItem(item);
+
+                    const payload = {
+                        assigned_workout_id: workoutDbId,
+                        item_type: item.item_type,
+                        order_index: item.order_index,
+                        parent_item_id: null,
+                        exercise_id: item.item_type === "superset" ? null : item.exercise_id,
+                        substitute_exercise_ids: item.substitute_exercise_ids ?? [],
+                        sets: aggs.sets,
+                        reps: aggs.reps,
+                        rest_seconds: aggs.rest_seconds,
+                        notes: item.notes,
+                        item_config: item.item_config ?? {},
+                        method_key: item.method_key ?? null,
+                        rounds: itemRounds,
+                        // Snapshot for offline rendering (mirrors web payload).
+                        exercise_name: item.exercise_name,
+                        exercise_muscle_group: item.exercise_muscle_groups?.[0] ?? null,
+                        exercise_equipment: item.exercise_equipment,
+                    };
+
+                    let itemDbId: string;
+                    if (!isPreExistingItem) {
+                        const { data: inserted, error: insertItemError } = await (supabase as any)
+                            .from("assigned_workout_items")
+                            .insert(payload)
+                            .select("id")
+                            .single();
+                        if (insertItemError) throw insertItemError;
+                        itemDbId = (inserted as any).id as string;
+                    } else {
+                        const { error: updateItemError } = await (supabase as any)
+                            .from("assigned_workout_items")
+                            .update(payload)
+                            .eq("id", item.id);
+                        if (updateItemError) throw updateItemError;
+                        itemDbId = item.id;
+                    }
+                    localToDbItemId.set(item.id, itemDbId);
+
+                    // Per-set rows: DELETE+INSERT for pre-existing items,
+                    // INSERT only for new items.
+                    if (item.parent_item_id) {
+                        // Defesa em profundidade: superset children never carry scheme.
+                    } else {
+                        if (isPreExistingItem) {
+                            const { error: delSetsError } = await (supabase.from as any)("assigned_workout_item_sets")
+                                .delete()
+                                .eq("assigned_workout_item_id", itemDbId);
+                            if (delSetsError) throw delSetsError;
+                        }
+                        if (item.set_scheme && item.set_scheme.length > 0) {
+                            const expanded = itemRounds > 1
+                                ? expandSchemeByRounds(item.set_scheme, itemRounds)
+                                : item.set_scheme;
+                            const isCompound = itemRounds > 1;
+                            const rows = expanded.map((s: WorkoutSet, i: number) => ({
+                                assigned_workout_item_id: itemDbId,
+                                set_number: i + 1,
+                                set_type: s.set_type,
+                                reps: s.reps,
+                                rest_seconds: s.rest_seconds,
+                                weight_target_kg: s.weight_target_kg,
+                                weight_target_pct1rm: s.weight_target_pct1rm,
+                                rir: s.rir,
+                                tempo: s.tempo,
+                                notes: s.notes,
+                                round_number: isCompound ? (s.round_number ?? null) : null,
+                            }));
+                            const { error: insSetsError } = await (supabase.from as any)("assigned_workout_item_sets").insert(rows);
+                            if (insSetsError) throw insSetsError;
+                        }
+                    }
+                }
+
+                // 3c. Upsert child items (superset children). These never
+                //     persist method/rounds/scheme — V1 supersets stay in
+                //     simple mode, same as web.
+                const childItems = workout.items.filter((it) => !!it.parent_item_id);
+                for (const child of childItems) {
+                    const isPreExistingItem = originalItemIds.has(child.id);
+                    const dbParentId = localToDbItemId.get(child.parent_item_id!);
+                    if (!dbParentId) continue; // safety: orphan child — skip
+
+                    const payload = {
+                        assigned_workout_id: workoutDbId,
+                        item_type: child.item_type,
+                        order_index: child.order_index,
+                        parent_item_id: dbParentId,
+                        exercise_id: child.exercise_id,
+                        substitute_exercise_ids: child.substitute_exercise_ids ?? [],
+                        sets: child.sets,
+                        reps: child.reps,
+                        rest_seconds: child.rest_seconds,
+                        notes: child.notes,
+                        item_config: child.item_config ?? {},
+                        method_key: null,
+                        rounds: 1,
+                        exercise_name: child.exercise_name,
+                        exercise_muscle_group: child.exercise_muscle_groups?.[0] ?? null,
+                        exercise_equipment: child.exercise_equipment,
+                    };
+
+                    if (!isPreExistingItem) {
+                        const { error: insertChildError } = await (supabase as any)
+                            .from("assigned_workout_items")
+                            .insert(payload);
+                        if (insertChildError) throw insertChildError;
+                    } else {
+                        const { error: updateChildError } = await (supabase as any)
+                            .from("assigned_workout_items")
+                            .update(payload)
+                            .eq("id", child.id);
+                        if (updateChildError) throw updateChildError;
+                    }
+                }
+            }
+
+            toast.success("Programa atualizado", "As alterações foram salvas.");
+            return { ok: true };
+        } catch (err) {
+            const message = err instanceof Error ? err.message : "Falha ao salvar programa.";
+            toast.error("Erro", message);
+            return { ok: false, reason: "ERROR", message };
+        } finally {
+            store.setSaving(false);
+        }
+    }, [store]);
+
+    /**
      * Escape hatch for the supersets case: drop the AI linkage from the draft
      * and re-run the save through the legacy template path. Used when the
      * trainer added supersets after the AI generation and chose "Salvar como
@@ -345,5 +605,7 @@ export function useProgramBuilder() {
         saveAsTemplate,
         saveAndAssign,
         saveAsNewProgramDiscardingAi,
+        saveAssignedProgramFull,
+        initFromAssignedProgram: store.initFromAssignedProgram,
     };
 }

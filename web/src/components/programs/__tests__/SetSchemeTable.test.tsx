@@ -20,7 +20,6 @@ describe('SetSchemeTable', () => {
                 value={initialScheme}
                 methodKey={'standard'}
                 onChange={onChange}
-                onExitAdvanced={() => {}}
             />,
         )
         expect(screen.getAllByRole('row')).toHaveLength(initialScheme.length + 1) // +1 for thead
@@ -37,8 +36,7 @@ describe('SetSchemeTable', () => {
                     value={initialScheme}
                     methodKey={'standard'}
                     onChange={onChange}
-                    onExitAdvanced={() => {}}
-                />,
+                    />,
             )
 
             fireEvent.click(screen.getByRole('button', { name: /pirâmide ↓/i }))
@@ -64,8 +62,7 @@ describe('SetSchemeTable', () => {
                     value={initialScheme}
                     methodKey={'standard'}
                     onChange={onChange}
-                    onExitAdvanced={() => {}}
-                />,
+                    />,
             )
 
             fireEvent.click(screen.getByRole('button', { name: /drop-set/i }))
@@ -93,8 +90,7 @@ describe('SetSchemeTable', () => {
                     methodKey={'pyramid_down'}
                     rounds={1}
                     onChange={onChange}
-                    onExitAdvanced={() => {}}
-                />,
+                    />,
             )
 
             fireEvent.click(screen.getByRole('button', { name: /drop-set/i }))
@@ -119,7 +115,6 @@ describe('SetSchemeTable', () => {
                 methodKey={'pyramid_down'}
                 rounds={1}
                 onChange={onChange}
-                onExitAdvanced={() => {}}
             />,
         )
 
@@ -142,7 +137,6 @@ describe('SetSchemeTable', () => {
                 methodKey={'pyramid_down'}
                 rounds={1}
                 onChange={onChange}
-                onExitAdvanced={() => {}}
             />,
         )
 
@@ -163,7 +157,6 @@ describe('SetSchemeTable', () => {
                 methodKey={'drop_set'}
                 rounds={3}
                 onChange={onChange}
-                onExitAdvanced={() => {}}
             />,
         )
 
@@ -191,7 +184,6 @@ describe('SetSchemeTable', () => {
                 methodKey={'pyramid_down'}
                 rounds={1}
                 onChange={() => {}}
-                onExitAdvanced={() => {}}
             />,
         )
         expect(screen.queryByRole('button', { name: /aumentar rodadas/i })).toBeNull()
@@ -204,7 +196,6 @@ describe('SetSchemeTable', () => {
                 methodKey={'drop_set'}
                 rounds={3}
                 onChange={() => {}}
-                onExitAdvanced={() => {}}
             />,
         )
         expect(screen.getByText(/adicionar fase/i)).toBeTruthy()
@@ -221,7 +212,6 @@ describe('SetSchemeTable', () => {
                 methodKey={'drop_set'}
                 rounds={3}
                 onChange={() => {}}
-                onExitAdvanced={() => {}}
             />,
         )
         // 3 rounds × 3 phases = 9 phases total — pill text reads
@@ -238,7 +228,6 @@ describe('SetSchemeTable', () => {
                 methodKey={'custom'}
                 rounds={1}
                 onChange={() => {}}
-                onExitAdvanced={() => {}}
             />,
         )
         // Linear customizado with 3 phases shows just "N fases".
@@ -253,7 +242,6 @@ describe('SetSchemeTable', () => {
                 methodKey={'cluster'}
                 rounds={1}
                 onChange={() => {}}
-                onExitAdvanced={() => {}}
             />,
         )
         // 1 phase, no rounds expansion — pill is hidden (no compelling
@@ -269,7 +257,6 @@ describe('SetSchemeTable', () => {
                 methodKey={'drop_set'}
                 rounds={3}
                 onChange={() => {}}
-                onExitAdvanced={() => {}}
             />,
         )
         // Banner mentions "3 fases ... repetida 3 vezes" for the visible scheme.
@@ -284,13 +271,12 @@ describe('SetSchemeTable', () => {
                 methodKey={'pyramid_down'}
                 rounds={1}
                 onChange={() => {}}
-                onExitAdvanced={() => {}}
             />,
         )
         expect(screen.queryByText(/repetida \d+ vezes/i)).toBeNull()
     })
 
-    it('hides RIR and Cadência columns by default and reveals them when "Mais campos" is clicked', () => {
+    it('hides RIR and Cadência columns by default and reveals them when "Prescrever RIR e Cadência" is clicked', () => {
         // Reset localStorage so the test starts in the default (collapsed) state.
         window.localStorage.removeItem('kinevo_setscheme_advanced_fields')
 
@@ -300,62 +286,25 @@ describe('SetSchemeTable', () => {
                 methodKey={'standard'}
                 rounds={1}
                 onChange={() => {}}
-                onExitAdvanced={() => {}}
             />,
         )
 
         // Collapsed by default — RIR / Cadência headers are not in the DOM.
-        // Fase 4.5h: header was renamed from "Tempo" to "Cadência" (BR
-        // personal-training jargon). Internal field is still `tempo`.
+        // Fase 4.5h: header renamed from "Tempo" to "Cadência" (BR jargon).
+        // Fase ajuste-toggle: toggle label renamed from "Mais campos" to
+        //   "Prescrever RIR e Cadência" pra ser autoexplicativo.
         expect(screen.queryByText(/^RIR$/i)).toBeNull()
         expect(screen.queryByText(/^Cadência$/i)).toBeNull()
 
-        fireEvent.click(screen.getByRole('button', { name: /mais campos/i }))
+        fireEvent.click(screen.getByRole('button', { name: /prescrever rir e cadência/i }))
 
         expect(screen.getByText(/^RIR$/i)).toBeTruthy()
         expect(screen.getByText(/^Cadência$/i)).toBeTruthy()
     })
 
-    it('exit advanced asks for confirmation', () => {
-        const onExitAdvanced = vi.fn()
-        const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
-        try {
-            render(
-                <SetSchemeTable
-                    value={initialScheme}
-                    methodKey={'standard'}
-                    onChange={() => {}}
-                    onExitAdvanced={onExitAdvanced}
-                />,
-            )
-
-            fireEvent.click(screen.getByText(/voltar para modo simples/i))
-
-            expect(confirmSpy).toHaveBeenCalledTimes(1)
-            expect(onExitAdvanced).toHaveBeenCalledTimes(1)
-        } finally {
-            confirmSpy.mockRestore()
-        }
-    })
-
-    it('cancel on confirm dialog does not exit', () => {
-        const onExitAdvanced = vi.fn()
-        const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
-        try {
-            render(
-                <SetSchemeTable
-                    value={initialScheme}
-                    methodKey={'standard'}
-                    onChange={() => {}}
-                    onExitAdvanced={onExitAdvanced}
-                />,
-            )
-
-            fireEvent.click(screen.getByText(/voltar para modo simples/i))
-
-            expect(onExitAdvanced).not.toHaveBeenCalled()
-        } finally {
-            confirmSpy.mockRestore()
-        }
-    })
+    // Os 2 testes de "Voltar para modo simples" foram removidos junto com
+    // o link. A saída do modo avançado agora é responsabilidade do toggle
+    // no top-right do WorkoutItemCard (workout-item-card.tsx) e está coberta
+    // implicitamente pelos testes desse componente — não é mais
+    // responsabilidade do SetSchemeTable.
 })

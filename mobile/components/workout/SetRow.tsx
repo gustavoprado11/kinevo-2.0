@@ -7,7 +7,7 @@ import {
     buildWeightMetaLabel,
     formatWeightKg,
 } from '@kinevo/shared/lib/prescription/set-scheme';
-import { buildSetMetaLabel } from '@kinevo/shared/lib/prescription/set-meta-label';
+import { buildSetMetaLabel, isAmrapReps } from '@kinevo/shared/lib/prescription/set-meta-label';
 import { SetTypeBadge } from './SetTypeBadge';
 
 interface SetRowProps {
@@ -37,7 +37,8 @@ interface SetRowProps {
 }
 
 const isClusterReps = (reps: string) => reps.includes('+');
-const isAmrapReps = (reps: string) => /amrap|falha/i.test(reps);
+// `isAmrapReps` agora vem do shared (set-meta-label) — cobre AMRAP, falha e
+// máximo. Mantido como import pra paridade com PreviewSetRow no web.
 
 export function SetRow({
     index,
@@ -73,11 +74,13 @@ export function SetRow({
     const cluster = hasTarget && isClusterReps(target);
     const amrap = setType === 'amrap' || (hasTarget && isAmrapReps(target));
 
-    // Placeholder priority: target → previous → empty.
+    // Prioridade: input do trainer ganha sempre. Só sintetiza "AMRAP" como
+    // placeholder quando reps está vazio mas o tipo é amrap — dá pista
+    // visual sem sobrescrever o que o trainer escolheu (ex: ele digitou
+    // "Máximo" e o aluno deve ver "Máximo", não "AMRAP").
     const repsPlaceholder = (() => {
-        if (amrap) return 'AMRAP';
-        if (cluster) return target;
         if (hasTarget) return target;
+        if (amrap) return 'AMRAP';
         if (hasPrevious) return String(previousReps);
         return '';
     })();
@@ -87,8 +90,15 @@ export function SetRow({
     // explicit "AMRAP" string when the trainer set `set_type='amrap'` but
     // didn't put AMRAP-y text in `reps` — keeps the legacy detection rule
     // (setType OR reps content) intact.
+    // Sintetiza "AMRAP" ou "falha" no input pra que buildSetMetaLabel
+    // produza "Meta: até a falha" mesmo quando o trainer não digitou essa
+    // palavra no campo reps. Cobre tanto setType='amrap' quanto 'failure'
+    // — os dois tipos comunicam a mesma intenção ("vai até não conseguir
+    // mais") e o regex em buildSetMetaLabel já reconhece ambos.
     const metaInputReps = (() => {
-        if (setType === 'amrap' && !isAmrapReps(target)) return 'AMRAP';
+        if (isAmrapReps(target)) return target;
+        if (setType === 'amrap') return 'AMRAP';
+        if (setType === 'failure') return 'falha';
         return target;
     })();
     const metaLabelRaw = buildSetMetaLabel({
@@ -143,15 +153,20 @@ export function SetRow({
                     </Text>
                 </View>
 
-                {/* Type badge — to the left of the previous-set column when present */}
+                {/* Type badge — chip com ícone + label pt-BR à esquerda da
+                 *  coluna "Anterior". Antes era compact (só ícone), o que
+                 *  deixava o aluno perdido — vermelho/violeta/laranja sem
+                 *  legenda nenhuma. Agora a cor segue acompanhando, mas o
+                 *  texto explica o que cada uma significa. */}
                 {setType !== 'normal' ? (
                     <View style={{ marginRight: 6 }}>
-                        <SetTypeBadge setType={setType} compact />
+                        <SetTypeBadge setType={setType} />
                     </View>
                 ) : null}
 
-                {/* Previous set data */}
-                <View style={{ width: setType !== 'normal' ? 42 : 58, alignItems: 'center', marginRight: 6 }}>
+                {/* Previous set data — coluna mais estreita quando há badge
+                 *  com label, pra absorver os ~50px extras do chip. */}
+                <View style={{ width: setType !== 'normal' ? 32 : 58, alignItems: 'center', marginRight: 6 }}>
                     <Text style={{
                         fontSize: 12,
                         fontWeight: '500',

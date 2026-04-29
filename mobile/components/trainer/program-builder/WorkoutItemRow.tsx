@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, TouchableOpacity } from "react-native";
+import { View, Text, TouchableOpacity, Pressable, Alert } from "react-native";
 import { GripVertical, Trash2, Dumbbell, Sliders } from "lucide-react-native";
 import Animated, { FadeInRight } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
@@ -17,6 +17,11 @@ interface WorkoutItemRowProps {
     onUpdate: (updates: Partial<Pick<WorkoutItem, 'sets' | 'reps' | 'rest_seconds' | 'notes'>>) => void;
     onDelete: () => void;
     onEditSets?: () => void;
+    /** Toggle: chamado quando o trainer está em modo avançado e clica
+     *  novamente em "Editar séries". Limpa set_scheme/method_key/rounds
+     *  e re-popula os agregados via summarize. Quando ausente, o botão
+     *  só entra (sem toggle de saída). */
+    onExitAdvanced?: () => void;
     drag?: () => void;
     isActive?: boolean;
 }
@@ -34,6 +39,7 @@ export function WorkoutItemRow({
     onUpdate,
     onDelete,
     onEditSets,
+    onExitAdvanced,
     drag,
     isActive,
 }: WorkoutItemRowProps) {
@@ -46,13 +52,31 @@ export function WorkoutItemRow({
     const phasesPerRound = item.set_scheme?.length ?? 0;
     const showRoundsBadge = advancedActive && rounds > 1 && phasesPerRound > 0;
 
+    /* Em modo avançado, o card inteiro vira tappable pra reabrir o sheet
+     * do set scheme — antes a única forma era pelo pill "Modo simples", que
+     * na verdade SAI do modo avançado e perde a prescrição. Fluxo agora:
+     *
+     * - Modo avançado: toque em qualquer área "neutra" do card → abre
+     *   editor do scheme (igual ao "Editar séries" no modo simples).
+     * - Botões filhos (drag, delete, pill "Modo simples") seguem capturando
+     *   seus próprios toques — Pressable não recebe quando um filho
+     *   touchable consome o evento primeiro.
+     * - Modo simples: card não é tappable (os inputs Sets/Reps já são a
+     *   affordance de edição). */
+    const handleCardPress = () => {
+        if (inSuperset) return;
+        if (advancedActive && onEditSets) {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            onEditSets();
+        }
+    };
+
     return (
         <Animated.View
             entering={FadeInRight.delay(index * 30).duration(200)}
             style={{
                 backgroundColor: isActive ? "#f3f0ff" : colors.background.card,
                 borderRadius: 14,
-                padding,
                 marginBottom: 6,
                 borderWidth: 1,
                 borderColor: isActive ? colors.brand.primary : colors.border.primary,
@@ -62,6 +86,17 @@ export function WorkoutItemRow({
                 shadowRadius: isActive ? 8 : 4,
                 elevation: isActive ? 4 : 1,
             }}
+        >
+        <Pressable
+            onPress={handleCardPress}
+            disabled={!advancedActive || inSuperset}
+            accessibilityRole={advancedActive ? "button" : undefined}
+            accessibilityLabel={advancedActive ? "Editar séries do exercício" : undefined}
+            style={({ pressed }) => ({
+                padding,
+                borderRadius: 14,
+                opacity: pressed && advancedActive ? 0.85 : 1,
+            })}
         >
             {/* Row 1: drag + icon + name + sets/reps + delete */}
             <View style={{ flexDirection: "row", alignItems: "center" }}>
@@ -148,9 +183,13 @@ export function WorkoutItemRow({
                 </Text>
             )}
 
-            {/* Row 3: chip do método + Editar séries (modo avançado) */}
+            {/* Row 3: chip do método + Editar séries (modo avançado).
+             *  flexWrap garante que em telas estreitas (iPhone SE) ou com
+             *  chips longos ("Cluster (rest-pause)" + "3 rodadas × 3 fases"
+             *  + "Modo simples") os badges quebrem pra linha de baixo em
+             *  vez de estourar a margem direita do card. */}
             {item.item_type === "exercise" && onEditSets && (
-                <View style={{ flexDirection: "row", alignItems: "center", marginTop: 6, marginLeft: 37 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", rowGap: 6, marginTop: 6, marginLeft: 37 }}>
                     {methodChip && (
                         <View
                             style={{
@@ -184,22 +223,63 @@ export function WorkoutItemRow({
                     <TouchableOpacity
                         onPress={() => {
                             if (inSuperset) return;
+                            // Toggle: se já está em modo avançado e parent
+                            // forneceu callback de saída, confirma e sai.
+                            // Senão, abre o editor (entra em avançado se for
+                            // o caso — o sheet inicializa o set_scheme).
+                            if (advancedActive && onExitAdvanced) {
+                                Alert.alert(
+                                    "Voltar para modo simples",
+                                    "Você perderá as configurações específicas de cada série. Continuar?",
+                                    [
+                                        { text: "Cancelar", style: "cancel" },
+                                        {
+                                            text: "Voltar",
+                                            style: "destructive",
+                                            onPress: () => {
+                                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                                onExitAdvanced();
+                                            },
+                                        },
+                                    ],
+                                );
+                                return;
+                            }
                             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                            onEditSets();
+                            onEditSets?.();
                         }}
                         disabled={inSuperset}
                         accessibilityRole="button"
-                        accessibilityLabel={inSuperset ? "Não suportado dentro de superset" : "Editar séries"}
+                        accessibilityLabel={
+                            inSuperset
+                                ? "Não suportado dentro de superset"
+                                : advancedActive
+                                ? "Voltar para modo simples"
+                                : "Editar séries"
+                        }
                         accessibilityState={{ disabled: inSuperset }}
                         style={{ flexDirection: "row", alignItems: "center", opacity: inSuperset ? 0.4 : 1 }}
                     >
-                        <Sliders size={11} color={colors.text.tertiary} style={{ marginRight: 4 }} />
-                        <Text style={{ fontSize: 10, fontWeight: "700", color: colors.text.tertiary, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                            Editar séries
+                        <Sliders
+                            size={11}
+                            color={advancedActive ? colors.brand.primary : colors.text.tertiary}
+                            style={{ marginRight: 4 }}
+                        />
+                        <Text
+                            style={{
+                                fontSize: 10,
+                                fontWeight: "700",
+                                color: advancedActive ? colors.brand.primary : colors.text.tertiary,
+                                textTransform: "uppercase",
+                                letterSpacing: 0.5,
+                            }}
+                        >
+                            {advancedActive ? "Modo simples" : "Editar séries"}
                         </Text>
                     </TouchableOpacity>
                 </View>
             )}
+        </Pressable>
         </Animated.View>
     );
 }

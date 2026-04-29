@@ -25,11 +25,7 @@ import { MuscleGroupManagerModal } from "../../components/trainer/exercises/Musc
 import { useMuscleGroupCrud } from "../../hooks/useMuscleGroupCrud";
 import { toast } from "../../lib/toast";
 
-const DIFFICULTY_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-    beginner: { label: "Iniciante", color: "#16a34a", bg: "#f0fdf4" },
-    intermediate: { label: "Intermediário", color: "#f59e0b", bg: "#fffbeb" },
-    advanced: { label: "Avançado", color: "#ef4444", bg: "#fef2f2" },
-};
+
 
 function SwipeableExerciseCard({
     exercise,
@@ -43,7 +39,7 @@ function SwipeableExerciseCard({
     onDelete: () => void;
 }) {
     const swipeableRef = useRef<Swipeable>(null);
-    const difficulty = exercise.difficulty_level ? DIFFICULTY_CONFIG[exercise.difficulty_level] : null;
+
     const isSystem = exercise.owner_id === null;
 
     const renderRightActions = () => {
@@ -113,16 +109,7 @@ function SwipeableExerciseCard({
                             <Text style={{ fontSize: 11, fontWeight: "600", color: "#7c3aed" }}>{mg.name}</Text>
                         </View>
                     ))}
-                    {exercise.equipment && (
-                        <View style={{ backgroundColor: "#f1f5f9", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}>
-                            <Text style={{ fontSize: 11, fontWeight: "600", color: "#64748b" }}>{exercise.equipment}</Text>
-                        </View>
-                    )}
-                    {difficulty && (
-                        <View style={{ backgroundColor: difficulty.bg, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}>
-                            <Text style={{ fontSize: 11, fontWeight: "600", color: difficulty.color }}>{difficulty.label}</Text>
-                        </View>
-                    )}
+
                 </View>
             </View>
         </PressableScale>

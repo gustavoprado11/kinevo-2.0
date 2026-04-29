@@ -47,9 +47,9 @@ export const PYRAMID_UP_DEFAULT: WorkoutSet[] = [
 ]
 
 export const DROP_SET_DEFAULT: WorkoutSet[] = [
-    baseSet({ set_number: 1, set_type: 'normal', reps: '10', rest_seconds: 0, weight_target_pct1rm: 100 }),
-    baseSet({ set_number: 2, set_type: 'drop', reps: '8', rest_seconds: 0, weight_target_pct1rm: 80 }),
-    baseSet({ set_number: 3, set_type: 'drop', reps: '8', rest_seconds: 0, weight_target_pct1rm: 60 }),
+    baseSet({ set_number: 1, set_type: 'normal', reps: '10', rest_seconds: 0, weight_target_pct1rm: 80 }),
+    baseSet({ set_number: 2, set_type: 'drop', reps: '8', rest_seconds: 0, weight_target_pct1rm: 60 }),
+    baseSet({ set_number: 3, set_type: 'drop', reps: '8', rest_seconds: 90, weight_target_pct1rm: 40 }),
 ]
 
 export const TOP_BACKOFF_DEFAULT: WorkoutSet[] = [

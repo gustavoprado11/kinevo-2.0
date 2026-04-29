@@ -14,6 +14,7 @@ import {
 } from 'lucide-react-native';
 import type { MethodKey } from '@kinevo/shared/types/prescription';
 import { getMethodChipLabel } from '@kinevo/shared/lib/prescription/method-labels';
+import { RestConnector } from './RestConnector';
 import { SetRow } from './SetRow';
 import { TrainerNote } from './TrainerNote';
 import type { SetPrescription } from '../../lib/hydrateWorkoutSets';
@@ -286,26 +287,39 @@ export function ExerciseCard({
                                     const globalIdx = startIdx + localIdx;
                                     const prev = previousSets?.[globalIdx];
                                     const prescription = setScheme![globalIdx];
+                                    const nextPrescription = setScheme![globalIdx + 1];
+                                    const isLastPhaseInRound = localIdx === phasesPerRound - 1;
+                                    const isLastRound = roundIdx === rounds - 1;
+                                    const isLastInExercise = isLastPhaseInRound && isLastRound;
+                                    const isLastInRound = isLastPhaseInRound && !isLastRound;
                                     return (
-                                        <SetRow
-                                            key={globalIdx}
-                                            index={globalIdx}
-                                            weight={set.weight}
-                                            reps={set.reps}
-                                            isCompleted={set.completed}
-                                            onWeightChange={(val) => onSetChange(globalIdx, 'weight', val)}
-                                            onRepsChange={(val) => onSetChange(globalIdx, 'reps', val)}
-                                            onToggleComplete={() => onToggleSetComplete(globalIdx)}
-                                            previousWeight={prev?.weight}
-                                            previousReps={prev?.reps}
-                                            setType={prescription?.set_type ?? 'normal'}
-                                            repsTarget={prescription?.reps_target}
-                                            weightTargetKg={prescription?.weight_target_kg ?? null}
-                                            weightTargetPct1rm={prescription?.weight_target_pct1rm ?? null}
-                                            rirTarget={prescription?.rir ?? null}
-                                            tempoTarget={prescription?.tempo ?? null}
-                                            readOnly={readOnly}
-                                        />
+                                        <React.Fragment key={globalIdx}>
+                                            <SetRow
+                                                index={globalIdx}
+                                                weight={set.weight}
+                                                reps={set.reps}
+                                                isCompleted={set.completed}
+                                                onWeightChange={(val) => onSetChange(globalIdx, 'weight', val)}
+                                                onRepsChange={(val) => onSetChange(globalIdx, 'reps', val)}
+                                                onToggleComplete={() => onToggleSetComplete(globalIdx)}
+                                                previousWeight={prev?.weight}
+                                                previousReps={prev?.reps}
+                                                setType={prescription?.set_type ?? 'normal'}
+                                                repsTarget={prescription?.reps_target}
+                                                weightTargetKg={prescription?.weight_target_kg ?? null}
+                                                weightTargetPct1rm={prescription?.weight_target_pct1rm ?? null}
+                                                rirTarget={prescription?.rir ?? null}
+                                                tempoTarget={prescription?.tempo ?? null}
+                                                readOnly={readOnly}
+                                            />
+                                            <RestConnector
+                                                restSeconds={prescription?.rest_seconds ?? 0}
+                                                currentSetType={prescription?.set_type ?? 'normal'}
+                                                nextSetType={nextPrescription?.set_type}
+                                                isLastInRound={isLastInRound}
+                                                isLastInExercise={isLastInExercise}
+                                            />
+                                        </React.Fragment>
                                     );
                                 })}
                             </View>
@@ -314,26 +328,38 @@ export function ExerciseCard({
                     : setsData.map((set, index) => {
                         const prev = previousSets?.[index];
                         const prescription = hasScheme ? setScheme![index] : null;
+                        const nextPrescription = hasScheme ? setScheme![index + 1] : null;
+                        const isLast = index === setsData.length - 1;
+                        // Rest a usar pra o connector. Per-set se houver
+                        // scheme, senão o agregado uniforme.
+                        const restForConnector = prescription?.rest_seconds ?? restSeconds;
                         return (
-                            <SetRow
-                                key={index}
-                                index={index}
-                                weight={set.weight}
-                                reps={set.reps}
-                                isCompleted={set.completed}
-                                onWeightChange={(val) => onSetChange(index, 'weight', val)}
-                                onRepsChange={(val) => onSetChange(index, 'reps', val)}
-                                onToggleComplete={() => onToggleSetComplete(index)}
-                                previousWeight={prev?.weight}
-                                previousReps={prev?.reps}
-                                setType={prescription?.set_type ?? 'normal'}
-                                repsTarget={prescription?.reps_target}
-                                weightTargetKg={prescription?.weight_target_kg ?? null}
-                                weightTargetPct1rm={prescription?.weight_target_pct1rm ?? null}
-                                rirTarget={prescription?.rir ?? null}
-                                tempoTarget={prescription?.tempo ?? null}
-                                readOnly={readOnly}
-                            />
+                            <React.Fragment key={index}>
+                                <SetRow
+                                    index={index}
+                                    weight={set.weight}
+                                    reps={set.reps}
+                                    isCompleted={set.completed}
+                                    onWeightChange={(val) => onSetChange(index, 'weight', val)}
+                                    onRepsChange={(val) => onSetChange(index, 'reps', val)}
+                                    onToggleComplete={() => onToggleSetComplete(index)}
+                                    previousWeight={prev?.weight}
+                                    previousReps={prev?.reps}
+                                    setType={prescription?.set_type ?? 'normal'}
+                                    repsTarget={prescription?.reps_target}
+                                    weightTargetKg={prescription?.weight_target_kg ?? null}
+                                    weightTargetPct1rm={prescription?.weight_target_pct1rm ?? null}
+                                    rirTarget={prescription?.rir ?? null}
+                                    tempoTarget={prescription?.tempo ?? null}
+                                    readOnly={readOnly}
+                                />
+                                <RestConnector
+                                    restSeconds={restForConnector}
+                                    currentSetType={prescription?.set_type ?? 'normal'}
+                                    nextSetType={nextPrescription?.set_type}
+                                    isLastInExercise={isLast}
+                                />
+                            </React.Fragment>
                         );
                     })}
             </View>

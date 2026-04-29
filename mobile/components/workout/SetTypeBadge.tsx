@@ -70,15 +70,15 @@ export function SetTypeBadge({ setType, compact }: SetTypeBadgeProps) {
             style={{
                 flexDirection: 'row',
                 alignItems: 'center',
-                paddingHorizontal: 7,
+                paddingHorizontal: 6,
                 paddingVertical: 3,
                 borderRadius: 6,
                 backgroundColor: bg,
-                gap: 4,
+                gap: 3,
             }}
         >
             <Icon size={11} color={fg} strokeWidth={2.5} />
-            <Text style={{ fontSize: 10, fontWeight: '800', color: fg, letterSpacing: 0.3 }}>
+            <Text style={{ fontSize: 10.5, fontWeight: '700', color: fg, letterSpacing: 0.1 }}>
                 {badgeText}
             </Text>
         </View>

@@ -7,6 +7,7 @@ import type {
     WorkoutSet,
 } from '@kinevo/shared/types/prescription';
 import type { BuilderProgramData } from '@kinevo/shared/lib/prescription/builder-mapper';
+import { collapseExpandedScheme } from '@kinevo/shared/lib/prescription/set-scheme';
 
 // ---------------------------------------------------------------------------
 // Storage Adapter — MMKV with in-memory fallback for Expo Go
@@ -91,6 +92,80 @@ export interface ProgramDraft {
      * `buildSnapshotFromDraft`'s `preserveReasoning` option).
      */
     originalSnapshot: PrescriptionOutputSnapshot | null;
+    /**
+     * When set, the draft was hydrated from an existing `assigned_programs`
+     * row and the save flow must UPDATE that program in place (not create a
+     * new template). Workout/item ids in this mode are real DB ids when they
+     * came from the load, or new uuids for additions.
+     */
+    editingAssignedProgramId: string | null;
+    /**
+     * Snapshot of `assigned_workouts.id` values present at load time. Used
+     * by the edit save flow to distinguish UPDATE (id ∈ snapshot) from
+     * INSERT (id ∉ snapshot, i.e. a workout added after the load). Empty
+     * outside of edit mode.
+     */
+    originalWorkoutIds: string[];
+    /**
+     * Snapshot of `assigned_workout_items.id` values present at load time.
+     * Same UPDATE-vs-INSERT discrimination as `originalWorkoutIds`, but at
+     * the item level. Empty outside of edit mode.
+     */
+    originalItemIds: string[];
+}
+
+/** Per-set row as returned by the assigned_workout_item_sets join. */
+interface AssignedSetRow {
+    set_number: number;
+    set_type: string | null;
+    reps: string | null;
+    rest_seconds: number | null;
+    weight_target_kg: number | null;
+    weight_target_pct1rm: number | null;
+    rir: number | null;
+    tempo: string | null;
+    notes: string | null;
+    round_number: number | null;
+}
+
+/** Item row as returned by assigned_workout_items join. */
+interface AssignedItemRow {
+    id: string;
+    item_type: string;
+    order_index: number;
+    parent_item_id: string | null;
+    exercise_id: string | null;
+    substitute_exercise_ids?: string[] | null;
+    sets: number | null;
+    reps: string | null;
+    rest_seconds: number | null;
+    notes: string | null;
+    item_config?: Record<string, unknown> | null;
+    method_key?: MethodKey | null;
+    rounds?: number | null;
+    assigned_workout_item_sets?: AssignedSetRow[] | null;
+    /** Resolved exercise name (joined separately). */
+    exercise_name?: string;
+    exercise_equipment?: string | null;
+    exercise_muscle_groups?: string[];
+}
+
+/** Workout row as returned by assigned_workouts join. */
+interface AssignedWorkoutRow {
+    id: string;
+    name: string;
+    order_index: number;
+    scheduled_days?: number[] | null;
+    assigned_workout_items?: AssignedItemRow[] | null;
+}
+
+/** Top-level assigned_programs row used to hydrate the builder for editing. */
+export interface AssignedProgramHydrationData {
+    id: string;
+    name: string;
+    description: string | null;
+    duration_weeks: number | null;
+    assigned_workouts: AssignedWorkoutRow[];
 }
 
 /** Parsed exercise from text prescription AI */
@@ -136,6 +211,16 @@ interface ProgramBuilderState {
         builderData: BuilderProgramData,
         generationId: string,
         originalSnapshot: PrescriptionOutputSnapshot,
+    ) => void;
+    /**
+     * Hydrate the draft for editing an existing assigned_programs row. The
+     * store carries DB ids in workout.id / item.id so the save flow can
+     * UPDATE them in place. Per-set rows are collapsed via
+     * `collapseExpandedScheme` to reconstruct the per-round scheme.
+     */
+    initFromAssignedProgram: (
+        studentId: string,
+        program: AssignedProgramHydrationData,
     ) => void;
 
     // Program metadata
@@ -201,7 +286,70 @@ function createEmptyDraft(studentId?: string): ProgramDraft {
         generationId: null,
         originatedFromAi: false,
         originalSnapshot: null,
+        editingAssignedProgramId: null,
+        originalWorkoutIds: [],
+        originalItemIds: [],
     };
+}
+
+/** Maps a number-coded scheduled day (0=sun..6=sat) to the string key used
+ *  by the builder store and DaySelector. */
+const DAY_NUM_TO_KEY = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const;
+
+function scheduledDaysToFrequency(days: number[] | null | undefined): string[] {
+    if (!Array.isArray(days)) return [];
+    const out: string[] = [];
+    for (const d of days) {
+        const key = DAY_NUM_TO_KEY[d];
+        if (key) out.push(key);
+    }
+    return out;
+}
+
+function workoutsFromAssignedProgram(rows: AssignedWorkoutRow[]): Workout[] {
+    const sortedWorkouts = [...rows].sort((a, b) => a.order_index - b.order_index);
+    return sortedWorkouts.map((w) => {
+        const itemsRaw = [...(w.assigned_workout_items ?? [])].sort(
+            (a, b) => a.order_index - b.order_index,
+        );
+        const items: WorkoutItem[] = itemsRaw.map((it) => {
+            const setRows = it.assigned_workout_item_sets ?? [];
+            const collapsed = setRows.length > 0
+                ? collapseExpandedScheme(
+                    [...setRows].sort((a, b) => a.set_number - b.set_number) as unknown as WorkoutSet[],
+                    it.rounds ?? 1,
+                )
+                : { scheme: [] as WorkoutSet[], rounds: 1 };
+            const finalScheme = collapsed.scheme.length > 0 ? collapsed.scheme : null;
+            return {
+                id: it.id,
+                item_type: (it.item_type === 'superset' ? 'superset' : 'exercise') as 'exercise' | 'superset',
+                order_index: it.order_index,
+                parent_item_id: it.parent_item_id,
+                exercise_id: it.exercise_id ?? '',
+                exercise_name: it.exercise_name ?? '',
+                exercise_equipment: it.exercise_equipment ?? null,
+                exercise_muscle_groups: it.exercise_muscle_groups ?? [],
+                sets: it.sets ?? 3,
+                reps: it.reps ?? '10',
+                rest_seconds: it.rest_seconds ?? 60,
+                notes: it.notes ?? null,
+                exercise_function: null,
+                item_config: (it.item_config as Record<string, unknown>) ?? {},
+                substitute_exercise_ids: it.substitute_exercise_ids ?? [],
+                set_scheme: finalScheme,
+                method_key: it.method_key ?? null,
+                rounds: typeof it.rounds === 'number' && it.rounds >= 1 ? it.rounds : 1,
+            };
+        });
+        return {
+            id: w.id,
+            name: w.name,
+            order_index: w.order_index,
+            frequency: scheduledDaysToFrequency(w.scheduled_days),
+            items,
+        };
+    });
 }
 
 /**
@@ -390,12 +538,55 @@ export const useProgramBuilderStore = create<ProgramBuilderState>()(
                     generationId: null,
                     originatedFromAi: false,
                     originalSnapshot: null,
+                    editingAssignedProgramId: null,
+                    originalWorkoutIds: [],
+                    originalItemIds: [],
                 };
 
                 set({
                     draft,
                     currentWorkoutId: workouts[0].id,
                     isDirty: true,
+                    isSaving: false,
+                });
+            },
+
+            initFromAssignedProgram: (studentId, program) => {
+                let workouts = workoutsFromAssignedProgram(program.assigned_workouts ?? []);
+                if (workouts.length === 0) {
+                    workouts = [{
+                        id: Crypto.randomUUID(),
+                        name: 'Treino A',
+                        order_index: 0,
+                        frequency: [],
+                        items: [],
+                    }];
+                }
+                const originalWorkoutIds: string[] = [];
+                const originalItemIds: string[] = [];
+                for (const w of program.assigned_workouts ?? []) {
+                    originalWorkoutIds.push(w.id);
+                    for (const it of w.assigned_workout_items ?? []) {
+                        originalItemIds.push(it.id);
+                    }
+                }
+                const draft: ProgramDraft = {
+                    name: program.name ?? '',
+                    description: program.description ?? '',
+                    duration_weeks: program.duration_weeks ?? null,
+                    studentId,
+                    workouts,
+                    generationId: null,
+                    originatedFromAi: false,
+                    originalSnapshot: null,
+                    editingAssignedProgramId: program.id,
+                    originalWorkoutIds,
+                    originalItemIds,
+                };
+                set({
+                    draft,
+                    currentWorkoutId: workouts[0].id,
+                    isDirty: false,
                     isSaving: false,
                 });
             },
@@ -420,6 +611,9 @@ export const useProgramBuilderStore = create<ProgramBuilderState>()(
                     generationId,
                     originatedFromAi: true,
                     originalSnapshot,
+                    editingAssignedProgramId: null,
+                    originalWorkoutIds: [],
+                    originalItemIds: [],
                 };
                 set({
                     draft,
@@ -624,6 +818,9 @@ export const useProgramBuilderStore = create<ProgramBuilderState>()(
                     if (d.generationId === undefined) d.generationId = null;
                     if (d.originatedFromAi === undefined) d.originatedFromAi = false;
                     if (d.originalSnapshot === undefined) d.originalSnapshot = null;
+                    if (d.editingAssignedProgramId === undefined) d.editingAssignedProgramId = null;
+                    if (!Array.isArray(d.originalWorkoutIds)) d.originalWorkoutIds = [];
+                    if (!Array.isArray(d.originalItemIds)) d.originalItemIds = [];
                     if (Array.isArray(d.workouts)) {
                         d.workouts = d.workouts.map((w) => ({
                             ...w,

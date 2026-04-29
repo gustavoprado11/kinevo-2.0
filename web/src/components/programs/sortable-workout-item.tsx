@@ -15,6 +15,7 @@ interface SortableWorkoutItemProps {
     allItems: WorkoutItem[]
     onUpdate: (updates: Partial<WorkoutItem>) => void
     onDelete: () => void
+    onDuplicate?: () => void
     // Legacy move props (still used for buttons)
     onMoveUp: () => void
     onMoveDown: () => void

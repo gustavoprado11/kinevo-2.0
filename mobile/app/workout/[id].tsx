@@ -73,14 +73,21 @@ export default function WorkoutPlayerScreen() {
             return;
         }
 
-        // Normal exercise: original behavior
-        if (exercise.rest_seconds > 0) {
+        // Normal exercise: usa rest_seconds per-set quando há setScheme
+        // (drop-set/cluster têm descansos diferentes por fase — usar o
+        // agregado dispara timer mesmo quando o trainer prescreveu 0s entre
+        // drops). Fallback pro agregado em programas legados sem scheme.
+        const perSetRest = exercise.setScheme?.[_setIndex]?.rest_seconds;
+        const restSeconds =
+            typeof perSetRest === 'number' ? perSetRest : exercise.rest_seconds;
+
+        if (restSeconds > 0) {
             const hasRemainingSets = exercise.setsData.some((s, i) => i > _setIndex && !s.completed);
             if (hasRemainingSets) {
-                liveActivityRef.current?.startRestTimer(exerciseIndex, exercise.rest_seconds);
+                liveActivityRef.current?.startRestTimer(exerciseIndex, restSeconds);
                 setRestTimer({
-                    endTime: Date.now() + exercise.rest_seconds * 1000,
-                    totalSeconds: exercise.rest_seconds,
+                    endTime: Date.now() + restSeconds * 1000,
+                    totalSeconds: restSeconds,
                     exerciseName: exercise.name,
                 });
             }

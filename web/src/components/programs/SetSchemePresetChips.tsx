@@ -19,12 +19,21 @@ const PRESET_ORDER: Array<Exclude<MethodKey, 'standard' | 'custom'>> = [
     'cluster',
 ]
 
-/** Segmented control unificado (Fase 4.5d §1):
- *  - 6 chips de preset + 1 chip "Customizado" sempre visível no fim.
- *  - Chip ativo: fundo sólido violet/azul, texto branco, sombra sutil.
- *  - Chip inativo: fundo transparente sobre o container cinza, texto neutro.
- *  - O 7º chip "Customizado" é manualmente clicável e preserva `set_scheme`/
- *    `rounds` — só rotula a intenção do trainer. */
+/**
+ * Switcher de método (Fase 4.5d §1, redesign 2026-04):
+ *
+ *   MÉTODO  [Pirâmide ↓] [Pirâmide ↑] [Drop-set] [Top + backoff] ...
+ *
+ * - Label "MÉTODO" inline à esquerda, em uppercase tracking-wider, conversa
+ *   com os labels do trilho de métricas e da seção da tabela.
+ * - Chips inativos: sem fundo, hover sutil. Ativo: violeta (combina com o
+ *   chip de método no header do card).
+ * - Sem segmented control com fundo cinza — visual mais leve, integrado ao
+ *   resto do card.
+ * - 6 chips de preset + 1 chip "Customizado" no fim. "Standard" não tem
+ *   chip: pra voltar ao modo simples o trainer usa o ícone Sliders no
+ *   canto superior do card.
+ */
 export function SetSchemePresetChips({ activeKey, onApply }: SetSchemePresetChipsProps) {
     const renderChip = (
         key: Exclude<MethodKey, 'standard'>,
@@ -39,11 +48,11 @@ export function SetSchemePresetChips({ activeKey, onApply }: SetSchemePresetChip
                 onClick={() => onApply(key)}
                 title={title ?? label}
                 aria-pressed={active}
-                className={`text-xs font-medium px-3 py-1.5 rounded-md transition-colors whitespace-nowrap ${
+                className={
                     active
-                        ? 'bg-[#007AFF] dark:bg-violet-600 text-white shadow-sm'
-                        : 'bg-transparent text-zinc-700 dark:text-zinc-300 hover:text-[#007AFF] dark:hover:text-violet-300'
-                }`}
+                        ? 'text-[11.5px] font-semibold px-2.5 py-1 rounded-md transition-colors whitespace-nowrap bg-violet-100 text-violet-700 border border-violet-200 dark:bg-violet-500/15 dark:text-violet-300 dark:border-violet-500/30'
+                        : 'text-[11.5px] font-semibold px-2.5 py-1 rounded-md transition-colors whitespace-nowrap text-[var(--text-secondary)] border border-transparent hover:bg-[var(--glass-bg)] hover:text-[var(--text-primary)]'
+                }
             >
                 {label}
             </button>
@@ -53,9 +62,12 @@ export function SetSchemePresetChips({ activeKey, onApply }: SetSchemePresetChip
     return (
         <div
             role="group"
-            aria-label="Presets de método"
-            className="inline-flex flex-wrap items-center gap-0.5 bg-zinc-100 dark:bg-zinc-800 rounded-lg p-0.5"
+            aria-label="Métodos de prescrição"
+            className="flex flex-wrap items-center gap-1"
         >
+            <span className="text-[9.5px] font-bold uppercase tracking-wider text-[var(--text-tertiary)] mr-1.5 shrink-0">
+                Método
+            </span>
             {PRESET_ORDER.map((key) => {
                 const preset = SYSTEM_PRESETS[key]
                 return renderChip(key, preset.name, preset.description)

@@ -39,7 +39,14 @@ export interface SetMetaInput {
 }
 
 const isClusterReps = (reps: string) => reps.includes('+')
-const isAmrapReps = (reps: string) => /amrap|falha/i.test(reps)
+
+/** Reconhece prescrições "vai até não conseguir mais" no campo reps em
+ *  texto livre. Cobre `AMRAP`, `falha` e `máximo` (com ou sem acento) —
+ *  todas semanticamente equivalentes pro aluno. Exportado pra ser usado
+ *  na UI do builder (auto-fill ao escolher tipo Falha) e na execução
+ *  (mobile + preview web) sem duplicar regex. */
+export const isAmrapReps = (reps: string): boolean =>
+    /amrap|falha|m[áa]ximo/i.test(reps)
 
 /** Build the unified meta line shown above each phase row.
  *

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity } from "react-native";
-import { Calendar, Sparkles, FileText } from "lucide-react-native";
+import { Calendar, Sparkles, FileText, Pencil } from "lucide-react-native";
+import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { supabase } from "../../../lib/supabase";
 import { getProgramWeek } from "@kinevo/shared/utils/schedule-projection";
@@ -54,16 +55,55 @@ export function StudentProgramsTab({ data }: Props) {
                 <>
                     <SectionLabel>Programa Ativo</SectionLabel>
                     <View style={{ backgroundColor: "#ffffff", borderRadius: 14, padding: 16, marginBottom: 20 }}>
-                        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                            <Text style={{ fontSize: 16, fontWeight: "700", color: "#1a1a2e" }}>
+                        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8, gap: 8 }}>
+                            <Text
+                                style={{ fontSize: 16, fontWeight: "700", color: "#1a1a2e", flexShrink: 1 }}
+                                numberOfLines={1}
+                            >
                                 {data.activeProgram.name}
                             </Text>
-                            {data.activeProgram.ai_generated && (
-                                <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: "#f3f0ff", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
-                                    <Sparkles size={12} color="#7c3aed" />
-                                    <Text style={{ fontSize: 11, fontWeight: "600", color: "#7c3aed", marginLeft: 3 }}>IA</Text>
-                                </View>
-                            )}
+                            {/* Badges + ação de editar agrupados à direita.
+                             *  Antes o "Editar programa" era um botão de
+                             *  largura total no meio do card, quebrando o
+                             *  fluxo entre cabeçalho e lista de treinos.
+                             *  Agora vira uma pílula compacta no canto
+                             *  superior direito — convenção iOS, libera o
+                             *  card pra fluir título → semanas → lista. */}
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                                {data.activeProgram.ai_generated && (
+                                    <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: "#f3f0ff", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
+                                        <Sparkles size={12} color="#7c3aed" />
+                                        <Text style={{ fontSize: 11, fontWeight: "600", color: "#7c3aed", marginLeft: 3 }}>IA</Text>
+                                    </View>
+                                )}
+                                <TouchableOpacity
+                                    onPress={() => {
+                                        if (!data.activeProgram) return;
+                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                        router.push({
+                                            pathname: "/program-builder/edit/[assignedProgramId]",
+                                            params: { assignedProgramId: data.activeProgram.id },
+                                        } as any);
+                                    }}
+                                    activeOpacity={0.85}
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Editar programa"
+                                    style={{
+                                        flexDirection: "row",
+                                        alignItems: "center",
+                                        gap: 4,
+                                        paddingHorizontal: 10,
+                                        paddingVertical: 5,
+                                        borderRadius: 8,
+                                        backgroundColor: "#ede9fe",
+                                    }}
+                                >
+                                    <Pencil size={12} color="#6d28d9" strokeWidth={2.5} />
+                                    <Text style={{ fontSize: 12, fontWeight: "700", color: "#6d28d9", letterSpacing: 0.1 }}>
+                                        Editar
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
                         </View>
 
                         {data.activeProgram.description && (
@@ -73,7 +113,7 @@ export function StudentProgramsTab({ data }: Props) {
                         )}
 
                         <View style={{ flexDirection: "row", gap: 16, marginBottom: 12 }}>
-                            {data.activeProgram.duration_weeks && (
+                            {!!data.activeProgram.duration_weeks && (
                                 <Text style={{ fontSize: 13, color: "#64748b" }}>
                                     {data.activeProgram.duration_weeks} semanas
                                 </Text>

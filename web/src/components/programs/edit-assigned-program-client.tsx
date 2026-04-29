@@ -985,6 +985,45 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
         }))
     }
 
+    /** Duplica um item top-level (gera novos IDs pra ele e pros children).
+     *  Espelha program-builder-client.tsx pra manter os dois fluxos
+     *  consistentes. */
+    const duplicateItem = (workoutId: string, itemId: string) => {
+        setWorkouts(prev => prev.map(w => {
+            if (w.id !== workoutId) return w
+
+            const index = w.items.findIndex(i => i.id === itemId)
+            if (index === -1) return w
+
+            const original = w.items[index]
+            const newItemId = tempId()
+            const duplicate: WorkoutItem = {
+                ...original,
+                id: newItemId,
+                set_scheme: original.set_scheme
+                    ? original.set_scheme.map(s => ({ ...s }))
+                    : original.set_scheme,
+                substitute_exercise_ids: [...(original.substitute_exercise_ids ?? [])],
+                children: original.children
+                    ? original.children.map(child => ({
+                        ...child,
+                        id: tempId(),
+                        parent_item_id: newItemId,
+                        set_scheme: child.set_scheme
+                            ? child.set_scheme.map(s => ({ ...s }))
+                            : child.set_scheme,
+                        substitute_exercise_ids: [...(child.substitute_exercise_ids ?? [])],
+                    }))
+                    : original.children,
+            }
+
+            const newItems = [...w.items]
+            newItems.splice(index + 1, 0, duplicate)
+
+            return { ...w, items: newItems.map((i, idx) => ({ ...i, order_index: idx })) }
+        }))
+    }
+
     const moveItem = (workoutId: string, itemId: string, direction: 'up' | 'down') => {
         setWorkouts(prev => prev.map(w => {
             if (w.id !== workoutId) return w
@@ -1750,6 +1789,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                                                     onSearchAddExercise={addExerciseFromLibrary}
                                                     onUpdateItem={(itemId, updates) => updateItem(activeWorkout.id, itemId, updates)}
                                                     onDeleteItem={(itemId) => deleteItem(activeWorkout.id, itemId)}
+                                                    onDuplicateItem={(itemId) => duplicateItem(activeWorkout.id, itemId)}
                                                     onMoveItem={(itemId, dir) => moveItem(activeWorkout.id, itemId, dir)}
                                                     onReorderItem={handleReorderItem}
                                                     onCreateSupersetWithNext={(itemId) => createSupersetWithNext(activeWorkout.id, itemId)}
@@ -1819,6 +1859,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                                                     onAddCardio={() => {}}
                                                     onUpdateItem={() => {}}
                                                     onDeleteItem={() => {}}
+                                                    onDuplicateItem={() => {}}
                                                     onMoveItem={() => {}}
                                                     onReorderItem={() => {}}
                                                     onCreateSupersetWithNext={() => {}}
@@ -1958,6 +1999,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                                                         onSearchAddExercise={addExerciseFromLibrary}
                                                         onUpdateItem={(itemId, updates) => updateItem(activeWorkout.id, itemId, updates)}
                                                         onDeleteItem={(itemId) => deleteItem(activeWorkout.id, itemId)}
+                                                        onDuplicateItem={(itemId) => duplicateItem(activeWorkout.id, itemId)}
                                                         onMoveItem={(itemId, dir) => moveItem(activeWorkout.id, itemId, dir)}
                                                         onReorderItem={handleReorderItem}
                                                         onCreateSupersetWithNext={(itemId) => createSupersetWithNext(activeWorkout.id, itemId)}

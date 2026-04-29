@@ -455,32 +455,24 @@ export function SetSchemeEditor({
                         contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 24 }}
                         keyboardShouldPersistTaps="handled"
                     >
-                        {/* Linha 1 (Fase 4.5c §3): "Voltar para modo simples"
-                         *  à esquerda como botão secundário discreto, separado
-                         *  visualmente do toggle "Mais campos" à direita. */}
+                        {/* Linha 1: toggle "Prescrever RIR e Cadência" alinhado à
+                         *  direita. O retorno ao modo simples virou
+                         *  responsabilidade do toggle no card (WorkoutItemRow):
+                         *  tocar de novo no botão "Editar séries" volta pro modo
+                         *  simples. Não há mais link "Voltar para modo simples"
+                         *  aqui. */}
                         <View
                             style={{
                                 flexDirection: "row",
                                 alignItems: "center",
-                                justifyContent: "space-between",
+                                justifyContent: "flex-end",
                                 marginBottom: 8,
                             }}
                         >
                             <TouchableOpacity
-                                onPress={handleExitAdvanced}
-                                accessibilityRole="button"
-                                accessibilityLabel="Voltar para modo simples"
-                                style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 4, paddingHorizontal: 6, marginLeft: -6 }}
-                            >
-                                <Undo2 size={12} color={colors.text.secondary} />
-                                <Text style={{ fontSize: 11, fontWeight: "500", color: colors.text.secondary }}>
-                                    Voltar para modo simples
-                                </Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
                                 onPress={toggleAdvancedFields}
                                 accessibilityRole="button"
-                                accessibilityLabel={showAdvancedFields ? "Esconder campos avançados" : "Mostrar campos avançados"}
+                                accessibilityLabel={showAdvancedFields ? "Ocultar RIR e Cadência" : "Prescrever RIR e Cadência"}
                                 accessibilityState={{ expanded: showAdvancedFields }}
                                 style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 4, paddingHorizontal: 6 }}
                             >
@@ -490,7 +482,7 @@ export function SetSchemeEditor({
                                     <ChevronDown size={12} color={colors.brand.primary} />
                                 )}
                                 <Text style={{ fontSize: 11, fontWeight: "600", color: colors.brand.primary }}>
-                                    {showAdvancedFields ? "Menos campos" : "Mais campos"}
+                                    {showAdvancedFields ? "Ocultar RIR e Cadência" : "Prescrever RIR e Cadência"}
                                 </Text>
                             </TouchableOpacity>
                         </View>

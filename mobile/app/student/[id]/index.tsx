@@ -45,6 +45,7 @@ const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
 
 const MODALITY_LABELS: Record<string, string> = {
     presencial: "Presencial",
+    presential: "Presencial",
     online: "Online",
 };
 

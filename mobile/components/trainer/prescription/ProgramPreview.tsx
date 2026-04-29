@@ -78,7 +78,7 @@ export function ProgramPreview({ output, source, violations, isApproving, onAppr
                 </View>
 
                 <View style={{ flexDirection: "row", gap: 16 }}>
-                    {output.duration_weeks && (
+                    {!!output.duration_weeks && (
                         <Text style={{ fontSize: 13, color: "#64748b" }}>{output.duration_weeks} semanas</Text>
                     )}
                     <Text style={{ fontSize: 13, color: "#64748b" }}>{output.workouts.length} treinos</Text>

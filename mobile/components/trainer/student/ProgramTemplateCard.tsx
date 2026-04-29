@@ -32,7 +32,7 @@ export function ProgramTemplateCard({ template, isSelected, onPress }: Props) {
                 </Text>
             )}
             <View style={{ flexDirection: "row", gap: 16, marginTop: 8 }}>
-                {template.duration_weeks && (
+                {!!template.duration_weeks && (
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                         <Calendar size={13} color="#64748b" />
                         <Text style={{ fontSize: 12, color: "#64748b" }}>

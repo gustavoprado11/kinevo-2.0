@@ -952,6 +952,54 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
         }))
     }, [])
 
+    /**
+     * Duplica um item top-level (exercise, superset, warmup, cardio) e o
+     * insere logo após o original. Útil quando o trainer configurou um bloco
+     * complexo (ex: superset com método avançado) e quer replicar a
+     * estrutura pra outro grupo de exercícios.
+     *
+     * - Gera novos `id` pro item e pra todos os children (supersets).
+     * - `set_scheme` é clonado raso: cada WorkoutSet só tem campos
+     *   primitivos, sem IDs próprios.
+     * - `substitute_exercise_ids` aponta pra exercícios da biblioteca, não
+     *   pra workout items, então pode reutilizar o array.
+     */
+    const duplicateItem = useCallback((workoutId: string, itemId: string) => {
+        setWorkouts(prev => prev.map(w => {
+            if (w.id !== workoutId) return w
+
+            const index = w.items.findIndex(i => i.id === itemId)
+            if (index === -1) return w
+
+            const original = w.items[index]
+            const newItemId = tempId()
+            const duplicate: WorkoutItem = {
+                ...original,
+                id: newItemId,
+                set_scheme: original.set_scheme
+                    ? original.set_scheme.map(s => ({ ...s }))
+                    : original.set_scheme,
+                substitute_exercise_ids: [...(original.substitute_exercise_ids ?? [])],
+                children: original.children
+                    ? original.children.map(child => ({
+                        ...child,
+                        id: tempId(),
+                        parent_item_id: newItemId,
+                        set_scheme: child.set_scheme
+                            ? child.set_scheme.map(s => ({ ...s }))
+                            : child.set_scheme,
+                        substitute_exercise_ids: [...(child.substitute_exercise_ids ?? [])],
+                    }))
+                    : original.children,
+            }
+
+            const newItems = [...w.items]
+            newItems.splice(index + 1, 0, duplicate)
+
+            return { ...w, items: newItems.map((i, idx) => ({ ...i, order_index: idx })) }
+        }))
+    }, [])
+
     const moveItem = useCallback((workoutId: string, itemId: string, direction: 'up' | 'down') => {
         setWorkouts(prev => prev.map(w => {
             if (w.id !== workoutId) return w
@@ -1105,27 +1153,39 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
             if (childIndex === -1) return w
 
             const child = superset.children[childIndex]
-
-            // Remove from children
             const newChildren = superset.children.filter(c => c.id !== itemId)
+            const removedChild: WorkoutItem = { ...child, parent_item_id: null }
 
-            // If superset becomes empty or has only 1 child, handle dissolution logic if needed
-            // For now just keep it or let user dissolve manually if empty
+            const newItems = [...w.items]
 
+            // Auto-dissolução: superset com 0 ou 1 filho não faz mais sentido
+            // como agrupamento. Some o container e promove o(s) sobrevivente(s)
+            // pra root. Espelha o comportamento de
+            // edit-assigned-program-client.tsx pra manter os dois fluxos
+            // consistentes.
+            if (newChildren.length <= 1) {
+                // Remove o superset
+                newItems.splice(supersetIndex, 1)
+
+                // Insere o desvinculado na posição original do superset, e o
+                // remanescente (se houver) logo depois.
+                const itemsToInsert: WorkoutItem[] = [removedChild]
+                if (newChildren.length === 1) {
+                    itemsToInsert.push({ ...newChildren[0], parent_item_id: null })
+                }
+                newItems.splice(supersetIndex, 0, ...itemsToInsert)
+
+                return { ...w, items: newItems.map((i, idx) => ({ ...i, order_index: idx })) }
+            }
+
+            // 2+ filhos remanescentes: mantém o superset, só atualiza children
+            // e enfileira o desvinculado logo após o bloco.
             const updatedSuperset = {
                 ...superset,
                 children: newChildren.map((c, i) => ({ ...c, order_index: i }))
             }
-
-            // Add child back to root items after superset
-            const newItem = {
-                ...child,
-                parent_item_id: null,
-            }
-
-            const newItems = [...w.items]
             newItems.splice(supersetIndex, 1, updatedSuperset)
-            newItems.splice(supersetIndex + 1, 0, newItem)
+            newItems.splice(supersetIndex + 1, 0, removedChild)
 
             return { ...w, items: newItems.map((i, idx) => ({ ...i, order_index: idx })) }
         }))
@@ -1906,6 +1966,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                                     onSearchAddExercise={addExerciseFromLibrary}
                                                     onUpdateItem={(itemId, updates) => updateItem(activeWorkout.id, itemId, updates)}
                                                     onDeleteItem={(itemId) => deleteItem(activeWorkout.id, itemId)}
+                                                    onDuplicateItem={(itemId) => duplicateItem(activeWorkout.id, itemId)}
                                                     onMoveItem={(itemId, dir) => moveItem(activeWorkout.id, itemId, dir)}
                                                     onReorderItem={handleReorderItem}
                                                     onCreateSupersetWithNext={(itemId) => createSupersetWithNext(activeWorkout.id, itemId)}
@@ -1975,6 +2036,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                                     onAddCardio={() => {}}
                                                     onUpdateItem={() => {}}
                                                     onDeleteItem={() => {}}
+                                                    onDuplicateItem={() => {}}
                                                     onMoveItem={() => {}}
                                                     onReorderItem={() => {}}
                                                     onCreateSupersetWithNext={() => {}}
@@ -2114,6 +2176,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                                         onSearchAddExercise={addExerciseFromLibrary}
                                                         onUpdateItem={(itemId, updates) => updateItem(activeWorkout.id, itemId, updates)}
                                                         onDeleteItem={(itemId) => deleteItem(activeWorkout.id, itemId)}
+                                                        onDuplicateItem={(itemId) => duplicateItem(activeWorkout.id, itemId)}
                                                         onMoveItem={(itemId, dir) => moveItem(activeWorkout.id, itemId, dir)}
                                                         onReorderItem={handleReorderItem}
                                                         onCreateSupersetWithNext={(itemId) => createSupersetWithNext(activeWorkout.id, itemId)}

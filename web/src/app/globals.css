@@ -58,6 +58,17 @@
   /* ── Kinevo Gradient Text (Light) ── */
   --gradient-text-from: #1D1D1F;
   --gradient-text-to: #86868B;
+
+  /* ── Workout card type accents (Light) ── */
+  --accent-warmup: #F59E0B;
+  --accent-warmup-bg: #FEF3C7;
+  --accent-cardio: #06B6D4;
+  --accent-cardio-bg: #CFFAFE;
+  --accent-superset: #007AFF;
+  --accent-superset-bg: #DBEAFE;
+  --accent-dropset: #8B5CF6;
+  --accent-dropset-bg: #EDE9FE;
+  --surface-nested: #F9F9FB;
 }
 
 .dark {
@@ -107,6 +118,17 @@
   /* ── Kinevo Gradient Text (Dark) ── */
   --gradient-text-from: #FFFFFF;
   --gradient-text-to: #a1a1aa;
+
+  /* ── Workout card type accents (Dark) ── */
+  --accent-warmup: #FBBF24;
+  --accent-warmup-bg: rgba(251, 191, 36, 0.15);
+  --accent-cardio: #22D3EE;
+  --accent-cardio-bg: rgba(34, 211, 238, 0.15);
+  --accent-superset: #A78BFA;
+  --accent-superset-bg: rgba(167, 139, 250, 0.15);
+  --accent-dropset: #A78BFA;
+  --accent-dropset-bg: rgba(167, 139, 250, 0.15);
+  --surface-nested: rgba(255, 255, 255, 0.03);
 }
 
 /* ── Tailwind v4 Theme Registration ── */
@@ -152,6 +174,17 @@
   --color-glass-bg: var(--glass-bg);
   --color-glass-bg-active: var(--glass-bg-active);
   --color-glass-bg-hover: var(--glass-bg-hover);
+
+  /* Kinevo workout card accent tokens */
+  --color-accent-warmup: var(--accent-warmup);
+  --color-accent-warmup-bg: var(--accent-warmup-bg);
+  --color-accent-cardio: var(--accent-cardio);
+  --color-accent-cardio-bg: var(--accent-cardio-bg);
+  --color-accent-superset: var(--accent-superset);
+  --color-accent-superset-bg: var(--accent-superset-bg);
+  --color-accent-dropset: var(--accent-dropset);
+  --color-accent-dropset-bg: var(--accent-dropset-bg);
+  --color-surface-nested: var(--surface-nested);
 
   /* Font families */
   --font-family-jakarta: var(--font-jakarta), "Plus Jakarta Sans", system-ui, sans-serif;

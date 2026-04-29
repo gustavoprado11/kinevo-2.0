@@ -142,6 +142,7 @@ export default function ProgramBuilderPreviewScreen() {
                             paddingHorizontal: 12,
                             paddingVertical: 10,
                             gap: 8,
+                            alignItems: 'center',
                         }}
                         style={{ flexGrow: 0 }}
                     >
@@ -153,20 +154,30 @@ export default function ProgramBuilderPreviewScreen() {
                                     onPress={() => setActiveWorkoutId(w.id)}
                                     accessibilityRole="button"
                                     accessibilityState={{ selected: active }}
+                                    /* minHeight + justifyContent center
+                                     * garantem que o chip tenha altura
+                                     * suficiente pra acomodar o texto +
+                                     * line-height padrão do iOS sem cortar
+                                     * a metade superior das letras. */
                                     style={{
                                         paddingHorizontal: 14,
                                         paddingVertical: 8,
+                                        minHeight: 34,
                                         borderRadius: 999,
                                         backgroundColor: active ? '#7c3aed' : '#ffffff',
                                         borderWidth: 1,
                                         borderColor: active ? '#7c3aed' : '#e2e8f0',
+                                        justifyContent: 'center',
                                     }}
                                 >
                                     <Text
                                         style={{
                                             fontSize: 13,
+                                            lineHeight: 17,
                                             fontWeight: '600',
                                             color: active ? '#ffffff' : '#475569',
+                                            includeFontPadding: false,
+                                            textAlignVertical: 'center',
                                         }}
                                     >
                                         {w.name}

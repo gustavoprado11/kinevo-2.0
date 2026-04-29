@@ -6,6 +6,7 @@ import type { Workout, WorkoutItem } from './program-builder-client'
 import type { Exercise } from '@/types/exercise'
 import { SortableWorkoutItem } from './sortable-workout-item'
 import { InlineExerciseSearch } from './inline-exercise-search'
+import { effectiveSetsForVolume } from '@kinevo/shared/lib/prescription/volume'
 import {
     DndContext,
     closestCenter,
@@ -105,6 +106,7 @@ interface WorkoutPanelProps {
     onSearchAddExercise?: (exercise: Exercise) => void
     onUpdateItem: (itemId: string, updates: Partial<WorkoutItem>) => void
     onDeleteItem: (itemId: string) => void
+    onDuplicateItem: (itemId: string) => void
     onMoveItem: (itemId: string, direction: 'up' | 'down') => void
     onReorderItem: (activeId: string, overId: string) => void
     // Superset actions
@@ -179,6 +181,7 @@ export function WorkoutPanel({
     onSearchAddExercise,
     onUpdateItem,
     onDeleteItem,
+    onDuplicateItem,
     onMoveItem,
     onReorderItem,
     onCreateSupersetWithNext,
@@ -267,9 +270,14 @@ export function WorkoutPanel({
     }
 
     const totalSets = workout.items.reduce((sum, item) => {
-        if (item.item_type === 'exercise') return sum + (item.sets || 0)
+        if (item.item_type === 'exercise') {
+            return sum + effectiveSetsForVolume({ sets: item.sets, rounds: item.rounds })
+        }
         if (item.item_type === 'superset' && item.children) {
-            return sum + item.children.reduce((s, c) => s + (c.sets || 0), 0)
+            return sum + item.children.reduce(
+                (s, c) => s + effectiveSetsForVolume({ sets: c.sets, rounds: c.rounds }),
+                0,
+            )
         }
         return sum
     }, 0)
@@ -436,6 +444,7 @@ export function WorkoutPanel({
                                             allItems={workout.items}
                                             onUpdate={(updates) => onUpdateItem(item.id, updates)}
                                             onDelete={() => onDeleteItem(item.id)}
+                                            onDuplicate={() => onDuplicateItem(item.id)}
                                             onMoveUp={() => onMoveItem(item.id, 'up')}
                                             onMoveDown={() => onMoveItem(item.id, 'down')}
                                             onUpdateChild={(childId, updates) => onUpdateItem(childId, updates)}

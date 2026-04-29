@@ -31,6 +31,11 @@ interface Props {
     onSave: (data: ExerciseFormData) => Promise<void>;
     isSaving: boolean;
     onCreateMuscleGroup?: (name: string) => Promise<{ id: string; name: string } | null>;
+    /** Nome pré-preenchido quando o modal abre em modo "criar". Usado pelo
+     *  picker do builder pra repassar a busca do trainer ("não achou
+     *  Puxada Aberta Pegada Neutra → cria com esse nome já digitado").
+     *  Ignorado em modo edição (sobrescrito pelo `exercise.name`). */
+    initialName?: string;
 }
 
 const DIFFICULTY_OPTIONS = [
@@ -39,7 +44,7 @@ const DIFFICULTY_OPTIONS = [
     { key: "advanced", label: "Avançado" },
 ];
 
-export function ExerciseFormModal({ visible, exercise, muscleGroups, onClose, onSave, isSaving, onCreateMuscleGroup }: Props) {
+export function ExerciseFormModal({ visible, exercise, muscleGroups, onClose, onSave, isSaving, onCreateMuscleGroup, initialName }: Props) {
     const insets = useSafeAreaInsets();
     const isEditing = !!exercise;
 
@@ -62,7 +67,7 @@ export function ExerciseFormModal({ visible, exercise, muscleGroups, onClose, on
                 setVideoFile(null);
                 setVideoUrl(exercise.video_url);
             } else {
-                setName("");
+                setName(initialName ?? "");
                 setSelectedMuscleGroups([]);
                 setEquipment("");
                 setDifficulty(null);
@@ -71,7 +76,7 @@ export function ExerciseFormModal({ visible, exercise, muscleGroups, onClose, on
                 setVideoUrl(null);
             }
         }
-    }, [visible, exercise]);
+    }, [visible, exercise, initialName]);
 
     const canSave = name.trim().length > 0 && selectedMuscleGroups.length > 0;
 

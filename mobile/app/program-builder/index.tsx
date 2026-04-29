@@ -36,6 +36,11 @@ import { TextPrescriptionSheet } from "@/components/trainer/student/TextPrescrip
 import { AssignProgramWizard } from "@/components/trainer/student/AssignProgramWizard";
 import { useStudentDetail } from "@/hooks/useStudentDetail";
 import { mapAiOutputToBuilderData } from "@kinevo/shared/lib/prescription/builder-mapper";
+import {
+    summarizeSetScheme,
+    summarizeWithRounds,
+} from "@kinevo/shared/lib/prescription/set-scheme";
+import { isCompoundMethod } from "@kinevo/shared/lib/prescription/set-scheme-presets";
 import { useProgramBuilderStore } from "@/stores/program-builder-store";
 import type { AgentResult } from "@/hooks/useAIPrescriptionAgent";
 import { toast } from "@/lib/toast";
@@ -77,13 +82,22 @@ export default function ProgramBuilderScreen() {
         saveAsTemplate,
         saveAndAssign,
         saveAsNewProgramDiscardingAi,
+        saveAssignedProgramFull,
     } = useProgramBuilder();
 
+    // Edit mode (Round 1): the route loaded an existing assigned program via
+    // `initFromAssignedProgram` and the builder must skip create-flow init,
+    // render the read-only viewer + metadata-only save. We rely on
+    // `editingAssignedProgramId` (set by initFromAssignedProgram) rather than
+    // just `params.mode` so a mid-flight nav refresh can't show a stale draft.
+    const isEditMode = params.mode === "edit" && !!draft.editingAssignedProgramId;
+
     useEffect(() => {
-        // When coming from text prescription or an AI hand-off, the store is
-        // already pre-filled (`initFromParsedText` / `initFromAiSnapshot`);
-        // don't blow it away.
-        if (params.mode === "from-text" || params.mode === "from-ai") return;
+        // When coming from text prescription, AI hand-off, or edit-existing,
+        // the store is already pre-filled (`initFromParsedText` /
+        // `initFromAiSnapshot` / `initFromAssignedProgram`); don't blow it
+        // away.
+        if (params.mode === "from-text" || params.mode === "from-ai" || params.mode === "edit") return;
         // mode=ai opens the AI sheet on a fresh draft, but only after we
         // make sure the draft is initialized.
         initNewProgram(params.studentId);
@@ -120,6 +134,17 @@ export default function ProgramBuilderScreen() {
 
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
+        // Edit mode: full save against assigned_* tables. The check above
+        // already guarantees at least one exercise.
+        if (isEditMode) {
+            const result = await saveAssignedProgramFull();
+            if (result.ok) {
+                reset();
+                router.back();
+            }
+            return;
+        }
+
         try {
             if (params.studentId) {
                 const result = await saveAndAssign(params.studentId);
@@ -155,7 +180,7 @@ export default function ProgramBuilderScreen() {
         } catch {
             // Error already handled by toast in the hook
         }
-    }, [draft, params.studentId, saveAndAssign, saveAsNewProgramDiscardingAi, saveAsTemplate, reset, router]);
+    }, [draft, params.studentId, saveAndAssign, saveAsNewProgramDiscardingAi, saveAsTemplate, reset, router, isEditMode, saveAssignedProgramFull]);
 
     const handleAIGenerated = useCallback(
         (result: AgentResult) => {
@@ -254,6 +279,25 @@ export default function ProgramBuilderScreen() {
     );
 
     const handleBack = useCallback(() => {
+        // Edit mode: never persist the loaded draft across navigations —
+        // always reset on exit so a future "create new" flow doesn't see
+        // editingAssignedProgramId leaking from the previous session.
+        if (isEditMode) {
+            if (isDirty) {
+                Alert.alert(
+                    "Descartar alterações?",
+                    "As alterações de nome/descrição/duração não salvas serão perdidas.",
+                    [
+                        { text: "Cancelar", style: "cancel" },
+                        { text: "Descartar", style: "destructive", onPress: () => { reset(); router.back(); } },
+                    ]
+                );
+            } else {
+                reset();
+                router.back();
+            }
+            return;
+        }
         if (isDirty) {
             Alert.alert(
                 "Descartar rascunho?",
@@ -266,7 +310,7 @@ export default function ProgramBuilderScreen() {
         } else {
             router.back();
         }
-    }, [isDirty, reset, router]);
+    }, [isDirty, reset, router, isEditMode]);
 
     const handleDeleteWorkout = useCallback((workoutId: string, workoutName: string) => {
         if (draft.workouts.length <= 1) {
@@ -306,11 +350,30 @@ export default function ProgramBuilderScreen() {
                 onUpdate={(updates) => updateItem(currentWorkout.id, item.id, updates)}
                 onDelete={() => removeItem(currentWorkout.id, item.id)}
                 onEditSets={() => setSetSchemeEditingItemId(item.id)}
+                onExitAdvanced={() => {
+                    // Toggle "Modo simples" no card: limpa set_scheme/method/rounds
+                    // e re-popula agregados via summarize. Mesma lógica do web
+                    // (workout-item-card.tsx). O confirm fica no row.
+                    if (!item.set_scheme || item.set_scheme.length === 0) return;
+                    const compound = isCompoundMethod(item.method_key ?? null);
+                    const effectiveRounds = compound
+                        ? Math.max(1, Math.min(20, Math.floor(item.rounds ?? 1)))
+                        : 1;
+                    const summary = effectiveRounds > 1
+                        ? summarizeWithRounds(item.set_scheme, effectiveRounds)
+                        : summarizeSetScheme(item.set_scheme);
+                    setSetScheme(currentWorkout.id, item.id, null, null, 1);
+                    updateItem(currentWorkout.id, item.id, {
+                        sets: summary.sets,
+                        reps: summary.reps,
+                        rest_seconds: summary.rest_seconds,
+                    });
+                }}
                 drag={drag}
                 isActive={isActive}
             />
         );
-    }, [currentWorkout, updateItem, removeItem]);
+    }, [currentWorkout, updateItem, removeItem, setSetScheme]);
 
     const editingItem = useMemo(() => {
         if (!setSchemeEditingItemId || !currentWorkout) return null;
@@ -375,7 +438,7 @@ export default function ProgramBuilderScreen() {
                         </TouchableOpacity>
 
                         <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text.primary }}>
-                            Novo programa
+                            {isEditMode ? "Editar programa" : "Novo programa"}
                         </Text>
 
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
@@ -404,23 +467,28 @@ export default function ProgramBuilderScreen() {
                                     </TouchableOpacity>
                                 );
                             })()}
-                            <TouchableOpacity
-                                onPress={openAIMenu}
-                                disabled={params.studentId == null}
-                                accessibilityRole="button"
-                                accessibilityLabel="Como deseja prescrever"
-                                style={{
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    backgroundColor: colors.brand.primaryLight,
-                                    width: 38,
-                                    height: 38,
-                                    borderRadius: 10,
-                                    opacity: params.studentId == null ? 0.4 : 1,
-                                }}
-                            >
-                                <Sparkles size={18} color={colors.brand.primary} />
-                            </TouchableOpacity>
+                            {!isEditMode && (
+                                <TouchableOpacity
+                                    onPress={openAIMenu}
+                                    disabled={params.studentId == null}
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Como deseja prescrever"
+                                    style={{
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        backgroundColor: colors.brand.primaryLight,
+                                        width: 38,
+                                        height: 38,
+                                        borderRadius: 10,
+                                        opacity: params.studentId == null ? 0.4 : 1,
+                                    }}
+                                >
+                                    <Sparkles size={18} color={colors.brand.primary} />
+                                </TouchableOpacity>
+                            )}
+                            {/* AI menu hidden in edit mode: editing an existing
+                                program through AI regeneration is its own flow
+                                (assign new program), not part of this surface. */}
                             <TouchableOpacity
                                 onPress={handleSave}
                                 disabled={isSaving}

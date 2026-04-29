@@ -1,7 +1,7 @@
 import { colors, spacing, typography } from './preview-design-tokens'
 import type { SetType } from '@kinevo/shared/types/prescription'
 import { buildWeightMetaLabel } from '@kinevo/shared/lib/prescription/set-scheme'
-import { buildSetMetaLabel } from '@kinevo/shared/lib/prescription/set-meta-label'
+import { buildSetMetaLabel, isAmrapReps } from '@kinevo/shared/lib/prescription/set-meta-label'
 import type { PreviewPhase } from './builder-to-preview'
 
 interface PreviewSetRowProps {
@@ -26,21 +26,27 @@ const SET_TYPE_BORDER: Record<SetType, string | null> = {
 
 const META_LABEL_COLOR = '#7c3aed'
 
-const isClusterReps = (reps: string) => reps.includes('+')
-const isAmrapReps = (reps: string) => /amrap|falha/i.test(reps)
+// `isAmrapReps` agora vem do shared (set-meta-label) — cobre AMRAP, falha e
+// máximo num só lugar pra UI do builder e a execução baterem. `isClusterReps`
+// ficou sem uso depois que o placeholder passou a respeitar o input do
+// trainer literal — nada de sobrescrever "5+5+5" com nada sintético.
 
 export function PreviewSetRow({ index, phase }: PreviewSetRowProps) {
     const target = (phase?.repsTarget ?? '').trim()
     const hasTarget = target.length > 0
     const setType: SetType = phase?.setType ?? 'normal'
-    const cluster = hasTarget && isClusterReps(target)
     const amrap = setType === 'amrap' || (hasTarget && isAmrapReps(target))
 
     // Fase 4.5f: meta line uses the shared helper so RIR + Tempo show up
     // alongside reps. Synthesize "AMRAP" when set_type forces it but the
     // reps target doesn't already say so — keeps legacy detection rule.
+    // Sintetiza "AMRAP" ou "falha" pra que buildSetMetaLabel produza
+    // "Meta: até a falha" sem depender do trainer ter digitado essa palavra
+    // no campo reps. Espelha mobile/components/workout/SetRow.tsx.
     const metaInputReps = (() => {
-        if (setType === 'amrap' && !isAmrapReps(target)) return 'AMRAP'
+        if (isAmrapReps(target)) return target
+        if (setType === 'amrap') return 'AMRAP'
+        if (setType === 'failure') return 'falha'
         return target
     })()
     const repsMetaLabelRaw = buildSetMetaLabel({
@@ -50,10 +56,13 @@ export function PreviewSetRow({ index, phase }: PreviewSetRowProps) {
     })
     const repsMetaLabel = repsMetaLabelRaw.length > 0 ? repsMetaLabelRaw : null
 
+    // Prioridade: o que o trainer digitou ganha sempre. Só sintetiza
+    // "AMRAP" como placeholder quando reps está vazio mas o tipo é amrap —
+    // dá pista visual sem sobrescrever a intenção do trainer (ex: ele
+    // digitou "Máximo" e queria ver "Máximo", não "AMRAP").
     const repsPlaceholder = (() => {
-        if (amrap) return 'AMRAP'
-        if (cluster) return target
         if (hasTarget) return target
+        if (amrap) return 'AMRAP'
         return ''
     })()
 

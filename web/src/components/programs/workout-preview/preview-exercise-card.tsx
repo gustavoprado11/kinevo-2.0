@@ -11,6 +11,7 @@ import {
     type LucideIcon,
 } from 'lucide-react'
 import { colors, spacing, typography } from './preview-design-tokens'
+import { PreviewRestConnector } from './preview-rest-connector'
 import { PreviewSetRow } from './preview-set-row'
 import { PreviewTrainerNote } from './preview-trainer-note'
 import type { PreviewExercise, PreviewPhase } from './builder-to-preview'
@@ -232,23 +233,54 @@ export function PreviewExerciseCard({ exercise }: PreviewExerciseCardProps) {
                                     aria-label="Rodada em andamento"
                                 />
                             </div>
-                            {group.phases.map(({ phase, globalIndex }) => (
-                                <PreviewSetRow
-                                    key={globalIndex}
-                                    index={globalIndex}
-                                    phase={phase}
-                                />
-                            ))}
+                            {group.phases.map(({ phase, globalIndex }, localIdx) => {
+                                const phasesInGroup = group.phases.length
+                                const isLastPhaseInRound = localIdx === phasesInGroup - 1
+                                const isLastRound = groupIdx === roundGroups.length - 1
+                                const isLastInExercise = isLastPhaseInRound && isLastRound
+                                const isLastInRound = isLastPhaseInRound && !isLastRound
+                                const nextPhase = exercise.phases[globalIndex + 1] ?? null
+                                return (
+                                    <div key={globalIndex}>
+                                        <PreviewSetRow
+                                            index={globalIndex}
+                                            phase={phase}
+                                        />
+                                        <PreviewRestConnector
+                                            restSeconds={phase.restSeconds ?? 0}
+                                            currentSetType={phase.setType}
+                                            nextSetType={nextPhase?.setType}
+                                            isLastInRound={isLastInRound}
+                                            isLastInExercise={isLastInExercise}
+                                        />
+                                    </div>
+                                )
+                            })}
                         </div>
                     ))
                 ) : (
-                    exercise.setsData.map((_, index) => (
-                        <PreviewSetRow
-                            key={index}
-                            index={index}
-                            phase={exercise.phases[index] ?? null}
-                        />
-                    ))
+                    exercise.setsData.map((_, index) => {
+                        const phase = exercise.phases[index] ?? null
+                        const nextPhase = exercise.phases[index + 1] ?? null
+                        const isLast = index === exercise.setsData.length - 1
+                        // Per-fase quando há scheme; senão o agregado uniforme.
+                        const restForConnector =
+                            phase?.restSeconds ?? exercise.restSeconds
+                        return (
+                            <div key={index}>
+                                <PreviewSetRow
+                                    index={index}
+                                    phase={phase}
+                                />
+                                <PreviewRestConnector
+                                    restSeconds={restForConnector}
+                                    currentSetType={phase?.setType ?? 'normal'}
+                                    nextSetType={nextPhase?.setType}
+                                    isLastInExercise={isLast}
+                                />
+                            </div>
+                        )
+                    })
                 )}
             </div>
         </div>

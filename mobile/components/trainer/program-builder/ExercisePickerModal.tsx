@@ -15,6 +15,12 @@ interface ExercisePickerModalProps {
     onSelect: (exercise: Exercise) => void;
 }
 
+/** Converte uma string pra Title Case respeitando acentos pt-BR. Usado pra
+ *  pré-preencher o nome do novo exercício com a busca do trainer em
+ *  formato consistente ("puxada aberta" → "Puxada Aberta"). */
+const toTitleCase = (s: string): string =>
+    s.toLowerCase().replace(/(^|\s)\p{L}/gu, (c) => c.toUpperCase());
+
 export function ExercisePickerModal({ visible, onClose, onSelect }: ExercisePickerModalProps) {
     const bottomSheetRef = useRef<BottomSheet>(null);
     const snapPoints = useMemo(() => ["75%", "95%"], []);
@@ -299,7 +305,11 @@ export function ExercisePickerModal({ visible, onClose, onSelect }: ExercisePick
                 onClose={handleCloseVideoPreview}
             />
 
-            {/* Create Exercise Modal */}
+            {/* Create Exercise Modal — pré-preenche o nome com a busca do
+             *  trainer em title case. Ele acabou de digitar "Puxada aberta
+             *  pegada neutra" e clicou em + Novo: a UI economiza a redigitação
+             *  e ainda normaliza pra convenção pt-BR ("Puxada Aberta Pegada
+             *  Neutra"). Trainer pode editar antes de salvar. */}
             <ExerciseFormModal
                 visible={showCreateExercise}
                 exercise={null}
@@ -307,6 +317,7 @@ export function ExercisePickerModal({ visible, onClose, onSelect }: ExercisePick
                 onClose={() => setShowCreateExercise(false)}
                 onSave={handleSaveNewExercise}
                 isSaving={isCreating}
+                initialName={toTitleCase(search.trim())}
             />
         </BottomSheet>
     );

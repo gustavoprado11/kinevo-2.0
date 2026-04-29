@@ -94,7 +94,7 @@ export function StudentOverviewTab({ data }: Props) {
                                 </View>
                             )}
                         </View>
-                        {data.activeProgram.duration_weeks && (
+                        {!!data.activeProgram.duration_weeks && (
                             <Text style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>
                                 {data.activeProgram.duration_weeks} semanas · Semana {
                                     data.activeProgram.started_at
@@ -141,12 +141,12 @@ export function StudentOverviewTab({ data }: Props) {
                                 </Text>
                             </View>
                             <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
-                                {session.duration_seconds && (
+                                {!!session.duration_seconds && (
                                     <Text style={{ fontSize: 12, color: "#64748b" }}>
                                         {formatDuration(session.duration_seconds)}
                                     </Text>
                                 )}
-                                {session.rpe && (
+                                {!!session.rpe && (
                                     <View
                                         style={{
                                             backgroundColor: session.rpe >= 8 ? "#fef2f2" : "#f8fafc",

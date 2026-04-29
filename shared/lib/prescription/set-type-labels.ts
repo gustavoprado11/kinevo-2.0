@@ -19,15 +19,19 @@ export const SET_TYPE_LABELS: Record<SetType, string> = {
     amrap: 'AMRAP',
 }
 
-/** Compact uppercase labels used inside the per-set badge in workout cards.
- *  `'normal'` returns an empty string — caller should hide the badge. */
+/** Labels pt-BR sentence-case usados dentro do badge do set durante a
+ *  execução. Substitui as abreviações em caixa-alta (TOP/BACK/FAIL/...) que
+ *  eram opacas pro aluno — agora ele lê "Drop", "Falha", "Cluster" etc. e
+ *  tem alguma chance de associar à explicação do treinador, ainda que não
+ *  conheça o jargão. AMRAP fica como sigla pelo uso consagrado.
+ *  `'normal'` retorna string vazia — caller deve esconder o badge. */
 export const SET_TYPE_BADGE_LABELS: Record<SetType, string> = {
-    warmup: 'W',
+    warmup: 'Aquecimento',
     normal: '',
-    top: 'TOP',
-    backoff: 'BACK',
-    drop: 'DROP',
-    failure: 'FAIL',
-    cluster: 'CLUSTER',
+    top: 'Top',
+    backoff: 'Backoff',
+    drop: 'Drop',
+    failure: 'Falha',
+    cluster: 'Cluster',
     amrap: 'AMRAP',
 }
