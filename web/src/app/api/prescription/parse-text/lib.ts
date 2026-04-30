@@ -1,5 +1,177 @@
 import type { ParseTextResponse } from './types'
 
+// ---------------------------------------------------------------------------
+// Splitter — recognize per-workout heading lines used by Brazilian trainers
+// ---------------------------------------------------------------------------
+
+const HEADING_KEYWORDS = [
+    'treino', 'dia', 'workout', 'day', 'sessao', 'session',
+    'superior', 'inferior', 'push', 'pull', 'legs', 'pernas',
+    'peito', 'costas', 'ombro', 'ombros', 'braco', 'bracos',
+    'full', 'upper', 'lower', 'posterior', 'anterior',
+    'ab', 'abs', 'abdomen', 'core',
+]
+
+function normalizeHeadingStr(s: string): string {
+    return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
+}
+
+function isWorkoutHeading(
+    line: string,
+    nextNonEmpty: string | null,
+    prevLineBlank: boolean,
+): boolean {
+    const trimmed = line.trim()
+    if (!trimmed || trimmed.length > 80) return false
+    if (/\d+\s*[x×]\s*\d+/i.test(trimmed)) return false
+
+    const norm = normalizeHeadingStr(trimmed)
+
+    for (const kw of HEADING_KEYWORDS) {
+        const re = new RegExp(`^${kw}\\b`)
+        if (re.test(norm)) return true
+    }
+
+    if (/^[a-z0-9]{1,4}\s*[-–—:]/.test(norm)) return true
+
+    // (4) heuristic fallback: linha curta sem números de série, seguida (em
+    // até 1 linha em branco) por uma linha de exercício "Nome ... NxM".
+    // SÓ dispara se a linha está separada visualmente do bloco anterior
+    // (linha em branco antes ou início do texto). Sem isso, "Aquecimento"
+    // dentro de um bloco de exercícios viraria heading falso.
+    if (
+        prevLineBlank &&
+        trimmed.length <= 40 &&
+        nextNonEmpty &&
+        /\d+\s*[x×]\s*\d+/i.test(nextNonEmpty)
+    ) {
+        const wordCount = trimmed.split(/\s+/).filter(Boolean).length
+        if (wordCount <= 5) return true
+    }
+
+    return false
+}
+
+export function splitWorkoutBlocks(text: string): string[] {
+    const lines = text.split('\n')
+    const blocks: string[] = []
+    let current: string[] = []
+
+    const nextNonEmpty: (string | null)[] = new Array(lines.length).fill(null)
+    let pending: string | null = null
+    for (let i = lines.length - 1; i >= 0; i--) {
+        nextNonEmpty[i] = pending
+        if (lines[i].trim()) pending = lines[i].trim()
+    }
+
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i]
+        const prevLineBlank = i === 0 || lines[i - 1].trim() === ''
+        if (isWorkoutHeading(line, nextNonEmpty[i], prevLineBlank)) {
+            if (current.length > 0) {
+                const block = current.join('\n').trim()
+                if (block) blocks.push(block)
+            }
+            current = [line]
+        } else {
+            current.push(line)
+        }
+    }
+    if (current.length > 0) {
+        const block = current.join('\n').trim()
+        if (block) blocks.push(block)
+    }
+
+    if (blocks.length === 0) return [text]
+    return blocks
+}
+
+// ---------------------------------------------------------------------------
+// Catalog pre-filter
+// ---------------------------------------------------------------------------
+
+const STOP_WORDS = new Set([
+    'com', 'sem', 'para', 'treino', 'series', 'serie', 'reps', 'rep',
+    'repeticoes', 'rodadas', 'descanso', 'rest', 'set', 'sets', 'ate', 'falha',
+    'alternado', 'alternada', 'livre', 'pegada', 'enfasei', 'enfase', 'dia',
+    'possivel', 'maquina', 'barra', 'halter', 'halteres', 'cabo', 'polia',
+    'smith', 'corda', 'frente', 'tras', 'cima', 'baixo', 'completo', 'media',
+    'medio', 'aberta', 'fechada', 'pronada', 'supinada', 'neutra',
+])
+
+function normalize(s: string): string {
+    return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+}
+
+export function stemPtBr(token: string): string {
+    if (token.length <= 4) return token
+    if (/(or)(a|as|es)$/.test(token)) return token.replace(/(or)(a|as|es)$/, '$1')
+    if (/(.{4,})(as|os|a|o)$/.test(token)) {
+        return token.replace(/(.{4,})(as|os|a|o)$/, '$1')
+    }
+    if (/s$/.test(token) && token.length > 4) return token.slice(0, -1)
+    return token
+}
+
+const KEYWORD_ALIASES: Record<string, string[]> = {
+    banco: ['cadeira', 'mesa'],
+    pulldown: ['puxada'],
+    hip: ['elevacao', 'quadril'],
+    agacho: ['agachamento'],
+    agache: ['agachamento'],
+    bulgaro: ['agachamento', 'bulgaro'],
+    legpress: ['leg', 'press'],
+}
+
+export function extractKeywords(text: string): Set<string> {
+    const tokens = normalize(text).match(/[a-z0-9]+/g) || []
+    const keywords = new Set<string>()
+    for (const tok of tokens) {
+        if (tok.length < 3 || STOP_WORDS.has(tok) || /^\d+$/.test(tok)) continue
+        const stem = stemPtBr(tok)
+        keywords.add(stem)
+        const aliases = KEYWORD_ALIASES[stem] ?? KEYWORD_ALIASES[tok]
+        if (aliases) for (const a of aliases) keywords.add(stemPtBr(a))
+    }
+    return keywords
+}
+
+export function filterCatalogByText<T extends { id: string; name: string }>(
+    text: string,
+    catalog: T[],
+): T[] {
+    const keywords = extractKeywords(text)
+    if (keywords.size === 0) return catalog
+
+    const scored: Array<{ ex: T; score: number }> = []
+    for (const ex of catalog) {
+        const nameTokens = (normalize(ex.name).match(/[a-z0-9]+/g) || [])
+            .filter(t => t.length >= 3)
+            .map(stemPtBr)
+        let score = 0
+        for (const tok of nameTokens) {
+            if (keywords.has(tok)) {
+                score += 2
+            } else {
+                for (const kw of keywords) {
+                    if (kw.length >= 4 && tok.length >= 4 &&
+                        (kw.startsWith(tok) || tok.startsWith(kw))) {
+                        score += 1
+                        break
+                    }
+                }
+            }
+        }
+        if (score > 0) scored.push({ ex, score })
+    }
+
+    scored.sort((a, b) => b.score - a.score)
+    const filtered = scored.map(s => s.ex)
+
+    if (filtered.length < 20) return catalog
+    return filtered.slice(0, 150)
+}
+
 /** Extract JSON from LLM response text — handles markdown code blocks and raw JSON */
 export function extractJson(text: string): unknown | null {
     // Try markdown code block first

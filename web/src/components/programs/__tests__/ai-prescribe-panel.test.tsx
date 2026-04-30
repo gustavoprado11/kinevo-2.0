@@ -326,4 +326,206 @@ describe('AiPrescribePanel', () => {
             expect(screen.getByText('Failed to fetch')).toBeInTheDocument()
         })
     })
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Routing — onde o exercício parseado vai parar (regressão).
+    //
+    // Antes: quando a resposta tinha 1 workout, ele era SEMPRE roteado pro
+    // workout ativo, ignorando o nome. Resultado: colar "Treino B /
+    // Agachamento 3x10" jogava o agachamento no Treino A ativo.
+    //
+    // Agora: name-match primeiro; fallback pro ativo só quando o nome é o
+    // default do LLM ("Treino A", usado quando o texto não tem heading).
+    // ─────────────────────────────────────────────────────────────────────────
+
+    it('routing: heading custom cria workout novo, não joga no ativo', async () => {
+        // Trainer cola "Treino B / Agachamento 3x10". LLM retorna 1 workout
+        // chamado "Treino B". Existe só "Treino A". Deve criar Treino B novo.
+        const response: ParseTextResponse = {
+            workouts: [{
+                name: 'Treino B',
+                exercises: [{
+                    matched: true,
+                    exercise_id: 'ex-3',
+                    catalog_name: 'Agachamento Búlgaro',
+                    original_text: 'agachamento',
+                    sets: 3, reps: '10', rest_seconds: null, notes: null,
+                    superset_group: null, method_key: null, set_scheme: null, rounds: null,
+                }],
+            }],
+        }
+        vi.stubGlobal('fetch', mockFetchSuccess(response))
+        const props = createProps()
+        render(<AiPrescribePanel {...props} />)
+
+        fireEvent.change(screen.getByPlaceholderText(/Cole ou digite/), { target: { value: 'Treino B\nAgachamento 3x10' } })
+        fireEvent.click(screen.getByRole('button', { name: /Gerar Treino/ }))
+
+        await waitFor(() => {
+            expect(props.onCreateWorkout).toHaveBeenCalledWith('Treino B')
+        })
+        // Exercício foi pro workout NOVO, não pro ativo.
+        expect(props.onAddExerciseToWorkout).toHaveBeenCalledWith('w-new', mockExercises[2], expect.any(Object))
+        expect(props.onAddExerciseToWorkout).not.toHaveBeenCalledWith('w-1', expect.anything(), expect.anything())
+    })
+
+    it('routing: nome default "Treino A" sem heading vai pro workout ativo', async () => {
+        // Trainer cola "Supino 3x10" (sem heading). LLM retorna o default
+        // "Treino A". Trainer já tem um workout chamado "Treino A" — match
+        // direto, exercício vai pra ele.
+        vi.stubGlobal('fetch', mockFetchSuccess(successResponse))
+        const props = createProps()
+        render(<AiPrescribePanel {...props} />)
+
+        fireEvent.change(screen.getByPlaceholderText(/Cole ou digite/), { target: { value: 'Supino 3x10' } })
+        fireEvent.click(screen.getByRole('button', { name: /Gerar Treino/ }))
+
+        await waitFor(() => {
+            expect(props.onAddExerciseToWorkout).toHaveBeenCalledWith('w-1', mockExercises[0], expect.any(Object))
+        })
+        expect(props.onCreateWorkout).not.toHaveBeenCalled()
+    })
+
+    it('routing: trainer renomeou pro "Push", default cai no ativo (não cria "Treino A")', async () => {
+        // Trainer renomeou o workout pra "Push". Cola "Supino 3x10" (sem
+        // heading). LLM retorna default "Treino A". Sem match, mas é default
+        // — então vai pro ativo (Push), NÃO cria um Treino A novo.
+        const response: ParseTextResponse = {
+            workouts: [{
+                name: 'Treino A',
+                exercises: [{
+                    matched: true, exercise_id: 'ex-1',
+                    catalog_name: 'Supino Inclinado com Halteres', original_text: 'supino',
+                    sets: 3, reps: '10', rest_seconds: null, notes: null,
+                    superset_group: null, method_key: null, set_scheme: null, rounds: null,
+                }],
+            }],
+        }
+        vi.stubGlobal('fetch', mockFetchSuccess(response))
+        const props = createProps({
+            workouts: [{ id: 'w-push', name: 'Push', order_index: 0, items: [], frequency: [] }],
+            activeWorkoutId: 'w-push',
+        })
+        render(<AiPrescribePanel {...props} />)
+
+        fireEvent.change(screen.getByPlaceholderText(/Cole ou digite/), { target: { value: 'Supino 3x10' } })
+        fireEvent.click(screen.getByRole('button', { name: /Gerar Treino/ }))
+
+        await waitFor(() => {
+            expect(props.onAddExerciseToWorkout).toHaveBeenCalledWith('w-push', mockExercises[0], expect.any(Object))
+        })
+        expect(props.onCreateWorkout).not.toHaveBeenCalled()
+    })
+
+    it('routing: match por nome é case + accent insensitive', async () => {
+        // Trainer tem "Inferior A" (com acento implícito). LLM retorna
+        // "INFERIOR A" (variação de capitalização). Deve fazer match.
+        const response: ParseTextResponse = {
+            workouts: [{
+                name: 'INFERIOR A',
+                exercises: [{
+                    matched: true, exercise_id: 'ex-3',
+                    catalog_name: 'Agachamento Búlgaro', original_text: 'agachamento',
+                    sets: 3, reps: '10', rest_seconds: null, notes: null,
+                    superset_group: null, method_key: null, set_scheme: null, rounds: null,
+                }],
+            }],
+        }
+        vi.stubGlobal('fetch', mockFetchSuccess(response))
+        const props = createProps({
+            workouts: [{ id: 'w-inf', name: 'inferior a', order_index: 0, items: [], frequency: [] }],
+            activeWorkoutId: 'w-inf',
+        })
+        render(<AiPrescribePanel {...props} />)
+
+        fireEvent.change(screen.getByPlaceholderText(/Cole ou digite/), { target: { value: 'INFERIOR A\nAgachamento 3x10' } })
+        fireEvent.click(screen.getByRole('button', { name: /Gerar Treino/ }))
+
+        await waitFor(() => {
+            expect(props.onAddExerciseToWorkout).toHaveBeenCalledWith('w-inf', mockExercises[2], expect.any(Object))
+        })
+        expect(props.onCreateWorkout).not.toHaveBeenCalled()
+    })
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Extração de dia da semana embutido no nome do workout.
+    // Ex.: "Superior A - segunda" → name "Superior A" + frequency ['mon'].
+    // ─────────────────────────────────────────────────────────────────────────
+
+    it('routing: passa frequency inferida do nome ao criar workout novo', async () => {
+        const response: ParseTextResponse = {
+            workouts: [{
+                name: 'Inferior B - quinta',
+                exercises: [{
+                    matched: true, exercise_id: 'ex-3',
+                    catalog_name: 'Agachamento Búlgaro', original_text: 'agachamento',
+                    sets: 3, reps: '10', rest_seconds: null, notes: null,
+                    superset_group: null, method_key: null, set_scheme: null, rounds: null,
+                }],
+            }],
+        }
+        vi.stubGlobal('fetch', mockFetchSuccess(response))
+        const props = createProps()
+        render(<AiPrescribePanel {...props} />)
+
+        fireEvent.change(screen.getByPlaceholderText(/Cole ou digite/), { target: { value: 'Inferior B - quinta\nAgachamento 3x10' } })
+        fireEvent.click(screen.getByRole('button', { name: /Gerar Treino/ }))
+
+        // Cria workout chamado "Inferior B" (sem o sufixo de dia) com frequency ['thu'].
+        await waitFor(() => {
+            expect(props.onCreateWorkout).toHaveBeenCalledWith('Inferior B', ['thu'])
+        })
+    })
+
+    it('routing: cleanup remove placeholder vazio quando trainer prescreve workouts próprios', async () => {
+        const response: ParseTextResponse = {
+            workouts: [{
+                name: 'Inferior B - quinta',
+                exercises: [{
+                    matched: true, exercise_id: 'ex-3',
+                    catalog_name: 'Agachamento Búlgaro', original_text: 'agachamento',
+                    sets: 3, reps: '10', rest_seconds: null, notes: null,
+                    superset_group: null, method_key: null, set_scheme: null, rounds: null,
+                }],
+            }],
+        }
+        vi.stubGlobal('fetch', mockFetchSuccess(response))
+        // Programa novo: 1 placeholder vazio "Treino A".
+        const props = createProps({
+            workouts: [{ id: 'w-1', name: 'Treino A', order_index: 0, items: [], frequency: [] }],
+            activeWorkoutId: 'w-1',
+            onCleanupEmptyPlaceholders: vi.fn(),
+        })
+        render(<AiPrescribePanel {...props} />)
+
+        fireEvent.change(screen.getByPlaceholderText(/Cole ou digite/), { target: { value: 'Inferior B - quinta\nAgachamento 3x10' } })
+        fireEvent.click(screen.getByRole('button', { name: /Gerar Treino/ }))
+
+        // O painel chama cleanup com o ID do placeholder Treino A.
+        await waitFor(() => {
+            expect(props.onCleanupEmptyPlaceholders).toHaveBeenCalledWith(['w-1'])
+        })
+    })
+
+    it('routing: cleanup NÃO é chamado quando prescrição cai num workout existente (sem criar novo)', async () => {
+        // successResponse tem 1 workout chamado "Treino A" (default do LLM).
+        // O painel adiciona ao Treino A existente, NÃO cria nada novo, então
+        // o cleanup não dispara — placeholder permanece (já não é mais vazio).
+        vi.stubGlobal('fetch', mockFetchSuccess(successResponse))
+        const props = createProps({
+            workouts: [{ id: 'w-1', name: 'Treino A', order_index: 0, items: [], frequency: [] }],
+            activeWorkoutId: 'w-1',
+            onCleanupEmptyPlaceholders: vi.fn(),
+        })
+        render(<AiPrescribePanel {...props} />)
+
+        fireEvent.change(screen.getByPlaceholderText(/Cole ou digite/), { target: { value: 'Supino 3x10' } })
+        fireEvent.click(screen.getByRole('button', { name: /Gerar Treino/ }))
+
+        await waitFor(() => {
+            expect(props.onAddExerciseToWorkout).toHaveBeenCalled()
+        })
+        expect(props.onCleanupEmptyPlaceholders).not.toHaveBeenCalled()
+    })
 })
+

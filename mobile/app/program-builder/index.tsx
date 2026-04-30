@@ -272,7 +272,7 @@ export default function ProgramBuilderScreen() {
                         })),
                 }))
                 .filter((w) => w.exercises.length > 0);
-            useProgramBuilderStore.getState().initFromParsedText(params.studentId, workoutsForBuilder);
+            useProgramBuilderStore.getState().addParsedWorkoutsToDraft(params.studentId, workoutsForBuilder);
             setShowTextSheet(false);
         },
         [params.studentId],

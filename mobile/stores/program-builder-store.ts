@@ -8,6 +8,7 @@ import type {
 } from '@kinevo/shared/types/prescription';
 import type { BuilderProgramData } from '@kinevo/shared/lib/prescription/builder-mapper';
 import { collapseExpandedScheme } from '@kinevo/shared/lib/prescription/set-scheme';
+import { extractFrequencyFromName } from '@kinevo/shared/lib/prescription/extract-frequency';
 
 // ---------------------------------------------------------------------------
 // Storage Adapter — MMKV with in-memory fallback for Expo Go
@@ -202,6 +203,19 @@ interface ProgramBuilderState {
     /** Initialize program builder pre-filled with AI-parsed workouts */
     initFromParsedText: (studentId: string, workouts: ParsedWorkoutForBuilder[]) => void;
     /**
+     * Mescla treinos parseados (de "Texto para Treino") no draft atual.
+     * Se o draft está vazio ou pertence a outro studentId, delega para
+     * `initFromParsedText` (comportamento legado). Caso contrário, faz
+     * append: cada workout parseado vira um novo workout no fim da lista,
+     * preservando todos os existentes. Se o nome bater com um existente
+     * (case-insensitive), os exercícios entram NO existente em vez de criar
+     * duplicata.
+     */
+    addParsedWorkoutsToDraft: (
+        studentId: string,
+        parsedWorkouts: ParsedWorkoutForBuilder[],
+    ) => void;
+    /**
      * Initialize program builder pre-filled from an AI generation's BuilderProgramData
      * (the output of `mapAiOutputToBuilderData(snapshot)`). Sets `originatedFromAi=true`,
      * `generationId`, and stores the `originalSnapshot` for later reasoning preservation.
@@ -388,6 +402,101 @@ function workoutsFromBuilderData(builderData: BuilderProgramData): Workout[] {
     }));
 }
 
+/**
+ * Convert a parsed workout's exercises into builder WorkoutItems, ordering from
+ * `startOrderIndex`. Mirrors the logic used by `initFromParsedText` (supersets
+ * supported, advanced methods preserved on regular exercises only).
+ */
+function itemsFromParsedExercises(
+    exercises: ParsedExerciseForBuilder[],
+    startOrderIndex: number,
+): WorkoutItem[] {
+    const items: WorkoutItem[] = [];
+    let orderIndex = startOrderIndex;
+    const processedGroups = new Set<string>();
+
+    for (let ei = 0; ei < exercises.length; ei++) {
+        const ex = exercises[ei];
+        if (!ex.superset_group) {
+            items.push({
+                id: Crypto.randomUUID(),
+                item_type: 'exercise',
+                order_index: orderIndex++,
+                parent_item_id: null,
+                exercise_id: ex.exercise_id,
+                exercise_name: ex.catalog_name,
+                exercise_equipment: null,
+                exercise_muscle_groups: [],
+                sets: ex.sets,
+                reps: ex.reps,
+                rest_seconds: ex.rest_seconds ?? 60,
+                notes: ex.notes ?? null,
+                exercise_function: null,
+                item_config: {},
+                substitute_exercise_ids: [],
+                set_scheme: ex.set_scheme ?? null,
+                method_key: ex.method_key ?? null,
+                rounds: ex.rounds ?? 1,
+            });
+        } else if (!processedGroups.has(ex.superset_group)) {
+            processedGroups.add(ex.superset_group);
+            const groupId = ex.superset_group;
+            const groupExercises = exercises.filter((e) => e.superset_group === groupId);
+            const supersetId = Crypto.randomUUID();
+            const restBetweenRounds = groupExercises[0]?.rest_seconds ?? 60;
+
+            items.push({
+                id: supersetId,
+                item_type: 'superset',
+                order_index: orderIndex++,
+                parent_item_id: null,
+                exercise_id: '',
+                exercise_name: `Superset (${groupExercises.length})`,
+                exercise_equipment: null,
+                exercise_muscle_groups: [],
+                sets: groupExercises[0]?.sets ?? 3,
+                reps: '',
+                rest_seconds: restBetweenRounds,
+                notes: null,
+                exercise_function: null,
+                item_config: {},
+                substitute_exercise_ids: [],
+                set_scheme: null,
+                method_key: null,
+                rounds: 1,
+            });
+
+            groupExercises.forEach((gex, childIdx) => {
+                items.push({
+                    id: Crypto.randomUUID(),
+                    item_type: 'exercise',
+                    order_index: childIdx,
+                    parent_item_id: supersetId,
+                    exercise_id: gex.exercise_id,
+                    exercise_name: gex.catalog_name,
+                    exercise_equipment: null,
+                    exercise_muscle_groups: [],
+                    sets: gex.sets,
+                    reps: gex.reps,
+                    rest_seconds: 0,
+                    notes: gex.notes ?? null,
+                    exercise_function: null,
+                    item_config: {},
+                    substitute_exercise_ids: [],
+                    set_scheme: null,
+                    method_key: null,
+                    rounds: 1,
+                });
+            });
+        }
+    }
+    return items;
+}
+
+function normalizeWorkoutName(s: string): string {
+    return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+}
+
 // ---------------------------------------------------------------------------
 // Store
 // ---------------------------------------------------------------------------
@@ -548,6 +657,92 @@ export const useProgramBuilderStore = create<ProgramBuilderState>()(
                     currentWorkoutId: workouts[0].id,
                     isDirty: true,
                     isSaving: false,
+                });
+            },
+
+            addParsedWorkoutsToDraft: (studentId: string, parsedWorkouts: ParsedWorkoutForBuilder[]) => {
+                set((state) => {
+                    const draftEmpty = state.draft.workouts.every(w => w.items.length === 0);
+                    const studentMismatch = state.draft.studentId !== studentId;
+
+                    if (studentMismatch || draftEmpty) {
+                        // Delegate to legacy behavior (build from scratch).
+                        const workouts: Workout[] = parsedWorkouts.map((pw, wi) => {
+                            const { name: cleanName, frequency: inferredDays } = extractFrequencyFromName(pw.name);
+                            return {
+                                id: Crypto.randomUUID(),
+                                name: cleanName,
+                                order_index: wi,
+                                frequency: inferredDays,
+                                items: itemsFromParsedExercises(pw.exercises, 0),
+                            };
+                        });
+                        if (workouts.length === 0) {
+                            workouts.push({
+                                id: Crypto.randomUUID(),
+                                name: 'Treino A',
+                                order_index: 0,
+                                frequency: [],
+                                items: [],
+                            });
+                        }
+                        const draft: ProgramDraft = {
+                            name: '',
+                            description: '',
+                            duration_weeks: null,
+                            studentId,
+                            workouts,
+                            generationId: null,
+                            originatedFromAi: false,
+                            originalSnapshot: null,
+                            editingAssignedProgramId: null,
+                            originalWorkoutIds: [],
+                            originalItemIds: [],
+                        };
+                        return {
+                            draft,
+                            currentWorkoutId: workouts[0].id,
+                            isDirty: true,
+                            isSaving: false,
+                        };
+                    }
+
+                    // Merge: append new exercises into matching named workouts,
+                    // create new workouts for unmatched names.
+                    const workouts = state.draft.workouts.map(w => ({ ...w, items: [...w.items] }));
+                    let firstAffectedId: string | null = null;
+
+                    for (const pw of parsedWorkouts) {
+                        const { name: cleanName, frequency: inferredDays } = extractFrequencyFromName(pw.name);
+                        const targetName = normalizeWorkoutName(cleanName);
+                        const existing = workouts.find(w => normalizeWorkoutName(w.name) === targetName);
+                        if (existing) {
+                            const newItems = itemsFromParsedExercises(pw.exercises, existing.items.length);
+                            existing.items.push(...newItems);
+                            // Só popula frequency se o workout existente ainda não tem dias
+                            // configurados — preserva escolhas manuais do trainer.
+                            if (existing.frequency.length === 0 && inferredDays.length > 0) {
+                                existing.frequency = inferredDays;
+                            }
+                            if (!firstAffectedId) firstAffectedId = existing.id;
+                        } else {
+                            const newWorkout: Workout = {
+                                id: Crypto.randomUUID(),
+                                name: cleanName,
+                                order_index: workouts.length,
+                                frequency: inferredDays,
+                                items: itemsFromParsedExercises(pw.exercises, 0),
+                            };
+                            workouts.push(newWorkout);
+                            if (!firstAffectedId) firstAffectedId = newWorkout.id;
+                        }
+                    }
+
+                    return {
+                        draft: { ...state.draft, workouts },
+                        currentWorkoutId: firstAffectedId ?? state.currentWorkoutId,
+                        isDirty: true,
+                    };
                 });
             },
 

@@ -5,6 +5,7 @@ import { Sparkles, FileText, X, Loader2, Check, AlertTriangle, RotateCcw } from 
 import type { Exercise } from '@/types/exercise'
 import type { Workout } from './program-builder-client'
 import type { ParseTextResponse, ParsedExercise } from '@/app/api/prescription/parse-text/types'
+import { extractFrequencyFromName } from '@kinevo/shared/lib/prescription/extract-frequency'
 
 type PanelState = 'idle' | 'loading' | 'success' | 'error'
 
@@ -26,7 +27,14 @@ interface AiPrescribePanelProps {
             rounds?: number | null
         },
     ) => void
-    onCreateWorkout: (name: string) => string
+    /** Cria um workout. `frequency` é opcional — usado quando o trainer
+     *  embute o dia no nome (ex: "Superior A - segunda"). */
+    onCreateWorkout: (name: string, frequency?: string[]) => string
+    /** Remove workouts vazios criados como placeholder (ex: "Treino A" default
+     *  do programa novo). Chamado depois da prescrição se o trainer criou
+     *  workouts próprios e o placeholder ficou órfão. Não-obrigatório:
+     *  se o pai não passar, a limpeza simplesmente não acontece. */
+    onCleanupEmptyPlaceholders?: (workoutIds: string[]) => void
 }
 
 export function AiPrescribePanel({
@@ -36,6 +44,7 @@ export function AiPrescribePanel({
     activeWorkoutId,
     onAddExerciseToWorkout,
     onCreateWorkout,
+    onCleanupEmptyPlaceholders,
 }: AiPrescribePanelProps) {
     const [text, setText] = useState('')
     const [state, setState] = useState<PanelState>('idle')
@@ -73,22 +82,67 @@ export function AiPrescribePanel({
             let matchedCount = 0
             let unmatchedCount = 0
 
+            // Case + accent insensitive match for workout names. Lets us treat
+            // "Treino A" / "treino a" / "Treino  A " as the same workout, and
+            // "Inferior A" / "inferior a" likewise.
+            const normalizeWorkoutName = (s: string) =>
+                s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
+
+            // The LLM uses "Treino A" as a default when the trainer's text has
+            // no heading at all (system prompt: "Se o texto não separar em
+            // treinos distintos, coloque tudo em um treino chamado 'Treino A'").
+            // We use this to distinguish "trainer pasted a single block with a
+            // real heading" from "trainer pasted exercises with no heading".
+            const LLM_DEFAULT_NAME = 'treino a'
+
+            // Snapshot dos workouts vazios pré-existentes ANTES de criar
+            // novos. Se o trainer prescrever workouts próprios (custom
+            // headings), os placeholders vazios sobrantes ficam órfãos e
+            // podem ser limpos no final.
+            const emptyPlaceholderIdsBefore = workouts
+                .filter(w => w.items.length === 0)
+                .map(w => w.id)
+            let createdAnyNewWorkout = false
+
             for (const parsedWorkout of data.workouts) {
-                // Find or create the target workout
+                // Extrai dia da semana embutido no nome ("Superior A - segunda"
+                // → name "Superior A", frequency ['mon']).
+                const { name: cleanName, frequency: inferredDays } =
+                    extractFrequencyFromName(parsedWorkout.name)
+
+                // Find or create the target workout. Always try a name match
+                // first — that way "Treino B / Agachamento 3x10" routes to the
+                // existing Treino B (or creates one if missing) instead of
+                // falling into the active workout. Only when the parsed name
+                // is the LLM's default ("Treino A", indicating no heading in
+                // the trainer's text) AND there's no existing workout with
+                // that name do we fall back to the active workout — that
+                // preserves the "paste with no heading" UX where exercises go
+                // into whatever the trainer has open.
                 let targetWorkoutId: string | null = null
 
-                if (data.workouts.length === 1) {
-                    // Single workout in response — add to active workout
-                    targetWorkoutId = activeWorkoutId || workouts[0]?.id || null
-                    if (!targetWorkoutId) {
-                        targetWorkoutId = onCreateWorkout(parsedWorkout.name)
-                    }
+                const targetName = normalizeWorkoutName(cleanName)
+                const existing = workouts.find(w => normalizeWorkoutName(w.name) === targetName)
+
+                if (existing) {
+                    targetWorkoutId = existing.id
+                    // Preserva a frequency que o trainer já configurou no
+                    // workout existente — não sobrescrever.
+                } else if (targetName === LLM_DEFAULT_NAME && (activeWorkoutId || workouts[0]?.id)) {
+                    // No heading in the trainer's text and there's already a
+                    // workout to drop into — use the active one (or first).
+                    targetWorkoutId = activeWorkoutId || workouts[0]!.id
                 } else {
-                    // Multiple workouts — match by name or create new
-                    const existing = workouts.find(w =>
-                        w.name.toLowerCase() === parsedWorkout.name.toLowerCase()
-                    )
-                    targetWorkoutId = existing?.id ?? onCreateWorkout(parsedWorkout.name)
+                    // Real heading without a match (e.g., "Treino B" while
+                    // only Treino A exists) → create a new workout for it,
+                    // passando os dias inferidos do nome quando houver. Quando
+                    // não houver, chamamos com 1 argumento só (compat com
+                    // callers que esperam a assinatura antiga / testes que
+                    // verificam arity).
+                    targetWorkoutId = inferredDays.length > 0
+                        ? onCreateWorkout(cleanName, inferredDays)
+                        : onCreateWorkout(cleanName)
+                    createdAnyNewWorkout = true
                 }
 
                 for (const parsedEx of parsedWorkout.exercises) {
@@ -112,6 +166,14 @@ export function AiPrescribePanel({
                         unmatchedCount++
                     }
                 }
+            }
+
+            // Limpa workouts placeholder vazios sobrantes — só faz isso quando
+            // o trainer realmente CRIOU workouts próprios. Não toca em nada se
+            // ele só usou os existentes (ex: prescrição com 1 workout default
+            // que caiu no Treino A pré-existente).
+            if (createdAnyNewWorkout && emptyPlaceholderIdsBefore.length > 0 && onCleanupEmptyPlaceholders) {
+                onCleanupEmptyPlaceholders(emptyPlaceholderIdsBefore)
             }
 
             setStats({ matched: matchedCount, unmatched: unmatchedCount })

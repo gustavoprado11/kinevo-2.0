@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { callLLM, type LLMModel } from '@/lib/prescription/llm-client'
 import { checkRateLimit, recordRequest } from '@/lib/rate-limit'
 import type { ParseTextRequest, ParseTextResponse } from './types'
-import { extractJson, validateAndFixResponse } from './lib'
+import { extractJson, validateAndFixResponse, splitWorkoutBlocks, filterCatalogByText } from './lib'
 
 export const maxDuration = 30
 
@@ -29,38 +29,6 @@ const LLM_TIMEOUT_MS = 26_000
 // splitting and running the calls in parallel we turn the latency from
 // O(total-exercises) into O(largest-workout), which keeps the whole request
 // under the route's 30s budget even for very long prescriptions.
-function splitWorkoutBlocks(text: string): string[] {
-    const lines = text.split('\n')
-    const blocks: string[] = []
-    let current: string[] = []
-
-    // A heading looks like: "Treino A", "Treino Push B (...)", "Dia 1", "Workout 1".
-    // We match lines that start with those keywords (case-insensitive) and are
-    // short enough to not be an exercise description.
-    const headingRe = /^\s*(?:treino|dia|workout|day)\b/i
-
-    for (const line of lines) {
-        const trimmed = line.trim()
-        if (trimmed.length > 0 && trimmed.length < 80 && headingRe.test(trimmed)) {
-            if (current.length > 0) {
-                const block = current.join('\n').trim()
-                if (block) blocks.push(block)
-            }
-            current = [line]
-        } else {
-            current.push(line)
-        }
-    }
-    if (current.length > 0) {
-        const block = current.join('\n').trim()
-        if (block) blocks.push(block)
-    }
-
-    // If we couldn't detect any heading, return the text as a single block.
-    if (blocks.length === 0) return [text]
-    return blocks
-}
-
 const SYSTEM_PROMPT = `Você é um parser de prescrições de treino. Sua tarefa é interpretar texto livre escrito por um personal trainer e converter em dados estruturados.
 
 Você receberá:
@@ -90,6 +58,19 @@ Para cada exercício mencionado no texto:
   - "tríceps testa" → "Tríceps Testa com Barra W"
   - "rosca direta" → "Rosca Direta Barra W"
   - "elevação lateral" → "Elevação Lateral com Halteres"
+  - "banco flexor" / "banco flexora" → "Cadeira Flexora"
+  - "banco extensor" / "banco extensora" → "Cadeira Extensora"
+  - "cadeira flexor" → "Cadeira Flexora"
+  - "cadeira extensor" → "Cadeira Extensora"
+  - "mesa flexor" → "Mesa Flexora"
+  - "mesa extensor" → "Mesa Extensora"
+  - "supino articulado" → "Supino Reto Articulado" (ou variante mais próxima do catálogo)
+  - "rosca direta banco inclinado" → "Rosca Direta com Halteres no Banco Inclinado"
+  - "tríceps francês polia" → "Tríceps Francês na Polia"
+  - "panturrilha em pé" → "Panturrilha em Pé no Smith" (ou similar)
+  - "puxada neutra" → "Puxada Pegada Neutra"
+  - "remada aberta articulada" → "Remada Articulada Pegada Aberta"
+- Em academias brasileiras, "banco" + flexor/extensor é gíria regional para os aparelhos guiados de bíceps femoral / quadríceps. Trate "banco flexor", "banco extensor", "cadeira flexor", "mesa flexor" e variações como sinônimos do exercício do catálogo correspondente.
 - Se o texto especifica equipamento (halter, barra, máquina, polia, cabo, smith), priorize o match com esse equipamento
 - Se o texto especifica pegada (pronada, supinada, neutra), priorize o match com essa pegada
 - Extraia séries e repetições (ex: "3x10", "4x8-12", "3x15")
@@ -346,66 +327,3 @@ export async function POST(req: Request) {
         )
     }
 }
-
-// ============================================================================
-// Catalog pre-filter
-// ============================================================================
-
-const STOP_WORDS = new Set([
-    'com', 'sem', 'para', 'treino', 'series', 'serie', 'reps', 'rep',
-    'repeticoes', 'rodadas', 'descanso', 'rest', 'set', 'sets', 'ate', 'falha',
-    'alternado', 'alternada', 'livre', 'pegada', 'enfasei', 'enfase', 'dia',
-    'possivel', 'maquina', 'barra', 'halter', 'halteres', 'cabo', 'polia',
-    'smith', 'corda', 'frente', 'tras', 'cima', 'baixo', 'completo', 'media',
-    'medio', 'aberta', 'fechada', 'pronada', 'supinada', 'neutra',
-])
-
-/** Remove accents and lowercase. "Elevação" -> "elevacao". */
-function normalize(s: string): string {
-    return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
-}
-
-/** Extract content words (≥3 chars, not stop words) from user's free text. */
-function extractKeywords(text: string): Set<string> {
-    const tokens = normalize(text).match(/[a-z0-9]+/g) || []
-    const keywords = new Set<string>()
-    for (const tok of tokens) {
-        if (tok.length >= 3 && !STOP_WORDS.has(tok) && !/^\d+$/.test(tok)) {
-            keywords.add(tok)
-        }
-    }
-    return keywords
-}
-
-/** Return the exercises whose name shares at least one keyword with the text. */
-function filterCatalogByText<T extends { id: string; name: string }>(
-    text: string,
-    catalog: T[],
-): T[] {
-    const keywords = extractKeywords(text)
-    if (keywords.size === 0) return catalog
-
-    // Exercises that share at least one content word with the text, scored by
-    // how many words they share (so "supino reto barra" ranks above a generic
-    // "barra fixa" match when the user wrote "supino reto com barra").
-    const scored: Array<{ ex: T; score: number }> = []
-    for (const ex of catalog) {
-        const nameTokens = normalize(ex.name).match(/[a-z0-9]+/g) || []
-        let score = 0
-        for (const tok of nameTokens) {
-            if (tok.length >= 3 && keywords.has(tok)) score++
-        }
-        if (score > 0) scored.push({ ex, score })
-    }
-
-    scored.sort((a, b) => b.score - a.score)
-    const filtered = scored.map(s => s.ex)
-
-    // Safety nets: always cap at ~150 so the prompt stays small; fall back to
-    // the full catalog if the filter returned fewer than a handful (indicates
-    // the filter missed something — better to be slow than to silently skip
-    // exercises the trainer referenced).
-    if (filtered.length < 20) return catalog
-    return filtered.slice(0, 150)
-}
-

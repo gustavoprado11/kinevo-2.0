@@ -813,19 +813,36 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
         }))
     }, [])
 
-    const createWorkoutWithName = useCallback((name: string): string => {
+    const createWorkoutWithName = useCallback((name: string, frequency?: string[]): string => {
         const id = tempId()
         const newWorkout: Workout = {
             id,
             name,
             order_index: workouts.length,
             items: [],
-            frequency: []
+            frequency: frequency ?? []
         }
         setWorkouts(prev => [...prev, newWorkout])
         setActiveWorkoutId(id)
         return id
     }, [workouts.length])
+
+    /** Remove workouts vazios pelos IDs informados, com reindex de order_index.
+     *  Usado pelo `AiPrescribePanel` no fim de uma prescrição por texto pra
+     *  limpar placeholders ("Treino A" default) que ficaram órfãos quando o
+     *  trainer prescreveu workouts próprios. Operação atômica via callback —
+     *  sobrevive a múltiplas atualizações em sequência. */
+    const cleanupEmptyPlaceholders = useCallback((workoutIds: string[]) => {
+        if (workoutIds.length === 0) return
+        const idSet = new Set(workoutIds)
+        setWorkouts(prev => {
+            const filtered = prev.filter(w => !idSet.has(w.id) || w.items.length > 0)
+            // Só reindex se houve remoção, pra evitar render desnecessário.
+            if (filtered.length === prev.length) return prev
+            return filtered.map((w, i) => ({ ...w, order_index: i }))
+        })
+        setActiveWorkoutId(prev => prev && idSet.has(prev) ? null : prev)
+    }, [])
 
     const handleExerciseCreated = useCallback((newExercise: Exercise) => {
         setLocalExercises(prev => [newExercise, ...prev])
@@ -2215,6 +2232,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                                     activeWorkoutId={activeWorkoutId}
                                                     onAddExerciseToWorkout={addExerciseToWorkout}
                                                     onCreateWorkout={createWorkoutWithName}
+                                                    onCleanupEmptyPlaceholders={cleanupEmptyPlaceholders}
                                                 />
                                             )}
                                         </div>

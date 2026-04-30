@@ -50,6 +50,19 @@ Para cada exercício mencionado no texto:
   - "tríceps testa" → "Tríceps Testa com Barra W"
   - "rosca direta" → "Rosca Direta Barra W"
   - "elevação lateral" → "Elevação Lateral com Halteres"
+  - "banco flexor" / "banco flexora" → "Cadeira Flexora"
+  - "banco extensor" / "banco extensora" → "Cadeira Extensora"
+  - "cadeira flexor" → "Cadeira Flexora"
+  - "cadeira extensor" → "Cadeira Extensora"
+  - "mesa flexor" → "Mesa Flexora"
+  - "mesa extensor" → "Mesa Extensora"
+  - "supino articulado" → "Supino Reto Articulado" (ou variante mais próxima do catálogo)
+  - "rosca direta banco inclinado" → "Rosca Direta com Halteres no Banco Inclinado"
+  - "tríceps francês polia" → "Tríceps Francês na Polia"
+  - "panturrilha em pé" → "Panturrilha em Pé no Smith" (ou similar)
+  - "puxada neutra" → "Puxada Pegada Neutra"
+  - "remada aberta articulada" → "Remada Articulada Pegada Aberta"
+- Em academias brasileiras, "banco" + flexor/extensor é gíria regional para os aparelhos guiados de bíceps femoral / quadríceps. Trate "banco flexor", "banco extensor", "cadeira flexor", "mesa flexor" e variações como sinônimos do exercício do catálogo correspondente.
 - Se o texto especifica equipamento (halter, barra, máquina, polia, cabo, smith), priorize o match com esse equipamento
 - Se o texto especifica pegada (pronada, supinada, neutra), priorize o match com essa pegada
 - Extraia séries e repetições (ex: "3x10", "4x8-12", "3x15")
@@ -237,15 +250,70 @@ const MODEL_FALLBACKS = ["gpt-4.1-mini", "gpt-4o-mini"];
 // Split the user's text into separate per-workout blocks. See the equivalent
 // comment in web/src/app/api/prescription/parse-text/route.ts for rationale.
 // Parallel per-block calls turn O(total-exercises) into O(largest-workout).
-function splitWorkoutBlocks(text: string): string[] {
+const HEADING_KEYWORDS = [
+    "treino", "dia", "workout", "day", "sessao", "session",
+    "superior", "inferior", "push", "pull", "legs", "pernas",
+    "peito", "costas", "ombro", "ombros", "braco", "bracos",
+    "full", "upper", "lower", "posterior", "anterior",
+    "ab", "abs", "abdomen", "core",
+];
+
+function normalizeHeading(s: string): string {
+    return s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+}
+
+function isWorkoutHeading(
+    line: string,
+    nextNonEmpty: string | null,
+    prevLineBlank: boolean,
+): boolean {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.length > 80) return false;
+    if (/\d+\s*[x×]\s*\d+/i.test(trimmed)) return false;
+
+    const norm = normalizeHeading(trimmed);
+
+    for (const kw of HEADING_KEYWORDS) {
+        const re = new RegExp(`^${kw}\\b`);
+        if (re.test(norm)) return true;
+    }
+
+    if (/^[a-z0-9]{1,4}\s*[-–—:]/.test(norm)) return true;
+
+    // (4) heuristic fallback: linha curta sem números de série, seguida (em
+    // até 1 linha em branco) por uma linha de exercício "Nome ... NxM".
+    // SÓ dispara se a linha está separada visualmente do bloco anterior
+    // (linha em branco antes ou início do texto). Sem isso, "Aquecimento"
+    // dentro de um bloco de exercícios viraria heading falso.
+    if (
+        prevLineBlank &&
+        trimmed.length <= 40 &&
+        nextNonEmpty &&
+        /\d+\s*[x×]\s*\d+/i.test(nextNonEmpty)
+    ) {
+        const wordCount = trimmed.split(/\s+/).filter(Boolean).length;
+        if (wordCount <= 5) return true;
+    }
+
+    return false;
+}
+
+export function splitWorkoutBlocks(text: string): string[] {
     const lines = text.split("\n");
     const blocks: string[] = [];
     let current: string[] = [];
-    const headingRe = /^\s*(?:treino|dia|workout|day)\b/i;
 
-    for (const line of lines) {
-        const trimmed = line.trim();
-        if (trimmed.length > 0 && trimmed.length < 80 && headingRe.test(trimmed)) {
+    const nextNonEmpty: (string | null)[] = new Array(lines.length).fill(null);
+    let pending: string | null = null;
+    for (let i = lines.length - 1; i >= 0; i--) {
+        nextNonEmpty[i] = pending;
+        if (lines[i].trim()) pending = lines[i].trim();
+    }
+
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const prevLineBlank = i === 0 || lines[i - 1].trim() === "";
+        if (isWorkoutHeading(line, nextNonEmpty[i], prevLineBlank)) {
             if (current.length > 0) {
                 const block = current.join("\n").trim();
                 if (block) blocks.push(block);
@@ -392,18 +460,40 @@ function normalize(s: string): string {
     return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 }
 
-function extractKeywords(text: string): Set<string> {
+export function stemPtBr(token: string): string {
+    if (token.length <= 4) return token;
+    if (/(or)(a|as|es)$/.test(token)) return token.replace(/(or)(a|as|es)$/, "$1");
+    if (/(.{4,})(as|os|a|o)$/.test(token)) {
+        return token.replace(/(.{4,})(as|os|a|o)$/, "$1");
+    }
+    if (/s$/.test(token) && token.length > 4) return token.slice(0, -1);
+    return token;
+}
+
+const KEYWORD_ALIASES: Record<string, string[]> = {
+    banco: ["cadeira", "mesa"],
+    pulldown: ["puxada"],
+    hip: ["elevacao", "quadril"],
+    agacho: ["agachamento"],
+    agache: ["agachamento"],
+    bulgaro: ["agachamento", "bulgaro"],
+    legpress: ["leg", "press"],
+};
+
+export function extractKeywords(text: string): Set<string> {
     const tokens = normalize(text).match(/[a-z0-9]+/g) || [];
     const keywords = new Set<string>();
     for (const tok of tokens) {
-        if (tok.length >= 3 && !STOP_WORDS.has(tok) && !/^\d+$/.test(tok)) {
-            keywords.add(tok);
-        }
+        if (tok.length < 3 || STOP_WORDS.has(tok) || /^\d+$/.test(tok)) continue;
+        const stem = stemPtBr(tok);
+        keywords.add(stem);
+        const aliases = KEYWORD_ALIASES[stem] ?? KEYWORD_ALIASES[tok];
+        if (aliases) for (const a of aliases) keywords.add(stemPtBr(a));
     }
     return keywords;
 }
 
-function filterCatalogByText<T extends { id: string; name: string }>(
+export function filterCatalogByText<T extends { id: string; name: string }>(
     text: string,
     catalog: T[],
 ): T[] {
@@ -412,10 +502,22 @@ function filterCatalogByText<T extends { id: string; name: string }>(
 
     const scored: Array<{ ex: T; score: number }> = [];
     for (const ex of catalog) {
-        const nameTokens = normalize(ex.name).match(/[a-z0-9]+/g) || [];
+        const nameTokens = (normalize(ex.name).match(/[a-z0-9]+/g) || [])
+            .filter(t => t.length >= 3)
+            .map(stemPtBr);
         let score = 0;
         for (const tok of nameTokens) {
-            if (tok.length >= 3 && keywords.has(tok)) score++;
+            if (keywords.has(tok)) {
+                score += 2;
+            } else {
+                for (const kw of keywords) {
+                    if (kw.length >= 4 && tok.length >= 4 &&
+                        (kw.startsWith(tok) || tok.startsWith(kw))) {
+                        score += 1;
+                        break;
+                    }
+                }
+            }
         }
         if (score > 0) scored.push({ ex, score });
     }
