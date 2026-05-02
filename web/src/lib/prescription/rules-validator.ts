@@ -20,7 +20,24 @@ import type {
     GeneratedWorkoutItem,
 } from '@kinevo/shared/types/prescription'
 
-import { REP_RANGES_BY_GOAL, REST_SECONDS } from './constants'
+import { REP_RANGES_BY_GOAL, REST_SECONDS, PRIMARY_MUSCLE_GROUPS } from './constants'
+import { computeWeeklyVolumePerMuscle } from './rules-engine'
+
+/**
+ * Volume budget shape consumed by enforceVolumeMinPrimary.
+ * Keys are muscle group names (in DB spelling, matching PRIMARY_MUSCLE_GROUPS).
+ * Compatible with PrescriptionConstraints.volume_budget.
+ */
+export type VolumeBudget = Record<string, { min: number; max: number }>
+
+/**
+ * Below this fraction of `budget.min`, the deficit is considered severe enough
+ * to force a retry. 0.30 = 30% — empirical sweet spot: tolerates the small
+ * deviations the LLM produces under natural exercise quantization (e.g. 8s
+ * delivered vs. 9s budget = 11% deficit, accepted) but flags egregious cases
+ * (e.g. 4s delivered vs. 9s budget = 56% deficit, retried).
+ */
+export const VOLUME_DEFICIT_RETRY_THRESHOLD = 0.30
 
 // ============================================================================
 // Types
@@ -39,6 +56,8 @@ export type RuleId =
     | 'REST_MATCH_GOAL'
     | 'R45_SCHEDULE_MISMATCH'
     | 'R_POOL_UNKNOWN_EXERCISE'
+    | 'R_VOLUME_BELOW_MIN_PRIMARY'
+    | 'R_ISOLATION_ON_SKIPPED_GROUP'
 
 /**
  * How a violation should be remediated:
@@ -184,6 +203,7 @@ export function validatePrescriptionAgainstRules(
     output: PrescriptionOutputSnapshot,
     exerciseMap: Map<string, PrescriptionExerciseRef>,
     profile: StudentPrescriptionProfile,
+    volumeBudget?: VolumeBudget,
 ): ValidateResult {
     // Work on a deep clone so the original stays untouched.
     let current: PrescriptionOutputSnapshot = structuredClone(output)
@@ -213,6 +233,17 @@ export function validatePrescriptionAgainstRules(
     // re-run the LLM with a corrective message.
     step(o => enforceScheduleCoverage(o, profile.available_days))
     step(o => enforceExerciseIdsInPool(o, exerciseMap))
+
+    // Volume floor for primary groups. Only runs if the caller passes the
+    // post-cap budget — otherwise we have no ground truth to validate against
+    // and skipping is safer than guessing. See callsite in
+    // actions/prescription/generate-program.ts.
+    if (volumeBudget) {
+        step(o => enforceVolumeMinPrimary(o, exerciseMap, volumeBudget))
+        // Phase 3.5: skipped-isolation rule reuses the same volume budget
+        // — a group with budget.max === 0 is by definition "skipped".
+        step(o => enforceNoIsolationOnSkippedGroups(o, exerciseMap, volumeBudget))
+    }
 
     return { output: current, violations }
 }
@@ -647,4 +678,191 @@ function enforceExerciseIdsInPool(
         }
     }
     return { output, violations }
+}
+
+// ============================================================================
+// R_VOLUME_BELOW_MIN_PRIMARY — primary muscle floor (issue 3)
+// ============================================================================
+// The constraints engine produces a `volume_budget` with min/max per muscle
+// group, already adjusted for frequency, emphasis, and session capacity (the
+// `cap` step). Until now, the validator only flagged this as a soft warning
+// inside rules-engine.ts and accepted the program anyway — leading to cases
+// like Peito=4 sets/week when min=9 (56% deficit) shipped to users with the
+// misleading label "déficit aceitável".
+//
+// This rule enforces a hard floor: if any PRIMARY group falls more than
+// VOLUME_DEFICIT_RETRY_THRESHOLD (30%) below `budget.min`, the validator
+// emits a retry-flagged violation with a corrective message naming the
+// offending groups and their targets, so the LLM can redistribute volume.
+//
+// Why retry, not local fix:
+//   - There's no safe way to add 5 sets of chest from this layer without
+//     understanding which exercise to add and at which slot in which session.
+//   - The slot-templates layer (program-builder.ts) is the right place for
+//     auto-substitution (issue 1's fix), not here.
+//
+// Skips:
+//   - Groups with budget.min === 0: deprioritized by applyFrequencyPriority.
+//   - Groups with actual === 0: covered by other validators (no exercise
+//     present at all is a different signal than "present but underdosed").
+
+function enforceVolumeMinPrimary(
+    output: PrescriptionOutputSnapshot,
+    exerciseMap: Map<string, PrescriptionExerciseRef>,
+    volumeBudget: VolumeBudget,
+): ValidateResult {
+    const weekly = computeWeeklyVolumePerMuscle(output.workouts, exerciseMap)
+    const offenders: Array<{ group: string; actual: number; min: number; deficitPct: number }> = []
+
+    for (const group of PRIMARY_MUSCLE_GROUPS) {
+        const budget = volumeBudget[group]
+        if (!budget || budget.min <= 0) continue
+
+        const actual = weekly[group] || 0
+        if (actual === 0) continue
+
+        if (actual < budget.min) {
+            const deficitPct = (budget.min - actual) / budget.min
+            if (deficitPct > VOLUME_DEFICIT_RETRY_THRESHOLD) {
+                offenders.push({ group, actual, min: budget.min, deficitPct })
+            }
+        }
+    }
+
+    if (offenders.length === 0) return { output, violations: [] }
+
+    // Sort by severity desc so the most egregious ones lead the message.
+    offenders.sort((a, b) => b.deficitPct - a.deficitPct)
+
+    const formatted = offenders
+        .map(o => `${o.group}: ${o.actual}s (mínimo ${o.min})`)
+        .join('; ')
+
+    const message =
+        `Volume semanal abaixo do mínimo aceitável para grupos primários — ${formatted}. ` +
+        `Redistribua o volume adicionando séries desses grupos (mantendo os limites por composto/acessório) ` +
+        `ou trocando exercícios de grupos com excedente. Não reduza outros grupos abaixo do mínimo deles.`
+
+    return {
+        output,
+        violations: [{
+            rule_id: 'R_VOLUME_BELOW_MIN_PRIMARY',
+            autofix: 'retry',
+            severity: 'error',
+            workout_index: -1,
+            item_index: -1,
+            exercise_id: null,
+            message,
+            before: {
+                offenders: offenders.map(o => ({
+                    group: o.group, actual: o.actual, min: o.min,
+                })),
+            },
+            after: {
+                threshold_pct: VOLUME_DEFICIT_RETRY_THRESHOLD,
+            },
+        }],
+    }
+}
+
+// ============================================================================
+// R_ISOLATION_ON_SKIPPED_GROUP — trainer asked to skip isolation (Phase 3.5)
+// ============================================================================
+// Trainer set volume_overrides[group] = { min: 0, max: 0 } — meaning "no
+// direct isolation work for this group; compounds that secondary-target it
+// are still allowed". The prompt-builder also tells the LLM about this, but
+// LLMs aren't perfectly reliable about following negative instructions — so
+// we double-check: any non-compound exercise whose primary muscle group is
+// "skipped" is a violation that triggers a retry.
+//
+// What counts as "isolation":
+//   - exercise_function === 'accessory' OR not flagged compound, AND
+//   - exercise.is_compound === false (or undefined and the heuristic fails),
+//   - AND its primary muscle group equals one of the skipped groups
+//
+// Compound exercises (e.g. supino) are NOT flagged even if their primary
+// group is skipped — but in practice trainers wouldn't skip a primary group
+// they're prescribing compounds for. This rule is mostly about isolated
+// arm work being prescribed when the trainer asked for compound-only.
+
+function enforceNoIsolationOnSkippedGroups(
+    output: PrescriptionOutputSnapshot,
+    exerciseMap: Map<string, PrescriptionExerciseRef>,
+    volumeBudget: VolumeBudget,
+): ValidateResult {
+    // A group is "skipped" when its budget is exactly {min: 0, max: 0}.
+    // Groups that frequency-priority dropped have undefined budget (not 0/0)
+    // and are not considered skipped — those are different signals.
+    const skippedGroups = new Set<string>()
+    for (const [group, range] of Object.entries(volumeBudget)) {
+        if (range.min === 0 && range.max === 0) {
+            skippedGroups.add(group)
+        }
+    }
+
+    if (skippedGroups.size === 0) return { output, violations: [] }
+
+    const offenders: Array<{
+        group: string
+        exercise_id: string
+        exercise_name: string
+        workout_name: string
+    }> = []
+
+    for (let wi = 0; wi < output.workouts.length; wi++) {
+        const wk = output.workouts[wi]
+        for (let ii = 0; ii < wk.items.length; ii++) {
+            const it = wk.items[ii]
+            if ((it.item_type ?? 'exercise') !== 'exercise') continue
+            if (!it.exercise_id) continue
+
+            const ref = exerciseMap.get(it.exercise_id)
+            // We only flag confirmed isolation. Without a ref we can't tell;
+            // R_POOL_UNKNOWN_EXERCISE handles missing-ref cases separately.
+            if (!ref) continue
+            if (ref.is_compound) continue
+
+            const primary = ref.muscle_group_names[0]
+            if (!primary || !skippedGroups.has(primary)) continue
+
+            offenders.push({
+                group: primary,
+                exercise_id: it.exercise_id,
+                exercise_name: ref.name,
+                workout_name: wk.name,
+            })
+        }
+    }
+
+    if (offenders.length === 0) return { output, violations: [] }
+
+    const formatted = offenders
+        .map(o => `${o.exercise_name} (${o.group}, treino ${o.workout_name})`)
+        .join('; ')
+    const groupList = [...skippedGroups].join(', ')
+
+    const message =
+        `O treinador pediu para NÃO incluir isolamento direto de: ${groupList}. ` +
+        `O programa atual tem ${offenders.length} exercício${offenders.length === 1 ? '' : 's'} ` +
+        `isolado${offenders.length === 1 ? '' : 's'} desses grupos: ${formatted}. ` +
+        `Remova esses exercícios e, se sobrar slot, substitua por composto que trabalhe outros grupos. ` +
+        `Compostos que secundariamente trabalham esses grupos continuam permitidos.`
+
+    return {
+        output,
+        violations: [{
+            rule_id: 'R_ISOLATION_ON_SKIPPED_GROUP',
+            autofix: 'retry',
+            severity: 'error',
+            workout_index: -1,
+            item_index: -1,
+            exercise_id: null,
+            message,
+            before: {
+                offenders,
+                skipped_groups: [...skippedGroups],
+            },
+            after: {},
+        }],
+    }
 }

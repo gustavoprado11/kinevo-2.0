@@ -285,6 +285,28 @@ export interface RulesViolation {
 // ============================================================================
 
 /**
+ * Trainer-set weekly volume bounds for a single muscle group.
+ *   - { min: 16, max: 16 } — exact target
+ *   - { min: 12, max: 18 } — range, AI should land somewhere inside
+ *   - { min: 0,  max: 0  } — skip: no isolation exercises for this group
+ *                            (compounds secondary-targeting it are still ok)
+ */
+export interface VolumeOverride {
+    min: number
+    max: number
+}
+
+/**
+ * Structured form of a trainer's answer to a single agent clarifying
+ * question. Persisted in profile.agent_answers (migration 115) so the
+ * Refinar panel can pre-select on next open.
+ */
+export interface AgentAnswerEntry {
+    selectedOptions: string[]
+    textInput: string
+}
+
+/**
  * Row type for student_prescription_profiles (migration 034)
  * Matches every column exactly.
  */
@@ -302,6 +324,26 @@ export interface StudentPrescriptionProfile {
     medical_restrictions: MedicalRestriction[]
     ai_mode: AiMode
     cycle_observation?: string | null
+    /**
+     * Trainer-set weekly volume bounds per muscle group. Keys are muscle
+     * group names (DB spelling, e.g. "Peito", "Glúteo"). Values are
+     * { min, max } pairs of weekly sets — equal min/max = exact target,
+     * different min/max = range, both 0 = "skip direct isolation work for
+     * this group" (compounds that secondary-target it are still allowed).
+     * Applied last in the constraints pipeline; overrides level/frequency/cap.
+     * Empty object or missing = no overrides.
+     *
+     * Legacy data may store a plain `number` per group (Phase 3 v1 shape);
+     * the constraints engine normalizes both forms on read.
+     */
+    volume_overrides?: Record<string, VolumeOverride | number>
+    /**
+     * Trainer's most recent answers to the agent clarifying questions,
+     * keyed by stable question_id (e.g. 'volume_tradeoff'). Pre-fills the
+     * Refinar panel on subsequent generations. Persisted to JSONB column
+     * student_prescription_profiles.agent_answers (migration 115).
+     */
+    agent_answers?: Record<string, AgentAnswerEntry>
     adherence_rate: number | null
     avg_session_duration_minutes: number | null
     last_calculated_at: string | null

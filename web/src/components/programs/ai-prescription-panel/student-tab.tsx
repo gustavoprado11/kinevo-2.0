@@ -46,12 +46,14 @@ export function AiPrescriptionPanelStudentTab({
         analysis,
         questions,
         answers,
+        initialStructuredAnswers,
         selectedFormIds,
         generationId,
         studentDisplayName,
         questionnaireDismissed,
         setProfile,
         setAnswer,
+        setStructuredAnswer,
         toggleForm,
         dismissQuestionnaire,
         startAnalysis,
@@ -172,6 +174,8 @@ export function AiPrescriptionPanelStudentTab({
                         onSubmit={submitAnswersAndGenerate}
                         onSkip={skipQuestionsAndGenerate}
                         isSubmitting={false}
+                        initialStructuredAnswers={initialStructuredAnswers}
+                        onStructuredChange={setStructuredAnswer}
                     />
                 )}
 
@@ -208,14 +212,29 @@ export function AiPrescriptionPanelStudentTab({
 
             {/* Sticky footer with contextual CTA */}
             {(pageState === 'done' || pageState === 'error') && (
-                <div className="flex-shrink-0 border-t border-k-border-subtle px-5 py-3 bg-white dark:bg-surface-primary">
+                <div className="flex-shrink-0 border-t border-k-border-subtle px-5 py-3 bg-white dark:bg-surface-primary space-y-2">
                     {pageState === 'done' && (
-                        <Button
-                            onClick={onClose}
-                            className="w-full rounded-full bg-violet-600 hover:bg-violet-500 text-white h-10 text-sm font-medium"
-                        >
-                            Fechar painel
-                        </Button>
+                        <>
+                            {/* Primary: let the trainer iterate. Calling reset()
+                                keeps the profile (stored separately in the agent
+                                state) but takes them back to the anamnese form so
+                                they can tweak emphasis, days, etc. before generating
+                                a different program. */}
+                            <Button
+                                onClick={reset}
+                                className="w-full rounded-full bg-violet-600 hover:bg-violet-500 text-white h-10 text-sm font-medium flex items-center justify-center gap-2"
+                            >
+                                <Sparkles className="w-4 h-4" />
+                                Ajustar e gerar outro programa
+                            </Button>
+                            <Button
+                                onClick={onClose}
+                                variant="ghost"
+                                className="w-full rounded-full h-10 text-sm font-medium text-k-text-secondary hover:text-k-text-primary hover:bg-[#F5F5F7] dark:hover:bg-white/[0.04]"
+                            >
+                                Fechar painel
+                            </Button>
+                        </>
                     )}
                     {pageState === 'error' && (
                         <Button

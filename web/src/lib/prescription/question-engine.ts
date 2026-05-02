@@ -242,6 +242,111 @@ export const QUESTION_POOL: ConditionalQuestion[] = [
         }),
     },
 
+    // ── P3.5 — Stagnated exercises (Phase 3 follow-up: variety) ──
+    // When the student has hit a wall on specific exercises in the last 3+
+    // weeks, the trainer should decide whether to swap them out, increase
+    // volume, or accept the plateau.
+    {
+        id: 'stagnation_focus',
+        priority: 3.5,
+        condition: (_profile, context) => {
+            const stalled = context.load_progression.filter(
+                p => p.trend === 'stalled' && p.weeks_at_current >= 3,
+            )
+            return stalled.length >= 2
+        },
+        build: (_profile, context) => {
+            const stalled = context.load_progression
+                .filter(p => p.trend === 'stalled' && p.weeks_at_current >= 3)
+                .slice(0, 3)
+            const names = stalled.map(s => s.exercise_name).join(', ')
+            return {
+                id: 'stagnation_focus',
+                question: `${context.student_name} estagnou em ${stalled.length} exercício${stalled.length === 1 ? '' : 's'} nas últimas semanas. Como prefere lidar?`,
+                context: `Exercícios estagnados: ${names}.`,
+                type: 'single_choice' as const,
+                options: [
+                    'Trocar por variações novas (mudar estímulo)',
+                    'Aumentar volume nesses exercícios (forçar progressão)',
+                    'Reduzir volume e focar técnica (deload)',
+                    'Manter como está — esperar mais um ciclo',
+                ],
+                allows_text: true,
+                placeholder: 'Observação adicional sobre a estagnação (opcional)...',
+            }
+        },
+    },
+
+    // ── P3.6 — Program variability vs continuity ──
+    // After 2+ programs, the trainer's choice matters: does the student
+    // need novelty (new movement patterns, prevent boredom) or continuity
+    // (refine the same patterns, preserve technical mastery)?
+    {
+        id: 'program_variability',
+        priority: 3.6,
+        condition: (_profile, context) => {
+            return context.previous_programs.length >= 2
+        },
+        build: (_profile, context) => {
+            // Condition guarantees at least 2 entries; we still defensively
+            // fall back to a generic context string if the first entry is
+            // missing fields.
+            const last = context.previous_programs[0]
+            const lastSummary = last
+                ? `Último programa: "${last.name}" (${last.duration_weeks ?? '?'} semanas, ${Math.round(last.completion_rate * 100)}% conclusão).`
+                : `${context.previous_programs.length} programas anteriores no histórico.`
+            return {
+                id: 'program_variability',
+                question: `${context.student_name} já passou por ${context.previous_programs.length} programa${context.previous_programs.length === 1 ? '' : 's'}. Quer mudança grande ou continuidade?`,
+                context: lastSummary,
+                type: 'single_choice' as const,
+                options: [
+                    'Mudança grande — novos exercícios e padrões para destravar progressão',
+                    'Variação leve — mesmos padrões com exercícios alternativos',
+                    'Continuidade — manter o que funciona, ajustar apenas volume e cargas',
+                ],
+                allows_text: true,
+                placeholder: 'Algo específico que o aluno pediu? (opcional)',
+            }
+        },
+    },
+
+    // ── P3.7 — Progression highlights (positive reinforcement signal) ──
+    // When the student has been progressing well in specific lifts and is at
+    // intermediate or advanced level, ask whether to maintain focus or shift
+    // to weak points. Beginners get a different question (or none) — they
+    // should follow the standard progression.
+    {
+        id: 'progression_focus',
+        priority: 3.7,
+        condition: (profile, context) => {
+            if (profile.training_level === 'beginner') return false
+            const progressing = context.load_progression.filter(
+                p => p.trend === 'progressing',
+            )
+            return progressing.length >= 2
+        },
+        build: (_profile, context) => {
+            const progressing = context.load_progression
+                .filter(p => p.trend === 'progressing')
+                .slice(0, 3)
+            const names = progressing.map(p => p.exercise_name).join(', ')
+            return {
+                id: 'progression_focus',
+                question: `${context.student_name} está progredindo bem em ${progressing.length} exercício${progressing.length === 1 ? '' : 's'}. Mantém foco ou amplia para outros padrões?`,
+                context: `Progredindo: ${names}.`,
+                type: 'single_choice' as const,
+                options: [
+                    'Manter foco nos mesmos padrões — capitalizar a progressão atual',
+                    'Adicionar variações desses padrões — explorar ângulos diferentes',
+                    'Mover foco para pontos fracos — equilibrar o programa',
+                ],
+                allows_text: true,
+                placeholder: 'Observações específicas (opcional)...',
+            }
+        },
+    },
+
     // ── P7 — Muscle emphasis ──
     // Skip if questionnaire already provided emphasis data
     {

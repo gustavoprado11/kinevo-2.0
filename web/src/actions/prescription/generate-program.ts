@@ -1269,13 +1269,42 @@ async function trySmartV2Generation(args: SmartV2Args): Promise<GenerateProgramR
         }
 
         snapshot = enrichCompactOutput(compact, exerciseMap, enrichedConstraints, profile)
-        validated = validatePrescriptionAgainstRules(snapshot, exerciseMap, profile)
+        validated = validatePrescriptionAgainstRules(
+            snapshot,
+            exerciseMap,
+            profile,
+            enrichedConstraints.volume_budget,
+        )
         snapshot = validated.output
 
         const retryable = validated.violations.filter(v => v.autofix === 'retry')
         if (retryable.length === 0) break
 
         if (semanticRetries >= MAX_SEMANTIC_ATTEMPTS) {
+            // Issue 1 hard-fail: an unresolved R_POOL_UNKNOWN_EXERCISE means
+            // the auto-substitution pre-pass in the enricher couldn't find a
+            // compatible candidate AND the LLM kept hallucinating across both
+            // retries. Persisting this would ship a card with no exercise
+            // name, no muscle group, no resolvable workout — strictly worse
+            // than falling back to the heuristic builder. Returning null here
+            // lets the outer caller fall through to the legacy pipeline.
+            const unresolvedPoolViolations = retryable.filter(
+                v => v.rule_id === 'R_POOL_UNKNOWN_EXERCISE',
+            )
+            if (unresolvedPoolViolations.length > 0) {
+                console.error(
+                    `[Smart-v2] hard_fail unresolved_pool_ids=${unresolvedPoolViolations.length} ` +
+                    `after ${semanticRetries} retries; falling back to legacy pipeline. ` +
+                    `IDs=${unresolvedPoolViolations.map(v => v.exercise_id).join(',')}`,
+                )
+                return null
+            }
+
+            // Other retry-flagged rules (e.g. R_VOLUME_BELOW_MIN_PRIMARY,
+            // R45_SCHEDULE_MISMATCH) are quality issues — the program is
+            // structurally valid, just suboptimal. The rationale text on the
+            // review screen is now honest about the deficit (Issue 3 fix), so
+            // the trainer can decide whether to regenerate or adjust manually.
             console.warn(
                 `[Smart-v2] semantic_retry_exhausted after ${semanticRetries} attempts; ` +
                 `accepting output with ${retryable.length} retry-flagged violation(s): ` +

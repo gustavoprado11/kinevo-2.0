@@ -388,3 +388,192 @@ describe('rules-validator — R_POOL_UNKNOWN_EXERCISE', () => {
         expect(missing.map(v => v.exercise_id).sort()).toEqual(['unknown-1', 'unknown-2'])
     })
 })
+
+// ============================================================================
+// Issue 3 — R_VOLUME_BELOW_MIN_PRIMARY
+// ============================================================================
+// Motivated by the Upper/Lower A/B 4x/sem case where Peito shipped at 4 sets/wk
+// against a min of 9 (56% deficit). The fix:
+//   1. Validator computes weekly volume per primary group.
+//   2. If actual is below `budget.min` AND the deficit fraction exceeds
+//      VOLUME_DEFICIT_RETRY_THRESHOLD (30%), emits a retry-flagged violation.
+//   3. Skipped when no budget is passed (back-compat with legacy callers and
+//      with all the older tests in this file).
+
+// snapshot() above sets each workout to scheduled_days=[i+1] (frequency 1),
+// so item.sets equals weekly sets per group. That's exactly what we want here.
+
+describe('rules-validator — R_VOLUME_BELOW_MIN_PRIMARY', () => {
+    it('does NOT run when no volumeBudget is passed (back-compat)', () => {
+        const input = snapshot([[item({ exercise_id: 'sr', sets: 2, exercise_muscle_group: 'Peito' })]])
+        const { violations } = validatePrescriptionAgainstRules(input, exerciseMap, baseProfile)
+        expect(violations.some(v => v.rule_id === 'R_VOLUME_BELOW_MIN_PRIMARY')).toBe(false)
+    })
+
+    it('passes when actual volume is at or above min', () => {
+        const input = snapshot([[
+            item({ exercise_id: 'sr', sets: 5, exercise_muscle_group: 'Peito' }),
+            item({ exercise_id: 'si', sets: 4, exercise_muscle_group: 'Peito' }),
+        ]])
+        const budget = { Peito: { min: 9, max: 18 } }
+        const { violations } = validatePrescriptionAgainstRules(input, exerciseMap, baseProfile, budget)
+        expect(violations.some(v => v.rule_id === 'R_VOLUME_BELOW_MIN_PRIMARY')).toBe(false)
+    })
+
+    it('passes when deficit is mild (≤30% of min) — caller accepts as natural noise', () => {
+        // 8 sets vs. min 9 → 11% deficit, below the 30% threshold.
+        const input = snapshot([[
+            item({ exercise_id: 'sr', sets: 4, exercise_muscle_group: 'Peito' }),
+            item({ exercise_id: 'si', sets: 4, exercise_muscle_group: 'Peito' }),
+        ]])
+        const budget = { Peito: { min: 9, max: 18 } }
+        const { violations } = validatePrescriptionAgainstRules(input, exerciseMap, baseProfile, budget)
+        expect(violations.some(v => v.rule_id === 'R_VOLUME_BELOW_MIN_PRIMARY')).toBe(false)
+    })
+
+    it('flags severe deficit (>30%) as error + retry autofix — the bug case', () => {
+        // The exact regression: 4 sets/week chest vs min 9 → 56% deficit.
+        const input = snapshot([[
+            item({ exercise_id: 'sr', sets: 4, exercise_muscle_group: 'Peito' }),
+        ]])
+        const budget = { Peito: { min: 9, max: 18 } }
+        const { violations } = validatePrescriptionAgainstRules(input, exerciseMap, baseProfile, budget)
+        const v = violations.find(x => x.rule_id === 'R_VOLUME_BELOW_MIN_PRIMARY')
+        expect(v).toBeDefined()
+        expect(v!.severity).toBe('error')
+        expect(v!.autofix).toBe('retry')
+        expect(v!.message).toMatch(/Peito: 4s \(mínimo 9\)/)
+        expect(v!.message).toMatch(/Redistribua/)
+    })
+
+    it('skips groups with budget.min === 0 (deprioritized by frequency)', () => {
+        // applyFrequencyPriority can collapse a group's range to 0/0; that's
+        // intentional, not a violation.
+        const input = snapshot([[item({ exercise_id: 'pa', sets: 0, exercise_muscle_group: 'Panturrilha' })]])
+        const budget = { Panturrilha: { min: 0, max: 0 } }
+        const { violations } = validatePrescriptionAgainstRules(input, exerciseMap, baseProfile, budget)
+        expect(violations.some(v => v.rule_id === 'R_VOLUME_BELOW_MIN_PRIMARY')).toBe(false)
+    })
+
+    it('skips groups with actual === 0 (other validators handle missing-group case)', () => {
+        // No chest exercise at all → handled separately. This rule is about
+        // "present but underdosed", not "absent". The Costas budget is set
+        // wide enough that the compound-clamped 4 sets stays inside it, so
+        // only the (skipped) Peito would otherwise be a candidate.
+        const input = snapshot([[item({ exercise_id: 'rc', sets: 4, exercise_muscle_group: 'Costas' })]])
+        const budget = { Peito: { min: 9, max: 18 }, Costas: { min: 4, max: 18 } }
+        const { violations } = validatePrescriptionAgainstRules(input, exerciseMap, baseProfile, budget)
+        expect(violations.some(v => v.rule_id === 'R_VOLUME_BELOW_MIN_PRIMARY')).toBe(false)
+    })
+
+    it('reports multiple offenders sorted by severity in the message', () => {
+        // Peito 2/9 (78% deficit) — most severe; Costas 3/9 (67%) — second.
+        const input = snapshot([[
+            item({ exercise_id: 'sr', sets: 2, exercise_muscle_group: 'Peito' }),
+            item({ exercise_id: 'rc', sets: 3, exercise_muscle_group: 'Costas' }),
+        ]])
+        const budget = {
+            Peito: { min: 9, max: 18 },
+            Costas: { min: 9, max: 18 },
+        }
+        const { violations } = validatePrescriptionAgainstRules(input, exerciseMap, baseProfile, budget)
+        const v = violations.find(x => x.rule_id === 'R_VOLUME_BELOW_MIN_PRIMARY')
+        expect(v).toBeDefined()
+        // Peito (more severe) should appear before Costas in the message.
+        const peitoIdx = v!.message.indexOf('Peito')
+        const costasIdx = v!.message.indexOf('Costas')
+        expect(peitoIdx).toBeGreaterThan(-1)
+        expect(costasIdx).toBeGreaterThan(-1)
+        expect(peitoIdx).toBeLessThan(costasIdx)
+    })
+
+    it('respects emphasis: a higher min from emphasis still triggers when violated', () => {
+        // Emphasis on chest doubles the floor (e.g. min 14 instead of 9).
+        // 6 sets vs. emphasis-min 14 = 57% deficit → must flag.
+        const input = snapshot([[
+            item({ exercise_id: 'sr', sets: 4, exercise_muscle_group: 'Peito' }),
+            item({ exercise_id: 'si', sets: 2, exercise_muscle_group: 'Peito' }),
+        ]])
+        const budget = { Peito: { min: 14, max: 20 } }
+        const { violations } = validatePrescriptionAgainstRules(input, exerciseMap, baseProfile, budget)
+        expect(violations.some(v => v.rule_id === 'R_VOLUME_BELOW_MIN_PRIMARY')).toBe(true)
+    })
+})
+
+// ============================================================================
+// Phase 3.5 — R_ISOLATION_ON_SKIPPED_GROUP
+// ============================================================================
+// Trainer set volume_overrides[group] = {min: 0, max: 0}, asking the AI to
+// skip isolation work for that group. The validator catches isolation
+// exercises (is_compound = false) whose primary group is on the skip list
+// and triggers a retry.
+
+describe('rules-validator — R_ISOLATION_ON_SKIPPED_GROUP', () => {
+    it('does not run when no group is skipped', () => {
+        const input = snapshot([[
+            item({ exercise_id: 'ro', sets: 3, exercise_muscle_group: 'Bíceps' }),
+        ]])
+        const budget = { Peito: { min: 12, max: 18 } }
+        const { violations } = validatePrescriptionAgainstRules(input, exerciseMap, baseProfile, budget)
+        expect(violations.some(v => v.rule_id === 'R_ISOLATION_ON_SKIPPED_GROUP')).toBe(false)
+    })
+
+    it('flags isolation exercise on a skipped group as error + retry autofix', () => {
+        // Trainer asked to skip Bíceps isolation, but program has Rosca Direta
+        // (isolation, primary=Bíceps).
+        const input = snapshot([[
+            item({ exercise_id: 'ro', sets: 3, exercise_muscle_group: 'Bíceps' }),
+        ]])
+        const budget = { Bíceps: { min: 0, max: 0 } }
+        const { violations } = validatePrescriptionAgainstRules(input, exerciseMap, baseProfile, budget)
+        const v = violations.find(x => x.rule_id === 'R_ISOLATION_ON_SKIPPED_GROUP')
+        expect(v).toBeDefined()
+        expect(v!.severity).toBe('error')
+        expect(v!.autofix).toBe('retry')
+        expect(v!.message).toMatch(/Rosca Direta/)
+        expect(v!.message).toMatch(/NÃO incluir isolamento/)
+    })
+
+    it('does NOT flag a compound exercise even when its primary group is skipped', () => {
+        // Skipped Bíceps — but a Pull workout still needs back compounds, and
+        // those are fine. This rule is about ISOLATION on skipped groups.
+        const compoundBicep = exercise('cb', 'Barra Fixa', ['Bíceps'], true)
+        const localMap = new Map(exerciseMap)
+        localMap.set('cb', compoundBicep)
+        const input = snapshot([[
+            item({ exercise_id: 'cb', sets: 4, exercise_muscle_group: 'Bíceps' }),
+        ]])
+        const budget = { Bíceps: { min: 0, max: 0 } }
+        const { violations } = validatePrescriptionAgainstRules(input, localMap, baseProfile, budget)
+        expect(violations.some(v => v.rule_id === 'R_ISOLATION_ON_SKIPPED_GROUP')).toBe(false)
+    })
+
+    it('reports all skipped-group violations in a single retry message', () => {
+        const input = snapshot([[
+            item({ exercise_id: 'ro', sets: 3, exercise_muscle_group: 'Bíceps' }),  // bicep curl
+            item({ exercise_id: 'tr', sets: 3, exercise_muscle_group: 'Tríceps' }), // triceps press
+        ]])
+        const budget = {
+            Bíceps: { min: 0, max: 0 },
+            Tríceps: { min: 0, max: 0 },
+        }
+        const { violations } = validatePrescriptionAgainstRules(input, exerciseMap, baseProfile, budget)
+        const v = violations.find(x => x.rule_id === 'R_ISOLATION_ON_SKIPPED_GROUP')
+        expect(v).toBeDefined()
+        expect(v!.message).toMatch(/Rosca Direta/)
+        expect(v!.message).toMatch(/Tríceps Corda/)
+    })
+
+    it('passes clean when no isolation is prescribed for any skipped group', () => {
+        // Workout has only chest compound + chest isolation, no biceps work.
+        const input = snapshot([[
+            item({ exercise_id: 'sr', sets: 4, exercise_muscle_group: 'Peito' }),
+        ]])
+        const budget = {
+            Peito: { min: 12, max: 18 },
+            Bíceps: { min: 0, max: 0 },
+        }
+        const { violations } = validatePrescriptionAgainstRules(input, exerciseMap, baseProfile, budget)
+        expect(violations.some(v => v.rule_id === 'R_ISOLATION_ON_SKIPPED_GROUP')).toBe(false)
+    })
+})

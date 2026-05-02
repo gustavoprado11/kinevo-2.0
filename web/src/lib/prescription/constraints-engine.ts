@@ -121,8 +121,15 @@ export function buildConstraints(
         adherenceAdjustment,
     )
 
-    // 6.5 Cap volume budget to what's realistically achievable (LAST — overrides everything)
+    // 6.5 Cap volume budget to what's realistically achievable
     volumeBudget = capVolumeBudget(volumeBudget, exercisesPerSession, effectiveFrequency)
+
+    // 6.6 Trainer-set per-group overrides (Phase 3) — runs LAST so it wins
+    //     over level/frequency/emphasis/cap. The trainer is taking explicit
+    //     responsibility for these numbers; the system honors them and the
+    //     R_VOLUME_BELOW_MIN_PRIMARY rule will retry if the AI undershoots
+    //     by more than 30%.
+    volumeBudget = applyVolumeOverrides(volumeBudget, profile.volume_overrides)
 
     // 7. Clinical / prohibited
     const clinicalConditions: string[] = []
@@ -411,6 +418,86 @@ function applyEmphasis(
 }
 
 // ============================================================================
+// applyVolumeOverrides — Phase 3 trainer-explicit per-group bounds
+// ============================================================================
+// Trainer overrides come from the volume-preview-card and are persisted in
+// profile.volume_overrides. Each override is now a { min, max } range:
+//   - {16, 16}   exact target
+//   - {12, 18}   range — AI should land somewhere inside
+//   - { 0,  0}   skip: no isolation exercises for this group (compounds that
+//                secondary-target it are still allowed; enforced at the
+//                prompt + validator level)
+//
+// For backward compatibility with Phase 3 v1, plain `number` values are
+// accepted and normalized to {n, n}.
+//
+// If the trainer overrides a group that frequency-priority had removed from
+// the budget (e.g. Trapézio at 2x/week), we add it back at the override
+// value. The trainer's explicit instruction wins.
+
+type RawOverride = number | { min: number; max: number } | null | undefined
+
+function normalizeOverride(raw: RawOverride): { min: number; max: number } | null {
+    if (raw == null) return null
+
+    if (typeof raw === 'number') {
+        if (!Number.isFinite(raw)) return null
+        const v = Math.max(0, Math.round(raw))
+        return { min: v, max: v }
+    }
+
+    if (typeof raw === 'object' && 'min' in raw && 'max' in raw) {
+        const minRaw = Number(raw.min)
+        const maxRaw = Number(raw.max)
+        if (!Number.isFinite(minRaw) || !Number.isFinite(maxRaw)) return null
+        const min = Math.max(0, Math.round(minRaw))
+        const max = Math.max(min, Math.round(maxRaw))
+        return { min, max }
+    }
+
+    return null
+}
+
+export function applyVolumeOverrides(
+    volumeBudget: Record<string, { min: number; max: number }>,
+    overrides:
+        | Record<string, number | { min: number; max: number }>
+        | null
+        | undefined,
+): Record<string, { min: number; max: number }> {
+    if (!overrides) return volumeBudget
+
+    const result = { ...volumeBudget }
+    for (const [group, raw] of Object.entries(overrides)) {
+        const normalized = normalizeOverride(raw)
+        if (!normalized) continue
+        result[group] = normalized
+    }
+    return result
+}
+
+/**
+ * Returns the muscle groups that the trainer has explicitly skipped (override
+ * resolved to {min: 0, max: 0}). Consumers: prompt-builder (so the LLM is
+ * told not to pick isolation exercises for these) and rules-validator (so
+ * we retry if it does anyway).
+ */
+export function getSkippedIsolationGroups(
+    overrides:
+        | Record<string, number | { min: number; max: number }>
+        | null
+        | undefined,
+): string[] {
+    if (!overrides) return []
+    const skipped: string[] = []
+    for (const [group, raw] of Object.entries(overrides)) {
+        const n = normalizeOverride(raw)
+        if (n && n.min === 0 && n.max === 0) skipped.push(group)
+    }
+    return skipped
+}
+
+// ============================================================================
 // Trade-off detection (for question engine)
 // ============================================================================
 
@@ -468,4 +555,64 @@ export function detectVolumeTradeoff(
         totalBudgetMin,
         level: profile.training_level,
     }
+}
+
+// ============================================================================
+// Volume preview (Phase 2 — UI feedback before generation)
+// ============================================================================
+// Pure function safe to call client-side: it has no DB / network dependencies
+// and consumes only fields that are already in the profile form. The output
+// is shown in the trainer's "Configure" panel as a reactive preview of what
+// the AI plans to dose per muscle group.
+//
+// Identical pipeline to buildConstraints' volume section, with two omissions:
+//   1. No adherence adjustment — adherence comes from session history which
+//      isn't in the form. Preview assumes 'normal' adherence; the real
+//      generation will correct downward if needed and the resulting program
+//      still respects this preview's upper bounds in the typical case.
+//   2. No emphasis — emphasis currently comes from agent answers later in
+//      the flow. Phase 3 will route trainer overrides through this same
+//      function so the preview stays the source of truth.
+//
+// When `available_days` is empty, returns {} so the UI can show a placeholder
+// instead of made-up numbers.
+
+export interface VolumePreviewInput {
+    training_level: TrainingLevel
+    available_days: number[]
+    session_duration_minutes: number
+    /**
+     * Phase 3 — trainer-set per-group bounds. When present, runs as the last
+     * step so the preview reflects exactly what the real generation pipeline
+     * (buildConstraints) will receive. Same shape as
+     * StudentPrescriptionProfile.volume_overrides — accepts both the new
+     * { min, max } form and the legacy plain number form.
+     */
+    volume_overrides?: Record<string, number | { min: number; max: number }>
+}
+
+export function previewVolumeBudget(
+    input: VolumePreviewInput,
+): Record<string, { min: number; max: number }> {
+    const frequency = input.available_days.length
+    if (frequency === 0) return {}
+
+    let volumeBudget = buildVolumeBudget(input.training_level)
+
+    const { budget: frequencyAdjustedBudget } =
+        applyFrequencyPriority(volumeBudget, frequency)
+    volumeBudget = frequencyAdjustedBudget
+
+    const exercisesPerSession = computeExercisesPerSession(
+        input.session_duration_minutes,
+        'normal',
+    )
+
+    volumeBudget = capVolumeBudget(volumeBudget, exercisesPerSession, frequency)
+
+    // Trainer overrides win — same step ordering as buildConstraints, so the
+    // preview is a faithful mirror of what the real generation will produce.
+    volumeBudget = applyVolumeOverrides(volumeBudget, input.volume_overrides)
+
+    return volumeBudget
 }

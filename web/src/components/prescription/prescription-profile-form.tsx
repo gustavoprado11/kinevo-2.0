@@ -15,10 +15,12 @@ import type {
     PrescriptionGoal,
     MedicalRestriction,
     StudentPrescriptionProfile,
+    VolumeOverride,
 } from '@kinevo/shared/types/prescription'
 
 import { EQUIPMENT_OPTIONS } from '@kinevo/shared/types/prescription'
 import { matchCondition, type ConditionMatchResult } from '@/lib/prescription/condition-mappings'
+import { VolumePreviewCard } from './volume-preview-card'
 
 import type { RecentSession, ActiveProgram } from '@/actions/prescription/get-prescription-data'
 import type { QuestionnaireData } from '@/lib/prescription/questionnaire-mapper'
@@ -64,12 +66,33 @@ const GOAL_EMOJIS: Record<PrescriptionGoal, string> = {
     health: '❤️',
 }
 
+// Inline captions surface what the AI will actually do under each option,
+// so the trainer doesn't have to guess. Numbers come from the rep/rest
+// tables in lib/prescription/constants.ts and are kept in sync there.
+const GOAL_CAPTIONS: Record<PrescriptionGoal, string> = {
+    hypertrophy: '8-12 reps · 90s descanso · estímulo metabólico',
+    weight_loss: '12-15 reps · 60s descanso · circuitos curtos',
+    performance: '3-6 reps · 2-3 min descanso · força máxima',
+    health: '8-15 reps · 60s descanso · movimentos seguros',
+}
+
 const EQUIPMENT_LABELS: Record<string, string> = {
     academia_completa: 'Academia Completa',
     home_gym_basico: 'Home Gym Básico',
     home_gym_completo: 'Home Gym Completo',
     ao_ar_livre: 'Ao Ar Livre',
     apenas_peso_corporal: 'Apenas Peso Corporal',
+}
+
+// Approximate exercise pool size by equipment tier — lets the trainer feel
+// the trade-off before generating. Stable estimates from the curated library;
+// real numbers wobble ~5% as new exercises are added.
+const EQUIPMENT_POOL_HINT: Record<string, string> = {
+    academia_completa: '~440 exercícios',
+    home_gym_completo: '~250 exercícios',
+    home_gym_basico: '~120 exercícios',
+    ao_ar_livre: '~80 exercícios',
+    apenas_peso_corporal: '~50 exercícios',
 }
 
 const DAY_LABELS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
@@ -91,6 +114,35 @@ function formatDate(dateStr: string): string {
  * Distributes N training days evenly across the week (Mon-Sat preferred).
  * Returns sorted array of day indices (0=Sun, 1=Mon, ..., 6=Sat).
  */
+/**
+ * Phase 3.5 — normalize stored volume_overrides from the DB into the
+ * { min, max } shape the form and VolumePreviewCard expect. Tolerates the
+ * legacy plain-number form (Phase 3 v1 data) so older saved profiles don't
+ * crash the UI on load.
+ */
+function normalizeStoredOverrides(
+    raw: Record<string, number | { min: number; max: number }> | null | undefined,
+): Record<string, VolumeOverride> {
+    if (!raw) return {}
+    const out: Record<string, VolumeOverride> = {}
+    for (const [group, value] of Object.entries(raw)) {
+        if (typeof value === 'number' && Number.isFinite(value)) {
+            const v = Math.max(0, Math.round(value))
+            out[group] = { min: v, max: v }
+        } else if (
+            typeof value === 'object'
+            && value !== null
+            && Number.isFinite(value.min)
+            && Number.isFinite(value.max)
+        ) {
+            const min = Math.max(0, Math.round(value.min))
+            const max = Math.max(min, Math.round(value.max))
+            out[group] = { min, max }
+        }
+    }
+    return out
+}
+
 function distributeTrainingDays(frequency: number): number[] {
     const COMMON_DISTRIBUTIONS: Record<number, number[]> = {
         2: [1, 4],              // Seg, Qui
@@ -162,6 +214,14 @@ export function PrescriptionProfileForm({
     const [restrictions, setRestrictions] = useState<MedicalRestriction[]>(existingProfile?.medical_restrictions || [])
     const [cycleObservation, setCycleObservation] = useState(existingProfile?.cycle_observation || '')
 
+    // Phase 3 — trainer-set per-group volume bounds. Loaded from the saved
+    // profile (column volume_overrides, migration 114) so a trainer who set
+    // "Peito: 16" yesterday sees that value when reopening the panel today.
+    // Legacy entries (plain numbers) are normalized into {min, max} on load.
+    const [volumeOverrides, setVolumeOverrides] = useState<Record<string, VolumeOverride>>(
+        () => normalizeStoredOverrides(existingProfile?.volume_overrides),
+    )
+
     // Track if values were auto-filled from questionnaire
     const autoFilledFromQuestionnaire = !existingProfile && !!questionnaireData
 
@@ -177,10 +237,13 @@ export function PrescriptionProfileForm({
 
     // Context card expanded state (Estado B) — collapsed by default
     const [contextExpanded, setContextExpanded] = useState(false)
-    const [formExpanded, setFormExpanded] = useState(false)
 
-    // Compact mode: show only structural fields unless trainer expands
-    const showFullForm = !compactMode || formExpanded
+    // All form fields are now visible by default (no more disclosure). The
+    // `compactMode` prop is kept for backward compatibility — it now only
+    // controls which subset of fields applies (Estado B hides level +
+    // medical restrictions because those are anamnese data, not "this cycle"
+    // configuration). It no longer hides goal/observations behind a click.
+    const showFullForm = true
 
     // Reset saved indicator after 3s
     useEffect(() => {
@@ -277,7 +340,8 @@ export function PrescriptionProfileForm({
         medical_restrictions: restrictions,
         ai_mode: 'copilot' as const,
         cycle_observation: cycleObservation || undefined,
-    }), [studentId, trainingLevel, goal, availableDays, sessionDuration, equipment, restrictions, cycleObservation, existingProfile])
+        volume_overrides: volumeOverrides,
+    }), [studentId, trainingLevel, goal, availableDays, sessionDuration, equipment, restrictions, cycleObservation, volumeOverrides, existingProfile])
 
     // ── Save (Estado A only) ──
     const handleSave = useCallback(async () => {
@@ -389,32 +453,42 @@ export function PrescriptionProfileForm({
 
                     <div
                         className="overflow-hidden transition-all duration-300"
-                        style={{ maxHeight: contextExpanded ? '200px' : '0', opacity: contextExpanded ? 1 : 0 }}
+                        style={{ maxHeight: contextExpanded ? '480px' : '0', opacity: contextExpanded ? 1 : 0 }}
                     >
-                        <div className="px-6 pb-5 border-t border-violet-500/10 pt-4">
-                            <div className="flex flex-wrap gap-3 sm:flex-nowrap sm:items-center sm:divide-x sm:divide-violet-500/10 sm:gap-0">
-                                <ContextStat label="Sessões (4 sem)" value={`${recentSessions.length}`} />
-                                <ContextStat
+                        <div className="px-6 pb-5 border-t border-violet-500/10 pt-3">
+                            {/* Vertical row layout — every line shows label and
+                                value side by side so nothing is truncated. The
+                                old 5-column horizontal grid was squeezing each
+                                value to ~60px, producing labels like "Sess... 18". */}
+                            <ul className="divide-y divide-violet-500/10">
+                                <ContextRow
+                                    label="Sessões nas últimas 4 semanas"
+                                    value={`${recentSessions.length}`}
+                                />
+                                <ContextRow
                                     label="Aderência"
                                     value={recentSessions.length > 0 ? `${adherenceRate}%` : '—'}
                                     valueClassName={
                                         recentSessions.length === 0 ? undefined
-                                        : adherenceRate >= 70 ? 'text-emerald-400'
-                                        : adherenceRate >= 40 ? 'text-yellow-400'
-                                        : 'text-red-400'
+                                        : adherenceRate >= 70 ? 'text-emerald-500 dark:text-emerald-400'
+                                        : adherenceRate >= 40 ? 'text-amber-500 dark:text-amber-400'
+                                        : 'text-red-500 dark:text-red-400'
                                     }
                                 />
-                                <ContextStat label="Programas anteriores" value={`${previousProgramCount}`} />
-                                <ContextStat
+                                <ContextRow
+                                    label="Programas anteriores"
+                                    value={`${previousProgramCount}`}
+                                />
+                                <ContextRow
                                     label="Programa ativo"
                                     value={activeProgram?.name || 'Nenhum'}
-                                    indicator={activeProgram ? 'active' : 'none'}
+                                    indicator={activeProgram ? 'active' : undefined}
                                 />
-                                <ContextStat
+                                <ContextRow
                                     label="Última avaliação"
                                     value={lastFormSubmissionDate ? formatDate(lastFormSubmissionDate) : 'Nenhuma'}
                                 />
-                            </div>
+                            </ul>
                         </div>
                     </div>
                 </div>
@@ -428,17 +502,12 @@ export function PrescriptionProfileForm({
                 <div className="px-6 py-5 border-b border-k-border-subtle">
                     <h2 className="text-lg font-bold text-k-text-primary flex items-center gap-2">
                         <User className="w-5 h-5 text-violet-500" />
-                        {compactMode && !formExpanded
-                            ? 'Configuração Rápida'
-                            : isFirstPrescription ? 'Anamnese do Aluno' : 'Configure o próximo ciclo'
-                        }
+                        {isFirstPrescription ? 'Anamnese do Aluno' : 'Configure o próximo ciclo'}
                     </h2>
                     <p className="text-xs text-k-text-tertiary mt-1">
-                        {compactMode && !formExpanded
-                            ? 'Os formulários do aluno serão usados como contexto. Configure apenas o essencial abaixo.'
-                            : isFirstPrescription
-                                ? 'Configure o perfil do aluno. O Copiloto usará essas informações para personalizar o programa.'
-                                : 'Defina o objetivo e a frequência. A IA vai usar o histórico para personalizar.'
+                        {isFirstPrescription
+                            ? 'Configure o perfil do aluno. O Copiloto usará essas informações para personalizar o programa.'
+                            : 'Defina o objetivo e a frequência. A IA vai usar o histórico para personalizar.'
                         }
                     </p>
                     {autoFilledFromQuestionnaire && (
@@ -492,21 +561,31 @@ export function PrescriptionProfileForm({
                             {isFirstPrescription ? 'Objetivo Principal' : 'Objetivo deste Ciclo'} <span className="text-violet-500">*</span>
                         </label>
                         <div className="grid grid-cols-2 gap-2">
-                            {(Object.entries(GOAL_LABELS) as [PrescriptionGoal, string][]).map(([value, label]) => (
-                                <button
-                                    key={value}
-                                    type="button"
-                                    onClick={() => setGoal(value)}
-                                    className={`px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 border ${
-                                        goal === value
-                                            ? 'bg-violet-500/15 border-violet-500/30 text-violet-400 shadow-md'
-                                            : 'bg-glass-bg border-k-border-subtle text-k-text-tertiary hover:border-k-border-primary hover:text-k-text-secondary hover:shadow-sm'
-                                    }`}
-                                >
-                                    <span className="mr-1.5">{GOAL_EMOJIS[value]}</span>
-                                    {label}
-                                </button>
-                            ))}
+                            {(Object.entries(GOAL_LABELS) as [PrescriptionGoal, string][]).map(([value, label]) => {
+                                const isActive = goal === value
+                                return (
+                                    <button
+                                        key={value}
+                                        type="button"
+                                        onClick={() => setGoal(value)}
+                                        className={`flex flex-col items-start gap-1 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 border text-left ${
+                                            isActive
+                                                ? 'bg-violet-500/15 border-violet-500/30 text-violet-400 shadow-md'
+                                                : 'bg-glass-bg border-k-border-subtle text-k-text-tertiary hover:border-k-border-primary hover:text-k-text-secondary hover:shadow-sm'
+                                        }`}
+                                    >
+                                        <span className="flex items-center">
+                                            <span className="mr-1.5">{GOAL_EMOJIS[value]}</span>
+                                            {label}
+                                        </span>
+                                        <span className={`text-[10px] font-medium leading-snug ${
+                                            isActive ? 'text-violet-300/90' : 'text-k-text-quaternary'
+                                        }`}>
+                                            {GOAL_CAPTIONS[value]}
+                                        </span>
+                                    </button>
+                                )
+                            })}
                         </div>
                     </div>
                     )}
@@ -648,20 +727,28 @@ export function PrescriptionProfileForm({
                                 Equipamentos Disponíveis
                             </label>
                             <div className="flex flex-wrap gap-2">
-                                {EQUIPMENT_OPTIONS.map(eq => (
-                                    <button
-                                        key={eq}
-                                        type="button"
-                                        onClick={() => toggleEquipment(eq)}
-                                        className={`px-3 py-2 rounded-xl text-xs font-semibold transition-all border ${
-                                            equipment.includes(eq)
-                                                ? 'bg-violet-500/15 border-violet-500/30 text-violet-400'
-                                                : 'bg-glass-bg border-k-border-subtle text-k-text-tertiary hover:border-k-border-primary hover:text-k-text-secondary'
-                                        }`}
-                                    >
-                                        {EQUIPMENT_LABELS[eq] || eq}
-                                    </button>
-                                ))}
+                                {EQUIPMENT_OPTIONS.map(eq => {
+                                    const isActive = equipment.includes(eq)
+                                    return (
+                                        <button
+                                            key={eq}
+                                            type="button"
+                                            onClick={() => toggleEquipment(eq)}
+                                            className={`flex flex-col items-start gap-0.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all border text-left ${
+                                                isActive
+                                                    ? 'bg-violet-500/15 border-violet-500/30 text-violet-400'
+                                                    : 'bg-glass-bg border-k-border-subtle text-k-text-tertiary hover:border-k-border-primary hover:text-k-text-secondary'
+                                            }`}
+                                        >
+                                            <span>{EQUIPMENT_LABELS[eq] || eq}</span>
+                                            <span className={`text-[10px] font-medium ${
+                                                isActive ? 'text-violet-300/80' : 'text-k-text-quaternary'
+                                            }`}>
+                                                {EQUIPMENT_POOL_HINT[eq] ?? ''}
+                                            </span>
+                                        </button>
+                                    )
+                                })}
                             </div>
                         </div>
                     )}
@@ -754,26 +841,18 @@ export function PrescriptionProfileForm({
                     </div>
                     )}
 
-                    {/* ── Toggle full form in compact mode ── */}
-                    {compactMode && (
-                        <button
-                            type="button"
-                            onClick={() => setFormExpanded(!formExpanded)}
-                            className="w-full text-center text-xs font-medium text-violet-400 hover:text-violet-300 transition-colors py-2"
-                        >
-                            {formExpanded ? (
-                                <span className="flex items-center justify-center gap-1.5">
-                                    <ChevronUp className="w-3.5 h-3.5" />
-                                    Ocultar campos adicionais
-                                </span>
-                            ) : (
-                                <span className="flex items-center justify-center gap-1.5">
-                                    <ChevronDown className="w-3.5 h-3.5" />
-                                    Personalizar nível, objetivo e restrições
-                                </span>
-                            )}
-                        </button>
-                    )}
+                    {/* ── Volume Preview (Phase 2) ───────────────────────────
+                        Shows the trainer what the AI plans to dose per muscle
+                        group given the current form values. Reactive — updates
+                        as the trainer toggles level / days / duration. Phase 3
+                        will add per-row +/- override controls. */}
+                    <VolumePreviewCard
+                        trainingLevel={trainingLevel}
+                        availableDays={availableDays}
+                        sessionDurationMinutes={sessionDuration}
+                        overrides={volumeOverrides}
+                        onOverridesChange={setVolumeOverrides}
+                    />
 
                     {/* ── Actions ── */}
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center sm:justify-end gap-3 pt-2">
@@ -832,26 +911,33 @@ export function PrescriptionProfileForm({
 // Context stat helper (Estado B card)
 // ============================================================================
 
-function ContextStat({ label, value, valueClassName, indicator }: {
+/**
+ * One row of the Contexto do Aluno list. Label on the left, value on the
+ * right. The whole row stays on a single line on desktop and wraps cleanly
+ * on narrow widths — no truncation needed. Replaces the old grid-based
+ * ContextStat that squeezed five columns into too little width.
+ */
+function ContextRow({ label, value, valueClassName, indicator }: {
     label: string
     value: string
     valueClassName?: string
-    indicator?: 'active' | 'none'
+    indicator?: 'active'
 }) {
     return (
-        <div className="flex-1 min-w-[calc(50%-6px)] sm:min-w-0 px-3 sm:px-4 py-2">
-            <p className="text-[10px] font-medium text-k-text-quaternary truncate">{label}</p>
-            <div className="flex items-center gap-1.5 mt-0.5">
+        <li className="flex items-center justify-between gap-3 py-2.5">
+            <span className="text-xs font-medium text-k-text-tertiary">
+                {label}
+            </span>
+            <span className="flex items-center gap-1.5 min-w-0">
                 {indicator === 'active' && (
-                    <div className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 flex-shrink-0" />
                 )}
-                {indicator === 'none' && (
-                    <div className="w-2 h-2 rounded-full bg-k-text-quaternary/40 flex-shrink-0" />
-                )}
-                <p className={`text-2xl font-bold truncate ${valueClassName || 'text-k-text-primary'}`}>
+                <span className={`text-sm font-semibold truncate text-right ${
+                    valueClassName || 'text-k-text-primary'
+                }`}>
                     {value}
-                </p>
-            </div>
-        </div>
+                </span>
+            </span>
+        </li>
     )
 }

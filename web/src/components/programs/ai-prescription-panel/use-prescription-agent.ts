@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from 'react'
 import type {
+    AgentAnswerEntry,
     StudentPrescriptionProfile,
     PrescriptionAgentState,
     PrescriptionAgentQuestion,
@@ -11,6 +12,7 @@ import type { PrescriptionData } from '@/actions/prescription/get-prescription-d
 import { analyzeStudentContext } from '@/actions/prescription/analyze-context'
 import { generateProgram } from '@/actions/prescription/generate-program'
 import { sendPrescriptionQuestionnaire } from '@/actions/prescription/questionnaire-actions'
+import { savePrescriptionProfile } from '@/actions/prescription/save-prescription-profile'
 
 export type PrescriptionAgentPageState =
     | 'anamnese'
@@ -37,6 +39,13 @@ export interface UsePrescriptionAgentReturn {
     analysis: PrescriptionContextAnalysis | null
     questions: PrescriptionAgentQuestion[]
     answers: Record<string, string>
+    /**
+     * Structured form of the trainer's current answers — used for persistence
+     * (profile.agent_answers) and as the initial state for the next visit.
+     */
+    structuredAnswers: Record<string, AgentAnswerEntry>
+    /** Last persisted answers loaded from the profile, used to pre-fill the panel. */
+    initialStructuredAnswers: Record<string, AgentAnswerEntry>
     selectedFormIds: string[]
     error: string | null
     generationId: string | null
@@ -46,6 +55,7 @@ export interface UsePrescriptionAgentReturn {
     setProfile: (profile: StudentPrescriptionProfile | null) => void
     setAnswers: (updater: (prev: Record<string, string>) => Record<string, string>) => void
     setAnswer: (questionId: string, answer: string) => void
+    setStructuredAnswer: (questionId: string, structured: AgentAnswerEntry) => void
     toggleForm: (id: string) => void
     dismissQuestionnaire: () => void
 
@@ -73,6 +83,15 @@ export function usePrescriptionAgent(
     const [analysis, setAnalysis] = useState<PrescriptionContextAnalysis | null>(null)
     const [questions, setQuestions] = useState<PrescriptionAgentQuestion[]>([])
     const [answers, setAnswers] = useState<Record<string, string>>({})
+    // Structured form of answers — kept in lockstep with `answers`. The panel
+    // sends both via onAnswerChange + onStructuredChange. Persisted on submit
+    // so the next generation cycle can pre-fill the same questions.
+    const [structuredAnswers, setStructuredAnswersState] = useState<Record<string, AgentAnswerEntry>>({})
+    // Initial structured answers from the previously-saved profile. Loaded
+    // once at mount so the panel can seed its UI state from prior decisions.
+    const initialStructuredAnswers = useState<Record<string, AgentAnswerEntry>>(
+        () => prescriptionData.profile?.agent_answers ?? {},
+    )[0]
     const [generationId, setGenerationId] = useState<string | null>(
         args.initialGenerationId ?? null,
     )
@@ -92,6 +111,13 @@ export function usePrescriptionAgent(
     const setAnswer = useCallback((questionId: string, answer: string) => {
         setAnswers(prev => ({ ...prev, [questionId]: answer }))
     }, [])
+
+    const setStructuredAnswer = useCallback(
+        (questionId: string, structured: AgentAnswerEntry) => {
+            setStructuredAnswersState(prev => ({ ...prev, [questionId]: structured }))
+        },
+        [],
+    )
 
     const dismissQuestionnaire = useCallback(() => {
         setQuestionnaireDismissed(true)
@@ -163,8 +189,36 @@ export function usePrescriptionAgent(
 
         setAgentState(updatedState)
         setPageState('generating')
+
+        // Persist trainer's structured answers back to the profile so the
+        // next generation cycle pre-fills them. We do this in parallel with
+        // generation — failure to save is non-blocking (we'd just lose the
+        // pre-fill benefit, not the program itself).
+        if (profile && Object.keys(structuredAnswers).length > 0) {
+            void savePrescriptionProfile({
+                student_id: profile.student_id,
+                training_level: profile.training_level,
+                goal: profile.goal,
+                available_days: profile.available_days,
+                session_duration_minutes: profile.session_duration_minutes,
+                available_equipment: profile.available_equipment,
+                favorite_exercise_ids: profile.favorite_exercise_ids,
+                disliked_exercise_ids: profile.disliked_exercise_ids,
+                medical_restrictions: profile.medical_restrictions,
+                ai_mode: profile.ai_mode,
+                cycle_observation: profile.cycle_observation ?? undefined,
+                volume_overrides: profile.volume_overrides as
+                    | Record<string, { min: number; max: number }>
+                    | undefined,
+                agent_answers: structuredAnswers,
+            }).catch(err => {
+                // Soft-fail: log but don't disrupt generation.
+                console.warn('[use-prescription-agent] failed to persist agent_answers:', err)
+            })
+        }
+
         await executeGeneration(updatedState)
-    }, [agentState, questions, answers, executeGeneration])
+    }, [agentState, questions, answers, structuredAnswers, profile, executeGeneration])
 
     const skipQuestionsAndGenerate = useCallback(async () => {
         const stateForGeneration = agentState
@@ -183,6 +237,7 @@ export function usePrescriptionAgent(
         setAnalysis(null)
         setQuestions([])
         setAnswers({})
+        setStructuredAnswersState({})
         setGenerationId(null)
     }, [])
 
@@ -193,6 +248,8 @@ export function usePrescriptionAgent(
         analysis,
         questions,
         answers,
+        structuredAnswers,
+        initialStructuredAnswers,
         selectedFormIds,
         error,
         generationId,
@@ -202,6 +259,7 @@ export function usePrescriptionAgent(
         setProfile,
         setAnswers,
         setAnswer,
+        setStructuredAnswer,
         toggleForm,
         dismissQuestionnaire,
 

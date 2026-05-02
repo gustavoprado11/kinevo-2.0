@@ -20,6 +20,7 @@ import type {
 import { FEW_SHOT_EXAMPLES } from './prompt-examples'
 import { PROMPT_VERSION } from './schemas'
 import type { EnrichedStudentContextV2 } from './context-enricher-v2'
+import { getSkippedIsolationGroups } from './constraints-engine'
 
 // ============================================================================
 // Public
@@ -244,6 +245,28 @@ function renderLayer3(
         if (profile.disliked_exercise_ids?.length) {
             lines.push(`- Evitar: ${profile.disliked_exercise_ids.join(', ')}`)
         }
+    }
+
+    // Phase 3.5 — trainer asked to skip isolation work for these groups.
+    // The volume_overrides for these are {min: 0, max: 0}; we surface them
+    // as an explicit prompt instruction so the LLM doesn't propose isolation
+    // exercises whose primary target is one of these groups. Compounds that
+    // secondary-target the group are still allowed (and desired — the
+    // trainer wants compound-only work for these groups).
+    const skippedGroups = getSkippedIsolationGroups(profile.volume_overrides)
+    if (skippedGroups.length > 0) {
+        lines.push('')
+        lines.push('### Grupos sem isolamento direto')
+        lines.push(
+            `O treinador pediu para NÃO prescrever exercícios isolados ` +
+            `(exercise_function='accessory' com is_compound=false e ` +
+            `muscle_group_names[0] sendo um destes) para: ` +
+            `${skippedGroups.join(', ')}.`,
+        )
+        lines.push(
+            'Compostos que secundariamente trabalham esses grupos continuam permitidos ' +
+            'e desejados — o treinador quer treinar esses grupos APENAS via composto.',
+        )
     }
 
     return lines.join('\n')

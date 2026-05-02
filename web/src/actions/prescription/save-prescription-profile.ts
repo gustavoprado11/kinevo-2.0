@@ -27,6 +27,23 @@ interface SavePrescriptionProfileInput {
     medical_restrictions: MedicalRestriction[]
     ai_mode: AiMode
     cycle_observation?: string
+    /**
+     * Phase 3 — trainer-set weekly volume bounds per muscle group.
+     *   { min, max }    — range or exact target (when min === max)
+     *   { min: 0, max: 0 } — skip direct isolation work for this group
+     * Persisted to JSONB column student_prescription_profiles.volume_overrides
+     * (migration 114). Empty/missing = no overrides.
+     *
+     * Legacy plain-number form is also accepted (treated as min === max ===
+     * the number) so older clients / persisted data don't break.
+     */
+    volume_overrides?: Record<string, number | { min: number; max: number }>
+    /**
+     * Trainer's most recent answers to the agent clarifying questions,
+     * keyed by stable question_id. Pre-fills the Refinar panel on next
+     * generation. Persisted to JSONB column agent_answers (migration 115).
+     */
+    agent_answers?: Record<string, { selectedOptions: string[]; textInput: string }>
 }
 
 // ============================================================================
@@ -95,6 +112,37 @@ export async function savePrescriptionProfile(
     if (input.session_duration_minutes < 20 || input.session_duration_minutes > 180) {
         return { success: false, error: 'Duração da sessão deve estar entre 20 e 180 minutos.' }
     }
+    // Volume overrides validation: keys are muscle group names (free-form
+    // strings — we trust the UI to send only known groups). Values can be
+    // either a plain number (legacy single-target shape) or a {min, max}
+    // pair. Both bounds must be integers in [0, 40]; min must not exceed
+    // max. Zero is allowed because it carries explicit semantics ("skip
+    // isolation for this group"); the prompt builder + validator handle
+    // that downstream.
+    if (input.volume_overrides) {
+        for (const [group, raw] of Object.entries(input.volume_overrides)) {
+            const min = typeof raw === 'number' ? raw : raw?.min
+            const max = typeof raw === 'number' ? raw : raw?.max
+            if (!Number.isFinite(min) || !Number.isFinite(max)) {
+                return {
+                    success: false,
+                    error: `Volume inválido para "${group}": valor não numérico.`,
+                }
+            }
+            if (min! < 0 || min! > 40 || max! < 0 || max! > 40) {
+                return {
+                    success: false,
+                    error: `Volume inválido para "${group}": ${min}-${max}. Use inteiros entre 0 e 40.`,
+                }
+            }
+            if (min! > max!) {
+                return {
+                    success: false,
+                    error: `Volume inválido para "${group}": mínimo (${min}) maior que máximo (${max}).`,
+                }
+            }
+        }
+    }
 
     // 6. Upsert (student_id is UNIQUE in the table)
     // @ts-ignore — table not in generated types yet
@@ -114,6 +162,10 @@ export async function savePrescriptionProfile(
                 medical_restrictions: input.medical_restrictions,
                 ai_mode: input.ai_mode,
                 cycle_observation: input.cycle_observation || null,
+                volume_overrides: input.volume_overrides ?? {},
+                ...(input.agent_answers !== undefined
+                    ? { agent_answers: input.agent_answers }
+                    : {}),
             },
             { onConflict: 'student_id' },
         )

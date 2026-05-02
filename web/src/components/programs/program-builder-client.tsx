@@ -1829,11 +1829,12 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                     </div>
                 )}
 
-                {/* AI Agent Rationale Panel (collapsible) */}
+                {/* AI Agent Rationale Panel (collapsible).
+                    Renders as a full-bleed header strip — no wrapper padding —
+                    so it visually belongs to the page chrome instead of looking
+                    like a floating island between the header and workspace. */}
                 {prescriptionReasoning && (
-                    <div className="px-6 pt-3">
-                        <PrescriptionRationalePanel reasoning={prescriptionReasoning} />
-                    </div>
+                    <PrescriptionRationalePanel reasoning={prescriptionReasoning} />
                 )}
 
                 {/* Check-in expanded content panel */}
