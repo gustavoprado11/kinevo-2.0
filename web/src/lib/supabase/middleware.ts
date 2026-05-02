@@ -84,5 +84,17 @@ export async function updateSession(request: NextRequest) {
         // If not authenticated, allow the request to proceed (show landing page)
     }
 
+    // Propagate the resolved auth user id to downstream Server Components via a
+    // request header so getTrainerWithSubscription() can skip another getUser()
+    // roundtrip to Supabase Auth (~100-300ms saved per authenticated navigation).
+    if (user) {
+        const reqHeaders = new Headers(request.headers)
+        reqHeaders.set('x-user-id', user.id)
+        const finalResponse = NextResponse.next({ request: { headers: reqHeaders } })
+        // Carry forward any cookies Supabase set during the session refresh above
+        supabaseResponse.cookies.getAll().forEach(c => finalResponse.cookies.set(c))
+        return finalResponse
+    }
+
     return supabaseResponse
 }
