@@ -395,6 +395,144 @@ function AssistantPanel({ open, scene }: { open: boolean; scene: HeroScene }) {
     )
 }
 
+/* Mobile spotlight — focused assistant card for small screens */
+function AssistantMobileSpotlight({ paused }: { paused: boolean }) {
+    const [phase, setPhase] = useState<'initial' | 'typing' | 'reply'>('initial')
+    const reducedMotion = useReducedMotion()
+
+    useEffect(() => {
+        if (reducedMotion) return
+        if (paused) return
+
+        let cancelled = false
+        const timers: ReturnType<typeof setTimeout>[] = []
+
+        const cycle = () => {
+            if (cancelled) return
+            setPhase('initial')
+            timers.push(setTimeout(() => { if (!cancelled) setPhase('typing') }, 2800))
+            timers.push(setTimeout(() => { if (!cancelled) setPhase('reply') }, 4400))
+            timers.push(setTimeout(cycle, 8800))
+        }
+        cycle()
+
+        return () => {
+            cancelled = true
+            timers.forEach(clearTimeout)
+        }
+    }, [paused, reducedMotion])
+
+    return (
+        <div className="relative bg-white rounded-2xl border border-black/[0.08] shadow-2xl shadow-black/10 overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-[#E8E8ED]">
+                <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-600 to-blue-600 flex items-center justify-center shadow-sm">
+                        <Sparkles className="w-4 h-4 text-white" strokeWidth={2} />
+                    </div>
+                    <div>
+                        <p className="font-jakarta text-[13px] font-bold text-[#1D1D1F] leading-tight">Assistente Kinevo</p>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className="relative flex h-1.5 w-1.5">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
+                                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+                            </span>
+                            <span className="font-jakarta text-[10px] text-[#86868B]">analisando seus alunos</span>
+                        </div>
+                    </div>
+                </div>
+                <div className="px-2 py-1 rounded-full bg-violet-50 border border-violet-100">
+                    <span className="font-jakarta text-[9px] font-bold text-violet-700 uppercase tracking-wider">ao vivo</span>
+                </div>
+            </div>
+
+            {/* Conversation */}
+            <div className="p-4 space-y-3" style={{ minHeight: 320 }}>
+                <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4 }}
+                    className="flex items-start gap-2"
+                >
+                    <div className="w-7 h-7 rounded-full bg-violet-100 flex items-center justify-center shrink-0 mt-0.5">
+                        <Sparkles className="w-3.5 h-3.5 text-violet-600" />
+                    </div>
+                    <div className="bg-[#F5F5F7] rounded-2xl rounded-bl-md px-3.5 py-2.5 max-w-[85%]">
+                        <p className="font-jakarta text-[12px] text-[#1D1D1F] leading-relaxed">
+                            Vi que <span className="font-semibold">Matheus Henrique</span> ainda não realizou nenhum treino esta semana. Como posso ajudar?
+                        </p>
+                    </div>
+                </motion.div>
+
+                <motion.div
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, delay: 0.3 }}
+                    className="flex flex-wrap gap-1.5 ml-9"
+                >
+                    {['Sugerir follow-up', 'Analisar histórico'].map((chip) => (
+                        <div key={chip} className="flex items-center gap-1 px-2.5 py-1.5 rounded-full border border-violet-200 bg-violet-50">
+                            <ChevronRight className="w-2.5 h-2.5 text-violet-600" />
+                            <span className="font-jakarta text-[10px] font-medium text-violet-700">{chip}</span>
+                        </div>
+                    ))}
+                </motion.div>
+
+                <AnimatePresence mode="wait">
+                    {phase === 'typing' && (
+                        <motion.div
+                            key="typing"
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -4 }}
+                            transition={{ duration: 0.25 }}
+                            className="flex items-start gap-2"
+                        >
+                            <div className="w-7 h-7 rounded-full bg-violet-100 flex items-center justify-center shrink-0 mt-0.5">
+                                <Sparkles className="w-3.5 h-3.5 text-violet-600" />
+                            </div>
+                            <div className="bg-[#F5F5F7] rounded-2xl rounded-bl-md px-3 py-2.5 flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-violet-400/70 animate-bounce" style={{ animationDelay: '0ms' }} />
+                                <span className="w-1.5 h-1.5 rounded-full bg-violet-400/70 animate-bounce" style={{ animationDelay: '150ms' }} />
+                                <span className="w-1.5 h-1.5 rounded-full bg-violet-400/70 animate-bounce" style={{ animationDelay: '300ms' }} />
+                            </div>
+                        </motion.div>
+                    )}
+                    {phase === 'reply' && (
+                        <motion.div
+                            key="reply"
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.4 }}
+                            className="flex items-start gap-2"
+                        >
+                            <div className="w-7 h-7 rounded-full bg-violet-100 flex items-center justify-center shrink-0 mt-0.5">
+                                <Sparkles className="w-3.5 h-3.5 text-violet-600" />
+                            </div>
+                            <div className="bg-violet-50 border border-violet-100 rounded-2xl rounded-bl-md px-3.5 py-2.5 max-w-[85%]">
+                                <p className="font-jakarta text-[12px] text-[#1D1D1F] leading-relaxed">
+                                    Rascunhei uma mensagem empática lembrando do treino de hoje. <span className="font-semibold text-violet-700">Revise antes de enviar.</span>
+                                </p>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </div>
+
+            {/* Input footer */}
+            <div className="px-3 pb-3 pt-3 border-t border-[#E8E8ED]">
+                <div className="flex items-center gap-2 border border-[#D2D2D7] rounded-full px-3.5 py-2 bg-white">
+                    <span className="font-jakarta text-[11px] text-[#AEAEB2] flex-1">Pergunte sobre seus alunos...</span>
+                    <div className="w-7 h-7 rounded-full bg-violet-600 flex items-center justify-center">
+                        <Send className="w-3.5 h-3.5 text-white" strokeWidth={1.5} />
+                    </div>
+                </div>
+            </div>
+        </div>
+    )
+}
+
 /* Assembled dashboard with auto-play scene cycle */
 function DashboardReplica({ paused }: { paused: boolean }) {
     const [scene, setScene] = useState<HeroScene>('overview')
@@ -583,8 +721,17 @@ export function LandingHero() {
                 {/* Glow */}
                 <div className="absolute inset-x-0 top-8 bottom-0 bg-gradient-to-b from-[#7C3AED]/8 via-[#7C3AED]/3 to-transparent rounded-3xl blur-2xl -z-10" />
 
-                {/* Browser frame */}
-                <div className="relative rounded-xl overflow-hidden border border-black/[0.08] shadow-2xl shadow-black/10 bg-white">
+                {/* Mobile spotlight — focused assistant card */}
+                <div className="md:hidden">
+                    {showDashboard ? (
+                        <AssistantMobileSpotlight paused={paused} />
+                    ) : (
+                        <div className="bg-[#F5F5F7] hero-skeleton rounded-2xl" style={{ height: 420 }} />
+                    )}
+                </div>
+
+                {/* Desktop browser frame with full dashboard replica */}
+                <div className="hidden md:block relative rounded-xl overflow-hidden border border-black/[0.08] shadow-2xl shadow-black/10 bg-white">
                     {/* Chrome bar */}
                     <div className="bg-[#F8F8FA] border-b border-black/[0.04] px-4 py-2.5 flex items-center gap-3">
                         <div className="flex items-center gap-1.5">
