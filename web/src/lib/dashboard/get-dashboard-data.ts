@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { createClient } from '@/lib/supabase/server'
+import { mapPendingForms as mapPendingFormsHelper } from './map-pending-forms'
 import { getWeekRange, getProgramEndDate, getProgramWeek, getScheduledWorkoutsForDate } from '@kinevo/shared/utils/schedule-projection'
 import { getNextOccurrences } from '@kinevo/shared/utils/appointments-projection'
 import type {
@@ -238,7 +239,11 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
         // Exclude workout check-ins — they are operational data shown in session context
         supabaseAdmin
             .from('form_submissions')
-            .select('id, student_id, submitted_at, form_template_id')
+            .select(`
+                id, student_id, submitted_at, form_template_id,
+                students:student_id!inner(name, avatar_url),
+                form_templates:form_template_id!inner(title)
+            `)
             .eq('trainer_id', trainerId)
             .eq('status', 'submitted')
             .is('feedback_sent_at', null)
@@ -278,13 +283,18 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
             .eq('trainer_id', trainerId)
             .order('completed_at', { ascending: false }),
 
-        // 9. All completed sessions (for inactivity detection) — use completed_at
+        // 9. Completed sessions in last 60 days (for inactivity detection + streaks)
+        // Cap to 60 days because UI only surfaces recent activity / current-streak windows.
+        // Older history is irrelevant for dashboard widgets and was previously unbounded,
+        // pulling thousands of rows per load for active trainers.
         supabaseAdmin
             .from('workout_sessions')
             .select('student_id, completed_at')
             .eq('trainer_id', trainerId)
             .eq('status', 'completed')
-            .order('completed_at', { ascending: false }),
+            .gte('completed_at', new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString())
+            .order('completed_at', { ascending: false })
+            .limit(2000),
 
         // 10. Assistant insights (active, non-expired)
         supabaseAdmin
@@ -415,29 +425,10 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
         }))
 
     // ── Pending Forms ──
-
-    const rawForms = pendingFormsResult.data ?? []
-    let pendingForms: PendingFormItem[] = []
-    if (rawForms.length > 0) {
-        const studentIds = [...new Set(rawForms.map(f => f.student_id))]
-        const templateIds = [...new Set(rawForms.map(f => f.form_template_id))]
-
-        const [studentsLookup, templatesLookup] = await Promise.all([
-            supabaseAdmin.from('students').select('id, name, avatar_url').in('id', studentIds),
-            supabaseAdmin.from('form_templates').select('id, title').in('id', templateIds),
-        ])
-
-        const studentMap = new Map((studentsLookup.data ?? []).map(s => [s.id, s]))
-        const templateMap = new Map((templatesLookup.data ?? []).map(t => [t.id, t]))
-
-        pendingForms = rawForms.map(f => ({
-            id: f.id,
-            studentName: studentMap.get(f.student_id)?.name || 'Aluno',
-            studentAvatar: studentMap.get(f.student_id)?.avatar_url || null,
-            templateTitle: templateMap.get(f.form_template_id)?.title || 'Formulário',
-            submittedAt: f.submitted_at,
-        }))
-    }
+    // Student/template metadata is now joined in the main query (#5) via
+    // !inner relationships, eliminating the two extra roundtrips that used
+    // to fire here after the parallel block resolved.
+    const pendingForms: PendingFormItem[] = mapPendingFormsHelper(pendingFormsResult.data)
 
 
 
