@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import { getTrainerWithSubscription } from '@/lib/auth/get-trainer'
 import { EditAssignedProgramClient } from '@/components/programs/edit-assigned-program-client'
 import { getFormTemplatesForTriggers } from '@/actions/programs/get-form-templates-for-triggers'
-import type { Exercise } from '@/types/exercise'
+import { getTrainerExerciseLibrary } from '@/lib/exercises/get-trainer-library'
 
 interface PageProps {
     params: Promise<{
@@ -25,53 +25,61 @@ export default async function EditProgramPage({ params }: PageProps) {
     // response was received from the server" after save (RSC re-fetch via
     // router.refresh produced an inconsistent payload because notFound() was
     // firing on a hidden join failure).
-    const { data: program, error: programError } = await supabase
-        .from('assigned_programs')
-        .select(`
-            id,
-            name,
-            description,
-            duration_weeks,
-            started_at,
-            scheduled_start_date,
-            source_template_id,
-            assigned_workouts (
+    // Run the heavy program tree query in parallel with the (cached) library
+    // fetch — eliminates ~hundreds of ms on the worst-performing route.
+    const [
+        { data: program, error: programError },
+        mappedExercises,
+    ] = await Promise.all([
+        supabase
+            .from('assigned_programs')
+            .select(`
                 id,
                 name,
-                order_index,
-                scheduled_days,
-                assigned_workout_items (
+                description,
+                duration_weeks,
+                started_at,
+                scheduled_start_date,
+                source_template_id,
+                assigned_workouts (
                     id,
-                    item_type,
+                    name,
                     order_index,
-                    parent_item_id,
-                    exercise_id,
-                    substitute_exercise_ids,
-                    sets,
-                    reps,
-                    rest_seconds,
-                    notes,
-                    item_config,
-                    method_key,
-                    rounds,
-                    assigned_workout_item_sets (
-                        set_number,
-                        set_type,
+                    scheduled_days,
+                    assigned_workout_items (
+                        id,
+                        item_type,
+                        order_index,
+                        parent_item_id,
+                        exercise_id,
+                        substitute_exercise_ids,
+                        sets,
                         reps,
                         rest_seconds,
-                        weight_target_kg,
-                        weight_target_pct1rm,
-                        rir,
-                        tempo,
                         notes,
-                        round_number
+                        item_config,
+                        method_key,
+                        rounds,
+                        assigned_workout_item_sets (
+                            set_number,
+                            set_type,
+                            reps,
+                            rest_seconds,
+                            weight_target_kg,
+                            weight_target_pct1rm,
+                            rir,
+                            tempo,
+                            notes,
+                            round_number
+                        )
                     )
                 )
-            )
-        `)
-        .eq('id', programId)
-        .eq('student_id', studentId)
-        .single()
+            `)
+            .eq('id', programId)
+            .eq('student_id', studentId)
+            .single(),
+        getTrainerExerciseLibrary(trainer.id),
+    ])
 
     // Fase 4.5j: log the Supabase error explicitly. If we don't, an RLS
     // rejection or schema mismatch on the LEFT JOIN comes back as a generic
@@ -93,43 +101,6 @@ export default async function EditProgramPage({ params }: PageProps) {
     if (!program) {
         notFound()
     }
-
-    // Get exercises for the library
-    const { data: exercises } = await supabase
-        .from('exercises')
-        .select(`
-            id, 
-            name, 
-            equipment, 
-            owner_id, 
-            original_system_id, 
-            video_url,
-            exercise_muscle_groups (
-                muscle_groups (
-                    id,
-                    name,
-                    owner_id,
-                    created_at
-                )
-            )
-        `)
-        .order('name')
-
-    // Map to Exercise type
-    const mappedExercises: Exercise[] = (exercises || []).map(e => ({
-        id: e.id,
-        name: e.name,
-        muscle_groups: e.exercise_muscle_groups?.map((emg: any) => emg.muscle_groups) || [],
-        equipment: e.equipment,
-        owner_id: e.owner_id,
-        original_system_id: e.original_system_id,
-        video_url: e.video_url || null,
-        thumbnail_url: null,
-        instructions: null,
-        is_archived: false,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-    }))
 
     // Fetch form trigger templates for configuration + existing triggers from source
     const triggerResult = await getFormTemplatesForTriggers()

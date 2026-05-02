@@ -9,6 +9,7 @@ import { MuscleGroup } from '@/types/exercise'
 import { X, Loader2, Plus, Check, Upload, Link as LinkIcon, Trash2 } from 'lucide-react'
 import type { TrainerVideoData } from './trainer-video-modal'
 import { saveTrainerVideoMetadata, deleteTrainerVideo } from '@/actions/exercises/manage-trainer-video'
+import { revalidateMyExerciseLibrary } from '@/actions/exercises/revalidate-library'
 
 const ACCEPTED_VIDEO_TYPES = ['video/mp4', 'video/quicktime', 'video/webm']
 const ACCEPTED_VIDEO_EXTENSIONS = ['.mp4', '.mov', '.webm']
@@ -184,6 +185,11 @@ export function ExerciseFormModal({ isOpen, onClose, onSuccess, exercise, traine
                 created_at: exercise?.created_at || new Date().toISOString(),
                 updated_at: new Date().toISOString(),
             } as ExerciseWithDetails
+
+            // Bust the per-trainer Next cache so the program builder picks up
+            // this change on the next navigation. Fire-and-forget — failure
+            // here just means the cache expires naturally on its 60s TTL.
+            revalidateMyExerciseLibrary().catch(() => {})
 
             return savedExercise
         } catch (err: any) {

@@ -4,10 +4,10 @@ import { getTrainerWithSubscription } from '@/lib/auth/get-trainer'
 import { ProgramBuilderClient } from '@/components/programs/program-builder-client'
 import { mapAiOutputToBuilderData } from '@/lib/prescription/builder-mapper'
 import type { BuilderProgramData } from '@/lib/prescription/builder-mapper'
-import type { Exercise } from '@/types/exercise'
 import type { PrescriptionOutputSnapshot, PrescriptionReasoningExtended } from '@kinevo/shared/types/prescription'
 import { getFormTemplatesForTriggers } from '@/actions/programs/get-form-templates-for-triggers'
 import { fetchPrescriptionDataDirect, type PrescriptionData } from '@/actions/prescription/get-prescription-data'
+import { getTrainerExerciseLibrary } from '@/lib/exercises/get-trainer-library'
 
 interface PageProps {
     params: Promise<{
@@ -27,61 +27,32 @@ export default async function NewStudentProgramPage({ params, searchParams }: Pa
     const { trainer } = await getTrainerWithSubscription()
     const supabase = await createClient()
 
-    // Get student data for context
-    const { data: student } = await supabase
-        .from('students')
-        .select('id, name')
-        .eq('id', studentId)
-        .single()
+    // Fetch student, active program, and the (cached) exercise library in
+    // parallel. The library was previously the dominant cost on this route
+    // (~500-2000 rows × muscle group joins) and now resolves from Next's
+    // request-level cache for ~95% of hits — see lib/exercises/get-trainer-library.
+    const [
+        { data: student },
+        { data: activeProgram },
+        mappedExercises,
+    ] = await Promise.all([
+        supabase
+            .from('students')
+            .select('id, name')
+            .eq('id', studentId)
+            .single(),
+        supabase
+            .from('assigned_programs')
+            .select('name')
+            .eq('student_id', studentId)
+            .eq('status', 'active')
+            .maybeSingle(),
+        getTrainerExerciseLibrary(trainer.id),
+    ])
 
     if (!student) {
         redirect('/students')
     }
-
-    // Get student's current active program (for confirmation dialog)
-    const { data: activeProgram } = await supabase
-        .from('assigned_programs')
-        .select('name')
-        .eq('student_id', studentId)
-        .eq('status', 'active')
-        .maybeSingle()
-
-    // Get exercises for the library
-    const { data: exercises } = await supabase
-        .from('exercises')
-        .select(`
-            id,
-            name,
-            equipment,
-            owner_id,
-            original_system_id,
-            video_url,
-            exercise_muscle_groups (
-                muscle_groups (
-                    id,
-                    name,
-                    owner_id,
-                    created_at
-                )
-            )
-        `)
-        .order('name')
-
-    // Map to Exercise type
-    const mappedExercises: Exercise[] = (exercises || []).map(e => ({
-        id: e.id,
-        name: e.name,
-        muscle_groups: e.exercise_muscle_groups?.map((emg: any) => emg.muscle_groups) || [],
-        equipment: e.equipment,
-        owner_id: e.owner_id,
-        original_system_id: e.original_system_id,
-        video_url: e.video_url || null,
-        thumbnail_url: null,
-        instructions: null,
-        is_archived: false,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-    }))
 
     // ── AI Prescription: load generation data if generationId is present ──
     let programData: BuilderProgramData | null = null

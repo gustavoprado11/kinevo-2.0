@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button'
 import { Plus, Search, Settings2, LayoutGrid, List, ChevronDown, Check } from 'lucide-react'
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
 import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
+import { revalidateMyExerciseLibrary } from '@/actions/exercises/revalidate-library'
 
 type ViewMode = 'grid' | 'list'
 
@@ -224,6 +225,8 @@ export function ExercisesClient({
                 .update({ is_archived: true })
                 .eq('id', exercise.id)
             if (error) throw error
+            // Bust per-trainer Next cache; safe to fire-and-forget (60s TTL fallback).
+            revalidateMyExerciseLibrary().catch(() => {})
             router.refresh()
         } catch (error) {
             console.error('Error archiving exercise:', error)
