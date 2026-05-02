@@ -11,6 +11,7 @@ export default async function StudentsPage() {
         supabase
             .from('students')
             .select('id, name, email, phone, status, modality, avatar_url, created_at, is_trainer_profile')
+            .eq('coach_id', trainer.id)
             .order('created_at', { ascending: false }),
         supabase
             .from('form_templates')
@@ -45,6 +46,7 @@ export default async function StudentsPage() {
                 id, name, student_id, duration_weeks, started_at,
                 assigned_workouts(scheduled_days)
             `)
+            .eq('trainer_id', trainer.id)
             .in('student_id', studentIds)
             .eq('status', 'active'),
 
@@ -53,6 +55,7 @@ export default async function StudentsPage() {
         supabase
             .from('workout_sessions')
             .select('student_id, completed_at')
+            .eq('trainer_id', trainer.id)
             .in('student_id', studentIds)
             .eq('status', 'completed')
             .gte('completed_at', sixtyDaysAgo.toISOString())
