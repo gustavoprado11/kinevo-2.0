@@ -14,23 +14,44 @@ import { VolumeSummary } from './volume-summary'
 import { Button } from '@/components/ui/button'
 import { ChevronLeft, Loader2, Calendar, AlertCircle, Smartphone, GitCompareArrows, X, ListChecks, FileText, Sparkles } from 'lucide-react'
 
+import dynamic from 'next/dynamic'
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
 import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
 import { useOnboardingStore } from '@/stores/onboarding-store'
 import type { Exercise } from '@/types/exercise'
 import { assignProgram } from '@/app/students/[id]/actions/assign-program'
-import { PrescriptionRationalePanel } from './prescription-rationale-panel'
 import { ProgramFormTriggers, type TriggerSelection, type InitialTrigger } from './program-form-triggers'
 import { saveProgramFormTriggers } from '@/actions/programs/save-program-form-triggers'
 import type { FormTemplateOption } from '@/actions/programs/get-form-templates-for-triggers'
-import { WorkoutExecutionPreview } from './workout-preview/workout-execution-preview'
-import { AiPrescribePanel } from './ai-prescribe-panel'
-import { AiPrescriptionPanel } from './ai-prescription-panel'
 import type { PrescriptionData } from '@/actions/prescription/get-prescription-data'
 import { usePrescriptionGenerationStream } from '@/hooks/use-prescription-generation-stream'
 import { consumePrescriptionAnimateFlag, setPrescriptionAnimateFlag } from './helpers/prescription-animate-flag'
-import { ProgramSelector } from '@/components/builder/context-panel/program-selector'
 import { getPastProgramsForStudent, getFullProgramForCompare } from '@/actions/programs/get-program-for-compare'
+
+// Code-split the heaviest on-demand panels: each only renders for a specific
+// builder mode (preview / ai_prescribe / compare) or when the AI feature is
+// enabled. Deferring their JS until needed shaves significant bytes from the
+// initial chunk (~7.2s LCP route per Vercel Speed Insights).
+const PrescriptionRationalePanel = dynamic(
+    () => import('./prescription-rationale-panel').then(m => ({ default: m.PrescriptionRationalePanel })),
+    { ssr: false }
+)
+const WorkoutExecutionPreview = dynamic(
+    () => import('./workout-preview/workout-execution-preview').then(m => ({ default: m.WorkoutExecutionPreview })),
+    { ssr: false }
+)
+const AiPrescribePanel = dynamic(
+    () => import('./ai-prescribe-panel').then(m => ({ default: m.AiPrescribePanel })),
+    { ssr: false }
+)
+const AiPrescriptionPanel = dynamic(
+    () => import('./ai-prescription-panel').then(m => ({ default: m.AiPrescriptionPanel })),
+    { ssr: false }
+)
+const ProgramSelector = dynamic(
+    () => import('@/components/builder/context-panel/program-selector').then(m => ({ default: m.ProgramSelector })),
+    { ssr: false }
+)
 import type { CompareProgramSummary, CompareProgramData } from '@/actions/programs/get-program-for-compare'
 import { compareWorkoutToWorkout } from '@/lib/workouts/transformPastWorkout'
 

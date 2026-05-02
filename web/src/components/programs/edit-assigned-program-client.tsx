@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useId, useMemo, useRef, useEffect } from 'react'
+import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, Loader2, Calendar, AlertCircle, Smartphone, GitCompareArrows, X, ListChecks } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -19,9 +20,18 @@ import type { Exercise } from '@/types/exercise'
 import type { FormTemplateOption } from '@/actions/programs/get-form-templates-for-triggers'
 import { saveProgramFormTriggers } from '@/actions/programs/save-program-form-triggers'
 import { capturePostAssignmentEdits } from '@/actions/prescription/capture-post-assignment-edits'
-import { WorkoutExecutionPreview } from './workout-preview/workout-execution-preview'
-import { ProgramSelector } from '@/components/builder/context-panel/program-selector'
 import { getPastProgramsForStudent, getFullProgramForCompare } from '@/actions/programs/get-program-for-compare'
+
+// Code-split panels that only render in preview / compare modes — see
+// program-builder-client.tsx for context.
+const WorkoutExecutionPreview = dynamic(
+    () => import('./workout-preview/workout-execution-preview').then(m => ({ default: m.WorkoutExecutionPreview })),
+    { ssr: false }
+)
+const ProgramSelector = dynamic(
+    () => import('@/components/builder/context-panel/program-selector').then(m => ({ default: m.ProgramSelector })),
+    { ssr: false }
+)
 import type { CompareProgramSummary, CompareProgramData } from '@/actions/programs/get-program-for-compare'
 import { compareWorkoutToWorkout } from '@/lib/workouts/transformPastWorkout'
 import type { BuilderViewMode } from './program-builder-client'
