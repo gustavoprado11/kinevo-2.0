@@ -1581,9 +1581,9 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
         >
             <div className="flex flex-col h-[calc(100vh-64px)] overflow-hidden bg-surface-canvas">
                 {/* Compact Header — auto-hides on scroll down, reappears on scroll up */}
-                <div className={`flex-shrink-0 bg-white dark:bg-surface-primary backdrop-blur-md border-b border-[#E8E8ED] dark:border-k-border-primary flex items-center gap-4 px-6 z-sticky transition-all duration-250 ease-in-out overflow-hidden ${isHeaderHidden ? 'max-h-0 py-0 border-b-0 opacity-0' : isCanvasScrolled ? 'max-h-20 py-1.5 opacity-100' : 'max-h-20 py-3 opacity-100'}`}>
-                    {/* Left: Back + Name */}
-                    <div className="flex items-center gap-3 min-w-0">
+                <div className={`flex-shrink-0 bg-white dark:bg-surface-primary backdrop-blur-md border-b border-[#E8E8ED] dark:border-k-border-primary flex items-center gap-2 lg:gap-4 px-4 lg:px-6 z-sticky transition-all duration-250 ease-in-out overflow-hidden ${isHeaderHidden ? 'max-h-0 py-0 border-b-0 opacity-0' : isCanvasScrolled ? 'max-h-20 py-1.5 opacity-100' : 'max-h-20 py-3 opacity-100'}`}>
+                    {/* Left: Back + Name — flex-1 below lg, fixed (non-shrinking) responsive widths from lg up. The wider layout (with "Salvar Modelo" / "Gerar com IA" labels / px-5 buttons) only kicks in at min-[1700px]; below that we keep a compact configuration so the action buttons never get clipped by the header's overflow-hidden. */}
+                    <div className="flex items-center gap-3 min-w-0 flex-1 lg:flex-none lg:w-[210px] xl:w-[230px] min-[1700px]:w-[280px]">
                         <Button
                             variant="ghost"
                             size="icon"
@@ -1596,7 +1596,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                             <ChevronLeft className="w-5 h-5" />
                         </Button>
 
-                        <div className="flex items-center gap-2 min-w-0">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
                             <input
                                 type="text"
                                 value={name}
@@ -1605,7 +1605,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                     if (error) setError(null)
                                 }}
                                 placeholder="Nome do programa"
-                                className={`bg-transparent border-none text-lg font-bold text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:ring-0 p-0 min-w-[140px] max-w-[280px] truncate transition-all cursor-text hover:border-b hover:border-dashed hover:border-[#AEAEB2] dark:hover:border-k-text-quaternary focus:border-b focus:border-solid focus:border-[#007AFF] dark:focus:border-violet-500 ${nameShake ? 'animate-[shake_0.5s_ease-in-out]' : ''
+                                className={`bg-transparent border-none text-lg font-bold text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:ring-0 p-0 w-full min-w-0 truncate transition-all cursor-text hover:border-b hover:border-dashed hover:border-[#AEAEB2] dark:hover:border-k-text-quaternary focus:border-b focus:border-solid focus:border-[#007AFF] dark:focus:border-violet-500 ${nameShake ? 'animate-[shake_0.5s_ease-in-out]' : ''
                                     } ${error && !name.trim() ? 'placeholder:text-[#FF3B30]/60 dark:placeholder:text-red-400/60' : ''}`}
                             />
                             <button
@@ -1621,27 +1621,27 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                         </div>
                     </div>
 
-                    {/* Center: Condensed timeline (only in student context, hidden on scroll) */}
+                    {/* Center: Condensed timeline (only in student context, hidden on scroll). Compacts at lg, expands at xl. */}
                     {isStudentContext && (
-                        <div className={`flex items-center gap-2 text-xs text-muted-foreground border-x border-k-border-subtle px-6 shrink-0 transition-all duration-200 overflow-hidden ${isCanvasScrolled ? 'max-w-0 opacity-0 px-0 border-0' : 'max-w-[600px] opacity-100'}`}>
+                        <div className={`hidden lg:flex items-center gap-1.5 xl:gap-2 text-xs text-muted-foreground border-x border-k-border-subtle px-3 xl:px-6 shrink-0 transition-all duration-200 overflow-hidden ${isCanvasScrolled ? 'max-w-0 opacity-0 px-0 border-0' : 'max-w-[600px] opacity-100'}`}>
                             <Calendar className="w-3.5 h-3.5 text-muted-foreground shrink-0" strokeWidth={1.5} />
-                            <span className="text-[10px] text-muted-foreground">Início</span>
+                            <span className="hidden xl:inline text-[10px] text-muted-foreground">Início</span>
                             <input
                                 type="date"
                                 value={startDate}
                                 onChange={(e) => handleStartDateChange(e.target.value)}
-                                className="bg-transparent border-none text-xs font-medium text-k-text-secondary focus:ring-0 p-0 [color-scheme:dark] w-[110px]"
+                                className="bg-transparent border-none text-xs font-medium text-k-text-secondary focus:ring-0 p-0 [color-scheme:dark] w-[100px] xl:w-[110px] shrink-0"
                             />
                             <span className="text-k-border-subtle">→</span>
-                            <span className="text-[10px] text-muted-foreground">Fim</span>
+                            <span className="hidden xl:inline text-[10px] text-muted-foreground">Fim</span>
                             <input
                                 type="date"
                                 value={endDate}
                                 onChange={(e) => handleEndDateChange(e.target.value)}
-                                className={`bg-transparent border-none text-xs font-medium focus:ring-0 p-0 [color-scheme:dark] w-[110px] transition-colors ${isEndDateFixed ? 'text-violet-400' : 'text-k-text-secondary'}`}
+                                className={`bg-transparent border-none text-xs font-medium focus:ring-0 p-0 [color-scheme:dark] w-[100px] xl:w-[110px] shrink-0 transition-colors ${isEndDateFixed ? 'text-violet-400' : 'text-k-text-secondary'}`}
                             />
                             <span className="text-k-border-subtle">·</span>
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center gap-1 shrink-0">
                                 <input
                                     type="number"
                                     value={durationWeeks}
@@ -1649,7 +1649,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                     min="0"
                                     className="bg-transparent border-none text-xs font-bold text-violet-400 focus:ring-0 p-0 w-6 text-center"
                                 />
-                                <span className="text-muted-foreground">semanas</span>
+                                <span className="text-muted-foreground"><span className="xl:hidden">sem.</span><span className="hidden xl:inline">semanas</span></span>
                             </div>
                         </div>
                     )}
@@ -1669,7 +1669,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                     title="Gerar programa com IA"
                                 >
                                     <Sparkles className="w-4 h-4" />
-                                    <span>Gerar com IA</span>
+                                    <span className="hidden min-[1700px]:inline">Gerar com IA</span>
                                 </button>
                                 <span className="mx-1 h-5 w-px bg-k-border-subtle" aria-hidden />
                             </>
@@ -1729,10 +1729,10 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                     </div>
 
                     {/* Actions — context-aware save buttons */}
-                    <div className="flex items-center gap-3 flex-shrink-0">
+                    <div className="flex items-center gap-1.5 lg:gap-3 flex-shrink-0">
                         {isStudentContext ? (
                             <>
-                                {/* Terciário: Salvar Modelo — ghost text */}
+                                {/* Terciário: Salvar Modelo — ghost text. Only shown at min-[1700px] since at narrower widths its ~120px would push the primary action buttons off-screen (2xl alone isn't wide enough — at 1536-1700px the layout still overflows). */}
                                 <button
                                     onClick={() => {
                                         setTemplateName(name)
@@ -1740,17 +1740,17 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                         setShowTemplateDialog(true)
                                     }}
                                     disabled={saving}
-                                    className="px-3 py-2 h-9 text-sm text-k-text-quaternary hover:text-k-text-primary transition-colors disabled:opacity-50"
+                                    className="hidden min-[1700px]:inline px-3 py-2 h-9 text-sm text-k-text-quaternary hover:text-k-text-primary transition-colors disabled:opacity-50"
                                 >
                                     Salvar Modelo
                                 </button>
 
-                                {/* Secundário: Agendar na Fila — outline */}
+                                {/* Secundário: Agendar na Fila — outline. Compact padding at xl-down to keep both action buttons on screen. */}
                                 <Button
                                     onClick={() => saveProgram('scheduled')}
                                     disabled={saving}
                                     variant="outline"
-                                    className="rounded-full px-5 py-2 h-9 text-sm font-medium transition-all"
+                                    className="rounded-full px-3 min-[1700px]:px-5 py-2 h-9 text-sm font-medium transition-all whitespace-nowrap"
                                 >
                                     Agendar na Fila
                                 </Button>
@@ -1772,7 +1772,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                             }
                                         }}
                                         disabled={saving}
-                                        className="bg-[#007AFF] dark:bg-violet-600 hover:bg-[#0056B3] dark:hover:bg-violet-500 text-white rounded-full px-5 py-2 h-9 text-sm font-medium transition-all"
+                                        className="bg-[#007AFF] dark:bg-violet-600 hover:bg-[#0056B3] dark:hover:bg-violet-500 text-white rounded-full px-3 min-[1700px]:px-5 py-2 h-9 text-sm font-medium transition-all whitespace-nowrap"
                                     >
                                         {saving ? (
                                             <Loader2 className="animate-spin w-4 h-4" />
