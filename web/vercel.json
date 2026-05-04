@@ -30,7 +30,7 @@
     },
     {
       "path": "/api/cron/cleanup-orphan-signups",
-      "schedule": "30 * * * *"
+      "schedule": "0 3 * * *"
     }
   ]
 }
