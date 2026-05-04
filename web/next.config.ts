@@ -32,9 +32,13 @@ const nextConfig: NextConfig = {
     // in production closes a large XSS escalation path. `unsafe-inline` on
     // script-src is still required because Next emits inline hydration scripts;
     // migrating to nonce-based CSP is tracked as a separate follow-up.
+    //
+    // challenges.cloudflare.com hosts the Turnstile (CAPTCHA) widget script
+    // used on /signup. The widget also renders inside an iframe served from
+    // the same origin, which is allowed via frame-src below.
     const scriptSrc = isProd
-      ? "script-src 'self' 'unsafe-inline'"
-      : "script-src 'self' 'unsafe-inline' 'unsafe-eval'";
+      ? "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com"
+      : "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com";
 
     return [
       {
@@ -91,7 +95,7 @@ const nextConfig: NextConfig = {
               "img-src 'self' data: blob: lylksbtgrihzepbteest.supabase.co",
               "media-src 'self' blob: lylksbtgrihzepbteest.supabase.co",
               "connect-src 'self' https://lylksbtgrihzepbteest.supabase.co wss://lylksbtgrihzepbteest.supabase.co https://api.openai.com https://api.stripe.com https://m.stripe.com",
-              "frame-src https://www.youtube.com https://www.youtube-nocookie.com https://checkout.stripe.com https://js.stripe.com https://hooks.stripe.com https://dashboard.stripe.com",
+              "frame-src https://www.youtube.com https://www.youtube-nocookie.com https://checkout.stripe.com https://js.stripe.com https://hooks.stripe.com https://dashboard.stripe.com https://challenges.cloudflare.com",
               "frame-ancestors 'self'",
               "object-src 'none'",
               "base-uri 'self'",
