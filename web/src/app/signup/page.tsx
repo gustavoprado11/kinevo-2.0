@@ -1,22 +1,42 @@
 'use client'
 
-import { useState, useMemo } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useState, useMemo, useEffect, useRef } from 'react'
+import Script from 'next/script'
 import Link from 'next/link'
-import { translateAuthError } from '@/lib/translate-auth-error'
 import { AuthLayout } from '@/components/auth/auth-layout'
+import { signupTrainer } from '@/actions/auth/signup-trainer'
+
+// Public Turnstile site key. When unset (operator hasn't enabled CAPTCHA
+// yet), the widget block below is short-circuited and the server action
+// also skips verification — see lib/auth/turnstile.ts.
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ''
+
+declare global {
+    interface Window {
+        turnstile?: {
+            render: (el: HTMLElement, opts: {
+                sitekey: string
+                callback?: (token: string) => void
+                'expired-callback'?: () => void
+                'error-callback'?: () => void
+                theme?: 'light' | 'dark' | 'auto'
+            }) => string
+            reset: (widgetId?: string) => void
+        }
+    }
+}
 
 function getPasswordStrength(password: string): { level: number; label: string } {
     if (password.length === 0) return { level: 0, label: '' }
-    if (password.length < 6) return { level: 1, label: 'Fraca' }
+    if (password.length < 8) return { level: 1, label: 'Muito curta' }
 
     const hasUppercase = /[A-Z]/.test(password)
     const hasNumber = /[0-9]/.test(password)
     const hasSymbol = /[^A-Za-z0-9]/.test(password)
     const mixCount = [hasUppercase, hasNumber, hasSymbol].filter(Boolean).length
 
-    if (password.length >= 10 && mixCount >= 2) return { level: 4, label: 'Forte' }
-    if (password.length >= 8 && mixCount >= 1) return { level: 3, label: 'Boa' }
+    if (password.length >= 12 && mixCount >= 2) return { level: 4, label: 'Forte' }
+    if (password.length >= 10 && mixCount >= 1) return { level: 3, label: 'Boa' }
     return { level: 2, label: 'Razoável' }
 }
 
@@ -28,10 +48,46 @@ export default function SignupPage() {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [confirmPassword, setConfirmPassword] = useState('')
+    // Honeypot — invisible to users, automated form-fillers populate it.
+    // The server action rejects the request when this is non-empty.
+    const [honeypot, setHoneypot] = useState('')
+    const [turnstileToken, setTurnstileToken] = useState('')
     const [error, setError] = useState<string | null>(null)
     const [loading, setLoading] = useState(false)
+    const turnstileContainerRef = useRef<HTMLDivElement | null>(null)
+    const turnstileWidgetIdRef = useRef<string | null>(null)
 
     const strength = useMemo(() => getPasswordStrength(password), [password])
+
+    // Render the Turnstile widget when the script has loaded and the site
+    // key is configured. The widget calls back with a token we send to
+    // the server action; on expiry/error we wipe the token so submission
+    // is blocked until the user re-solves.
+    useEffect(() => {
+        if (!TURNSTILE_SITE_KEY) return
+        if (!turnstileContainerRef.current) return
+
+        let cancelled = false
+        const tryRender = () => {
+            if (cancelled) return
+            if (!window.turnstile) {
+                // Script hasn't finished loading; retry shortly.
+                setTimeout(tryRender, 200)
+                return
+            }
+            if (turnstileWidgetIdRef.current) return
+            const id = window.turnstile.render(turnstileContainerRef.current!, {
+                sitekey: TURNSTILE_SITE_KEY,
+                theme: 'light',
+                callback: (token: string) => setTurnstileToken(token),
+                'expired-callback': () => setTurnstileToken(''),
+                'error-callback': () => setTurnstileToken(''),
+            })
+            turnstileWidgetIdRef.current = id
+        }
+        tryRender()
+        return () => { cancelled = true }
+    }, [])
 
     const handleSignup = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -42,49 +98,37 @@ export default function SignupPage() {
             return
         }
 
-        if (password.length < 6) {
-            setError('A senha deve ter pelo menos 6 caracteres.')
+        if (password.length < 8) {
+            setError('A senha deve ter pelo menos 8 caracteres.')
+            return
+        }
+
+        if (TURNSTILE_SITE_KEY && !turnstileToken) {
+            setError('Aguarde a verificação anti-robô completar antes de continuar.')
             return
         }
 
         setLoading(true)
 
-        const supabase = createClient()
+        // Step 1+2 — server action: rate limit, honeypot, Turnstile,
+        // HIBP/common-password, blocklist, signUp, trainer insert. All in
+        // one round-trip on the server.
+        const result = await signupTrainer({ name, email, password, honeypot, turnstileToken })
 
-        // 1. Create auth user
-        const { data, error: signUpError } = await supabase.auth.signUp({
-            email,
-            password,
-            options: { data: { name } },
-        })
-
-        if (signUpError) {
-            setError(translateAuthError(signUpError.message))
+        if (!result.success) {
+            setError(result.error || 'Erro ao criar conta.')
             setLoading(false)
+            // Reset captcha so the user can retry without reloading.
+            if (window.turnstile && turnstileWidgetIdRef.current) {
+                window.turnstile.reset(turnstileWidgetIdRef.current)
+                setTurnstileToken('')
+            }
             return
         }
 
-        if (!data.user) {
-            setError('Erro ao criar conta. Tente novamente.')
-            setLoading(false)
-            return
-        }
-
-        // 2. Create trainer record
-        const { error: trainerError } = await supabase.from('trainers').insert({
-            auth_user_id: data.user.id,
-            name,
-            email,
-        })
-
-        if (trainerError) {
-            console.error('Trainer insert error:', trainerError)
-            setError(translateAuthError(trainerError.message))
-            setLoading(false)
-            return
-        }
-
-        // 3. Redirect to Stripe Checkout
+        // Step 3 — Stripe Checkout. The server action plumbed the auth
+        // session cookie back to the browser, so this fetch is now
+        // authenticated and the API route will find the trainer.
         try {
             const res = await fetch('/api/stripe/checkout', { method: 'POST' })
             const json = await res.json()
@@ -103,7 +147,16 @@ export default function SignupPage() {
     }
 
     return (
-        <AuthLayout
+        <>
+            {TURNSTILE_SITE_KEY && (
+                <Script
+                    src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
+                    strategy="afterInteractive"
+                    async
+                    defer
+                />
+            )}
+            <AuthLayout
             tagline="A ferramenta à altura"
             taglineAccent="do seu trabalho."
             subtitle="Sistema completo para prescrição, acompanhamento e pagamentos. 7 dias grátis."
@@ -125,6 +178,24 @@ export default function SignupPage() {
                 </div>
 
                 <form onSubmit={handleSignup} className="space-y-5">
+                    {/* Honeypot — invisible to humans, auto-filled by naive bots.
+                        Triple defense: visually hidden, aria-hidden so screen readers
+                        skip it, and tabindex=-1 so keyboard users never land here.
+                        Real users keep this empty; bots that fill every field get
+                        rejected silently by the server action. */}
+                    <div aria-hidden="true" style={{ position: 'absolute', left: '-9999px', width: '1px', height: '1px', overflow: 'hidden' }}>
+                        <label htmlFor="kinevo_website_url">Website (não preencha)</label>
+                        <input
+                            id="kinevo_website_url"
+                            name="kinevo_website_url"
+                            type="text"
+                            tabIndex={-1}
+                            autoComplete="off"
+                            value={honeypot}
+                            onChange={(e) => setHoneypot(e.target.value)}
+                        />
+                    </div>
+
                     {error && (
                         <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl text-sm">
                             {error}
@@ -211,6 +282,13 @@ export default function SignupPage() {
                         />
                     </div>
 
+                    {/* Turnstile widget mounts here. When NEXT_PUBLIC_TURNSTILE_SITE_KEY
+                        is unset (current state), this stays empty and the form behaves
+                        as before — see useEffect above + lib/auth/turnstile.ts. */}
+                    {TURNSTILE_SITE_KEY && (
+                        <div ref={turnstileContainerRef} className="flex justify-center" />
+                    )}
+
                     <button
                         type="submit"
                         disabled={loading}
@@ -225,5 +303,6 @@ export default function SignupPage() {
                 </form>
             </div>
         </AuthLayout>
+        </>
     )
 }
