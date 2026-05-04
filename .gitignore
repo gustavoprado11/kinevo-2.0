@@ -35,6 +35,9 @@ supabase/.temp/
 # tmp artifacts
 tmp/
 
+# Vercel CLI link metadata (created by `vercel link`, contains project + org IDs)
+.vercel
+
 # container mount artifacts (e.g. WSL / dev-container writes that captured
 # absolute-path writes during local development)
 mnt/
