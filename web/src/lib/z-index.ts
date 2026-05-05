@@ -18,8 +18,12 @@
  *   MODAL (50)      — modal dialogs, sheets, fixed overlays
  *   FLOAT (60)      — floating widgets, image zoom, video player
  *   ONBOARDING (70) — onboarding overlays, spotlight, welcome modal
- *   TOOLTIP (100)   — tooltips, info popovers
+ *   DRAWER (100)    — side drawers (preferences, etc.) — same tier as tooltips
  *   TOPMOST (110)   — highest priority (e.g. nested modal over modal)
+ *   TOAST (120)     — transient notifications, sit above everything
+ *
+ *   TOOLTIP shares 100 with DRAWER intentionally — a tooltip rendered after
+ *   a drawer in DOM order will appear on top, which is the desired behavior.
  */
 export const Z = {
   CONTENT: 0,
@@ -33,7 +37,9 @@ export const Z = {
   FLOAT: 60,
   ONBOARDING: 70,
   TOOLTIP: 100,
+  DRAWER: 100,
   TOPMOST: 110,
+  TOAST: 120,
 } as const
 
 export type ZLayer = (typeof Z)[keyof typeof Z]

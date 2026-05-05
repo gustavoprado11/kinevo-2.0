@@ -202,7 +202,9 @@
   --z-index-float: 60;
   --z-index-onboarding: 70;
   --z-index-tooltip: 100;
+  --z-index-drawer: 100;
   --z-index-topmost: 110;
+  --z-index-toast: 120;
 }
 
 /* ── Base Resets ── */
