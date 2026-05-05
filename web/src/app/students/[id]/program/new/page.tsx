@@ -8,6 +8,10 @@ import type { PrescriptionOutputSnapshot, PrescriptionReasoningExtended } from '
 import { getFormTemplatesForTriggers } from '@/actions/programs/get-form-templates-for-triggers'
 import { fetchPrescriptionDataDirect, type PrescriptionData } from '@/actions/prescription/get-prescription-data'
 import { getTrainerExerciseLibrary } from '@/lib/exercises/get-trainer-library'
+import {
+    KINEVO_DEFAULT_PREFERENCES,
+    type PrescriptionPreferences,
+} from '@/types/prescription-preferences'
 
 interface PageProps {
     params: Promise<{
@@ -84,6 +88,17 @@ export default async function NewStudentProgramPage({ params, searchParams }: Pa
     // Fetch form templates for trigger configuration
     const triggerResult = await getFormTemplatesForTriggers()
 
+    // Scoped fetch: prescription preferences (graceful fallback if column not yet migrated).
+    let prescriptionPreferences: PrescriptionPreferences = KINEVO_DEFAULT_PREFERENCES
+    const { data: prefsRow, error: prefsError } = await supabase
+        .from('trainers')
+        .select('prescription_preferences')
+        .eq('id', trainer.id)
+        .maybeSingle<{ prescription_preferences: PrescriptionPreferences | null }>()
+    if (!prefsError && prefsRow?.prescription_preferences) {
+        prescriptionPreferences = prefsRow.prescription_preferences
+    }
+
     // Prescription data for the AI panel — only when the trainer has the feature enabled.
     let prescriptionData: PrescriptionData | null = null
     if (trainer.ai_prescriptions_enabled) {
@@ -115,6 +130,7 @@ export default async function NewStudentProgramPage({ params, searchParams }: Pa
             prescriptionReasoning={prescriptionReasoning}
             formTriggerTemplates={triggerResult.templates || []}
             prescriptionData={prescriptionData}
+            prescriptionPreferences={prescriptionPreferences}
         />
     )
 }

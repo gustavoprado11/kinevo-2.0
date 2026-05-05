@@ -3,6 +3,10 @@ import { redirect } from 'next/navigation'
 import { getTrainerWithSubscription } from '@/lib/auth/get-trainer'
 import dynamic from 'next/dynamic'
 import type { Exercise } from '@/components/programs'
+import {
+    KINEVO_DEFAULT_PREFERENCES,
+    type PrescriptionPreferences,
+} from '@/types/prescription-preferences'
 
 const ProgramBuilderClient = dynamic(
     () => import('@/components/programs').then(mod => mod.ProgramBuilderClient),
@@ -112,6 +116,17 @@ export default async function EditProgramPage({ params }: { params: Promise<{ id
             .eq('is_active', true),
     ])
 
+    // Scoped fetch: prescription preferences (graceful fallback if column not yet migrated).
+    let prescriptionPreferences: PrescriptionPreferences = KINEVO_DEFAULT_PREFERENCES
+    const { data: prefsRow, error: prefsError } = await supabase
+        .from('trainers')
+        .select('prescription_preferences')
+        .eq('id', trainer.id)
+        .maybeSingle<{ prescription_preferences: PrescriptionPreferences | null }>()
+    if (!prefsError && prefsRow?.prescription_preferences) {
+        prescriptionPreferences = prefsRow.prescription_preferences
+    }
+
     const preTrigger = existingTriggers?.find((t: any) => t.trigger_type === 'pre_workout')
     const postTrigger = existingTriggers?.find((t: any) => t.trigger_type === 'post_workout')
 
@@ -135,6 +150,7 @@ export default async function EditProgramPage({ params }: { params: Promise<{ id
             exercises={mappedExercises}
             formTriggerTemplates={triggerResult.templates || []}
             initialFormTriggers={initialFormTriggers}
+            prescriptionPreferences={prescriptionPreferences}
         />
     )
 }

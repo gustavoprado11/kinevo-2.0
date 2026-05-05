@@ -12,7 +12,13 @@ import { SortableWorkoutTab } from './sortable-workout-tab'
 import { ExerciseLibraryPanel } from './exercise-library-panel'
 import { VolumeSummary } from './volume-summary'
 import { Button } from '@/components/ui/button'
-import { ChevronLeft, Loader2, Calendar, AlertCircle, Smartphone, GitCompareArrows, X, ListChecks, FileText, Sparkles } from 'lucide-react'
+import { ChevronLeft, Loader2, Calendar, AlertCircle, Smartphone, GitCompareArrows, X, ListChecks, FileText, Sparkles, Settings } from 'lucide-react'
+import { KINEVO_DEFAULT_PREFERENCES, type PrescriptionPreferences } from '@/types/prescription-preferences'
+import { usePrescriptionPreferencesStore } from '@/stores/prescription-preferences-store'
+import { PreferencesBanner } from './preferences/preferences-banner'
+import { PreferencesDrawer } from './preferences/preferences-drawer'
+import { PreferencesWizard } from './preferences/preferences-wizard'
+import { track } from '@/lib/analytics'
 
 import dynamic from 'next/dynamic'
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
@@ -158,10 +164,32 @@ interface ProgramBuilderClientProps {
     }
     /** Prescription data for the AI panel (Fase 1). Fetched only when trainer.ai_prescriptions_enabled. */
     prescriptionData?: PrescriptionData | null
+    /**
+     * Preferências de prescrição do treinador. Quando ausente, a engrenagem
+     * e o drawer não são renderizados (call sites legados ainda não hidratam).
+     */
+    prescriptionPreferences?: PrescriptionPreferences
 }
 
 // Generate temp ID for new items
 const tempId = () => `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+
+/** Converte uma pref de séries (ex: "3", "3-4") em count inteiro. Faixa pega
+ *  o limite inferior. Fallback 3 se inválido. Usado pelo seed de set_scheme
+ *  quando a pref `add_exercise.open_mode === 'set_editor'`. */
+function parseSetsCount(setsPref: string): number {
+    const match = setsPref.trim().match(/^(\d+)/)
+    const n = match ? parseInt(match[1], 10) : 3
+    return Number.isFinite(n) && n > 0 ? n : 3
+}
+
+/** Gera o nome de um workout novo respeitando a convenção do treinador.
+ *  - 'letter': "Treino A", "Treino B", ... (até Z; depois reinicia em A1, B1 — improvável v1)
+ *  - 'free':   "Treino 1", "Treino 2", ... (numérico simples) */
+function generateWorkoutName(index: number, convention: 'letter' | 'free'): string {
+    if (convention === 'free') return `Treino ${index + 1}`
+    return `Treino ${String.fromCharCode(65 + index)}`
+}
 
 // ── Per-set helpers (Fase 2 / 4.4) ──
 import {
@@ -262,7 +290,7 @@ function effectiveMethodKey(item: WorkoutItem): string | null {
     return item.method_key ?? null
 }
 
-export function ProgramBuilderClient({ trainer, program, exercises, studentContext, initialAssignmentType = 'immediate', prescriptionGenerationId, prescriptionReasoning, formTriggerTemplates = [], initialFormTriggers, prescriptionData }: ProgramBuilderClientProps) {
+export function ProgramBuilderClient({ trainer, program, exercises, studentContext, initialAssignmentType = 'immediate', prescriptionGenerationId, prescriptionReasoning, formTriggerTemplates = [], initialFormTriggers, prescriptionData, prescriptionPreferences }: ProgramBuilderClientProps) {
     const router = useRouter()
     const searchParams = useSearchParams()
     const tabDndId = useId()
@@ -275,12 +303,39 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
     // Program state
     const [name, setName] = useState(program?.name || '')
     const [description, setDescription] = useState(program?.description || '')
-    const [durationWeeks, setDurationWeeks] = useState(program?.duration_weeks?.toString() || '4')
+    const [durationWeeks, setDurationWeeks] = useState(
+        program?.duration_weeks?.toString()
+        ?? prescriptionPreferences?.program_structure.default_weeks?.toString()
+        ?? '4',
+    )
     const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0])
     const [isEndDateFixed, setIsEndDateFixed] = useState(false)
     const [assignmentType] = useState<'immediate' | 'scheduled'>(initialAssignmentType)
     const [isDescriptionOpen, setIsDescriptionOpen] = useState(false)
-    const [builderViewMode, setBuilderViewMode] = useState<BuilderViewMode>('preview')
+    const [builderViewMode, setBuilderViewMode] = useState<BuilderViewMode>(
+        prescriptionPreferences?.visualization.default_view ?? 'preview',
+    )
+
+    // Preferências de prescrição — hidratação one-shot do espelho client-side.
+    const preferencesGearButtonRef = useRef<HTMLButtonElement | null>(null)
+    const openPreferencesDrawerStore = usePrescriptionPreferencesStore((s) => s.openDrawer)
+    const openPreferencesDrawer = useCallback(() => {
+        track('prescription_preferences_drawer_opened')
+        openPreferencesDrawerStore()
+    }, [openPreferencesDrawerStore])
+    useEffect(() => {
+        if (!prescriptionPreferences) return
+        usePrescriptionPreferencesStore.getState().setPreferences(prescriptionPreferences)
+        // Auto-abre o wizard se o treinador ainda não passou pela onboarding.
+        if (!prescriptionPreferences.wizard_completed && !prescriptionPreferences.wizard_dismissed) {
+            track('prescription_preferences_wizard_started', { source: 'auto_open' })
+            usePrescriptionPreferencesStore.getState().openWizard()
+        }
+        // Intencional: hidrata uma vez só na montagem. Incluir prescriptionPreferences
+        // nas deps re-hidrataria o estado em qualquer re-render do pai, sobrescrevendo
+        // edits otimistas em andamento.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
 
     // Compare mode state
     const [compareProgramsList, setCompareProgramsList] = useState<CompareProgramSummary[]>([])
@@ -463,13 +518,18 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
     const initializeWorkouts = (): Workout[] => {
         console.log('Initializing workouts with program:', program?.workout_templates)
         if (!program?.workout_templates || program.workout_templates.length === 0) {
-            return [{
+            // Programa novo: seeda N workouts conforme prefs do treinador.
+            // Programas existentes (program !== null) preservam tudo.
+            const programStructure = prescriptionPreferences?.program_structure
+                ?? KINEVO_DEFAULT_PREFERENCES.program_structure
+            const count = Math.max(1, programStructure.default_workout_count)
+            return Array.from({ length: count }, (_, i): Workout => ({
                 id: tempId(),
-                name: 'Treino A',
-                order_index: 0,
+                name: generateWorkoutName(i, programStructure.naming_convention),
+                order_index: i,
                 items: [],
-                frequency: []
-            }]
+                frequency: [],
+            }))
         }
 
         return program.workout_templates
@@ -626,7 +686,9 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
     // Default `false` no servidor; useEffect rehidrata do localStorage no
     // client após mount. Resolve hydration mismatch reportado no painel da
     // biblioteca.
-    const [isLibraryCollapsed, setIsLibraryCollapsed] = useState(false)
+    const [isLibraryCollapsed, setIsLibraryCollapsed] = useState(
+        prescriptionPreferences ? !prescriptionPreferences.visualization.library_open_on_enter : false,
+    )
     const [isDraggingOver, setIsDraggingOver] = useState(false)
     const [formTriggers, setFormTriggers] = useState<TriggerSelection>({
         preWorkout: initialFormTriggers?.preWorkout?.formTemplateId ?? null,
@@ -700,16 +762,18 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
 
     // Actions
     const addWorkout = useCallback(() => {
+        const convention = prescriptionPreferences?.program_structure.naming_convention
+            ?? KINEVO_DEFAULT_PREFERENCES.program_structure.naming_convention
         const newWorkout: Workout = {
             id: tempId(),
-            name: `Treino ${String.fromCharCode(65 + workouts.length)}`,
+            name: generateWorkoutName(workouts.length, convention),
             order_index: workouts.length,
             items: [],
             frequency: []
         }
         setWorkouts(prev => [...prev, newWorkout])
         setActiveWorkoutId(newWorkout.id)
-    }, [workouts.length])
+    }, [workouts.length, prescriptionPreferences])
 
     const updateWorkoutName = useCallback((workoutId: string, name: string) => {
         setWorkouts(prev => prev.map(w =>
@@ -726,13 +790,16 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
     }, [activeWorkoutId, workouts])
 
     const duplicateWorkout = useCallback((workoutId: string) => {
+        const convention = prescriptionPreferences?.program_structure.naming_convention
+            ?? KINEVO_DEFAULT_PREFERENCES.program_structure.naming_convention
         setWorkouts(prev => {
             const source = prev.find(w => w.id === workoutId)
             if (!source) return prev
-            const baseName = source.name.replace(/^(Treino [A-Z]|Dia \d+)\s*[-–]\s*/, '')
+            const baseName = source.name.replace(/^(Treino [A-Z]|Treino \d+|Dia \d+)\s*[-–]\s*/, '')
+            const prefix = generateWorkoutName(prev.length, convention)
             const copy: Workout = {
                 id: tempId(),
-                name: `Treino ${String.fromCharCode(65 + prev.length)}${baseName ? ` - ${baseName}` : ''}`,
+                name: `${prefix}${baseName ? ` - ${baseName}` : ''}`,
                 order_index: prev.length,
                 items: source.items.map(item => ({
                     ...item,
@@ -744,7 +811,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
             }
             return [...prev, copy]
         })
-    }, [])
+    }, [prescriptionPreferences])
 
     const handleWorkoutDragEnd = useCallback((event: DragEndEvent) => {
         const { active, over } = event
@@ -767,8 +834,32 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
     const addExerciseFromLibrary = useCallback((exercise: Exercise, options?: { sets?: number; reps?: string; rest_seconds?: number | null; notes?: string | null }) => {
         if (!activeWorkoutId) return
 
+        const setDefaults = prescriptionPreferences?.set_defaults ?? KINEVO_DEFAULT_PREFERENCES.set_defaults
+        const addCfg = prescriptionPreferences?.add_exercise ?? KINEVO_DEFAULT_PREFERENCES.add_exercise
+
         setWorkouts(prev => prev.map(w => {
             if (w.id !== activeWorkoutId) return w
+
+            const setsCount = options?.sets ?? parseSetsCount(setDefaults.sets)
+            const repsStr = options?.reps ?? setDefaults.reps
+            // TODO v2: client model has single rest_seconds; pref.rest_isolation_seconds
+            // is persisted but not consumed. See PRD_preferencias_prescricao_LIMITACOES_V1.md.
+            const restSeconds = options?.rest_seconds ?? setDefaults.rest_compound_seconds
+
+            const seedScheme: WorkoutSet[] | null =
+                addCfg.open_mode === 'set_editor'
+                    ? Array.from({ length: setsCount }, (_, i): WorkoutSet => ({
+                        set_number: i + 1,
+                        set_type: 'normal',
+                        reps: repsStr,
+                        rest_seconds: restSeconds,
+                        weight_target_kg: null,
+                        weight_target_pct1rm: null,
+                        rir: null,
+                        tempo: null,
+                        notes: null,
+                    }))
+                    : null
 
             const newItem: WorkoutItem = {
                 id: tempId(),
@@ -778,23 +869,43 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                 exercise_id: exercise.id,
                 substitute_exercise_ids: [],
                 exercise: exercise,
-                sets: options?.sets ?? 3,
-                reps: options?.reps ?? '10',
-                rest_seconds: options?.rest_seconds ?? 60,
+                sets: setsCount,
+                reps: repsStr,
+                rest_seconds: restSeconds,
                 notes: options?.notes ?? null,
-                set_scheme: null,
+                set_scheme: seedScheme,
                 method_key: null,
                 rounds: 1,
                 children: []
             }
 
-            // Normal add to root
-            return {
-                ...w,
-                items: [...w.items, { ...newItem, order_index: w.items.length }]
+            // Heurística auto_warmup: injeta um item de aquecimento ANTES do
+            // exercício quando a pref está ligada E é a primeira adição neste
+            // workout (items.length === 0). Não duplica em workouts já populados.
+            const shouldInjectWarmup = addCfg.auto_warmup && w.items.length === 0
+            const newItems = [...w.items]
+            if (shouldInjectWarmup) {
+                const warmupItem: WorkoutItem = {
+                    id: tempId(),
+                    item_type: 'warmup',
+                    order_index: newItems.length,
+                    parent_item_id: null,
+                    exercise_id: null,
+                    substitute_exercise_ids: [],
+                    sets: null,
+                    reps: null,
+                    rest_seconds: null,
+                    notes: null,
+                    item_config: { warmup_type: 'free' },
+                    children: [],
+                }
+                newItems.push(warmupItem)
             }
+            newItems.push({ ...newItem, order_index: newItems.length })
+
+            return { ...w, items: newItems }
         }))
-    }, [activeWorkoutId])
+    }, [activeWorkoutId, prescriptionPreferences])
 
     const addExerciseToWorkout = useCallback((
         workoutId: string,
@@ -809,8 +920,34 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
             rounds?: number | null
         },
     ) => {
+        const setDefaults = prescriptionPreferences?.set_defaults ?? KINEVO_DEFAULT_PREFERENCES.set_defaults
+        const addCfg = prescriptionPreferences?.add_exercise ?? KINEVO_DEFAULT_PREFERENCES.add_exercise
+
         setWorkouts(prev => prev.map(w => {
             if (w.id !== workoutId) return w
+
+            const setsCount = options?.sets ?? parseSetsCount(setDefaults.sets)
+            const repsStr = options?.reps ?? setDefaults.reps
+            // TODO v2: client model has single rest_seconds; pref.rest_isolation_seconds
+            // is persisted but not consumed. See PRD_preferencias_prescricao_LIMITACOES_V1.md.
+            const restSeconds = options?.rest_seconds ?? setDefaults.rest_compound_seconds
+
+            const seedScheme: WorkoutSet[] | null =
+                options?.set_scheme !== undefined
+                    ? options.set_scheme
+                    : addCfg.open_mode === 'set_editor'
+                        ? Array.from({ length: setsCount }, (_, i): WorkoutSet => ({
+                            set_number: i + 1,
+                            set_type: 'normal',
+                            reps: repsStr,
+                            rest_seconds: restSeconds,
+                            weight_target_kg: null,
+                            weight_target_pct1rm: null,
+                            rir: null,
+                            tempo: null,
+                            notes: null,
+                        }))
+                        : null
 
             const newItem: WorkoutItem = {
                 id: tempId(),
@@ -820,19 +957,42 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                 exercise_id: exercise.id,
                 substitute_exercise_ids: [],
                 exercise: exercise,
-                sets: options?.sets ?? 3,
-                reps: options?.reps ?? '10',
-                rest_seconds: options?.rest_seconds ?? 60,
+                sets: setsCount,
+                reps: repsStr,
+                rest_seconds: restSeconds,
                 notes: options?.notes ?? null,
-                set_scheme: options?.set_scheme ?? null,
+                set_scheme: seedScheme,
                 method_key: options?.method_key ?? null,
                 rounds: options?.rounds ?? 1,
                 children: []
             }
 
-            return { ...w, items: [...w.items, newItem] }
+            // Mesma heurística do addExerciseFromLibrary — só injeta warmup
+            // se a pref está ligada e o workout está vazio.
+            const shouldInjectWarmup = addCfg.auto_warmup && w.items.length === 0
+            const newItems = [...w.items]
+            if (shouldInjectWarmup) {
+                const warmupItem: WorkoutItem = {
+                    id: tempId(),
+                    item_type: 'warmup',
+                    order_index: newItems.length,
+                    parent_item_id: null,
+                    exercise_id: null,
+                    substitute_exercise_ids: [],
+                    sets: null,
+                    reps: null,
+                    rest_seconds: null,
+                    notes: null,
+                    item_config: { warmup_type: 'free' },
+                    children: [],
+                }
+                newItems.push(warmupItem)
+            }
+            newItems.push({ ...newItem, order_index: newItems.length })
+
+            return { ...w, items: newItems }
         }))
-    }, [])
+    }, [prescriptionPreferences])
 
     const createWorkoutWithName = useCallback((name: string, frequency?: string[]): string => {
         const id = tempId()
@@ -897,6 +1057,8 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
     }, [localExercises, addExerciseFromLibrary])
 
     const addNote = useCallback((workoutId: string) => {
+        const noteTemplate = prescriptionPreferences?.quick_blocks.note_template
+            ?? KINEVO_DEFAULT_PREFERENCES.quick_blocks.note_template
         setWorkouts(prev => prev.map(w => {
             if (w.id !== workoutId) return w
             const newItem: WorkoutItem = {
@@ -909,14 +1071,16 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                 sets: null,
                 reps: null,
                 rest_seconds: null,
-                notes: '',
+                notes: noteTemplate ?? '',
                 children: []
             }
             return { ...w, items: [...w.items, newItem] }
         }))
-    }, [])
+    }, [prescriptionPreferences])
 
     const addWarmup = useCallback((workoutId: string) => {
+        const warmupTemplate = prescriptionPreferences?.quick_blocks.warmup_template
+            ?? KINEVO_DEFAULT_PREFERENCES.quick_blocks.warmup_template
         setWorkouts(prev => prev.map(w => {
             if (w.id !== workoutId) return w
             const newItem: WorkoutItem = {
@@ -930,14 +1094,18 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                 reps: null,
                 rest_seconds: null,
                 notes: null,
-                item_config: { warmup_type: 'free' },
+                item_config: warmupTemplate
+                    ? { warmup_type: 'free', description: warmupTemplate }
+                    : { warmup_type: 'free' },
                 children: []
             }
             return { ...w, items: [...w.items, newItem] }
         }))
-    }, [])
+    }, [prescriptionPreferences])
 
     const addCardio = useCallback((workoutId: string) => {
+        const aerobicTemplate = prescriptionPreferences?.quick_blocks.aerobic_template
+            ?? KINEVO_DEFAULT_PREFERENCES.quick_blocks.aerobic_template
         setWorkouts(prev => prev.map(w => {
             if (w.id !== workoutId) return w
             const newItem: WorkoutItem = {
@@ -951,12 +1119,18 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                 reps: null,
                 rest_seconds: null,
                 notes: null,
-                item_config: { mode: 'continuous', objective: 'time' },
+                // v1 limitation: aerobic_template popula item_config.notes (campo
+                // exposto pelo TechnicalNote do CardioItemCard). CardioConfig não
+                // tem um `description` dedicado como WarmupConfig.
+                // Ver PRD_preferencias_prescricao_LIMITACOES_V1.md.
+                item_config: aerobicTemplate
+                    ? { mode: 'continuous', objective: 'time', notes: aerobicTemplate }
+                    : { mode: 'continuous', objective: 'time' },
                 children: []
             }
             return { ...w, items: [...w.items, newItem] }
         }))
-    }, [])
+    }, [prescriptionPreferences])
 
     const updateItem = useCallback((workoutId: string, itemId: string, updates: Partial<WorkoutItem>) => {
         setWorkouts(prev => prev.map(w => {
@@ -1726,6 +1900,20 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                         >
                             <FileText className="w-4 h-4" />
                         </button>
+                        {prescriptionPreferences && (
+                            <>
+                                <span className="mx-1 h-5 w-px bg-k-border-subtle" aria-hidden />
+                                <button
+                                    ref={preferencesGearButtonRef}
+                                    onClick={openPreferencesDrawer}
+                                    className="w-8 h-8 flex items-center justify-center rounded-lg text-[#AEAEB2] dark:text-k-text-quaternary hover:bg-[#F5F5F7]/60 dark:hover:bg-glass-bg/50 hover:text-[#1D1D1F] dark:hover:text-k-text-primary transition-colors duration-150"
+                                    title="Preferências de prescrição"
+                                    aria-label="Abrir preferências de prescrição"
+                                >
+                                    <Settings className="w-4 h-4" />
+                                </button>
+                            </>
+                        )}
                     </div>
 
                     {/* Actions — context-aware save buttons */}
@@ -1799,6 +1987,8 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                         )}
                     </div>
                 </div>
+
+                {prescriptionPreferences && <PreferencesBanner />}
 
                 {/* Header-based Description Area */}
                 {isDescriptionOpen && (
@@ -2451,6 +2641,13 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                         </div>
                     </div>
                 </div>
+            )}
+
+            {prescriptionPreferences && (
+                <>
+                    <PreferencesDrawer triggerRef={preferencesGearButtonRef} />
+                    <PreferencesWizard />
+                </>
             )}
         </AppLayout>
     )

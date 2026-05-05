@@ -2,6 +2,10 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { ProgramBuilderClient, type Exercise } from '@/components/programs'
 import { getFormTemplatesForTriggers } from '@/actions/programs/get-form-templates-for-triggers'
+import {
+    KINEVO_DEFAULT_PREFERENCES,
+    type PrescriptionPreferences,
+} from '@/types/prescription-preferences'
 
 export default async function NewProgramPage() {
     const supabase = await createClient()
@@ -65,12 +69,24 @@ export default async function NewProgramPage() {
     // Fetch form templates for trigger configuration
     const triggerResult = await getFormTemplatesForTriggers()
 
+    // Scoped fetch: prescription preferences (graceful fallback if column not yet migrated).
+    let prescriptionPreferences: PrescriptionPreferences = KINEVO_DEFAULT_PREFERENCES
+    const { data: prefsRow, error: prefsError } = await supabase
+        .from('trainers')
+        .select('prescription_preferences')
+        .eq('id', trainer.id)
+        .maybeSingle<{ prescription_preferences: PrescriptionPreferences | null }>()
+    if (!prefsError && prefsRow?.prescription_preferences) {
+        prescriptionPreferences = prefsRow.prescription_preferences
+    }
+
     return (
         <ProgramBuilderClient
             trainer={trainer}
             program={null}
             exercises={mappedExercises}
             formTriggerTemplates={triggerResult.templates || []}
+            prescriptionPreferences={prescriptionPreferences}
         />
     )
 }
