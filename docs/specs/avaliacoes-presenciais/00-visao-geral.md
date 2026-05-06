@@ -37,7 +37,7 @@ Todos os milestones respeitam as regras abaixo — se algum parecer violar, **pa
 1. **Não quebrar o fluxo atual de formulários.** Toda a infra de `form_templates`, `form_submissions`, `student_inbox_items` continua funcionando para anamnese/checkin/survey exatamente como hoje. Estamos estendendo, não substituindo.
 2. **RLS é obrigatório.** Todas as tabelas novas começam com RLS habilitado e policies trainer-scoped + student-scoped, espelhando o padrão de `supabase/migrations/047_fix_inbox_data_leak.sql`.
 3. **RPCs com `SECURITY DEFINER`** seguindo o padrão de `049_trainer_mobile_rpcs.sql` (uso de `current_trainer_id()` ou `current_student_id()`, `RAISE EXCEPTION` em violação, `SET search_path = public`).
-4. **Migrations puramente aditivas.** Nenhuma migration desta fase deve dropar colunas, mudar tipos ou apagar dados. Numeração começa em **121** (a última é 120).
+4. **Migrations puramente aditivas.** Nenhuma migration desta fase deve dropar colunas, mudar tipos ou apagar dados. Numeração começa em **122** — a última committed em main é `121_security_hardening_buckets_webhooks.sql`. Antes de criar a migration, confirme com `ls supabase/migrations/ | sort | tail -3` qual é o último número committed; se outra migration tiver entrado entre o tempo desta spec e o início do M1, ajuste para o próximo número disponível.
 5. **Convenção de naming**:
    - Tabelas: `assessment_sessions`, `assessment_measurements` (snake_case, plural).
    - Colunas: snake_case.

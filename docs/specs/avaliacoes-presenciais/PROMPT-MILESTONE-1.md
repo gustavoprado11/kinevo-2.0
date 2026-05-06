@@ -24,7 +24,7 @@ Você vai implementar o **Milestone 1 — Data Foundation** do módulo de Avalia
 
 Implementar exatamente o que está na seção "Entregas" do arquivo `01-milestone-1-data-foundation.md`:
 
-1. **Migration `supabase/migrations/121_assessments_phase1.sql`**
+1. **Migration `supabase/migrations/122_assessments_phase1.sql`** (confirme antes que 121 ainda é o último committed via `ls supabase/migrations/ | sort | tail -3`; se outro número tiver entrado, use o próximo disponível e me avise)
    - Estender `form_templates` (categoria `assessment`, coluna `delivery_mode`).
    - Criar tabelas `assessment_sessions` e `assessment_measurements` com índices, triggers e comentários.
    - Habilitar RLS e criar policies trainer (CRUD) + student (read-only nas sessions com `status='completed'`).

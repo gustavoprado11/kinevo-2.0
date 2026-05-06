@@ -14,9 +14,9 @@
 
 ## 1. Entregas
 
-### 1.1 Migration `121_assessments_phase1.sql`
+### 1.1 Migration `122_assessments_phase1.sql`
 
-Cria/altera tudo numa única migration aditiva, idempotente. Numeração 121 (a última é 120).
+Cria/altera tudo numa única migration aditiva, idempotente. Numeração 122 — a última committed em main é `121_security_hardening_buckets_webhooks.sql`. Antes de criar o arquivo, **confirme** com `ls supabase/migrations/ | sort | tail -3` que 121 ainda é o último; se algo tiver entrado nesse meio-tempo, use o próximo número disponível e atualize o título desta seção via PR.
 
 #### 1.1.1 Estender `form_templates`
 
@@ -648,7 +648,7 @@ Criar shells dos hooks que serão implementados em M3/M4. Apenas a tipagem e a c
 
 ## 3. Acceptance criteria
 
-- ✅ Migration `121_assessments_phase1.sql` aplicada limpa em ambiente de dev. Idempotente (rodar 2x sem erro).
+- ✅ Migration `122_assessments_phase1.sql` aplicada limpa em ambiente de dev. Idempotente (rodar 2x sem erro).
 - ✅ Constraint `category IN ('anamnese', 'checkin', 'survey', 'assessment')` ativa.
 - ✅ RLS habilitado nas duas tabelas novas, policies cobrem trainer (CRUD) e student (read-only de sessões completed).
 - ✅ Os 5 RPCs callable via `supabase.rpc(...)` com tipos retornando JSONB válido.
