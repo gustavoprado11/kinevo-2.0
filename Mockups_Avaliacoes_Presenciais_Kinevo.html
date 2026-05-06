@@ -1,0 +1,1812 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Mockups — Avaliações Presenciais Kinevo (integração real)</title>
+<style>
+  /*  ─── Apple HIG palette extraído de web/src/app/globals.css ─── */
+  :root {
+    --surface-canvas: #F5F5F7;
+    --surface-card: #FFFFFF;
+    --surface-sidebar: #FFFFFF;
+    --surface-inset: #F5F5F7;
+    --surface-nested: #F9F9FB;
+    --text-primary: #1D1D1F;
+    --text-secondary: #6E6E73;
+    --text-tertiary: #86868B;
+    --text-quaternary: #AEAEB2;
+    --border-primary: #D2D2D7;
+    --border-subtle: #E8E8ED;
+    --primary: #007AFF;
+    --primary-faint: rgba(0,122,255,0.08);
+    --destructive: #FF3B30;
+    --success: #34C759;
+    --warning: #FF9500;
+    --violet: #7c3aed;
+    --violet-faint: rgba(124,58,237,0.10);
+    --blue: #007AFF;
+    --emerald: #34C759;
+    --amber: #FF9500;
+
+    /* Mobile tokens (mobile/theme/colors.ts) */
+    --m-bg: #F2F2F7;
+    --m-card: #FFFFFF;
+    --m-text-primary: #0f172a;
+    --m-text-secondary: #64748b;
+    --m-text-tertiary: #94a3b8;
+    --m-brand: #7c3aed;
+    --m-brand-light: #ede9fe;
+    --m-presencial: #8b5cf6;
+    --m-presencial-bg: #f5f3ff;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Inter', system-ui, sans-serif;
+    background: var(--surface-canvas);
+    color: var(--text-primary);
+    padding: 32px 16px 64px;
+  }
+  h1 {
+    font-size: 28px;
+    font-weight: 700;
+    max-width: 1280px;
+    margin: 0 auto 8px;
+    letter-spacing: -0.01em;
+  }
+  .lede {
+    font-size: 14px;
+    color: var(--text-secondary);
+    max-width: 1280px;
+    margin: 0 auto 32px;
+    line-height: 1.55;
+  }
+  h2.section-h {
+    max-width: 1280px;
+    margin: 48px auto 4px;
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--text-primary);
+  }
+  .section-d {
+    max-width: 1280px;
+    margin: 0 auto 24px;
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+
+  /* ───────── BROWSER FRAME (web) ───────── */
+  .browser {
+    max-width: 1280px;
+    margin: 0 auto 24px;
+    background: var(--surface-card);
+    border-radius: 12px;
+    box-shadow: 0 8px 28px rgba(15,23,42,0.06), 0 2px 4px rgba(15,23,42,0.04);
+    overflow: hidden;
+    border: 1px solid var(--border-subtle);
+  }
+  .browser-bar {
+    background: var(--surface-canvas);
+    padding: 10px 14px;
+    display: flex; align-items: center; gap: 10px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .traffic { width: 12px; height: 12px; border-radius: 50%; }
+  .traffic-r { background: #FF5F57; }
+  .traffic-y { background: #FEBC2E; }
+  .traffic-g { background: #28C940; }
+  .url {
+    flex: 1;
+    background: var(--surface-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 6px;
+    padding: 5px 12px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-left: 10px;
+  }
+  .browser-content {
+    display: flex;
+    min-height: 640px;
+    background: var(--surface-canvas);
+  }
+
+  /* ───────── REAL SIDEBAR (matches web/src/components/layout/sidebar.tsx) ───────── */
+  .sidebar-real {
+    width: 240px;
+    background: var(--surface-sidebar);
+    border-right: 1px solid var(--border-subtle);
+    padding: 16px 12px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .sb-brand {
+    padding: 6px 8px 22px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .sb-logo {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #007AFF, #5856D6);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-weight: 700; font-size: 16px;
+  }
+  .sb-name { font-weight: 700; font-size: 16px; letter-spacing: -0.01em; }
+  .sb-section-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--text-tertiary);
+    font-weight: 600;
+    padding: 14px 10px 6px;
+  }
+  .sb-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: 14px;
+    color: var(--text-primary);
+    margin-bottom: 1px;
+    cursor: pointer;
+  }
+  .sb-item:hover { background: var(--surface-canvas); }
+  .sb-item.active {
+    background: var(--primary-faint);
+    color: var(--primary);
+    font-weight: 600;
+  }
+  .sb-item .ic { width: 18px; height: 18px; display: inline-flex; }
+  .sb-item .ic svg { width: 18px; height: 18px; }
+  .sb-spacer { flex: 1; }
+  .sb-bottom {
+    border-top: 1px solid var(--border-subtle);
+    padding: 12px 4px 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .sb-avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #FF9500, #FF2D55);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 12px; font-weight: 700;
+    flex-shrink: 0;
+  }
+  .sb-user { flex: 1; min-width: 0; }
+  .sb-user-name { font-size: 13px; font-weight: 600; }
+  .sb-user-email { font-size: 11px; color: var(--text-tertiary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* Main content area */
+  .main {
+    flex: 1;
+    background: var(--surface-canvas);
+    padding: 24px 32px;
+    overflow: hidden;
+  }
+  .page-h {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  .page-title-block .crumbs {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    margin-bottom: 4px;
+  }
+  .page-title {
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .page-subtitle {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+  }
+
+  /* Buttons (Apple HIG / shadcn style) */
+  .btn {
+    background: var(--text-primary);
+    color: var(--surface-card);
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+  }
+  .btn-primary {
+    background: var(--primary);
+    color: #fff;
+  }
+  .btn-secondary {
+    background: var(--surface-card);
+    color: var(--text-primary);
+    border: 1px solid var(--border-primary);
+  }
+  .btn-ghost {
+    background: transparent;
+    color: var(--text-secondary);
+    padding: 6px 10px;
+  }
+
+  /* Tabs (matches FormsDashboardClient pattern) */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid var(--border-subtle);
+    margin-bottom: 22px;
+  }
+  .tab {
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    cursor: pointer;
+  }
+  .tab.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+    font-weight: 600;
+  }
+  .tab .badge-num {
+    margin-left: 6px;
+    background: var(--surface-canvas);
+    padding: 1px 7px;
+    border-radius: 999px;
+    font-size: 11px;
+    color: var(--text-secondary);
+    font-weight: 600;
+  }
+  .tab.active .badge-num { background: var(--primary-faint); color: var(--primary); }
+  .tab.new {
+    position: relative;
+  }
+  .tab.new::after {
+    content: 'NOVO';
+    margin-left: 6px;
+    background: var(--violet);
+    color: #fff;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    vertical-align: middle;
+  }
+
+  /* Cards (shadcn) */
+  .card {
+    background: var(--surface-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 16px;
+  }
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .card-title { font-size: 15px; font-weight: 600; }
+  .card-sub { font-size: 12px; color: var(--text-secondary); }
+
+  /* Badges (shadcn pattern from forms-dashboard-client.tsx) */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .badge-anamnese { background: rgba(0,122,255,0.10); color: #007AFF; box-shadow: inset 0 0 0 1px rgba(0,122,255,0.20); }
+  .badge-checkin  { background: rgba(52,199,89,0.10); color: #16A34A; box-shadow: inset 0 0 0 1px rgba(52,199,89,0.20); }
+  .badge-survey   { background: rgba(255,149,0,0.10); color: #B45309; box-shadow: inset 0 0 0 1px rgba(255,149,0,0.20); }
+  .badge-assessment { background: rgba(124,58,237,0.10); color: #7c3aed; box-shadow: inset 0 0 0 1px rgba(124,58,237,0.20); }
+  .badge-pending { background: rgba(245,158,11,0.10); color: #B45309; box-shadow: inset 0 0 0 1px rgba(245,158,11,0.20); }
+  .badge-done    { background: rgba(16,163,74,0.10); color: #15803D; box-shadow: inset 0 0 0 1px rgba(16,163,74,0.20); }
+  .badge-overdue { background: rgba(255,59,48,0.10); color: #B91C1C; box-shadow: inset 0 0 0 1px rgba(255,59,48,0.20); }
+
+  /* Grid de templates (estilo do FormTemplateCard) */
+  .templates-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 14px;
+  }
+  .tpl-card {
+    background: var(--surface-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 16px;
+    cursor: pointer;
+  }
+  .tpl-card:hover { border-color: var(--border-primary); }
+  .tpl-icon {
+    width: 36px; height: 36px;
+    border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 12px;
+  }
+  .ic-anamnese { background: rgba(0,122,255,0.10); color: #007AFF; }
+  .ic-checkin  { background: rgba(52,199,89,0.10); color: #16A34A; }
+  .ic-assessment { background: rgba(124,58,237,0.10); color: #7c3aed; }
+  .tpl-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+  .tpl-meta { font-size: 12px; color: var(--text-secondary); }
+  .tpl-foot {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-subtle);
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 12px;
+  }
+  .tpl-system { color: var(--text-tertiary); }
+  .tpl-action { color: var(--primary); font-weight: 600; }
+
+  /* Sessions list (avaliações presenciais) */
+  .session-list {
+    background: var(--surface-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .sess-row {
+    display: grid;
+    grid-template-columns: 36px 1.6fr 1fr 1fr 1fr auto;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border-subtle);
+    cursor: pointer;
+  }
+  .sess-row:last-child { border-bottom: none; }
+  .sess-row:hover { background: var(--surface-canvas); }
+  .sess-row.head {
+    background: var(--surface-nested);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-tertiary);
+    font-weight: 600;
+    padding: 10px 16px;
+    cursor: default;
+  }
+  .ava-avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700;
+  }
+  .av-1 { background: linear-gradient(135deg, #FF9500, #FF2D55); }
+  .av-2 { background: linear-gradient(135deg, #007AFF, #5856D6); }
+  .av-3 { background: linear-gradient(135deg, #34C759, #30D158); }
+  .av-4 { background: linear-gradient(135deg, #AF52DE, #FF2D55); }
+  .av-5 { background: linear-gradient(135deg, #FF9500, #FFCC00); }
+
+  .sess-name { font-size: 14px; font-weight: 600; }
+  .sess-sub { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }
+  .sess-cell { font-size: 13px; color: var(--text-secondary); }
+  .sess-arrow { color: var(--text-tertiary); }
+
+  /* Empty / hint states */
+  .alert {
+    background: var(--violet-faint);
+    border: 1px solid rgba(124,58,237,0.18);
+    border-radius: 10px;
+    padding: 12px 14px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    margin-bottom: 18px;
+  }
+  .alert-ic {
+    width: 28px; height: 28px;
+    border-radius: 7px;
+    background: rgba(124,58,237,0.12);
+    color: var(--violet);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    font-size: 14px;
+  }
+  .alert-title { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+  .alert-text { font-size: 12px; color: var(--text-secondary); margin-top: 2px; line-height: 1.4; }
+
+  /* Stats row */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-bottom: 22px;
+  }
+  .stat-card {
+    background: var(--surface-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 16px;
+  }
+  .stat-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-tertiary);
+    font-weight: 600;
+  }
+  .stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    margin-top: 8px;
+    letter-spacing: -0.02em;
+  }
+  .stat-delta {
+    font-size: 11px;
+    font-weight: 600;
+    margin-top: 4px;
+  }
+  .delta-up { color: #16A34A; }
+  .delta-down { color: #B91C1C; }
+
+  /* Two-column layout (student detail) */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 18px;
+  }
+
+  /* Sidebar card (Assessment integration) */
+  .ssb-card {
+    background: var(--surface-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .ssb-header {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border-subtle);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .ssb-title {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--text-primary);
+  }
+  .ssb-section {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .ssb-section:last-child { border-bottom: none; }
+  .ssb-row {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 6px;
+    font-size: 12px;
+  }
+  .ssb-row:last-child { margin-bottom: 0; }
+  .ssb-label { color: var(--text-secondary); }
+  .ssb-value { font-weight: 600; }
+  .ssb-trend {
+    font-size: 10px;
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-weight: 700;
+  }
+  .ssb-trend.good { background: rgba(52,199,89,0.10); color: #15803D; }
+  .ssb-trend.bad { background: rgba(255,59,48,0.10); color: #B91C1C; }
+  .ssb-cta-row {
+    display: flex; gap: 8px;
+    padding: 12px 16px;
+    background: var(--surface-nested);
+  }
+  .ssb-cta-row .btn { flex: 1; padding: 8px; font-size: 12px; justify-content: center; }
+  .ssb-cta-primary {
+    background: var(--violet);
+    color: #fff;
+  }
+
+  /* Mobile (matches mobile/theme + evaluation-preview tokens) */
+  .mobile-grid {
+    max-width: 1280px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 32px;
+    align-items: start;
+  }
+  .scene {
+    display: flex; flex-direction: column; gap: 12px; align-items: center;
+  }
+  .scene-title {
+    font-size: 13px; font-weight: 600;
+    color: var(--text-secondary);
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+  }
+  .scene-desc {
+    font-size: 12px; color: var(--text-tertiary);
+    text-align: center;
+    max-width: 290px;
+    line-height: 1.5;
+  }
+
+  .phone {
+    width: 320px; height: 660px;
+    background: var(--m-bg);
+    border-radius: 38px;
+    box-shadow: 0 4px 24px rgba(15,23,42,0.10), 0 0 0 8px #1f2937, 0 0 0 9px #374151;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+  .notch {
+    position: absolute;
+    top: 8px; left: 50%; transform: translateX(-50%);
+    width: 96px; height: 26px;
+    background: #1f2937;
+    border-radius: 14px;
+    z-index: 10;
+  }
+  .m-status { height: 44px; flex-shrink: 0; }
+  .m-header {
+    padding: 8px 20px 10px;
+    display: flex; align-items: center; gap: 10px;
+    background: var(--m-bg);
+    flex-shrink: 0;
+  }
+  .m-back { color: var(--m-text-secondary); font-size: 22px; }
+  .m-htitle { font-size: 17px; font-weight: 700; flex: 1; color: var(--m-text-primary); }
+  .m-haction { font-size: 14px; color: var(--m-brand); font-weight: 600; }
+  .m-body {
+    flex: 1; overflow: hidden;
+    background: var(--m-bg);
+    padding: 8px 16px 20px;
+  }
+
+  /* Mobile tabs (FormsScreen pattern) */
+  .m-tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 14px;
+    background: rgba(0,0,0,0.04);
+    padding: 4px;
+    border-radius: 10px;
+  }
+  .m-tab {
+    flex: 1;
+    text-align: center;
+    padding: 8px 4px;
+    font-size: 12px;
+    color: var(--m-text-secondary);
+    border-radius: 7px;
+    font-weight: 600;
+    position: relative;
+  }
+  .m-tab.active {
+    background: var(--m-card);
+    color: var(--m-text-primary);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+  }
+  .m-tab.new::before {
+    content: '';
+    position: absolute;
+    top: 6px; right: 8px;
+    width: 6px; height: 6px;
+    background: var(--m-brand);
+    border-radius: 50%;
+  }
+
+  /* Mobile card */
+  .m-card {
+    background: var(--m-card);
+    border-radius: 14px;
+    padding: 14px;
+    margin-bottom: 10px;
+    border: 1px solid rgba(0,0,0,0.04);
+  }
+  .m-card-h { display: flex; align-items: center; gap: 10px; }
+  .m-card-icon {
+    width: 38px; height: 38px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+  .m-i-presencial { background: var(--m-presencial-bg); color: var(--m-presencial); }
+  .m-i-anamnese { background: rgba(0,122,255,0.08); color: #007AFF; }
+  .m-i-checkin { background: rgba(52,199,89,0.08); color: #16A34A; }
+  .m-card-meta { flex: 1; min-width: 0; }
+  .m-card-title { font-size: 14px; font-weight: 700; color: var(--m-text-primary); }
+  .m-card-sub { font-size: 11px; color: var(--m-text-tertiary); margin-top: 2px; }
+  .m-card-arrow { color: var(--m-text-quaternary); font-size: 16px; }
+  .m-card-status {
+    font-size: 9px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 999px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    background: var(--m-presencial-bg);
+    color: var(--m-presencial);
+  }
+
+  /* Mobile FAB */
+  .m-fab {
+    position: absolute;
+    bottom: 80px; right: 20px;
+    width: 52px; height: 52px;
+    background: var(--m-brand);
+    border-radius: 26px;
+    box-shadow: 0 8px 20px rgba(124,58,237,0.30);
+    color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    font-weight: 300;
+  }
+
+  /* Mobile bottom tabbar (matches (trainer-tabs)/_layout.tsx) */
+  .m-tabbar {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 78px;
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(20px);
+    border-top: 1px solid rgba(0,0,0,0.06);
+    display: flex;
+    padding: 8px 0 24px;
+  }
+  .m-tabbar-item {
+    flex: 1;
+    display: flex; flex-direction: column; align-items: center;
+    gap: 2px;
+    color: var(--m-text-tertiary);
+    font-size: 10px;
+    font-weight: 500;
+  }
+  .m-tabbar-item.active {
+    color: var(--m-brand);
+    font-weight: 700;
+  }
+  .m-tabbar-icon { font-size: 20px; }
+  .m-tabbar-pill {
+    height: 4px; width: 4px; border-radius: 2px;
+    background: var(--m-brand);
+    margin-top: 2px;
+    opacity: 0;
+  }
+  .m-tabbar-item.active .m-tabbar-pill { opacity: 1; }
+
+  /* Mobile measurement (Step) */
+  .m-step {
+    background: var(--m-bg);
+    padding-top: 8px;
+    padding-bottom: 6px;
+  }
+  .m-step-bar {
+    height: 4px;
+    background: rgba(0,0,0,0.06);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 6px;
+  }
+  .m-step-fill {
+    height: 100%;
+    background: var(--m-brand);
+    border-radius: 2px;
+    width: 42%;
+  }
+  .m-step-text {
+    font-size: 11px;
+    color: var(--m-text-secondary);
+    font-weight: 600;
+  }
+  .m-bigq {
+    background: rgba(255,255,255,0.7);
+    border-radius: 20px;
+    padding: 18px 16px;
+    border: 1px solid rgba(255,255,255,0.5);
+    margin-bottom: 12px;
+  }
+  .m-bigq-label {
+    font-size: 11px;
+    color: var(--m-text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .m-bigq-name {
+    font-size: 17px;
+    font-weight: 800;
+    color: var(--m-text-primary);
+    margin-bottom: 6px;
+  }
+  .m-bigq-input {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 16px;
+    text-align: center;
+    font-size: 36px;
+    font-weight: 800;
+    color: var(--m-text-primary);
+    margin-top: 12px;
+  }
+  .m-bigq-unit {
+    text-align: center;
+    color: var(--m-text-tertiary);
+    font-size: 12px;
+    margin-top: 4px;
+  }
+  .m-attempts {
+    display: flex;
+    gap: 6px;
+    margin-top: 14px;
+  }
+  .m-attempt {
+    flex: 1;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 10px 6px;
+    text-align: center;
+  }
+  .m-attempt.current { background: var(--m-presencial-bg); border-color: var(--m-presencial); }
+  .m-attempt.empty { opacity: 0.5; }
+  .m-attempt-label { font-size: 9px; font-weight: 700; color: var(--m-text-tertiary); text-transform: uppercase; }
+  .m-attempt.current .m-attempt-label { color: var(--m-presencial); }
+  .m-attempt-val { font-size: 18px; font-weight: 700; color: var(--m-text-primary); margin-top: 2px; }
+  .m-attempt.current .m-attempt-val { color: var(--m-presencial); }
+  .m-attempt.empty .m-attempt-val { color: var(--m-text-quaternary); }
+  .m-cta {
+    background: var(--m-brand);
+    color: #fff;
+    padding: 16px;
+    border-radius: 16px;
+    text-align: center;
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    margin-top: 14px;
+    box-shadow: 0 8px 16px rgba(124,58,237,0.25);
+  }
+
+  /* Builder grid */
+  .builder {
+    display: grid;
+    grid-template-columns: 280px 1fr 320px;
+    gap: 16px;
+    align-items: start;
+  }
+  .builder-col h4 {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;
+    color: var(--text-tertiary); font-weight: 700;
+    margin-bottom: 10px;
+    padding: 0 4px;
+  }
+  .lib-item {
+    background: var(--surface-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 6px;
+    font-size: 13px;
+    display: flex; align-items: center; gap: 10px;
+    cursor: grab;
+  }
+  .lib-item .l-name { flex: 1; }
+  .lib-item .l-tag {
+    font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 4px;
+    background: rgba(124,58,237,0.10); color: var(--violet);
+    letter-spacing: 0.4px;
+  }
+  .pkg-builder {
+    background: var(--surface-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 18px;
+  }
+  .pkg-h {
+    margin-bottom: 16px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .pkg-name { font-size: 17px; font-weight: 700; }
+  .pkg-meta { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+  .pkg-section-h {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;
+    color: var(--text-tertiary); font-weight: 700;
+    margin: 12px 0 8px;
+  }
+  .pkg-test {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 10px;
+    border-radius: 8px;
+    font-size: 13px;
+    background: var(--surface-nested);
+    margin-bottom: 4px;
+  }
+  .pkg-test.highlight {
+    background: var(--violet-faint);
+    border: 1px solid rgba(124,58,237,0.22);
+  }
+  .pkg-test .h-handle { color: var(--text-quaternary); cursor: grab; }
+  .pkg-test .t-name { flex: 1; font-weight: 500; }
+  .pkg-test .t-action { color: var(--text-tertiary); cursor: pointer; }
+  .pkg-add {
+    border: 1.5px dashed var(--border-primary);
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-tertiary);
+    margin-top: 8px;
+  }
+
+  .props {
+    background: var(--surface-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 18px;
+  }
+  .props-h {
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .field {
+    margin-bottom: 14px;
+  }
+  .field-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-tertiary);
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .field-input, .field-select {
+    width: 100%;
+    background: var(--surface-card);
+    border: 1px solid var(--border-primary);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 13px;
+    color: var(--text-primary);
+  }
+  .field-toggle {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 0;
+    font-size: 13px;
+  }
+  .toggle-on { color: var(--success); }
+  .toggle-off { color: var(--text-quaternary); }
+
+  /* Compare table */
+  .compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .compare-table th {
+    text-align: left;
+    text-transform: uppercase;
+    font-size: 10px;
+    letter-spacing: 0.5px;
+    color: var(--text-tertiary);
+    font-weight: 700;
+    padding: 10px 8px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .compare-table th.num, .compare-table td.num { text-align: right; }
+  .compare-table td {
+    padding: 10px 8px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .compare-table tr:last-child td { border-bottom: none; }
+  .compare-table .met { font-weight: 600; }
+  .compare-table tr.alert-row { background: rgba(255,149,0,0.04); }
+
+  .delta-pill {
+    display: inline-flex; align-items: center;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .delta-pill.good { background: rgba(52,199,89,0.10); color: #15803D; }
+  .delta-pill.bad { background: rgba(255,59,48,0.10); color: #B91C1C; }
+  .delta-pill.neutral { background: var(--surface-canvas); color: var(--text-secondary); }
+
+  @media (max-width: 1100px) {
+    .builder { grid-template-columns: 1fr; }
+    .two-col { grid-template-columns: 1fr; }
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+    .browser-content { flex-direction: column; }
+    .sidebar-real { width: 100%; }
+  }
+
+  /* Annotation badge */
+  .anno {
+    display: inline-block;
+    margin-left: 8px;
+    background: var(--violet);
+    color: #fff;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 4px;
+    letter-spacing: 0.5px;
+    vertical-align: middle;
+  }
+  .anno.alt { background: var(--primary); }
+</style>
+</head>
+<body>
+
+<h1>Mockups — Avaliações Presenciais (integração ao sistema atual)</h1>
+<p class="lede">
+Refeitos com fidelidade aos tokens reais do Kinevo: paleta Apple HIG do web (<code>--surface-canvas: #F5F5F7</code>, <code>--primary: #007AFF</code>, badges shadcn no padrão <code>bg-X-500/10</code>), e tokens roxo-marca do mobile (<code>colors.brand.primary: #7c3aed</code>, <code>colors.status.presencial: #8b5cf6</code> — que <em>já existe</em> no theme). O módulo é apresentado como <strong>extensão</strong> da página <code>/forms</code> (rotulada "Avaliações" na sidebar) e do tab <code>forms.tsx</code> no mobile, não como tela nova.
+</p>
+
+<!-- ════════════ WEB ════════════ -->
+
+<h2 class="section-h">Web · página /forms (Avaliações) — terceira aba "Avaliações Presenciais"</h2>
+<p class="section-d">Mesma chrome, mesma sidebar, mesmo header. A aba nova fica ao lado de "Respostas" e "Templates".</p>
+
+<div class="browser">
+  <div class="browser-bar">
+    <span class="traffic traffic-r"></span><span class="traffic traffic-y"></span><span class="traffic traffic-g"></span>
+    <div class="url">🔒 app.kinevo.com.br/forms</div>
+  </div>
+  <div class="browser-content">
+    <aside class="sidebar-real">
+      <div class="sb-brand">
+        <div class="sb-logo">K</div>
+        <div class="sb-name">Kinevo</div>
+      </div>
+      <div class="sb-item">
+        <span class="ic"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg></span>
+        Dashboard
+      </div>
+      <div class="sb-item">
+        <span class="ic"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/><circle cx="17" cy="7" r="4"/><path d="M21 21v-2a4 4 0 00-3-3.85"/></svg></span>
+        Alunos
+      </div>
+      <div class="sb-item">
+        <span class="ic"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></span>
+        Agenda
+      </div>
+      <div class="sb-item active">
+        <span class="ic"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg></span>
+        Avaliações
+      </div>
+      <div class="sb-item">
+        <span class="ic"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8"><rect x="2" y="6" width="20" height="14" rx="2"/><path d="M14 14h2M2 10h20"/></svg></span>
+        Financeiro
+      </div>
+      <div class="sb-section-label">Biblioteca</div>
+      <div class="sb-item">
+        <span class="ic"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8"><path d="M8 6.5h13M8 12h13M8 17.5h13M3 6.5h.01M3 12h.01M3 17.5h.01"/></svg></span>
+        Programas
+      </div>
+      <div class="sb-item">
+        <span class="ic"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8"><path d="M6.5 6.5l11 11M6.5 17.5l11-11M2 12h20"/></svg></span>
+        Exercícios
+      </div>
+      <div class="sb-spacer"></div>
+      <div class="sb-bottom">
+        <div class="sb-avatar">GP</div>
+        <div class="sb-user">
+          <div class="sb-user-name">Gustavo P.</div>
+          <div class="sb-user-email">gustavo@kinevo.com</div>
+        </div>
+      </div>
+    </aside>
+
+    <div class="main">
+      <div class="page-h">
+        <div class="page-title-block">
+          <div class="crumbs">Avaliações</div>
+          <h1 class="page-title">Avaliações</h1>
+          <p class="page-subtitle">Anamneses, check-ins e avaliações presenciais dos seus alunos.</p>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-secondary">+ Novo template</button>
+          <button class="btn btn-primary">+ Nova avaliação</button>
+        </div>
+      </div>
+
+      <div class="tabs">
+        <span class="tab">Respostas <span class="badge-num">12</span></span>
+        <span class="tab">Templates <span class="badge-num">8</span></span>
+        <span class="tab active new">Avaliações Presenciais <span class="badge-num">38</span></span>
+      </div>
+
+      <div class="alert">
+        <div class="alert-ic">⚡</div>
+        <div>
+          <div class="alert-title">Novidade: Avaliações Presenciais</div>
+          <div class="alert-text">Faça antropometria, dobras cutâneas, CMJ e testes funcionais direto no app, com cálculo automático e comparativo histórico. <strong style="color:var(--violet);">Conheça →</strong></div>
+        </div>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-label">Avaliações no mês</div>
+          <div class="stat-value">14</div>
+          <div class="stat-delta delta-up">▲ +6 vs abr</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Alunos atrasados</div>
+          <div class="stat-value" style="color:#B91C1C;">3</div>
+          <div class="stat-delta delta-down">→ ação necessária</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Próximas (7 dias)</div>
+          <div class="stat-value">5</div>
+          <div class="stat-delta" style="color:var(--text-tertiary);">agendadas</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Taxa conclusão</div>
+          <div class="stat-value">92<span style="font-size:14px;color:var(--text-secondary);font-weight:500;">%</span></div>
+          <div class="stat-delta delta-up">▲ +4 pp</div>
+        </div>
+      </div>
+
+      <div class="card-header" style="margin-bottom:10px;">
+        <span style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;color:var(--text-secondary);">Sessões recentes</span>
+        <span style="font-size:12px;color:var(--primary);font-weight:600;cursor:pointer;">Ver todas →</span>
+      </div>
+
+      <div class="session-list">
+        <div class="sess-row head">
+          <span></span>
+          <span>Aluno</span>
+          <span>Pacote</span>
+          <span>Data</span>
+          <span>Status</span>
+          <span></span>
+        </div>
+        <div class="sess-row">
+          <div class="ava-avatar av-1">MC</div>
+          <div>
+            <div class="sess-name">Marina Costa</div>
+            <div class="sess-sub">3ª avaliação · 90 dias do baseline</div>
+          </div>
+          <span class="sess-cell"><span class="badge badge-assessment">Box CrossFit</span></span>
+          <span class="sess-cell">Hoje · 09:30</span>
+          <span><span class="badge badge-done">Concluída</span></span>
+          <span class="sess-arrow">›</span>
+        </div>
+        <div class="sess-row">
+          <div class="ava-avatar av-2">DA</div>
+          <div>
+            <div class="sess-name">Daniel Almeida</div>
+            <div class="sess-sub">Reavaliação 90d</div>
+          </div>
+          <span class="sess-cell"><span class="badge badge-assessment">Comp. Corporal</span></span>
+          <span class="sess-cell">Ontem · 18:00</span>
+          <span><span class="badge badge-done">Concluída</span></span>
+          <span class="sess-arrow">›</span>
+        </div>
+        <div class="sess-row">
+          <div class="ava-avatar av-3">AS</div>
+          <div>
+            <div class="sess-name">Aline Santos</div>
+            <div class="sess-sub">Avaliação inicial</div>
+          </div>
+          <span class="sess-cell"><span class="badge badge-assessment">Inicial</span></span>
+          <span class="sess-cell">Amanhã · 07:00</span>
+          <span><span class="badge badge-pending">Agendada</span></span>
+          <span class="sess-arrow">›</span>
+        </div>
+        <div class="sess-row">
+          <div class="ava-avatar av-4">RS</div>
+          <div>
+            <div class="sess-name">Roberta Silva</div>
+            <div class="sess-sub">21 dias atrasada · agendar urgente</div>
+          </div>
+          <span class="sess-cell"><span class="badge badge-assessment">Comp. Corporal</span></span>
+          <span class="sess-cell" style="color:#B91C1C;">15/abr</span>
+          <span><span class="badge badge-overdue">Em atraso</span></span>
+          <span class="sess-arrow">›</span>
+        </div>
+        <div class="sess-row">
+          <div class="ava-avatar av-5">PF</div>
+          <div>
+            <div class="sess-name">Paulo Ferreira</div>
+            <div class="sess-sub">2ª avaliação</div>
+          </div>
+          <span class="sess-cell"><span class="badge badge-assessment">Performance</span></span>
+          <span class="sess-cell">02/mai</span>
+          <span><span class="badge badge-pending">Em andamento</span></span>
+          <span class="sess-arrow">›</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2 class="section-h">Web · /students/[id] — extensão do <code>AssessmentSidebarCard</code> existente</h2>
+<p class="section-d">O componente <code>web/src/components/students/assessment-sidebar-card.tsx</code> <strong>já existe</strong> e já mostra body metrics, último submission e formulários pendentes. Só ganha uma nova seção "Avaliação Presencial" no topo, com último resultado e CTA.</p>
+
+<div class="browser">
+  <div class="browser-bar">
+    <span class="traffic traffic-r"></span><span class="traffic traffic-y"></span><span class="traffic traffic-g"></span>
+    <div class="url">🔒 app.kinevo.com.br/students/marina-costa</div>
+  </div>
+  <div class="browser-content">
+    <aside class="sidebar-real">
+      <div class="sb-brand"><div class="sb-logo">K</div><div class="sb-name">Kinevo</div></div>
+      <div class="sb-item">
+        <span class="ic"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg></span> Dashboard</div>
+      <div class="sb-item active"><span class="ic"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/></svg></span> Alunos</div>
+      <div class="sb-item"><span class="ic"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></span> Agenda</div>
+      <div class="sb-item"><span class="ic"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/></svg></span> Avaliações</div>
+      <div class="sb-item"><span class="ic"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8"><rect x="2" y="6" width="20" height="14" rx="2"/></svg></span> Financeiro</div>
+    </aside>
+
+    <div class="main">
+      <div class="page-h">
+        <div class="page-title-block">
+          <div class="crumbs">Alunos · Marina Costa</div>
+          <div style="display:flex;align-items:center;gap:14px;">
+            <div class="ava-avatar av-1" style="width:48px;height:48px;font-size:16px;">MC</div>
+            <div>
+              <h1 class="page-title">Marina Costa</h1>
+              <p class="page-subtitle">32a · F · Box CrossFit · Ativa desde jan/2026</p>
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-primary">+ Nova avaliação</button>
+      </div>
+
+      <div class="two-col">
+        <div>
+          <div class="card" style="margin-bottom:14px;">
+            <div class="card-header">
+              <span class="card-title">Programa atual</span>
+              <span class="badge badge-checkin">Ativo</span>
+            </div>
+            <div style="font-size:14px;font-weight:600;">Hipertrofia + perda de gordura · 12 sem</div>
+            <div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">Semana 8 de 12 · próximo treino: amanhã</div>
+            <div style="height:6px;background:var(--surface-canvas);border-radius:3px;margin-top:14px;overflow:hidden;"><div style="width:67%;height:100%;background:var(--primary);"></div></div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Próximas atividades</span>
+            </div>
+            <div style="font-size:13px;color:var(--text-secondary);padding:24px 0;text-align:center;">— treino amanhã 07h, reavaliação 04/ago —</div>
+          </div>
+        </div>
+
+        <!-- AssessmentSidebarCard estendido -->
+        <div>
+          <div class="ssb-card">
+            <div class="ssb-header">
+              <span class="ssb-title">📐 Avaliação Presencial<span class="anno">NOVO</span></span>
+              <span style="font-size:11px;color:var(--text-tertiary);">Última: hoje</span>
+            </div>
+            <div class="ssb-section">
+              <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:8px;">
+                <span style="font-size:24px;font-weight:800;letter-spacing:-0.02em;">22,4<span style="font-size:13px;color:var(--text-secondary);font-weight:500;">%</span></span>
+                <span class="ssb-trend good">▼ −1,8 pp</span>
+              </div>
+              <div style="font-size:11px;color:var(--text-tertiary);">% gordura · J&P 7 dobras</div>
+
+              <div style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                <div style="font-size:11px;">
+                  <div style="color:var(--text-tertiary);">CMJ</div>
+                  <div style="font-weight:700;margin-top:2px;">33,1cm <span class="ssb-trend good" style="margin-left:2px;">+2,3</span></div>
+                </div>
+                <div style="font-size:11px;">
+                  <div style="color:var(--text-tertiary);">Assim. perna</div>
+                  <div style="font-weight:700;margin-top:2px;color:#B45309;">14,2% ⚠</div>
+                </div>
+              </div>
+            </div>
+            <div class="ssb-cta-row">
+              <button class="btn ssb-cta-primary">Ver completa</button>
+              <button class="btn btn-secondary">📄 PDF</button>
+            </div>
+          </div>
+
+          <!-- BodyMetricsTrend (já existe) -->
+          <div class="ssb-card" style="margin-top:14px;">
+            <div class="ssb-header">
+              <span class="ssb-title">📊 Métricas corporais</span>
+              <span style="font-size:11px;color:var(--text-tertiary);">5 meses</span>
+            </div>
+            <div class="ssb-section">
+              <div class="ssb-row">
+                <span class="ssb-label">Peso</span>
+                <span><span class="ssb-value">72,1 kg</span> <span class="ssb-trend good">−2,4</span></span>
+              </div>
+              <div class="ssb-row">
+                <span class="ssb-label">% Gordura</span>
+                <span><span class="ssb-value">22,4%</span> <span class="ssb-trend good">−1,8</span></span>
+              </div>
+              <div class="ssb-row">
+                <span class="ssb-label">IMC</span>
+                <span><span class="ssb-value">23,7</span> <span class="ssb-trend good">−0,8</span></span>
+              </div>
+              <svg viewBox="0 0 280 50" width="100%" height="50" style="margin-top:10px;">
+                <path d="M 0,15 L 70,18 L 140,30 L 210,38 L 280,42" stroke="#007AFF" stroke-width="2" fill="none"/>
+                <circle cx="280" cy="42" r="4" fill="#007AFF" stroke="#fff" stroke-width="2"/>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Forms (já existe) -->
+          <div class="ssb-card" style="margin-top:14px;">
+            <div class="ssb-header">
+              <span class="ssb-title">📋 Formulários</span>
+            </div>
+            <div class="ssb-section">
+              <div class="ssb-row">
+                <span class="ssb-label"><span class="badge badge-anamnese" style="margin-right:6px;">Anamnese</span> respondida</span>
+                <span style="font-size:11px;color:var(--text-tertiary);">jan</span>
+              </div>
+              <div class="ssb-row">
+                <span class="ssb-label"><span class="badge badge-checkin" style="margin-right:6px;">Check-in</span> 12 respostas</span>
+                <span style="font-size:11px;color:var(--text-tertiary);">semanal</span>
+              </div>
+              <button class="btn btn-secondary" style="width:100%;justify-content:center;margin-top:10px;font-size:12px;padding:7px;">+ Enviar formulário</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2 class="section-h">Web · builder de pacote (dentro de /forms/templates/new)</h2>
+<p class="section-d">Reusa o roteamento atual de templates. URL nova: <code>/forms/templates/new?category=assessment</code>. Mesmo header, mesma sidebar.</p>
+
+<div class="browser">
+  <div class="browser-bar">
+    <span class="traffic traffic-r"></span><span class="traffic traffic-y"></span><span class="traffic traffic-g"></span>
+    <div class="url">🔒 app.kinevo.com.br/forms/templates/new?category=assessment</div>
+  </div>
+  <div class="browser-content">
+    <aside class="sidebar-real">
+      <div class="sb-brand"><div class="sb-logo">K</div><div class="sb-name">Kinevo</div></div>
+      <div class="sb-item"><span class="ic"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg></span> Dashboard</div>
+      <div class="sb-item"><span class="ic"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/></svg></span> Alunos</div>
+      <div class="sb-item"><span class="ic"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/></svg></span> Agenda</div>
+      <div class="sb-item active"><span class="ic"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/></svg></span> Avaliações</div>
+      <div class="sb-item"><span class="ic"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8"><rect x="2" y="6" width="20" height="14" rx="2"/></svg></span> Financeiro</div>
+    </aside>
+    <div class="main">
+      <div class="page-h">
+        <div class="page-title-block">
+          <div class="crumbs">Avaliações · Templates · Novo template</div>
+          <h1 class="page-title">Box CrossFit</h1>
+          <p class="page-subtitle"><span class="badge badge-assessment">Avaliação presencial</span> · 8 testes · ~25 min</p>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-ghost">Pré-visualizar</button>
+          <button class="btn btn-secondary">Salvar rascunho</button>
+          <button class="btn btn-primary">Publicar template</button>
+        </div>
+      </div>
+
+      <div class="builder">
+        <!-- LIB -->
+        <div class="builder-col">
+          <h4>Biblioteca de testes</h4>
+          <input type="text" class="field-input" placeholder="🔎 Buscar teste..." style="margin-bottom:10px;">
+          <div style="font-size:10px;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.4px;margin:6px 0 6px;padding:0 4px;">Antropometria</div>
+          <div class="lib-item">📏 <span class="l-name">Peso, altura, IMC</span></div>
+          <div class="lib-item">📐 <span class="l-name">Circunferências</span></div>
+          <div style="font-size:10px;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.4px;margin:14px 0 6px;padding:0 4px;">Composição</div>
+          <div class="lib-item">🔬 <span class="l-name">Dobras J&P 7</span><span class="l-tag">PROTOCOLO</span></div>
+          <div class="lib-item">🔬 <span class="l-name">Dobras Petroski 4</span><span class="l-tag">BR</span></div>
+          <div class="lib-item">⚖️ <span class="l-name">Bioimpedância</span></div>
+          <div style="font-size:10px;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.4px;margin:14px 0 6px;padding:0 4px;">Performance</div>
+          <div class="lib-item" style="background:var(--violet-faint);border-color:rgba(124,58,237,0.18);">⚡ <span class="l-name">CMJ vídeo</span><span class="l-tag" style="background:var(--violet);color:#fff;">VÍDEO</span></div>
+          <div class="lib-item">🤸 <span class="l-name">Sit and reach</span></div>
+          <div class="lib-item">💪 <span class="l-name">Flexões 1 min</span></div>
+        </div>
+
+        <!-- PKG -->
+        <div class="builder-col">
+          <h4>Pacote</h4>
+          <div class="pkg-builder">
+            <div class="pkg-h">
+              <div class="pkg-name">Box CrossFit</div>
+              <div class="pkg-meta">Foco em performance e simetria · público: atleta intermediário</div>
+            </div>
+            <div class="pkg-section-h">Antropometria</div>
+            <div class="pkg-test"><span class="h-handle">⋮⋮</span>📏 <span class="t-name">Peso, altura, IMC</span><span class="t-action">⚙</span></div>
+            <div class="pkg-test"><span class="h-handle">⋮⋮</span>📐 <span class="t-name">Circunferências (5 pontos)</span><span class="t-action">⚙</span></div>
+
+            <div class="pkg-section-h">Composição</div>
+            <div class="pkg-test"><span class="h-handle">⋮⋮</span>🔬 <span class="t-name">Dobras J&P 7</span><span class="t-action">⚙</span></div>
+
+            <div class="pkg-section-h">Performance</div>
+            <div class="pkg-test highlight"><span class="h-handle">⋮⋮</span>⚡ <span class="t-name" style="color:var(--violet);font-weight:600;">CMJ vídeo (3 tentativas + assimetria)</span><span class="t-action" style="color:var(--violet);">⚙</span></div>
+            <div class="pkg-test"><span class="h-handle">⋮⋮</span>🤸 <span class="t-name">Sit and reach</span><span class="t-action">⚙</span></div>
+            <div class="pkg-test"><span class="h-handle">⋮⋮</span>💪 <span class="t-name">Flexões 1 min</span><span class="t-action">⚙</span></div>
+            <div class="pkg-test"><span class="h-handle">⋮⋮</span>🦵 <span class="t-name">Plank até falha</span><span class="t-action">⚙</span></div>
+
+            <div class="pkg-add">＋ arraste um teste aqui ou clique para adicionar</div>
+          </div>
+        </div>
+
+        <!-- PROPS -->
+        <div class="builder-col">
+          <h4>Propriedades · CMJ vídeo</h4>
+          <div class="props">
+            <div class="props-h">⚙ Configuração do teste</div>
+            <div class="field">
+              <div class="field-label">Nome no relatório</div>
+              <input class="field-input" value="CMJ vídeo (3 tentativas + assimetria)">
+            </div>
+            <div class="field">
+              <div class="field-label">Tentativas</div>
+              <input class="field-input" value="3">
+            </div>
+            <div class="field">
+              <div class="field-label">Resultado considerado</div>
+              <select class="field-select"><option>Melhor (mais alta)</option></select>
+            </div>
+            <div class="field">
+              <div class="field-label">Variantes habilitadas</div>
+              <div class="field-toggle">CMJ padrão <span class="toggle-on">●</span></div>
+              <div class="field-toggle">CMJ com braços <span class="toggle-on">●</span></div>
+              <div class="field-toggle">SJ (Squat Jump) <span class="toggle-off">○</span></div>
+              <div class="field-toggle">Unilateral (assimetria) <span class="toggle-on">●</span></div>
+            </div>
+            <div class="field">
+              <div class="field-label">Alerta de assimetria acima de</div>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <input class="field-input" value="10" style="width:60px;">
+                <span style="font-size:13px;color:var(--text-secondary);">%</span>
+              </div>
+            </div>
+            <div class="field" style="margin-bottom:0;">
+              <div class="field-label">Vídeo de instrução</div>
+              <div style="font-size:13px;color:var(--primary);font-weight:600;">▶ Anexado · 28s · K-001-cmj.mp4</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2 class="section-h">Web · comparativo avançado de Marina (rota nova)</h2>
+<p class="section-d">URL: <code>/students/[id]/avaliacoes/comparar?ids=...</code>. Reaproveita layout de student page, conteúdo é tabela + charts.</p>
+
+<div class="browser">
+  <div class="browser-bar">
+    <span class="traffic traffic-r"></span><span class="traffic traffic-y"></span><span class="traffic traffic-g"></span>
+    <div class="url">🔒 app.kinevo.com.br/students/marina-costa/avaliacoes/comparar?ids=apr,fev,mai</div>
+  </div>
+  <div class="browser-content">
+    <aside class="sidebar-real">
+      <div class="sb-brand"><div class="sb-logo">K</div><div class="sb-name">Kinevo</div></div>
+      <div class="sb-item"><span class="ic"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8"><rect x="3" y="3" width="7" height="9" rx="1.5"/></svg></span> Dashboard</div>
+      <div class="sb-item active"><span class="ic"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/></svg></span> Alunos</div>
+      <div class="sb-item"><span class="ic"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/></svg></span> Agenda</div>
+      <div class="sb-item"><span class="ic"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16"/></svg></span> Avaliações</div>
+      <div class="sb-item"><span class="ic"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8"><rect x="2" y="6" width="20" height="14" rx="2"/></svg></span> Financeiro</div>
+    </aside>
+    <div class="main">
+      <div class="page-h">
+        <div class="page-title-block">
+          <div class="crumbs">Alunos · Marina Costa · Avaliações · Comparar</div>
+          <h1 class="page-title">Comparativo de avaliações</h1>
+          <p class="page-subtitle">3 sessões · janeiro, abril e maio · pacote "Box CrossFit"</p>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-secondary">Exportar CSV</button>
+          <button class="btn btn-primary">📄 PDF comparativo</button>
+        </div>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-label">% Gordura</div>
+          <div class="stat-value">22,4<span style="font-size:14px;color:var(--text-secondary);font-weight:500;">%</span></div>
+          <div class="stat-delta delta-up">▼ −2,7 pp em 5 meses</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Peso</div>
+          <div class="stat-value">72,1<span style="font-size:14px;color:var(--text-secondary);font-weight:500;"> kg</span></div>
+          <div class="stat-delta delta-up">▼ −3,3 kg</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">CMJ (altura)</div>
+          <div class="stat-value">33,1<span style="font-size:14px;color:var(--text-secondary);font-weight:500;"> cm</span></div>
+          <div class="stat-delta delta-up">▲ +4,6 cm</div>
+        </div>
+        <div class="stat-card" style="background:rgba(255,149,0,0.06);border-color:rgba(255,149,0,0.20);">
+          <div class="stat-label" style="color:#B45309;">⚠ Assim. CMJ</div>
+          <div class="stat-value" style="color:#B45309;">14,2<span style="font-size:14px;font-weight:500;">%</span></div>
+          <div class="stat-delta" style="color:#B45309;">acima do limite (10%)</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1.2fr 1fr;gap:14px;margin-bottom:18px;">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Composição corporal · 5 meses</span>
+          </div>
+          <svg viewBox="0 0 500 180" width="100%" height="180">
+            <defs><linearGradient id="grad-bf" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#007AFF" stop-opacity="0.18"/><stop offset="100%" stop-color="#007AFF" stop-opacity="0"/></linearGradient></defs>
+            <line x1="40" y1="20" x2="40" y2="155" stroke="var(--border-subtle)"/>
+            <line x1="40" y1="155" x2="490" y2="155" stroke="var(--border-subtle)"/>
+            <text x="2" y="28" font-size="9" fill="var(--text-tertiary)">26%</text>
+            <text x="2" y="78" font-size="9" fill="var(--text-tertiary)">23%</text>
+            <text x="2" y="128" font-size="9" fill="var(--text-tertiary)">20%</text>
+            <path d="M 60,40 L 160,55 L 260,80 L 360,105 L 460,120 L 460,155 L 60,155 Z" fill="url(#grad-bf)"/>
+            <path d="M 60,40 L 160,55 L 260,80 L 360,105 L 460,120" stroke="#007AFF" stroke-width="2.5" fill="none"/>
+            <circle cx="60" cy="40" r="4" fill="#007AFF"/>
+            <circle cx="160" cy="55" r="4" fill="#007AFF"/>
+            <circle cx="260" cy="80" r="4" fill="#007AFF"/>
+            <circle cx="360" cy="105" r="4" fill="#007AFF"/>
+            <circle cx="460" cy="120" r="5" fill="#007AFF" stroke="#fff" stroke-width="2"/>
+            <text x="55" y="170" font-size="10" fill="var(--text-tertiary)">jan</text>
+            <text x="155" y="170" font-size="10" fill="var(--text-tertiary)">fev</text>
+            <text x="255" y="170" font-size="10" fill="var(--text-tertiary)">mar</text>
+            <text x="355" y="170" font-size="10" fill="var(--text-tertiary)">abr</text>
+            <text x="455" y="170" font-size="10" fill="var(--text-tertiary)" font-weight="700">mai</text>
+            <text x="465" y="115" font-size="10" fill="#007AFF" font-weight="700">22,4%</text>
+          </svg>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">CMJ por perna</span>
+            <span style="font-size:11px;color:var(--text-tertiary);">unilateral</span>
+          </div>
+          <svg viewBox="0 0 500 180" width="100%" height="180">
+            <line x1="40" y1="20" x2="40" y2="155" stroke="var(--border-subtle)"/>
+            <line x1="40" y1="155" x2="490" y2="155" stroke="var(--border-subtle)"/>
+            <text x="2" y="28" font-size="9" fill="var(--text-tertiary)">35cm</text>
+            <text x="2" y="78" font-size="9" fill="var(--text-tertiary)">30cm</text>
+            <text x="2" y="128" font-size="9" fill="var(--text-tertiary)">25cm</text>
+            <path d="M 60,80 L 260,55 L 460,30" stroke="#16A34A" stroke-width="2.5" fill="none"/>
+            <circle cx="60" cy="80" r="4" fill="#16A34A"/>
+            <circle cx="260" cy="55" r="4" fill="#16A34A"/>
+            <circle cx="460" cy="30" r="5" fill="#16A34A" stroke="#fff" stroke-width="2"/>
+            <path d="M 60,95 L 260,75 L 460,55" stroke="#007AFF" stroke-width="2" fill="none" stroke-dasharray="3,3"/>
+            <circle cx="60" cy="95" r="3" fill="#007AFF"/>
+            <circle cx="260" cy="75" r="3" fill="#007AFF"/>
+            <circle cx="460" cy="55" r="3" fill="#007AFF"/>
+            <path d="M 60,115 L 260,100 L 460,75" stroke="#FF3B30" stroke-width="2" fill="none" stroke-dasharray="3,3"/>
+            <circle cx="60" cy="115" r="3" fill="#FF3B30"/>
+            <circle cx="260" cy="100" r="3" fill="#FF3B30"/>
+            <circle cx="460" cy="75" r="3" fill="#FF3B30"/>
+            <text x="455" y="170" font-size="10" fill="var(--text-tertiary)" font-weight="700">mai</text>
+            <text x="55" y="170" font-size="10" fill="var(--text-tertiary)">jan</text>
+            <text x="255" y="170" font-size="10" fill="var(--text-tertiary)">abr</text>
+            <rect x="350" y="125" width="10" height="3" fill="#16A34A"/><text x="365" y="129" font-size="10" fill="var(--text-secondary)">CMJ</text>
+            <rect x="395" y="125" width="10" height="3" fill="#007AFF"/><text x="410" y="129" font-size="10" fill="var(--text-secondary)">D</text>
+            <rect x="425" y="125" width="10" height="3" fill="#FF3B30"/><text x="440" y="129" font-size="10" fill="var(--text-secondary)">E</text>
+          </svg>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="card-title">Tabela completa</span></div>
+        <table class="compare-table">
+          <thead><tr><th>Métrica</th><th class="num">Jan/26</th><th class="num">Abr/26</th><th class="num">Mai/26</th><th class="num">Δ total</th><th>Tendência</th></tr></thead>
+          <tbody>
+            <tr><td class="met">Peso (kg)</td><td class="num">75,4</td><td class="num">73,8</td><td class="num"><b>72,1</b></td><td class="num"><span class="delta-pill good">−3,3</span></td><td>↘ consistente</td></tr>
+            <tr><td class="met">% Gordura</td><td class="num">25,1</td><td class="num">23,8</td><td class="num"><b>22,4</b></td><td class="num"><span class="delta-pill good">−2,7 pp</span></td><td>↘ consistente</td></tr>
+            <tr><td class="met">Massa magra</td><td class="num">56,5</td><td class="num">56,2</td><td class="num"><b>55,9</b></td><td class="num"><span class="delta-pill bad">−0,6</span></td><td>⚠ leve perda</td></tr>
+            <tr><td class="met">Cintura (cm)</td><td class="num">84</td><td class="num">81</td><td class="num"><b>78</b></td><td class="num"><span class="delta-pill good">−6</span></td><td>↘</td></tr>
+            <tr><td class="met">CMJ (cm)</td><td class="num">28,5</td><td class="num">30,8</td><td class="num"><b>33,1</b></td><td class="num"><span class="delta-pill good">+4,6</span></td><td>↗ ótimo</td></tr>
+            <tr class="alert-row"><td class="met">Assim. CMJ (%)</td><td class="num">18,1</td><td class="num">16,8</td><td class="num"><b>14,2</b></td><td class="num"><span class="delta-pill good">−3,9</span></td><td>⚠ ainda alto</td></tr>
+            <tr><td class="met">Sit and reach</td><td class="num">−2</td><td class="num">+1</td><td class="num"><b>+4</b></td><td class="num"><span class="delta-pill good">+6</span></td><td>↗</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ MOBILE ════════════ -->
+
+<h2 class="section-h">Mobile · tab inferior "Forms" — terceira aba interna "Avaliações"</h2>
+<p class="section-d">A tela <code>mobile/app/(trainer-tabs)/forms.tsx</code> já tem <code>activeTab: "responses" | "templates"</code>. Adiciona-se <code>"assessments"</code> seguindo o padrão de FilterChips e EmptyState existente.</p>
+
+<div class="mobile-grid">
+
+  <!-- TELA 1: Forms tab com aba assessments -->
+  <div class="scene">
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="m-status"></div>
+      <div class="m-header">
+        <span class="m-htitle">Avaliações</span>
+        <span class="m-haction" style="font-size:22px;">⊕</span>
+      </div>
+      <div class="m-body" style="padding-bottom:88px;">
+        <div class="m-tabs">
+          <span class="m-tab">Respostas</span>
+          <span class="m-tab">Templates</span>
+          <span class="m-tab active new">Presenciais</span>
+        </div>
+        <div class="m-card" style="background:linear-gradient(135deg,var(--m-presencial-bg) 0%,#fff 100%);border-color:rgba(124,58,237,0.20);">
+          <div style="font-size:11px;font-weight:700;color:var(--m-presencial);text-transform:uppercase;letter-spacing:0.4px;">⚡ Hoje · 09:30</div>
+          <div style="font-size:15px;font-weight:700;margin-top:4px;">Marina Costa · 3ª avaliação</div>
+          <div style="font-size:12px;color:var(--m-text-secondary);margin-top:2px;">Pacote Box CrossFit · 8 testes</div>
+          <div class="m-cta" style="margin-top:14px;font-size:14px;padding:12px;">▶ Iniciar agora</div>
+        </div>
+
+        <div style="font-size:11px;font-weight:700;color:var(--m-text-tertiary);text-transform:uppercase;letter-spacing:0.4px;margin:14px 0 8px;padding:0 4px;">Próximas</div>
+        <div class="m-card">
+          <div class="m-card-h">
+            <div class="m-card-icon m-i-presencial">📐</div>
+            <div class="m-card-meta">
+              <div class="m-card-title">Aline Santos</div>
+              <div class="m-card-sub">Inicial · amanhã 07h</div>
+            </div>
+            <div class="m-card-arrow">›</div>
+          </div>
+        </div>
+        <div class="m-card">
+          <div class="m-card-h">
+            <div class="m-card-icon m-i-presencial">📐</div>
+            <div class="m-card-meta">
+              <div class="m-card-title">Daniel Almeida</div>
+              <div class="m-card-sub">Comp. corporal · 12/mai</div>
+            </div>
+            <div class="m-card-arrow">›</div>
+          </div>
+        </div>
+
+        <div style="font-size:11px;font-weight:700;color:var(--m-text-tertiary);text-transform:uppercase;letter-spacing:0.4px;margin:14px 0 8px;padding:0 4px;">Em atraso (3)</div>
+        <div class="m-card" style="background:rgba(255,59,48,0.04);border-color:rgba(255,59,48,0.20);">
+          <div class="m-card-h">
+            <div class="m-card-icon" style="background:rgba(255,59,48,0.10);color:#FF3B30;">⏰</div>
+            <div class="m-card-meta">
+              <div class="m-card-title">Roberta Silva</div>
+              <div class="m-card-sub" style="color:#B91C1C;">21 dias atrasada</div>
+            </div>
+            <div class="m-card-arrow">›</div>
+          </div>
+        </div>
+      </div>
+      <div class="m-fab">＋</div>
+      <div class="m-tabbar">
+        <div class="m-tabbar-item">
+          <span class="m-tabbar-icon">⌂</span><span>Início</span>
+          <div class="m-tabbar-pill"></div>
+        </div>
+        <div class="m-tabbar-item">
+          <span class="m-tabbar-icon">👥</span><span>Alunos</span>
+          <div class="m-tabbar-pill"></div>
+        </div>
+        <div class="m-tabbar-item">
+          <span class="m-tabbar-icon">🏋️</span><span>Treino</span>
+          <div class="m-tabbar-pill"></div>
+        </div>
+        <div class="m-tabbar-item active">
+          <span class="m-tabbar-icon">📋</span><span>Avaliações</span>
+          <div class="m-tabbar-pill"></div>
+        </div>
+        <div class="m-tabbar-item">
+          <span class="m-tabbar-icon">⋯</span><span>Mais</span>
+          <div class="m-tabbar-pill"></div>
+        </div>
+      </div>
+    </div>
+    <div class="scene-title">1. Forms · aba "Presenciais"</div>
+    <div class="scene-desc">Mesma tela de hoje, terceira aba ao lado de Respostas/Templates. Tabbar inferior real, com ícone <code>ClipboardList</code> e label "Avaliações".</div>
+  </div>
+
+  <!-- TELA 2: Sessão presencial em andamento -->
+  <div class="scene">
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="m-status"></div>
+      <div class="m-header">
+        <span class="m-back">‹</span>
+        <span class="m-htitle">Marina Costa</span>
+        <span class="m-haction">Sair</span>
+      </div>
+      <div class="m-body">
+        <div class="m-card">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div class="m-card-icon m-i-presencial">📐</div>
+            <div class="m-card-meta">
+              <div class="m-card-title">Box CrossFit</div>
+              <div class="m-card-sub">3 de 8 testes · ~17 min restantes</div>
+            </div>
+          </div>
+          <div style="height:6px;background:rgba(0,0,0,0.06);border-radius:3px;margin-top:14px;overflow:hidden;"><div style="width:38%;height:100%;background:var(--m-brand);"></div></div>
+        </div>
+
+        <div style="font-size:11px;font-weight:700;color:var(--m-text-tertiary);text-transform:uppercase;letter-spacing:0.4px;margin:14px 0 8px;padding:0 4px;">Concluídos</div>
+        <div class="m-card" style="opacity:0.8;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="width:24px;height:24px;border-radius:50%;background:#16A34A;color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;">✓</div>
+            <div style="flex:1;font-size:13px;text-decoration:line-through;color:var(--m-text-secondary);">Peso, altura, IMC</div>
+            <div style="font-size:11px;color:var(--m-text-secondary);">72,1 / 23,7</div>
+          </div>
+        </div>
+        <div class="m-card" style="opacity:0.8;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="width:24px;height:24px;border-radius:50%;background:#16A34A;color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;">✓</div>
+            <div style="flex:1;font-size:13px;text-decoration:line-through;color:var(--m-text-secondary);">Circunferências</div>
+            <div style="font-size:11px;color:var(--m-text-secondary);">5 medidas</div>
+          </div>
+        </div>
+
+        <div style="font-size:11px;font-weight:700;color:var(--m-presencial);text-transform:uppercase;letter-spacing:0.4px;margin:14px 0 8px;padding:0 4px;">▶ Em andamento</div>
+        <div class="m-card" style="border:2px solid var(--m-presencial);background:var(--m-presencial-bg);">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div class="m-card-icon m-i-presencial">🔬</div>
+            <div class="m-card-meta">
+              <div class="m-card-title" style="color:var(--m-presencial);">Dobras J&P 7</div>
+              <div class="m-card-sub">3 de 7 dobras · tríceps em medição</div>
+            </div>
+            <span class="m-card-arrow" style="color:var(--m-presencial);">›</span>
+          </div>
+        </div>
+
+        <div style="font-size:11px;font-weight:700;color:var(--m-text-tertiary);text-transform:uppercase;letter-spacing:0.4px;margin:14px 0 8px;padding:0 4px;">Próximos</div>
+        <div class="m-card">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div class="m-card-icon" style="background:rgba(0,0,0,0.04);color:var(--m-text-tertiary);">⚡</div>
+            <div class="m-card-meta">
+              <div class="m-card-title" style="color:var(--m-text-secondary);">CMJ vídeo</div>
+              <div class="m-card-sub">3 tentativas + assimetria</div>
+            </div>
+          </div>
+        </div>
+        <div class="m-card">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div class="m-card-icon" style="background:rgba(0,0,0,0.04);color:var(--m-text-tertiary);">🤸</div>
+            <div class="m-card-meta">
+              <div class="m-card-title" style="color:var(--m-text-secondary);">Sit and reach</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="scene-title">2. Sessão em andamento</div>
+    <div class="scene-desc">Lista checklist do pacote. Visual segue o padrão dos cards atuais (radius 14, shadow sutil). Verde só pra concluído, presencial-purple para o atual.</div>
+  </div>
+
+  <!-- TELA 3: Captura — dobra cutânea -->
+  <div class="scene">
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="m-status"></div>
+      <div class="m-header">
+        <span class="m-back">‹</span>
+        <span class="m-htitle">Tríceps</span>
+        <span class="m-haction">Pular</span>
+      </div>
+      <div class="m-body">
+        <div class="m-step">
+          <div class="m-step-bar"><div class="m-step-fill"></div></div>
+          <div style="display:flex;justify-content:space-between;">
+            <span class="m-step-text">Dobra 3 de 7 · J&P</span>
+            <span class="m-step-text" style="color:var(--m-presencial);">42%</span>
+          </div>
+        </div>
+
+        <div class="m-bigq">
+          <div class="m-bigq-label">Anatomia</div>
+          <div style="display:flex;justify-content:center;margin:6px 0;">
+            <svg width="100" height="120" viewBox="0 0 120 160">
+              <ellipse cx="60" cy="20" rx="14" ry="16" fill="#cbd5e1"/>
+              <path d="M 40 38 L 30 48 L 28 90 L 38 100 L 35 130 L 42 150 L 50 150 L 50 100 L 60 100 L 60 38 Z" fill="#cbd5e1"/>
+              <path d="M 80 38 L 90 48 L 92 90 L 82 100 L 85 130 L 78 150 L 70 150 L 70 100 L 60 100 L 60 38 Z" fill="#cbd5e1"/>
+              <circle cx="29" cy="70" r="9" fill="none" stroke="#7c3aed" stroke-width="2.5"/>
+              <circle cx="29" cy="70" r="3" fill="#7c3aed"/>
+            </svg>
+          </div>
+          <div style="text-align:center;font-size:11px;color:var(--m-text-tertiary);">ponto medido em mm</div>
+          <div class="m-bigq-input">12<span style="color:var(--m-text-quaternary);font-size:22px;font-weight:500;">,5</span></div>
+          <div class="m-bigq-unit">milímetros · adipômetro</div>
+          <div class="m-attempts">
+            <div class="m-attempt">
+              <div class="m-attempt-label">T1</div>
+              <div class="m-attempt-val">12,5</div>
+            </div>
+            <div class="m-attempt current">
+              <div class="m-attempt-label">T2</div>
+              <div class="m-attempt-val">12,8</div>
+            </div>
+            <div class="m-attempt empty">
+              <div class="m-attempt-label">T3</div>
+              <div class="m-attempt-val">—</div>
+            </div>
+          </div>
+        </div>
+        <div class="m-cta">Próxima dobra ›</div>
+      </div>
+    </div>
+    <div class="scene-title">3. Captura — dobra cutânea</div>
+    <div class="scene-desc">Wizard fullscreen, big-input com teclado nativo numérico. Match com radius/shadow do <code>preview-design-tokens.ts</code>. Brand purple só nos elementos ativos.</div>
+  </div>
+
+  <!-- TELA 4: Resultado integrado ao perfil do aluno -->
+  <div class="scene">
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="m-status"></div>
+      <div class="m-header">
+        <span class="m-back">‹</span>
+        <span class="m-htitle">Marina Costa</span>
+        <span class="m-haction">⇧</span>
+      </div>
+      <div class="m-body">
+        <div class="m-card">
+          <div style="display:flex;align-items:baseline;gap:6px;">
+            <span style="font-size:32px;font-weight:800;letter-spacing:-0.02em;color:var(--m-text-primary);">22,4<span style="font-size:14px;color:var(--m-text-secondary);font-weight:500;">%</span></span>
+            <span style="font-size:11px;font-weight:700;background:rgba(22,163,74,0.10);color:#15803D;padding:3px 7px;border-radius:5px;">▼ −1,8 pp · 90 dias</span>
+          </div>
+          <div style="font-size:11px;color:var(--m-text-tertiary);margin-top:4px;">% gordura · J&P 7 dobras</div>
+          <svg viewBox="0 0 280 70" width="100%" height="70" style="margin-top:10px;">
+            <defs><linearGradient id="m-grad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#7c3aed" stop-opacity="0.22"/><stop offset="100%" stop-color="#7c3aed" stop-opacity="0"/></linearGradient></defs>
+            <path d="M 0,12 L 70,18 L 140,30 L 210,42 L 280,52 L 280,70 L 0,70 Z" fill="url(#m-grad)"/>
+            <path d="M 0,12 L 70,18 L 140,30 L 210,42 L 280,52" stroke="#7c3aed" stroke-width="2.5" fill="none"/>
+            <circle cx="280" cy="52" r="4" fill="#7c3aed" stroke="#fff" stroke-width="2"/>
+          </svg>
+        </div>
+
+        <div class="m-card">
+          <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;color:var(--m-text-secondary);margin-bottom:10px;">📊 Comparativo</div>
+          <div style="display:grid;grid-template-columns:1fr auto auto auto;gap:8px;font-size:12px;align-items:center;padding:6px 0;border-bottom:1px solid rgba(0,0,0,0.04);">
+            <span style="font-weight:600;">Peso</span><span style="color:var(--m-text-tertiary);">74,5 →</span><span style="font-weight:700;">72,1</span><span style="color:#15803D;font-weight:700;">−2,4</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr auto auto auto;gap:8px;font-size:12px;align-items:center;padding:6px 0;border-bottom:1px solid rgba(0,0,0,0.04);">
+            <span style="font-weight:600;">IMC</span><span style="color:var(--m-text-tertiary);">24,5 →</span><span style="font-weight:700;">23,7</span><span style="color:#15803D;font-weight:700;">−0,8</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr auto auto auto;gap:8px;font-size:12px;align-items:center;padding:6px 0;border-bottom:1px solid rgba(0,0,0,0.04);">
+            <span style="font-weight:600;">CMJ</span><span style="color:var(--m-text-tertiary);">30,8 →</span><span style="font-weight:700;">33,1</span><span style="color:#15803D;font-weight:700;">+2,3</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr auto auto auto;gap:8px;font-size:12px;align-items:center;padding:6px 0;background:rgba(255,149,0,0.04);border-radius:6px;padding:6px;">
+            <span style="font-weight:600;">⚠ Assim. perna</span><span style="color:var(--m-text-tertiary);">16,8% →</span><span style="font-weight:700;color:#B45309;">14,2%</span><span style="color:#B45309;font-weight:700;font-size:10px;">acima 10%</span>
+          </div>
+        </div>
+
+        <div class="m-card" style="background:linear-gradient(135deg,var(--m-presencial-bg) 0%,#fff 100%);border-color:rgba(124,58,237,0.20);">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+            <span style="font-size:18px;">⚖️</span>
+            <span style="font-size:13px;font-weight:700;color:var(--m-presencial);">Sugestão</span>
+          </div>
+          <div style="font-size:13px;color:var(--m-text-primary);font-weight:600;line-height:1.4;">Adicionar bloco unilateral de 4 semanas no programa.</div>
+          <div style="font-size:11px;color:var(--m-text-secondary);margin-top:4px;">Assimetria ainda acima de 10% pode aumentar risco de lesão.</div>
+          <div style="margin-top:10px;display:flex;gap:6px;">
+            <span style="background:var(--m-brand);color:#fff;padding:8px 12px;border-radius:8px;font-size:12px;font-weight:700;">Adicionar bloco</span>
+            <span style="background:#fff;color:var(--m-text-primary);padding:8px 12px;border-radius:8px;font-size:12px;font-weight:600;border:1px solid rgba(0,0,0,0.08);">Ignorar</span>
+          </div>
+        </div>
+
+        <div class="m-cta">Gerar laudo PDF</div>
+      </div>
+    </div>
+    <div class="scene-title">4. Resultado · recomendação</div>
+    <div class="scene-desc">Cards com radius 14 e bordas translúcidas (idêntico aos cards de check-in). Recomendação automática vira CTA direto pro program-builder. Brand purple só nos elementos de avaliação.</div>
+  </div>
+
+</div>
+
+<p style="text-align:center;color:var(--text-tertiary);font-size:12px;margin-top:48px;">
+  Mockups conceituais · Kinevo · Maio 2026 · 4 telas web + 4 telas mobile · paleta extraída de <code>web/src/app/globals.css</code> e <code>mobile/theme/colors.ts</code>
+</p>
+
+</body>
+</html>
