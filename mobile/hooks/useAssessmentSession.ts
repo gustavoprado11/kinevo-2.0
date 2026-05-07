@@ -6,13 +6,32 @@ import type {
     FinalizeAssessmentResult,
     ComputedMetrics,
 } from "@kinevo/shared/types/assessments";
+import { useAssessmentDraftStore } from "../stores/assessmentDraftStore";
 
 // Placeholder hook for Milestone 1. UI consumers come in M3.
+
+/**
+ * RPC error message returned by `get_assessment_session` when the row
+ * doesn't exist or the caller has no access. Matched verbatim against
+ * the SECURITY DEFINER `RAISE EXCEPTION` in migration 122.
+ */
+const SESSION_NOT_FOUND_MARKERS = [
+    'Session not found or access denied',
+    'Session not found',
+];
+
+function isSessionNotFoundError(message: string | undefined): boolean {
+    if (!message) return false;
+    return SESSION_NOT_FOUND_MARKERS.some((m) => message.includes(m));
+}
 
 export function useAssessmentSession(sessionId: string | null) {
     const [detail, setDetail] = useState<AssessmentSessionDetail | null>(null);
     const [isLoading, setIsLoading] = useState<boolean>(!!sessionId);
     const [error, setError] = useState<string | null>(null);
+    const [orphaned, setOrphaned] = useState<boolean>(false);
+
+    const removeDraft = useAssessmentDraftStore((s) => s.removeDraft);
 
     const fetchSession = useCallback(async () => {
         if (!sessionId) return;
@@ -24,19 +43,42 @@ export function useAssessmentSession(sessionId: string | null) {
             if (rpcError) throw new Error(rpcError.message);
             setDetail((data as unknown) as AssessmentSessionDetail);
             setError(null);
+            setOrphaned(false);
         } catch (err: any) {
+            const msg = err?.message ?? '';
+            if (isSessionNotFoundError(msg)) {
+                // Remote session is gone (deleted, never created, or RLS now
+                // forbids access). Clean the local draft so the pinned
+                // section and tab badge update, and let the screen redirect.
+                if (__DEV__) {
+                    console.log(
+                        '[useAssessmentSession] orphaned draft detected — purging',
+                        sessionId,
+                    );
+                }
+                removeDraft(sessionId);
+                setOrphaned(true);
+                setError(null);
+                setDetail(null);
+                return;
+            }
             if (__DEV__) console.error("[useAssessmentSession] fetch error:", err);
-            setError(err.message);
+            setError(msg);
             setDetail(null);
         }
-    }, [sessionId]);
+    }, [sessionId, removeDraft]);
 
     useEffect(() => {
         if (!sessionId) {
             setDetail(null);
             setIsLoading(false);
+            setOrphaned(false);
             return;
         }
+
+        // Reset transient flags when the session id changes so a previous
+        // orphan flag doesn't bleed into the next mount.
+        setOrphaned(false);
 
         let mounted = true;
         (async () => {
@@ -90,6 +132,7 @@ export function useAssessmentSession(sessionId: string | null) {
         detail,
         isLoading,
         error,
+        orphaned,
         refresh: fetchSession,
         saveMeasurements,
         finalize,

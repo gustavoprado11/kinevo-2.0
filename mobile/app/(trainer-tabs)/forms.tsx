@@ -1,15 +1,16 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect, useMemo } from "react";
 import {
     View,
     Text,
     FlatList,
+    SectionList,
     TouchableOpacity,
     RefreshControl,
     Alert,
 } from "react-native";
 import { FormsSkeleton } from "../../components/shared/skeletons/FormsSkeleton";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ClipboardList, FileText, Plus } from "lucide-react-native";
+import { Activity, ClipboardList, FileText, Plus } from "lucide-react-native";
 import { EmptyState } from "../../components/shared/EmptyState";
 import { useTrainerFormTemplates, FormTemplate } from "../../hooks/useTrainerFormTemplates";
 import {
@@ -27,8 +28,14 @@ import { colors } from "@/theme";
 import { useResponsive } from "../../hooks/useResponsive";
 import { toast } from "../../lib/toast";
 import * as Haptics from "expo-haptics";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useAssessmentSessions, type SessionsFilter } from "../../hooks/useAssessmentSessions";
+import { SessionListItem } from "../../components/trainer/assessments/SessionListItem";
+import { CreateSessionModal } from "../../components/trainer/assessments/CreateSessionModal";
+import type { AssessmentSessionListItem } from "@kinevo/shared/types/assessments";
+import type { AssessmentDraft } from "../../stores/assessmentDraftStore";
 
-type Tab = "responses" | "templates";
+type Tab = "responses" | "templates" | "assessments";
 
 const FILTER_CHIPS: { key: SubmissionFilter; label: string }[] = [
     { key: "all", label: "Todas" },
@@ -36,14 +43,33 @@ const FILTER_CHIPS: { key: SubmissionFilter; label: string }[] = [
     { key: "completed", label: "Concluídas" },
 ];
 
+const ASSESSMENT_FILTER_CHIPS: { key: SessionsFilter; label: string }[] = [
+    { key: "all", label: "Todas" },
+    { key: "overdue", label: "Em atraso" },
+    { key: "upcoming", label: "Próximas" },
+    { key: "completed", label: "Concluídas" },
+];
+
 export default function FormsScreen() {
     const insets = useSafeAreaInsets();
     const { isTablet } = useResponsive();
+    const router = useRouter();
     const [activeTab, setActiveTab] = useState<Tab>("responses");
+
+    // Honor `?tab=assessments` deep-link (used by the result screen back
+    // button so the trainer lands on the Presenciais tab, not the default
+    // Respostas).
+    const { tab: tabParam } = useLocalSearchParams<{ tab?: string }>();
+    useEffect(() => {
+        if (tabParam === "assessments" || tabParam === "templates" || tabParam === "responses") {
+            setActiveTab(tabParam as Tab);
+        }
+    }, [tabParam]);
 
     // Data
     const templates = useTrainerFormTemplates();
     const submissions = useTrainerFormSubmissions();
+    const assessments = useAssessmentSessions();
 
     // CRUD
     const crud = useFormTemplateCrud(() => {
@@ -55,23 +81,48 @@ export default function FormsScreen() {
     const [detailSubmissionId, setDetailSubmissionId] = useState<string | null>(null);
     const [builderVisible, setBuilderVisible] = useState(false);
     const [editingTemplate, setEditingTemplate] = useState<EditingTemplate | null>(null);
+    const [createSessionVisible, setCreateSessionVisible] = useState(false);
 
     const handleAssign = useCallback((t: FormTemplate) => setAssignTemplate(t), []);
     const handleSubmissionPress = useCallback((s: FormSubmission) => setDetailSubmissionId(s.id), []);
+    const handleSessionPress = useCallback(
+        (sessionId: string) => {
+            router.push({ pathname: "/assessments/[sessionId]", params: { sessionId } });
+        },
+        [router],
+    );
 
     const handleRefresh = useCallback(() => {
         if (activeTab === "responses") submissions.refresh();
-        else templates.refresh();
-    }, [activeTab, submissions, templates]);
+        else if (activeTab === "templates") templates.refresh();
+        else assessments.refresh();
+    }, [activeTab, submissions, templates, assessments]);
 
-    const isRefreshing = activeTab === "responses" ? submissions.isRefreshing : templates.isRefreshing;
-    const isLoading = activeTab === "responses" ? submissions.isLoading : templates.isLoading;
+    const isRefreshing =
+        activeTab === "responses"
+            ? submissions.isRefreshing
+            : activeTab === "templates"
+                ? templates.isRefreshing
+                : assessments.isRefreshing;
+    const isLoading =
+        activeTab === "responses"
+            ? submissions.isLoading
+            : activeTab === "templates"
+                ? templates.isLoading
+                : assessments.isLoading;
+
+    const draftCount = assessments.inProgressDrafts.length;
 
     // Builder handlers
     const handleCreateNew = useCallback(() => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         setEditingTemplate(null);
         setBuilderVisible(true);
+    }, []);
+
+    const handleCreateAssessmentSession = useCallback(() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        setCreateSessionVisible(true);
     }, []);
 
     const handleEdit = useCallback(
@@ -153,84 +204,55 @@ export default function FormsScreen() {
                     padding: 3,
                 }}
             >
-                <TouchableOpacity
+                <TabButton
+                    label={`Respostas${submissions.counts.pending > 0 ? ` (${submissions.counts.pending})` : ""}`}
+                    active={activeTab === "responses"}
                     onPress={() => setActiveTab("responses")}
-                    accessibilityRole="tab"
-                    accessibilityState={{ selected: activeTab === "responses" }}
-                    accessibilityLabel="Respostas"
-                    style={{
-                        flex: 1,
-                        paddingVertical: 8,
-                        borderRadius: 8,
-                        backgroundColor: activeTab === "responses" ? colors.background.card : "transparent",
-                        alignItems: "center",
-                    }}
-                >
-                    <Text
-                        style={{
-                            fontSize: 14,
-                            fontWeight: "600",
-                            color: activeTab === "responses" ? colors.text.primary : colors.text.secondary,
-                        }}
-                    >
-                        Respostas{submissions.counts.pending > 0 ? ` (${submissions.counts.pending})` : ""}
-                    </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
+                />
+                <TabButton
+                    label="Templates"
+                    active={activeTab === "templates"}
                     onPress={() => setActiveTab("templates")}
-                    accessibilityRole="tab"
-                    accessibilityState={{ selected: activeTab === "templates" }}
-                    accessibilityLabel="Templates"
-                    style={{
-                        flex: 1,
-                        paddingVertical: 8,
-                        borderRadius: 8,
-                        backgroundColor: activeTab === "templates" ? colors.background.card : "transparent",
-                        alignItems: "center",
-                    }}
-                >
-                    <Text
-                        style={{
-                            fontSize: 14,
-                            fontWeight: "600",
-                            color: activeTab === "templates" ? colors.text.primary : colors.text.secondary,
-                        }}
-                    >
-                        Templates
-                    </Text>
-                </TouchableOpacity>
+                />
+                <TabButton
+                    label="Presenciais"
+                    badge={draftCount}
+                    active={activeTab === "assessments"}
+                    onPress={() => setActiveTab("assessments")}
+                />
             </View>
 
-            {/* Filter chips (responses only) */}
+            {/* Filter chips */}
             {activeTab === "responses" && (
                 <View style={{ flexDirection: "row", paddingHorizontal: 20, marginBottom: 10, gap: 8 }}>
                     {FILTER_CHIPS.map((chip) => {
                         const isActive = submissions.filter === chip.key;
                         const count = submissions.counts[chip.key];
                         return (
-                            <TouchableOpacity
+                            <FilterChip
                                 key={chip.key}
+                                label={chip.label}
+                                active={isActive}
+                                count={count}
                                 onPress={() => submissions.setFilter(chip.key)}
-                                accessibilityRole="tab"
-                                accessibilityState={{ selected: isActive }}
-                                accessibilityLabel={`Filtro ${chip.label}`}
-                                style={{
-                                    paddingHorizontal: 14,
-                                    paddingVertical: 7,
-                                    borderRadius: 20,
-                                    backgroundColor: isActive ? colors.brand.primary : colors.background.card,
-                                }}
-                            >
-                                <Text
-                                    style={{
-                                        fontSize: 13,
-                                        fontWeight: "600",
-                                        color: isActive ? colors.text.inverse : colors.text.secondary,
-                                    }}
-                                >
-                                    {chip.label} {count > 0 ? `(${count})` : ""}
-                                </Text>
-                            </TouchableOpacity>
+                            />
+                        );
+                    })}
+                </View>
+            )}
+            {activeTab === "assessments" && (
+                <View style={{ flexDirection: "row", paddingHorizontal: 20, marginBottom: 10, gap: 8 }}>
+                    {ASSESSMENT_FILTER_CHIPS.map((chip) => {
+                        const isActive = assessments.filter === chip.key;
+                        const count = assessments.counts[chip.key];
+                        return (
+                            <FilterChip
+                                key={chip.key}
+                                label={chip.label}
+                                active={isActive}
+                                count={count}
+                                onPress={() => assessments.setFilter(chip.key)}
+                            />
                         );
                     })}
                 </View>
@@ -271,7 +293,7 @@ export default function FormsScreen() {
                         />
                     }
                 />
-            ) : (
+            ) : activeTab === "templates" ? (
                 <FlatList
                     key={isTablet ? "templates-2col" : "templates-1col"}
                     data={templates.templates}
@@ -308,14 +330,24 @@ export default function FormsScreen() {
                         />
                     }
                 />
+            ) : (
+                <AssessmentsList
+                    drafts={assessments.inProgressDrafts}
+                    sessions={assessments.sessions}
+                    isRefreshing={isRefreshing}
+                    onRefresh={handleRefresh}
+                    onPressSession={handleSessionPress}
+                    onCreateNew={handleCreateAssessmentSession}
+                    paddingBottom={insets.bottom + 100}
+                />
             )}
 
-            {/* FAB — templates tab only */}
-            {activeTab === "templates" && (
+            {/* FAB */}
+            {(activeTab === "templates" || activeTab === "assessments") && (
                 <TouchableOpacity
-                    onPress={handleCreateNew}
+                    onPress={activeTab === "templates" ? handleCreateNew : handleCreateAssessmentSession}
                     activeOpacity={0.8}
-                    accessibilityLabel="Criar novo template"
+                    accessibilityLabel={activeTab === "templates" ? "Criar novo template" : "Nova avaliação"}
                     accessibilityRole="button"
                     style={{
                         position: "absolute",
@@ -324,10 +356,10 @@ export default function FormsScreen() {
                         width: 56,
                         height: 56,
                         borderRadius: 28,
-                        backgroundColor: "#7c3aed",
+                        backgroundColor: activeTab === "templates" ? "#7c3aed" : colors.status.presencial,
                         alignItems: "center",
                         justifyContent: "center",
-                        shadowColor: "#7c3aed",
+                        shadowColor: activeTab === "templates" ? "#7c3aed" : colors.status.presencial,
                         shadowOffset: { width: 0, height: 4 },
                         shadowOpacity: 0.35,
                         shadowRadius: 8,
@@ -363,6 +395,232 @@ export default function FormsScreen() {
                 onSave={handleSaveBuilder}
                 isSaving={crud.isSaving}
             />
+
+            <CreateSessionModal
+                visible={createSessionVisible}
+                onClose={() => setCreateSessionVisible(false)}
+                onCreated={(sessionId) => {
+                    setCreateSessionVisible(false);
+                    assessments.refresh();
+                    router.push({ pathname: "/assessments/[sessionId]", params: { sessionId } });
+                }}
+            />
         </View>
     );
+}
+
+function TabButton({
+    label,
+    active,
+    badge,
+    onPress,
+}: {
+    label: string;
+    active: boolean;
+    badge?: number;
+    onPress: () => void;
+}) {
+    return (
+        <TouchableOpacity
+            onPress={onPress}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: active }}
+            accessibilityLabel={label}
+            style={{
+                flex: 1,
+                paddingVertical: 8,
+                borderRadius: 8,
+                backgroundColor: active ? colors.background.card : "transparent",
+                alignItems: "center",
+                justifyContent: "center",
+                flexDirection: "row",
+                gap: 6,
+            }}
+        >
+            <Text
+                style={{
+                    fontSize: 14,
+                    fontWeight: "600",
+                    color: active ? colors.text.primary : colors.text.secondary,
+                }}
+            >
+                {label}
+            </Text>
+            {badge !== undefined && badge > 0 && (
+                <View
+                    style={{
+                        minWidth: 18,
+                        height: 18,
+                        borderRadius: 9,
+                        backgroundColor: colors.status.presencial,
+                        paddingHorizontal: 5,
+                        alignItems: "center",
+                        justifyContent: "center",
+                    }}
+                >
+                    <Text style={{ fontSize: 10, fontWeight: "800", color: colors.text.inverse }}>
+                        {badge > 9 ? "9+" : badge}
+                    </Text>
+                </View>
+            )}
+        </TouchableOpacity>
+    );
+}
+
+function FilterChip({
+    label,
+    active,
+    count,
+    onPress,
+}: {
+    label: string;
+    active: boolean;
+    count: number;
+    onPress: () => void;
+}) {
+    return (
+        <TouchableOpacity
+            onPress={onPress}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: active }}
+            accessibilityLabel={`Filtro ${label}`}
+            style={{
+                paddingHorizontal: 14,
+                paddingVertical: 7,
+                borderRadius: 20,
+                backgroundColor: active ? colors.brand.primary : colors.background.card,
+            }}
+        >
+            <Text
+                style={{
+                    fontSize: 13,
+                    fontWeight: "600",
+                    color: active ? colors.text.inverse : colors.text.secondary,
+                }}
+            >
+                {label} {count > 0 ? `(${count})` : ""}
+            </Text>
+        </TouchableOpacity>
+    );
+}
+
+function AssessmentsList({
+    drafts,
+    sessions,
+    isRefreshing,
+    onRefresh,
+    onPressSession,
+    onCreateNew,
+    paddingBottom,
+}: {
+    drafts: AssessmentDraft[];
+    sessions: AssessmentSessionListItem[];
+    isRefreshing: boolean;
+    onRefresh: () => void;
+    onPressSession: (id: string) => void;
+    onCreateNew: () => void;
+    paddingBottom: number;
+}) {
+    // Memoize the sections payload — passing a fresh array literal as
+    // SectionList's `sections` prop on every render forces SectionList's
+    // internal state machine to re-derive, which cascades into a max-update
+    // loop when the parent re-renders for any reason (e.g. a Zustand store
+    // tick after finalize). The deps are the stable hook outputs.
+    const sectionsArray = useMemo(() => {
+        const out: Array<{ key: string; title: string; data: AssessmentSessionListItem[] }> = [];
+        if (drafts.length > 0) {
+            out.push({ key: "drafts", title: "Em andamento", data: drafts.map(draftToListItem) });
+        }
+        if (sessions.length > 0) {
+            out.push({ key: "sessions", title: "Sessões", data: sessions });
+        }
+        return out;
+    }, [drafts, sessions]);
+
+    if (sectionsArray.length === 0) {
+        return (
+            <EmptyState
+                icon={<Activity size={40} color={colors.text.quaternary} />}
+                title="Nenhuma avaliação ainda"
+                description="Toque no + para iniciar uma nova avaliação presencial"
+                actionLabel="Nova avaliação"
+                onAction={onCreateNew}
+            />
+        );
+    }
+
+    return (
+        <SectionList
+            sections={sectionsArray}
+            keyExtractor={(item, idx) => `${item.id}-${idx}`}
+            stickySectionHeadersEnabled={false}
+            contentContainerStyle={{
+                paddingHorizontal: 20,
+                paddingBottom,
+                gap: 8,
+            }}
+            refreshControl={
+                <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={colors.brand.primary} />
+            }
+            renderSectionHeader={({ section }) => (
+                <View style={{ marginTop: 12, marginBottom: 4 }}>
+                    <Text
+                        style={{
+                            fontSize: 11,
+                            fontWeight: "800",
+                            color: colors.text.tertiary,
+                            textTransform: "uppercase",
+                            letterSpacing: 1.4,
+                        }}
+                    >
+                        {(section as { title: string }).title}
+                    </Text>
+                </View>
+            )}
+            renderItem={({ item, section }) => {
+                const isDraftSection = (section as { key: string }).key === "drafts";
+                const overdue = isOverdue(item);
+                return (
+                    <View style={{ marginBottom: 8 }}>
+                        <SessionListItem
+                            session={item}
+                            isDraft={isDraftSection}
+                            isOverdue={overdue}
+                            onPress={onPressSession}
+                        />
+                    </View>
+                );
+            }}
+            ListEmptyComponent={
+                <EmptyState
+                    icon={<Activity size={40} color={colors.text.quaternary} />}
+                    title="Nenhuma avaliação"
+                    description="Toque no + para iniciar uma nova"
+                />
+            }
+        />
+    );
+}
+
+function isOverdue(s: AssessmentSessionListItem): boolean {
+    if (s.status === "completed" || s.status === "cancelled") return false;
+    if (!s.scheduled_at) return false;
+    const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    return Date.parse(s.scheduled_at) < cutoff;
+}
+
+function draftToListItem(d: AssessmentDraft): AssessmentSessionListItem {
+    return {
+        id: d.session_id,
+        student_id: d.student_id,
+        template_id: d.template_id,
+        status: d.status,
+        scheduled_at: null,
+        started_at: d.last_touched_at,
+        completed_at: null,
+        computed_metrics: null,
+        student_name: d.student_name,
+        student_avatar: d.student_avatar,
+        template_title: d.template_title,
+    };
 }
