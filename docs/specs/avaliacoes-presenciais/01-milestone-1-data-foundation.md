@@ -84,7 +84,7 @@ CREATE INDEX IF NOT EXISTS idx_assessment_sessions_status_scheduled ON assessmen
 -- updated_at trigger seguindo padrão do projeto
 CREATE TRIGGER trg_assessment_sessions_updated_at
     BEFORE UPDATE ON assessment_sessions
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 COMMENT ON TABLE assessment_sessions IS
     'Sessões de avaliação física presencial. Uma sessão = um momento de avaliação com 1 aluno baseado num template-pacote.';
@@ -669,7 +669,7 @@ Criar shells dos hooks que serão implementados em M3/M4. Apenas a tipagem e a c
 ## 4. Riscos e cuidados
 
 1. **Não dropar `form_templates_category_check` sem o IF EXISTS**. Se já foi alterada por outra migration, a sequência pode quebrar.
-2. **Função `update_updated_at_column()` precisa existir.** Verificar em migrations anteriores; se não existir (improvável dado o tamanho do projeto), criar antes do trigger.
+2. **Função `update_updated_at()` precisa existir.** Confirmado em `001_initial_schema.sql:332`. Todos os triggers do projeto usam esse nome (não `update_updated_at_column()` que é a convenção genérica de Postgres).
 3. **`current_trainer_id()` e `current_student_id()` são helpers já presentes.** Não criar novos. Confirmar que estão no schema `public`.
 4. **`student_inbox_items.type` aceita `system_alert`** — confirmar no `026_forms_inbox_phase1_data_security.sql`. Se não, ajustar para usar tipo existente.
 5. **JSONB validation**: as constraints `chk_*_is_object` evitam que strings ou arrays sejam armazenadas em colunas que esperam objetos. Manter.
