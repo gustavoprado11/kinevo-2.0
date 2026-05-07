@@ -11,6 +11,25 @@ export default defineConfig({
             'constants/**/*.test.ts',
         ],
         exclude: ['node_modules'],
+        coverage: {
+            provider: 'v8',
+            reporter: ['text', 'text-summary'],
+            include: [
+                'lib/assessment-protocols/**/*.ts',
+            ],
+            exclude: [
+                'lib/assessment-protocols/**/__tests__/**',
+                'lib/assessment-protocols/index.ts',
+                'lib/assessment-protocols/types.ts',
+                'lib/assessment-protocols/protocols.ts',
+            ],
+            thresholds: {
+                lines: 95,
+                statements: 95,
+                functions: 95,
+                branches: 95,
+            },
+        },
     },
     resolve: {
         alias: {
