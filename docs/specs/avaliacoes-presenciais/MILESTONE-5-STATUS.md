@@ -282,9 +282,11 @@ amplamente dentro do limite de 5 s do spec.
 - [x] Performance < 5 s consistente
 - [x] 4 cenários de layout validados
 - [x] Acentos pt-BR + en-dash + setas-fallback validados
-- [ ] Smoke test manual web (download → abre em Adobe/Preview) — pendente Gustavo
-- [ ] Smoke test manual mobile (Share Sheet → AirDrop/WhatsApp) — pendente Gustavo
-- [ ] Cleanup das fixtures de teste em prod — pendente após smoke test
+- [x] Smoke test manual web (download → abre em Adobe/Preview) — aprovado pelo user em localhost antes do push
+- [x] Cleanup das fixtures de teste em prod (07e6e99f, cebb2cc0)
+- [x] Deploy web em produção (Vercel auto-deploy disparado pelo push em main, status Ready em 2 min)
+- [ ] **Deploy mobile pendente**: o código mobile (`mobile/app/assessments/[sessionId]/result.tsx` + dep nova `expo-file-system`) só chega aos usuários após `eas update` (OTA push) ou novo `eas build` + submit. `expo-file-system` é Expo SDK-managed (não exige rebuild nativo), então `eas update` deve bastar. Confirmar canal (`production` ou `preview`) com o user antes de propagar.
+- [ ] Smoke test manual mobile (Share Sheet → AirDrop/WhatsApp) — pendente após `eas update`
 
 ---
 
