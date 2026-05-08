@@ -1,10 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { motion } from 'framer-motion'
 import { SessionDetailSheet } from './session-detail-sheet'
 import { ProgramCalendar } from './program-calendar'
+import { AdherenceTrendStrip } from './adherence-trend-strip'
 import { getProgramWeek, getProgramEndDate } from '@kinevo/shared/utils/schedule-projection'
-import { Flame, Activity, ArrowUpRight, FileText } from 'lucide-react'
+import { Flame, Activity, ArrowUpRight, FileText, CalendarPlus, Plus, Library } from 'lucide-react'
 import { WARMUP_TYPE_LABELS, CARDIO_EQUIPMENT_LABELS } from '@kinevo/shared/types/workout-items'
 import type { SessionItem } from '@/app/students/[id]/actions/get-session-details'
 import type { RangeSession } from '@/app/students/[id]/actions/get-sessions-for-range'
@@ -33,6 +35,15 @@ function timeAgo(dateStr: string): string {
 function getExpectedPerWeek(workouts?: Array<{ scheduled_days: number[] }>): number {
     if (!workouts || workouts.length === 0) return 0
     return workouts.reduce((sum, w) => sum + (w.scheduled_days?.length || 0), 0)
+}
+
+// Onda 2 — converter "semana N do programa" (1-indexed) em Date.
+// Local pra não tocar shared/utils nesta onda; eventualmente vai pra
+// schedule-projection (ver follow-ups).
+function addWeeks(start: Date, n: number): Date {
+    const d = new Date(start)
+    d.setDate(d.getDate() + n * 7)
+    return d
 }
 
 // ── Compact item renderer for expanded session accordion ──
@@ -140,11 +151,10 @@ interface ActiveProgramDashboardProps {
     recentSessions?: any[]
     calendarInitialSessions?: RangeSession[]
     /**
-     * @deprecated Kept on the prop surface so callers don't break, but no longer
-     * consumed by this component. The consolidated AdherenceCard was removed in
-     * favor of the existing top stats (Treinos totais / Esta semana / Último
-     * treino) + navigable calendar below — adding a heatmap on top of those was
-     * visual noise without a complementary question to answer.
+     * Adesão por semana do programa (1-indexed). Onda 2 voltou a consumir esse
+     * valor para alimentar o `AdherenceTrendStrip` acima do calendário —
+     * sparkline + delta. Cliques nos pontos navegam o calendário até a semana
+     * correspondente via `initialWeekStart`.
      */
     weeklyAdherence?: { week: number; rate: number }[]
     tonnageMap?: Record<string, { tonnage: number; previousTonnage: number | null; percentChange: number | null }>
@@ -154,6 +164,16 @@ interface ActiveProgramDashboardProps {
     onExtendProgram?: () => void
     onCreateProgram?: () => void
     onViewReport?: () => void
+    /**
+     * Affordance "Próximo programa" na toolbar do card. A Onda 1 escondeu o
+     * card "Próximos Programas" quando o programa atual está em <75% e a
+     * fila está vazia — sem essa porta, o treinador não consegue prescrever
+     * antecipadamente. Este botão usa o mesmo handler que o card usa quando
+     * está visível, garantindo um único caminho até `AssignProgramModal`
+     * em modo scheduled.
+     */
+    onAssignScheduled?: () => void
+    onCreateScheduled?: () => void
     hasActiveProgram?: boolean
     /** Pass to show full student history in calendar, not just current program */
     studentId?: string
@@ -172,12 +192,40 @@ export function ActiveProgramDashboard({
     onExtendProgram,
     onCreateProgram,
     onViewReport,
+    onAssignScheduled,
+    onCreateScheduled,
     hasActiveProgram = false,
     studentId,
 }: ActiveProgramDashboardProps) {
     // Sheet State (for calendar day clicks)
     const [isSheetOpen, setIsSheetOpen] = useState(false)
     const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null)
+
+    // Onda 2 — semana clicada no AdherenceTrendStrip. Quando muda, o
+    // ProgramCalendar reposiciona o anchor via initialWeekStart.
+    const [calendarStartWeek, setCalendarStartWeek] = useState<number | string | null>(null)
+
+    // Dropdown "Próximo programa" — Criar / Atribuir existente. Mesmo padrão
+    // do menu de ações no StudentHeader (mousedown listener + ref).
+    const [showNextMenu, setShowNextMenu] = useState(false)
+    const nextMenuRef = useRef<HTMLDivElement>(null)
+    useEffect(() => {
+        if (!showNextMenu) return
+        const handleClick = (e: MouseEvent) => {
+            if (nextMenuRef.current && !nextMenuRef.current.contains(e.target as Node)) {
+                setShowNextMenu(false)
+            }
+        }
+        const handleKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') setShowNextMenu(false)
+        }
+        document.addEventListener('mousedown', handleClick)
+        document.addEventListener('keydown', handleKey)
+        return () => {
+            document.removeEventListener('mousedown', handleClick)
+            document.removeEventListener('keydown', handleKey)
+        }
+    }, [showNextMenu])
 
     // Accordion State (for recent sessions inline expand)
     const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null)
@@ -360,6 +408,60 @@ export function ActiveProgramDashboard({
                         >
                             Trocar
                         </button>
+                        {(onAssignScheduled || onCreateScheduled) && (
+                            <div className="relative" ref={nextMenuRef}>
+                                <button
+                                    onClick={() => setShowNextMenu((v) => !v)}
+                                    className="px-3 py-1.5 text-[10px] font-bold text-k-text-tertiary hover:text-k-text-primary hover:bg-glass-bg-active rounded-lg transition-all border border-k-border-subtle flex items-center gap-1"
+                                    title="Prescrever próximo programa"
+                                    aria-haspopup="menu"
+                                    aria-expanded={showNextMenu}
+                                >
+                                    <CalendarPlus className="w-3 h-3" />
+                                    Próximo
+                                </button>
+
+                                {showNextMenu && (
+                                    <motion.div
+                                        initial={{ opacity: 0, scale: 0.95, y: -4 }}
+                                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                                        transition={{ duration: 0.15 }}
+                                        role="menu"
+                                        className="absolute left-0 top-full mt-1 w-56 rounded-xl border border-[#D2D2D7] dark:border-k-border-primary bg-white dark:bg-surface-card shadow-lg z-20 overflow-hidden"
+                                    >
+                                        {onCreateScheduled && (
+                                            <button
+                                                role="menuitem"
+                                                onClick={() => {
+                                                    setShowNextMenu(false)
+                                                    onCreateScheduled()
+                                                }}
+                                                className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-[#1D1D1F] dark:text-k-text-primary hover:bg-[#F5F5F7] dark:hover:bg-white/5 transition-colors"
+                                            >
+                                                <Plus className="w-3.5 h-3.5 text-violet-500" />
+                                                Criar novo programa
+                                            </button>
+                                        )}
+                                        {onCreateScheduled && onAssignScheduled && (
+                                            <div className="h-px bg-[#E8E8ED] dark:bg-k-border-subtle mx-2" />
+                                        )}
+                                        {onAssignScheduled && (
+                                            <button
+                                                role="menuitem"
+                                                onClick={() => {
+                                                    setShowNextMenu(false)
+                                                    onAssignScheduled()
+                                                }}
+                                                className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-[#1D1D1F] dark:text-k-text-primary hover:bg-[#F5F5F7] dark:hover:bg-white/5 transition-colors"
+                                            >
+                                                <Library className="w-3.5 h-3.5 text-violet-500" />
+                                                Atribuir programa existente
+                                            </button>
+                                        )}
+                                    </motion.div>
+                                )}
+                            </div>
+                        )}
                         {onViewReport && (
                             <button
                                 onClick={onViewReport}
@@ -454,7 +556,7 @@ export function ActiveProgramDashboard({
                                         completed >= expected
                                             ? 'text-emerald-400'
                                             : completed > 0
-                                                ? 'text-yellow-400'
+                                                ? 'text-amber-400'
                                                 : 'text-red-400'
                                     }`}>
                                         {completed >= expected
@@ -487,24 +589,48 @@ export function ActiveProgramDashboard({
                     </div>
                 </div>
 
-                {/* Navigable Calendar */}
-                {program.assigned_workouts && program.started_at && (
-                    <div data-onboarding="student-calendar">
-                        <ProgramCalendar
-                            programId={program.id}
-                            programStartedAt={program.started_at}
-                            programDurationWeeks={program.duration_weeks}
-                            scheduledWorkouts={program.assigned_workouts}
-                            initialSessions={calendarInitialSessions}
-                            studentId={studentId}
-                            onDayClick={(day) => {
-                                if (day.status === 'done' && day.completedSessions.length > 0) {
-                                    handleSessionClick(day.completedSessions[0].id)
-                                }
-                            }}
-                        />
-                    </div>
+                {/* Onda 2 — Faixa de tendência de adesão (12 semanas). */}
+                {program.started_at && weeklyAdherence.length >= 2 && (
+                    <AdherenceTrendStrip
+                        weeklyAdherence={weeklyAdherence}
+                        onWeekClick={(w) => setCalendarStartWeek(w)}
+                    />
                 )}
+
+                {/* Navigable Calendar */}
+                {program.assigned_workouts && program.started_at && (() => {
+                    // Conversão da semana clicada no sparkline pra Date que o
+                    // calendário usa de anchor. weeklyAdherence vem com `week`
+                    // 1-indexed, então subtraímos 1 ao calcular o offset.
+                    const startedAt = program.started_at
+                    const weekNum =
+                        typeof calendarStartWeek === 'number'
+                            ? calendarStartWeek
+                            : typeof calendarStartWeek === 'string'
+                                ? Number.parseInt(calendarStartWeek, 10)
+                                : NaN
+                    const initialWeekStart = Number.isFinite(weekNum) && weekNum > 0
+                        ? addWeeks(new Date(startedAt), weekNum - 1)
+                        : undefined
+                    return (
+                        <div data-onboarding="student-calendar">
+                            <ProgramCalendar
+                                programId={program.id}
+                                programStartedAt={startedAt}
+                                programDurationWeeks={program.duration_weeks}
+                                scheduledWorkouts={program.assigned_workouts}
+                                initialSessions={calendarInitialSessions}
+                                studentId={studentId}
+                                initialWeekStart={initialWeekStart}
+                                onDayClick={(day) => {
+                                    if (day.status === 'done' && day.completedSessions.length > 0) {
+                                        handleSessionClick(day.completedSessions[0].id)
+                                    }
+                                }}
+                            />
+                        </div>
+                    )
+                })()}
 
                 {/* Recent Sessions List - Compact Feed */}
                 <div>

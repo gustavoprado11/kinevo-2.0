@@ -1,6 +1,14 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import {
+    upsertInsightByKey as upsertInsightByKeyImpl,
+    type UpsertInsightByKeyPayload,
+    type UpsertInsightByKeyResult,
+} from '@/lib/insights/upsert'
+
+// NOTE: 'use server' não pode exportar types diretamente. Consumers que
+// precisem dos tipos devem importar de '@/lib/insights/upsert'.
 
 // ── Types ──
 
@@ -182,4 +190,17 @@ export async function deletePinnedNote(insightId: string): Promise<{ success: bo
         .eq('category', 'pinned_note')
 
     return { success: !error }
+}
+
+// ── Onda 3 — upsertInsightByKey ──────────────────────────────────────────
+//
+// Wrapper Server Action sobre `@/lib/insights/upsert`. A lib parametriza o
+// client (server-side com RLS aqui; admin no cron). Documentação completa
+// e regra de dedup ficam na lib.
+
+export async function upsertInsightByKey(
+    payload: UpsertInsightByKeyPayload,
+): Promise<UpsertInsightByKeyResult> {
+    const supabase = await createClient()
+    return upsertInsightByKeyImpl(supabase, payload)
 }

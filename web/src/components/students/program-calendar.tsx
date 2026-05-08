@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useCallback, useTransition } from 'react'
+import { useState, useMemo, useCallback, useTransition, useEffect } from 'react'
 import { ChevronLeft, ChevronRight, CalendarDays, LayoutGrid } from 'lucide-react'
 import {
     generateCalendarDays,
@@ -28,6 +28,12 @@ interface ProgramCalendarProps {
     onDayClick?: (day: CalendarDay) => void
     /** When provided, fetches ALL student sessions (full history) instead of only program sessions */
     studentId?: string
+    /**
+     * Quando fornecido, posiciona o calendário nessa data ao montar e a cada
+     * mudança de identidade do prop. Usado pelo `AdherenceTrendStrip` para
+     * navegar até a semana clicada no sparkline. Não muda o `viewMode`.
+     */
+    initialWeekStart?: Date
 }
 
 // ---------------------------------------------------------------------------
@@ -371,21 +377,19 @@ function MetricsBar({ days }: { days: CalendarDay[] }) {
         return { rate, streak, allCompleted, hasProgramDays, historicCount, currentCount }
     }, [days])
 
-    if (metrics.allCompleted === 0 && !metrics.hasProgramDays) return null
+    // Onda 2: removidos "Adesão %" e "N treinos" inline — duplicavam o stats grid
+    // imediatamente acima do calendário e a faixa AdherenceTrendStrip nova.
+    // Mantemos só o ruído útil que ainda não aparece em nenhum outro lugar:
+    // contagem de sessões herdadas de outros programas e sequência atual.
+    const showHistoric = metrics.historicCount > 0
+    const showStreak = metrics.hasProgramDays && metrics.streak > 0
+    if (!showHistoric && !showStreak) return null
 
     return (
         <div className="mt-4 pt-3 border-t border-[#F0F0F0] dark:border-k-border-subtle">
             <div className="flex items-center gap-4 flex-wrap">
-                {/* Total sessions this period */}
-                <div className="flex items-center gap-1.5">
-                    <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                    <span className="text-[10px] font-bold text-[#6E6E73] dark:text-k-text-tertiary">
-                        {metrics.currentCount} {metrics.currentCount === 1 ? 'treino' : 'treinos'}
-                    </span>
-                </div>
-
                 {/* Historic sessions */}
-                {metrics.historicCount > 0 && (
+                {showHistoric && (
                     <div className="flex items-center gap-1.5">
                         <div className="w-2 h-2 rounded-full bg-violet-300 dark:bg-violet-500/40" />
                         <span className="text-[10px] font-bold text-[#6E6E73] dark:text-k-text-tertiary">
@@ -394,21 +398,9 @@ function MetricsBar({ days }: { days: CalendarDay[] }) {
                     </div>
                 )}
 
-                {/* Adherence rate (only when in-program) */}
-                {metrics.hasProgramDays && (
-                    <div className="flex items-center gap-1.5 ml-auto">
-                        <span className="text-[10px] font-bold text-[#AEAEB2] dark:text-k-text-quaternary">Adesão</span>
-                        <span className={`text-[11px] font-black ${
-                            metrics.rate >= 80 ? 'text-emerald-500' : metrics.rate >= 50 ? 'text-amber-500' : 'text-red-500'
-                        }`}>
-                            {metrics.rate}%
-                        </span>
-                    </div>
-                )}
-
                 {/* Streak (only when in-program and > 0) */}
-                {metrics.hasProgramDays && metrics.streak > 0 && (
-                    <div className="flex items-center gap-1.5">
+                {showStreak && (
+                    <div className="flex items-center gap-1.5 ml-auto">
                         <span className="text-[10px] font-bold text-[#AEAEB2] dark:text-k-text-quaternary">Sequência</span>
                         <span className="text-[11px] font-black text-violet-500">{metrics.streak}</span>
                     </div>
@@ -453,9 +445,10 @@ export function ProgramCalendar({
     initialSessions,
     onDayClick,
     studentId,
+    initialWeekStart,
 }: ProgramCalendarProps) {
     const [viewMode, setViewMode] = useState<'week' | 'month'>('week')
-    const [anchorDate, setAnchorDate] = useState(() => new Date())
+    const [anchorDate, setAnchorDate] = useState(() => initialWeekStart ?? new Date())
     const [sessionsCache, setSessionsCache] = useState<Map<string, SessionRef>>(() => {
         const map = new Map<string, SessionRef>()
         for (const s of initialSessions) {
@@ -515,6 +508,17 @@ export function ProgramCalendar({
         },
         [programId, studentId],
     )
+
+    // Onda 2 — quando o parent muda `initialWeekStart` (ex.: clique no
+    // sparkline do AdherenceTrendStrip), reposicionamos o anchor e fetch
+    // o range correspondente. Não muda viewMode propositalmente — o usuário
+    // pode estar em mês e querer ver a semana específica em mês.
+    useEffect(() => {
+        if (!initialWeekStart) return
+        setAnchorDate(initialWeekStart)
+        fetchAndMerge(initialWeekStart, viewMode)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [initialWeekStart?.getTime()])
 
     // Navigation
     const navigate = useCallback(

@@ -38,6 +38,7 @@ const FREQUENCY_LABELS: Record<RecurringAppointment['frequency'], string> = {
 interface Props {
     studentId: string
     refreshKey?: number
+    onLoadedCount?: (count: number) => void
 }
 
 interface SingleEntry {
@@ -79,7 +80,7 @@ function groupRules(rules: RecurringAppointment[]): Entry[] {
     return entries
 }
 
-export function StudentScheduleSection({ studentId, refreshKey = 0 }: Props) {
+export function StudentScheduleSection({ studentId, refreshKey = 0, onLoadedCount }: Props) {
     const [rules, setRules] = useState<RecurringAppointment[] | null>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -103,10 +104,12 @@ export function StudentScheduleSection({ studentId, refreshKey = 0 }: Props) {
             setRules([])
         } else {
             setError(null)
-            setRules((data ?? []) as unknown as RecurringAppointment[])
+            const loaded = (data ?? []) as unknown as RecurringAppointment[]
+            setRules(loaded)
+            onLoadedCount?.(loaded.length)
         }
         setLoading(false)
-    }, [studentId])
+    }, [studentId, onLoadedCount])
 
     useEffect(() => {
         let cancelled = false

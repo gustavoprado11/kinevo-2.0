@@ -16,10 +16,13 @@ import { activateProgram } from './actions/activate-program'
 import { deleteProgram } from './actions/delete-program'
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
 import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
+import { useOnboardingStore } from '@/stores/onboarding-store'
 import { getProgramWeek } from '@kinevo/shared/utils/schedule-projection'
 import { formatBrDate } from '@kinevo/shared/utils/format-br-date'
 import { FinancialSidebarCard } from '@/components/students/financial-sidebar-card'
-import { AssessmentSidebarCard } from '@/components/students/assessment-sidebar-card'
+import { HealthMetricsCard } from '@/components/students/health-metrics-card'
+import { SmartBanner } from '@/components/students/smart-banner'
+import { pickBanner, type BannerContext } from '@/components/students/smart-banner-rules'
 import { AlertCircle, Dumbbell, Clock } from 'lucide-react'
 import { QuickMessageCard } from '@/components/students/quick-message-card'
 import { StudentInsightsCard } from '@/components/students/student-insights-card'
@@ -235,6 +238,8 @@ export function StudentDetailClient({
     const [activationBlock, setActivationBlock] = useState<{ workoutNames: string[] } | null>(null)
     const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false)
     const [scheduleRefreshKey, setScheduleRefreshKey] = useState(0)
+    // null = ainda carregando; 0 = sem rotinas (esconder); >0 = mostrar.
+    const [scheduleCount, setScheduleCount] = useState<number | null>(null)
 
     const handleAssignProgram = () => {
         setAssignModalMode('immediate')
@@ -360,6 +365,100 @@ export function StudentDetailClient({
         router.push(`/students/${student.id}/program/${programId}/edit`)
     }
 
+    // ── Onda 3 — SmartBanner ────────────────────────────────────────────
+    // Calculamos o banner aqui (função pura, custo zero) pra coordenar o
+    // estado entre o componente e o HealthMetricsCard (que esconde o
+    // próprio banner de reavaliação quando o SmartBanner já cobre).
+    const daysUntilReassessment = (() => {
+        if (!formSchedules || formSchedules.length === 0) return null
+        const dueDates = formSchedules
+            .filter((s: any) => s?.is_active !== false && s?.next_due_at)
+            .map((s: any) => new Date(s.next_due_at).getTime())
+            .filter((t) => Number.isFinite(t))
+        if (dueDates.length === 0) return null
+        const earliest = Math.min(...dueDates)
+        return Math.ceil((earliest - Date.now()) / (24 * 60 * 60 * 1000))
+    })()
+
+    const bannerContext: BannerContext = {
+        studentName: student.name,
+        studentPhone: student.phone,
+        activeProgram: activeProgram
+            ? {
+                status: activeProgram.status,
+                started_at: activeProgram.started_at,
+                duration_weeks: activeProgram.duration_weeks,
+            }
+            : null,
+        historySummary: {
+            totalSessions: historySummary.totalSessions,
+            lastSessionDate: historySummary.lastSessionDate,
+            completedThisWeek: historySummary.completedThisWeek,
+            expectedPerWeek: historySummary.expectedPerWeek,
+            streak: historySummary.streak,
+        },
+        recentSessions: recentSessions.map((s: any) => ({
+            id: s?.id,
+            rpe: typeof s?.rpe === 'number' ? s.rpe : null,
+        })),
+        tonnageMap,
+        weeklyAdherence,
+        financialStatus: displayStatus,
+        hasPendingForms: pendingForms.length > 0,
+        daysUntilReassessment,
+    }
+
+    const activeBanner = pickBanner(bannerContext)
+
+    const handleBannerAction = (actionId: string) => {
+        switch (actionId) {
+            case 'send_message':
+                handleOpenMessages()
+                break
+            case 'open_whatsapp':
+                if (student.phone) {
+                    const digits = student.phone.replace(/\D/g, '')
+                    if (digits) window.open(`https://wa.me/${digits}`, '_blank', 'noopener,noreferrer')
+                }
+                break
+            case 'extend_program':
+                handleExtendProgram()
+                break
+            case 'complete_program':
+                handleCompleteProgram()
+                break
+            case 'assign_program':
+                handleAssignProgram()
+                break
+            case 'adjust_load': {
+                // Foca/scrolla o card do programa ativo (onde fica a tonelagem
+                // por workout e o sparkline). Refinement futuro: expor um
+                // imperativo no ActiveProgramDashboard pra abrir o gráfico.
+                const el = document.querySelector('[data-onboarding="student-actions"]')
+                el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                break
+            }
+            case 'send_reassessment': {
+                // Ver follow-up: expor handle imperativo no HealthMetricsCard
+                // pra abrir o dropdown de envio de form direto.
+                const el = document.querySelector('[data-onboarding="assessments"]')
+                el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                break
+            }
+            case 'view_finance':
+                router.push(`/financial?student=${student.id}`)
+                break
+            default:
+                console.warn('[SmartBanner] action sem handler:', actionId)
+        }
+    }
+
+    // Atalhos extras só fazem sentido com programa ativo + callback truthy.
+    const adjustLoadShortcut = activeProgram
+        ? () => handleBannerAction('adjust_load')
+        : undefined
+    const planNextShortcut = activeProgram ? handleAssignProgram : undefined
+
     return (
         <AppLayout
             trainerName={trainer.name}
@@ -380,6 +479,7 @@ export function StudentDetailClient({
                     onEdit={handleEditStudent}
                     onDelete={handleDeleteStudent}
                     onSchedule={student.is_trainer_profile ? undefined : () => setIsScheduleModalOpen(true)}
+                    onStartTour={student.is_trainer_profile ? undefined : () => useOnboardingStore.getState().startTour('student_detail')}
                 >
                     <StudentStatusBar
                         historySummary={historySummary}
@@ -392,8 +492,20 @@ export function StudentDetailClient({
                         studentName={student.name}
                         studentPhone={student.phone}
                         onSendMessage={handleOpenMessages}
+                        mode="compact"
                     />
                 </StudentHeader>
+
+                {/* Onda 3 — SmartBanner: 1 banner dominante baseado no estado
+                    do aluno (critical/high/info). Substitui os chips de alerta
+                    que viviam dentro da StudentStatusBar (agora em modo compact). */}
+                {activeBanner && (
+                    <SmartBanner
+                        studentId={student.id}
+                        context={bannerContext}
+                        onAction={handleBannerAction}
+                    />
+                )}
 
                 {/* Main Content Grid - New Layout */}
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
@@ -411,6 +523,8 @@ export function StudentDetailClient({
                             onCompleteProgram={handleCompleteProgram}
                             onExtendProgram={handleExtendProgram}
                             onCreateProgram={handleCreateProgram}
+                            onAssignScheduled={handleAssignScheduled}
+                            onCreateScheduled={handleCreateScheduled}
                             onViewReport={activeProgram ? () => window.open(`/reports/program/${activeProgram.id}`, '_blank') : undefined}
                             hasActiveProgram={!!activeProgram}
                             studentId={student.id}
@@ -421,20 +535,41 @@ export function StudentDetailClient({
                             <LoadProgressionChart programId={activeProgram.id} />
                         )}
 
-                        {/* Program Comparison — volume per muscle group */}
+                        {/* Program Comparison — Onda 2: strip compact com 1 card de
+                            Volume + link pra modal com a versão detalhada por grupo
+                            muscular. */}
                         {activeProgram && completedPrograms.length > 0 && (
                             <ProgramComparisonCard
                                 currentProgramId={activeProgram.id}
                                 currentProgramName={activeProgram.name}
                                 previousProgramId={completedPrograms[0].id}
                                 previousProgramName={completedPrograms[0].name}
+                                compact
                             />
                         )}
                     </div>
 
                     {/* Right Column: Próximos Programas (prioridade) → Mensagem → Insights → Avaliações → Financeiro → Histórico */}
                     <div className="space-y-6 lg:col-span-1">
-                        {/* Scheduled Programs — FIRST: ação mais recorrente quando o ciclo termina */}
+                        {/* Scheduled Programs — FIRST: ação mais recorrente quando o ciclo termina.
+                            Card só aparece quando o treinador realmente precisa olhar a fila:
+                            - há programas agendados, OU
+                            - não há programa ativo (precisa criar o primeiro), OU
+                            - o programa ativo expirou, OU
+                            - o programa ativo passou de 75% (hora de planejar o próximo).
+                            Caso contrário (programa em <75% e fila vazia) o card é omitido
+                            para não competir com o calendário do programa ativo. */}
+                        {(() => {
+                            const programProgress = activeProgram?.started_at && activeProgram?.duration_weeks
+                                ? (getProgramWeek(new Date(), activeProgram.started_at, activeProgram.duration_weeks) ?? activeProgram.duration_weeks) / activeProgram.duration_weeks
+                                : 0
+                            const shouldShow =
+                                (scheduledPrograms && scheduledPrograms.length > 0) ||
+                                !activeProgram ||
+                                (activeProgram.status as string) === 'expired' ||
+                                programProgress >= 0.75
+                            if (!shouldShow) return null
+                            return (
                         <div className="bg-white dark:bg-glass-bg backdrop-blur-md rounded-2xl border border-transparent dark:border-k-border-primary shadow-sm dark:shadow-none p-6">
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="text-sm font-semibold text-[#1C1C1E] dark:text-white flex items-center gap-2">
@@ -579,13 +714,22 @@ export function StudentDetailClient({
                                 </div>
                             )}
                         </div>
+                            )
+                        })()}
 
-                        {/* Recurring appointments rotina atual */}
+                        {/* Recurring appointments rotina atual.
+                            Escondemos via CSS (sem desmontar) quando o aluno não tem rotinas:
+                            mantém o componente montado pra preservar estado interno e
+                            permitir re-fetch quando uma nova rotina é criada. Estado inicial
+                            null mantém o card visível durante o load. */}
                         {!student.is_trainer_profile && (
-                            <StudentScheduleSection
-                                studentId={student.id}
-                                refreshKey={scheduleRefreshKey}
-                            />
+                            <div className={scheduleCount === 0 ? 'hidden' : ''}>
+                                <StudentScheduleSection
+                                    studentId={student.id}
+                                    refreshKey={scheduleRefreshKey}
+                                    onLoadedCount={setScheduleCount}
+                                />
+                            </div>
                         )}
 
                         {/* Quick Message with context-aware suggestions */}
@@ -624,10 +768,12 @@ export function StudentDetailClient({
                             insights={studentInsights}
                         />
 
-                        {/* Assessments + Body Metrics (trend embutido) */}
+                        {/* Saúde & métricas — Onda 2 unificou AssessmentSidebarCard +
+                            BodyMetricsTrend num só card. AssessmentSidebarCard segue
+                            existindo (marcado @deprecated) até a Onda 3 remover. */}
                         {/* data-onboarding acts as a scroll anchor for inline insight CTAs ("Ver avaliação", "Ver check-in"). */}
                         <div data-onboarding="assessments">
-                        <AssessmentSidebarCard
+                        <HealthMetricsCard
                             studentId={student.id}
                             lastSubmission={lastSubmission}
                             pendingForms={pendingForms}
@@ -636,6 +782,7 @@ export function StudentDetailClient({
                             formTemplates={formTemplates}
                             formSchedules={formSchedules}
                             latestPresencialSession={latestPresencialSession}
+                            hideReassessmentBanner={activeBanner?.key === 'reassessment_due'}
                         />
                         </div>
 
@@ -727,10 +874,12 @@ export function StudentDetailClient({
                 onEditStudent={handleEditStudent}
                 onNavigateMessages={handleOpenMessages}
                 hasActiveProgram={!!activeProgram}
+                onAdjustLoad={adjustLoadShortcut}
+                onPlanNextProgram={planNextShortcut}
             />
 
-            {/* Tour: Student Detail (auto-start on first visit) */}
-            <TourRunner tourId="student_detail" steps={TOUR_STEPS.student_detail} autoStart />
+            {/* Tour: Student Detail (opt-in via "Tour rápido" no menu do header) */}
+            <TourRunner tourId="student_detail" steps={TOUR_STEPS.student_detail} autoStart={false} />
         </AppLayout>
     )
 }

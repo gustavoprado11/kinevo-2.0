@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { GitCompareArrows, ArrowRight, ChevronDown, ChevronUp } from 'lucide-react'
+import { GitCompareArrows, ArrowRight, ChevronDown, ChevronUp, X, TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import type { ProgramMuscleVolume } from '@/app/students/[id]/actions/get-program-muscle-volume'
 
 interface ProgramComparisonCardProps {
@@ -9,6 +9,16 @@ interface ProgramComparisonCardProps {
     currentProgramName: string
     previousProgramId: string
     previousProgramName: string
+    /**
+     * Onda 2 — Quando true, renderiza um strip compacto com 1 card de Volume
+     * (com %change real) + link "Ver comparação detalhada por grupo muscular →"
+     * que abre a versão completa em modal. Padrão: false (versão completa
+     * inline, comportamento original).
+     *
+     * Carga média e PSE média ficaram fora de escopo nesta onda — viram
+     * follow-up até existirem actions/dados que sustentem (ver log).
+     */
+    compact?: boolean
 }
 
 /** Abbreviate long muscle group names for compact display */
@@ -62,11 +72,14 @@ export function ProgramComparisonCard({
     currentProgramName,
     previousProgramId,
     previousProgramName,
+    compact = false,
 }: ProgramComparisonCardProps) {
     const [currentVolume, setCurrentVolume] = useState<ProgramMuscleVolume | null>(null)
     const [previousVolume, setPreviousVolume] = useState<ProgramMuscleVolume | null>(null)
     const [loading, setLoading] = useState(true)
     const [expanded, setExpanded] = useState(false)
+    // Modal aberto pelo strip compact com a versão completa do mesmo componente.
+    const [detailsOpen, setDetailsOpen] = useState(false)
 
     useEffect(() => {
         let cancelled = false
@@ -116,6 +129,110 @@ export function ProgramComparisonCard({
         return Math.max(...rows.map(r => Math.max(r.curr, r.prev)), 1)
     }, [rows])
 
+    // ── Onda 2 — Strip compact com 1 card de Volume + link pra modal ────────
+    if (compact) {
+        const totalDiff = (currentVolume?.totalSets || 0) - (previousVolume?.totalSets || 0)
+        const prevTotal = previousVolume?.totalSets || 0
+        const currTotal = currentVolume?.totalSets || 0
+        const pctChange = prevTotal > 0 ? Math.round(((currTotal - prevTotal) / prevTotal) * 100) : null
+
+        return (
+            <>
+                <div className="bg-white dark:bg-glass-bg backdrop-blur-md rounded-2xl border border-transparent dark:border-k-border-primary shadow-sm dark:shadow-none p-5">
+                    <div className="flex items-center gap-2 mb-3">
+                        <GitCompareArrows className="w-4 h-4 text-violet-500" />
+                        <h4 className="text-sm font-semibold text-[#1C1C1E] dark:text-white">Comparativo de volume</h4>
+                    </div>
+
+                    {loading ? (
+                        <div className="h-16 bg-[#F5F5F7] dark:bg-white/5 rounded-xl animate-pulse" />
+                    ) : rows.length === 0 ? (
+                        <p className="text-xs text-k-text-quaternary italic">Sem dados de volume comparáveis.</p>
+                    ) : (
+                        <>
+                            <div className="rounded-xl bg-[#F5F5F7] dark:bg-white/5 p-3">
+                                <p className="text-[10px] font-bold text-[#86868B] dark:text-k-text-quaternary uppercase tracking-wider">
+                                    Volume total · séries
+                                </p>
+                                <div className="flex items-baseline gap-2 mt-1">
+                                    <span className="text-2xl font-black text-[#1C1C1E] dark:text-white tracking-tighter">
+                                        {currTotal}
+                                    </span>
+                                    <span className="text-[11px] text-[#86868B] dark:text-k-text-quaternary">
+                                        vs {prevTotal} anterior
+                                    </span>
+                                </div>
+                                {pctChange != null && totalDiff !== 0 && (
+                                    <span
+                                        className={`mt-1 inline-flex items-center gap-0.5 text-[11px] font-bold ${
+                                            totalDiff > 0
+                                                ? 'text-emerald-600 dark:text-emerald-400'
+                                                : 'text-amber-600 dark:text-amber-400'
+                                        }`}
+                                    >
+                                        {totalDiff > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                                        {pctChange > 0 ? '+' : ''}
+                                        {pctChange}% ({totalDiff > 0 ? '+' : ''}
+                                        {totalDiff} séries)
+                                    </span>
+                                )}
+                                {pctChange == null && totalDiff === 0 && (
+                                    <span className="mt-1 inline-flex items-center gap-0.5 text-[11px] font-bold text-k-text-quaternary">
+                                        <Minus className="w-3 h-3" />
+                                        sem variação
+                                    </span>
+                                )}
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={() => setDetailsOpen(true)}
+                                className="mt-3 text-[11px] font-bold text-violet-500 hover:text-violet-400 transition-colors"
+                            >
+                                Ver comparação detalhada por grupo muscular →
+                            </button>
+                        </>
+                    )}
+                </div>
+
+                {detailsOpen && (
+                    <div
+                        className="fixed inset-0 z-modal flex items-center justify-center p-4"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-label="Comparativo de volume detalhado"
+                    >
+                        <div
+                            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                            onClick={() => setDetailsOpen(false)}
+                            aria-hidden="true"
+                        />
+                        <div className="relative bg-white dark:bg-surface-card border border-[#D2D2D7] dark:border-k-border-primary rounded-2xl shadow-2xl max-w-lg w-full max-h-[85vh] overflow-y-auto">
+                            <button
+                                type="button"
+                                onClick={() => setDetailsOpen(false)}
+                                aria-label="Fechar"
+                                className="absolute top-3 right-3 z-sticky p-1.5 text-k-text-quaternary hover:text-k-text-primary hover:bg-glass-bg rounded-lg transition-colors"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                            {/* Reusa a versão completa do mesmo componente; ela faz o
+                                próprio fetch (custo aceitável — ver follow-up
+                                useProgramVolumeComparison no log da Onda 2). */}
+                            <ProgramComparisonCard
+                                currentProgramId={currentProgramId}
+                                currentProgramName={currentProgramName}
+                                previousProgramId={previousProgramId}
+                                previousProgramName={previousProgramName}
+                            />
+                        </div>
+                    </div>
+                )}
+            </>
+        )
+    }
+
+    // ── Versão completa (default) ─────────────────────────────────────────────
     if (loading) {
         return (
             <div className="bg-white dark:bg-glass-bg backdrop-blur-md rounded-2xl border border-transparent dark:border-k-border-primary shadow-sm dark:shadow-none p-5">

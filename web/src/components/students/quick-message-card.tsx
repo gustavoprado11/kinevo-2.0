@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { Send, Loader2, Check, MessageCircle } from 'lucide-react'
+import { Send, Loader2, Check, MessageCircle, Sparkles } from 'lucide-react'
 import { sendMessage } from '@/app/messages/actions'
 
 interface QuickSuggestion {
@@ -100,19 +100,34 @@ export function QuickMessageCard({ studentId, studentName, suggestions = [], onO
                 <p className="text-red-500 text-[10px] mb-2">{error}</p>
             )}
 
-            {/* Quick suggestions */}
+            {/* Quick suggestions — Onda 2 destaca a primeira como frase pronta
+                contextual (chip violeta com ícone Sparkles + texto entre aspas).
+                As demais (até mais 2) seguem como chips compactos. */}
             {suggestions.length > 0 && !text && (
-                <div className="flex flex-wrap gap-1.5 mb-3">
-                    {suggestions.slice(0, 3).map((s, i) => (
-                        <button
-                            key={i}
-                            onClick={() => setText(s.message)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#F5F5F7] dark:bg-white/5 hover:bg-[#E8E8ED] dark:hover:bg-white/10 text-[11px] font-medium text-[#6E6E73] dark:text-k-text-tertiary transition-colors"
-                        >
-                            <span>{s.emoji}</span>
-                            <span>{s.label}</span>
-                        </button>
-                    ))}
+                <div className="flex flex-col gap-2 mb-3">
+                    <button
+                        type="button"
+                        onClick={() => setText(suggestions[0].message)}
+                        className="w-full text-left px-3 py-2 rounded-lg bg-violet-50 dark:bg-violet-500/10 border border-violet-200 dark:border-violet-500/20 text-violet-700 dark:text-violet-300 text-[12.5px] font-bold transition-colors hover:bg-violet-100 dark:hover:bg-violet-500/15 flex items-start gap-2"
+                        data-testid="featured-suggestion"
+                    >
+                        <Sparkles className="w-3.5 h-3.5 mt-0.5 shrink-0 opacity-70" aria-hidden="true" />
+                        <span className="italic">&ldquo;{suggestions[0].message}&rdquo;</span>
+                    </button>
+                    {suggestions.length > 1 && (
+                        <div className="flex flex-wrap gap-1.5">
+                            {suggestions.slice(1, 3).map((s, i) => (
+                                <button
+                                    key={i}
+                                    onClick={() => setText(s.message)}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#F5F5F7] dark:bg-white/5 hover:bg-[#E8E8ED] dark:hover:bg-white/10 text-[11px] font-medium text-[#6E6E73] dark:text-k-text-tertiary transition-colors"
+                                >
+                                    <span>{s.emoji}</span>
+                                    <span>{s.label}</span>
+                                </button>
+                            ))}
+                        </div>
+                    )}
                 </div>
             )}
 
