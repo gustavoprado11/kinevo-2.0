@@ -6,6 +6,7 @@ import { StudentDetailClient } from './student-detail-client'
 import { getSessionsTonnage } from './actions/get-sessions-tonnage'
 import { computeDisplayStatus } from '@/lib/utils/financial'
 import { BODY_METRIC_FIELD_MAP, SUPPORTED_METRIC_SYSTEM_KEYS } from '@/lib/constants/body-metrics'
+import { getAssessmentSessionList } from '@/actions/assessments/get-session-list'
 
 export default async function StudentDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params
@@ -425,6 +426,18 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
         form_template_title: s.form_templates?.title ?? 'Formulário',
     }))
 
+    // M4 — Latest completed in-person assessment for this student.
+    // Drives the "Avaliação Presencial" block in AssessmentSidebarCard.
+    const presencialRes = await getAssessmentSessionList({
+        studentId: student.id,
+        filter: 'completed',
+        limit: 1,
+    })
+    const latestPresencialSession =
+        presencialRes.success && presencialRes.data && presencialRes.data.length > 0
+            ? presencialRes.data[0]
+            : null
+
     return (
         <StudentDetailClient
             trainer={trainer}
@@ -446,6 +459,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
             formSchedules={formSchedules}
             studentInsights={studentInsights}
             bodyMetricsHistory={bodyMetricsHistory}
+            latestPresencialSession={latestPresencialSession}
         />
     )
 }

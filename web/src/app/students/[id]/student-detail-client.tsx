@@ -186,6 +186,7 @@ interface StudentDetailClientProps {
     formSchedules?: any[]
     studentInsights?: InsightItem[]
     bodyMetricsHistory?: { weight: number | null; bodyFat: number | null; date: string }[]
+    latestPresencialSession?: import('@kinevo/shared/types/assessments').AssessmentSessionListItem | null
 }
 
 export function StudentDetailClient({
@@ -208,6 +209,7 @@ export function StudentDetailClient({
     formSchedules = [],
     studentInsights = [],
     bodyMetricsHistory = [],
+    latestPresencialSession = null,
 }: StudentDetailClientProps) {
     const router = useRouter()
     const openPanel = useCommunicationStore(s => s.openPanel)
@@ -633,6 +635,7 @@ export function StudentDetailClient({
                             bodyMetricsHistory={bodyMetricsHistory}
                             formTemplates={formTemplates}
                             formSchedules={formSchedules}
+                            latestPresencialSession={latestPresencialSession}
                         />
                         </div>
 

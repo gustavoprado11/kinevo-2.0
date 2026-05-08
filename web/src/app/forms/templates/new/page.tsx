@@ -1,9 +1,12 @@
 import { getTrainerWithSubscription } from '@/lib/auth/get-trainer'
 import { createClient } from '@/lib/supabase/server'
 import { BuilderClient } from './builder-client'
+import { AssessmentBuilderPageClient } from './assessment-builder-page-client'
+import { AppLayout } from '@/components/layout'
+import type { AssessmentTemplateSchema } from '@kinevo/shared/types/assessments'
 
 interface Props {
-    searchParams: Promise<{ edit?: string }>
+    searchParams: Promise<{ edit?: string; category?: string }>
 }
 
 export default async function BuilderPage({ searchParams }: Props) {
@@ -22,6 +25,36 @@ export default async function BuilderPage({ searchParams }: Props) {
             .single()
 
         existingTemplate = data
+    }
+
+    // Assessment branch — uses the dedicated AssessmentBuilderCanvas (M4).
+    // Triggered by either ?category=assessment OR by editing an existing
+    // template whose category is 'assessment'.
+    const isAssessment =
+        params.category === 'assessment'
+        || (existingTemplate?.category === 'assessment')
+
+    if (isAssessment) {
+        const seed: AssessmentTemplateSchema =
+            (existingTemplate?.schema_json as AssessmentTemplateSchema | null) ?? {
+                schema_version: '1.0',
+                sections: [],
+            }
+        return (
+            <AppLayout
+                trainerName={trainer.name}
+                trainerEmail={trainer.email}
+                trainerAvatarUrl={trainer.avatar_url}
+                trainerTheme={trainer.theme as 'light' | 'dark' | 'system' | null}
+            >
+                <AssessmentBuilderPageClient
+                    templateId={existingTemplate?.id ?? null}
+                    initialTitle={existingTemplate?.title ?? 'Avaliação Presencial'}
+                    initialDescription={existingTemplate?.description ?? null}
+                    initialSchema={seed}
+                />
+            </AppLayout>
+        )
     }
 
     return (

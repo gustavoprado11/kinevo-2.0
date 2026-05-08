@@ -15,6 +15,12 @@ import {
 } from 'lucide-react'
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
 import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
+import { SessionListItem } from '@/components/assessments/session-list-item'
+import { CreateSessionModal } from '@/components/assessments/create-session-modal'
+import type {
+    AssessmentSessionListItem,
+} from '@kinevo/shared/types/assessments'
+import type { AssessmentListFilter } from '@/actions/assessments/get-session-list'
 
 // --- Helpers ---
 const TIMEZONE = 'America/Sao_Paulo'
@@ -156,6 +162,11 @@ interface PendingSent {
     template_title: string | null
 }
 
+interface AssessmentTemplateOption {
+    id: string
+    title: string
+}
+
 interface FormsDashboardClientProps {
     trainer: Trainer
     submissions: Submission[]
@@ -163,6 +174,8 @@ interface FormsDashboardClientProps {
     templates: TemplateInfo[]
     formTemplates: FormTemplate[]
     students: Student[]
+    assessmentSessions: AssessmentSessionListItem[]
+    assessmentTemplates: AssessmentTemplateOption[]
 }
 
 // --- Component ---
@@ -173,12 +186,20 @@ export function FormsDashboardClient({
     templates,
     formTemplates,
     students,
+    assessmentSessions,
+    assessmentTemplates,
 }: FormsDashboardClientProps) {
     const router = useRouter()
     const searchParams = useSearchParams()
     const [filter, setFilter] = useState<FilterType>('all')
     const [isAssignOpen, setIsAssignOpen] = useState(false)
     const [preselectedTemplateId, setPreselectedTemplateId] = useState<string | null>(null)
+    const [activeTab, setActiveTab] = useState<'responses' | 'assessments'>(() => {
+        if (typeof window === 'undefined') return 'responses'
+        return searchParams.get('tab') === 'assessments' ? 'assessments' : 'responses'
+    })
+    const [assessmentFilter, setAssessmentFilter] = useState<AssessmentListFilter>('all')
+    const [createSessionOpen, setCreateSessionOpen] = useState(false)
 
     // Handle URL params (?assign=templateId)
     useEffect(() => {
@@ -200,6 +221,44 @@ export function FormsDashboardClient({
         submissions.filter(s => s.status === 'submitted'), [submissions])
     const completed = useMemo(() =>
         submissions.filter(s => s.status === 'reviewed'), [submissions])
+
+    const filteredAssessments = useMemo(() => {
+        const now = Date.now()
+        return assessmentSessions.filter(s => {
+            if (s.status === 'cancelled') return false
+            if (assessmentFilter === 'all') return true
+            if (assessmentFilter === 'completed') return s.status === 'completed'
+            if (assessmentFilter === 'overdue') {
+                return s.status === 'scheduled'
+                    && s.scheduled_at != null
+                    && new Date(s.scheduled_at).getTime() < now
+            }
+            if (assessmentFilter === 'upcoming') {
+                if (s.status === 'in_progress') return true
+                return s.status === 'scheduled'
+                    && s.scheduled_at != null
+                    && new Date(s.scheduled_at).getTime() >= now
+            }
+            return true
+        })
+    }, [assessmentSessions, assessmentFilter])
+
+    const assessmentCounts = useMemo(() => {
+        const now = Date.now()
+        let overdue = 0
+        let upcoming = 0
+        let done = 0
+        for (const s of assessmentSessions) {
+            if (s.status === 'cancelled') continue
+            if (s.status === 'completed') done += 1
+            else if (s.status === 'in_progress') upcoming += 1
+            else if (s.status === 'scheduled' && s.scheduled_at) {
+                if (new Date(s.scheduled_at).getTime() < now) overdue += 1
+                else upcoming += 1
+            }
+        }
+        return { overdue, upcoming, completed: done }
+    }, [assessmentSessions])
 
     const filteredSubmissions = useMemo(() => {
         if (filter === 'pending') return pending
@@ -311,25 +370,68 @@ export function FormsDashboardClient({
                     )}
                 </div>
                 <div className="flex items-center gap-2">
-                    <button
-                        onClick={() => setIsAssignOpen(true)}
-                        className="flex items-center gap-2 px-4 py-2 bg-[#007AFF] hover:bg-[#0066D6] text-white text-sm font-medium rounded-full transition-all dark:bg-violet-600 dark:hover:bg-violet-500 dark:rounded-xl"
-                    >
-                        <Send size={14} />
-                        Enviar para aluno
-                    </button>
-                    <button
-                        data-onboarding="forms-templates-card"
-                        onClick={() => router.push('/forms/templates/new')}
-                        className="flex items-center gap-2 rounded-full bg-white border border-[#D2D2D7] text-[#6E6E73] hover:bg-[#F5F5F7] hover:text-[#1D1D1F] px-4 py-2 text-sm transition-all dark:rounded-xl dark:bg-transparent dark:border-k-border-primary dark:text-k-text-tertiary dark:hover:text-k-text-primary dark:hover:bg-transparent"
-                    >
-                        <Plus size={14} />
-                        Novo Template
-                    </button>
+                    {activeTab === 'responses' ? (
+                        <>
+                            <button
+                                onClick={() => setIsAssignOpen(true)}
+                                className="flex items-center gap-2 px-4 py-2 bg-[#007AFF] hover:bg-[#0066D6] text-white text-sm font-medium rounded-full transition-all dark:bg-violet-600 dark:hover:bg-violet-500 dark:rounded-xl"
+                            >
+                                <Send size={14} />
+                                Enviar para aluno
+                            </button>
+                            <button
+                                data-onboarding="forms-templates-card"
+                                onClick={() => router.push('/forms/templates/new')}
+                                className="flex items-center gap-2 rounded-full bg-white border border-[#D2D2D7] text-[#6E6E73] hover:bg-[#F5F5F7] hover:text-[#1D1D1F] px-4 py-2 text-sm transition-all dark:rounded-xl dark:bg-transparent dark:border-k-border-primary dark:text-k-text-tertiary dark:hover:text-k-text-primary dark:hover:bg-transparent"
+                            >
+                                <Plus size={14} />
+                                Novo Template
+                            </button>
+                        </>
+                    ) : (
+                        <>
+                            <button
+                                onClick={() => setCreateSessionOpen(true)}
+                                className="flex items-center gap-2 px-4 py-2 bg-violet-500 hover:bg-violet-600 text-white text-sm font-medium rounded-full transition-all dark:rounded-xl"
+                            >
+                                <Plus size={14} />
+                                Nova avaliação
+                            </button>
+                            <button
+                                onClick={() => router.push('/forms/templates/new?category=assessment')}
+                                className="flex items-center gap-2 rounded-full bg-white border border-[#D2D2D7] text-[#6E6E73] hover:bg-[#F5F5F7] hover:text-[#1D1D1F] px-4 py-2 text-sm transition-all dark:rounded-xl dark:bg-transparent dark:border-k-border-primary dark:text-k-text-tertiary dark:hover:text-k-text-primary dark:hover:bg-transparent"
+                            >
+                                <Plus size={14} />
+                                Novo template de avaliação
+                            </button>
+                        </>
+                    )}
                 </div>
             </div>
 
-            {/* Card sections container */}
+            {/* Tabs */}
+            <div className="mb-5 flex items-center gap-1 border-b border-k-border-subtle">
+                <TabButton
+                    active={activeTab === 'responses'}
+                    onClick={() => setActiveTab('responses')}
+                >
+                    Respostas
+                </TabButton>
+                <TabButton
+                    active={activeTab === 'assessments'}
+                    onClick={() => setActiveTab('assessments')}
+                >
+                    Avaliações Presenciais
+                    {assessmentSessions.length > 0 && (
+                        <span className="ml-1.5 rounded-full bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-bold text-violet-500 dark:text-violet-400">
+                            {assessmentSessions.filter(s => s.status !== 'cancelled').length}
+                        </span>
+                    )}
+                </TabButton>
+            </div>
+
+            {activeTab === 'responses' && (
+            /* Card sections container */
             <div className="space-y-6">
 
             {/* Pending Feedback Section */}
@@ -584,10 +686,10 @@ export function FormsDashboardClient({
                 )}
             </div>
 
-            </div>{/* end card sections container */}
+            </div>
+            )}{/* end of activeTab === 'responses' branch */}
 
-            {/* Empty state: no submissions AND no templates */}
-            {submissions.length === 0 && templates.length === 0 && (
+            {activeTab === 'responses' && submissions.length === 0 && templates.length === 0 && (
                 <div className="text-center py-16 mt-4">
                     <ClipboardList className="w-10 h-10 text-k-text-quaternary mx-auto mb-3" strokeWidth={1} />
                     <p className="text-sm font-semibold text-k-text-primary mb-1">Comece criando um template</p>
@@ -600,6 +702,98 @@ export function FormsDashboardClient({
                     >
                         Criar primeiro template
                     </button>
+                </div>
+            )}
+
+            {activeTab === 'assessments' && (
+                <div className="space-y-4">
+                    {/* Filter chips */}
+                    <div className="flex flex-wrap items-center gap-1.5">
+                        <FilterChip
+                            active={assessmentFilter === 'all'}
+                            onClick={() => setAssessmentFilter('all')}
+                            label="Todas"
+                        />
+                        <FilterChip
+                            active={assessmentFilter === 'overdue'}
+                            onClick={() => setAssessmentFilter('overdue')}
+                            label="Em atraso"
+                            count={assessmentCounts.overdue}
+                            tone="red"
+                        />
+                        <FilterChip
+                            active={assessmentFilter === 'upcoming'}
+                            onClick={() => setAssessmentFilter('upcoming')}
+                            label="Próximas"
+                            count={assessmentCounts.upcoming}
+                        />
+                        <FilterChip
+                            active={assessmentFilter === 'completed'}
+                            onClick={() => setAssessmentFilter('completed')}
+                            label="Concluídas"
+                            count={assessmentCounts.completed}
+                        />
+                    </div>
+
+                    {/* Sessions list */}
+                    {filteredAssessments.length === 0 ? (
+                        <div className="rounded-2xl border-2 border-dashed border-k-border-subtle bg-surface-card p-10 text-center">
+                            <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-violet-500/10">
+                                <Plus className="h-5 w-5 text-violet-500 dark:text-violet-400" />
+                            </div>
+                            <p className="text-sm font-semibold text-k-text-primary">
+                                {assessmentSessions.length === 0
+                                    ? 'Nenhuma avaliação ainda'
+                                    : 'Nenhuma avaliação neste filtro'}
+                            </p>
+                            <p className="mx-auto mt-1 max-w-sm text-xs text-k-text-tertiary">
+                                {assessmentSessions.length === 0
+                                    ? 'Crie um template de avaliação presencial e agende a primeira sessão.'
+                                    : 'Troque o filtro ou crie uma nova avaliação.'}
+                            </p>
+                            {assessmentTemplates.length > 0 && (
+                                <button
+                                    onClick={() => setCreateSessionOpen(true)}
+                                    className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-violet-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-600"
+                                >
+                                    <Plus className="h-3.5 w-3.5" />
+                                    Nova avaliação
+                                </button>
+                            )}
+                            {assessmentTemplates.length === 0 && (
+                                <button
+                                    onClick={() => router.push('/forms/templates/new?category=assessment')}
+                                    className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-violet-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-600"
+                                >
+                                    <Plus className="h-3.5 w-3.5" />
+                                    Criar template de avaliação
+                                </button>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="overflow-hidden rounded-2xl border border-k-border-subtle bg-surface-card">
+                            <ul className="divide-y divide-k-border-subtle">
+                                {filteredAssessments.map(session => (
+                                    <li key={session.id}>
+                                        <SessionListItem
+                                            session={session}
+                                            onClick={() => {
+                                                if (session.status === 'completed') {
+                                                    router.push(
+                                                        `/students/${session.student_id}/avaliacoes/${session.id}/result`,
+                                                    )
+                                                } else {
+                                                    router.push(
+                                                        `/students/${session.student_id}/avaliacoes/${session.id}`,
+                                                    )
+                                                }
+                                            }}
+                                        />
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -651,8 +845,95 @@ export function FormsDashboardClient({
                 preselectedTemplateId={preselectedTemplateId}
             />
 
+            {/* Create Session Modal */}
+            <CreateSessionModal
+                open={createSessionOpen}
+                onClose={() => setCreateSessionOpen(false)}
+                students={students}
+                templates={assessmentTemplates}
+                onCreated={(sessionId) => {
+                    // Land on the detail page so trainer can start capture flow
+                    // (today: mobile-only). Web detail page shows checklist + cancel.
+                    const session = assessmentSessions.find(s => s.id === sessionId)
+                    if (session) {
+                        router.push(`/students/${session.student_id}/avaliacoes/${sessionId}`)
+                    } else {
+                        router.refresh()
+                    }
+                }}
+            />
+
             {/* Tour */}
             <TourRunner tourId="forms" steps={TOUR_STEPS.forms} autoStart />
         </AppLayout>
+    )
+}
+
+function TabButton({
+    active,
+    onClick,
+    children,
+}: {
+    active: boolean
+    onClick: () => void
+    children: React.ReactNode
+}) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            className={`relative px-4 py-2.5 text-sm font-medium transition-colors ${
+                active
+                    ? 'text-violet-500 dark:text-violet-400'
+                    : 'text-k-text-tertiary hover:text-k-text-primary'
+            }`}
+        >
+            <span className="inline-flex items-center">{children}</span>
+            {active && (
+                <span className="absolute bottom-[-1px] left-2 right-2 h-0.5 rounded-full bg-violet-500 dark:bg-violet-400" />
+            )}
+        </button>
+    )
+}
+
+function FilterChip({
+    active,
+    onClick,
+    label,
+    count,
+    tone = 'violet',
+}: {
+    active: boolean
+    onClick: () => void
+    label: string
+    count?: number
+    tone?: 'violet' | 'red'
+}) {
+    const cls = active
+        ? tone === 'red'
+            ? 'border-red-500/40 bg-red-500/10 text-red-500'
+            : 'border-violet-500/40 bg-violet-500/10 text-violet-500 dark:text-violet-400'
+        : 'border-k-border-subtle bg-surface-card text-k-text-secondary hover:text-k-text-primary'
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${cls}`}
+        >
+            {label}
+            {count != null && count > 0 && (
+                <span
+                    className={`rounded-full px-1.5 py-px text-[10px] font-bold ${
+                        active
+                            ? 'bg-white/20'
+                            : tone === 'red'
+                                ? 'bg-red-500/15 text-red-500'
+                                : 'bg-violet-500/15 text-violet-500 dark:text-violet-400'
+                    }`}
+                >
+                    {count}
+                </span>
+            )}
+        </button>
     )
 }

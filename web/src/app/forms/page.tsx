@@ -1,6 +1,7 @@
 import { getTrainerWithSubscription } from '@/lib/auth/get-trainer'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { getAssessmentSessionList } from '@/actions/assessments/get-session-list'
 import { FormsDashboardClient } from './forms-dashboard-client'
 
 export default async function FormsPage() {
@@ -100,6 +101,15 @@ export default async function FormsPage() {
         avatar_url: s.avatar_url,
     }))
 
+    // Assessment sessions (M4) — listed in the new "Avaliações Presenciais" tab.
+    const assessmentRes = await getAssessmentSessionList({ filter: 'all', limit: 100 })
+    const assessmentSessions = assessmentRes.success ? (assessmentRes.data ?? []) : []
+
+    // Templates filtered to category='assessment' for the create-session modal.
+    const assessmentTemplates = (templates || [])
+        .filter(t => t.category === 'assessment')
+        .map(t => ({ id: t.id, title: t.title }))
+
     return (
         <FormsDashboardClient
             trainer={trainer}
@@ -108,6 +118,8 @@ export default async function FormsPage() {
             templates={enrichedTemplates}
             formTemplates={formTemplates}
             students={studentsList}
+            assessmentSessions={assessmentSessions}
+            assessmentTemplates={assessmentTemplates}
         />
     )
 }

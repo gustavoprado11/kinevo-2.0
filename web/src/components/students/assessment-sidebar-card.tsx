@@ -2,11 +2,13 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ClipboardList, FileCheck, Clock, Loader2, Send, ChevronDown } from 'lucide-react'
+import { ChevronRight, ClipboardList, FileCheck, Clock, Loader2, Plus, Ruler, Send, ChevronDown } from 'lucide-react'
 import { assignFormToStudents } from '@/actions/forms/assign-form'
 import { ActiveSchedulesList } from './active-schedules-list'
 import { BodyMetricsTrend } from './body-metrics-trend'
 import type { FormScheduleRow } from '@/actions/forms/form-schedules'
+import type { AssessmentSessionListItem } from '@kinevo/shared/types/assessments'
+import { classifyBMI } from '@kinevo/shared/lib/assessment-protocols'
 
 interface LastSubmission {
     id: string
@@ -53,6 +55,12 @@ interface AssessmentSidebarCardProps {
     bodyMetricsHistory?: BodyMetricsHistoryPoint[]
     formTemplates: FormTemplate[]
     formSchedules?: FormScheduleRow[]
+    /**
+     * Most-recent completed in-person assessment for this student. Drives the
+     * new "Avaliação Presencial" block at the top of the sidebar (M4). When
+     * null, the block shows an empty hint with a CTA to create one.
+     */
+    latestPresencialSession?: AssessmentSessionListItem | null
 }
 
 const categoryLabels: Record<string, string> = {
@@ -69,6 +77,7 @@ export function AssessmentSidebarCard({
     bodyMetricsHistory = [],
     formTemplates,
     formSchedules = [],
+    latestPresencialSession = null,
 }: AssessmentSidebarCardProps) {
     const router = useRouter()
     const [dropdownOpen, setDropdownOpen] = useState(false)
@@ -95,7 +104,12 @@ export function AssessmentSidebarCard({
     }
 
     const pendingCount = pendingForms.length
-    const hasData = lastSubmission || pendingCount > 0 || formSchedules.length > 0 || (bodyMetrics?.weight || bodyMetrics?.bodyFat)
+    const hasData =
+        lastSubmission
+        || pendingCount > 0
+        || formSchedules.length > 0
+        || (bodyMetrics?.weight || bodyMetrics?.bodyFat)
+        || !!latestPresencialSession
     const maxVisiblePending = 3
 
     // Empty state — follows "Próximos Programas" empty pattern
@@ -151,6 +165,14 @@ export function AssessmentSidebarCard({
             </div>
 
             <div className="space-y-3">
+                {/* M4 — In-person assessment summary (top, intentionally above
+                    Pending forms since this is a richer, slower-cadence signal). */}
+                <PresencialBlock
+                    studentId={studentId}
+                    session={latestPresencialSession}
+                    onPush={(href) => router.push(href)}
+                />
+
                 {/* Pending forms — shown FIRST (more urgent) */}
                 {pendingCount > 0 && (
                     <div className="space-y-2">
@@ -293,5 +315,112 @@ function SendButton({
                 </>
             )}
         </div>
+    )
+}
+
+// ─── M4: In-person assessment block ────────────────────────────────
+
+const TIMEZONE = 'America/Sao_Paulo'
+
+function formatShortDate(value: string | null): string {
+    if (!value) return '—'
+    return new Date(value).toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: 'short',
+        timeZone: TIMEZONE,
+    })
+}
+
+function safeBmiLabelShort(value: number | undefined): string | null {
+    if (value == null) return null
+    try {
+        return classifyBMI(value).label_pt
+    } catch {
+        return null
+    }
+}
+
+function PresencialBlock({
+    studentId,
+    session,
+    onPush,
+}: {
+    studentId: string
+    session: AssessmentSessionListItem | null
+    onPush: (href: string) => void
+}) {
+    if (!session) {
+        return (
+            <button
+                type="button"
+                onClick={() => onPush('/forms?tab=assessments')}
+                className="group flex w-full items-center gap-2 rounded-lg border border-dashed border-[#D2D2D7] dark:border-k-border-subtle bg-transparent px-3 py-2.5 text-left transition-colors hover:border-violet-500/40 hover:bg-violet-500/5"
+                aria-label="Criar avaliação presencial"
+            >
+                <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md bg-violet-500/10">
+                    <Ruler className="h-3.5 w-3.5 text-violet-500 dark:text-violet-400" />
+                </div>
+                <div className="min-w-0 flex-1">
+                    <div className="text-[11px] font-semibold uppercase tracking-wider text-[#86868B] dark:text-k-text-quaternary">
+                        Avaliação presencial
+                    </div>
+                    <div className="text-xs text-[#1C1C1E] dark:text-k-text-secondary">
+                        Sem avaliações ainda
+                    </div>
+                </div>
+                <Plus className="h-3.5 w-3.5 text-[#86868B] transition-colors group-hover:text-violet-500 dark:text-k-text-quaternary dark:group-hover:text-violet-400" />
+            </button>
+        )
+    }
+
+    const bmi = session.computed_metrics?.bmi
+    const bf = session.computed_metrics?.body_fat_percent
+    const bmiLabel = bmi != null ? safeBmiLabelShort(bmi) : null
+    const dateStr = formatShortDate(session.completed_at)
+
+    return (
+        <button
+            type="button"
+            onClick={() =>
+                onPush(`/students/${studentId}/avaliacoes/${session.id}/result`)
+            }
+            className="group flex w-full items-center gap-2.5 rounded-lg border border-violet-500/20 bg-violet-500/5 px-3 py-2.5 text-left transition-colors hover:border-violet-500/40 hover:bg-violet-500/10"
+            aria-label="Ver última avaliação presencial"
+        >
+            <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md bg-violet-500/15">
+                <Ruler className="h-3.5 w-3.5 text-violet-500 dark:text-violet-400" />
+            </div>
+            <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-violet-500 dark:text-violet-400">
+                    Avaliação presencial
+                    <span className="font-normal normal-case tracking-normal text-[#86868B] dark:text-k-text-quaternary">
+                        · {dateStr}
+                    </span>
+                </div>
+                <div className="mt-0.5 flex flex-wrap items-baseline gap-x-2 text-[13px]">
+                    {bmi != null && (
+                        <span className="font-semibold text-[#1C1C1E] dark:text-k-text-primary">
+                            IMC {bmi.toFixed(1).replace('.', ',')}
+                        </span>
+                    )}
+                    {bf != null && (
+                        <span className="font-semibold text-[#1C1C1E] dark:text-k-text-primary">
+                            {bf.toFixed(1).replace('.', ',')}% BG
+                        </span>
+                    )}
+                    {bmi == null && bf == null && (
+                        <span className="text-[#86868B] dark:text-k-text-quaternary">
+                            sem métricas
+                        </span>
+                    )}
+                </div>
+                {bmiLabel && (
+                    <div className="text-[11px] text-[#86868B] dark:text-k-text-tertiary">
+                        {bmiLabel}
+                    </div>
+                )}
+            </div>
+            <ChevronRight className="h-4 w-4 flex-shrink-0 text-[#86868B] transition-colors group-hover:text-violet-500 dark:text-k-text-quaternary dark:group-hover:text-violet-400" />
+        </button>
     )
 }
