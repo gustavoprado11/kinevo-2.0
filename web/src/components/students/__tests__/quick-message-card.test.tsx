@@ -26,24 +26,29 @@ describe('QuickMessageCard', () => {
     })
 
     it('renders suggestion buttons when provided', () => {
+        // Onda 2: a primeira sugestão vira "frase pronta destacada" (mostra
+        // a `message` entre aspas); as demais continuam como chips de label.
         const suggestions = [
             { emoji: '🎉', label: 'Parabenizar', message: 'Parabéns pela meta!' },
             { emoji: '💪', label: 'Motivar', message: 'Bora treinar!' },
         ]
         render(<QuickMessageCard studentId="s1" studentName="Maria" suggestions={suggestions} />)
 
-        expect(screen.getByText('Parabenizar')).toBeInTheDocument()
+        // Featured (primeira) — frase pronta entre aspas.
+        const featured = screen.getByTestId('featured-suggestion')
+        expect(featured.textContent).toContain('Parabéns pela meta!')
+        // Demais (chips) — continuam pelo label.
         expect(screen.getByText('Motivar')).toBeInTheDocument()
     })
 
-    it('fills textarea when clicking a suggestion', async () => {
+    it('fills textarea when clicking the featured suggestion', async () => {
         const user = userEvent.setup()
         const suggestions = [
             { emoji: '🎉', label: 'Parabenizar', message: 'Parabéns pela meta!' },
         ]
         render(<QuickMessageCard studentId="s1" studentName="Maria" suggestions={suggestions} />)
 
-        await user.click(screen.getByText('Parabenizar'))
+        await user.click(screen.getByTestId('featured-suggestion'))
         const textarea = screen.getByPlaceholderText(/Maria/i) as HTMLTextAreaElement
         expect(textarea.value).toBe('Parabéns pela meta!')
     })
@@ -58,7 +63,7 @@ describe('QuickMessageCard', () => {
         const textarea = screen.getByPlaceholderText(/Maria/i)
         await user.type(textarea, 'Olá!')
 
-        expect(screen.queryByText('Parabenizar')).not.toBeInTheDocument()
+        expect(screen.queryByTestId('featured-suggestion')).not.toBeInTheDocument()
     })
 
     it('sends message on Enter key', async () => {

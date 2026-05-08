@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { SessionDetailSheet } from './session-detail-sheet'
 import { ProgramCalendar } from './program-calendar'
+import { AdherenceTrendStrip } from './adherence-trend-strip'
 import { getProgramWeek, getProgramEndDate } from '@kinevo/shared/utils/schedule-projection'
 import { Flame, Activity, ArrowUpRight, FileText } from 'lucide-react'
 import { WARMUP_TYPE_LABELS, CARDIO_EQUIPMENT_LABELS } from '@kinevo/shared/types/workout-items'
@@ -33,6 +34,15 @@ function timeAgo(dateStr: string): string {
 function getExpectedPerWeek(workouts?: Array<{ scheduled_days: number[] }>): number {
     if (!workouts || workouts.length === 0) return 0
     return workouts.reduce((sum, w) => sum + (w.scheduled_days?.length || 0), 0)
+}
+
+// Onda 2 — converter "semana N do programa" (1-indexed) em Date.
+// Local pra não tocar shared/utils nesta onda; eventualmente vai pra
+// schedule-projection (ver follow-ups).
+function addWeeks(start: Date, n: number): Date {
+    const d = new Date(start)
+    d.setDate(d.getDate() + n * 7)
+    return d
 }
 
 // ── Compact item renderer for expanded session accordion ──
@@ -140,11 +150,10 @@ interface ActiveProgramDashboardProps {
     recentSessions?: any[]
     calendarInitialSessions?: RangeSession[]
     /**
-     * @deprecated Kept on the prop surface so callers don't break, but no longer
-     * consumed by this component. The consolidated AdherenceCard was removed in
-     * favor of the existing top stats (Treinos totais / Esta semana / Último
-     * treino) + navigable calendar below — adding a heatmap on top of those was
-     * visual noise without a complementary question to answer.
+     * Adesão por semana do programa (1-indexed). Onda 2 voltou a consumir esse
+     * valor para alimentar o `AdherenceTrendStrip` acima do calendário —
+     * sparkline + delta. Cliques nos pontos navegam o calendário até a semana
+     * correspondente via `initialWeekStart`.
      */
     weeklyAdherence?: { week: number; rate: number }[]
     tonnageMap?: Record<string, { tonnage: number; previousTonnage: number | null; percentChange: number | null }>
@@ -178,6 +187,10 @@ export function ActiveProgramDashboard({
     // Sheet State (for calendar day clicks)
     const [isSheetOpen, setIsSheetOpen] = useState(false)
     const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null)
+
+    // Onda 2 — semana clicada no AdherenceTrendStrip. Quando muda, o
+    // ProgramCalendar reposiciona o anchor via initialWeekStart.
+    const [calendarStartWeek, setCalendarStartWeek] = useState<number | string | null>(null)
 
     // Accordion State (for recent sessions inline expand)
     const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null)
@@ -454,7 +467,7 @@ export function ActiveProgramDashboard({
                                         completed >= expected
                                             ? 'text-emerald-400'
                                             : completed > 0
-                                                ? 'text-yellow-400'
+                                                ? 'text-amber-400'
                                                 : 'text-red-400'
                                     }`}>
                                         {completed >= expected
@@ -487,24 +500,48 @@ export function ActiveProgramDashboard({
                     </div>
                 </div>
 
-                {/* Navigable Calendar */}
-                {program.assigned_workouts && program.started_at && (
-                    <div data-onboarding="student-calendar">
-                        <ProgramCalendar
-                            programId={program.id}
-                            programStartedAt={program.started_at}
-                            programDurationWeeks={program.duration_weeks}
-                            scheduledWorkouts={program.assigned_workouts}
-                            initialSessions={calendarInitialSessions}
-                            studentId={studentId}
-                            onDayClick={(day) => {
-                                if (day.status === 'done' && day.completedSessions.length > 0) {
-                                    handleSessionClick(day.completedSessions[0].id)
-                                }
-                            }}
-                        />
-                    </div>
+                {/* Onda 2 — Faixa de tendência de adesão (12 semanas). */}
+                {program.started_at && weeklyAdherence.length >= 2 && (
+                    <AdherenceTrendStrip
+                        weeklyAdherence={weeklyAdherence}
+                        onWeekClick={(w) => setCalendarStartWeek(w)}
+                    />
                 )}
+
+                {/* Navigable Calendar */}
+                {program.assigned_workouts && program.started_at && (() => {
+                    // Conversão da semana clicada no sparkline pra Date que o
+                    // calendário usa de anchor. weeklyAdherence vem com `week`
+                    // 1-indexed, então subtraímos 1 ao calcular o offset.
+                    const startedAt = program.started_at
+                    const weekNum =
+                        typeof calendarStartWeek === 'number'
+                            ? calendarStartWeek
+                            : typeof calendarStartWeek === 'string'
+                                ? Number.parseInt(calendarStartWeek, 10)
+                                : NaN
+                    const initialWeekStart = Number.isFinite(weekNum) && weekNum > 0
+                        ? addWeeks(new Date(startedAt), weekNum - 1)
+                        : undefined
+                    return (
+                        <div data-onboarding="student-calendar">
+                            <ProgramCalendar
+                                programId={program.id}
+                                programStartedAt={startedAt}
+                                programDurationWeeks={program.duration_weeks}
+                                scheduledWorkouts={program.assigned_workouts}
+                                initialSessions={calendarInitialSessions}
+                                studentId={studentId}
+                                initialWeekStart={initialWeekStart}
+                                onDayClick={(day) => {
+                                    if (day.status === 'done' && day.completedSessions.length > 0) {
+                                        handleSessionClick(day.completedSessions[0].id)
+                                    }
+                                }}
+                            />
+                        </div>
+                    )
+                })()}
 
                 {/* Recent Sessions List - Compact Feed */}
                 <div>

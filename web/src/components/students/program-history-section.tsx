@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { FileText } from 'lucide-react'
+import { Calendar, Clock, FileText } from 'lucide-react'
 import { SessionDetailSheet } from './session-detail-sheet'
 
 interface CompletedProgram {
@@ -20,8 +20,33 @@ interface ProgramHistorySectionProps {
     onViewReport?: (programId: string) => void
 }
 
+const TIMEZONE = 'America/Sao_Paulo'
+
+function formatShortBr(value: string | null): string {
+    if (!value) return '—'
+    return new Date(value).toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        timeZone: TIMEZONE,
+    })
+}
+
+/**
+ * Adesão = sessões realizadas / sessões previstas (workouts × duration_weeks).
+ * Retorna null quando os números não permitem cálculo confiável.
+ */
+function computeAdherence(p: CompletedProgram): number | null {
+    if (!p.workouts_count || !p.duration_weeks) return null
+    const expected = p.workouts_count * p.duration_weeks
+    if (expected <= 0) return null
+    return Math.round((p.sessions_count / expected) * 100)
+}
+
 export function ProgramHistorySection({ programs, onViewReport }: ProgramHistorySectionProps) {
-    const [expandedProgramId, setExpandedProgramId] = useState<string | null>(null)
+    // Onda 2 — clicar num card seleciona; o painel único abaixo da timeline
+    // horizontal renderiza as sessões do programa selecionado. Substituiu o
+    // accordion inline da Onda 1, que não cabia em scroll horizontal.
+    const [selectedProgramId, setSelectedProgramId] = useState<string | null>(null)
     const [programSessions, setProgramSessions] = useState<Record<string, any[]>>({})
     const [loadingSessions, setLoadingSessions] = useState<Record<string, boolean>>({})
     const [showReplaced, setShowReplaced] = useState(false)
@@ -31,7 +56,7 @@ export function ProgramHistorySection({ programs, onViewReport }: ProgramHistory
         ? programs
         : programs.filter((p) => p.sessions_count !== 0)
 
-    // Sheet State
+    // Sheet State (sessão individual aberta a partir do painel de drill-down)
     const [isSheetOpen, setIsSheetOpen] = useState(false)
     const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null)
 
@@ -42,33 +67,39 @@ export function ProgramHistorySection({ programs, onViewReport }: ProgramHistory
 
     const handleSheetClose = () => {
         setIsSheetOpen(false)
-        setTimeout(() => setSelectedSessionId(null), 300) // Clear after animation
+        setTimeout(() => setSelectedSessionId(null), 300)
     }
-    const handleExpand = async (programId: string) => {
-        if (expandedProgramId === programId) {
-            setExpandedProgramId(null)
+
+    const handleSelect = async (programId: string) => {
+        // Toggle: clicar no card já selecionado fecha o painel.
+        if (selectedProgramId === programId) {
+            setSelectedProgramId(null)
             return
         }
-
-        setExpandedProgramId(programId)
+        setSelectedProgramId(programId)
 
         if (!programSessions[programId]) {
-            setLoadingSessions(prev => ({ ...prev, [programId]: true }))
+            setLoadingSessions((prev) => ({ ...prev, [programId]: true }))
             try {
-                // Dynamic import to avoid server component issues if any, or just standard import
-                const { getProgramSessions } = await import('@/app/students/[id]/actions/get-program-sessions')
+                const { getProgramSessions } = await import(
+                    '@/app/students/[id]/actions/get-program-sessions'
+                )
                 const result = await getProgramSessions(programId)
                 if (result.success && result.data) {
-                    const sessions = result.data;
-                    setProgramSessions(prev => ({ ...prev, [programId]: sessions }))
+                    setProgramSessions((prev) => ({ ...prev, [programId]: result.data! }))
                 }
             } catch (error) {
                 console.error('Failed to load sessions', error)
             } finally {
-                setLoadingSessions(prev => ({ ...prev, [programId]: false }))
+                setLoadingSessions((prev) => ({ ...prev, [programId]: false }))
             }
         }
     }
+
+    const selectedProgram =
+        selectedProgramId != null
+            ? visiblePrograms.find((p) => p.id === selectedProgramId) ?? null
+            : null
 
     return (
         <div className="bg-white dark:bg-glass-bg backdrop-blur-md rounded-2xl border border-[#E5E5EA] dark:border-k-border-primary p-6">
@@ -103,150 +134,113 @@ export function ProgramHistorySection({ programs, onViewReport }: ProgramHistory
                     )}
                 </div>
             ) : (
-                <div className="relative space-y-6">
-                    {/* Vertical Timeline Line */}
-                    <div className="absolute left-6 top-6 bottom-6 w-px bg-k-border-subtle" />
+                <>
+                    {/* Onda 2 — Timeline horizontal com scroll. Cards têm largura fixa
+                        e altura uniforme; ordem cronológica decrescente é definida pelo
+                        parent (page.tsx). Sem destaque visual para "mais recente".
+                        Mini bar chart de volume por semana virou follow-up
+                        (getProgramVolumeByWeek action). */}
+                    <div
+                        className="flex flex-row gap-3 overflow-x-auto pb-2 scrollbar-thin"
+                        data-testid="history-horizontal-scroll"
+                    >
+                        {visiblePrograms.map((program) => {
+                            const isSelected = selectedProgramId === program.id
+                            const adherence = computeAdherence(program)
+                            const isReplaced = program.sessions_count === 0
 
-                    {visiblePrograms.map((program) => (
-                        <div key={program.id} className="relative pl-12 group">
-                            {/* Timeline Dot */}
-                            <div className="absolute left-4 top-2 w-4 h-4 rounded-full border-2 border-surface-primary bg-glass-bg-active z-sticky group-hover:bg-violet-500 transition-colors" />
-
-                            <div className="bg-glass-bg rounded-2xl p-5 border border-k-border-subtle hover:border-violet-500/30 transition-all overflow-hidden relative">
-                                <div
-                                    role="button"
-                                    tabIndex={0}
-                                    onClick={() => handleExpand(program.id)}
-                                    onKeyDown={(e) => { if (e.key === 'Enter') handleExpand(program.id) }}
-                                    className="w-full text-left relative z-sticky cursor-pointer"
+                            return (
+                                <button
+                                    key={program.id}
+                                    type="button"
+                                    onClick={() => handleSelect(program.id)}
+                                    aria-pressed={isSelected}
+                                    className={`flex-shrink-0 w-[220px] text-left rounded-2xl p-4 border transition-all relative overflow-hidden ${
+                                        isSelected
+                                            ? 'bg-violet-50 dark:bg-violet-500/10 border-violet-300 dark:border-violet-500/40 shadow-sm'
+                                            : 'bg-glass-bg border-k-border-subtle hover:border-violet-500/30'
+                                    }`}
                                 >
-                                    <div className="flex justify-between items-start mb-2">
-                                        <h4 className="font-black text-[#1C1C1E] dark:text-white text-lg tracking-tight group-hover:text-violet-300 transition-colors">
-                                            {program.name}
-                                        </h4>
-                                        <div className="flex items-center gap-3">
-                                            {program.sessions_count === 0 ? (
-                                                <span className="text-[10px] font-bold text-k-text-quaternary bg-glass-bg px-2 py-0.5 rounded border border-k-border-subtle" title={program.started_at && program.completed_at ? `Ativo por ${Math.max(1, Math.ceil((new Date(program.completed_at).getTime() - new Date(program.started_at).getTime()) / (1000 * 60 * 60 * 24)))} dia(s)` : undefined}>
-                                                    Substituído{program.started_at && program.completed_at && (() => {
-                                                        const days = Math.max(1, Math.ceil((new Date(program.completed_at).getTime() - new Date(program.started_at).getTime()) / (1000 * 60 * 60 * 24)))
-                                                        return ` · ${days}d`
-                                                    })()}
-                                                </span>
-                                            ) : (
-                                                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                                                    Concluído
-                                                </span>
-                                            )}
-                                            {program.sessions_count > 0 && onViewReport && (
-                                                <button
-                                                    onClick={(e) => {
+                                    {/* Status badge no topo */}
+                                    <div className="flex items-center justify-between mb-2">
+                                        {isReplaced ? (
+                                            <span className="text-[10px] font-bold text-k-text-quaternary bg-glass-bg px-2 py-0.5 rounded border border-k-border-subtle">
+                                                Substituído
+                                            </span>
+                                        ) : (
+                                            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                                                Concluído
+                                            </span>
+                                        )}
+                                        {program.sessions_count > 0 && onViewReport && (
+                                            <span
+                                                role="button"
+                                                tabIndex={0}
+                                                onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    onViewReport(program.id)
+                                                }}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
                                                         e.stopPropagation()
                                                         onViewReport(program.id)
-                                                    }}
-                                                    className="p-1 text-k-text-quaternary hover:text-violet-400 transition-colors"
-                                                    title="Ver relatório"
-                                                >
-                                                    <FileText className="w-4 h-4" />
-                                                </button>
-                                            )}
-                                            <svg
-                                                className={`w-4 h-4 text-k-text-quaternary transition-transform ${expandedProgramId === program.id ? 'rotate-180' : ''}`}
-                                                fill="none"
-                                                stroke="currentColor"
-                                                viewBox="0 0 24 24"
+                                                    }
+                                                }}
+                                                className="p-1 -m-1 text-k-text-quaternary hover:text-violet-400 transition-colors cursor-pointer"
+                                                title="Ver relatório"
+                                                aria-label="Ver relatório"
                                             >
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                            </svg>
-                                        </div>
+                                                <FileText className="w-3.5 h-3.5" />
+                                            </span>
+                                        )}
                                     </div>
 
-                                    <div className="flex items-center gap-4 text-[10px] font-bold text-k-text-quaternary">
-                                        <div className="flex items-center gap-1.5">
-                                            <svg className="w-3.5 h-3.5 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                            </svg>
-                                            Finalizado em {program.completed_at ? new Date(program.completed_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '-'}
-                                        </div>
-                                        <div className="flex items-center gap-1.5">
-                                            <svg className="w-3.5 h-3.5 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
-                                            {program.sessions_count} sessões
-                                        </div>
+                                    {/* Título — uma linha truncada pra preservar largura */}
+                                    <h4 className="font-bold text-[#1C1C1E] dark:text-white text-sm tracking-tight truncate mb-2">
+                                        {program.name}
+                                    </h4>
+
+                                    {/* Datas resumidas */}
+                                    <div className="flex items-center gap-1.5 text-[10px] font-medium text-k-text-quaternary mb-2">
+                                        <Calendar className="w-3 h-3 opacity-60" aria-hidden="true" />
+                                        <span>
+                                            {formatShortBr(program.started_at)} – {formatShortBr(program.completed_at)}
+                                        </span>
                                     </div>
-                                </div>
 
-                                {/* Expanded Details */}
-                                {expandedProgramId === program.id && (
-                                    <div className="mt-6 pt-6 border-t border-k-border-subtle space-y-6 relative z-sticky">
-                                        {/* Program Stats */}
-                                        <div className="grid grid-cols-3 gap-4">
-                                            <div className="bg-glass-bg rounded-xl p-4 text-center border border-k-border-subtle">
-                                                <p className="text-2xl font-black text-[#1C1C1E] dark:text-white tracking-tighter">{program.workouts_count}</p>
-                                                <p className="text-[10px] font-bold text-k-text-quaternary">Treinos</p>
-                                            </div>
-                                            <div className="bg-glass-bg rounded-xl p-4 text-center border border-k-border-subtle">
-                                                <p className="text-2xl font-black text-[#1C1C1E] dark:text-white tracking-tighter">{program.sessions_count}</p>
-                                                <p className="text-[10px] font-bold text-k-text-quaternary">Sessões</p>
-                                            </div>
-                                            <div className="bg-glass-bg rounded-xl p-4 text-center border border-k-border-subtle">
-                                                <p className="text-2xl font-black text-[#1C1C1E] dark:text-white tracking-tighter">{program.duration_weeks || '-'}</p>
-                                                <p className="text-[10px] font-bold text-k-text-quaternary">Semanas</p>
-                                            </div>
+                                    {/* Adesão calculada — só aparece quando temos workouts e duration */}
+                                    {adherence != null && !isReplaced && (
+                                        <div className="flex items-center justify-between text-[10px] font-bold text-k-text-quaternary">
+                                            <span>Adesão</span>
+                                            <span
+                                                className={
+                                                    adherence >= 80
+                                                        ? 'text-emerald-500'
+                                                        : adherence >= 50
+                                                            ? 'text-amber-500'
+                                                            : 'text-red-500'
+                                                }
+                                            >
+                                                {adherence}%
+                                            </span>
                                         </div>
+                                    )}
 
-                                        {/* Sessions List */}
-                                        <div>
-                                            <h4 className="text-[10px] font-black text-k-text-tertiary mb-4">Sessões Realizadas</h4>
-                                            {loadingSessions[program.id] ? (
-                                                <div className="text-center py-6 text-k-text-quaternary text-xs font-medium animate-pulse">Carregando sessões...</div>
-                                            ) : programSessions[program.id]?.length > 0 ? (
-                                                <div className="space-y-2">
-                                                    {programSessions[program.id]!.map((session: any) => (
-                                                        <button
-                                                            key={session.id}
-                                                            onClick={() => handleSessionClick(session.id)}
-                                                            className="w-full bg-glass-bg hover:bg-glass-bg-active rounded-xl p-4 flex items-center justify-between border border-k-border-subtle transition-all text-left group/session"
-                                                        >
-                                                            <div className="flex items-center gap-3 min-w-0 flex-1">
-                                                                <div className="min-w-0 flex-1">
-                                                                    <div className="flex items-center gap-2">
-                                                                        <p className="text-sm font-bold text-k-text-secondary group-hover/session:text-k-text-primary transition-colors truncate">{session.assigned_workouts?.name || 'Treino'}</p>
-                                                                        {session.rpe != null && (
-                                                                            <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded shrink-0 ${
-                                                                                session.rpe >= 10 ? 'bg-red-500/10 text-red-400' :
-                                                                                session.rpe >= 8 ? 'bg-yellow-500/10 text-yellow-400' :
-                                                                                session.rpe >= 6 ? 'bg-emerald-500/10 text-emerald-400' :
-                                                                                'bg-white/5 text-k-text-tertiary'
-                                                                            }`}>
-                                                                                PSE {session.rpe}
-                                                                            </span>
-                                                                        )}
-                                                                    </div>
-                                                                    <p className="text-[10px] font-medium text-k-text-quaternary mt-0.5">
-                                                                        {new Date(session.completed_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })}
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-                                                            <svg className="w-4 h-4 text-k-border-subtle group-hover/session:text-k-text-tertiary transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                                            </svg>
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            ) : (
-                                                <p className="text-xs text-k-text-quaternary italic font-medium">Nenhuma sessão registrada.</p>
-                                            )}
+                                    {/* Sessions count fallback */}
+                                    {adherence == null && (
+                                        <div className="flex items-center gap-1.5 text-[10px] font-medium text-k-text-quaternary">
+                                            <Clock className="w-3 h-3 opacity-60" aria-hidden="true" />
+                                            <span>{program.sessions_count} sessões</span>
                                         </div>
-                                    </div>
-                                )}
-                                <div className="absolute inset-0 bg-gradient-to-br from-violet-600/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-                            </div>
-                        </div>
-                    ))}
+                                    )}
+                                </button>
+                            )
+                        })}
+                    </div>
 
+                    {/* Toggle de substituídos */}
                     {replacedCount > 0 && (
-                        <div className="pl-12 pt-2">
+                        <div className="pt-3">
                             <button
                                 type="button"
                                 onClick={() => setShowReplaced((v) => !v)}
@@ -258,7 +252,125 @@ export function ProgramHistorySection({ programs, onViewReport }: ProgramHistory
                             </button>
                         </div>
                     )}
-                </div>
+
+                    {/* Painel único de drill-down — renderiza as sessões do programa
+                        selecionado abaixo da timeline horizontal. */}
+                    {selectedProgram && (
+                        <div
+                            className="mt-6 pt-6 border-t border-k-border-subtle space-y-6"
+                            data-testid="history-drilldown"
+                        >
+                            {/* Stats do programa */}
+                            <div>
+                                <div className="flex items-center justify-between mb-3">
+                                    <h4 className="text-[11px] font-black text-k-text-tertiary uppercase tracking-wider">
+                                        {selectedProgram.name}
+                                    </h4>
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelectedProgramId(null)}
+                                        className="text-[10px] font-semibold text-k-text-quaternary hover:text-k-text-tertiary transition-colors"
+                                    >
+                                        Fechar
+                                    </button>
+                                </div>
+                                <div className="grid grid-cols-3 gap-4">
+                                    <div className="bg-glass-bg rounded-xl p-4 text-center border border-k-border-subtle">
+                                        <p className="text-2xl font-black text-[#1C1C1E] dark:text-white tracking-tighter">
+                                            {selectedProgram.workouts_count}
+                                        </p>
+                                        <p className="text-[10px] font-bold text-k-text-quaternary">Treinos</p>
+                                    </div>
+                                    <div className="bg-glass-bg rounded-xl p-4 text-center border border-k-border-subtle">
+                                        <p className="text-2xl font-black text-[#1C1C1E] dark:text-white tracking-tighter">
+                                            {selectedProgram.sessions_count}
+                                        </p>
+                                        <p className="text-[10px] font-bold text-k-text-quaternary">Sessões</p>
+                                    </div>
+                                    <div className="bg-glass-bg rounded-xl p-4 text-center border border-k-border-subtle">
+                                        <p className="text-2xl font-black text-[#1C1C1E] dark:text-white tracking-tighter">
+                                            {selectedProgram.duration_weeks || '-'}
+                                        </p>
+                                        <p className="text-[10px] font-bold text-k-text-quaternary">Semanas</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Sessions List */}
+                            <div>
+                                <h4 className="text-[10px] font-black text-k-text-tertiary mb-4">
+                                    Sessões Realizadas
+                                </h4>
+                                {loadingSessions[selectedProgram.id] ? (
+                                    <div className="text-center py-6 text-k-text-quaternary text-xs font-medium animate-pulse">
+                                        Carregando sessões...
+                                    </div>
+                                ) : (programSessions[selectedProgram.id]?.length ?? 0) > 0 ? (
+                                    <div className="space-y-2">
+                                        {programSessions[selectedProgram.id]!.map((session: any) => (
+                                            <button
+                                                key={session.id}
+                                                onClick={() => handleSessionClick(session.id)}
+                                                className="w-full bg-glass-bg hover:bg-glass-bg-active rounded-xl p-4 flex items-center justify-between border border-k-border-subtle transition-all text-left group/session"
+                                            >
+                                                <div className="flex items-center gap-3 min-w-0 flex-1">
+                                                    <div className="min-w-0 flex-1">
+                                                        <div className="flex items-center gap-2">
+                                                            <p className="text-sm font-bold text-k-text-secondary group-hover/session:text-k-text-primary transition-colors truncate">
+                                                                {session.assigned_workouts?.name || 'Treino'}
+                                                            </p>
+                                                            {session.rpe != null && (
+                                                                <span
+                                                                    className={`px-1.5 py-0.5 text-[10px] font-bold rounded shrink-0 ${
+                                                                        session.rpe >= 10
+                                                                            ? 'bg-red-500/10 text-red-400'
+                                                                            : session.rpe >= 8
+                                                                                ? 'bg-amber-500/10 text-amber-400'
+                                                                                : session.rpe >= 6
+                                                                                    ? 'bg-emerald-500/10 text-emerald-400'
+                                                                                    : 'bg-white/5 text-k-text-tertiary'
+                                                                    }`}
+                                                                >
+                                                                    PSE {session.rpe}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <p className="text-[10px] font-medium text-k-text-quaternary mt-0.5">
+                                                            {new Date(session.completed_at).toLocaleDateString('pt-BR', {
+                                                                day: '2-digit',
+                                                                month: 'short',
+                                                                hour: '2-digit',
+                                                                minute: '2-digit',
+                                                                timeZone: TIMEZONE,
+                                                            })}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <svg
+                                                    className="w-4 h-4 text-k-border-subtle group-hover/session:text-k-text-tertiary transition-all"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    viewBox="0 0 24 24"
+                                                >
+                                                    <path
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        strokeWidth={2}
+                                                        d="M9 5l7 7-7 7"
+                                                    />
+                                                </svg>
+                                            </button>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-xs text-k-text-quaternary italic font-medium">
+                                        Nenhuma sessão registrada.
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </>
             )}
 
             <SessionDetailSheet

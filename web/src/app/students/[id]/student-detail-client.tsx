@@ -20,7 +20,7 @@ import { useOnboardingStore } from '@/stores/onboarding-store'
 import { getProgramWeek } from '@kinevo/shared/utils/schedule-projection'
 import { formatBrDate } from '@kinevo/shared/utils/format-br-date'
 import { FinancialSidebarCard } from '@/components/students/financial-sidebar-card'
-import { AssessmentSidebarCard } from '@/components/students/assessment-sidebar-card'
+import { HealthMetricsCard } from '@/components/students/health-metrics-card'
 import { AlertCircle, Dumbbell, Clock } from 'lucide-react'
 import { QuickMessageCard } from '@/components/students/quick-message-card'
 import { StudentInsightsCard } from '@/components/students/student-insights-card'
@@ -425,13 +425,16 @@ export function StudentDetailClient({
                             <LoadProgressionChart programId={activeProgram.id} />
                         )}
 
-                        {/* Program Comparison — volume per muscle group */}
+                        {/* Program Comparison — Onda 2: strip compact com 1 card de
+                            Volume + link pra modal com a versão detalhada por grupo
+                            muscular. */}
                         {activeProgram && completedPrograms.length > 0 && (
                             <ProgramComparisonCard
                                 currentProgramId={activeProgram.id}
                                 currentProgramName={activeProgram.name}
                                 previousProgramId={completedPrograms[0].id}
                                 previousProgramName={completedPrograms[0].name}
+                                compact
                             />
                         )}
                     </div>
@@ -655,10 +658,12 @@ export function StudentDetailClient({
                             insights={studentInsights}
                         />
 
-                        {/* Assessments + Body Metrics (trend embutido) */}
+                        {/* Saúde & métricas — Onda 2 unificou AssessmentSidebarCard +
+                            BodyMetricsTrend num só card. AssessmentSidebarCard segue
+                            existindo (marcado @deprecated) até a Onda 3 remover. */}
                         {/* data-onboarding acts as a scroll anchor for inline insight CTAs ("Ver avaliação", "Ver check-in"). */}
                         <div data-onboarding="assessments">
-                        <AssessmentSidebarCard
+                        <HealthMetricsCard
                             studentId={student.id}
                             lastSubmission={lastSubmission}
                             pendingForms={pendingForms}
