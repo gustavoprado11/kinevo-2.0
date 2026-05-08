@@ -162,6 +162,40 @@ describe('StudentScheduleSection', () => {
         })
     })
 
+    it('chama onLoadedCount(0) quando fetch retorna vazio', async () => {
+        const onLoadedCount = vi.fn()
+        render(<StudentScheduleSection studentId="student-1" onLoadedCount={onLoadedCount} />)
+        await waitFor(() => {
+            expect(onLoadedCount).toHaveBeenCalledWith(0)
+        })
+    })
+
+    it('chama onLoadedCount(N) com a contagem correta de rotinas', async () => {
+        queryResponse = {
+            data: [
+                makeRule({ id: 'ra-1' }),
+                makeRule({ id: 'ra-2', day_of_week: 4 }),
+                makeRule({ id: 'ra-3', day_of_week: 5 }),
+            ],
+            error: null,
+        }
+        const onLoadedCount = vi.fn()
+        render(<StudentScheduleSection studentId="student-1" onLoadedCount={onLoadedCount} />)
+        await waitFor(() => {
+            expect(onLoadedCount).toHaveBeenCalledWith(3)
+        })
+    })
+
+    it('NÃO chama onLoadedCount quando fetch retorna erro (mantém UI de erro inline)', async () => {
+        queryResponse = { data: null, error: { message: 'boom' } }
+        const onLoadedCount = vi.fn()
+        render(<StudentScheduleSection studentId="student-1" onLoadedCount={onLoadedCount} />)
+        await waitFor(() => {
+            expect(screen.getByText(/Não foi possível carregar as rotinas/i)).toBeInTheDocument()
+        })
+        expect(onLoadedCount).not.toHaveBeenCalled()
+    })
+
     it('abre confirmação ao clicar em Encerrar rotina e chama action após confirmar', async () => {
         queryResponse = { data: [makeRule()], error: null }
         cancelActionMock.mockResolvedValueOnce({ success: true })

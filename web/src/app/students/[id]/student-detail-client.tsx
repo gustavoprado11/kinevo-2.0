@@ -16,6 +16,7 @@ import { activateProgram } from './actions/activate-program'
 import { deleteProgram } from './actions/delete-program'
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
 import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
+import { useOnboardingStore } from '@/stores/onboarding-store'
 import { getProgramWeek } from '@kinevo/shared/utils/schedule-projection'
 import { formatBrDate } from '@kinevo/shared/utils/format-br-date'
 import { FinancialSidebarCard } from '@/components/students/financial-sidebar-card'
@@ -235,6 +236,8 @@ export function StudentDetailClient({
     const [activationBlock, setActivationBlock] = useState<{ workoutNames: string[] } | null>(null)
     const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false)
     const [scheduleRefreshKey, setScheduleRefreshKey] = useState(0)
+    // null = ainda carregando; 0 = sem rotinas (esconder); >0 = mostrar.
+    const [scheduleCount, setScheduleCount] = useState<number | null>(null)
 
     const handleAssignProgram = () => {
         setAssignModalMode('immediate')
@@ -380,6 +383,7 @@ export function StudentDetailClient({
                     onEdit={handleEditStudent}
                     onDelete={handleDeleteStudent}
                     onSchedule={student.is_trainer_profile ? undefined : () => setIsScheduleModalOpen(true)}
+                    onStartTour={student.is_trainer_profile ? undefined : () => useOnboardingStore.getState().startTour('student_detail')}
                 >
                     <StudentStatusBar
                         historySummary={historySummary}
@@ -434,7 +438,25 @@ export function StudentDetailClient({
 
                     {/* Right Column: Próximos Programas (prioridade) → Mensagem → Insights → Avaliações → Financeiro → Histórico */}
                     <div className="space-y-6 lg:col-span-1">
-                        {/* Scheduled Programs — FIRST: ação mais recorrente quando o ciclo termina */}
+                        {/* Scheduled Programs — FIRST: ação mais recorrente quando o ciclo termina.
+                            Card só aparece quando o treinador realmente precisa olhar a fila:
+                            - há programas agendados, OU
+                            - não há programa ativo (precisa criar o primeiro), OU
+                            - o programa ativo expirou, OU
+                            - o programa ativo passou de 75% (hora de planejar o próximo).
+                            Caso contrário (programa em <75% e fila vazia) o card é omitido
+                            para não competir com o calendário do programa ativo. */}
+                        {(() => {
+                            const programProgress = activeProgram?.started_at && activeProgram?.duration_weeks
+                                ? (getProgramWeek(new Date(), activeProgram.started_at, activeProgram.duration_weeks) ?? activeProgram.duration_weeks) / activeProgram.duration_weeks
+                                : 0
+                            const shouldShow =
+                                (scheduledPrograms && scheduledPrograms.length > 0) ||
+                                !activeProgram ||
+                                (activeProgram.status as string) === 'expired' ||
+                                programProgress >= 0.75
+                            if (!shouldShow) return null
+                            return (
                         <div className="bg-white dark:bg-glass-bg backdrop-blur-md rounded-2xl border border-transparent dark:border-k-border-primary shadow-sm dark:shadow-none p-6">
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="text-sm font-semibold text-[#1C1C1E] dark:text-white flex items-center gap-2">
@@ -579,13 +601,22 @@ export function StudentDetailClient({
                                 </div>
                             )}
                         </div>
+                            )
+                        })()}
 
-                        {/* Recurring appointments rotina atual */}
+                        {/* Recurring appointments rotina atual.
+                            Escondemos via CSS (sem desmontar) quando o aluno não tem rotinas:
+                            mantém o componente montado pra preservar estado interno e
+                            permitir re-fetch quando uma nova rotina é criada. Estado inicial
+                            null mantém o card visível durante o load. */}
                         {!student.is_trainer_profile && (
-                            <StudentScheduleSection
-                                studentId={student.id}
-                                refreshKey={scheduleRefreshKey}
-                            />
+                            <div className={scheduleCount === 0 ? 'hidden' : ''}>
+                                <StudentScheduleSection
+                                    studentId={student.id}
+                                    refreshKey={scheduleRefreshKey}
+                                    onLoadedCount={setScheduleCount}
+                                />
+                            </div>
                         )}
 
                         {/* Quick Message with context-aware suggestions */}
@@ -729,8 +760,8 @@ export function StudentDetailClient({
                 hasActiveProgram={!!activeProgram}
             />
 
-            {/* Tour: Student Detail (auto-start on first visit) */}
-            <TourRunner tourId="student_detail" steps={TOUR_STEPS.student_detail} autoStart />
+            {/* Tour: Student Detail (opt-in via "Tour rápido" no menu do header) */}
+            <TourRunner tourId="student_detail" steps={TOUR_STEPS.student_detail} autoStart={false} />
         </AppLayout>
     )
 }

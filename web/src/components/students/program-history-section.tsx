@@ -24,6 +24,12 @@ export function ProgramHistorySection({ programs, onViewReport }: ProgramHistory
     const [expandedProgramId, setExpandedProgramId] = useState<string | null>(null)
     const [programSessions, setProgramSessions] = useState<Record<string, any[]>>({})
     const [loadingSessions, setLoadingSessions] = useState<Record<string, boolean>>({})
+    const [showReplaced, setShowReplaced] = useState(false)
+
+    const replacedCount = programs.filter((p) => p.sessions_count === 0).length
+    const visiblePrograms = showReplaced
+        ? programs
+        : programs.filter((p) => p.sessions_count !== 0)
 
     // Sheet State
     const [isSheetOpen, setIsSheetOpen] = useState(false)
@@ -81,12 +87,27 @@ export function ProgramHistorySection({ programs, onViewReport }: ProgramHistory
                         Nenhum programa concluído ainda.
                     </p>
                 </div>
+            ) : visiblePrograms.length === 0 ? (
+                <div className="text-center py-10 border border-dashed border-k-border-primary rounded-2xl">
+                    <p className="text-k-text-quaternary text-xs font-medium italic mb-3">
+                        Nenhum programa concluído ainda.
+                    </p>
+                    {replacedCount > 0 && (
+                        <button
+                            type="button"
+                            onClick={() => setShowReplaced(true)}
+                            className="text-[11px] font-semibold text-violet-500 hover:text-violet-400 transition-colors"
+                        >
+                            Mostrar {replacedCount} substituído{replacedCount === 1 ? '' : 's'}
+                        </button>
+                    )}
+                </div>
             ) : (
                 <div className="relative space-y-6">
                     {/* Vertical Timeline Line */}
                     <div className="absolute left-6 top-6 bottom-6 w-px bg-k-border-subtle" />
 
-                    {programs.map((program) => (
+                    {visiblePrograms.map((program) => (
                         <div key={program.id} className="relative pl-12 group">
                             {/* Timeline Dot */}
                             <div className="absolute left-4 top-2 w-4 h-4 rounded-full border-2 border-surface-primary bg-glass-bg-active z-sticky group-hover:bg-violet-500 transition-colors" />
@@ -223,6 +244,20 @@ export function ProgramHistorySection({ programs, onViewReport }: ProgramHistory
                             </div>
                         </div>
                     ))}
+
+                    {replacedCount > 0 && (
+                        <div className="pl-12 pt-2">
+                            <button
+                                type="button"
+                                onClick={() => setShowReplaced((v) => !v)}
+                                className="text-[11px] font-semibold text-violet-500 hover:text-violet-400 transition-colors"
+                            >
+                                {showReplaced
+                                    ? 'Ocultar substituídos'
+                                    : `Mostrar ${replacedCount} substituído${replacedCount === 1 ? '' : 's'}`}
+                            </button>
+                        </div>
+                    )}
                 </div>
             )}
 
