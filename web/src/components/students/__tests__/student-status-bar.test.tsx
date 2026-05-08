@@ -193,4 +193,65 @@ describe('StudentStatusBar', () => {
         // Detail text should now be visible
         expect(container.textContent).toContain('overtraining')
     })
+
+    // ── Onda 3 — modo compact ─────────────────────────────────────────
+
+    describe('mode="compact"', () => {
+        it('NÃO renderiza chips de alerta de inatividade mesmo com 5+ dias sem treino', () => {
+            const { container } = render(
+                <StudentStatusBar
+                    {...baseProps}
+                    historySummary={{ ...baseProps.historySummary, lastSessionDate: daysAgoIso(5) }}
+                    mode="compact"
+                />,
+            )
+            // Stats operacionais continuam (X/N esta semana, "há 5 dias último treino").
+            expect(container.textContent).toContain('último treino')
+            // Chip de inatividade não aparece em compact.
+            expect(container.textContent).not.toContain('Sem treino há 5 dias')
+        })
+
+        it('NÃO renderiza chip Financeiro em compact mesmo overdue', () => {
+            const { container } = render(
+                <StudentStatusBar
+                    {...baseProps}
+                    financialStatus="overdue"
+                    mode="compact"
+                />,
+            )
+            expect(container.textContent).not.toContain('Financeiro')
+        })
+
+        it('NÃO renderiza chip Avaliações em compact', () => {
+            const { container } = render(
+                <StudentStatusBar
+                    {...baseProps}
+                    hasPendingForms={true}
+                    mode="compact"
+                />,
+            )
+            expect(container.textContent).not.toContain('Avaliações')
+        })
+
+        it('retorna null quando compact e não há programa ativo', () => {
+            const { container } = render(
+                <StudentStatusBar
+                    {...baseProps}
+                    activeProgram={null}
+                    mode="compact"
+                />,
+            )
+            expect(container.firstChild).toBeNull()
+        })
+
+        it('mode="full" (default) preserva o comportamento original — chips visíveis', () => {
+            const { container } = render(
+                <StudentStatusBar
+                    {...baseProps}
+                    historySummary={{ ...baseProps.historySummary, lastSessionDate: daysAgoIso(7) }}
+                />,
+            )
+            expect(container.textContent).toContain('Sem treino há 7 dias')
+        })
+    })
 })

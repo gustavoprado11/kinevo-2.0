@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { enrichInsightsWithLLM } from '@/lib/assistant/insight-enricher'
 import { insertTrainerNotification } from '@/lib/trainer-notifications'
 import { sendTrainerPush } from '@/lib/push-notifications'
+import { upsertInsightByKey } from '@/lib/insights/upsert'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -61,14 +62,42 @@ export async function GET(request: NextRequest) {
             insights.push(...gapResults, ...stagnationResults, ...programResults, ...painResults, ...progressionResults, ...formResults)
 
             if (insights.length > 0) {
-                const { error: insertError } = await supabaseAdmin
-                    .from('assistant_insights')
-                    .upsert(insights, { onConflict: 'trainer_id,insight_key', ignoreDuplicates: true })
+                // Onda 3 — antes era um único `upsert(insights, { onConflict, ignoreDuplicates })`
+                // que só evitava colisão dentro do mesmo dia. Agora cada insight passa pelo
+                // `upsertInsightByKey`, que faz LIKE `${prefix}%` na janela de 7 dias e atualiza
+                // o registro existente em vez de criar uma fila tipo "sem treino há 19d / 18d
+                // / 13d". Custo: N round-trips em vez de 1 batch — aceitável porque o cron
+                // roda 1×/dia. Follow-up: reotimizar para um batch SQL custom.
+                let succeeded = 0
+                let inserted = 0
+                let updated = 0
+                for (const insight of insights) {
+                    const result = await upsertInsightByKey(supabaseAdmin, {
+                        trainerId: insight.trainer_id,
+                        studentId: insight.student_id,
+                        category: insight.category,
+                        priority: insight.priority,
+                        insightKeyPrefix: insight.insight_key_prefix,
+                        insightKey: insight.insight_key,
+                        title: insight.title,
+                        body: insight.body,
+                        actionType: insight.action_type,
+                        actionMetadata: insight.action_metadata,
+                        source: insight.source,
+                        expiresAt: insight.expires_at,
+                    })
+                    if (result.success) {
+                        succeeded++
+                        if (result.mode === 'inserted') inserted++
+                        else if (result.mode === 'updated') updated++
+                    } else {
+                        console.error(`[cron:generate-insights] Upsert error for trainer ${trainerId} (${insight.insight_key}):`, result.error)
+                    }
+                }
 
-                if (insertError) {
-                    console.error(`[cron:generate-insights] Insert error for trainer ${trainerId}:`, insertError)
-                } else {
-                    totalInsights += insights.length
+                if (succeeded > 0) {
+                    totalInsights += succeeded
+                    console.log(`[cron:generate-insights] trainer=${trainerId} inserted=${inserted} updated=${updated} skipped=${insights.length - succeeded}`)
 
                     // Phase 2B: Enrich with LLM (best-effort)
                     try {
@@ -170,6 +199,13 @@ interface InsightRow {
     action_metadata: Record<string, unknown>
     status: 'new'
     insight_key: string
+    /**
+     * Onda 3 — Prefixo estável da chave (sem o sufixo `:{today}` quando
+     * existe). Usado pelo `upsertInsightByKey` pra fazer LIKE na janela
+     * de 7 dias e detectar duplicatas do mesmo evento. Quando a chave
+     * já é estável (ex.: `pain_report:{submission_id}`), prefix === key.
+     */
+    insight_key_prefix: string
     source: 'rules'
     expires_at: string
 }
@@ -208,6 +244,7 @@ async function detectTrainingGaps(trainerId: string, today: string): Promise<Ins
             action_metadata: { student_id: row.student_id, days_since_last: daysSince },
             status: 'new' as const,
             insight_key: `gap_alert:${row.student_id}:${today}`,
+            insight_key_prefix: `gap_alert:${row.student_id}`,
             source: 'rules' as const,
             expires_at: expiresIn(7),
         }
@@ -335,6 +372,7 @@ async function detectLoadStagnation(trainerId: string, today: string): Promise<I
             },
             status: 'new',
             insight_key: `stagnation:${entry.studentId}:${entry.exerciseId}:${today}`,
+            insight_key_prefix: `stagnation:${entry.studentId}:${entry.exerciseId}`,
             source: 'rules',
             expires_at: expiresIn(14),
         })
@@ -389,6 +427,7 @@ async function detectExpiringPrograms(trainerId: string, today: string): Promise
             },
             status: 'new' as const,
             insight_key: `program_expiring:${row.id}:${today}`,
+            insight_key_prefix: `program_expiring:${row.id}`,
             source: 'rules' as const,
             expires_at: expiresIn(14),
         }
@@ -435,6 +474,7 @@ async function detectPainReports(trainerId: string, today: string): Promise<Insi
                 },
                 status: 'new' as const,
                 insight_key: `pain_report:${row.id}`,
+                insight_key_prefix: `pain_report:${row.id}`,
                 source: 'rules' as const,
                 expires_at: expiresIn(3),
             }
@@ -582,6 +622,7 @@ async function detectReadyToProgress(trainerId: string, today: string): Promise<
                 },
                 status: 'new',
                 insight_key: `ready_to_progress:${studentId}:${exerciseId}:${today}`,
+                insight_key_prefix: `ready_to_progress:${studentId}:${exerciseId}`,
                 source: 'rules',
                 expires_at: expiresIn(14),
             })
@@ -701,6 +742,7 @@ async function detectFormInsights(trainerId: string, today: string): Promise<Ins
                     },
                     status: 'new',
                     insight_key: insightKey,
+                    insight_key_prefix: insightKey,
                     source: 'rules',
                     expires_at: expiresIn(30),
                 })
@@ -763,6 +805,7 @@ async function detectFormInsights(trainerId: string, today: string): Promise<Ins
                     },
                     status: 'new',
                     insight_key: insightKey,
+                    insight_key_prefix: insightKey,
                     source: 'rules',
                     expires_at: expiresIn(7),
                 })

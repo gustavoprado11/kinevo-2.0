@@ -21,6 +21,8 @@ import { getProgramWeek } from '@kinevo/shared/utils/schedule-projection'
 import { formatBrDate } from '@kinevo/shared/utils/format-br-date'
 import { FinancialSidebarCard } from '@/components/students/financial-sidebar-card'
 import { HealthMetricsCard } from '@/components/students/health-metrics-card'
+import { SmartBanner } from '@/components/students/smart-banner'
+import { pickBanner, type BannerContext } from '@/components/students/smart-banner-rules'
 import { AlertCircle, Dumbbell, Clock } from 'lucide-react'
 import { QuickMessageCard } from '@/components/students/quick-message-card'
 import { StudentInsightsCard } from '@/components/students/student-insights-card'
@@ -363,6 +365,100 @@ export function StudentDetailClient({
         router.push(`/students/${student.id}/program/${programId}/edit`)
     }
 
+    // ── Onda 3 — SmartBanner ────────────────────────────────────────────
+    // Calculamos o banner aqui (função pura, custo zero) pra coordenar o
+    // estado entre o componente e o HealthMetricsCard (que esconde o
+    // próprio banner de reavaliação quando o SmartBanner já cobre).
+    const daysUntilReassessment = (() => {
+        if (!formSchedules || formSchedules.length === 0) return null
+        const dueDates = formSchedules
+            .filter((s: any) => s?.is_active !== false && s?.next_due_at)
+            .map((s: any) => new Date(s.next_due_at).getTime())
+            .filter((t) => Number.isFinite(t))
+        if (dueDates.length === 0) return null
+        const earliest = Math.min(...dueDates)
+        return Math.ceil((earliest - Date.now()) / (24 * 60 * 60 * 1000))
+    })()
+
+    const bannerContext: BannerContext = {
+        studentName: student.name,
+        studentPhone: student.phone,
+        activeProgram: activeProgram
+            ? {
+                status: activeProgram.status,
+                started_at: activeProgram.started_at,
+                duration_weeks: activeProgram.duration_weeks,
+            }
+            : null,
+        historySummary: {
+            totalSessions: historySummary.totalSessions,
+            lastSessionDate: historySummary.lastSessionDate,
+            completedThisWeek: historySummary.completedThisWeek,
+            expectedPerWeek: historySummary.expectedPerWeek,
+            streak: historySummary.streak,
+        },
+        recentSessions: recentSessions.map((s: any) => ({
+            id: s?.id,
+            rpe: typeof s?.rpe === 'number' ? s.rpe : null,
+        })),
+        tonnageMap,
+        weeklyAdherence,
+        financialStatus: displayStatus,
+        hasPendingForms: pendingForms.length > 0,
+        daysUntilReassessment,
+    }
+
+    const activeBanner = pickBanner(bannerContext)
+
+    const handleBannerAction = (actionId: string) => {
+        switch (actionId) {
+            case 'send_message':
+                handleOpenMessages()
+                break
+            case 'open_whatsapp':
+                if (student.phone) {
+                    const digits = student.phone.replace(/\D/g, '')
+                    if (digits) window.open(`https://wa.me/${digits}`, '_blank', 'noopener,noreferrer')
+                }
+                break
+            case 'extend_program':
+                handleExtendProgram()
+                break
+            case 'complete_program':
+                handleCompleteProgram()
+                break
+            case 'assign_program':
+                handleAssignProgram()
+                break
+            case 'adjust_load': {
+                // Foca/scrolla o card do programa ativo (onde fica a tonelagem
+                // por workout e o sparkline). Refinement futuro: expor um
+                // imperativo no ActiveProgramDashboard pra abrir o gráfico.
+                const el = document.querySelector('[data-onboarding="student-actions"]')
+                el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                break
+            }
+            case 'send_reassessment': {
+                // Ver follow-up: expor handle imperativo no HealthMetricsCard
+                // pra abrir o dropdown de envio de form direto.
+                const el = document.querySelector('[data-onboarding="assessments"]')
+                el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                break
+            }
+            case 'view_finance':
+                router.push(`/financial?student=${student.id}`)
+                break
+            default:
+                console.warn('[SmartBanner] action sem handler:', actionId)
+        }
+    }
+
+    // Atalhos extras só fazem sentido com programa ativo + callback truthy.
+    const adjustLoadShortcut = activeProgram
+        ? () => handleBannerAction('adjust_load')
+        : undefined
+    const planNextShortcut = activeProgram ? handleAssignProgram : undefined
+
     return (
         <AppLayout
             trainerName={trainer.name}
@@ -396,8 +492,20 @@ export function StudentDetailClient({
                         studentName={student.name}
                         studentPhone={student.phone}
                         onSendMessage={handleOpenMessages}
+                        mode="compact"
                     />
                 </StudentHeader>
+
+                {/* Onda 3 — SmartBanner: 1 banner dominante baseado no estado
+                    do aluno (critical/high/info). Substitui os chips de alerta
+                    que viviam dentro da StudentStatusBar (agora em modo compact). */}
+                {activeBanner && (
+                    <SmartBanner
+                        studentId={student.id}
+                        context={bannerContext}
+                        onAction={handleBannerAction}
+                    />
+                )}
 
                 {/* Main Content Grid - New Layout */}
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
@@ -672,6 +780,7 @@ export function StudentDetailClient({
                             formTemplates={formTemplates}
                             formSchedules={formSchedules}
                             latestPresencialSession={latestPresencialSession}
+                            hideReassessmentBanner={activeBanner?.key === 'reassessment_due'}
                         />
                         </div>
 
@@ -763,6 +872,8 @@ export function StudentDetailClient({
                 onEditStudent={handleEditStudent}
                 onNavigateMessages={handleOpenMessages}
                 hasActiveProgram={!!activeProgram}
+                onAdjustLoad={adjustLoadShortcut}
+                onPlanNextProgram={planNextShortcut}
             />
 
             {/* Tour: Student Detail (opt-in via "Tour rápido" no menu do header) */}

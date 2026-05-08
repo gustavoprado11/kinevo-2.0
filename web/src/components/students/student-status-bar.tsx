@@ -69,6 +69,13 @@ interface StudentStatusBarProps {
     studentPhone: string | null
     /** Chamado ao clicar em "Mensagem" no CTA de inatividade. */
     onSendMessage: () => void
+    /**
+     * Onda 3 — Modo `compact` mostra apenas os 2 stats operacionais
+     * (X/N esta semana, último treino) e suprime os chips de alerta + CTA
+     * de inatividade. Toda essa lógica migra para o `SmartBanner`. Default
+     * `'full'` para retrocompat com chamadas antigas.
+     */
+    mode?: 'compact' | 'full'
 }
 
 // ── Component ──
@@ -84,8 +91,10 @@ export function StudentStatusBar({
     studentName,
     studentPhone,
     onSendMessage,
+    mode = 'full',
 }: StudentStatusBarProps) {
     const [expandedId, setExpandedId] = useState<string | null>(null)
+    const isCompact = mode === 'compact'
 
     // ── Stats operacionais (sempre presentes quando há programa ativo) ──
     const stats = useMemo(() => {
@@ -127,7 +136,10 @@ export function StudentStatusBar({
     }, [activeProgram, historySummary])
 
     // ── Chips de alerta (colapsáveis) ──
+    // Onda 3: em modo `compact`, todos os chips/alertas migram para o
+    // SmartBanner. A status bar fica apenas com os stats operacionais.
     const chips = useMemo(() => {
+        if (isCompact) return [] as StatusChip[]
         const out: StatusChip[] = []
 
         if (!activeProgram) {
@@ -293,9 +305,13 @@ export function StudentStatusBar({
         }
 
         return out
-    }, [activeProgram, historySummary, recentSessions, tonnageMap, weeklyAdherence, financialStatus, hasPendingForms, studentName])
+    }, [isCompact, activeProgram, historySummary, recentSessions, tonnageMap, weeklyAdherence, financialStatus, hasPendingForms, studentName])
 
     const expanded = chips.find(c => c.id === expandedId) ?? null
+
+    // Onda 3 — em compact, retorna null quando não há programa ativo
+    // (não há nada operacional a mostrar; o banner cobre tudo).
+    if (isCompact && !activeProgram) return null
 
     const hasAnyContent = stats.length > 0 || chips.length > 0
     if (!hasAnyContent) return null

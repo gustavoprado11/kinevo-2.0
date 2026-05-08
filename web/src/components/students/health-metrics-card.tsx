@@ -66,6 +66,13 @@ interface HealthMetricsCardProps {
     formTemplates: FormTemplate[]
     formSchedules?: FormScheduleRow[]
     latestPresencialSession?: AssessmentSessionListItem | null
+    /**
+     * Onda 3 — Quando o `SmartBanner` está exibindo `reassessment_due`,
+     * o card esconde seu próprio banner amarelo de reavaliação pendente
+     * pra evitar duplicação visual. Demais elementos (lista de pendingForms,
+     * accordion de schedules) seguem inalterados.
+     */
+    hideReassessmentBanner?: boolean
 }
 
 const categoryLabels: Record<string, string> = {
@@ -102,6 +109,7 @@ export function HealthMetricsCard({
     formTemplates,
     formSchedules = [],
     latestPresencialSession = null,
+    hideReassessmentBanner = false,
 }: HealthMetricsCardProps) {
     const router = useRouter()
     const [dropdownOpen, setDropdownOpen] = useState(false)
@@ -141,7 +149,8 @@ export function HealthMetricsCard({
         const due = new Date(s.next_due_at).getTime()
         return Number.isFinite(due) && due <= sevenDaysAhead
     })
-    const showReassessmentBanner = pendingCount > 0 || dueSchedules.length > 0
+    const showReassessmentBanner =
+        !hideReassessmentBanner && (pendingCount > 0 || dueSchedules.length > 0)
     const hasOverdue = dueSchedules.some((s) => new Date(s.next_due_at).getTime() < now)
 
     const hasData =

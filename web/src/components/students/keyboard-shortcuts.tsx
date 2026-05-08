@@ -10,6 +10,14 @@ interface KeyboardShortcutsProps {
     onEditStudent?: () => void
     onNavigateMessages?: () => void
     hasActiveProgram: boolean
+    /**
+     * Onda 3 — Atalhos extras quando o SmartBanner está visível.
+     *  - `L` (adjust load) — foca/scrolla a área de programa pra ajuste de carga.
+     *  - `P` (planejar próximo) — abre modal de atribuir programa.
+     * Ambos só funcionam com programa ativo. Sem callback truthy → no-op.
+     */
+    onAdjustLoad?: () => void
+    onPlanNextProgram?: () => void
 }
 
 const SHORTCUTS = [
@@ -18,6 +26,8 @@ const SHORTCUTS = [
     { key: 'n', label: 'Novo/Atribuir programa', action: 'assignProgram', requiresProgram: false },
     { key: 'i', label: 'Editar aluno', action: 'editStudent', requiresProgram: false },
     { key: 'm', label: 'Ir para mensagens', action: 'navigateMessages', requiresProgram: false },
+    { key: 'l', label: 'Ajustar carga (banner)', action: 'adjustLoad', requiresProgram: true },
+    { key: 'p', label: 'Planejar próximo (banner)', action: 'planNextProgram', requiresProgram: true },
     { key: '?', label: 'Mostrar atalhos', action: 'showHelp', requiresProgram: false },
 ]
 
@@ -28,6 +38,8 @@ export function KeyboardShortcuts({
     onEditStudent,
     onNavigateMessages,
     hasActiveProgram,
+    onAdjustLoad,
+    onPlanNextProgram,
 }: KeyboardShortcutsProps) {
     const [showHelp, setShowHelp] = useState(false)
 
@@ -72,6 +84,18 @@ export function KeyboardShortcuts({
                     onNavigateMessages()
                 }
                 break
+            case 'l':
+                if (hasActiveProgram && onAdjustLoad) {
+                    e.preventDefault()
+                    onAdjustLoad()
+                }
+                break
+            case 'p':
+                if (hasActiveProgram && onPlanNextProgram) {
+                    e.preventDefault()
+                    onPlanNextProgram()
+                }
+                break
             case '?':
                 e.preventDefault()
                 setShowHelp(prev => !prev)
@@ -83,7 +107,7 @@ export function KeyboardShortcuts({
                 }
                 break
         }
-    }, [hasActiveProgram, onEditProgram, onCompleteProgram, onAssignProgram, onEditStudent, onNavigateMessages, showHelp])
+    }, [hasActiveProgram, onEditProgram, onCompleteProgram, onAssignProgram, onEditStudent, onNavigateMessages, onAdjustLoad, onPlanNextProgram, showHelp])
 
     useEffect(() => {
         document.addEventListener('keydown', handleKeyDown)
