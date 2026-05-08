@@ -391,6 +391,7 @@ export function FormsDashboardClient({
                     ) : (
                         <>
                             <button
+                                data-onboarding="assessments-new-session"
                                 onClick={() => setCreateSessionOpen(true)}
                                 className="flex items-center gap-2 px-4 py-2 bg-violet-500 hover:bg-violet-600 text-white text-sm font-medium rounded-full transition-all dark:rounded-xl"
                             >
@@ -398,6 +399,7 @@ export function FormsDashboardClient({
                                 Nova avaliação
                             </button>
                             <button
+                                data-onboarding="assessments-new-template"
                                 onClick={() => router.push('/forms/templates/new?category=assessment')}
                                 className="flex items-center gap-2 rounded-full bg-white border border-[#D2D2D7] text-[#6E6E73] hover:bg-[#F5F5F7] hover:text-[#1D1D1F] px-4 py-2 text-sm transition-all dark:rounded-xl dark:bg-transparent dark:border-k-border-primary dark:text-k-text-tertiary dark:hover:text-k-text-primary dark:hover:bg-transparent"
                             >
@@ -420,6 +422,7 @@ export function FormsDashboardClient({
                 <TabButton
                     active={activeTab === 'assessments'}
                     onClick={() => setActiveTab('assessments')}
+                    data-onboarding="assessments-tab"
                 >
                     Avaliações Presenciais
                     {assessmentSessions.length > 0 && (
@@ -863,8 +866,18 @@ export function FormsDashboardClient({
                 }}
             />
 
-            {/* Tour */}
+            {/* Tour: Respostas (default) */}
             <TourRunner tourId="forms" steps={TOUR_STEPS.forms} autoStart />
+
+            {/* Tour: Avaliações Presenciais — só monta na aba ativa.
+                Auto-completa-se via store (tours_completed) ao final/skip. */}
+            {activeTab === 'assessments' && (
+                <TourRunner
+                    tourId="assessments_first_time"
+                    steps={TOUR_STEPS.assessments_first_time}
+                    autoStart
+                />
+            )}
         </AppLayout>
     )
 }
@@ -873,15 +886,18 @@ function TabButton({
     active,
     onClick,
     children,
+    'data-onboarding': dataOnboarding,
 }: {
     active: boolean
     onClick: () => void
     children: React.ReactNode
+    'data-onboarding'?: string
 }) {
     return (
         <button
             type="button"
             onClick={onClick}
+            data-onboarding={dataOnboarding}
             className={`relative px-4 py-2.5 text-sm font-medium transition-colors ${
                 active
                     ? 'text-violet-500 dark:text-violet-400'

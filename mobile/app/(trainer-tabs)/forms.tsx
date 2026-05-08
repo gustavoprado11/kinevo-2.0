@@ -34,6 +34,7 @@ import { SessionListItem } from "../../components/trainer/assessments/SessionLis
 import { CreateSessionModal } from "../../components/trainer/assessments/CreateSessionModal";
 import type { AssessmentSessionListItem } from "@kinevo/shared/types/assessments";
 import type { AssessmentDraft } from "../../stores/assessmentDraftStore";
+import { useAssessmentOnboardingStore } from "../../stores/assessmentOnboardingStore";
 
 type Tab = "responses" | "templates" | "assessments";
 
@@ -112,6 +113,8 @@ export default function FormsScreen() {
                 : assessments.isLoading;
 
     const draftCount = assessments.inProgressDrafts.length;
+    const isAssessmentsEmpty =
+        assessments.inProgressDrafts.length === 0 && assessments.sessions.length === 0;
 
     // Builder handlers
     const handleCreateNew = useCallback(() => {
@@ -342,8 +345,10 @@ export default function FormsScreen() {
                 />
             )}
 
-            {/* FAB */}
-            {(activeTab === "templates" || activeTab === "assessments") && (
+            {/* FAB — escondido na aba Presenciais quando a lista está vazia
+                (o EmptyState exibe um CTA "+ Nova avaliação" próprio). */}
+            {(activeTab === "templates" ||
+                (activeTab === "assessments" && !isAssessmentsEmpty)) && (
                 <TouchableOpacity
                     onPress={activeTab === "templates" ? handleCreateNew : handleCreateAssessmentSession}
                     activeOpacity={0.8}
@@ -537,15 +542,30 @@ function AssessmentsList({
         return out;
     }, [drafts, sessions]);
 
+    const tourSeen = useAssessmentOnboardingStore((s) => s.tourSeen);
+    const markTourSeen = useAssessmentOnboardingStore((s) => s.markTourSeen);
+
     if (sectionsArray.length === 0) {
         return (
-            <EmptyState
-                icon={<Activity size={40} color={colors.text.quaternary} />}
-                title="Nenhuma avaliação ainda"
-                description="Toque no + para iniciar uma nova avaliação presencial"
-                actionLabel="Nova avaliação"
-                onAction={onCreateNew}
-            />
+            <View style={{ flex: 1 }}>
+                {!tourSeen && (
+                    <View style={{ paddingHorizontal: 20, paddingTop: 12 }}>
+                        <AssessmentOnboardingCard
+                            onDismiss={() => {
+                                Haptics.selectionAsync();
+                                markTourSeen();
+                            }}
+                        />
+                    </View>
+                )}
+                <EmptyState
+                    icon={<Activity size={40} color={colors.text.quaternary} />}
+                    title="Nenhuma avaliação ainda"
+                    description="Crie a primeira sessão pra capturar medições com o aluno presente."
+                    actionLabel="+ Nova avaliação"
+                    onAction={onCreateNew}
+                />
+            </View>
         );
     }
 
@@ -607,6 +627,58 @@ function isOverdue(s: AssessmentSessionListItem): boolean {
     if (!s.scheduled_at) return false;
     const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
     return Date.parse(s.scheduled_at) < cutoff;
+}
+
+function AssessmentOnboardingCard({ onDismiss }: { onDismiss: () => void }) {
+    return (
+        <View
+            accessibilityRole="alert"
+            accessibilityLabel="Dica de uso das avaliações presenciais"
+            style={{
+                borderRadius: 16,
+                padding: 16,
+                backgroundColor: colors.status.presencialBg,
+                borderWidth: 1,
+                borderColor: "rgba(139, 92, 246, 0.18)",
+                gap: 10,
+            }}
+        >
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Activity size={16} color={colors.status.presencial} strokeWidth={2.4} />
+                <Text
+                    style={{
+                        fontSize: 13,
+                        fontWeight: "700",
+                        color: colors.status.presencial,
+                    }}
+                >
+                    Use templates do Kinevo
+                </Text>
+            </View>
+            <Text style={{ fontSize: 13, lineHeight: 18, color: colors.text.secondary }}>
+                Já temos 5 templates prontos pra usar — Antropometria, Jackson & Pollock e
+                Petroski. Toque no + pra agendar uma sessão. A captura das medições acontece
+                com o aluno presente.
+            </Text>
+            <TouchableOpacity
+                onPress={onDismiss}
+                accessibilityRole="button"
+                accessibilityLabel="Entendi"
+                style={{
+                    alignSelf: "flex-start",
+                    marginTop: 2,
+                    paddingHorizontal: 14,
+                    paddingVertical: 8,
+                    borderRadius: 999,
+                    backgroundColor: colors.status.presencial,
+                }}
+            >
+                <Text style={{ fontSize: 12, fontWeight: "700", color: "#ffffff" }}>
+                    Entendi
+                </Text>
+            </TouchableOpacity>
+        </View>
+    );
 }
 
 function draftToListItem(d: AssessmentDraft): AssessmentSessionListItem {

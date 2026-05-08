@@ -281,4 +281,44 @@ export const TOUR_STEPS: Record<string, TourStep[]> = {
       placement: 'right',
     },
   ],
+
+  // =============================================
+  // ASSESSMENTS FIRST-TIME TOUR
+  // Triggered when activeTab === 'assessments' on /forms and the trainer
+  // hasn't seen it yet. tourId: 'assessments_first_time'
+  // =============================================
+  assessments_first_time: [
+    {
+      id: 'asm-1',
+      targetSelector: '[data-onboarding="assessments-tab"]',
+      title: 'Avaliações Presenciais',
+      description:
+        'Aqui você cria sessões de avaliação, captura medições com o aluno presente e visualiza laudos com composição corporal calculada automaticamente.',
+      placement: 'bottom',
+    },
+    {
+      id: 'asm-2',
+      targetSelector: '[data-onboarding="assessments-new-template"]',
+      title: 'Templates Prontos',
+      description:
+        'Já temos 5 templates do Kinevo prontos pra usar — Antropometria, Jackson & Pollock 3 e 7 dobras, Petroski 4 (BR) e Avaliação Inicial Presencial. Você pode clonar qualquer um e personalizar.',
+      placement: 'bottom',
+    },
+    {
+      id: 'asm-3',
+      targetSelector: '[data-onboarding="assessments-new-session"]',
+      title: 'Criar Sessão',
+      description:
+        'Toque para agendar uma avaliação. Você escolhe o aluno, o template, e informa sexo e idade — esses dados são usados pelos protocolos de composição corporal.',
+      placement: 'bottom',
+    },
+    {
+      id: 'asm-4',
+      targetSelector: '[data-onboarding="assessments-tab"]',
+      title: 'Captura no App Mobile',
+      description:
+        'A captura das medições acontece no aplicativo mobile do treinador, com o aluno presente. Aqui no web você acompanha o progresso, vê resultados e gera laudos.',
+      placement: 'bottom',
+    },
+  ],
 }
