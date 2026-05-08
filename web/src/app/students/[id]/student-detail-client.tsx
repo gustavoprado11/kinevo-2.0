@@ -523,6 +523,8 @@ export function StudentDetailClient({
                             onCompleteProgram={handleCompleteProgram}
                             onExtendProgram={handleExtendProgram}
                             onCreateProgram={handleCreateProgram}
+                            onAssignScheduled={handleAssignScheduled}
+                            onCreateScheduled={handleCreateScheduled}
                             onViewReport={activeProgram ? () => window.open(`/reports/program/${activeProgram.id}`, '_blank') : undefined}
                             hasActiveProgram={!!activeProgram}
                             studentId={student.id}

@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { motion } from 'framer-motion'
 import { SessionDetailSheet } from './session-detail-sheet'
 import { ProgramCalendar } from './program-calendar'
 import { AdherenceTrendStrip } from './adherence-trend-strip'
 import { getProgramWeek, getProgramEndDate } from '@kinevo/shared/utils/schedule-projection'
-import { Flame, Activity, ArrowUpRight, FileText } from 'lucide-react'
+import { Flame, Activity, ArrowUpRight, FileText, CalendarPlus, Plus, Library } from 'lucide-react'
 import { WARMUP_TYPE_LABELS, CARDIO_EQUIPMENT_LABELS } from '@kinevo/shared/types/workout-items'
 import type { SessionItem } from '@/app/students/[id]/actions/get-session-details'
 import type { RangeSession } from '@/app/students/[id]/actions/get-sessions-for-range'
@@ -163,6 +164,16 @@ interface ActiveProgramDashboardProps {
     onExtendProgram?: () => void
     onCreateProgram?: () => void
     onViewReport?: () => void
+    /**
+     * Affordance "Próximo programa" na toolbar do card. A Onda 1 escondeu o
+     * card "Próximos Programas" quando o programa atual está em <75% e a
+     * fila está vazia — sem essa porta, o treinador não consegue prescrever
+     * antecipadamente. Este botão usa o mesmo handler que o card usa quando
+     * está visível, garantindo um único caminho até `AssignProgramModal`
+     * em modo scheduled.
+     */
+    onAssignScheduled?: () => void
+    onCreateScheduled?: () => void
     hasActiveProgram?: boolean
     /** Pass to show full student history in calendar, not just current program */
     studentId?: string
@@ -181,6 +192,8 @@ export function ActiveProgramDashboard({
     onExtendProgram,
     onCreateProgram,
     onViewReport,
+    onAssignScheduled,
+    onCreateScheduled,
     hasActiveProgram = false,
     studentId,
 }: ActiveProgramDashboardProps) {
@@ -191,6 +204,28 @@ export function ActiveProgramDashboard({
     // Onda 2 — semana clicada no AdherenceTrendStrip. Quando muda, o
     // ProgramCalendar reposiciona o anchor via initialWeekStart.
     const [calendarStartWeek, setCalendarStartWeek] = useState<number | string | null>(null)
+
+    // Dropdown "Próximo programa" — Criar / Atribuir existente. Mesmo padrão
+    // do menu de ações no StudentHeader (mousedown listener + ref).
+    const [showNextMenu, setShowNextMenu] = useState(false)
+    const nextMenuRef = useRef<HTMLDivElement>(null)
+    useEffect(() => {
+        if (!showNextMenu) return
+        const handleClick = (e: MouseEvent) => {
+            if (nextMenuRef.current && !nextMenuRef.current.contains(e.target as Node)) {
+                setShowNextMenu(false)
+            }
+        }
+        const handleKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') setShowNextMenu(false)
+        }
+        document.addEventListener('mousedown', handleClick)
+        document.addEventListener('keydown', handleKey)
+        return () => {
+            document.removeEventListener('mousedown', handleClick)
+            document.removeEventListener('keydown', handleKey)
+        }
+    }, [showNextMenu])
 
     // Accordion State (for recent sessions inline expand)
     const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null)
@@ -373,6 +408,60 @@ export function ActiveProgramDashboard({
                         >
                             Trocar
                         </button>
+                        {(onAssignScheduled || onCreateScheduled) && (
+                            <div className="relative" ref={nextMenuRef}>
+                                <button
+                                    onClick={() => setShowNextMenu((v) => !v)}
+                                    className="px-3 py-1.5 text-[10px] font-bold text-k-text-tertiary hover:text-k-text-primary hover:bg-glass-bg-active rounded-lg transition-all border border-k-border-subtle flex items-center gap-1"
+                                    title="Prescrever próximo programa"
+                                    aria-haspopup="menu"
+                                    aria-expanded={showNextMenu}
+                                >
+                                    <CalendarPlus className="w-3 h-3" />
+                                    Próximo
+                                </button>
+
+                                {showNextMenu && (
+                                    <motion.div
+                                        initial={{ opacity: 0, scale: 0.95, y: -4 }}
+                                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                                        transition={{ duration: 0.15 }}
+                                        role="menu"
+                                        className="absolute left-0 top-full mt-1 w-56 rounded-xl border border-[#D2D2D7] dark:border-k-border-primary bg-white dark:bg-surface-card shadow-lg z-20 overflow-hidden"
+                                    >
+                                        {onCreateScheduled && (
+                                            <button
+                                                role="menuitem"
+                                                onClick={() => {
+                                                    setShowNextMenu(false)
+                                                    onCreateScheduled()
+                                                }}
+                                                className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-[#1D1D1F] dark:text-k-text-primary hover:bg-[#F5F5F7] dark:hover:bg-white/5 transition-colors"
+                                            >
+                                                <Plus className="w-3.5 h-3.5 text-violet-500" />
+                                                Criar novo programa
+                                            </button>
+                                        )}
+                                        {onCreateScheduled && onAssignScheduled && (
+                                            <div className="h-px bg-[#E8E8ED] dark:bg-k-border-subtle mx-2" />
+                                        )}
+                                        {onAssignScheduled && (
+                                            <button
+                                                role="menuitem"
+                                                onClick={() => {
+                                                    setShowNextMenu(false)
+                                                    onAssignScheduled()
+                                                }}
+                                                className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-[#1D1D1F] dark:text-k-text-primary hover:bg-[#F5F5F7] dark:hover:bg-white/5 transition-colors"
+                                            >
+                                                <Library className="w-3.5 h-3.5 text-violet-500" />
+                                                Atribuir programa existente
+                                            </button>
+                                        )}
+                                    </motion.div>
+                                )}
+                            </div>
+                        )}
                         {onViewReport && (
                             <button
                                 onClick={onViewReport}
