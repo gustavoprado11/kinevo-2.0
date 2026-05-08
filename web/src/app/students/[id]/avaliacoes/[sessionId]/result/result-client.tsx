@@ -3,13 +3,15 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { ArrowLeft, FileDown, Info } from 'lucide-react'
+import { ArrowLeft, FileDown, Loader2 } from 'lucide-react'
 import type {
     AssessmentSessionDetail,
     AssessmentSessionListItem,
 } from '@kinevo/shared/types/assessments'
 import type { Sex } from '@kinevo/shared/lib/assessment-protocols'
+import { parseFilenameFromHeader } from '@kinevo/shared/lib/http/parseFilename'
 import { useToast } from '@/components/ui/toast'
+import { createClient as createBrowserSupabase } from '@/lib/supabase/client'
 import { ResultStatsCardWeb } from '@/components/assessments/view/result-stats-card-web'
 import { ResultComparisonTable } from '@/components/assessments/view/result-comparison-table'
 import { HistoryMiniChartWeb } from '@/components/assessments/view/history-mini-chart-web'
@@ -49,20 +51,66 @@ function readSubjectSex(detail: AssessmentSessionDetail): Sex | null {
 export function ResultClient({ detail, studentId, history }: ResultClientProps) {
     const router = useRouter()
     const { toast } = useToast()
-    const [pdfPlaceholderVisible, setPdfPlaceholderVisible] = useState(false)
+    const [isGenerating, setIsGenerating] = useState(false)
     const session = detail.session
     const student = detail.student
     const sex = readSubjectSex(detail)
 
-    const handleShareReport = () => {
-        // PDF generation is a future-milestone feature. Surface both an inline
-        // disclosure (persistent, can't be missed if the toast scrolls out of
-        // viewport on long pages) and a toast for redundant feedback.
-        setPdfPlaceholderVisible(true)
-        toast({
-            type: 'success',
-            message: 'Geração de PDF chega em uma próxima atualização.',
-        })
+    // PDF download only makes sense for completed sessions (the Edge Function
+    // also enforces this for student access; for trainers we hide the button
+    // pre-completion to avoid generating a half-empty laudo).
+    const canDownloadPdf = session.status === 'completed'
+
+    const handleShareReport = async () => {
+        if (isGenerating) return
+        setIsGenerating(true)
+        try {
+            const supabase = createBrowserSupabase()
+            const { data: { session: authSession } } = await supabase.auth.getSession()
+            if (!authSession?.access_token) {
+                throw new Error('Sessão expirada. Faça login novamente.')
+            }
+
+            const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+            if (!url) throw new Error('Configuração inválida')
+
+            const res = await fetch(`${url}/functions/v1/generate-assessment-pdf`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${authSession.access_token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ session_id: session.id }),
+            })
+
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({ error: 'unknown' })) as { error?: string }
+                const message =
+                    err.error === 'forbidden' ? 'Sem permissão para gerar este laudo.'
+                    : err.error === 'session_not_found' ? 'Sessão não encontrada.'
+                    : 'Falha ao gerar o laudo. Tente novamente em instantes.'
+                throw new Error(message)
+            }
+
+            const blob = await res.blob()
+            const filename = parseFilenameFromHeader(res.headers.get('content-disposition'))
+                ?? `laudo-${session.id}.pdf`
+            const objectUrl = URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = objectUrl
+            a.download = filename
+            document.body.appendChild(a)
+            a.click()
+            a.remove()
+            URL.revokeObjectURL(objectUrl)
+
+            toast({ type: 'success', message: 'Laudo baixado.' })
+        } catch (e) {
+            const message = e instanceof Error ? e.message : 'Erro inesperado'
+            toast({ type: 'error', message })
+        } finally {
+            setIsGenerating(false)
+        }
     }
 
     return (
@@ -104,41 +152,21 @@ export function ResultClient({ detail, studentId, history }: ResultClientProps) 
                         Avaliação concluída em {formatDate(session.completed_at)}
                     </p>
                 </div>
-                <button
-                    onClick={handleShareReport}
-                    aria-pressed={pdfPlaceholderVisible}
-                    className="inline-flex flex-shrink-0 items-center gap-1.5 rounded-lg border border-k-border-subtle bg-surface-card px-3 py-1.5 text-xs font-medium text-k-text-secondary hover:border-violet-500/40 hover:text-violet-500 dark:hover:text-violet-400"
-                >
-                    <FileDown className="h-3.5 w-3.5" />
-                    Compartilhar laudo (PDF)
-                </button>
-            </div>
-
-            {/* PDF placeholder disclosure — persistent so the user can't miss
-                the response to clicking the button, even on long pages where
-                the bottom-right toast may scroll out of view. */}
-            {pdfPlaceholderVisible && (
-                <div className="mb-5 flex items-start gap-3 rounded-xl border border-violet-500/30 bg-violet-500/5 px-4 py-3">
-                    <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-violet-500 dark:text-violet-400" />
-                    <div className="flex-1 text-xs text-k-text-secondary">
-                        <p className="font-medium text-k-text-primary">
-                            Geração de PDF em desenvolvimento
-                        </p>
-                        <p className="mt-0.5">
-                            O laudo em PDF chega em uma próxima atualização. Por enquanto, você pode
-                            tirar um print ou compartilhar o link desta página com o aluno.
-                        </p>
-                    </div>
+                {canDownloadPdf && (
                     <button
-                        type="button"
-                        onClick={() => setPdfPlaceholderVisible(false)}
-                        aria-label="Fechar aviso"
-                        className="rounded-md px-1.5 py-0.5 text-[11px] font-medium text-k-text-tertiary hover:bg-violet-500/10 hover:text-k-text-primary"
+                        onClick={handleShareReport}
+                        disabled={isGenerating}
+                        className="inline-flex flex-shrink-0 items-center gap-1.5 rounded-lg border border-k-border-subtle bg-surface-card px-3 py-1.5 text-xs font-medium text-k-text-secondary hover:border-violet-500/40 hover:text-violet-500 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:text-violet-400"
                     >
-                        Ok
+                        {isGenerating ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                            <FileDown className="h-3.5 w-3.5" />
+                        )}
+                        {isGenerating ? 'Gerando…' : 'Compartilhar laudo (PDF)'}
                     </button>
-                </div>
-            )}
+                )}
+            </div>
 
             {/* Stats */}
             <ResultStatsCardWeb metrics={session.computed_metrics} sex={sex} />

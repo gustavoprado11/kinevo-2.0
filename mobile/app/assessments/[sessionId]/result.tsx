@@ -1,18 +1,21 @@
-import React, { useMemo } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ChevronLeft, Share2 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 import { colors } from '@/theme';
+import { supabase } from '../../../lib/supabase';
 import { useAssessmentSession } from '../../../hooks/useAssessmentSession';
 import { useAssessmentResultComparison } from '../../../hooks/useAssessmentResultComparison';
 import { useStudentMetricsTimeline } from '../../../hooks/useStudentMetricsTimeline';
 import { ResultStatsCard, type ResultStat } from '../../../components/trainer/assessments/ResultStatsCard';
 import { ResultComparisonRow } from '../../../components/trainer/assessments/ResultComparisonRow';
 import { HistoryMiniChart } from '../../../components/trainer/assessments/HistoryMiniChart';
-import { toast } from '../../../lib/toast';
 import { classifyBMI } from '@kinevo/shared/lib/assessment-protocols';
+import { parseFilenameFromHeader } from '@kinevo/shared/lib/http/parseFilename';
 import type { ComputedMetrics } from '@kinevo/shared/types/assessments';
 
 export default function ResultScreen() {
@@ -69,6 +72,65 @@ export default function ResultScreen() {
     }, [metrics]);
 
     const studentName = (session.detail?.student as { name?: string } | null)?.name ?? 'Aluno';
+    const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+    const canDownloadPdf = session.detail?.session.status === 'completed';
+
+    const handleSharePdf = async () => {
+        if (isGeneratingPdf || !sessionId) return;
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        setIsGeneratingPdf(true);
+        try {
+            const { data: { session: authSession } } = await supabase.auth.getSession();
+            if (!authSession?.access_token) {
+                throw new Error('Sessão expirada. Faça login novamente.');
+            }
+
+            const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
+            if (!url) throw new Error('Configuração inválida');
+
+            const res = await fetch(`${url}/functions/v1/generate-assessment-pdf`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${authSession.access_token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ session_id: sessionId }),
+            });
+
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({ error: 'unknown' })) as { error?: string };
+                const message =
+                    err.error === 'forbidden' ? 'Sem permissão para gerar este laudo.'
+                    : err.error === 'session_not_found' ? 'Sessão não encontrada.'
+                    : 'Falha ao gerar o laudo. Tente novamente em instantes.';
+                throw new Error(message);
+            }
+
+            const filename = parseFilenameFromHeader(res.headers.get('content-disposition'))
+                ?? `laudo-${sessionId}.pdf`;
+            const arrayBuffer = await res.arrayBuffer();
+            const base64 = arrayBufferToBase64(arrayBuffer);
+
+            const fileUri = `${FileSystem.cacheDirectory}${filename}`;
+            await FileSystem.writeAsStringAsync(fileUri, base64, {
+                encoding: FileSystem.EncodingType.Base64,
+            });
+
+            if (!(await Sharing.isAvailableAsync())) {
+                throw new Error('Compartilhamento não disponível neste dispositivo.');
+            }
+            await Sharing.shareAsync(fileUri, {
+                mimeType: 'application/pdf',
+                dialogTitle: 'Compartilhar laudo',
+                UTI: 'com.adobe.pdf',
+            });
+        } catch (e) {
+            const message = e instanceof Error ? e.message : 'Erro inesperado';
+            Alert.alert('Erro', message);
+        } finally {
+            setIsGeneratingPdf(false);
+        }
+    };
 
     React.useEffect(() => {
         if (!session.orphaned) return;
@@ -208,30 +270,36 @@ export default function ResultScreen() {
                     )}
                 </View>
 
-                <TouchableOpacity
-                    onPress={() => {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        toast.success('PDF disponível em breve');
-                    }}
-                    accessibilityRole="button"
-                    accessibilityLabel="Compartilhar laudo"
-                    style={{
-                        marginTop: 4,
-                        backgroundColor: colors.background.card,
-                        borderRadius: 14,
-                        paddingVertical: 14,
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 8,
-                        borderWidth: 1,
-                        borderColor: colors.border.secondary,
-                    }}>
-                    <Share2 size={18} color={colors.brand.primary} />
-                    <Text style={{ fontSize: 15, fontWeight: '700', color: colors.brand.primary }}>
-                        Compartilhar laudo (PDF)
-                    </Text>
-                </TouchableOpacity>
+                {canDownloadPdf && (
+                    <TouchableOpacity
+                        onPress={handleSharePdf}
+                        disabled={isGeneratingPdf}
+                        accessibilityRole="button"
+                        accessibilityLabel="Compartilhar laudo"
+                        accessibilityState={{ disabled: isGeneratingPdf }}
+                        style={{
+                            marginTop: 4,
+                            backgroundColor: colors.background.card,
+                            borderRadius: 14,
+                            paddingVertical: 14,
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 8,
+                            borderWidth: 1,
+                            borderColor: colors.border.secondary,
+                            opacity: isGeneratingPdf ? 0.6 : 1,
+                        }}>
+                        {isGeneratingPdf ? (
+                            <ActivityIndicator size="small" color={colors.brand.primary} />
+                        ) : (
+                            <Share2 size={18} color={colors.brand.primary} />
+                        )}
+                        <Text style={{ fontSize: 15, fontWeight: '700', color: colors.brand.primary }}>
+                            {isGeneratingPdf ? 'Gerando…' : 'Compartilhar laudo (PDF)'}
+                        </Text>
+                    </TouchableOpacity>
+                )}
             </ScrollView>
         </View>
     );
@@ -283,4 +351,19 @@ function formatMetric(key: string, value: number): string {
 
 function isLowerBetter(key: string): boolean {
     return key === 'body_fat_percent' || key === 'fat_mass_kg' || key === 'rcq' || key === 'bmi';
+}
+
+// Convert a binary buffer to base64 without going through Buffer (RN doesn't
+// ship with `Buffer` by default and `btoa` only handles binary strings, which
+// is fragile for byte sequences > 0xFF). This keeps the implementation
+// dependency-free and predictable.
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    const chunk = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunk) {
+        binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + chunk)));
+    }
+    // eslint-disable-next-line no-undef
+    return globalThis.btoa(binary);
 }
