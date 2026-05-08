@@ -26,9 +26,22 @@ export default async function TemplatesPage() {
         responseCounts.set(sub.form_template_id, (responseCounts.get(sub.form_template_id) || 0) + 1)
     }
 
+    // Count assessment sessions per template (status != 'cancelled')
+    const { data: sessions } = await supabase
+        .from('assessment_sessions')
+        .select('template_id, status')
+        .eq('trainer_id', trainer.id)
+
+    const sessionCounts = new Map<string, number>()
+    for (const s of sessions || []) {
+        if (s.status === 'cancelled' || !s.template_id) continue
+        sessionCounts.set(s.template_id, (sessionCounts.get(s.template_id) || 0) + 1)
+    }
+
     const enriched = (templates || []).map(t => ({
         ...t,
         responseCount: responseCounts.get(t.id) || 0,
+        sessionCount: sessionCounts.get(t.id) || 0,
     }))
 
     return (

@@ -18,6 +18,7 @@ import {
     CheckCircle2,
     MessageSquare,
     FileText,
+    Activity,
 } from 'lucide-react'
 
 // --- Helpers ---
@@ -87,6 +88,7 @@ interface FormTemplate {
     created_at: string
     updated_at: string
     responseCount: number
+    sessionCount?: number
     trainer_id: string | null
 }
 
@@ -99,6 +101,7 @@ const CATEGORY_CONFIG: Record<string, { label: string; icon: typeof FileText; co
     anamnese: { label: 'Anamnese', icon: ClipboardCheck, color: 'text-blue-600 dark:text-blue-400', bgColor: 'bg-blue-500/10' },
     checkin: { label: 'Check-in', icon: CheckCircle2, color: 'text-emerald-600 dark:text-emerald-400', bgColor: 'bg-emerald-500/10' },
     survey: { label: 'Pesquisa', icon: MessageSquare, color: 'text-amber-600 dark:text-amber-400', bgColor: 'bg-amber-500/10' },
+    assessment: { label: 'Avaliação Presencial', icon: Activity, color: 'text-violet-600 dark:text-violet-400', bgColor: 'bg-violet-500/10' },
 }
 
 // --- Actions Menu ---
@@ -108,6 +111,7 @@ function ActionsMenu({ template, onDelete }: { template: FormTemplate; onDelete:
     const ref = useRef<HTMLDivElement>(null)
     const router = useRouter()
     const isSystem = template.trainer_id === null
+    const isAssessment = template.category === 'assessment'
 
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
@@ -135,12 +139,14 @@ function ActionsMenu({ template, onDelete }: { template: FormTemplate; onDelete:
                             <Pencil size={14} /> Editar
                         </button>
                     )}
-                    <button
-                        onClick={(e) => { e.stopPropagation(); setOpen(false); router.push(`/forms?assign=${template.id}`) }}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-[#1D1D1F] hover:bg-[#F5F5F7] transition-colors dark:text-k-text-secondary dark:hover:bg-glass-bg"
-                    >
-                        <Send size={14} /> Enviar para aluno
-                    </button>
+                    {!isAssessment && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); setOpen(false); router.push(`/forms?assign=${template.id}`) }}
+                            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-[#1D1D1F] hover:bg-[#F5F5F7] transition-colors dark:text-k-text-secondary dark:hover:bg-glass-bg"
+                        >
+                            <Send size={14} /> Enviar para aluno
+                        </button>
+                    )}
                     {!isSystem && (
                         <>
                             <div className="my-1 border-t border-[#E8E8ED] dark:border-k-border-subtle" />
@@ -259,8 +265,12 @@ export function TemplatesClient({ trainer, templates: initialTemplates }: Templa
                     {filteredTemplates.map((template) => {
                         const config = CATEGORY_CONFIG[template.category] || CATEGORY_CONFIG.survey
                         const Icon = config.icon
+                        const isAssessment = template.category === 'assessment'
                         const questions = (template.schema_json as any)?.questions || []
                         const questionsCount = questions.length
+                        const sections = (template.schema_json as any)?.sections || []
+                        const sectionsCount = sections.length
+                        const sessionsCount = template.sessionCount ?? 0
                         const isSystem = template.trainer_id === null
 
                         return (
@@ -287,7 +297,9 @@ export function TemplatesClient({ trainer, templates: initialTemplates }: Templa
                                             </h3>
                                             <div className="flex items-center gap-2 mt-0.5">
                                                 <span className="text-xs text-[#86868B] dark:text-k-text-quaternary">
-                                                    {questionsCount} {questionsCount === 1 ? 'pergunta' : 'perguntas'} · {config.label}
+                                                    {isAssessment
+                                                        ? `${sectionsCount} ${sectionsCount === 1 ? 'seção' : 'seções'}`
+                                                        : `${questionsCount} ${questionsCount === 1 ? 'pergunta' : 'perguntas'}`} · {config.label}
                                                 </span>
                                                 {isSystem && (
                                                     <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-[#5856D6]/10 text-[#5856D6] border border-[#5856D6]/20 dark:bg-violet-500/10 dark:text-violet-400 dark:border-violet-500/20">
@@ -313,40 +325,62 @@ export function TemplatesClient({ trainer, templates: initialTemplates }: Templa
                                     <ActionsMenu template={template} onDelete={handleDelete} />
                                 </div>
 
-                                {/* Question preview */}
-                                {questions.length > 0 && (
-                                    <div className="ml-11 space-y-1 mb-3">
-                                        {questions.slice(0, 3).map((q: any, i: number) => (
-                                            <div key={q.id || i} className="flex items-center gap-2 text-xs">
-                                                <span className="text-[#AEAEB2] dark:text-k-text-quaternary w-4 shrink-0">{i + 1}.</span>
-                                                <span className="text-[#6E6E73] dark:text-k-text-tertiary truncate">{q.label || q.title}</span>
-                                                <span className="text-[#AEAEB2] dark:text-k-text-quaternary shrink-0 text-[10px]">({getTypeLabel(q.type)})</span>
-                                            </div>
-                                        ))}
-                                        {questions.length > 3 && (
-                                            <span className="text-[10px] text-[#007AFF] font-medium pl-6 dark:text-k-text-quaternary dark:font-normal">
-                                                +{questions.length - 3} mais...
-                                            </span>
-                                        )}
-                                    </div>
+                                {/* Preview: questions for forms, sections for assessments */}
+                                {isAssessment ? (
+                                    sections.length > 0 && (
+                                        <div className="ml-11 space-y-1 mb-3">
+                                            {sections.slice(0, 3).map((sec: any, i: number) => (
+                                                <div key={sec.id || i} className="flex items-center gap-2 text-xs">
+                                                    <span className="text-[#AEAEB2] dark:text-k-text-quaternary w-4 shrink-0">{i + 1}.</span>
+                                                    <span className="text-[#6E6E73] dark:text-k-text-tertiary truncate">{sec.title || sec.label || sec.id}</span>
+                                                </div>
+                                            ))}
+                                            {sections.length > 3 && (
+                                                <span className="text-[10px] text-[#007AFF] font-medium pl-6 dark:text-k-text-quaternary dark:font-normal">
+                                                    +{sections.length - 3} mais...
+                                                </span>
+                                            )}
+                                        </div>
+                                    )
+                                ) : (
+                                    questions.length > 0 && (
+                                        <div className="ml-11 space-y-1 mb-3">
+                                            {questions.slice(0, 3).map((q: any, i: number) => (
+                                                <div key={q.id || i} className="flex items-center gap-2 text-xs">
+                                                    <span className="text-[#AEAEB2] dark:text-k-text-quaternary w-4 shrink-0">{i + 1}.</span>
+                                                    <span className="text-[#6E6E73] dark:text-k-text-tertiary truncate">{q.label || q.title}</span>
+                                                    <span className="text-[#AEAEB2] dark:text-k-text-quaternary shrink-0 text-[10px]">({getTypeLabel(q.type)})</span>
+                                                </div>
+                                            ))}
+                                            {questions.length > 3 && (
+                                                <span className="text-[10px] text-[#007AFF] font-medium pl-6 dark:text-k-text-quaternary dark:font-normal">
+                                                    +{questions.length - 3} mais...
+                                                </span>
+                                            )}
+                                        </div>
+                                    )
                                 )}
 
                                 {/* Footer */}
                                 <div className="ml-11 flex items-center justify-between pt-2 border-t border-[#E8E8ED] dark:border-k-border-subtle/50 text-[11px]">
                                     <span className="text-[#AEAEB2] dark:text-k-text-quaternary">
-                                        {template.responseCount} {template.responseCount === 1 ? 'resposta' : 'respostas'}
+                                        {isAssessment
+                                            ? `${sessionsCount} ${sessionsCount === 1 ? 'sessão' : 'sessões'}`
+                                            : `${template.responseCount} ${template.responseCount === 1 ? 'resposta' : 'respostas'}`}
                                         {' · '}v{template.version}
                                         {' · '}{timeAgo(template.created_at)}
                                     </span>
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation()
-                                            router.push(`/forms?assign=${template.id}`)
-                                        }}
-                                        className="text-[#007AFF] hover:text-[#0056B3] dark:text-violet-400 dark:hover:text-violet-300 opacity-0 group-hover:opacity-100 transition-all font-medium"
-                                    >
-                                        Enviar para aluno →
-                                    </button>
+                                    {!isAssessment && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation()
+                                                router.push(`/forms?assign=${template.id}`)
+                                            }}
+                                            className="text-[#007AFF] hover:text-[#0056B3] dark:text-violet-400 dark:hover:text-violet-300 opacity-0 group-hover:opacity-100 transition-all font-medium"
+                                        >
+                                            Enviar para aluno →
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         )

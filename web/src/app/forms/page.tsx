@@ -79,12 +79,26 @@ export default async function FormsPage() {
         responseCounts.set(sub.form_template_id, (responseCounts.get(sub.form_template_id) || 0) + 1)
     }
 
+    // Count assessment sessions per template (status != 'cancelled')
+    const { data: assessmentSessionsForCount } = await supabase
+        .from('assessment_sessions')
+        .select('template_id, status')
+        .eq('trainer_id', trainer.id)
+
+    const sessionCounts = new Map<string, number>()
+    for (const s of assessmentSessionsForCount || []) {
+        if (s.status === 'cancelled' || !s.template_id) continue
+        sessionCounts.set(s.template_id, (sessionCounts.get(s.template_id) || 0) + 1)
+    }
+
     const enrichedTemplates = (templates || []).map(t => ({
         id: t.id,
         title: t.title,
         category: t.category as string,
         responseCount: responseCounts.get(t.id) || 0,
         questionCount: (t.schema_json as any)?.questions?.length || 0,
+        sectionCount: (t.schema_json as any)?.sections?.length || 0,
+        sessionCount: sessionCounts.get(t.id) || 0,
         trainer_id: t.trainer_id,
     }))
 

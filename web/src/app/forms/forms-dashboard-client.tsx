@@ -12,6 +12,7 @@ import { createClient as createBrowserClient } from '@/lib/supabase/client'
 import {
     Plus, Check, FileText, Send, ChevronRight,
     ClipboardList, CheckCircle2, MessageSquare, Loader2,
+    Activity,
 } from 'lucide-react'
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
 import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
@@ -96,6 +97,7 @@ const CATEGORY_CONFIG: Record<string, { label: string; icon: typeof FileText; co
     anamnese: { label: 'Anamnese', icon: ClipboardList, color: 'text-blue-600 dark:text-blue-400' },
     checkin: { label: 'Check-in', icon: CheckCircle2, color: 'text-emerald-600 dark:text-emerald-400' },
     survey: { label: 'Pesquisa', icon: MessageSquare, color: 'text-amber-600 dark:text-amber-400' },
+    assessment: { label: 'Avaliação Presencial', icon: Activity, color: 'text-violet-600 dark:text-violet-400' },
 }
 
 // --- Types ---
@@ -137,6 +139,8 @@ interface TemplateInfo {
     category: string
     responseCount: number
     questionCount: number
+    sectionCount?: number
+    sessionCount?: number
     trainer_id: string | null
 }
 
@@ -200,6 +204,7 @@ export function FormsDashboardClient({
     })
     const [assessmentFilter, setAssessmentFilter] = useState<AssessmentListFilter>('all')
     const [createSessionOpen, setCreateSessionOpen] = useState(false)
+    const [presetStudentIdForCreate, setPresetStudentIdForCreate] = useState<string | undefined>(undefined)
 
     // Handle URL params (?assign=templateId)
     useEffect(() => {
@@ -209,6 +214,21 @@ export function FormsDashboardClient({
             setIsAssignOpen(true)
         }
     }, [searchParams])
+
+    // Handle deep-link from /students/[id] →
+    // /forms?tab=assessments&createAssessment=1&studentId=<uuid>
+    // Validates studentId against the trainer's students list; falls back to
+    // empty modal with a console warning if the id is unknown.
+    useEffect(() => {
+        if (searchParams.get('createAssessment') !== '1') return
+        const rawStudentId = searchParams.get('studentId') ?? undefined
+        const valid = rawStudentId && students.some(s => s.id === rawStudentId)
+        if (rawStudentId && !valid) {
+            console.warn('[forms] createAssessment deep-link: unknown studentId', rawStudentId)
+        }
+        setPresetStudentIdForCreate(valid ? rawStudentId : undefined)
+        setCreateSessionOpen(true)
+    }, [searchParams, students])
 
     // Detail sheet state
     const [activeSubmission, setActiveSubmission] = useState<FullSubmission | null>(null)
@@ -363,11 +383,16 @@ export function FormsDashboardClient({
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
                     <h1 className="text-2xl font-bold tracking-tight text-[#1D1D1F] dark:text-k-text-primary">Avaliações</h1>
-                    {submissions.length > 0 && (
-                        <span className="px-2.5 py-0.5 rounded-full bg-[#F5F5F7] text-sm text-[#6E6E73] dark:bg-glass-bg dark:text-k-text-tertiary dark:border dark:border-k-border-subtle">
-                            {submissions.length}
-                        </span>
-                    )}
+                    {(() => {
+                        const headerCount = activeTab === 'responses'
+                            ? submissions.length
+                            : assessmentSessions.filter(s => s.status !== 'cancelled').length
+                        return headerCount > 0 ? (
+                            <span className="px-2.5 py-0.5 rounded-full bg-[#F5F5F7] text-sm text-[#6E6E73] dark:bg-glass-bg dark:text-k-text-tertiary dark:border dark:border-k-border-subtle">
+                                {headerCount}
+                            </span>
+                        ) : null
+                    })()}
                 </div>
                 <div className="flex items-center gap-2">
                     {activeTab === 'responses' ? (
@@ -390,14 +415,19 @@ export function FormsDashboardClient({
                         </>
                     ) : (
                         <>
-                            <button
-                                data-onboarding="assessments-new-session"
-                                onClick={() => setCreateSessionOpen(true)}
-                                className="flex items-center gap-2 px-4 py-2 bg-violet-500 hover:bg-violet-600 text-white text-sm font-medium rounded-full transition-all dark:rounded-xl"
-                            >
-                                <Plus size={14} />
-                                Nova avaliação
-                            </button>
+                            {assessmentTemplates.length > 0 && (
+                                <button
+                                    data-onboarding="assessments-new-session"
+                                    onClick={() => {
+                                        setPresetStudentIdForCreate(undefined)
+                                        setCreateSessionOpen(true)
+                                    }}
+                                    className="flex items-center gap-2 px-4 py-2 bg-violet-500 hover:bg-violet-600 text-white text-sm font-medium rounded-full transition-all dark:rounded-xl"
+                                >
+                                    <Plus size={14} />
+                                    Nova avaliação
+                                </button>
+                            )}
                             <button
                                 data-onboarding="assessments-new-template"
                                 onClick={() => router.push('/forms/templates/new?category=assessment')}
@@ -669,11 +699,23 @@ export function FormsDashboardClient({
                                         </span>
                                     </div>
                                     <div className="flex items-center gap-3 text-xs text-[#86868B] dark:text-k-text-quaternary shrink-0">
-                                        {t.questionCount > 0 && (
-                                            <span>{t.questionCount} {t.questionCount === 1 ? 'pergunta' : 'perguntas'}</span>
+                                        {t.category === 'assessment' ? (
+                                            <>
+                                                {(t.sectionCount ?? 0) > 0 && (
+                                                    <span>{t.sectionCount} {t.sectionCount === 1 ? 'seção' : 'seções'}</span>
+                                                )}
+                                                <span className="text-[#AEAEB2] dark:text-k-text-quaternary">·</span>
+                                                <span>{t.sessionCount ?? 0} {(t.sessionCount ?? 0) === 1 ? 'sessão' : 'sessões'}</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                {t.questionCount > 0 && (
+                                                    <span>{t.questionCount} {t.questionCount === 1 ? 'pergunta' : 'perguntas'}</span>
+                                                )}
+                                                <span className="text-[#AEAEB2] dark:text-k-text-quaternary">·</span>
+                                                <span>{t.responseCount} {t.responseCount === 1 ? 'resposta' : 'respostas'}</span>
+                                            </>
                                         )}
-                                        <span className="text-[#AEAEB2] dark:text-k-text-quaternary">·</span>
-                                        <span>{t.responseCount} {t.responseCount === 1 ? 'resposta' : 'respostas'}</span>
                                         <button
                                             onClick={(e) => { e.stopPropagation(); setPreselectedTemplateId(t.id); setIsAssignOpen(true) }}
                                             className="text-[#007AFF] hover:text-[#0056B3] dark:text-violet-400 dark:hover:text-violet-300 opacity-0 group-hover:opacity-100 transition-all font-medium"
@@ -740,30 +782,18 @@ export function FormsDashboardClient({
 
                     {/* Sessions list */}
                     {filteredAssessments.length === 0 ? (
-                        <div className="rounded-2xl border-2 border-dashed border-k-border-subtle bg-surface-card p-10 text-center">
-                            <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-violet-500/10">
-                                <Plus className="h-5 w-5 text-violet-500 dark:text-violet-400" />
-                            </div>
-                            <p className="text-sm font-semibold text-k-text-primary">
-                                {assessmentSessions.length === 0
-                                    ? 'Nenhuma avaliação ainda'
-                                    : 'Nenhuma avaliação neste filtro'}
-                            </p>
-                            <p className="mx-auto mt-1 max-w-sm text-xs text-k-text-tertiary">
-                                {assessmentSessions.length === 0
-                                    ? 'Crie um template de avaliação presencial e agende a primeira sessão.'
-                                    : 'Troque o filtro ou crie uma nova avaliação.'}
-                            </p>
-                            {assessmentTemplates.length > 0 && (
-                                <button
-                                    onClick={() => setCreateSessionOpen(true)}
-                                    className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-violet-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-600"
-                                >
-                                    <Plus className="h-3.5 w-3.5" />
-                                    Nova avaliação
-                                </button>
-                            )}
-                            {assessmentTemplates.length === 0 && (
+                        assessmentTemplates.length === 0 ? (
+                            // Caso 1: 0 templates do trainer — único CTA destrava o flow.
+                            <div className="rounded-2xl border-2 border-dashed border-k-border-subtle bg-surface-card p-10 text-center">
+                                <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-violet-500/10">
+                                    <Plus className="h-5 w-5 text-violet-500 dark:text-violet-400" />
+                                </div>
+                                <p className="text-sm font-semibold text-k-text-primary">
+                                    Comece criando um template
+                                </p>
+                                <p className="mx-auto mt-1 max-w-sm text-xs text-k-text-tertiary">
+                                    Use um template de sistema do Kinevo ou crie o seu para agendar avaliações.
+                                </p>
                                 <button
                                     onClick={() => router.push('/forms/templates/new?category=assessment')}
                                     className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-violet-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-600"
@@ -771,8 +801,32 @@ export function FormsDashboardClient({
                                     <Plus className="h-3.5 w-3.5" />
                                     Criar template de avaliação
                                 </button>
-                            )}
-                        </div>
+                            </div>
+                        ) : assessmentSessions.length === 0 ? (
+                            // Caso 2: tem templates mas 0 sessões. Header já tem "Nova avaliação" primary;
+                            // empty state apenas comunica e aponta para o CTA do header.
+                            <div className="rounded-2xl border-2 border-dashed border-k-border-subtle bg-surface-card p-10 text-center">
+                                <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-violet-500/10">
+                                    <Activity className="h-5 w-5 text-violet-500 dark:text-violet-400" />
+                                </div>
+                                <p className="text-sm font-semibold text-k-text-primary">
+                                    Nenhuma avaliação ainda
+                                </p>
+                                <p className="mx-auto mt-1 max-w-sm text-xs text-k-text-tertiary">
+                                    Use &ldquo;Nova avaliação&rdquo; acima para agendar a primeira sessão.
+                                </p>
+                            </div>
+                        ) : (
+                            // Caso 3: tem sessões mas filtro atual está vazio.
+                            <div className="rounded-2xl border-2 border-dashed border-k-border-subtle bg-surface-card p-10 text-center">
+                                <p className="text-sm font-semibold text-k-text-primary">
+                                    Nenhuma avaliação neste filtro
+                                </p>
+                                <p className="mx-auto mt-1 max-w-sm text-xs text-k-text-tertiary">
+                                    Troque o filtro ou crie uma nova avaliação.
+                                </p>
+                            </div>
+                        )
                     ) : (
                         <div className="overflow-hidden rounded-2xl border border-k-border-subtle bg-surface-card">
                             <ul className="divide-y divide-k-border-subtle">
@@ -851,9 +905,17 @@ export function FormsDashboardClient({
             {/* Create Session Modal */}
             <CreateSessionModal
                 open={createSessionOpen}
-                onClose={() => setCreateSessionOpen(false)}
+                onClose={() => {
+                    setCreateSessionOpen(false)
+                    setPresetStudentIdForCreate(undefined)
+                    // Strip deep-link params so refresh/back doesn't reopen modal.
+                    if (searchParams.get('createAssessment') === '1' || searchParams.get('studentId')) {
+                        router.replace('/forms?tab=assessments')
+                    }
+                }}
                 students={students}
                 templates={assessmentTemplates}
+                presetStudentId={presetStudentIdForCreate}
                 onCreated={(sessionId) => {
                     // Land on the detail page so trainer can start capture flow
                     // (today: mobile-only). Web detail page shows checklist + cancel.
