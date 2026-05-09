@@ -22,7 +22,6 @@ export type BannerKey =
     | 'reassessment_due'
     | 'cycle_ending'
     | 'first_session_pending'
-    | 'streak_celebration'
 
 export interface BannerAction {
     label: string
@@ -281,18 +280,6 @@ export function pickBanner(ctx: BannerContext): BannerCandidate | null {
             title: 'Ciclo terminando',
             detail: `O programa de ${firstName} encerra em ${daysToEnd} dia${daysToEnd === 1 ? '' : 's'}. Hora de planejar o próximo.`,
             primary: { label: 'Planejar próximo', actionId: 'assign_program' },
-        })
-    }
-
-    // INFO — streak_celebration (weight 30)
-    if (ctx.historySummary.streak >= 3) {
-        candidates.push({
-            key: 'streak_celebration',
-            level: 'info',
-            weight: 30,
-            title: `${firstName} está numa sequência!`,
-            detail: `${ctx.historySummary.streak} treinos consecutivos. Considere uma mensagem de reforço.`,
-            primary: { label: 'Enviar mensagem', actionId: 'send_message' },
         })
     }
 

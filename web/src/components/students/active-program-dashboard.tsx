@@ -6,7 +6,7 @@ import { SessionDetailSheet } from './session-detail-sheet'
 import { ProgramCalendar } from './program-calendar'
 import { AdherenceTrendStrip } from './adherence-trend-strip'
 import { getProgramWeek, getProgramEndDate } from '@kinevo/shared/utils/schedule-projection'
-import { Flame, Activity, ArrowUpRight, FileText, CalendarPlus, Plus, Library } from 'lucide-react'
+import { Flame, Activity, ArrowUpRight, FileText, CalendarPlus, Plus, MoreHorizontal, CheckCircle, ArrowLeftRight } from 'lucide-react'
 import { WARMUP_TYPE_LABELS, CARDIO_EQUIPMENT_LABELS } from '@kinevo/shared/types/workout-items'
 import type { SessionItem } from '@/app/students/[id]/actions/get-session-details'
 import type { RangeSession } from '@/app/students/[id]/actions/get-sessions-for-range'
@@ -205,19 +205,20 @@ export function ActiveProgramDashboard({
     // ProgramCalendar reposiciona o anchor via initialWeekStart.
     const [calendarStartWeek, setCalendarStartWeek] = useState<number | string | null>(null)
 
-    // Dropdown "Próximo programa" — Criar / Atribuir existente. Mesmo padrão
-    // do menu de ações no StudentHeader (mousedown listener + ref).
-    const [showNextMenu, setShowNextMenu] = useState(false)
-    const nextMenuRef = useRef<HTMLDivElement>(null)
+    // Menu overflow da toolbar: ações de fim de ciclo (Concluir, Trocar,
+    // Criar próximo, Atribuir próximo). Mesmo padrão do StudentHeader
+    // (mousedown listener + ref + ESC).
+    const [showOverflowMenu, setShowOverflowMenu] = useState(false)
+    const overflowMenuRef = useRef<HTMLDivElement>(null)
     useEffect(() => {
-        if (!showNextMenu) return
+        if (!showOverflowMenu) return
         const handleClick = (e: MouseEvent) => {
-            if (nextMenuRef.current && !nextMenuRef.current.contains(e.target as Node)) {
-                setShowNextMenu(false)
+            if (overflowMenuRef.current && !overflowMenuRef.current.contains(e.target as Node)) {
+                setShowOverflowMenu(false)
             }
         }
         const handleKey = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') setShowNextMenu(false)
+            if (e.key === 'Escape') setShowOverflowMenu(false)
         }
         document.addEventListener('mousedown', handleClick)
         document.addEventListener('keydown', handleKey)
@@ -225,7 +226,7 @@ export function ActiveProgramDashboard({
             document.removeEventListener('mousedown', handleClick)
             document.removeEventListener('keydown', handleKey)
         }
-    }, [showNextMenu])
+    }, [showOverflowMenu])
 
     // Accordion State (for recent sessions inline expand)
     const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null)
@@ -378,22 +379,17 @@ export function ActiveProgramDashboard({
                     {program.description && (
                         <p className="text-sm text-k-text-tertiary leading-relaxed max-w-md mb-3">{program.description}</p>
                     )}
-                    {/* Action toolbar */}
+                    {/* Action toolbar — hierarquia: primário (Editar) à esquerda,
+                        Prorrogar destacado quando expired, Relatório neutro,
+                        overflow menu na direita com ações de fim de ciclo. */}
                     <div className="flex items-center gap-2 mt-3">
                         <button
                             onClick={onEditProgram}
-                            className="px-3 py-1.5 text-[10px] font-bold text-k-text-tertiary hover:text-k-text-primary hover:bg-glass-bg-active rounded-lg transition-all border border-k-border-subtle"
+                            data-testid="toolbar-edit"
+                            className="px-3 py-1.5 text-[10px] font-bold text-white bg-violet-600 hover:bg-violet-500 rounded-lg transition-all border border-transparent shadow-sm"
                         >
                             Editar
                         </button>
-                        {(program.status === 'active' || program.status === 'expired') && (
-                            <button
-                                onClick={onCompleteProgram}
-                                className="px-3 py-1.5 text-[10px] font-bold text-k-text-tertiary hover:text-k-text-primary hover:bg-glass-bg-active rounded-lg transition-all border border-k-border-subtle"
-                            >
-                                Concluir
-                            </button>
-                        )}
                         {program.status === 'expired' && onExtendProgram && (
                             <button
                                 onClick={onExtendProgram}
@@ -401,66 +397,6 @@ export function ActiveProgramDashboard({
                             >
                                 Prorrogar
                             </button>
-                        )}
-                        <button
-                            onClick={onAssignProgram}
-                            className="px-3 py-1.5 text-[10px] font-bold text-k-text-tertiary hover:text-k-text-primary hover:bg-glass-bg-active rounded-lg transition-all border border-k-border-subtle"
-                        >
-                            Trocar
-                        </button>
-                        {(onAssignScheduled || onCreateScheduled) && (
-                            <div className="relative" ref={nextMenuRef}>
-                                <button
-                                    onClick={() => setShowNextMenu((v) => !v)}
-                                    className="px-3 py-1.5 text-[10px] font-bold text-k-text-tertiary hover:text-k-text-primary hover:bg-glass-bg-active rounded-lg transition-all border border-k-border-subtle flex items-center gap-1"
-                                    title="Prescrever próximo programa"
-                                    aria-haspopup="menu"
-                                    aria-expanded={showNextMenu}
-                                >
-                                    <CalendarPlus className="w-3 h-3" />
-                                    Próximo
-                                </button>
-
-                                {showNextMenu && (
-                                    <motion.div
-                                        initial={{ opacity: 0, scale: 0.95, y: -4 }}
-                                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                                        transition={{ duration: 0.15 }}
-                                        role="menu"
-                                        className="absolute left-0 top-full mt-1 w-56 rounded-xl border border-[#D2D2D7] dark:border-k-border-primary bg-white dark:bg-surface-card shadow-lg z-20 overflow-hidden"
-                                    >
-                                        {onCreateScheduled && (
-                                            <button
-                                                role="menuitem"
-                                                onClick={() => {
-                                                    setShowNextMenu(false)
-                                                    onCreateScheduled()
-                                                }}
-                                                className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-[#1D1D1F] dark:text-k-text-primary hover:bg-[#F5F5F7] dark:hover:bg-white/5 transition-colors"
-                                            >
-                                                <Plus className="w-3.5 h-3.5 text-violet-500" />
-                                                Criar novo programa
-                                            </button>
-                                        )}
-                                        {onCreateScheduled && onAssignScheduled && (
-                                            <div className="h-px bg-[#E8E8ED] dark:bg-k-border-subtle mx-2" />
-                                        )}
-                                        {onAssignScheduled && (
-                                            <button
-                                                role="menuitem"
-                                                onClick={() => {
-                                                    setShowNextMenu(false)
-                                                    onAssignScheduled()
-                                                }}
-                                                className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-[#1D1D1F] dark:text-k-text-primary hover:bg-[#F5F5F7] dark:hover:bg-white/5 transition-colors"
-                                            >
-                                                <Library className="w-3.5 h-3.5 text-violet-500" />
-                                                Atribuir programa existente
-                                            </button>
-                                        )}
-                                    </motion.div>
-                                )}
-                            </div>
                         )}
                         {onViewReport && (
                             <button
@@ -471,6 +407,84 @@ export function ActiveProgramDashboard({
                                 Relatório
                             </button>
                         )}
+                        <div className="relative" ref={overflowMenuRef}>
+                            <button
+                                onClick={() => setShowOverflowMenu((v) => !v)}
+                                className="h-7 w-7 flex items-center justify-center text-k-text-tertiary hover:text-k-text-primary hover:bg-glass-bg-active rounded-lg transition-all border border-k-border-subtle"
+                                title="Mais ações"
+                                aria-haspopup="menu"
+                                aria-expanded={showOverflowMenu}
+                                aria-label="Mais ações"
+                            >
+                                <MoreHorizontal className="w-3.5 h-3.5" />
+                            </button>
+
+                            {showOverflowMenu && (
+                                <motion.div
+                                    initial={{ opacity: 0, scale: 0.95, y: -4 }}
+                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                    transition={{ duration: 0.15 }}
+                                    role="menu"
+                                    className="absolute right-0 top-full mt-1 w-56 rounded-xl border border-[#D2D2D7] dark:border-k-border-primary bg-white dark:bg-surface-card shadow-lg z-20 overflow-hidden"
+                                >
+                                    {(program.status === 'active' || program.status === 'expired') && onCompleteProgram && (
+                                        <button
+                                            role="menuitem"
+                                            onClick={() => {
+                                                setShowOverflowMenu(false)
+                                                onCompleteProgram()
+                                            }}
+                                            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-[#1D1D1F] dark:text-k-text-primary hover:bg-[#F5F5F7] dark:hover:bg-white/5 transition-colors"
+                                        >
+                                            <CheckCircle className="w-3.5 h-3.5 text-violet-500" />
+                                            Concluir programa
+                                        </button>
+                                    )}
+                                    {onAssignProgram && (
+                                        <button
+                                            role="menuitem"
+                                            onClick={() => {
+                                                setShowOverflowMenu(false)
+                                                onAssignProgram()
+                                            }}
+                                            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-[#1D1D1F] dark:text-k-text-primary hover:bg-[#F5F5F7] dark:hover:bg-white/5 transition-colors"
+                                        >
+                                            <ArrowLeftRight className="w-3.5 h-3.5 text-violet-500" />
+                                            Trocar programa
+                                        </button>
+                                    )}
+                                    {(onCreateScheduled || onAssignScheduled) && (
+                                        <div className="h-px bg-[#E8E8ED] dark:bg-k-border-subtle mx-2" />
+                                    )}
+                                    {onCreateScheduled && (
+                                        <button
+                                            role="menuitem"
+                                            onClick={() => {
+                                                setShowOverflowMenu(false)
+                                                onCreateScheduled()
+                                            }}
+                                            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-[#1D1D1F] dark:text-k-text-primary hover:bg-[#F5F5F7] dark:hover:bg-white/5 transition-colors"
+                                        >
+                                            <Plus className="w-3.5 h-3.5 text-violet-500" />
+                                            Criar próximo programa
+                                        </button>
+                                    )}
+                                    {onAssignScheduled && (
+                                        <button
+                                            role="menuitem"
+                                            onClick={() => {
+                                                setShowOverflowMenu(false)
+                                                onAssignScheduled()
+                                            }}
+                                            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-[#1D1D1F] dark:text-k-text-primary hover:bg-[#F5F5F7] dark:hover:bg-white/5 transition-colors"
+                                        >
+                                            <CalendarPlus className="w-3.5 h-3.5 text-violet-500" />
+                                            Atribuir próximo programa
+                                        </button>
+                                    )}
+                                </motion.div>
+                            )}
+                        </div>
                     </div>
                 </div>
 

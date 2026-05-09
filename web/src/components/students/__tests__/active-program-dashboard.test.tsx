@@ -46,28 +46,15 @@ const baseProps = {
     studentId: 'student-1',
 }
 
-describe('ActiveProgramDashboard — toolbar "Próximo"', () => {
-    it('renderiza botão "Próximo" quando onAssignScheduled é passado', () => {
-        const onAssignScheduled = vi.fn()
-        render(<ActiveProgramDashboard {...baseProps} onAssignScheduled={onAssignScheduled} />)
-        expect(screen.getByRole('button', { name: /Próximo/i })).toBeInTheDocument()
+describe('ActiveProgramDashboard — toolbar hierarchy', () => {
+    it('Editar é o botão primário (estilo violet sólido)', () => {
+        render(<ActiveProgramDashboard {...baseProps} onEditProgram={vi.fn()} />)
+        const edit = screen.getByTestId('toolbar-edit')
+        expect(edit).toHaveTextContent(/Editar/i)
+        expect(edit.className).toMatch(/bg-violet-600/)
     })
 
-    it('renderiza botão "Próximo" quando apenas onCreateScheduled é passado', () => {
-        const onCreateScheduled = vi.fn()
-        render(<ActiveProgramDashboard {...baseProps} onCreateScheduled={onCreateScheduled} />)
-        expect(screen.getByRole('button', { name: /Próximo/i })).toBeInTheDocument()
-    })
-
-    it('NÃO renderiza botão "Próximo" quando ambos os callbacks são undefined (retrocompatibilidade)', () => {
-        render(<ActiveProgramDashboard {...baseProps} />)
-        expect(screen.queryByRole('button', { name: /Próximo/i })).not.toBeInTheDocument()
-        // Mas as outras ações da toolbar continuam aparecendo.
-        expect(screen.getByRole('button', { name: /Editar/i })).toBeInTheDocument()
-        expect(screen.getByRole('button', { name: /Trocar/i })).toBeInTheDocument()
-    })
-
-    it('clicar no botão "Próximo" abre o menu com 2 itens (Criar / Atribuir)', () => {
+    it('Botão "Próximo" não existe mais como elemento direto da toolbar', () => {
         render(
             <ActiveProgramDashboard
                 {...baseProps}
@@ -75,80 +62,126 @@ describe('ActiveProgramDashboard — toolbar "Próximo"', () => {
                 onCreateScheduled={vi.fn()}
             />,
         )
-        // Menu fechado por padrão.
-        expect(screen.queryByRole('menu')).not.toBeInTheDocument()
-
-        fireEvent.click(screen.getByRole('button', { name: /Próximo/i }))
-
-        expect(screen.getByRole('menu')).toBeInTheDocument()
-        expect(screen.getByRole('menuitem', { name: /Criar novo programa/i })).toBeInTheDocument()
-        expect(screen.getByRole('menuitem', { name: /Atribuir programa existente/i })).toBeInTheDocument()
+        // O label "Próximo" foi movido pro menu como "Criar próximo programa"
+        // / "Atribuir próximo programa". Não deve haver botão isolado.
+        expect(screen.queryByRole('button', { name: /^Próximo$/i })).not.toBeInTheDocument()
     })
 
-    it('"Criar novo programa" chama onCreateScheduled e fecha o menu', () => {
+    it('Prorrogar aparece somente quando status === "expired"', () => {
+        const onExtendProgram = vi.fn()
+        const { rerender } = render(
+            <ActiveProgramDashboard {...baseProps} onExtendProgram={onExtendProgram} />,
+        )
+        expect(screen.queryByRole('button', { name: /Prorrogar/i })).not.toBeInTheDocument()
+
+        rerender(
+            <ActiveProgramDashboard
+                {...baseProps}
+                program={{ ...baseProgram, status: 'expired' as const }}
+                onExtendProgram={onExtendProgram}
+            />,
+        )
+        expect(screen.getByRole('button', { name: /Prorrogar/i })).toBeInTheDocument()
+    })
+
+    it('Relatório aparece quando onViewReport é passado', () => {
+        render(<ActiveProgramDashboard {...baseProps} onViewReport={vi.fn()} />)
+        expect(screen.getByRole('button', { name: /Relatório/i })).toBeInTheDocument()
+    })
+
+    it('Menu overflow abre ao clicar e mostra 4 itens com programa active', () => {
+        render(
+            <ActiveProgramDashboard
+                {...baseProps}
+                onCompleteProgram={vi.fn()}
+                onAssignProgram={vi.fn()}
+                onCreateScheduled={vi.fn()}
+                onAssignScheduled={vi.fn()}
+            />,
+        )
+        expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+
+        fireEvent.click(screen.getByRole('button', { name: /Mais ações/i }))
+
+        expect(screen.getByRole('menu')).toBeInTheDocument()
+        expect(screen.getByRole('menuitem', { name: /Concluir programa/i })).toBeInTheDocument()
+        expect(screen.getByRole('menuitem', { name: /Trocar programa/i })).toBeInTheDocument()
+        expect(screen.getByRole('menuitem', { name: /Criar próximo programa/i })).toBeInTheDocument()
+        expect(screen.getByRole('menuitem', { name: /Atribuir próximo programa/i })).toBeInTheDocument()
+    })
+
+    it('"Concluir programa" chama onCompleteProgram e fecha o menu', () => {
+        const onCompleteProgram = vi.fn()
+        render(
+            <ActiveProgramDashboard
+                {...baseProps}
+                onCompleteProgram={onCompleteProgram}
+                onAssignProgram={vi.fn()}
+            />,
+        )
+        fireEvent.click(screen.getByRole('button', { name: /Mais ações/i }))
+        fireEvent.click(screen.getByRole('menuitem', { name: /Concluir programa/i }))
+        expect(onCompleteProgram).toHaveBeenCalledTimes(1)
+        expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+    })
+
+    it('"Trocar programa" chama onAssignProgram', () => {
+        const onAssignProgram = vi.fn()
+        render(
+            <ActiveProgramDashboard
+                {...baseProps}
+                onCompleteProgram={vi.fn()}
+                onAssignProgram={onAssignProgram}
+            />,
+        )
+        fireEvent.click(screen.getByRole('button', { name: /Mais ações/i }))
+        fireEvent.click(screen.getByRole('menuitem', { name: /Trocar programa/i }))
+        expect(onAssignProgram).toHaveBeenCalledTimes(1)
+    })
+
+    it('"Criar próximo programa" chama onCreateScheduled', () => {
         const onCreateScheduled = vi.fn()
         const onAssignScheduled = vi.fn()
         render(
             <ActiveProgramDashboard
                 {...baseProps}
-                onAssignScheduled={onAssignScheduled}
                 onCreateScheduled={onCreateScheduled}
+                onAssignScheduled={onAssignScheduled}
             />,
         )
-
-        fireEvent.click(screen.getByRole('button', { name: /Próximo/i }))
-        fireEvent.click(screen.getByRole('menuitem', { name: /Criar novo programa/i }))
-
+        fireEvent.click(screen.getByRole('button', { name: /Mais ações/i }))
+        fireEvent.click(screen.getByRole('menuitem', { name: /Criar próximo programa/i }))
         expect(onCreateScheduled).toHaveBeenCalledTimes(1)
         expect(onAssignScheduled).not.toHaveBeenCalled()
-        expect(screen.queryByRole('menu')).not.toBeInTheDocument()
     })
 
-    it('"Atribuir programa existente" chama onAssignScheduled e fecha o menu', () => {
+    it('"Atribuir próximo programa" chama onAssignScheduled', () => {
         const onCreateScheduled = vi.fn()
         const onAssignScheduled = vi.fn()
         render(
             <ActiveProgramDashboard
                 {...baseProps}
-                onAssignScheduled={onAssignScheduled}
                 onCreateScheduled={onCreateScheduled}
+                onAssignScheduled={onAssignScheduled}
             />,
         )
-
-        fireEvent.click(screen.getByRole('button', { name: /Próximo/i }))
-        fireEvent.click(screen.getByRole('menuitem', { name: /Atribuir programa existente/i }))
-
+        fireEvent.click(screen.getByRole('button', { name: /Mais ações/i }))
+        fireEvent.click(screen.getByRole('menuitem', { name: /Atribuir próximo programa/i }))
         expect(onAssignScheduled).toHaveBeenCalledTimes(1)
         expect(onCreateScheduled).not.toHaveBeenCalled()
-        expect(screen.queryByRole('menu')).not.toBeInTheDocument()
     })
 
-    it('só renderiza o item "Criar" quando apenas onCreateScheduled é passado', () => {
-        render(<ActiveProgramDashboard {...baseProps} onCreateScheduled={vi.fn()} />)
-        fireEvent.click(screen.getByRole('button', { name: /Próximo/i }))
-        expect(screen.getByRole('menuitem', { name: /Criar novo programa/i })).toBeInTheDocument()
-        expect(screen.queryByRole('menuitem', { name: /Atribuir/i })).not.toBeInTheDocument()
-    })
-
-    it('só renderiza o item "Atribuir" quando apenas onAssignScheduled é passado', () => {
-        render(<ActiveProgramDashboard {...baseProps} onAssignScheduled={vi.fn()} />)
-        fireEvent.click(screen.getByRole('button', { name: /Próximo/i }))
-        expect(screen.getByRole('menuitem', { name: /Atribuir programa existente/i })).toBeInTheDocument()
-        expect(screen.queryByRole('menuitem', { name: /Criar novo/i })).not.toBeInTheDocument()
-    })
-
-    it('clicar fora do menu fecha-o', () => {
+    it('clicar fora fecha o menu', () => {
         render(
             <ActiveProgramDashboard
                 {...baseProps}
-                onAssignScheduled={vi.fn()}
-                onCreateScheduled={vi.fn()}
+                onCompleteProgram={vi.fn()}
+                onAssignProgram={vi.fn()}
             />,
         )
-        fireEvent.click(screen.getByRole('button', { name: /Próximo/i }))
+        fireEvent.click(screen.getByRole('button', { name: /Mais ações/i }))
         expect(screen.getByRole('menu')).toBeInTheDocument()
 
-        // mousedown fora do componente — listener escuta document.mousedown.
         fireEvent.mouseDown(document.body)
 
         expect(screen.queryByRole('menu')).not.toBeInTheDocument()
@@ -158,11 +191,11 @@ describe('ActiveProgramDashboard — toolbar "Próximo"', () => {
         render(
             <ActiveProgramDashboard
                 {...baseProps}
-                onAssignScheduled={vi.fn()}
-                onCreateScheduled={vi.fn()}
+                onCompleteProgram={vi.fn()}
+                onAssignProgram={vi.fn()}
             />,
         )
-        fireEvent.click(screen.getByRole('button', { name: /Próximo/i }))
+        fireEvent.click(screen.getByRole('button', { name: /Mais ações/i }))
         expect(screen.getByRole('menu')).toBeInTheDocument()
 
         fireEvent.keyDown(document, { key: 'Escape' })
