@@ -116,7 +116,7 @@ export function ResultClient({ detail, studentId, history }: ResultClientProps) 
     return (
         <div className="mx-auto max-w-4xl">
             <button
-                onClick={() => router.push('/forms?tab=assessments')}
+                onClick={() => router.push('/avaliacoes')}
                 className="mb-4 inline-flex items-center gap-1.5 text-sm text-k-text-secondary hover:text-k-text-primary"
             >
                 <ArrowLeft className="h-4 w-4" />

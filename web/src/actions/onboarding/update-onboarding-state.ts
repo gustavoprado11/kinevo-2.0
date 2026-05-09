@@ -1,5 +1,6 @@
 'use server'
 
+import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { checkRateLimit, recordRequest } from '@/lib/rate-limit'
 import type { OnboardingState } from '@kinevo/shared/types/onboarding'
@@ -99,6 +100,10 @@ export async function updateOnboardingState(
     if (updateError) {
       return { error: updateError.message }
     }
+
+    // Garante que páginas que recebem trainer.onboarding_state via getTrainerWithSubscription
+    // (ex.: /forms, /avaliacoes, /dashboard) leiam o valor mais recente após F5.
+    revalidatePath('/', 'layout')
 
     return { success: true }
   } catch (error) {

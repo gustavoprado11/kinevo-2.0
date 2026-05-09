@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import {
     LayoutDashboard, Users, Dumbbell, Calendar, CalendarDays, Wallet, FileText,
+    Activity,
     PanelLeftClose, MessageSquarePlus, Headphones,
     LogOut, BookOpen, ChevronRight, Settings,
 } from 'lucide-react'
@@ -47,10 +48,16 @@ const navigation: NavItem[] = [
         onboardingId: 'sidebar-schedule',
     },
     {
-        name: 'Avaliações',
+        name: 'Formulários',
         href: '/forms',
         icon: FileText,
         onboardingId: 'sidebar-forms',
+    },
+    {
+        name: 'Avaliações',
+        href: '/avaliacoes',
+        icon: Activity,
+        onboardingId: 'sidebar-avaliacoes',
     },
     {
         name: 'Financeiro',
@@ -179,27 +186,41 @@ export function Sidebar({ financialBadge, trainerName, trainerEmail, trainerAvat
                 {navigation.map((item) => {
                     const active = isActive(item.href)
                     const Icon = item.icon
+                    // M8/D1 — sidebar item "Avaliações" usa paleta violet (light mode)
+                    // pra distinguir visualmente de Formulários (azul). Dark mode já é
+                    // violet pra todos por convenção do design system.
+                    const isAvaliacoes = item.name === 'Avaliações'
+                    const activeStyleLight = isAvaliacoes
+                        ? { backgroundColor: 'rgba(124, 58, 237, 0.10)', color: '#7c3aed' }
+                        : undefined
                     return (
                         <div key={item.name} className="relative group/nav">
                             <Link
                                 href={item.href}
                                 data-onboarding={item.onboardingId}
+                                style={active && isAvaliacoes ? activeStyleLight : undefined}
                                 className={`
                                     relative flex items-center gap-3 py-2 rounded-lg text-sm tracking-tight transition-all duration-200 ease-out group
                                     ${isCollapsed ? 'justify-center px-0' : 'px-3'}
                                     ${active
-                                        ? 'bg-[#007AFF]/10 dark:bg-glass-bg-active text-[#007AFF] dark:text-foreground font-semibold'
+                                        ? isAvaliacoes
+                                            ? 'dark:bg-glass-bg-active dark:text-foreground font-semibold'
+                                            : 'bg-[#007AFF]/10 dark:bg-glass-bg-active text-[#007AFF] dark:text-foreground font-semibold'
                                         : 'text-[#6E6E73] dark:text-muted-foreground/60 hover:text-[#1D1D1F] dark:hover:text-foreground hover:bg-[#F5F5F7] dark:hover:bg-glass-bg font-medium'
                                     }
                                 `}
                             >
                                 {active && (
-                                    <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] bg-[#007AFF] dark:bg-violet-500 rounded-r-full" />
+                                    <span
+                                        className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] dark:bg-violet-500 rounded-r-full"
+                                        style={{ backgroundColor: isAvaliacoes ? '#7c3aed' : '#007AFF' }}
+                                    />
                                 )}
                                 <Icon
                                     size={18}
                                     strokeWidth={1.5}
-                                    className={`shrink-0 transition-colors duration-200 ${active ? 'text-[#007AFF] dark:text-violet-400' : 'text-[#AEAEB2] dark:text-muted-foreground/60 group-hover:text-[#6E6E73] dark:group-hover:text-foreground'}`}
+                                    style={active && isAvaliacoes ? { color: '#7c3aed' } : undefined}
+                                    className={`shrink-0 transition-colors duration-200 ${active ? (isAvaliacoes ? 'dark:text-violet-400' : 'text-[#007AFF] dark:text-violet-400') : 'text-[#AEAEB2] dark:text-muted-foreground/60 group-hover:text-[#6E6E73] dark:group-hover:text-foreground'}`}
                                 />
                                 <span
                                     className={`whitespace-nowrap transition-all duration-300 ${

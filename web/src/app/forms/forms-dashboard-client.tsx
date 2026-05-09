@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import { AnimatePresence } from 'framer-motion'
 import { AppLayout } from '@/components/layout'
+import type { OnboardingState } from '@kinevo/shared/types/onboarding'
 import { AssignFormModal } from '@/components/forms/assign-form-modal'
 import { SubmissionDetailSheet } from '@/components/forms/submission-detail-sheet'
 import { sendFormFeedback } from '@/actions/forms/send-form-feedback'
@@ -12,16 +13,9 @@ import { createClient as createBrowserClient } from '@/lib/supabase/client'
 import {
     Plus, Check, FileText, Send, ChevronRight,
     ClipboardList, CheckCircle2, MessageSquare, Loader2,
-    Activity,
 } from 'lucide-react'
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
 import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
-import { SessionListItem } from '@/components/assessments/session-list-item'
-import { CreateSessionModal } from '@/components/assessments/create-session-modal'
-import type {
-    AssessmentSessionListItem,
-} from '@kinevo/shared/types/assessments'
-import type { AssessmentListFilter } from '@/actions/assessments/get-session-list'
 
 // --- Helpers ---
 const TIMEZONE = 'America/Sao_Paulo'
@@ -97,7 +91,6 @@ const CATEGORY_CONFIG: Record<string, { label: string; icon: typeof FileText; co
     anamnese: { label: 'Anamnese', icon: ClipboardList, color: 'text-blue-600 dark:text-blue-400' },
     checkin: { label: 'Check-in', icon: CheckCircle2, color: 'text-emerald-600 dark:text-emerald-400' },
     survey: { label: 'Pesquisa', icon: MessageSquare, color: 'text-amber-600 dark:text-amber-400' },
-    assessment: { label: 'Avaliação Presencial', icon: Activity, color: 'text-violet-600 dark:text-violet-400' },
 }
 
 // --- Types ---
@@ -139,8 +132,6 @@ interface TemplateInfo {
     category: string
     responseCount: number
     questionCount: number
-    sectionCount?: number
-    sessionCount?: number
     trainer_id: string | null
 }
 
@@ -166,11 +157,6 @@ interface PendingSent {
     template_title: string | null
 }
 
-interface AssessmentTemplateOption {
-    id: string
-    title: string
-}
-
 interface FormsDashboardClientProps {
     trainer: Trainer
     submissions: Submission[]
@@ -178,8 +164,7 @@ interface FormsDashboardClientProps {
     templates: TemplateInfo[]
     formTemplates: FormTemplate[]
     students: Student[]
-    assessmentSessions: AssessmentSessionListItem[]
-    assessmentTemplates: AssessmentTemplateOption[]
+    onboardingState: OnboardingState | null
 }
 
 // --- Component ---
@@ -190,21 +175,13 @@ export function FormsDashboardClient({
     templates,
     formTemplates,
     students,
-    assessmentSessions,
-    assessmentTemplates,
+    onboardingState,
 }: FormsDashboardClientProps) {
     const router = useRouter()
     const searchParams = useSearchParams()
     const [filter, setFilter] = useState<FilterType>('all')
     const [isAssignOpen, setIsAssignOpen] = useState(false)
     const [preselectedTemplateId, setPreselectedTemplateId] = useState<string | null>(null)
-    const [activeTab, setActiveTab] = useState<'responses' | 'assessments'>(() => {
-        if (typeof window === 'undefined') return 'responses'
-        return searchParams.get('tab') === 'assessments' ? 'assessments' : 'responses'
-    })
-    const [assessmentFilter, setAssessmentFilter] = useState<AssessmentListFilter>('all')
-    const [createSessionOpen, setCreateSessionOpen] = useState(false)
-    const [presetStudentIdForCreate, setPresetStudentIdForCreate] = useState<string | undefined>(undefined)
 
     // Handle URL params (?assign=templateId)
     useEffect(() => {
@@ -214,21 +191,6 @@ export function FormsDashboardClient({
             setIsAssignOpen(true)
         }
     }, [searchParams])
-
-    // Handle deep-link from /students/[id] →
-    // /forms?tab=assessments&createAssessment=1&studentId=<uuid>
-    // Validates studentId against the trainer's students list; falls back to
-    // empty modal with a console warning if the id is unknown.
-    useEffect(() => {
-        if (searchParams.get('createAssessment') !== '1') return
-        const rawStudentId = searchParams.get('studentId') ?? undefined
-        const valid = rawStudentId && students.some(s => s.id === rawStudentId)
-        if (rawStudentId && !valid) {
-            console.warn('[forms] createAssessment deep-link: unknown studentId', rawStudentId)
-        }
-        setPresetStudentIdForCreate(valid ? rawStudentId : undefined)
-        setCreateSessionOpen(true)
-    }, [searchParams, students])
 
     // Detail sheet state
     const [activeSubmission, setActiveSubmission] = useState<FullSubmission | null>(null)
@@ -241,44 +203,6 @@ export function FormsDashboardClient({
         submissions.filter(s => s.status === 'submitted'), [submissions])
     const completed = useMemo(() =>
         submissions.filter(s => s.status === 'reviewed'), [submissions])
-
-    const filteredAssessments = useMemo(() => {
-        const now = Date.now()
-        return assessmentSessions.filter(s => {
-            if (s.status === 'cancelled') return false
-            if (assessmentFilter === 'all') return true
-            if (assessmentFilter === 'completed') return s.status === 'completed'
-            if (assessmentFilter === 'overdue') {
-                return s.status === 'scheduled'
-                    && s.scheduled_at != null
-                    && new Date(s.scheduled_at).getTime() < now
-            }
-            if (assessmentFilter === 'upcoming') {
-                if (s.status === 'in_progress') return true
-                return s.status === 'scheduled'
-                    && s.scheduled_at != null
-                    && new Date(s.scheduled_at).getTime() >= now
-            }
-            return true
-        })
-    }, [assessmentSessions, assessmentFilter])
-
-    const assessmentCounts = useMemo(() => {
-        const now = Date.now()
-        let overdue = 0
-        let upcoming = 0
-        let done = 0
-        for (const s of assessmentSessions) {
-            if (s.status === 'cancelled') continue
-            if (s.status === 'completed') done += 1
-            else if (s.status === 'in_progress') upcoming += 1
-            else if (s.status === 'scheduled' && s.scheduled_at) {
-                if (new Date(s.scheduled_at).getTime() < now) overdue += 1
-                else upcoming += 1
-            }
-        }
-        return { overdue, upcoming, completed: done }
-    }, [assessmentSessions])
 
     const filteredSubmissions = useMemo(() => {
         if (filter === 'pending') return pending
@@ -339,7 +263,6 @@ export function FormsDashboardClient({
                 alert(result.error || 'Erro ao enviar feedback.')
                 return
             }
-            // Refresh the submission data to show "feedback sent" state
             const supabase = createBrowserClient()
             const { data } = await supabase
                 .from('form_submissions')
@@ -378,93 +301,37 @@ export function FormsDashboardClient({
             trainerEmail={trainer.email}
             trainerAvatarUrl={trainer.avatar_url}
             trainerTheme={trainer.theme as 'light' | 'dark' | 'system' | null}
+            onboardingState={onboardingState}
         >
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
-                    <h1 className="text-2xl font-bold tracking-tight text-[#1D1D1F] dark:text-k-text-primary">Avaliações</h1>
-                    {(() => {
-                        const headerCount = activeTab === 'responses'
-                            ? submissions.length
-                            : assessmentSessions.filter(s => s.status !== 'cancelled').length
-                        return headerCount > 0 ? (
-                            <span className="px-2.5 py-0.5 rounded-full bg-[#F5F5F7] text-sm text-[#6E6E73] dark:bg-glass-bg dark:text-k-text-tertiary dark:border dark:border-k-border-subtle">
-                                {headerCount}
-                            </span>
-                        ) : null
-                    })()}
-                </div>
-                <div className="flex items-center gap-2">
-                    {activeTab === 'responses' ? (
-                        <>
-                            <button
-                                onClick={() => setIsAssignOpen(true)}
-                                className="flex items-center gap-2 px-4 py-2 bg-[#007AFF] hover:bg-[#0066D6] text-white text-sm font-medium rounded-full transition-all dark:bg-violet-600 dark:hover:bg-violet-500 dark:rounded-xl"
-                            >
-                                <Send size={14} />
-                                Enviar para aluno
-                            </button>
-                            <button
-                                data-onboarding="forms-templates-card"
-                                onClick={() => router.push('/forms/templates/new')}
-                                className="flex items-center gap-2 rounded-full bg-white border border-[#D2D2D7] text-[#6E6E73] hover:bg-[#F5F5F7] hover:text-[#1D1D1F] px-4 py-2 text-sm transition-all dark:rounded-xl dark:bg-transparent dark:border-k-border-primary dark:text-k-text-tertiary dark:hover:text-k-text-primary dark:hover:bg-transparent"
-                            >
-                                <Plus size={14} />
-                                Novo Template
-                            </button>
-                        </>
-                    ) : (
-                        <>
-                            {assessmentTemplates.length > 0 && (
-                                <button
-                                    data-onboarding="assessments-new-session"
-                                    onClick={() => {
-                                        setPresetStudentIdForCreate(undefined)
-                                        setCreateSessionOpen(true)
-                                    }}
-                                    className="flex items-center gap-2 px-4 py-2 bg-violet-500 hover:bg-violet-600 text-white text-sm font-medium rounded-full transition-all dark:rounded-xl"
-                                >
-                                    <Plus size={14} />
-                                    Nova avaliação
-                                </button>
-                            )}
-                            <button
-                                data-onboarding="assessments-new-template"
-                                onClick={() => router.push('/forms/templates/new?category=assessment')}
-                                className="flex items-center gap-2 rounded-full bg-white border border-[#D2D2D7] text-[#6E6E73] hover:bg-[#F5F5F7] hover:text-[#1D1D1F] px-4 py-2 text-sm transition-all dark:rounded-xl dark:bg-transparent dark:border-k-border-primary dark:text-k-text-tertiary dark:hover:text-k-text-primary dark:hover:bg-transparent"
-                            >
-                                <Plus size={14} />
-                                Novo template de avaliação
-                            </button>
-                        </>
-                    )}
-                </div>
-            </div>
-
-            {/* Tabs */}
-            <div className="mb-5 flex items-center gap-1 border-b border-k-border-subtle">
-                <TabButton
-                    active={activeTab === 'responses'}
-                    onClick={() => setActiveTab('responses')}
-                >
-                    Respostas
-                </TabButton>
-                <TabButton
-                    active={activeTab === 'assessments'}
-                    onClick={() => setActiveTab('assessments')}
-                    data-onboarding="assessments-tab"
-                >
-                    Avaliações Presenciais
-                    {assessmentSessions.length > 0 && (
-                        <span className="ml-1.5 rounded-full bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-bold text-violet-500 dark:text-violet-400">
-                            {assessmentSessions.filter(s => s.status !== 'cancelled').length}
+                    <h1 className="text-2xl font-bold tracking-tight text-[#1D1D1F] dark:text-k-text-primary">Formulários</h1>
+                    {submissions.length > 0 && (
+                        <span className="px-2.5 py-0.5 rounded-full bg-[#F5F5F7] text-sm text-[#6E6E73] dark:bg-glass-bg dark:text-k-text-tertiary dark:border dark:border-k-border-subtle">
+                            {submissions.length}
                         </span>
                     )}
-                </TabButton>
+                </div>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => setIsAssignOpen(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-[#007AFF] hover:bg-[#0066D6] text-white text-sm font-medium rounded-full transition-all dark:bg-violet-600 dark:hover:bg-violet-500 dark:rounded-xl"
+                    >
+                        <Send size={14} />
+                        Enviar para aluno
+                    </button>
+                    <button
+                        data-onboarding="forms-templates-card"
+                        onClick={() => router.push('/forms/templates/new')}
+                        className="flex items-center gap-2 rounded-full bg-white border border-[#D2D2D7] text-[#6E6E73] hover:bg-[#F5F5F7] hover:text-[#1D1D1F] px-4 py-2 text-sm transition-all dark:rounded-xl dark:bg-transparent dark:border-k-border-primary dark:text-k-text-tertiary dark:hover:text-k-text-primary dark:hover:bg-transparent"
+                    >
+                        <Plus size={14} />
+                        Novo Template
+                    </button>
+                </div>
             </div>
 
-            {activeTab === 'responses' && (
-            /* Card sections container */
             <div className="space-y-6">
 
             {/* Pending Feedback Section */}
@@ -570,7 +437,6 @@ export function FormsDashboardClient({
                 <div className="bg-white rounded-xl border border-[#D2D2D7] shadow-[0_1px_3px_rgba(0,0,0,0.08)] overflow-hidden dark:bg-transparent dark:border-k-border-subtle dark:shadow-none dark:rounded-none">
                     <div className="flex items-center justify-between px-5 py-4 border-b border-[#E8E8ED] dark:border-k-border-subtle">
                         <h2 className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary">Todas as Respostas</h2>
-                        {/* Filter Chips */}
                         <div className="flex items-center gap-2">
                             {([
                                 { key: 'all' as const, label: 'Todas', count: submissions.length },
@@ -592,7 +458,6 @@ export function FormsDashboardClient({
                         </div>
                     </div>
 
-                    {/* Submission Rows */}
                     <div className="divide-y divide-[#E8E8ED] dark:divide-k-border-subtle">
                         {filteredSubmissions.map(sub => {
                             const isPending = sub.status === 'submitted'
@@ -655,7 +520,7 @@ export function FormsDashboardClient({
             <div className="bg-white rounded-xl border border-[#D2D2D7] shadow-[0_1px_3px_rgba(0,0,0,0.08)] overflow-hidden dark:bg-transparent dark:border-k-border-subtle dark:shadow-none dark:rounded-none">
                 <div className="flex items-center justify-between px-5 py-4 border-b border-[#E8E8ED] dark:border-k-border-subtle">
                     <div className="flex items-center gap-2">
-                        <h2 className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary">Templates de Avaliação</h2>
+                        <h2 className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary">Templates de Formulário</h2>
                         {templates.length > 0 && (
                             <span className="text-[#86868B] dark:text-k-text-quaternary">
                                 {templates.length}
@@ -699,23 +564,11 @@ export function FormsDashboardClient({
                                         </span>
                                     </div>
                                     <div className="flex items-center gap-3 text-xs text-[#86868B] dark:text-k-text-quaternary shrink-0">
-                                        {t.category === 'assessment' ? (
-                                            <>
-                                                {(t.sectionCount ?? 0) > 0 && (
-                                                    <span>{t.sectionCount} {t.sectionCount === 1 ? 'seção' : 'seções'}</span>
-                                                )}
-                                                <span className="text-[#AEAEB2] dark:text-k-text-quaternary">·</span>
-                                                <span>{t.sessionCount ?? 0} {(t.sessionCount ?? 0) === 1 ? 'sessão' : 'sessões'}</span>
-                                            </>
-                                        ) : (
-                                            <>
-                                                {t.questionCount > 0 && (
-                                                    <span>{t.questionCount} {t.questionCount === 1 ? 'pergunta' : 'perguntas'}</span>
-                                                )}
-                                                <span className="text-[#AEAEB2] dark:text-k-text-quaternary">·</span>
-                                                <span>{t.responseCount} {t.responseCount === 1 ? 'resposta' : 'respostas'}</span>
-                                            </>
+                                        {t.questionCount > 0 && (
+                                            <span>{t.questionCount} {t.questionCount === 1 ? 'pergunta' : 'perguntas'}</span>
                                         )}
+                                        <span className="text-[#AEAEB2] dark:text-k-text-quaternary">·</span>
+                                        <span>{t.responseCount} {t.responseCount === 1 ? 'resposta' : 'respostas'}</span>
                                         <button
                                             onClick={(e) => { e.stopPropagation(); setPreselectedTemplateId(t.id); setIsAssignOpen(true) }}
                                             className="text-[#007AFF] hover:text-[#0056B3] dark:text-violet-400 dark:hover:text-violet-300 opacity-0 group-hover:opacity-100 transition-all font-medium"
@@ -732,9 +585,8 @@ export function FormsDashboardClient({
             </div>
 
             </div>
-            )}{/* end of activeTab === 'responses' branch */}
 
-            {activeTab === 'responses' && submissions.length === 0 && templates.length === 0 && (
+            {submissions.length === 0 && templates.length === 0 && (
                 <div className="text-center py-16 mt-4">
                     <ClipboardList className="w-10 h-10 text-k-text-quaternary mx-auto mb-3" strokeWidth={1} />
                     <p className="text-sm font-semibold text-k-text-primary mb-1">Comece criando um template</p>
@@ -750,111 +602,7 @@ export function FormsDashboardClient({
                 </div>
             )}
 
-            {activeTab === 'assessments' && (
-                <div className="space-y-4">
-                    {/* Filter chips */}
-                    <div className="flex flex-wrap items-center gap-1.5">
-                        <FilterChip
-                            active={assessmentFilter === 'all'}
-                            onClick={() => setAssessmentFilter('all')}
-                            label="Todas"
-                        />
-                        <FilterChip
-                            active={assessmentFilter === 'overdue'}
-                            onClick={() => setAssessmentFilter('overdue')}
-                            label="Em atraso"
-                            count={assessmentCounts.overdue}
-                            tone="red"
-                        />
-                        <FilterChip
-                            active={assessmentFilter === 'upcoming'}
-                            onClick={() => setAssessmentFilter('upcoming')}
-                            label="Próximas"
-                            count={assessmentCounts.upcoming}
-                        />
-                        <FilterChip
-                            active={assessmentFilter === 'completed'}
-                            onClick={() => setAssessmentFilter('completed')}
-                            label="Concluídas"
-                            count={assessmentCounts.completed}
-                        />
-                    </div>
-
-                    {/* Sessions list */}
-                    {filteredAssessments.length === 0 ? (
-                        assessmentTemplates.length === 0 ? (
-                            // Caso 1: 0 templates do trainer — único CTA destrava o flow.
-                            <div className="rounded-2xl border-2 border-dashed border-k-border-subtle bg-surface-card p-10 text-center">
-                                <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-violet-500/10">
-                                    <Plus className="h-5 w-5 text-violet-500 dark:text-violet-400" />
-                                </div>
-                                <p className="text-sm font-semibold text-k-text-primary">
-                                    Comece criando um template
-                                </p>
-                                <p className="mx-auto mt-1 max-w-sm text-xs text-k-text-tertiary">
-                                    Use um template de sistema do Kinevo ou crie o seu para agendar avaliações.
-                                </p>
-                                <button
-                                    onClick={() => router.push('/forms/templates/new?category=assessment')}
-                                    className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-violet-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-600"
-                                >
-                                    <Plus className="h-3.5 w-3.5" />
-                                    Criar template de avaliação
-                                </button>
-                            </div>
-                        ) : assessmentSessions.length === 0 ? (
-                            // Caso 2: tem templates mas 0 sessões. Header já tem "Nova avaliação" primary;
-                            // empty state apenas comunica e aponta para o CTA do header.
-                            <div className="rounded-2xl border-2 border-dashed border-k-border-subtle bg-surface-card p-10 text-center">
-                                <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-violet-500/10">
-                                    <Activity className="h-5 w-5 text-violet-500 dark:text-violet-400" />
-                                </div>
-                                <p className="text-sm font-semibold text-k-text-primary">
-                                    Nenhuma avaliação ainda
-                                </p>
-                                <p className="mx-auto mt-1 max-w-sm text-xs text-k-text-tertiary">
-                                    Use &ldquo;Nova avaliação&rdquo; acima para agendar a primeira sessão.
-                                </p>
-                            </div>
-                        ) : (
-                            // Caso 3: tem sessões mas filtro atual está vazio.
-                            <div className="rounded-2xl border-2 border-dashed border-k-border-subtle bg-surface-card p-10 text-center">
-                                <p className="text-sm font-semibold text-k-text-primary">
-                                    Nenhuma avaliação neste filtro
-                                </p>
-                                <p className="mx-auto mt-1 max-w-sm text-xs text-k-text-tertiary">
-                                    Troque o filtro ou crie uma nova avaliação.
-                                </p>
-                            </div>
-                        )
-                    ) : (
-                        <div className="overflow-hidden rounded-2xl border border-k-border-subtle bg-surface-card">
-                            <ul className="divide-y divide-k-border-subtle">
-                                {filteredAssessments.map(session => (
-                                    <li key={session.id}>
-                                        <SessionListItem
-                                            session={session}
-                                            onClick={() => {
-                                                if (session.status === 'completed') {
-                                                    router.push(
-                                                        `/students/${session.student_id}/avaliacoes/${session.id}/result`,
-                                                    )
-                                                } else {
-                                                    router.push(
-                                                        `/students/${session.student_id}/avaliacoes/${session.id}`,
-                                                    )
-                                                }
-                                            }}
-                                        />
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                    )}
-                </div>
-            )}
-
-            {/* Submission Detail Sheet — inline, controlled by local state */}
+            {/* Submission Detail Sheet */}
             <AnimatePresence>
                 {activeSubmission && (
                     <SubmissionDetailSheet
@@ -902,116 +650,8 @@ export function FormsDashboardClient({
                 preselectedTemplateId={preselectedTemplateId}
             />
 
-            {/* Create Session Modal */}
-            <CreateSessionModal
-                open={createSessionOpen}
-                onClose={() => {
-                    setCreateSessionOpen(false)
-                    setPresetStudentIdForCreate(undefined)
-                    // Strip deep-link params so refresh/back doesn't reopen modal.
-                    if (searchParams.get('createAssessment') === '1' || searchParams.get('studentId')) {
-                        router.replace('/forms?tab=assessments')
-                    }
-                }}
-                students={students}
-                templates={assessmentTemplates}
-                presetStudentId={presetStudentIdForCreate}
-                onCreated={(sessionId) => {
-                    // Land on the detail page so trainer can start capture flow
-                    // (today: mobile-only). Web detail page shows checklist + cancel.
-                    const session = assessmentSessions.find(s => s.id === sessionId)
-                    if (session) {
-                        router.push(`/students/${session.student_id}/avaliacoes/${sessionId}`)
-                    } else {
-                        router.refresh()
-                    }
-                }}
-            />
-
-            {/* Tour: Respostas (default) */}
+            {/* Tour: Formulários */}
             <TourRunner tourId="forms" steps={TOUR_STEPS.forms} autoStart />
-
-            {/* Tour: Avaliações Presenciais — só monta na aba ativa.
-                Auto-completa-se via store (tours_completed) ao final/skip. */}
-            {activeTab === 'assessments' && (
-                <TourRunner
-                    tourId="assessments_first_time"
-                    steps={TOUR_STEPS.assessments_first_time}
-                    autoStart
-                />
-            )}
         </AppLayout>
-    )
-}
-
-function TabButton({
-    active,
-    onClick,
-    children,
-    'data-onboarding': dataOnboarding,
-}: {
-    active: boolean
-    onClick: () => void
-    children: React.ReactNode
-    'data-onboarding'?: string
-}) {
-    return (
-        <button
-            type="button"
-            onClick={onClick}
-            data-onboarding={dataOnboarding}
-            className={`relative px-4 py-2.5 text-sm font-medium transition-colors ${
-                active
-                    ? 'text-violet-500 dark:text-violet-400'
-                    : 'text-k-text-tertiary hover:text-k-text-primary'
-            }`}
-        >
-            <span className="inline-flex items-center">{children}</span>
-            {active && (
-                <span className="absolute bottom-[-1px] left-2 right-2 h-0.5 rounded-full bg-violet-500 dark:bg-violet-400" />
-            )}
-        </button>
-    )
-}
-
-function FilterChip({
-    active,
-    onClick,
-    label,
-    count,
-    tone = 'violet',
-}: {
-    active: boolean
-    onClick: () => void
-    label: string
-    count?: number
-    tone?: 'violet' | 'red'
-}) {
-    const cls = active
-        ? tone === 'red'
-            ? 'border-red-500/40 bg-red-500/10 text-red-500'
-            : 'border-violet-500/40 bg-violet-500/10 text-violet-500 dark:text-violet-400'
-        : 'border-k-border-subtle bg-surface-card text-k-text-secondary hover:text-k-text-primary'
-    return (
-        <button
-            type="button"
-            onClick={onClick}
-            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${cls}`}
-        >
-            {label}
-            {count != null && count > 0 && (
-                <span
-                    className={`rounded-full px-1.5 py-px text-[10px] font-bold ${
-                        active
-                            ? 'bg-white/20'
-                            : tone === 'red'
-                                ? 'bg-red-500/15 text-red-500'
-                                : 'bg-violet-500/15 text-violet-500 dark:text-violet-400'
-                    }`}
-                >
-                    {count}
-                </span>
-            )}
-        </button>
     )
 }

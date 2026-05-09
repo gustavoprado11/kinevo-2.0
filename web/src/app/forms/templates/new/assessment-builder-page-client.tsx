@@ -35,7 +35,7 @@ export function AssessmentBuilderPageClient({
                 initialDescription={initialDescription}
                 initialSchema={initialSchema}
                 saving={saving}
-                onCancel={() => router.push('/forms?tab=assessments')}
+                onCancel={() => router.push('/avaliacoes')}
                 onSave={async ({ title, description, schema }) => {
                     setSaving(true)
                     try {
@@ -60,7 +60,7 @@ export function AssessmentBuilderPageClient({
                         toast({ type: 'success', message: 'Template salvo' })
                         // Edit-existing returns success with no id; create returns templateId.
                         // For new templates land back on /forms tab assessments.
-                        router.push('/forms?tab=assessments')
+                        router.push('/avaliacoes')
                         router.refresh()
                         return { success: true }
                     } finally {
