@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { AppLayout } from '@/components/layout'
 import { StudentModal } from '@/components/student-modal'
+import { NewStudentWizard, type WizardStudent, type WizardTemplate } from '@/components/students/new-student-wizard'
 import { Button } from '@/components/ui/button'
 import Image from 'next/image'
 import { Plus, Search, ChevronRight, ChevronUp, ChevronDown, Users } from 'lucide-react'
@@ -53,6 +54,10 @@ interface StudentsClientProps {
     trainer: Trainer
     initialStudents: Student[]
     formTemplates?: FormTemplateOption[]
+    /** M9 — templates de anamnese (passados pro NewStudentWizard step 1). */
+    anamneseTemplates?: WizardTemplate[]
+    /** M9 — templates de avaliação (step 2). */
+    assessmentTemplates?: WizardTemplate[]
 }
 
 // ---------------------------------------------------------------------------
@@ -100,7 +105,13 @@ const ATTENTION_ORDER: Record<AttentionLevel, number> = { urgent: 0, warning: 1,
 // Component
 // ---------------------------------------------------------------------------
 
-export function StudentsClient({ trainer, initialStudents, formTemplates = [] }: StudentsClientProps) {
+export function StudentsClient({
+    trainer,
+    initialStudents,
+    formTemplates = [],
+    anamneseTemplates = [],
+    assessmentTemplates = [],
+}: StudentsClientProps) {
     const router = useRouter()
     const [students, setStudents] = useState<Student[]>(initialStudents)
     const [isModalOpen, setIsModalOpen] = useState(false)
@@ -108,6 +119,10 @@ export function StudentsClient({ trainer, initialStudents, formTemplates = [] }:
     const [activeFilter, setActiveFilter] = useState<FilterKey>('all')
     const [sortKey, setSortKey] = useState<SortKey>('attention')
     const [sortDir, setSortDir] = useState<SortDir>('asc')
+
+    // M9 — NewStudentWizard
+    const [wizardStudent, setWizardStudent] = useState<WizardStudent | null>(null)
+    const [wizardPreassigned, setWizardPreassigned] = useState<{ id: string; title: string } | null>(null)
 
     const handleStudentCreated = (newStudent: Record<string, any>) => {
         setStudents([{
@@ -118,6 +133,26 @@ export function StudentsClient({ trainer, initialStudents, formTemplates = [] }:
             expectedPerWeek: 0,
             ...newStudent
         } as Student, ...students])
+    }
+
+    // M9 — disparado quando o StudentAccessDialog (modal de credenciais) fecha.
+    // Abre o NewStudentWizard com o aluno recém-criado e o form atalho que
+    // o trainer eventualmente já enviou via dropdown do StudentModal.
+    const handleAccessDialogClosed = ({
+        student,
+        assignedFormId,
+        assignedFormTitle,
+    }: {
+        student: { id: string; name: string; avatar_url?: string | null }
+        assignedFormId: string | null
+        assignedFormTitle: string | null
+    }) => {
+        setWizardStudent({ id: student.id, name: student.name, avatar_url: student.avatar_url ?? null })
+        setWizardPreassigned(
+            assignedFormId
+                ? { id: assignedFormId, title: assignedFormTitle ?? 'Anamnese' }
+                : null,
+        )
     }
 
     // Enrich with attention level
@@ -471,8 +506,22 @@ export function StudentsClient({ trainer, initialStudents, formTemplates = [] }:
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 onStudentCreated={handleStudentCreated}
+                onAccessDialogClosed={handleAccessDialogClosed}
                 trainerId={trainer.id}
                 formTemplates={formTemplates}
+            />
+
+            {/* M9 — NewStudentWizard dispara após o StudentAccessDialog fechar. */}
+            <NewStudentWizard
+                open={!!wizardStudent}
+                onClose={() => {
+                    setWizardStudent(null)
+                    setWizardPreassigned(null)
+                }}
+                student={wizardStudent}
+                anamneseTemplates={anamneseTemplates}
+                assessmentTemplates={assessmentTemplates}
+                preassignedAnamnese={wizardPreassigned}
             />
 
             {/* Tour: Students (auto-start on first visit) */}

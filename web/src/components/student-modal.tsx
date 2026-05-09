@@ -29,6 +29,17 @@ interface StudentModalProps {
     onClose: () => void
     onStudentCreated?: (student: Student) => void
     onStudentUpdated?: (student: Student) => void
+    /**
+     * M9 — chamado quando o StudentAccessDialog (modal de credenciais) fecha
+     * após uma criação bem-sucedida. Carrega `assignedFormId` quando o trainer
+     * usou o dropdown atalho dentro do StudentModal pra enviar um form na hora
+     * da criação (decisão B do M9: o NewStudentWizard pula o step 1 nesse caso).
+     */
+    onAccessDialogClosed?: (info: {
+        student: Student
+        assignedFormId: string | null
+        assignedFormTitle: string | null
+    }) => void
     trainerId: string
     initialData?: Student | null
     formTemplates?: FormTemplateOption[]
@@ -39,6 +50,7 @@ export function StudentModal({
     onClose,
     onStudentCreated,
     onStudentUpdated,
+    onAccessDialogClosed,
     trainerId,
     initialData,
     formTemplates = [],
@@ -57,6 +69,11 @@ export function StudentModal({
         whatsapp: string | null
         formName?: string | null
     } | null>(null)
+    // M9 — referência ao student recém-criado, usada para alimentar o
+    // onAccessDialogClosed handoff (NewStudentWizard).
+    const [createdStudent, setCreatedStudent] = useState<Student | null>(null)
+    const [createdAssignedFormId, setCreatedAssignedFormId] = useState<string | null>(null)
+    const [createdAssignedFormTitle, setCreatedAssignedFormTitle] = useState<string | null>(null)
 
     // Sort templates: system first, then trainer-owned
     const sortedTemplates = [...formTemplates].sort((a, b) => {
@@ -163,18 +180,24 @@ export function StudentModal({
             })
 
             // Trigger parent update (optional, usually done via revalidatePath, but good for local state)
+            const newStudent: Student = {
+                id: result.studentId || '',
+                name: result.name!,
+                email: result.email!,
+                phone: result.whatsapp || null,
+                status: 'active',
+                modality: modality,
+                avatar_url: null,
+                created_at: new Date().toISOString()
+            } as Student
             if (onStudentCreated) {
-                onStudentCreated({
-                    id: result.studentId || '',
-                    name: result.name!,
-                    email: result.email!,
-                    phone: result.whatsapp || null,
-                    status: 'active',
-                    modality: modality,
-                    avatar_url: null,
-                    created_at: new Date().toISOString()
-                } as Student)
+                onStudentCreated(newStudent)
             }
+            // M9 — guarda referência ao student e ao form atalho pra
+            // onAccessDialogClosed quando o dialog de credenciais fechar.
+            setCreatedStudent(newStudent)
+            setCreatedAssignedFormId(selectedFormId || null)
+            setCreatedAssignedFormTitle(assignedFormName)
         }
     }
 
@@ -385,8 +408,22 @@ export function StudentModal({
             <StudentAccessDialog
                 isOpen={!!createdCredentials}
                 onClose={() => {
+                    // M9 — captura referência antes de zerar state, então
+                    // dispara onAccessDialogClosed pra o caller poder abrir
+                    // o NewStudentWizard com os dados certos.
+                    const handoff = createdStudent
+                        ? {
+                              student: createdStudent,
+                              assignedFormId: createdAssignedFormId,
+                              assignedFormTitle: createdAssignedFormTitle,
+                          }
+                        : null
                     setCreatedCredentials(null)
+                    setCreatedStudent(null)
+                    setCreatedAssignedFormId(null)
+                    setCreatedAssignedFormTitle(null)
                     onClose()
+                    if (handoff) onAccessDialogClosed?.(handoff)
                 }}
                 studentData={createdCredentials}
             />
