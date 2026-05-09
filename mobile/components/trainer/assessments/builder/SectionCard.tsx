@@ -3,20 +3,25 @@ import { View, Text, TextInput, TouchableOpacity } from 'react-native';
 import { Trash2, Plus } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { colors } from '@/theme';
-import type { AssessmentSection } from '@kinevo/shared/types/assessments';
+import type { AssessmentSection, AssessmentTest } from '@kinevo/shared/types/assessments';
+import { TestRow } from './TestRow';
 
 interface Props {
     section: AssessmentSection;
     onRename: (title: string) => void;
     onRemove: () => void;
-    /** Callback opcional pra adicionar teste — implementação real em B2. */
+    /** B2 — abre TestLibrarySheet pra adicionar teste à seção. */
     onAddTest?: () => void;
+    /** B2 — abre TestPropertiesSheet pra editar test específico. */
+    onEditTest?: (test: AssessmentTest) => void;
+    /** B2 — remove test da seção. */
+    onRemoveTest?: (testId: string) => void;
 }
 
 // M10A/B1 — card de seção. Título editável inline + lista de testes
 // (placeholder em B1) + botão remover. Em B2, adiciona TestRow + Add CTA
 // que dispara TestLibrarySheet.
-export function SectionCard({ section, onRename, onRemove, onAddTest }: Props) {
+export function SectionCard({ section, onRename, onRemove, onAddTest, onEditTest, onRemoveTest }: Props) {
     const [editing, setEditing] = useState(false);
     const [draftTitle, setDraftTitle] = useState(section.title);
 
@@ -96,31 +101,22 @@ export function SectionCard({ section, onRename, onRemove, onAddTest }: Props) {
                 </TouchableOpacity>
             </View>
 
-            {/* Tests list — placeholder em B1 */}
+            {/* Tests list */}
             {section.tests.length > 0 ? (
-                <View style={{ paddingVertical: 4 }}>
+                <View>
                     {section.tests.map(test => (
-                        <View
+                        <TestRow
                             key={test.id}
-                            style={{
-                                flexDirection: 'row',
-                                alignItems: 'center',
-                                paddingHorizontal: 12,
-                                paddingVertical: 8,
-                                gap: 8,
-                            }}
-                        >
-                            <View style={{ flex: 1 }}>
-                                <Text style={{ fontSize: 13, color: colors.text.primary }}>{test.label}</Text>
-                                <Text style={{ fontSize: 11, color: colors.text.tertiary }}>{test.type}</Text>
-                            </View>
-                        </View>
+                            test={test}
+                            onEdit={() => onEditTest?.(test)}
+                            onRemove={() => onRemoveTest?.(test.id)}
+                        />
                     ))}
                 </View>
             ) : (
-                <View style={{ paddingHorizontal: 12, paddingVertical: 8 }}>
+                <View style={{ paddingHorizontal: 12, paddingVertical: 10 }}>
                     <Text style={{ fontSize: 12, color: colors.text.tertiary, fontStyle: 'italic' }}>
-                        Nenhum teste — adicione em B2 (em desenvolvimento)
+                        Nenhum teste ainda. Toque em &quot;Adicionar teste&quot; abaixo.
                     </Text>
                 </View>
             )}

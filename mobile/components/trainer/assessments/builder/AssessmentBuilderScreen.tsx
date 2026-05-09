@@ -25,8 +25,12 @@ import {
 import type {
     AssessmentTemplateSchema,
     AssessmentSection,
+    AssessmentTest,
 } from '@kinevo/shared/types/assessments';
 import { SectionCard } from './SectionCard';
+import { TestLibrarySheet } from './TestLibrarySheet';
+import { TestPropertiesSheet } from './TestPropertiesSheet';
+import type { CatalogEntry } from './test-catalog';
 
 interface Props {
     /** ID do template existente (edit) ou null (criação). */
@@ -67,6 +71,10 @@ export function AssessmentBuilderScreen({ templateId }: Props) {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [restoredFromDraft, setRestoredFromDraft] = useState(false);
+
+    // B2 — sheets state
+    const [librarySheetSectionId, setLibrarySheetSectionId] = useState<string | null>(null);
+    const [propertiesSheetTest, setPropertiesSheetTest] = useState<AssessmentTest | null>(null);
 
     // Hydrate na primeira render: tenta draft local, senão fetcha do server (edit).
     useEffect(() => {
@@ -156,10 +164,64 @@ export function AssessmentBuilderScreen({ templateId }: Props) {
         }));
     }, []);
 
-    // ─── Validation (mínimo viável B1; reforçado em B2) ───────────
+    // ─── Test mutations (B2) ──────────────────────────────────────
+    const addTestFromCatalog = useCallback(
+        (sectionId: string, entry: CatalogEntry) => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            const baseTest = entry.make();
+            const newTest = { ...baseTest, id: genId('test') } as AssessmentTest;
+            setSchema(s => ({
+                ...s,
+                sections: s.sections.map(sec =>
+                    sec.id === sectionId ? { ...sec, tests: [...sec.tests, newTest] } : sec,
+                ),
+            }));
+        },
+        [],
+    );
+
+    const updateTest = useCallback((testId: string, next: AssessmentTest) => {
+        setSchema(s => ({
+            ...s,
+            sections: s.sections.map(sec => ({
+                ...sec,
+                tests: sec.tests.map(t => (t.id === testId ? next : t)),
+            })),
+        }));
+    }, []);
+
+    const removeTest = useCallback((testId: string) => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        setSchema(s => ({
+            ...s,
+            sections: s.sections.map(sec => ({
+                ...sec,
+                tests: sec.tests.filter(t => t.id !== testId),
+            })),
+        }));
+    }, []);
+
+    // ─── Validation ───────────────────────────────────────────────
     const titleValid = title.trim().length > 0;
     const hasSections = schema.sections.length > 0;
-    const canSave = !saving && titleValid && hasSections;
+    const allTests = useMemo(() => schema.sections.flatMap(s => s.tests), [schema.sections]);
+    const hasTests = allTests.length > 0;
+    // Detecta metric_keys duplicados — bloqueia save (igual web).
+    const duplicateMetricKeys = useMemo(() => {
+        const counts = new Map<string, number>();
+        for (const t of allTests) {
+            const k = (t as { metric_key?: string }).metric_key ?? '';
+            if (!k) continue;
+            counts.set(k, (counts.get(k) ?? 0) + 1);
+        }
+        return new Set([...counts.entries()].filter(([, c]) => c > 1).map(([k]) => k));
+    }, [allTests]);
+    const canSave =
+        !saving
+        && titleValid
+        && hasSections
+        && hasTests
+        && duplicateMetricKeys.size === 0;
 
     // ─── Save direto via Supabase (RLS) ───────────────────────────
     const handleSave = useCallback(async () => {
@@ -168,6 +230,10 @@ export function AssessmentBuilderScreen({ templateId }: Props) {
                 toast.error('Título é obrigatório');
             } else if (!hasSections) {
                 toast.error('Adicione pelo menos uma seção');
+            } else if (!hasTests) {
+                toast.error('Adicione pelo menos um teste');
+            } else if (duplicateMetricKeys.size > 0) {
+                toast.error('Existem chaves de métrica duplicadas');
             }
             return;
         }
@@ -222,7 +288,7 @@ export function AssessmentBuilderScreen({ templateId }: Props) {
         } finally {
             setSaving(false);
         }
-    }, [canSave, titleValid, hasSections, trainerId, title, description, schema, templateId, removeDraft, draftKey, router]);
+    }, [canSave, titleValid, hasSections, hasTests, duplicateMetricKeys.size, trainerId, title, description, schema, templateId, removeDraft, draftKey, router]);
 
     const handleBack = useCallback(() => {
         // Draft fica em MMKV; trainer pode voltar e continuar depois.
@@ -395,6 +461,12 @@ export function AssessmentBuilderScreen({ templateId }: Props) {
                                         ],
                                     )
                                 }
+                                onAddTest={() => {
+                                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                    setLibrarySheetSectionId(section.id);
+                                }}
+                                onEditTest={(t) => setPropertiesSheetTest(t)}
+                                onRemoveTest={removeTest}
                             />
                         ))}
                         <TouchableOpacity
@@ -419,6 +491,27 @@ export function AssessmentBuilderScreen({ templateId }: Props) {
                     </>
                 )}
             </ScrollView>
+
+            {/* B2 sheets — montados sempre; controle por visible prop. */}
+            <TestLibrarySheet
+                visible={librarySheetSectionId !== null}
+                onClose={() => setLibrarySheetSectionId(null)}
+                onSelect={(entry) => {
+                    if (librarySheetSectionId) {
+                        addTestFromCatalog(librarySheetSectionId, entry);
+                    }
+                }}
+            />
+            <TestPropertiesSheet
+                test={propertiesSheetTest}
+                duplicateKey={
+                    propertiesSheetTest != null
+                    && 'metric_key' in propertiesSheetTest
+                    && duplicateMetricKeys.has((propertiesSheetTest as { metric_key: string }).metric_key)
+                }
+                onSave={(next) => updateTest(next.id, next)}
+                onClose={() => setPropertiesSheetTest(null)}
+            />
         </KeyboardAvoidingView>
     );
 }
