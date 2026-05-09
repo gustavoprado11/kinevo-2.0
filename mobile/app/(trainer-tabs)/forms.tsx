@@ -30,8 +30,10 @@ import { toast } from "../../lib/toast";
 import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useAssessmentSessions, type SessionsFilter } from "../../hooks/useAssessmentSessions";
+import { useTrainerAssessmentTemplates, type TrainerAssessmentTemplate } from "../../hooks/useTrainerAssessmentTemplates";
 import { SessionListItem } from "../../components/trainer/assessments/SessionListItem";
 import { CreateSessionModal } from "../../components/trainer/assessments/CreateSessionModal";
+import { AssessmentTemplateCard } from "../../components/trainer/assessments/AssessmentTemplateCard";
 import type { AssessmentSessionListItem } from "@kinevo/shared/types/assessments";
 import type { AssessmentDraft } from "../../stores/assessmentDraftStore";
 import { useAssessmentOnboardingStore } from "../../stores/assessmentOnboardingStore";
@@ -98,6 +100,7 @@ export default function FormsScreen() {
     const templates = useTrainerFormTemplates();
     const submissions = useTrainerFormSubmissions();
     const assessments = useAssessmentSessions();
+    const assessmentTemplates = useTrainerAssessmentTemplates();
 
     // CRUD
     const crud = useFormTemplateCrud(() => {
@@ -124,8 +127,8 @@ export default function FormsScreen() {
         if (isResponses) submissions.refresh();
         else if (isFormTemplates) templates.refresh();
         else if (isSessions) assessments.refresh();
-        // isAssessmentTemplates → refresh delegado em B2 quando o hook chegar.
-    }, [isResponses, isFormTemplates, isSessions, submissions, templates, assessments]);
+        else if (isAssessmentTemplates) assessmentTemplates.refresh();
+    }, [isResponses, isFormTemplates, isSessions, isAssessmentTemplates, submissions, templates, assessments, assessmentTemplates]);
 
     const isRefreshing =
         isResponses
@@ -134,7 +137,9 @@ export default function FormsScreen() {
                 ? templates.isRefreshing
                 : isSessions
                     ? assessments.isRefreshing
-                    : false;
+                    : isAssessmentTemplates
+                        ? assessmentTemplates.isRefreshing
+                        : false;
     const isLoading =
         isResponses
             ? submissions.isLoading
@@ -142,7 +147,9 @@ export default function FormsScreen() {
                 ? templates.isLoading
                 : isSessions
                     ? assessments.isLoading
-                    : false;
+                    : isAssessmentTemplates
+                        ? assessmentTemplates.isLoading
+                        : false;
 
     const draftCount = assessments.inProgressDrafts.length;
     const isAssessmentsEmpty =
@@ -159,6 +166,17 @@ export default function FormsScreen() {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         setCreateSessionVisible(true);
     }, []);
+
+    // M11/B2 — tap em assessment template card → drill-down pra edit.
+    const handleAssessmentTemplatePress = useCallback(
+        (template: TrainerAssessmentTemplate) => {
+            router.push({
+                pathname: "/assessments/templates/new",
+                params: { id: template.id },
+            });
+        },
+        [router],
+    );
 
     const handleEdit = useCallback(
         async (t: FormTemplate) => {
@@ -427,15 +445,41 @@ export default function FormsScreen() {
                 />
             ) : (
                 /* M11/B2 — sub-tab "Templates" do segment Avaliações.
-                   Listing real entrega em B2; aqui placeholder com CTA pra
-                   criar novo template já funcional. */
-                <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 24 }}>
-                    <EmptyState
-                        icon={<Activity size={40} color={colors.text.quaternary} />}
-                        title="Templates de avaliação"
-                        description="Listagem em desenvolvimento (B2). Use o botão + abaixo para criar."
-                    />
-                </View>
+                   Lista templates Kinevo (5 system) + customs do trainer. */
+                <FlatList
+                    key={isTablet ? "atemplates-2col" : "atemplates-1col"}
+                    data={assessmentTemplates.templates}
+                    keyExtractor={(item) => item.id}
+                    numColumns={isTablet ? 2 : 1}
+                    columnWrapperStyle={isTablet ? { gap: 10 } : undefined}
+                    contentContainerStyle={{
+                        paddingHorizontal: 20,
+                        paddingBottom: isTablet ? 40 : insets.bottom + 100,
+                        gap: 10,
+                    }}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={isRefreshing}
+                            onRefresh={handleRefresh}
+                            tintColor={colors.brand.primary}
+                        />
+                    }
+                    renderItem={({ item }) => (
+                        <View style={isTablet ? { flex: 1 } : undefined}>
+                            <AssessmentTemplateCard
+                                template={item}
+                                onPress={handleAssessmentTemplatePress}
+                            />
+                        </View>
+                    )}
+                    ListEmptyComponent={
+                        <EmptyState
+                            icon={<Activity size={40} color={colors.text.quaternary} />}
+                            title="Nenhum template de avaliação"
+                            description="Toque no + para criar seu primeiro template de avaliação."
+                        />
+                    }
+                />
             )}
 
             {/* M11 — FAB matrix por (segment, subTab). Hidden em Respostas

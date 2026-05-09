@@ -8,10 +8,13 @@ import { useRoleMode } from "../contexts/RoleModeContext";
  * RPC and filters client-side — that RPC already returns every active
  * template of the trainer.
  *
- * In a future milestone (M6) the system seeds public assessment templates
- * with `trainer_id IS NULL`; those should also be returned here. The RPC
- * currently filters `WHERE ft.trainer_id = v_trainer_id` so system templates
- * won't show up. The CreateSessionModal can fall back gracefully.
+ * @deprecated M11 — não retorna system templates Kinevo (RPC filtra
+ * `WHERE ft.trainer_id = v_trainer_id`). Para listings que precisam mostrar
+ * tanto custom quanto system, use `useTrainerAssessmentTemplates` (M11/B2)
+ * que faz query direta a `form_templates` cobrindo `trainer_id IS NULL`.
+ *
+ * Esse hook ainda é consumido por `CreateSessionModal` (mobile) — manter
+ * intacto até decidirmos migrar o modal pro novo hook em milestone futuro.
  */
 export interface AssessmentTemplate {
     id: string;
