@@ -200,7 +200,26 @@ export function AvaliacoesClient({
                 </div>
             </div>
 
-            <div className="space-y-6 xl:grid xl:grid-cols-2 xl:gap-6 xl:space-y-0 xl:items-start">
+            {/* Proactive CTA — só aparece quando há em atraso */}
+            {assessmentCounts.overdue > 0 && (
+                <button
+                    onClick={() => setAssessmentFilter('overdue')}
+                    className="mb-6 w-full bg-red-500/5 border border-red-500/20 rounded-xl px-5 py-3 flex items-center justify-between hover:bg-red-500/10 transition-all"
+                >
+                    <span className="flex items-center gap-2 text-sm">
+                        <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                        <span className="font-medium text-[#1D1D1F] dark:text-k-text-primary">
+                            {assessmentCounts.overdue} {assessmentCounts.overdue === 1 ? 'avaliação em atraso' : 'avaliações em atraso'}
+                        </span>
+                        <span className="text-[#86868B] dark:text-k-text-tertiary">
+                            — reagende ou cancele
+                        </span>
+                    </span>
+                    <ChevronRight size={16} className="text-[#86868B] dark:text-k-text-tertiary" />
+                </button>
+            )}
+
+            <div className="space-y-6 lg:grid lg:grid-cols-2 lg:gap-5 lg:space-y-0 lg:items-start">
                 <div className="space-y-6">
                 {/* "Em atraso" callout — paralelo ao "Aguardando Feedback" do /forms */}
                 {overdueSessions.length > 0 && (
@@ -239,6 +258,51 @@ export function AvaliacoesClient({
                                 </li>
                             ))}
                         </ul>
+                    </div>
+                )}
+
+                {/* Templates section — paralelo a "Templates de Formulário" do /forms */}
+                {templates.length > 0 && (
+                    <div className="bg-white rounded-xl border border-[#D2D2D7] shadow-[0_1px_3px_rgba(0,0,0,0.08)] overflow-hidden dark:bg-transparent dark:border-k-border-subtle dark:shadow-none dark:rounded-none">
+                        <div className="flex items-center justify-between px-5 py-4 border-b border-[#E8E8ED] dark:border-k-border-subtle">
+                            <div className="flex items-center gap-2">
+                                <h2 className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary">Templates de avaliação</h2>
+                                <span className="text-[#86868B] dark:text-k-text-quaternary">
+                                    {templates.length}
+                                </span>
+                            </div>
+                            <button
+                                onClick={() => router.push('/avaliacoes/templates')}
+                                className="text-xs text-[#007AFF] hover:text-[#0056B3] transition-colors font-medium dark:text-k-text-quaternary dark:hover:text-k-text-secondary"
+                            >
+                                Gerenciar →
+                            </button>
+                        </div>
+
+                        <div className="divide-y divide-[#E8E8ED] dark:divide-k-border-subtle">
+                            {templates.map(t => (
+                                <div
+                                    key={t.id}
+                                    onClick={() => router.push(`/avaliacoes/templates/new?edit=${t.id}`)}
+                                    className="w-full flex items-center justify-between py-3 px-5 hover:bg-[#F5F5F7] transition-all text-left group cursor-pointer dark:hover:bg-glass-bg"
+                                >
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                        <Activity size={14} className="text-violet-600 dark:text-violet-400" />
+                                        <span className="text-sm text-[#1D1D1F] group-hover:text-[#1D1D1F] transition-colors truncate dark:text-k-text-secondary dark:group-hover:text-k-text-primary">
+                                            {t.title}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-3 text-xs text-[#86868B] dark:text-k-text-quaternary shrink-0">
+                                        {t.sectionCount > 0 && (
+                                            <span>{t.sectionCount} {t.sectionCount === 1 ? 'seção' : 'seções'}</span>
+                                        )}
+                                        <span className="text-[#AEAEB2] dark:text-k-text-quaternary">·</span>
+                                        <span>{t.sessionCount} {t.sessionCount === 1 ? 'sessão' : 'sessões'}</span>
+                                        <ChevronRight size={14} className="text-k-border-subtle group-hover:text-k-text-tertiary transition-all" />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 )}
                 </div>
@@ -318,50 +382,6 @@ export function AvaliacoesClient({
                     </div>
                 )}
 
-                {/* Templates section — paralelo a "Templates de Formulário" do /forms */}
-                {templates.length > 0 && (
-                    <div className="bg-white rounded-xl border border-[#D2D2D7] shadow-[0_1px_3px_rgba(0,0,0,0.08)] overflow-hidden dark:bg-transparent dark:border-k-border-subtle dark:shadow-none dark:rounded-none">
-                        <div className="flex items-center justify-between px-5 py-4 border-b border-[#E8E8ED] dark:border-k-border-subtle">
-                            <div className="flex items-center gap-2">
-                                <h2 className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary">Templates de avaliação</h2>
-                                <span className="text-[#86868B] dark:text-k-text-quaternary">
-                                    {templates.length}
-                                </span>
-                            </div>
-                            <button
-                                onClick={() => router.push('/avaliacoes/templates')}
-                                className="text-xs text-[#007AFF] hover:text-[#0056B3] transition-colors font-medium dark:text-k-text-quaternary dark:hover:text-k-text-secondary"
-                            >
-                                Gerenciar →
-                            </button>
-                        </div>
-
-                        <div className="divide-y divide-[#E8E8ED] dark:divide-k-border-subtle">
-                            {templates.map(t => (
-                                <div
-                                    key={t.id}
-                                    onClick={() => router.push(`/avaliacoes/templates/new?edit=${t.id}`)}
-                                    className="w-full flex items-center justify-between py-3 px-5 hover:bg-[#F5F5F7] transition-all text-left group cursor-pointer dark:hover:bg-glass-bg"
-                                >
-                                    <div className="flex items-center gap-2.5 min-w-0">
-                                        <Activity size={14} className="text-violet-600 dark:text-violet-400" />
-                                        <span className="text-sm text-[#1D1D1F] group-hover:text-[#1D1D1F] transition-colors truncate dark:text-k-text-secondary dark:group-hover:text-k-text-primary">
-                                            {t.title}
-                                        </span>
-                                    </div>
-                                    <div className="flex items-center gap-3 text-xs text-[#86868B] dark:text-k-text-quaternary shrink-0">
-                                        {t.sectionCount > 0 && (
-                                            <span>{t.sectionCount} {t.sectionCount === 1 ? 'seção' : 'seções'}</span>
-                                        )}
-                                        <span className="text-[#AEAEB2] dark:text-k-text-quaternary">·</span>
-                                        <span>{t.sessionCount} {t.sessionCount === 1 ? 'sessão' : 'sessões'}</span>
-                                        <ChevronRight size={14} className="text-k-border-subtle group-hover:text-k-text-tertiary transition-all" />
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
                 </div>
             </div>
 

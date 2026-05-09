@@ -57,17 +57,17 @@ export function SessionListItem({ session, onClick }: SessionListItemProps) {
         <button
             type="button"
             onClick={onClick}
-            className="group flex w-full items-center justify-between px-5 py-3 text-left transition-all hover:bg-[#F5F5F7] dark:hover:bg-glass-bg"
+            className="group flex w-full items-center justify-between px-5 py-2.5 text-left transition-all hover:bg-[#F5F5F7] dark:hover:bg-glass-bg"
         >
             <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#D2D2D7] bg-[#F5F5F7] dark:border-k-border-primary dark:bg-glass-bg">
+                <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#D2D2D7] bg-[#F5F5F7] dark:border-k-border-primary dark:bg-glass-bg">
                     {session.student_avatar ? (
                         <Image
                             src={session.student_avatar}
                             alt=""
-                            width={32}
-                            height={32}
-                            className="h-8 w-8 rounded-full object-cover"
+                            width={28}
+                            height={28}
+                            className="h-7 w-7 rounded-full object-cover"
                             unoptimized
                         />
                     ) : (

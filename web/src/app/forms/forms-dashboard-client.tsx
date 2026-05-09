@@ -338,7 +338,29 @@ export function FormsDashboardClient({
                 </div>
             </div>
 
-            <div className="space-y-6 xl:grid xl:grid-cols-2 xl:gap-6 xl:space-y-0 xl:items-start">
+            {/* Proactive CTA — só aparece quando há pendência */}
+            {pending.length > 0 && (
+                <button
+                    onClick={() => {
+                        const first = pending[0]
+                        if (first) openSubmission(first.id)
+                    }}
+                    className="mb-6 w-full bg-[#FF9500]/5 border border-[#FF9500]/20 rounded-xl px-5 py-3 flex items-center justify-between hover:bg-[#FF9500]/10 transition-all dark:bg-yellow-500/5 dark:border-yellow-500/20 dark:hover:bg-yellow-500/10"
+                >
+                    <span className="flex items-center gap-2 text-sm">
+                        <span className="w-2 h-2 rounded-full bg-[#FF9500] dark:bg-yellow-400 animate-pulse" />
+                        <span className="font-medium text-[#1D1D1F] dark:text-k-text-primary">
+                            {pending.length} {pending.length === 1 ? 'feedback aguardando' : 'feedbacks aguardando'}
+                        </span>
+                        <span className="text-[#86868B] dark:text-k-text-tertiary">
+                            — comece pelo mais antigo
+                        </span>
+                    </span>
+                    <ChevronRight size={16} className="text-[#86868B] dark:text-k-text-tertiary" />
+                </button>
+            )}
+
+            <div className="space-y-6 lg:grid lg:grid-cols-2 lg:gap-5 lg:space-y-0 lg:items-start">
 
             <div className="space-y-6">
             {/* Pending Feedback Section */}
@@ -356,7 +378,7 @@ export function FormsDashboardClient({
                             {pending.map(sub => (
                                 <div
                                     key={sub.id}
-                                    className="flex items-center justify-between px-5 py-3 hover:bg-[#F5F5F7] transition-all cursor-pointer dark:hover:bg-glass-bg"
+                                    className="group flex items-center justify-between px-5 py-3 hover:bg-[#F5F5F7] transition-all cursor-pointer dark:hover:bg-glass-bg"
                                     onClick={() => openSubmission(sub.id)}
                                 >
                                     <div className="flex items-center gap-3 min-w-0">
@@ -380,9 +402,7 @@ export function FormsDashboardClient({
                                         {loadingSubmissionId === sub.id ? (
                                             <Loader2 size={14} className="animate-spin text-[#007AFF] dark:text-yellow-400" />
                                         ) : (
-                                            <span className="text-xs px-3 py-1.5 text-[#007AFF] hover:text-[#0056B3] font-medium transition-colors dark:bg-yellow-500/15 dark:text-yellow-400 dark:hover:bg-yellow-500/25 dark:rounded-lg">
-                                                Dar Feedback →
-                                            </span>
+                                            <ChevronRight size={14} className="text-k-border-subtle group-hover:text-k-text-tertiary transition-all" />
                                         )}
                                     </div>
                                 </div>
@@ -435,92 +455,6 @@ export function FormsDashboardClient({
                                 </span>
                             </div>
                         ))}
-                    </div>
-                </div>
-            )}
-            </div>
-
-            <div className="space-y-6">
-            {/* All Submissions */}
-            {submissions.length > 0 && (
-                <div className="bg-white rounded-xl border border-[#D2D2D7] shadow-[0_1px_3px_rgba(0,0,0,0.08)] overflow-hidden dark:bg-transparent dark:border-k-border-subtle dark:shadow-none dark:rounded-none">
-                    <div className="flex items-center justify-between px-5 py-4 border-b border-[#E8E8ED] dark:border-k-border-subtle">
-                        <h2 className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary">Todas as Respostas</h2>
-                        <div className="flex items-center gap-2">
-                            {([
-                                { key: 'all' as const, label: 'Todas', count: submissions.length },
-                                { key: 'pending' as const, label: 'Pendentes', count: pending.length },
-                                { key: 'completed' as const, label: 'Concluídas', count: completed.length },
-                            ]).map(f => (
-                                <button
-                                    key={f.key}
-                                    onClick={() => setFilter(f.key)}
-                                    className={`px-3 py-1.5 text-xs font-medium rounded-full transition-all ${
-                                        filter === f.key
-                                            ? 'bg-[#007AFF] text-white dark:bg-violet-500/10 dark:text-violet-400 dark:border dark:border-violet-500/30'
-                                            : 'bg-[#F5F5F7] text-[#6E6E73] hover:bg-[#E8E8ED] dark:bg-glass-bg dark:text-k-text-quaternary dark:border-k-border-subtle dark:hover:text-k-text-secondary'
-                                    }`}
-                                >
-                                    {f.label} ({f.count})
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="divide-y divide-[#E8E8ED] dark:divide-k-border-subtle">
-                        {filteredSubmissions.map(sub => {
-                            const isPending = sub.status === 'submitted'
-                            const isLoading = loadingSubmissionId === sub.id
-                            return (
-                                <button
-                                    key={sub.id}
-                                    onClick={() => openSubmission(sub.id)}
-                                    className="w-full group flex items-center justify-between py-3 px-5 hover:bg-[#F5F5F7] transition-all text-left dark:hover:bg-glass-bg"
-                                >
-                                    <div className="flex items-center gap-3 min-w-0">
-                                        <div className="flex h-8 w-8 items-center justify-center rounded-full border border-[#D2D2D7] bg-[#F5F5F7] overflow-hidden shrink-0 dark:border-k-border-primary dark:bg-glass-bg">
-                                            {sub.student_avatar ? (
-                                                <Image src={sub.student_avatar} alt="" width={32} height={32} className="h-8 w-8 rounded-full object-cover" unoptimized />
-                                            ) : (
-                                                <span className="text-[10px] font-semibold text-[#1D1D1F] dark:text-k-text-primary">
-                                                    {(sub.student_name || '?').charAt(0).toUpperCase()}
-                                                </span>
-                                            )}
-                                        </div>
-                                        <div className="min-w-0">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-sm font-medium text-[#1D1D1F] group-hover:text-[#1D1D1F] transition-colors truncate dark:text-k-text-secondary dark:group-hover:text-k-text-primary">
-                                                    {sub.student_name || 'Aluno'}
-                                                </span>
-                                                <span className="text-xs text-[#86868B] truncate hidden sm:inline dark:text-k-text-quaternary">
-                                                    {cleanTemplateName(sub.template_title || '')}
-                                                </span>
-                                            </div>
-                                            <span className="text-xs text-[#AEAEB2] dark:text-k-text-quaternary">
-                                                {timeAgo(sub.submitted_at || sub.created_at)}
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-center gap-2 shrink-0">
-                                        {isLoading ? (
-                                            <Loader2 size={14} className="animate-spin text-k-text-quaternary" />
-                                        ) : isPending ? (
-                                            <span className="flex items-center gap-1.5 text-xs font-medium text-[#FF9500] dark:text-yellow-400">
-                                                <span className="w-2 h-2 rounded-full bg-[#FF9500] dark:bg-yellow-400 inline-block" />
-                                                Aguardando
-                                            </span>
-                                        ) : (
-                                            <span className="flex items-center gap-1.5 text-xs font-medium text-[#34C759] dark:text-emerald-400">
-                                                <span className="w-2 h-2 rounded-full bg-[#34C759] dark:bg-emerald-400 inline-block" />
-                                                Concluído
-                                            </span>
-                                        )}
-                                        <ChevronRight size={14} className="text-k-border-subtle group-hover:text-k-text-tertiary transition-all" />
-                                    </div>
-                                </button>
-                            )
-                        })}
                     </div>
                 </div>
             )}
@@ -592,6 +526,88 @@ export function FormsDashboardClient({
                     </div>
                 )}
             </div>
+            </div>
+
+            <div className="space-y-6">
+            {/* All Submissions */}
+            {submissions.length > 0 && (
+                <div className="bg-white rounded-xl border border-[#D2D2D7] shadow-[0_1px_3px_rgba(0,0,0,0.08)] overflow-hidden dark:bg-transparent dark:border-k-border-subtle dark:shadow-none dark:rounded-none">
+                    <div className="flex items-center justify-between px-5 py-4 border-b border-[#E8E8ED] dark:border-k-border-subtle">
+                        <h2 className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary">Todas as Respostas</h2>
+                        <div className="flex items-center gap-2">
+                            {([
+                                { key: 'all' as const, label: 'Todas', count: submissions.length },
+                                { key: 'pending' as const, label: 'Pendentes', count: pending.length },
+                                { key: 'completed' as const, label: 'Concluídas', count: completed.length },
+                            ]).map(f => (
+                                <button
+                                    key={f.key}
+                                    onClick={() => setFilter(f.key)}
+                                    className={`px-3 py-1.5 text-xs font-medium rounded-full transition-all ${
+                                        filter === f.key
+                                            ? 'bg-[#007AFF] text-white dark:bg-violet-500/10 dark:text-violet-400 dark:border dark:border-violet-500/30'
+                                            : 'bg-[#F5F5F7] text-[#6E6E73] hover:bg-[#E8E8ED] dark:bg-glass-bg dark:text-k-text-quaternary dark:border-k-border-subtle dark:hover:text-k-text-secondary'
+                                    }`}
+                                >
+                                    {f.label} ({f.count})
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="divide-y divide-[#E8E8ED] dark:divide-k-border-subtle">
+                        {filteredSubmissions.map(sub => {
+                            const isPending = sub.status === 'submitted'
+                            const isLoading = loadingSubmissionId === sub.id
+                            return (
+                                <button
+                                    key={sub.id}
+                                    onClick={() => openSubmission(sub.id)}
+                                    className="w-full group flex items-center justify-between py-2.5 px-5 hover:bg-[#F5F5F7] transition-all text-left dark:hover:bg-glass-bg"
+                                >
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <div className="flex h-7 w-7 items-center justify-center rounded-full border border-[#D2D2D7] bg-[#F5F5F7] overflow-hidden shrink-0 dark:border-k-border-primary dark:bg-glass-bg">
+                                            {sub.student_avatar ? (
+                                                <Image src={sub.student_avatar} alt="" width={28} height={28} className="h-7 w-7 rounded-full object-cover" unoptimized />
+                                            ) : (
+                                                <span className="text-[10px] font-semibold text-[#1D1D1F] dark:text-k-text-primary">
+                                                    {(sub.student_name || '?').charAt(0).toUpperCase()}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="min-w-0">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-sm font-medium text-[#1D1D1F] group-hover:text-[#1D1D1F] transition-colors truncate dark:text-k-text-secondary dark:group-hover:text-k-text-primary">
+                                                    {sub.student_name || 'Aluno'}
+                                                </span>
+                                                <span className="text-xs text-[#86868B] truncate hidden sm:inline dark:text-k-text-quaternary">
+                                                    {cleanTemplateName(sub.template_title || '')}
+                                                </span>
+                                            </div>
+                                            <span className={`text-xs ${isPending ? 'text-[#FF9500] dark:text-yellow-400 font-medium' : 'text-[#AEAEB2] dark:text-k-text-quaternary'}`}>
+                                                {timeAgo(sub.submitted_at || sub.created_at)}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        {isLoading ? (
+                                            <Loader2 size={14} className="animate-spin text-k-text-quaternary" />
+                                        ) : isPending ? null : (
+                                            <span className="flex items-center gap-1.5 text-xs font-medium text-[#34C759] dark:text-emerald-400">
+                                                <span className="w-2 h-2 rounded-full bg-[#34C759] dark:bg-emerald-400 inline-block" />
+                                                Concluído
+                                            </span>
+                                        )}
+                                        <ChevronRight size={14} className="text-k-border-subtle group-hover:text-k-text-tertiary transition-all" />
+                                    </div>
+                                </button>
+                            )
+                        })}
+                    </div>
+                </div>
+            )}
+
             </div>
 
             </div>
