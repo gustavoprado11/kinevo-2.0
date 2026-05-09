@@ -30,13 +30,24 @@ import { toast } from "../../lib/toast";
 import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useAssessmentSessions, type SessionsFilter } from "../../hooks/useAssessmentSessions";
+import { useTrainerAssessmentTemplates, type TrainerAssessmentTemplate } from "../../hooks/useTrainerAssessmentTemplates";
 import { SessionListItem } from "../../components/trainer/assessments/SessionListItem";
 import { CreateSessionModal } from "../../components/trainer/assessments/CreateSessionModal";
+import { AssessmentTemplateCard } from "../../components/trainer/assessments/AssessmentTemplateCard";
 import type { AssessmentSessionListItem } from "@kinevo/shared/types/assessments";
 import type { AssessmentDraft } from "../../stores/assessmentDraftStore";
 import { useAssessmentOnboardingStore } from "../../stores/assessmentOnboardingStore";
+import { useFormsTabStateStore, type FormsSegment } from "../../stores/formsTabStateStore";
+import { MigrationBannerMobile } from "../../components/trainer/forms/MigrationBannerMobile";
 
-type Tab = "responses" | "templates" | "assessments";
+// M11 — IA cleanup. 2 segmentos de top-level (formularios | avaliacoes), cada
+// um com 2 sub-tabs próprias.
+//   - segment formularios: subTab in {responses, templates}
+//   - segment avaliacoes:  subTab in {sessions, a_templates}
+// Deep-link `?tab=…` é mantido pra compat (result screen back nav) e mapeado
+// pra (segment, subTab) no useEffect.
+type FormsSubTab = "responses" | "templates";
+type AvaliacoesSubTab = "sessions" | "a_templates";
 
 const FILTER_CHIPS: { key: SubmissionFilter; label: string }[] = [
     { key: "all", label: "Todas" },
@@ -55,22 +66,41 @@ export default function FormsScreen() {
     const insets = useSafeAreaInsets();
     const { isTablet } = useResponsive();
     const router = useRouter();
-    const [activeTab, setActiveTab] = useState<Tab>("responses");
 
-    // Honor `?tab=assessments` deep-link (used by the result screen back
-    // button so the trainer lands on the Presenciais tab, not the default
-    // Respostas).
+    // M11 — segment ativo persiste em MMKV. Sub-tabs são locais por segmento.
+    const activeSegment = useFormsTabStateStore((s) => s.activeSegment);
+    const setActiveSegment = useFormsTabStateStore((s) => s.setActiveSegment);
+    const [formsSubTab, setFormsSubTab] = useState<FormsSubTab>("responses");
+    const [avaliacoesSubTab, setAvaliacoesSubTab] = useState<AvaliacoesSubTab>("sessions");
+
+    // Convenience derived values — usados em filter chips, FAB, content render.
+    const isResponses = activeSegment === "formularios" && formsSubTab === "responses";
+    const isFormTemplates = activeSegment === "formularios" && formsSubTab === "templates";
+    const isSessions = activeSegment === "avaliacoes" && avaliacoesSubTab === "sessions";
+    const isAssessmentTemplates = activeSegment === "avaliacoes" && avaliacoesSubTab === "a_templates";
+
+    // Deep-link `?tab=…` mapeado pra (segment, subTab). Usado pelo back nav do
+    // result screen (que vai pra ?tab=assessments).
     const { tab: tabParam } = useLocalSearchParams<{ tab?: string }>();
     useEffect(() => {
-        if (tabParam === "assessments" || tabParam === "templates" || tabParam === "responses") {
-            setActiveTab(tabParam as Tab);
+        if (!tabParam) return;
+        if (tabParam === "assessments") {
+            setActiveSegment("avaliacoes");
+            setAvaliacoesSubTab("sessions");
+        } else if (tabParam === "templates") {
+            setActiveSegment("formularios");
+            setFormsSubTab("templates");
+        } else if (tabParam === "responses") {
+            setActiveSegment("formularios");
+            setFormsSubTab("responses");
         }
-    }, [tabParam]);
+    }, [tabParam, setActiveSegment]);
 
     // Data
     const templates = useTrainerFormTemplates();
     const submissions = useTrainerFormSubmissions();
     const assessments = useAssessmentSessions();
+    const assessmentTemplates = useTrainerAssessmentTemplates();
 
     // CRUD
     const crud = useFormTemplateCrud(() => {
@@ -94,23 +124,32 @@ export default function FormsScreen() {
     );
 
     const handleRefresh = useCallback(() => {
-        if (activeTab === "responses") submissions.refresh();
-        else if (activeTab === "templates") templates.refresh();
-        else assessments.refresh();
-    }, [activeTab, submissions, templates, assessments]);
+        if (isResponses) submissions.refresh();
+        else if (isFormTemplates) templates.refresh();
+        else if (isSessions) assessments.refresh();
+        else if (isAssessmentTemplates) assessmentTemplates.refresh();
+    }, [isResponses, isFormTemplates, isSessions, isAssessmentTemplates, submissions, templates, assessments, assessmentTemplates]);
 
     const isRefreshing =
-        activeTab === "responses"
+        isResponses
             ? submissions.isRefreshing
-            : activeTab === "templates"
+            : isFormTemplates
                 ? templates.isRefreshing
-                : assessments.isRefreshing;
+                : isSessions
+                    ? assessments.isRefreshing
+                    : isAssessmentTemplates
+                        ? assessmentTemplates.isRefreshing
+                        : false;
     const isLoading =
-        activeTab === "responses"
+        isResponses
             ? submissions.isLoading
-            : activeTab === "templates"
+            : isFormTemplates
                 ? templates.isLoading
-                : assessments.isLoading;
+                : isSessions
+                    ? assessments.isLoading
+                    : isAssessmentTemplates
+                        ? assessmentTemplates.isLoading
+                        : false;
 
     const draftCount = assessments.inProgressDrafts.length;
     const isAssessmentsEmpty =
@@ -127,6 +166,17 @@ export default function FormsScreen() {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         setCreateSessionVisible(true);
     }, []);
+
+    // M11/B2 — tap em assessment template card → drill-down pra edit.
+    const handleAssessmentTemplatePress = useCallback(
+        (template: TrainerAssessmentTemplate) => {
+            router.push({
+                pathname: "/assessments/templates/new",
+                params: { id: template.id },
+            });
+        },
+        [router],
+    );
 
     const handleEdit = useCallback(
         async (t: FormTemplate) => {
@@ -196,37 +246,87 @@ export default function FormsScreen() {
                 </Text>
             </View>
 
-            {/* Tab switch */}
+            {/* M11 — Banner in-app de migração (1ª visita pós-deploy). */}
+            <MigrationBannerMobile />
+
+            {/* M11 — Segmented control (top-level). */}
             <View
                 style={{
                     flexDirection: "row",
                     marginHorizontal: 20,
-                    marginBottom: 12,
+                    marginBottom: 10,
                     backgroundColor: "#e2e8f0",
                     borderRadius: 10,
                     padding: 3,
                 }}
             >
                 <TabButton
-                    label={`Respostas${submissions.counts.pending > 0 ? ` (${submissions.counts.pending})` : ""}`}
-                    active={activeTab === "responses"}
-                    onPress={() => setActiveTab("responses")}
+                    label="Formulários"
+                    active={activeSegment === "formularios"}
+                    onPress={() => {
+                        Haptics.selectionAsync();
+                        setActiveSegment("formularios");
+                    }}
                 />
                 <TabButton
-                    label="Templates"
-                    active={activeTab === "templates"}
-                    onPress={() => setActiveTab("templates")}
-                />
-                <TabButton
-                    label="Presenciais"
+                    label="Avaliações"
                     badge={draftCount}
-                    active={activeTab === "assessments"}
-                    onPress={() => setActiveTab("assessments")}
+                    active={activeSegment === "avaliacoes"}
+                    onPress={() => {
+                        Haptics.selectionAsync();
+                        setActiveSegment("avaliacoes");
+                    }}
                 />
             </View>
 
+            {/* M11 — Sub-tabs por segmento. */}
+            {activeSegment === "formularios" ? (
+                <View
+                    style={{
+                        flexDirection: "row",
+                        marginHorizontal: 20,
+                        marginBottom: 12,
+                        gap: 6,
+                    }}
+                >
+                    <SubTabButton
+                        label={`Respostas${submissions.counts.pending > 0 ? ` (${submissions.counts.pending})` : ""}`}
+                        active={formsSubTab === "responses"}
+                        onPress={() => setFormsSubTab("responses")}
+                    />
+                    <SubTabButton
+                        label="Templates"
+                        active={formsSubTab === "templates"}
+                        onPress={() => setFormsSubTab("templates")}
+                    />
+                </View>
+            ) : (
+                <View
+                    style={{
+                        flexDirection: "row",
+                        marginHorizontal: 20,
+                        marginBottom: 12,
+                        gap: 6,
+                    }}
+                >
+                    <SubTabButton
+                        label="Sessões"
+                        badge={draftCount}
+                        active={avaliacoesSubTab === "sessions"}
+                        onPress={() => setAvaliacoesSubTab("sessions")}
+                        accent="violet"
+                    />
+                    <SubTabButton
+                        label="Templates"
+                        active={avaliacoesSubTab === "a_templates"}
+                        onPress={() => setAvaliacoesSubTab("a_templates")}
+                        accent="violet"
+                    />
+                </View>
+            )}
+
             {/* Filter chips */}
-            {activeTab === "responses" && (
+            {isResponses && (
                 <View style={{ flexDirection: "row", paddingHorizontal: 20, marginBottom: 10, gap: 8 }}>
                     {FILTER_CHIPS.map((chip) => {
                         const isActive = submissions.filter === chip.key;
@@ -243,46 +343,28 @@ export default function FormsScreen() {
                     })}
                 </View>
             )}
-            {activeTab === "assessments" && (
-                <>
-                    <View style={{ flexDirection: "row", paddingHorizontal: 20, marginBottom: 10, gap: 8 }}>
-                        {ASSESSMENT_FILTER_CHIPS.map((chip) => {
-                            const isActive = assessments.filter === chip.key;
-                            const count = assessments.counts[chip.key];
-                            return (
-                                <FilterChip
-                                    key={chip.key}
-                                    label={chip.label}
-                                    active={isActive}
-                                    count={count}
-                                    onPress={() => assessments.setFilter(chip.key)}
-                                />
-                            );
-                        })}
-                    </View>
-                    {/* M10A — atalho pra criar novo template de avaliação */}
-                    <View style={{ flexDirection: "row", justifyContent: "flex-end", paddingHorizontal: 20, marginBottom: 6 }}>
-                        <TouchableOpacity
-                            onPress={() => {
-                                Haptics.selectionAsync();
-                                router.push("/assessments/templates/new");
-                            }}
-                            accessibilityRole="button"
-                            accessibilityLabel="Novo template de avaliação"
-                            style={{ paddingVertical: 4, paddingHorizontal: 6 }}
-                        >
-                            <Text style={{ fontSize: 12, fontWeight: "600", color: "#7c3aed" }}>
-                                Novo template de avaliação →
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
-                </>
+            {isSessions && (
+                <View style={{ flexDirection: "row", paddingHorizontal: 20, marginBottom: 10, gap: 8 }}>
+                    {ASSESSMENT_FILTER_CHIPS.map((chip) => {
+                        const isActive = assessments.filter === chip.key;
+                        const count = assessments.counts[chip.key];
+                        return (
+                            <FilterChip
+                                key={chip.key}
+                                label={chip.label}
+                                active={isActive}
+                                count={count}
+                                onPress={() => assessments.setFilter(chip.key)}
+                            />
+                        );
+                    })}
+                </View>
             )}
 
             {/* Content */}
             {isLoading ? (
                 <FormsSkeleton />
-            ) : activeTab === "responses" ? (
+            ) : isResponses ? (
                 <FlatList
                     key={isTablet ? "submissions-2col" : "submissions-1col"}
                     data={submissions.submissions}
@@ -314,7 +396,7 @@ export default function FormsScreen() {
                         />
                     }
                 />
-            ) : activeTab === "templates" ? (
+            ) : isFormTemplates ? (
                 <FlatList
                     key={isTablet ? "templates-2col" : "templates-1col"}
                     data={templates.templates}
@@ -351,7 +433,7 @@ export default function FormsScreen() {
                         />
                     }
                 />
-            ) : (
+            ) : isSessions ? (
                 <AssessmentsList
                     drafts={assessments.inProgressDrafts}
                     sessions={assessments.sessions}
@@ -361,37 +443,100 @@ export default function FormsScreen() {
                     onCreateNew={handleCreateAssessmentSession}
                     paddingBottom={insets.bottom + 100}
                 />
+            ) : (
+                /* M11/B2 — sub-tab "Templates" do segment Avaliações.
+                   Lista templates Kinevo (5 system) + customs do trainer. */
+                <FlatList
+                    key={isTablet ? "atemplates-2col" : "atemplates-1col"}
+                    data={assessmentTemplates.templates}
+                    keyExtractor={(item) => item.id}
+                    numColumns={isTablet ? 2 : 1}
+                    columnWrapperStyle={isTablet ? { gap: 10 } : undefined}
+                    contentContainerStyle={{
+                        paddingHorizontal: 20,
+                        paddingBottom: isTablet ? 40 : insets.bottom + 100,
+                        gap: 10,
+                    }}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={isRefreshing}
+                            onRefresh={handleRefresh}
+                            tintColor={colors.brand.primary}
+                        />
+                    }
+                    renderItem={({ item }) => (
+                        <View style={isTablet ? { flex: 1 } : undefined}>
+                            <AssessmentTemplateCard
+                                template={item}
+                                onPress={handleAssessmentTemplatePress}
+                            />
+                        </View>
+                    )}
+                    ListEmptyComponent={
+                        <EmptyState
+                            icon={<Activity size={40} color={colors.text.quaternary} />}
+                            title="Nenhum template de avaliação"
+                            description="Toque no + para criar seu primeiro template de avaliação."
+                        />
+                    }
+                />
             )}
 
-            {/* FAB — escondido na aba Presenciais quando a lista está vazia
-                (o EmptyState exibe um CTA "+ Nova avaliação" próprio). */}
-            {(activeTab === "templates" ||
-                (activeTab === "assessments" && !isAssessmentsEmpty)) && (
-                <TouchableOpacity
-                    onPress={activeTab === "templates" ? handleCreateNew : handleCreateAssessmentSession}
-                    activeOpacity={0.8}
-                    accessibilityLabel={activeTab === "templates" ? "Criar novo template" : "Nova avaliação"}
-                    accessibilityRole="button"
-                    style={{
-                        position: "absolute",
-                        right: 20,
-                        bottom: insets.bottom + 66,
-                        width: 56,
-                        height: 56,
-                        borderRadius: 28,
-                        backgroundColor: activeTab === "templates" ? "#7c3aed" : colors.status.presencial,
-                        alignItems: "center",
-                        justifyContent: "center",
-                        shadowColor: activeTab === "templates" ? "#7c3aed" : colors.status.presencial,
-                        shadowOffset: { width: 0, height: 4 },
-                        shadowOpacity: 0.35,
-                        shadowRadius: 8,
-                        elevation: 6,
-                    }}
-                >
-                    <Plus size={26} color="#ffffff" strokeWidth={2.5} />
-                </TouchableOpacity>
-            )}
+            {/* M11 — FAB matrix por (segment, subTab). Hidden em Respostas
+                (não há ação default) e em Sessões quando lista vazia (o
+                EmptyState exibe um CTA "+ Nova avaliação" próprio). */}
+            {(() => {
+                let fabConfig: { onPress: () => void; label: string; color: string } | null = null;
+                if (isFormTemplates) {
+                    fabConfig = {
+                        onPress: handleCreateNew,
+                        label: "Criar novo template de formulário",
+                        color: "#7c3aed",
+                    };
+                } else if (isSessions && !isAssessmentsEmpty) {
+                    fabConfig = {
+                        onPress: handleCreateAssessmentSession,
+                        label: "Nova avaliação",
+                        color: colors.status.presencial,
+                    };
+                } else if (isAssessmentTemplates) {
+                    fabConfig = {
+                        onPress: () => {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                            router.push("/assessments/templates/new");
+                        },
+                        label: "Novo template de avaliação",
+                        color: "#7c3aed",
+                    };
+                }
+                if (!fabConfig) return null;
+                return (
+                    <TouchableOpacity
+                        onPress={fabConfig.onPress}
+                        activeOpacity={0.8}
+                        accessibilityLabel={fabConfig.label}
+                        accessibilityRole="button"
+                        style={{
+                            position: "absolute",
+                            right: 20,
+                            bottom: insets.bottom + 66,
+                            width: 56,
+                            height: 56,
+                            borderRadius: 28,
+                            backgroundColor: fabConfig.color,
+                            alignItems: "center",
+                            justifyContent: "center",
+                            shadowColor: fabConfig.color,
+                            shadowOffset: { width: 0, height: 4 },
+                            shadowOpacity: 0.35,
+                            shadowRadius: 8,
+                            elevation: 6,
+                        }}
+                    >
+                        <Plus size={26} color="#ffffff" strokeWidth={2.5} />
+                    </TouchableOpacity>
+                );
+            })()}
 
             {/* Modals */}
             <AssignFormModal
@@ -465,6 +610,70 @@ function TabButton({
                     fontSize: 14,
                     fontWeight: "600",
                     color: active ? colors.text.primary : colors.text.secondary,
+                }}
+            >
+                {label}
+            </Text>
+            {badge !== undefined && badge > 0 && (
+                <View
+                    style={{
+                        minWidth: 18,
+                        height: 18,
+                        borderRadius: 9,
+                        backgroundColor: colors.status.presencial,
+                        paddingHorizontal: 5,
+                        alignItems: "center",
+                        justifyContent: "center",
+                    }}
+                >
+                    <Text style={{ fontSize: 10, fontWeight: "800", color: colors.text.inverse }}>
+                        {badge > 9 ? "9+" : badge}
+                    </Text>
+                </View>
+            )}
+        </TouchableOpacity>
+    );
+}
+
+// M11 — sub-tab pill abaixo do segmented control. Visualmente mais leve que
+// TabButton (sem fundo branco em estado ativo; sublinhado violet/cinza).
+function SubTabButton({
+    label,
+    active,
+    badge,
+    onPress,
+    accent = "default",
+}: {
+    label: string;
+    active: boolean;
+    badge?: number;
+    onPress: () => void;
+    accent?: "default" | "violet";
+}) {
+    const activeColor = accent === "violet" ? "#7c3aed" : colors.text.primary;
+    return (
+        <TouchableOpacity
+            onPress={onPress}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: active }}
+            accessibilityLabel={label}
+            style={{
+                paddingVertical: 6,
+                paddingHorizontal: 12,
+                borderRadius: 999,
+                borderWidth: 1,
+                borderColor: active ? activeColor : "transparent",
+                backgroundColor: active ? activeColor + "10" : "transparent",
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+            }}
+        >
+            <Text
+                style={{
+                    fontSize: 13,
+                    fontWeight: "600",
+                    color: active ? activeColor : colors.text.secondary,
                 }}
             >
                 {label}
