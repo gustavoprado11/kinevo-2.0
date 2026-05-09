@@ -200,7 +200,8 @@ export function AvaliacoesClient({
                 </div>
             </div>
 
-            <div className="space-y-6">
+            <div className="space-y-6 xl:grid xl:grid-cols-2 xl:gap-6 xl:space-y-0 xl:items-start">
+                <div className="space-y-6">
                 {/* "Em atraso" callout — paralelo ao "Aguardando Feedback" do /forms */}
                 {overdueSessions.length > 0 && (
                     <div className="bg-white rounded-xl border border-[#D2D2D7] shadow-[0_1px_3px_rgba(0,0,0,0.08)] overflow-hidden dark:bg-transparent dark:border-k-border-subtle dark:shadow-none dark:rounded-none">
@@ -240,7 +241,9 @@ export function AvaliacoesClient({
                         </ul>
                     </div>
                 )}
+                </div>
 
+                <div className="space-y-6">
                 {/* "Todas as avaliações" — paralelo a "Todas as Respostas" do /forms */}
                 {visibleSessions.length > 0 ? (
                     <div className="bg-white rounded-xl border border-[#D2D2D7] shadow-[0_1px_3px_rgba(0,0,0,0.08)] overflow-hidden dark:bg-transparent dark:border-k-border-subtle dark:shadow-none dark:rounded-none">
@@ -359,6 +362,7 @@ export function AvaliacoesClient({
                         </div>
                     </div>
                 )}
+                </div>
             </div>
 
             <CreateSessionModal
