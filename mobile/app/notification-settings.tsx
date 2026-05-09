@@ -1,10 +1,16 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, ScrollView, Switch, ActivityIndicator, TouchableOpacity } from "react-native";
+import { View, Text, ScrollView, Switch, ActivityIndicator, TouchableOpacity, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { ChevronLeft } from "lucide-react-native";
+import { Calendar, ChevronLeft } from "lucide-react-native";
+import * as Haptics from "expo-haptics";
 import { supabase } from "../lib/supabase";
 import { colors } from "@/theme";
+import {
+    useTrainerNotificationPreferences,
+    type AppointmentReminderMinutes,
+} from "../hooks/useTrainerNotificationPreferences";
+import { syncAllRuleReminders } from "../hooks/useScheduleAppointmentReminder";
 
 const API_URL = process.env.EXPO_PUBLIC_WEB_URL || "https://app.kinevo.com.br";
 
@@ -35,11 +41,21 @@ const DEFAULT_PREFS: NotificationPreferences = {
     student_inactive: true,
 };
 
+const REMINDER_OPTIONS: AppointmentReminderMinutes[] = [15, 30, 60];
+
 export default function NotificationSettingsScreen() {
     const router = useRouter();
     const [preferences, setPreferences] = useState<NotificationPreferences>(DEFAULT_PREFS);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
+
+    const {
+        appointmentRemindersEnabled,
+        appointmentReminderMinutes,
+        isSaving: isSavingAppt,
+        setAppointmentRemindersEnabled,
+        setAppointmentReminderMinutes,
+    } = useTrainerNotificationPreferences();
 
     const fetchPreferences = useCallback(async () => {
         try {
@@ -92,6 +108,34 @@ export default function NotificationSettingsScreen() {
         }
     }, [preferences]);
 
+    const handleToggleAppointmentReminders = useCallback(
+        async (next: boolean) => {
+            Haptics.selectionAsync();
+            await setAppointmentRemindersEnabled(next);
+            // When toggling off we don't proactively cancel scheduled pushes —
+            // they'll quietly run unless the trainer also lowers permission.
+            // When toggling back on we sync everything tracked locally to the
+            // current minutes preference so existing rules get pushes again.
+            if (next) {
+                await syncAllRuleReminders(appointmentReminderMinutes);
+            }
+        },
+        [setAppointmentRemindersEnabled, appointmentReminderMinutes],
+    );
+
+    const handlePickReminderMinutes = useCallback(
+        async (next: AppointmentReminderMinutes) => {
+            if (next === appointmentReminderMinutes) return;
+            Haptics.selectionAsync();
+            await setAppointmentReminderMinutes(next);
+            // Re-schedule existing rules with the new offset.
+            if (appointmentRemindersEnabled) {
+                await syncAllRuleReminders(next);
+            }
+        },
+        [appointmentReminderMinutes, appointmentRemindersEnabled, setAppointmentReminderMinutes],
+    );
+
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }} edges={["top"]}>
             {/* Header */}
@@ -134,6 +178,130 @@ export default function NotificationSettingsScreen() {
                         Escolha quais notificações push você deseja receber no seu dispositivo.
                     </Text>
 
+                    {/* Appointment reminders ── */}
+                    <Text
+                        style={{
+                            fontSize: 11,
+                            fontWeight: "700",
+                            color: "#94a3b8",
+                            textTransform: "uppercase",
+                            letterSpacing: 1.5,
+                            marginBottom: 8,
+                            paddingLeft: 4,
+                        }}
+                    >
+                        Lembretes de agenda
+                    </Text>
+                    <View
+                        style={{
+                            backgroundColor: "#ffffff",
+                            borderRadius: 16,
+                            overflow: "hidden",
+                            borderWidth: 1,
+                            borderColor: "rgba(0,0,0,0.04)",
+                            marginBottom: 24,
+                        }}
+                    >
+                        <View
+                            style={{
+                                flexDirection: "row",
+                                alignItems: "center",
+                                paddingVertical: 14,
+                                paddingHorizontal: 20,
+                            }}
+                        >
+                            <View
+                                style={{
+                                    width: 32,
+                                    height: 32,
+                                    borderRadius: 10,
+                                    backgroundColor: "#ede9fe",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    marginRight: 12,
+                                }}
+                            >
+                                <Calendar size={16} color="#7c3aed" />
+                            </View>
+                            <View style={{ flex: 1, marginRight: 12 }}>
+                                <Text style={{ fontSize: 14, fontWeight: "500", color: "#0f172a" }}>
+                                    Receber lembretes
+                                </Text>
+                                <Text style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>
+                                    Aviso antes de cada atendimento
+                                </Text>
+                            </View>
+                            <Switch
+                                value={appointmentRemindersEnabled}
+                                onValueChange={handleToggleAppointmentReminders}
+                                trackColor={{ false: "#e2e8f0", true: "#7c3aed" }}
+                                thumbColor="#fff"
+                                disabled={isSavingAppt}
+                            />
+                        </View>
+
+                        {appointmentRemindersEnabled && (
+                            <>
+                                <View style={{ height: 1, backgroundColor: "#f1f5f9", marginHorizontal: 20 }} />
+                                <View style={{ paddingVertical: 14, paddingHorizontal: 20 }}>
+                                    <Text style={{ fontSize: 14, fontWeight: "500", color: "#0f172a" }}>
+                                        Antecedência
+                                    </Text>
+                                    <Text style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>
+                                        Quanto tempo antes do horário marcado
+                                    </Text>
+                                    <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>
+                                        {REMINDER_OPTIONS.map((opt) => {
+                                            const selected = opt === appointmentReminderMinutes;
+                                            return (
+                                                <Pressable
+                                                    key={opt}
+                                                    onPress={() => handlePickReminderMinutes(opt)}
+                                                    style={({ pressed }) => ({
+                                                        flex: 1,
+                                                        paddingVertical: 10,
+                                                        borderRadius: 10,
+                                                        alignItems: "center",
+                                                        backgroundColor: selected ? "#7c3aed" : "#f8fafc",
+                                                        borderWidth: 1,
+                                                        borderColor: selected ? "#7c3aed" : "#e2e8f0",
+                                                        opacity: pressed ? 0.85 : 1,
+                                                    })}
+                                                >
+                                                    <Text
+                                                        style={{
+                                                            fontSize: 13,
+                                                            fontWeight: "600",
+                                                            color: selected ? "#ffffff" : "#0f172a",
+                                                        }}
+                                                    >
+                                                        {opt === 60 ? "1 hora" : `${opt} min`}
+                                                    </Text>
+                                                </Pressable>
+                                            );
+                                        })}
+                                    </View>
+                                    <Text style={{ fontSize: 11, color: "#94a3b8", marginTop: 10 }}>
+                                        Você receberá um lembrete {appointmentReminderMinutes === 60 ? "1 hora" : `${appointmentReminderMinutes} min`} antes de cada agendamento.
+                                    </Text>
+                                </View>
+                            </>
+                        )}
+                    </View>
+
+                    <Text
+                        style={{
+                            fontSize: 11,
+                            fontWeight: "700",
+                            color: "#94a3b8",
+                            textTransform: "uppercase",
+                            letterSpacing: 1.5,
+                            marginBottom: 8,
+                            paddingLeft: 4,
+                        }}
+                    >
+                        Outras notificações
+                    </Text>
                     <View
                         style={{
                             backgroundColor: "#ffffff",

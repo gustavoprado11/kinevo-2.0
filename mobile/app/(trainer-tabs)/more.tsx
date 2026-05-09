@@ -5,6 +5,7 @@ import { useRouter } from "expo-router";
 import {
     ArrowLeftRight,
     Bell,
+    Calendar,
     ChevronRight,
     Crown,
     ExternalLink,
@@ -228,10 +229,23 @@ export default function MoreScreen() {
                     </View>
                 </Animated.View>
 
-                {/* ── Comunicação ── */}
-                <SectionHeader title="Comunicação" delay={100} />
+                {/* ── Atendimentos ── */}
+                <SectionHeader title="Atendimentos" delay={90} />
                 <Animated.View
-                    entering={FadeInUp.delay(120).duration(300).easing(Easing.out(Easing.cubic))}
+                    entering={FadeInUp.delay(110).duration(300).easing(Easing.out(Easing.cubic))}
+                    style={CARD_STYLE}
+                >
+                    <MenuRow
+                        icon={<IconBox bg="#ede9fe"><Calendar size={18} color="#7c3aed" /></IconBox>}
+                        label="Agenda"
+                        onPress={() => router.push("/agenda" as any)}
+                    />
+                </Animated.View>
+
+                {/* ── Comunicação ── */}
+                <SectionHeader title="Comunicação" delay={140} />
+                <Animated.View
+                    entering={FadeInUp.delay(160).duration(300).easing(Easing.out(Easing.cubic))}
                     style={CARD_STYLE}
                 >
                     <MenuRow

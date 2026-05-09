@@ -1,6 +1,6 @@
 import React from "react";
 import { View, Text, TouchableOpacity, ScrollView } from "react-native";
-import { DollarSign, Dumbbell } from "lucide-react-native";
+import { Calendar, DollarSign, Dumbbell } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { colors } from "@/theme";
@@ -16,6 +16,15 @@ interface QuickAction {
 }
 
 const ACTIONS: QuickAction[] = [
+    {
+        key: "agenda",
+        label: "Agenda",
+        subtitle: "Atendimentos e horários",
+        icon: Calendar,
+        iconColor: "#7c3aed",
+        iconBg: "#ede9fe",
+        route: "/agenda",
+    },
     {
         key: "financial",
         label: "Financeiro",
