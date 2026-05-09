@@ -492,7 +492,7 @@ function PresencialBlock({
         return (
             <button
                 type="button"
-                onClick={() => onPush(`/forms?tab=assessments&createAssessment=1&studentId=${studentId}`)}
+                onClick={() => onPush(`/avaliacoes?createAssessment=1&studentId=${studentId}`)}
                 className="group flex w-full items-center gap-2 rounded-lg border border-dashed border-[#D2D2D7] dark:border-k-border-subtle bg-transparent px-3 py-2.5 text-left transition-colors hover:border-violet-500/40 hover:bg-violet-500/5"
                 aria-label="Criar avaliação presencial"
             >

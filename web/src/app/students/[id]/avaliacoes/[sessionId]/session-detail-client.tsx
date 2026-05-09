@@ -48,7 +48,7 @@ export function SessionDetailClient({ detail, studentId }: SessionDetailClientPr
         const result = await cancelAssessmentSession({ sessionId: session.id })
         if (result.success) {
             toast({ type: 'success', message: 'Avaliação cancelada' })
-            router.push('/forms?tab=assessments')
+            router.push('/avaliacoes')
             router.refresh()
         } else {
             toast({ type: 'error', message: result.error ?? 'Erro ao cancelar' })
@@ -62,7 +62,7 @@ export function SessionDetailClient({ detail, studentId }: SessionDetailClientPr
         <div className="mx-auto max-w-4xl">
             {/* Back */}
             <button
-                onClick={() => router.push('/forms?tab=assessments')}
+                onClick={() => router.push('/avaliacoes')}
                 className="mb-4 inline-flex items-center gap-1.5 text-sm text-k-text-secondary hover:text-k-text-primary"
             >
                 <ArrowLeft className="h-4 w-4" />

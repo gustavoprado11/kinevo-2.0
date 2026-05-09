@@ -26,6 +26,26 @@ const nextConfig: NextConfig = {
     // 5–7 dias após deploy.
     optimizePackageImports: ["lucide-react", "framer-motion"],
   },
+  async redirects() {
+    // M8/D1 — rotas antigas de Avaliações Presenciais redirecionam pra
+    // /avaliacoes. HTTP 301 preserva bookmarks e SEO. Query params extras
+    // (createAssessment, studentId) são passados adiante automaticamente pelo Next.
+    return [
+      {
+        source: "/forms",
+        has: [{ type: "query", key: "tab", value: "assessments" }],
+        destination: "/avaliacoes",
+        permanent: true,
+      },
+      // M8/B2 — builder de assessment migrou pra /avaliacoes/templates/new.
+      {
+        source: "/forms/templates/new",
+        has: [{ type: "query", key: "category", value: "assessment" }],
+        destination: "/avaliacoes/templates/new",
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     const isProd = process.env.NODE_ENV === "production";
     // `unsafe-eval` is only needed by Next's dev/Turbopack runtime. Dropping it

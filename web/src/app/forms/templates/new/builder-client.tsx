@@ -2,15 +2,14 @@
 
 import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AppLayout } from '@/components/layout'
+import { BuilderShell } from '@/components/shared/builder-shell'
 import { createFormTemplate } from '@/actions/forms/create-form-template'
 import { updateFormTemplate } from '@/actions/forms/update-form-template'
 import { generateFormDraftWithAI } from '@/actions/forms/generate-form-with-ai'
 import { auditFormQualityWithAI } from '@/actions/forms/audit-form-quality-ai'
 import {
-    ArrowLeft,
     Plus,
     Trash2,
     Sparkles,
@@ -57,6 +56,7 @@ interface Trainer {
     email: string
     avatar_url?: string | null
     theme?: string | null
+    onboarding_state?: import('@kinevo/shared/types/onboarding').OnboardingState | null
 }
 
 interface ExistingTemplate {
@@ -463,31 +463,31 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
             trainerEmail={trainer.email}
             trainerAvatarUrl={trainer.avatar_url}
             trainerTheme={trainer.theme as 'light' | 'dark' | 'system' | null}
+            onboardingState={trainer.onboarding_state ?? null}
         >
+            <BuilderShell
+                title={
+                    isEditing
+                        ? `Editar template${title ? ` — ${title}` : ''}`
+                        : title || 'Novo template'
+                }
+                subtitle={
+                    isEditing
+                        ? (existingTemplate?.trainer_id === null
+                            ? 'Template Kinevo — ao salvar, uma cópia editável será criada'
+                            : `v${existingTemplate?.version ?? 1}`)
+                        : null
+                }
+                onExit={() => router.push('/forms/templates')}
+                onSave={step === 'editor' ? handleSave : undefined}
+                canSave={questions.length > 0 && title.trim().length > 0 && !isSaving}
+                isDirty={hasUnsavedChanges}
+                isSaving={isSaving}
+                hideSave={step !== 'editor'}
+                draftKey={`form-builder-draft:${existingTemplate?.id ?? 'new'}`}
+            >
             <div className="min-h-screen bg-surface-primary p-8 font-sans">
                 <div className="max-w-7xl mx-auto">
-
-                    {/* Header — always visible */}
-                    <div className="mb-8">
-                        <Link
-                            href="/forms/templates"
-                            className="inline-flex items-center gap-1.5 text-xs text-[#007AFF] hover:text-[#0056B3] transition-colors mb-3 dark:text-k-text-secondary dark:hover:text-violet-400"
-                        >
-                            <ArrowLeft size={14} />
-                            Voltar para Templates
-                        </Link>
-                        <h1 className="text-2xl font-bold tracking-tight text-[#1D1D1F] dark:text-3xl dark:tracking-tighter dark:bg-gradient-to-br dark:from-[var(--gradient-text-from)] dark:to-[var(--gradient-text-to)] dark:bg-clip-text dark:text-transparent">
-                            {isEditing ? 'Editar Template' : 'Criar Template'}
-                        </h1>
-                        {isEditing && (
-                            <p className="mt-1 text-sm text-muted-foreground/60">
-                                {existingTemplate?.trainer_id === null
-                                    ? <>Template Kinevo &mdash; ao salvar, uma cópia editável será criada para você</>
-                                    : <>Editando &quot;{existingTemplate?.title}&quot; (v{existingTemplate?.version})</>
-                                }
-                            </p>
-                        )}
-                    </div>
 
                     {/* Step indicator */}
                     <StepIndicator step={step} isEditing={isEditing} />
@@ -1030,6 +1030,8 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                     </div>
                 </div>
             )}
+
+            </BuilderShell>
 
             {/* Tour: Form Builder (auto-start on first visit) */}
             <TourRunner tourId="form_builder" steps={TOUR_STEPS.form_builder} autoStart />

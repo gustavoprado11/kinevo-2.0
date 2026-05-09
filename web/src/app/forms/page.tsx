@@ -1,23 +1,22 @@
 import { getTrainerWithSubscription } from '@/lib/auth/get-trainer'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { getAssessmentSessionList } from '@/actions/assessments/get-session-list'
 import { FormsDashboardClient } from './forms-dashboard-client'
 
 export default async function FormsPage() {
     const { trainer } = await getTrainerWithSubscription()
     const supabase = await createClient()
 
-    // Templates (trainer-owned + visible system templates)
+    // M8/D1 — /forms é forms-only. Templates de category='assessment' vivem em /avaliacoes.
     const { data: templates } = await supabase
         .from('form_templates')
         .select('id, title, category, version, schema_json, created_at, trainer_id')
         .or(`trainer_id.eq.${trainer.id},trainer_id.is.null`)
         .or('system_key.is.null,system_key.neq.prescription_questionnaire')
+        .neq('category', 'assessment')
         .eq('is_active', true)
         .order('created_at', { ascending: false })
 
-    // All submissions (submitted + reviewed)
     const { data: rawSubmissions } = await supabaseAdmin
         .from('form_submissions')
         .select('id, status, submitted_at, feedback_sent_at, created_at, student_id, form_template_id')
@@ -25,7 +24,6 @@ export default async function FormsPage() {
         .in('status', ['submitted', 'reviewed'])
         .order('submitted_at', { ascending: false })
 
-    // Pending sent forms (draft — assigned but not yet answered by student)
     const { data: rawPendingSent } = await supabaseAdmin
         .from('form_submissions')
         .select('id, status, created_at, student_id, form_template_id')
@@ -33,18 +31,15 @@ export default async function FormsPage() {
         .eq('status', 'draft')
         .order('created_at', { ascending: false })
 
-    // Students
     const { data: students } = await supabase
         .from('students')
         .select('id, name, avatar_url')
         .eq('coach_id', trainer.id)
         .order('name')
 
-    // Map for enrichment
     const studentsMap = new Map((students || []).map(s => [s.id, s]))
     const templatesMap = new Map((templates || []).map(t => [t.id, t]))
 
-    // Enriched submissions
     const submissions = (rawSubmissions || []).map(sub => {
         const student = studentsMap.get(sub.student_id)
         const template = templatesMap.get(sub.form_template_id)
@@ -60,7 +55,6 @@ export default async function FormsPage() {
         }
     })
 
-    // Enriched pending sent
     const pendingSent = (rawPendingSent || []).map(sub => {
         const student = studentsMap.get(sub.student_id)
         const template = templatesMap.get(sub.form_template_id)
@@ -73,22 +67,9 @@ export default async function FormsPage() {
         }
     })
 
-    // Count responses per template
     const responseCounts = new Map<string, number>()
     for (const sub of rawSubmissions || []) {
         responseCounts.set(sub.form_template_id, (responseCounts.get(sub.form_template_id) || 0) + 1)
-    }
-
-    // Count assessment sessions per template (status != 'cancelled')
-    const { data: assessmentSessionsForCount } = await supabase
-        .from('assessment_sessions')
-        .select('template_id, status')
-        .eq('trainer_id', trainer.id)
-
-    const sessionCounts = new Map<string, number>()
-    for (const s of assessmentSessionsForCount || []) {
-        if (s.status === 'cancelled' || !s.template_id) continue
-        sessionCounts.set(s.template_id, (sessionCounts.get(s.template_id) || 0) + 1)
     }
 
     const enrichedTemplates = (templates || []).map(t => ({
@@ -97,12 +78,9 @@ export default async function FormsPage() {
         category: t.category as string,
         responseCount: responseCounts.get(t.id) || 0,
         questionCount: (t.schema_json as any)?.questions?.length || 0,
-        sectionCount: (t.schema_json as any)?.sections?.length || 0,
-        sessionCount: sessionCounts.get(t.id) || 0,
         trainer_id: t.trainer_id,
     }))
 
-    // For AssignFormModal
     const formTemplates = (templates || []).map(t => ({
         id: t.id,
         title: t.title,
@@ -115,15 +93,6 @@ export default async function FormsPage() {
         avatar_url: s.avatar_url,
     }))
 
-    // Assessment sessions (M4) — listed in the new "Avaliações Presenciais" tab.
-    const assessmentRes = await getAssessmentSessionList({ filter: 'all', limit: 100 })
-    const assessmentSessions = assessmentRes.success ? (assessmentRes.data ?? []) : []
-
-    // Templates filtered to category='assessment' for the create-session modal.
-    const assessmentTemplates = (templates || [])
-        .filter(t => t.category === 'assessment')
-        .map(t => ({ id: t.id, title: t.title }))
-
     return (
         <FormsDashboardClient
             trainer={trainer}
@@ -132,8 +101,7 @@ export default async function FormsPage() {
             templates={enrichedTemplates}
             formTemplates={formTemplates}
             students={studentsList}
-            assessmentSessions={assessmentSessions}
-            assessmentTemplates={assessmentTemplates}
+            onboardingState={trainer.onboarding_state ?? null}
         />
     )
 }
