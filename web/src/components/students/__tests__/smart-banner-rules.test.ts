@@ -242,21 +242,19 @@ describe('pickBanner', () => {
         expect(banner?.level).toBe('info')
     })
 
-    it('INFO streak_celebration quando streak ≥3', () => {
+    it('streak ≥3 sozinho não dispara nenhum banner (celebração vive na QuickMessageCard)', () => {
         const ctx = baseCtx({
             historySummary: { ...baseCtx().historySummary, streak: 5 },
         })
-        const banner = pickBanner(ctx)
-        expect(banner?.key).toBe('streak_celebration')
+        expect(pickBanner(ctx)).toBeNull()
     })
 
     it('respeita prioridade: critical > high > info', () => {
-        // Aluno com churn_risk + reassessment_due + streak; deve vencer churn_risk.
+        // Aluno com churn_risk + reassessment_due; deve vencer churn_risk.
         const ctx = baseCtx({
             historySummary: {
                 ...baseCtx().historySummary,
                 lastSessionDate: isoNDaysAgo(15),
-                streak: 5,
             },
             weeklyAdherence: [
                 { week: 1, rate: 20 },
