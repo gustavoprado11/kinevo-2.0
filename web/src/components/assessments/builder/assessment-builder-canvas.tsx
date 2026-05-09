@@ -47,6 +47,23 @@ interface AssessmentBuilderCanvasProps {
     }) => Promise<{ success: boolean; error?: string }>
     onCancel?: () => void
     saving?: boolean
+    /**
+     * Quando false, o canvas não renderiza topbar próprio (header com voltar/
+     * salvar). Usado pelo M8 BuilderShell que substitui essa UI por uma
+     * versão compartilhada com o form builder. O caller pode acessar o
+     * estado de save via `onStateChange` callback.
+     */
+    renderTopbar?: boolean
+    /**
+     * Notifica o caller quando o estado de save/dirty/canSave muda. Usado
+     * pelo BuilderShell pra refletir esses estados no header externo.
+     */
+    onStateChange?: (state: {
+        title: string
+        isDirty: boolean
+        canSave: boolean
+        save: () => Promise<void>
+    }) => void
 }
 
 const EMPTY_SCHEMA: AssessmentTemplateSchema = {
@@ -80,6 +97,8 @@ export function AssessmentBuilderCanvas({
     onSave,
     onCancel,
     saving = false,
+    renderTopbar = true,
+    onStateChange,
 }: AssessmentBuilderCanvasProps) {
     const [title, setTitle] = useState(initialTitle)
     const [description, setDescription] = useState(initialDescription ?? '')
@@ -183,6 +202,18 @@ export function AssessmentBuilderCanvas({
         && hasSections
         && hasTests
         && duplicateMetricKeys.size === 0
+
+    // Propaga estado pra um shell externo (M8 BuilderShell) quando esse
+    // canvas é montado sem topbar próprio.
+    const handleSaveRef = useRef<() => Promise<void>>(() => Promise.resolve())
+    useEffect(() => {
+        onStateChange?.({
+            title,
+            isDirty: dirty,
+            canSave,
+            save: () => handleSaveRef.current(),
+        })
+    }, [title, dirty, canSave, onStateChange])
 
     // ─── Mutations ─────────────────────────────────────────────────
     const addSection = useCallback(() => {
@@ -330,7 +361,7 @@ export function AssessmentBuilderCanvas({
     }
 
     // ─── Save ──────────────────────────────────────────────────────
-    const handleSave = async () => {
+    const handleSave: () => Promise<void> = async () => {
         setErrorMsg(null)
         if (!canSave) {
             if (!titleValid) setErrorMsg('Título é obrigatório')
@@ -362,6 +393,7 @@ export function AssessmentBuilderCanvas({
             setErrorMsg(result.error ?? 'Falha ao salvar')
         }
     }
+    handleSaveRef.current = handleSave
 
     const selectedTest = selectedTestId
         ? allTests.find(t => t.id === selectedTestId) ?? null
@@ -380,19 +412,58 @@ export function AssessmentBuilderCanvas({
             onDragEnd={onDragEnd}
         >
             <div className="flex h-full min-h-0 w-full flex-col gap-3">
-                {/* Topbar */}
-                <div className="flex flex-shrink-0 items-center gap-3 rounded-2xl border border-k-border-subtle bg-surface-card px-4 py-3">
-                    {onCancel && (
+                {/* Topbar (interno) — desabilitado quando renderTopbar=false (M8 shell). */}
+                {renderTopbar && (
+                    <div className="flex flex-shrink-0 items-center gap-3 rounded-2xl border border-k-border-subtle bg-surface-card px-4 py-3">
+                        {onCancel && (
+                            <button
+                                type="button"
+                                onClick={onCancel}
+                                className="flex items-center gap-1 rounded-md px-2 py-1 text-sm text-k-text-secondary hover:bg-surface-inset"
+                            >
+                                <ArrowLeft className="h-4 w-4" />
+                                Voltar
+                            </button>
+                        )}
+                        <div className="flex-1">
+                            <input
+                                type="text"
+                                value={title}
+                                onChange={e => setTitle(e.target.value)}
+                                placeholder="Nome da avaliação (ex: Avaliação Inicial)"
+                                className="w-full bg-transparent text-base font-semibold text-k-text-primary placeholder:text-k-text-quaternary focus:outline-none"
+                            />
+                            <input
+                                type="text"
+                                value={description}
+                                onChange={e => setDescription(e.target.value)}
+                                placeholder="Descrição opcional"
+                                className="mt-0.5 w-full bg-transparent text-xs text-k-text-tertiary placeholder:text-k-text-quaternary focus:outline-none"
+                            />
+                        </div>
+                        {dirty && (
+                            <span className="text-[11px] text-k-text-tertiary">Alterações não salvas</span>
+                        )}
                         <button
                             type="button"
-                            onClick={onCancel}
-                            className="flex items-center gap-1 rounded-md px-2 py-1 text-sm text-k-text-secondary hover:bg-surface-inset"
+                            onClick={handleSave}
+                            disabled={!canSave}
+                            className="inline-flex items-center gap-1.5 rounded-lg bg-violet-500 px-3 py-1.5 text-sm font-semibold text-white transition-opacity hover:bg-violet-600 disabled:cursor-not-allowed disabled:opacity-40"
                         >
-                            <ArrowLeft className="h-4 w-4" />
-                            Voltar
+                            {saving ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                                <Save className="h-4 w-4" />
+                            )}
+                            Salvar
                         </button>
-                    )}
-                    <div className="flex-1">
+                    </div>
+                )}
+
+                {/* Quando o topbar interno está oculto, renderiza um par de inputs
+                    para nome/descrição no topo do canvas (não há outro lugar para editá-los). */}
+                {!renderTopbar && (
+                    <div className="flex flex-shrink-0 flex-col gap-1 rounded-2xl border border-k-border-subtle bg-surface-card px-4 py-3">
                         <input
                             type="text"
                             value={title}
@@ -405,26 +476,10 @@ export function AssessmentBuilderCanvas({
                             value={description}
                             onChange={e => setDescription(e.target.value)}
                             placeholder="Descrição opcional"
-                            className="mt-0.5 w-full bg-transparent text-xs text-k-text-tertiary placeholder:text-k-text-quaternary focus:outline-none"
+                            className="w-full bg-transparent text-xs text-k-text-tertiary placeholder:text-k-text-quaternary focus:outline-none"
                         />
                     </div>
-                    {dirty && (
-                        <span className="text-[11px] text-k-text-tertiary">Alterações não salvas</span>
-                    )}
-                    <button
-                        type="button"
-                        onClick={handleSave}
-                        disabled={!canSave}
-                        className="inline-flex items-center gap-1.5 rounded-lg bg-violet-500 px-3 py-1.5 text-sm font-semibold text-white transition-opacity hover:bg-violet-600 disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                        {saving ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                            <Save className="h-4 w-4" />
-                        )}
-                        Salvar
-                    </button>
-                </div>
+                )}
 
                 {restoredFromDraft && (
                     <div className="flex-shrink-0 rounded-xl border border-violet-500/30 bg-violet-500/5 px-3 py-2 text-xs text-violet-500 dark:text-violet-400">

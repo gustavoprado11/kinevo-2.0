@@ -37,10 +37,13 @@ const nextConfig: NextConfig = {
         destination: "/avaliacoes",
         permanent: true,
       },
-      // M8/B2 — redirect do builder de assessment fica para o sub-bloco B2,
-      // quando /avaliacoes/templates/new existir. Durante B1 o link em
-      // /avaliacoes aponta pro builder antigo (/forms/templates/new?category=assessment)
-      // que continua funcionando.
+      // M8/B2 — builder de assessment migrou pra /avaliacoes/templates/new.
+      {
+        source: "/forms/templates/new",
+        has: [{ type: "query", key: "category", value: "assessment" }],
+        destination: "/avaliacoes/templates/new",
+        permanent: true,
+      },
     ];
   },
   async headers() {

@@ -151,7 +151,7 @@ export function AvaliacoesClient({
                     )}
                     <button
                         data-onboarding="assessments-new-template"
-                        onClick={() => router.push('/forms/templates/new?category=assessment')}
+                        onClick={() => router.push('/avaliacoes/templates/new')}
                         className="flex items-center gap-2 rounded-full bg-white border border-[#D2D2D7] text-[#6E6E73] hover:bg-[#F5F5F7] hover:text-[#1D1D1F] px-4 py-2 text-sm transition-all dark:rounded-xl dark:bg-transparent dark:border-k-border-primary dark:text-k-text-tertiary dark:hover:text-k-text-primary dark:hover:bg-transparent"
                     >
                         <Plus size={14} />
@@ -202,7 +202,7 @@ export function AvaliacoesClient({
                                 Use um template de sistema do Kinevo ou crie o seu para agendar avaliações.
                             </p>
                             <button
-                                onClick={() => router.push('/forms/templates/new?category=assessment')}
+                                onClick={() => router.push('/avaliacoes/templates/new')}
                                 className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-violet-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-600"
                             >
                                 <Plus className="h-3.5 w-3.5" />
@@ -263,7 +263,7 @@ export function AvaliacoesClient({
                             </span>
                         </div>
                         <button
-                            onClick={() => router.push('/forms/templates')}
+                            onClick={() => router.push('/avaliacoes/templates')}
                             className="text-xs font-medium text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 transition-colors"
                         >
                             Gerenciar →

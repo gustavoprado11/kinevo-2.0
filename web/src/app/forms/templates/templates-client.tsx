@@ -74,6 +74,7 @@ interface Trainer {
     email: string
     avatar_url?: string | null
     theme?: string | null
+    onboarding_state?: import('@kinevo/shared/types/onboarding').OnboardingState | null
 }
 
 interface FormTemplate {
@@ -95,6 +96,13 @@ interface FormTemplate {
 interface TemplatesClientProps {
     trainer: Trainer
     templates: FormTemplate[]
+    /**
+     * M8/B2 — variantes:
+     *  - 'forms' (default): /forms/templates, lista forms, edit→ /forms/templates/new
+     *  - 'assessments': /avaliacoes/templates, edit→ /avaliacoes/templates/new
+     * O server filtra por categoria; o client só ajusta header/links.
+     */
+    mode?: 'forms' | 'assessments'
 }
 
 const CATEGORY_CONFIG: Record<string, { label: string; icon: typeof FileText; color: string; bgColor: string }> = {
@@ -106,12 +114,13 @@ const CATEGORY_CONFIG: Record<string, { label: string; icon: typeof FileText; co
 
 // --- Actions Menu ---
 
-function ActionsMenu({ template, onDelete }: { template: FormTemplate; onDelete: (id: string) => void }) {
+function ActionsMenu({ template, onDelete, mode = 'forms' }: { template: FormTemplate; onDelete: (id: string) => void; mode?: 'forms' | 'assessments' }) {
     const [open, setOpen] = useState(false)
     const ref = useRef<HTMLDivElement>(null)
     const router = useRouter()
     const isSystem = template.trainer_id === null
     const isAssessment = template.category === 'assessment'
+    const editBase = mode === 'assessments' ? '/avaliacoes/templates/new' : '/forms/templates/new'
 
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
@@ -133,7 +142,7 @@ function ActionsMenu({ template, onDelete }: { template: FormTemplate; onDelete:
                 <div className="absolute right-0 top-8 z-header w-44 rounded-xl border border-[#D2D2D7] bg-white shadow-[0_2px_8px_rgba(0,0,0,0.12)] py-1 dark:border-k-border-primary dark:bg-surface-card dark:shadow-xl">
                     {!isSystem && (
                         <button
-                            onClick={(e) => { e.stopPropagation(); setOpen(false); router.push(`/forms/templates/new?edit=${template.id}`) }}
+                            onClick={(e) => { e.stopPropagation(); setOpen(false); router.push(`${editBase}?edit=${template.id}`) }}
                             className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-[#1D1D1F] hover:bg-[#F5F5F7] transition-colors dark:text-k-text-secondary dark:hover:bg-glass-bg"
                         >
                             <Pencil size={14} /> Editar
@@ -166,11 +175,15 @@ function ActionsMenu({ template, onDelete }: { template: FormTemplate; onDelete:
 
 // --- Component ---
 
-export function TemplatesClient({ trainer, templates: initialTemplates }: TemplatesClientProps) {
+export function TemplatesClient({ trainer, templates: initialTemplates, mode = 'forms' }: TemplatesClientProps) {
     const router = useRouter()
     const [templates, setTemplates] = useState(initialTemplates)
     const [searchQuery, setSearchQuery] = useState('')
     const [deleting, setDeleting] = useState<string | null>(null)
+    const isAssessmentsMode = mode === 'assessments'
+    const backHref = isAssessmentsMode ? '/avaliacoes' : '/forms'
+    const builderHref = isAssessmentsMode ? '/avaliacoes/templates/new' : '/forms/templates/new'
+    const headerLabel = isAssessmentsMode ? 'Templates de avaliação' : 'Templates'
 
     const handleDelete = async (templateId: string) => {
         if (!confirm('Tem certeza que deseja excluir este template?')) return
@@ -197,17 +210,18 @@ export function TemplatesClient({ trainer, templates: initialTemplates }: Templa
             trainerEmail={trainer.email}
             trainerAvatarUrl={trainer.avatar_url}
             trainerTheme={trainer.theme as 'light' | 'dark' | 'system' | null}
+            onboardingState={trainer.onboarding_state ?? null}
         >
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
                     <button
-                        onClick={() => router.push('/forms')}
+                        onClick={() => router.push(backHref)}
                         className="p-1.5 rounded-lg text-[#007AFF] hover:text-[#0056B3] hover:bg-[#F5F5F7] transition-all dark:text-k-text-quaternary dark:hover:text-k-text-secondary dark:hover:bg-glass-bg"
                     >
                         <ArrowLeft size={18} />
                     </button>
-                    <h1 className="text-2xl font-bold tracking-tight text-[#1D1D1F] dark:text-k-text-primary">Templates</h1>
+                    <h1 className="text-2xl font-bold tracking-tight text-[#1D1D1F] dark:text-k-text-primary">{headerLabel}</h1>
                     {templates.length > 0 && (
                         <span className="px-2.5 py-0.5 rounded-full bg-[#F5F5F7] text-sm text-[#6E6E73] dark:bg-glass-bg dark:text-k-text-tertiary dark:border dark:border-k-border-subtle">
                             {templates.length}
@@ -215,11 +229,11 @@ export function TemplatesClient({ trainer, templates: initialTemplates }: Templa
                     )}
                 </div>
                 <button
-                    onClick={() => router.push('/forms/templates/new')}
+                    onClick={() => router.push(builderHref)}
                     className="flex items-center gap-2 rounded-full border border-[#D2D2D7] bg-white hover:bg-[#F5F5F7] text-[#6E6E73] hover:text-[#1D1D1F] px-4 py-2 text-sm font-medium transition-all dark:border-k-border-primary dark:bg-glass-bg dark:hover:bg-glass-bg-active dark:text-k-text-secondary"
                 >
                     <Plus size={14} />
-                    Criar Template
+                    {isAssessmentsMode ? 'Criar Template de avaliação' : 'Criar Template'}
                 </button>
             </div>
 
@@ -253,7 +267,7 @@ export function TemplatesClient({ trainer, templates: initialTemplates }: Templa
                             Templates são formulários para coletar informações dos alunos: anamnese, check-ins semanais, avaliações físicas.
                         </p>
                         <button
-                            onClick={() => router.push('/forms/templates/new')}
+                            onClick={() => router.push(builderHref)}
                             className="text-xs font-medium text-[#007AFF] hover:text-[#0056B3] dark:text-violet-400 dark:hover:text-violet-300 transition-colors"
                         >
                             Criar primeiro template
@@ -276,7 +290,7 @@ export function TemplatesClient({ trainer, templates: initialTemplates }: Templa
                         return (
                             <div
                                 key={template.id}
-                                onClick={() => router.push(`/forms/templates/new?edit=${template.id}`)}
+                                onClick={() => router.push(`${builderHref}?edit=${template.id}`)}
                                 className="group relative bg-white border border-[#D2D2D7] rounded-xl p-4 shadow-[0_1px_3px_rgba(0,0,0,0.08)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.12)] hover:bg-[#F5F5F7] transition-all cursor-pointer dark:bg-surface-card dark:border-k-border-subtle dark:shadow-none dark:hover:border-k-border-primary dark:hover:bg-glass-bg"
                             >
                                 {deleting === template.id && (
@@ -322,7 +336,7 @@ export function TemplatesClient({ trainer, templates: initialTemplates }: Templa
                                             </div>
                                         </div>
                                     </div>
-                                    <ActionsMenu template={template} onDelete={handleDelete} />
+                                    <ActionsMenu template={template} onDelete={handleDelete} mode={mode} />
                                 </div>
 
                                 {/* Preview: questions for forms, sections for assessments */}
