@@ -244,21 +244,39 @@ export default function FormsScreen() {
                 </View>
             )}
             {activeTab === "assessments" && (
-                <View style={{ flexDirection: "row", paddingHorizontal: 20, marginBottom: 10, gap: 8 }}>
-                    {ASSESSMENT_FILTER_CHIPS.map((chip) => {
-                        const isActive = assessments.filter === chip.key;
-                        const count = assessments.counts[chip.key];
-                        return (
-                            <FilterChip
-                                key={chip.key}
-                                label={chip.label}
-                                active={isActive}
-                                count={count}
-                                onPress={() => assessments.setFilter(chip.key)}
-                            />
-                        );
-                    })}
-                </View>
+                <>
+                    <View style={{ flexDirection: "row", paddingHorizontal: 20, marginBottom: 10, gap: 8 }}>
+                        {ASSESSMENT_FILTER_CHIPS.map((chip) => {
+                            const isActive = assessments.filter === chip.key;
+                            const count = assessments.counts[chip.key];
+                            return (
+                                <FilterChip
+                                    key={chip.key}
+                                    label={chip.label}
+                                    active={isActive}
+                                    count={count}
+                                    onPress={() => assessments.setFilter(chip.key)}
+                                />
+                            );
+                        })}
+                    </View>
+                    {/* M10A — atalho pra criar novo template de avaliação */}
+                    <View style={{ flexDirection: "row", justifyContent: "flex-end", paddingHorizontal: 20, marginBottom: 6 }}>
+                        <TouchableOpacity
+                            onPress={() => {
+                                Haptics.selectionAsync();
+                                router.push("/assessments/templates/new");
+                            }}
+                            accessibilityRole="button"
+                            accessibilityLabel="Novo template de avaliação"
+                            style={{ paddingVertical: 4, paddingHorizontal: 6 }}
+                        >
+                            <Text style={{ fontSize: 12, fontWeight: "600", color: "#7c3aed" }}>
+                                Novo template de avaliação →
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                </>
             )}
 
             {/* Content */}
