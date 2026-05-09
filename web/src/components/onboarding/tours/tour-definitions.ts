@@ -295,6 +295,36 @@ export const TOUR_STEPS: Record<string, TourStep[]> = {
   // /avaliacoes. Migration mapeia esse id antigo pro novo.
   assessments_first_time: [], // unused — preservado pra retro-compat
 
+  // M9/B3 — TOUR DEDICADO AO NewStudentWizard (slide-in pós-criação de aluno).
+  // Dispara na primeira vez que o wizard abre (auto-start dentro do componente).
+  // 3 steps explicam o conceito + skippability + expectativa do flow completo.
+  tour_new_student_wizard: [
+    {
+      id: 'tour-wiz-1',
+      targetSelector: '[data-onboarding="wizard-step-1"]',
+      title: 'Onboarding em 2 passos',
+      description:
+        'Recém-criou um aluno? Aqui você envia uma anamnese e agenda a primeira avaliação sem sair desta tela.',
+      placement: 'left',
+    },
+    {
+      id: 'tour-wiz-2',
+      targetSelector: '[data-onboarding="wizard-skip"]',
+      title: 'Cada passo é opcional',
+      description:
+        'Pular não cancela o flow — apenas avança sem fazer aquela ação. Você sempre pode enviar uma anamnese ou agendar avaliação manualmente depois.',
+      placement: 'top',
+    },
+    {
+      id: 'tour-wiz-3',
+      targetSelector: '[data-onboarding="wizard-step-1"]',
+      title: 'Próximo: avaliação presencial',
+      description:
+        'Após a anamnese, o segundo passo agenda a captura de medições. Pode ser pra hoje, semana que vem ou começar agora.',
+      placement: 'left',
+    },
+  ],
+
   // M8/B4 — TOUR DEDICADO À ROTA /avaliacoes (assessments-only).
   // Dispara em /avaliacoes na primeira visita pós-deploy.
   tour_assessments_first_time: [

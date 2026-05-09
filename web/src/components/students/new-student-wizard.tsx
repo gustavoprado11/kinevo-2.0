@@ -1,13 +1,16 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Calendar, Loader2, Send } from 'lucide-react'
+import { Calendar, FileText, Loader2, Plus, Send } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
 import { WizardShell } from '@/components/shared/wizard-shell'
 import { TemplatePicker } from '@/components/shared/template-picker'
 import { assignFormToStudents } from '@/actions/forms/assign-form'
 import { createAssessmentSession } from '@/actions/assessments/create-session'
+import { TourRunner } from '@/components/onboarding/tours/tour-runner'
+import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
 
 export interface WizardStudent {
     id: string
@@ -242,11 +245,26 @@ export function NewStudentWizard({
 
     if (!student) return null
 
+    const hasAnamneseTemplates = anamneseTemplates.length > 0
+    const hasAssessmentTemplates = assessmentTemplates.length > 0
+
     const step1Footer = anamneseSent ? (
         <div className="flex justify-end">
             <button
                 type="button"
                 onClick={() => setCurrentStep(2)}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-violet-500 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-600"
+            >
+                Continuar
+            </button>
+        </div>
+    ) : !hasAnamneseTemplates ? (
+        // Sem templates: só "Pular" (Continuar avança o flow sem assignar).
+        <div className="flex justify-end">
+            <button
+                type="button"
+                data-onboarding="wizard-skip"
+                onClick={handleSkipAnamnese}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-violet-500 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-600"
             >
                 Continuar
@@ -284,7 +302,25 @@ export function NewStudentWizard({
         </div>
     )
 
-    const step2Footer = (
+    const step2Footer = !hasAssessmentTemplates ? (
+        // Sem templates de avaliação: só Voltar / Concluir (Pular).
+        <div className="flex items-center justify-between gap-3">
+            <button
+                type="button"
+                onClick={() => setCurrentStep(1)}
+                className="rounded-lg px-3 py-2 text-sm font-medium text-k-text-secondary hover:bg-surface-inset"
+            >
+                Voltar
+            </button>
+            <button
+                type="button"
+                onClick={handleSkipAssessment}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-violet-500 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-600"
+            >
+                Concluir
+            </button>
+        </div>
+    ) : (
         <div className="flex items-center justify-between gap-3">
             <button
                 type="button"
@@ -360,6 +396,17 @@ export function NewStudentWizard({
                     onNotesChange={setAssessmentNotes}
                 />
             )}
+
+            {/* M9/B3 — tour de primeira vez. Dispara apenas no step 1 (selectors
+                do step 2 só aparecem após avançar; TourRunner auto-skipa se
+                target ausente). Auto-completa via store após último step. */}
+            {currentStep === 1 && (
+                <TourRunner
+                    tourId="tour_new_student_wizard"
+                    steps={TOUR_STEPS.tour_new_student_wizard}
+                    autoStart
+                />
+            )}
         </WizardShell>
     )
 }
@@ -403,6 +450,25 @@ function Step1Anamnese({
                     <div className="mt-0.5 text-xs text-k-text-tertiary">
                         {sent.title}
                     </div>
+                </div>
+            ) : templates.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-k-border-subtle bg-surface-inset p-5 text-center">
+                    <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-violet-500/10">
+                        <FileText className="h-5 w-5 text-violet-500 dark:text-violet-400" />
+                    </div>
+                    <p className="text-sm font-semibold text-k-text-primary">
+                        Você ainda não tem templates de anamnese
+                    </p>
+                    <p className="mx-auto mt-1 max-w-xs text-xs text-k-text-tertiary">
+                        Crie um template antes de enviar pra {firstName}, ou pule este passo e envie depois.
+                    </p>
+                    <Link
+                        href="/forms/templates/new"
+                        className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-violet-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-600"
+                    >
+                        <Plus className="h-3.5 w-3.5" />
+                        Criar template de anamnese
+                    </Link>
                 </div>
             ) : (
                 <>
@@ -467,6 +533,40 @@ function Step2Assessment({
     onNotesChange: (n: string) => void
 }) {
     const firstName = studentName.split(' ')[0] || studentName
+
+    if (templates.length === 0) {
+        return (
+            <div data-onboarding="wizard-step-2" className="space-y-5">
+                <div>
+                    <h2 className="text-lg font-semibold text-k-text-primary">
+                        Agende a primeira avaliação presencial
+                    </h2>
+                    <p className="mt-1 text-sm text-k-text-tertiary">
+                        Agende a captura de medições com {firstName}.
+                    </p>
+                </div>
+
+                <div className="rounded-xl border border-dashed border-k-border-subtle bg-surface-inset p-5 text-center">
+                    <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-violet-500/10">
+                        <FileText className="h-5 w-5 text-violet-500 dark:text-violet-400" />
+                    </div>
+                    <p className="text-sm font-semibold text-k-text-primary">
+                        Você ainda não tem templates de avaliação
+                    </p>
+                    <p className="mx-auto mt-1 max-w-xs text-xs text-k-text-tertiary">
+                        Use os 5 templates Kinevo prontos ou crie o seu antes de agendar.
+                    </p>
+                    <Link
+                        href="/avaliacoes/templates/new"
+                        className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-violet-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-600"
+                    >
+                        <Plus className="h-3.5 w-3.5" />
+                        Criar template de avaliação
+                    </Link>
+                </div>
+            </div>
+        )
+    }
 
     return (
         <div data-onboarding="wizard-step-2" className="space-y-5">
