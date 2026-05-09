@@ -236,30 +236,38 @@ export const TOUR_STEPS: Record<string, TourStep[]> = {
     },
   ],
 
-  forms: [
+  // Legacy tour mantido como alias para retro-compat de checkers que ainda
+  // usam o nome 'forms'. Reescrito em M8/B4 com selectors da nova IA
+  // (forms-only). Trainers que completaram esse tour antigo recebem
+  // 'tour_forms_first_time' como completed via migration (script SQL).
+  forms: [], // unused — preservado pra retro-compat com tours_completed antigos
+
+  // M8/B4 — TOUR DEDICADO À ROTA /forms (forms-only).
+  // Dispara em /forms na primeira visita pós-deploy.
+  tour_forms_first_time: [
     {
-      id: 'forms-1',
+      id: 'tour-forms-1',
+      targetSelector: '[data-onboarding="forms-send-cta"]',
+      title: 'Envie formulários para alunos',
+      description:
+        'Atribua anamneses, check-ins ou pesquisas para qualquer aluno em poucos cliques. Você pode enviar para vários alunos de uma vez.',
+      placement: 'bottom',
+    },
+    {
+      id: 'tour-forms-2',
       targetSelector: '[data-onboarding="forms-templates-card"]',
-      title: 'Formulários Personalizados',
+      title: 'Templates personalizados',
       description:
-        'Crie questionários de anamnese, check-in semanal ou pesquisa. Use IA para gerar ou monte manualmente.',
+        'Crie questionários reutilizáveis com o builder. Use IA para gerar um rascunho ou monte pergunta por pergunta.',
       placement: 'bottom',
     },
     {
-      id: 'forms-2',
-      targetSelector: '[data-onboarding="forms-inbox-card"]',
-      title: 'Caixa de Entrada',
-      description:
-        'Todas as respostas dos alunos aparecem aqui. Revise fotos de progresso, escalas e textos. Envie feedback direto.',
-      placement: 'bottom',
-    },
-    {
-      id: 'forms-3',
+      id: 'tour-forms-3',
       targetSelector: '[data-onboarding="forms-pending"]',
-      title: 'Feedbacks Pendentes',
+      title: 'Aguardando seu feedback',
       description:
-        'Respostas que precisam da sua atenção ficam destacadas. Feedback rápido aumenta o engajamento dos alunos.',
-      placement: 'left',
+        'Respostas dos alunos chegam aqui. Feedback rápido aumenta o engajamento — clique para revisar e responder.',
+      placement: 'top',
     },
   ],
 
@@ -282,42 +290,36 @@ export const TOUR_STEPS: Record<string, TourStep[]> = {
     },
   ],
 
-  // =============================================
-  // ASSESSMENTS FIRST-TIME TOUR
-  // Triggered when activeTab === 'assessments' on /forms and the trainer
-  // hasn't seen it yet. tourId: 'assessments_first_time'
-  // =============================================
-  assessments_first_time: [
+  // Legacy tour mantido como alias para retro-compat de checkers antigos.
+  // Reescrito em M8/B4 como 'tour_assessments_first_time' apontando pra
+  // /avaliacoes. Migration mapeia esse id antigo pro novo.
+  assessments_first_time: [], // unused — preservado pra retro-compat
+
+  // M8/B4 — TOUR DEDICADO À ROTA /avaliacoes (assessments-only).
+  // Dispara em /avaliacoes na primeira visita pós-deploy.
+  tour_assessments_first_time: [
     {
-      id: 'asm-1',
-      targetSelector: '[data-onboarding="assessments-tab"]',
-      title: 'Avaliações Presenciais',
+      id: 'tour-asm-1',
+      targetSelector: '[data-onboarding="avaliacoes-header"]',
+      title: 'Avaliações presenciais',
       description:
-        'Aqui você cria sessões de avaliação, captura medições com o aluno presente e visualiza laudos com composição corporal calculada automaticamente.',
+        'Sessões de avaliação que você agenda e captura no app mobile com o aluno presente. Aqui no web você acompanha o progresso e gera laudos.',
       placement: 'bottom',
     },
     {
-      id: 'asm-2',
+      id: 'tour-asm-2',
       targetSelector: '[data-onboarding="assessments-new-template"]',
-      title: 'Templates Prontos',
+      title: 'Templates prontos',
       description:
-        'Já temos 5 templates do Kinevo prontos pra usar — Antropometria, Jackson & Pollock 3 e 7 dobras, Petroski 4 (BR) e Avaliação Inicial Presencial. Você pode clonar qualquer um e personalizar.',
+        'Já temos 5 templates Kinevo prontos pra usar — Antropometria, Jackson & Pollock 3 e 7 dobras, Petroski 4 (BR) e Avaliação Inicial. Pode clonar e personalizar.',
       placement: 'bottom',
     },
     {
-      id: 'asm-3',
+      id: 'tour-asm-3',
       targetSelector: '[data-onboarding="assessments-new-session"]',
-      title: 'Criar Sessão',
+      title: 'Agende uma avaliação',
       description:
-        'Toque para agendar uma avaliação. Você escolhe o aluno, o template, e informa sexo e idade — esses dados são usados pelos protocolos de composição corporal.',
-      placement: 'bottom',
-    },
-    {
-      id: 'asm-4',
-      targetSelector: '[data-onboarding="assessments-tab"]',
-      title: 'Captura no App Mobile',
-      description:
-        'A captura das medições acontece no aplicativo mobile do treinador, com o aluno presente. Aqui no web você acompanha o progresso, vê resultados e gera laudos.',
+        'Escolha o aluno, o template, sexo e idade. Esses dados alimentam os protocolos de composição corporal automaticamente.',
       placement: 'bottom',
     },
   ],

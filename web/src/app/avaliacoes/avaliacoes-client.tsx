@@ -124,7 +124,7 @@ export function AvaliacoesClient({
             onboardingState={onboardingState}
         >
             {/* Header */}
-            <div className="flex items-center justify-between mb-6">
+            <div data-onboarding="avaliacoes-header" className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
                     <h1 className="text-2xl font-bold tracking-tight text-[#1D1D1F] dark:text-k-text-primary">
                         Avaliações
@@ -294,10 +294,10 @@ export function AvaliacoesClient({
                 }}
             />
 
-            {/* Tour: Avaliações Presenciais — auto-completa-se via store ao final/skip. */}
+            {/* Tour: Avaliações (M8/B4 — split do tour antigo `assessments_first_time`) */}
             <TourRunner
-                tourId="assessments_first_time"
-                steps={TOUR_STEPS.assessments_first_time}
+                tourId="tour_assessments_first_time"
+                steps={TOUR_STEPS.tour_assessments_first_time}
                 autoStart
             />
         </AppLayout>

@@ -315,6 +315,7 @@ export function FormsDashboardClient({
                 </div>
                 <div className="flex items-center gap-2">
                     <button
+                        data-onboarding="forms-send-cta"
                         onClick={() => setIsAssignOpen(true)}
                         className="flex items-center gap-2 px-4 py-2 bg-[#007AFF] hover:bg-[#0066D6] text-white text-sm font-medium rounded-full transition-all dark:bg-violet-600 dark:hover:bg-violet-500 dark:rounded-xl"
                     >
@@ -650,8 +651,12 @@ export function FormsDashboardClient({
                 preselectedTemplateId={preselectedTemplateId}
             />
 
-            {/* Tour: Formulários */}
-            <TourRunner tourId="forms" steps={TOUR_STEPS.forms} autoStart />
+            {/* Tour: Formulários (M8/B4 — split do tour antigo `forms`) */}
+            <TourRunner
+                tourId="tour_forms_first_time"
+                steps={TOUR_STEPS.tour_forms_first_time}
+                autoStart
+            />
         </AppLayout>
     )
 }
