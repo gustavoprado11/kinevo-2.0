@@ -13,9 +13,11 @@ export default async function StudentsPage() {
             .select('id, name, email, phone, status, modality, avatar_url, created_at, is_trainer_profile')
             .eq('coach_id', trainer.id)
             .order('created_at', { ascending: false }),
+        // M9 — `category` adicionado pra alimentar o NewStudentWizard:
+        // step 1 filtra category='anamnese', step 2 filtra category='assessment'.
         supabase
             .from('form_templates')
-            .select('id, title, trainer_id')
+            .select('id, title, trainer_id, category')
             .or(`trainer_id.eq.${trainer.id},trainer_id.is.null`)
             .or('system_key.is.null,system_key.neq.prescription_questionnaire')
             .eq('is_active', true)
@@ -23,16 +25,36 @@ export default async function StudentsPage() {
     ])
 
     const students = studentsResult.data
-    const formTemplates = (templatesResult.data || []).map(t => ({
-        id: t.id,
-        title: t.title,
-        trainer_id: t.trainer_id,
-    }))
+    // Mantém shape original (sem category) pra StudentModal que ainda usa
+    // o dropdown atalho (decisão B do M9 — atalho preservado). Filtra
+    // assessment fora pra não confundir com forms.
+    const formTemplates = (templatesResult.data || [])
+        .filter(t => t.category !== 'assessment')
+        .map(t => ({
+            id: t.id,
+            title: t.title,
+            trainer_id: t.trainer_id,
+        }))
+    // Wizard arrays
+    const anamneseTemplates = (templatesResult.data || [])
+        .filter(t => t.category === 'anamnese')
+        .map(t => ({ id: t.id, title: t.title, category: t.category as string }))
+    const assessmentTemplates = (templatesResult.data || [])
+        .filter(t => t.category === 'assessment')
+        .map(t => ({ id: t.id, title: t.title, category: t.category as string }))
 
     const studentIds = students?.map(s => s.id) || []
 
     if (studentIds.length === 0) {
-        return <StudentsClient trainer={trainer} initialStudents={[]} formTemplates={formTemplates} />
+        return (
+            <StudentsClient
+                trainer={trainer}
+                initialStudents={[]}
+                formTemplates={formTemplates}
+                anamneseTemplates={anamneseTemplates}
+                assessmentTemplates={assessmentTemplates}
+            />
+        )
     }
 
     // Fire both enrichment queries in parallel
@@ -100,5 +122,13 @@ export default async function StudentsPage() {
         }
     })
 
-    return <StudentsClient trainer={trainer} initialStudents={enrichedStudents} formTemplates={formTemplates} />
+    return (
+        <StudentsClient
+            trainer={trainer}
+            initialStudents={enrichedStudents}
+            formTemplates={formTemplates}
+            anamneseTemplates={anamneseTemplates}
+            assessmentTemplates={assessmentTemplates}
+        />
+    )
 }
