@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { ArrowLeft, Smartphone, XCircle } from 'lucide-react'
+import { ArrowLeft, Activity, Smartphone, XCircle } from 'lucide-react'
 import type { AssessmentSessionDetail } from '@kinevo/shared/types/assessments'
 import { cancelAssessmentSession } from '@/actions/assessments/cancel-session'
 import { useToast } from '@/components/ui/toast'
@@ -145,17 +145,27 @@ export function SessionDetailClient({ detail, studentId }: SessionDetailClientPr
                 </div>
             </div>
 
-            {/* Capture hint */}
-            <div className="mb-5 flex items-start gap-3 rounded-xl border border-violet-500/30 bg-violet-500/5 px-4 py-3">
-                <Smartphone className="mt-0.5 h-4 w-4 flex-shrink-0 text-violet-500 dark:text-violet-400" />
-                <div className="text-xs text-k-text-secondary">
-                    <p className="font-medium text-k-text-primary">Captura via app mobile</p>
-                    <p className="mt-0.5">
-                        Abra esta sessão no app Kinevo (Avaliações &gt; {student.name}) para registrar
-                        as medições com checklist guiado, cálculos automáticos e captura presencial.
-                    </p>
+            {/* M10B — Preencher agora (web capture) + hint mobile como secondary */}
+            {(session.status === 'scheduled' || session.status === 'in_progress') && (
+                <div className="mb-5 space-y-3">
+                    <button
+                        type="button"
+                        onClick={() =>
+                            router.push(`/students/${studentId}/avaliacoes/${session.id}/capture`)
+                        }
+                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-violet-500 px-4 py-3 text-sm font-bold text-white shadow-sm hover:bg-violet-600"
+                    >
+                        <Activity className="h-4 w-4" />
+                        Preencher agora
+                    </button>
+                    <div className="flex items-start gap-2 rounded-xl border border-k-border-subtle bg-surface-card px-3 py-2">
+                        <Smartphone className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-k-text-tertiary" />
+                        <p className="text-[11px] text-k-text-tertiary">
+                            Ou capture pelo app Kinevo (Avaliações &gt; {student.name}) com checklist guiado.
+                        </p>
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* Checklist */}
             <SessionChecklistCard
