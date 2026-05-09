@@ -40,7 +40,7 @@ Deno.serve(async (req: Request) => {
 
         const { data: trainer, error: trainerError } = await adminClient
             .from("trainers")
-            .select("id")
+            .select("id, name")
             .eq("auth_user_id", user.id)
             .single();
 
@@ -62,13 +62,18 @@ Deno.serve(async (req: Request) => {
 
         const { data: student, error: studentError } = await adminClient
             .from("students")
-            .select("id, coach_id, status")
+            .select("id, name, coach_id")
             .eq("id", studentId)
             .single();
 
         if (studentError || !student) {
             console.error("Error fetching student:", { studentId, trainerId: trainer.id, err: studentError?.message });
             return jsonResponse({ success: false, error: "Aluno não encontrado." }, 404);
+        }
+
+        // Já arquivado (sem coach) — idempotente.
+        if (student.coach_id === null) {
+            return jsonResponse({ success: true, studentId }, 200);
         }
 
         if (student.coach_id !== trainer.id) {
@@ -78,13 +83,37 @@ Deno.serve(async (req: Request) => {
             );
         }
 
-        if (student.status === "archived") {
-            return jsonResponse({ success: true, studentId }, 200);
+        // 1. Encerra o link ativo trainer ↔ student (audit trail).
+        const nowIso = new Date().toISOString();
+        const { error: linkError } = await adminClient
+            .from("trainer_student_links")
+            .update({
+                status: "ended",
+                is_current: false,
+                end_reason: "archived_by_trainer",
+                ended_at: nowIso,
+                updated_at: nowIso,
+            })
+            .eq("student_id", studentId)
+            .eq("coach_id", trainer.id)
+            .eq("is_current", true);
+
+        if (linkError) {
+            console.error("Error ending trainer_student_link:", {
+                studentId,
+                trainerId: trainer.id,
+                err: linkError.message,
+            });
+            return jsonResponse(
+                { success: false, error: "Falha ao arquivar o aluno." },
+                500
+            );
         }
 
+        // 2. Desvincula o aluno do trainer (status permanece 'active' — aluno mantém acesso ao app).
         const { error: updateError } = await adminClient
             .from("students")
-            .update({ status: "archived" })
+            .update({ coach_id: null })
             .eq("id", studentId)
             .eq("coach_id", trainer.id);
 
@@ -98,6 +127,29 @@ Deno.serve(async (req: Request) => {
                 { success: false, error: "Falha ao arquivar o aluno." },
                 500
             );
+        }
+
+        // 3. Audit event (best-effort — não bloqueia o archive se falhar).
+        const { error: eventError } = await adminClient
+            .from("contract_events")
+            .insert({
+                student_id: studentId,
+                trainer_id: trainer.id,
+                contract_id: null,
+                event_type: "student_archived",
+                metadata: {
+                    trainer_name: trainer.name,
+                    student_name: student.name,
+                    source: "mobile",
+                },
+            });
+
+        if (eventError) {
+            console.error("Error logging student_archived event:", {
+                studentId,
+                trainerId: trainer.id,
+                err: eventError.message,
+            });
         }
 
         return jsonResponse({ success: true, studentId }, 200);
