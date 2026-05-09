@@ -219,7 +219,7 @@ export function AvaliacoesClient({
                 </button>
             )}
 
-            <div className="space-y-6 lg:grid lg:grid-cols-2 lg:gap-5 lg:space-y-0 lg:items-start">
+            <div className="space-y-6 lg:grid lg:grid-cols-2 lg:gap-5 lg:space-y-0">
                 <div className="space-y-6">
                 {/* "Em atraso" callout — paralelo ao "Aguardando Feedback" do /forms */}
                 {overdueSessions.length > 0 && (
@@ -307,11 +307,11 @@ export function AvaliacoesClient({
                 )}
                 </div>
 
-                <div className="space-y-6">
+                <div className="space-y-6 lg:flex lg:flex-col lg:min-h-0">
                 {/* "Todas as avaliações" — paralelo a "Todas as Respostas" do /forms */}
                 {visibleSessions.length > 0 ? (
-                    <div className="bg-white rounded-xl border border-[#D2D2D7] shadow-[0_1px_3px_rgba(0,0,0,0.08)] overflow-hidden dark:bg-transparent dark:border-k-border-subtle dark:shadow-none dark:rounded-none">
-                        <div className="flex items-center justify-between px-5 py-4 border-b border-[#E8E8ED] dark:border-k-border-subtle">
+                    <div className="bg-white rounded-xl border border-[#D2D2D7] shadow-[0_1px_3px_rgba(0,0,0,0.08)] overflow-hidden dark:bg-transparent dark:border-k-border-subtle dark:shadow-none dark:rounded-none lg:flex lg:flex-col lg:max-h-[calc(100vh-220px)]">
+                        <div className="flex items-center justify-between px-5 py-4 border-b border-[#E8E8ED] dark:border-k-border-subtle lg:flex-shrink-0">
                             <h2 className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary">Todas as avaliações</h2>
                             <div className="flex items-center gap-2">
                                 {([
@@ -336,13 +336,13 @@ export function AvaliacoesClient({
                         </div>
 
                         {filteredAssessments.length === 0 ? (
-                            <div className="px-5 py-8 text-center">
+                            <div className="px-5 py-8 text-center lg:flex-1">
                                 <p className="text-xs text-[#86868B] dark:text-k-text-quaternary">
                                     Nenhuma avaliação neste filtro.
                                 </p>
                             </div>
                         ) : (
-                            <ul className="divide-y divide-[#E8E8ED] dark:divide-k-border-subtle">
+                            <ul className="divide-y divide-[#E8E8ED] dark:divide-k-border-subtle lg:flex-1 lg:overflow-y-auto">
                                 {filteredAssessments.map(session => (
                                     <li key={session.id}>
                                         <SessionListItem session={session} onClick={() => goToSession(session)} />
