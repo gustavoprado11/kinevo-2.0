@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { AppLayout } from '@/components/layout'
 import type { OnboardingState } from '@kinevo/shared/types/onboarding'
-import { Plus, Activity } from 'lucide-react'
+import { Plus, Activity, Send } from 'lucide-react'
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
 import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
 import { SessionListItem } from '@/components/assessments/session-list-item'
@@ -48,6 +48,8 @@ interface AvaliacoesClientProps {
     onboardingState: OnboardingState | null
 }
 
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
+
 export function AvaliacoesClient({
     trainer,
     students,
@@ -63,7 +65,6 @@ export function AvaliacoesClient({
     const [presetStudentIdForCreate, setPresetStudentIdForCreate] = useState<string | undefined>(undefined)
 
     // Deep-link from /students/[id] → /avaliacoes?createAssessment=1&studentId=<uuid>.
-    // Validates against trainer's students; falls back to empty modal if id is unknown.
     useEffect(() => {
         if (searchParams.get('createAssessment') !== '1') return
         const rawStudentId = searchParams.get('studentId') ?? undefined
@@ -75,10 +76,37 @@ export function AvaliacoesClient({
         setCreateSessionOpen(true)
     }, [searchParams, students])
 
+    const visibleSessions = useMemo(
+        () => assessmentSessions.filter(s => s.status !== 'cancelled'),
+        [assessmentSessions]
+    )
+
+    const overdueSessions = useMemo(() => {
+        const now = Date.now()
+        return visibleSessions.filter(s =>
+            s.status === 'scheduled'
+            && s.scheduled_at != null
+            && new Date(s.scheduled_at).getTime() < now
+        )
+    }, [visibleSessions])
+
+    // Callout urgente: scheduled em [now, now+7d].
+    const upcomingNext7d = useMemo(() => {
+        const now = Date.now()
+        const cap = now + SEVEN_DAYS_MS
+        return visibleSessions.filter(s =>
+            s.status === 'scheduled'
+            && s.scheduled_at != null
+            && (() => {
+                const t = new Date(s.scheduled_at!).getTime()
+                return t >= now && t <= cap
+            })()
+        )
+    }, [visibleSessions])
+
     const filteredAssessments = useMemo(() => {
         const now = Date.now()
-        return assessmentSessions.filter(s => {
-            if (s.status === 'cancelled') return false
+        return visibleSessions.filter(s => {
             if (assessmentFilter === 'all') return true
             if (assessmentFilter === 'completed') return s.status === 'completed'
             if (assessmentFilter === 'overdue') {
@@ -94,15 +122,14 @@ export function AvaliacoesClient({
             }
             return true
         })
-    }, [assessmentSessions, assessmentFilter])
+    }, [visibleSessions, assessmentFilter])
 
     const assessmentCounts = useMemo(() => {
         const now = Date.now()
         let overdue = 0
         let upcoming = 0
         let done = 0
-        for (const s of assessmentSessions) {
-            if (s.status === 'cancelled') continue
+        for (const s of visibleSessions) {
             if (s.status === 'completed') done += 1
             else if (s.status === 'in_progress') upcoming += 1
             else if (s.status === 'scheduled' && s.scheduled_at) {
@@ -111,9 +138,17 @@ export function AvaliacoesClient({
             }
         }
         return { overdue, upcoming, completed: done }
-    }, [assessmentSessions])
+    }, [visibleSessions])
 
-    const headerCount = assessmentSessions.filter(s => s.status !== 'cancelled').length
+    const headerCount = visibleSessions.length
+
+    const goToSession = (session: AssessmentSessionListItem) => {
+        if (session.status === 'completed') {
+            router.push(`/students/${session.student_id}/avaliacoes/${session.id}/result`)
+        } else {
+            router.push(`/students/${session.student_id}/avaliacoes/${session.id}`)
+        }
+    }
 
     return (
         <AppLayout
@@ -123,7 +158,7 @@ export function AvaliacoesClient({
             trainerTheme={trainer.theme as 'light' | 'dark' | 'system' | null}
             onboardingState={onboardingState}
         >
-            {/* Header */}
+            {/* Header — paralelo a /forms */}
             <div data-onboarding="avaliacoes-header" className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
                     <h1 className="text-2xl font-bold tracking-tight text-[#1D1D1F] dark:text-k-text-primary">
@@ -143,7 +178,7 @@ export function AvaliacoesClient({
                                 setPresetStudentIdForCreate(undefined)
                                 setCreateSessionOpen(true)
                             }}
-                            className="flex items-center gap-2 px-4 py-2 bg-violet-500 hover:bg-violet-600 text-white text-sm font-medium rounded-full transition-all dark:rounded-xl"
+                            className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-full transition-all dark:rounded-xl"
                         >
                             <Plus size={14} />
                             Nova avaliação
@@ -160,114 +195,141 @@ export function AvaliacoesClient({
                 </div>
             </div>
 
-            <div className="space-y-4">
-                {/* Filter chips */}
-                <div className="flex flex-wrap items-center gap-1.5">
-                    <FilterChip
-                        active={assessmentFilter === 'all'}
-                        onClick={() => setAssessmentFilter('all')}
-                        label="Todas"
-                    />
-                    <FilterChip
-                        active={assessmentFilter === 'overdue'}
-                        onClick={() => setAssessmentFilter('overdue')}
-                        label="Em atraso"
-                        count={assessmentCounts.overdue}
-                        tone="red"
-                    />
-                    <FilterChip
-                        active={assessmentFilter === 'upcoming'}
-                        onClick={() => setAssessmentFilter('upcoming')}
-                        label="Próximas"
-                        count={assessmentCounts.upcoming}
-                    />
-                    <FilterChip
-                        active={assessmentFilter === 'completed'}
-                        onClick={() => setAssessmentFilter('completed')}
-                        label="Concluídas"
-                        count={assessmentCounts.completed}
-                    />
-                </div>
-
-                {/* Sessions list */}
-                {filteredAssessments.length === 0 ? (
-                    assessmentTemplates.length === 0 ? (
-                        // Caso 1: 0 templates — flow começa com template
-                        <div className="rounded-2xl border-2 border-dashed border-k-border-subtle bg-surface-card p-10 text-center">
-                            <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-violet-500/10">
-                                <Plus className="h-5 w-5 text-violet-500 dark:text-violet-400" />
-                            </div>
-                            <p className="text-sm font-semibold text-k-text-primary">Comece criando um template</p>
-                            <p className="mx-auto mt-1 max-w-sm text-xs text-k-text-tertiary">
-                                Use um template de sistema do Kinevo ou crie o seu para agendar avaliações.
-                            </p>
-                            <button
-                                onClick={() => router.push('/avaliacoes/templates/new')}
-                                className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-violet-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-600"
-                            >
-                                <Plus className="h-3.5 w-3.5" />
-                                Criar template de avaliação
-                            </button>
+            <div className="space-y-6">
+                {/* "Em atraso" callout — paralelo ao "Aguardando Feedback" do /forms */}
+                {overdueSessions.length > 0 && (
+                    <div className="bg-white rounded-xl border border-[#D2D2D7] shadow-[0_1px_3px_rgba(0,0,0,0.08)] overflow-hidden dark:bg-transparent dark:border-k-border-subtle dark:shadow-none dark:rounded-none">
+                        <div className="flex items-center gap-2 px-5 py-4 border-b border-[#E8E8ED] dark:border-k-border-subtle">
+                            <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                            <h2 className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary">Em atraso</h2>
+                            <span className="px-1.5 py-0.5 rounded-full bg-red-500/10 text-[10px] font-bold text-red-500 border border-red-500/20">
+                                {overdueSessions.length}
+                            </span>
                         </div>
-                    ) : assessmentSessions.length === 0 ? (
-                        // Caso 2: tem templates mas 0 sessões
-                        <div className="rounded-2xl border-2 border-dashed border-k-border-subtle bg-surface-card p-10 text-center">
-                            <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-violet-500/10">
-                                <Activity className="h-5 w-5 text-violet-500 dark:text-violet-400" />
-                            </div>
-                            <p className="text-sm font-semibold text-k-text-primary">Nenhuma avaliação ainda</p>
-                            <p className="mx-auto mt-1 max-w-sm text-xs text-k-text-tertiary">
-                                Use &ldquo;Nova avaliação&rdquo; acima para agendar a primeira sessão.
-                            </p>
-                        </div>
-                    ) : (
-                        // Caso 3: tem sessões mas filtro vazio
-                        <div className="rounded-2xl border-2 border-dashed border-k-border-subtle bg-surface-card p-10 text-center">
-                            <p className="text-sm font-semibold text-k-text-primary">Nenhuma avaliação neste filtro</p>
-                            <p className="mx-auto mt-1 max-w-sm text-xs text-k-text-tertiary">
-                                Troque o filtro ou crie uma nova avaliação.
-                            </p>
-                        </div>
-                    )
-                ) : (
-                    <div className="overflow-hidden rounded-2xl border border-k-border-subtle bg-surface-card">
-                        <ul className="divide-y divide-k-border-subtle">
-                            {filteredAssessments.map(session => (
+                        <ul className="divide-y divide-[#E8E8ED] dark:divide-k-border-subtle">
+                            {overdueSessions.map(session => (
                                 <li key={session.id}>
-                                    <SessionListItem
-                                        session={session}
-                                        onClick={() => {
-                                            if (session.status === 'completed') {
-                                                router.push(`/students/${session.student_id}/avaliacoes/${session.id}/result`)
-                                            } else {
-                                                router.push(`/students/${session.student_id}/avaliacoes/${session.id}`)
-                                            }
-                                        }}
-                                    />
+                                    <SessionListItem session={session} onClick={() => goToSession(session)} />
                                 </li>
                             ))}
                         </ul>
                     </div>
                 )}
 
-                {/* Templates count footer (lightweight — full listing fica em /avaliacoes/templates no B2) */}
-                {templates.length > 0 && (
-                    <div className="flex items-center justify-between rounded-xl border border-k-border-subtle bg-surface-card px-4 py-3">
-                        <div className="flex items-center gap-2">
-                            <Activity className="h-4 w-4 text-violet-500 dark:text-violet-400" />
-                            <span className="text-sm font-medium text-[#1D1D1F] dark:text-k-text-primary">
-                                Templates de avaliação
-                            </span>
-                            <span className="text-xs text-[#86868B] dark:text-k-text-quaternary">
-                                {templates.length}
+                {/* "Próximas" (≤ 7 dias) callout — paralelo ao "Enviados pendentes" do /forms */}
+                {upcomingNext7d.length > 0 && (
+                    <div className="bg-white rounded-xl border border-[#D2D2D7] shadow-[0_1px_3px_rgba(0,0,0,0.08)] overflow-hidden dark:bg-transparent dark:border-k-border-subtle dark:shadow-none dark:rounded-none">
+                        <div className="flex items-center gap-2 px-5 py-4 border-b border-[#E8E8ED] dark:border-k-border-subtle">
+                            <Send size={14} className="text-violet-600 dark:text-violet-400" />
+                            <h2 className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary">Próximas</h2>
+                            <span className="px-1.5 py-0.5 rounded-full bg-violet-500/10 text-[10px] font-bold text-violet-600 border border-violet-500/20 dark:text-violet-400 dark:border-violet-500/20">
+                                {upcomingNext7d.length}
                             </span>
                         </div>
+                        <ul className="divide-y divide-[#E8E8ED] dark:divide-k-border-subtle">
+                            {upcomingNext7d.map(session => (
+                                <li key={session.id}>
+                                    <SessionListItem session={session} onClick={() => goToSession(session)} />
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
+
+                {/* "Todas as avaliações" — paralelo a "Todas as Respostas" do /forms */}
+                {visibleSessions.length > 0 ? (
+                    <div className="bg-white rounded-xl border border-[#D2D2D7] shadow-[0_1px_3px_rgba(0,0,0,0.08)] overflow-hidden dark:bg-transparent dark:border-k-border-subtle dark:shadow-none dark:rounded-none">
+                        <div className="flex items-center justify-between px-5 py-4 border-b border-[#E8E8ED] dark:border-k-border-subtle">
+                            <h2 className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary">Todas as avaliações</h2>
+                            <div className="flex items-center gap-2">
+                                {([
+                                    { key: 'all' as const, label: 'Todas', count: visibleSessions.length },
+                                    { key: 'overdue' as const, label: 'Em atraso', count: assessmentCounts.overdue },
+                                    { key: 'upcoming' as const, label: 'Próximas', count: assessmentCounts.upcoming },
+                                    { key: 'completed' as const, label: 'Concluídas', count: assessmentCounts.completed },
+                                ]).map(f => (
+                                    <button
+                                        key={f.key}
+                                        onClick={() => setAssessmentFilter(f.key)}
+                                        className={`px-3 py-1.5 text-xs font-medium rounded-full transition-all ${
+                                            assessmentFilter === f.key
+                                                ? 'bg-violet-600 text-white dark:bg-violet-500/10 dark:text-violet-400 dark:border dark:border-violet-500/30'
+                                                : 'bg-[#F5F5F7] text-[#6E6E73] hover:bg-[#E8E8ED] dark:bg-glass-bg dark:text-k-text-quaternary dark:border-k-border-subtle dark:hover:text-k-text-secondary'
+                                        }`}
+                                    >
+                                        {f.label} ({f.count})
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {filteredAssessments.length === 0 ? (
+                            <div className="px-5 py-8 text-center">
+                                <p className="text-xs text-[#86868B] dark:text-k-text-quaternary">
+                                    Nenhuma avaliação neste filtro.
+                                </p>
+                            </div>
+                        ) : (
+                            <ul className="divide-y divide-[#E8E8ED] dark:divide-k-border-subtle">
+                                {filteredAssessments.map(session => (
+                                    <li key={session.id}>
+                                        <SessionListItem session={session} onClick={() => goToSession(session)} />
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
+                ) : assessmentTemplates.length === 0 ? (
+                    // Empty: 0 templates — começa pelo template
+                    <div className="rounded-2xl border-2 border-dashed border-k-border-subtle bg-surface-card p-10 text-center">
+                        <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-violet-500/10">
+                            <Plus className="h-5 w-5 text-violet-500 dark:text-violet-400" />
+                        </div>
+                        <p className="text-sm font-semibold text-k-text-primary">Comece criando um template</p>
+                        <p className="mx-auto mt-1 max-w-sm text-xs text-k-text-tertiary">
+                            Use um template de sistema do Kinevo ou crie o seu para agendar avaliações.
+                        </p>
                         <button
-                            onClick={() => router.push('/avaliacoes/templates')}
-                            className="text-xs font-medium text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 transition-colors"
+                            onClick={() => router.push('/avaliacoes/templates/new')}
+                            className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-500"
                         >
-                            Gerenciar →
+                            <Plus className="h-3.5 w-3.5" />
+                            Criar template de avaliação
                         </button>
+                    </div>
+                ) : (
+                    // Empty: tem templates mas 0 sessões
+                    <div className="rounded-2xl border-2 border-dashed border-k-border-subtle bg-surface-card p-10 text-center">
+                        <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-violet-500/10">
+                            <Activity className="h-5 w-5 text-violet-500 dark:text-violet-400" />
+                        </div>
+                        <p className="text-sm font-semibold text-k-text-primary">Nenhuma avaliação ainda</p>
+                        <p className="mx-auto mt-1 max-w-sm text-xs text-k-text-tertiary">
+                            Use &ldquo;Nova avaliação&rdquo; acima para agendar a primeira sessão.
+                        </p>
+                    </div>
+                )}
+
+                {/* Templates footer — paralelo a "Templates de Formulário" do /forms */}
+                {templates.length > 0 && (
+                    <div className="bg-white rounded-xl border border-[#D2D2D7] shadow-[0_1px_3px_rgba(0,0,0,0.08)] overflow-hidden dark:bg-transparent dark:border-k-border-subtle dark:shadow-none dark:rounded-none">
+                        <div className="flex items-center justify-between px-5 py-4">
+                            <div className="flex items-center gap-2">
+                                <Activity className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                                <h2 className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary">
+                                    Templates de avaliação
+                                </h2>
+                                <span className="text-xs text-[#86868B] dark:text-k-text-quaternary">
+                                    {templates.length}
+                                </span>
+                            </div>
+                            <button
+                                onClick={() => router.push('/avaliacoes/templates')}
+                                className="text-xs font-medium text-violet-600 hover:text-violet-500 dark:text-k-text-quaternary dark:hover:text-k-text-secondary transition-colors"
+                            >
+                                Gerenciar →
+                            </button>
+                        </div>
                     </div>
                 )}
             </div>
@@ -294,54 +356,11 @@ export function AvaliacoesClient({
                 }}
             />
 
-            {/* Tour: Avaliações (M8/B4 — split do tour antigo `assessments_first_time`) */}
             <TourRunner
                 tourId="tour_assessments_first_time"
                 steps={TOUR_STEPS.tour_assessments_first_time}
                 autoStart
             />
         </AppLayout>
-    )
-}
-
-function FilterChip({
-    active,
-    onClick,
-    label,
-    count,
-    tone = 'violet',
-}: {
-    active: boolean
-    onClick: () => void
-    label: string
-    count?: number
-    tone?: 'violet' | 'red'
-}) {
-    const cls = active
-        ? tone === 'red'
-            ? 'border-red-500/40 bg-red-500/10 text-red-500'
-            : 'border-violet-500/40 bg-violet-500/10 text-violet-500 dark:text-violet-400'
-        : 'border-k-border-subtle bg-surface-card text-k-text-secondary hover:text-k-text-primary'
-    return (
-        <button
-            type="button"
-            onClick={onClick}
-            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${cls}`}
-        >
-            {label}
-            {count != null && count > 0 && (
-                <span
-                    className={`rounded-full px-1.5 py-px text-[10px] font-bold ${
-                        active
-                            ? 'bg-white/20'
-                            : tone === 'red'
-                                ? 'bg-red-500/15 text-red-500'
-                                : 'bg-violet-500/15 text-violet-500 dark:text-violet-400'
-                    }`}
-                >
-                    {count}
-                </span>
-            )}
-        </button>
     )
 }
