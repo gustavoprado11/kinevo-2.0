@@ -314,13 +314,11 @@ export default function FormsScreen() {
                         badge={draftCount}
                         active={avaliacoesSubTab === "sessions"}
                         onPress={() => setAvaliacoesSubTab("sessions")}
-                        accent="violet"
                     />
                     <SubTabButton
                         label="Templates"
                         active={avaliacoesSubTab === "a_templates"}
                         onPress={() => setAvaliacoesSubTab("a_templates")}
-                        accent="violet"
                     />
                 </View>
             )}
@@ -491,7 +489,7 @@ export default function FormsScreen() {
                     fabConfig = {
                         onPress: handleCreateNew,
                         label: "Criar novo template de formulário",
-                        color: "#7c3aed",
+                        color: "#007AFF",
                     };
                 } else if (isSessions && !isAssessmentsEmpty) {
                     fabConfig = {
@@ -506,7 +504,7 @@ export default function FormsScreen() {
                             router.push("/assessments/templates/new");
                         },
                         label: "Novo template de avaliação",
-                        color: "#7c3aed",
+                        color: "#007AFF",
                     };
                 }
                 if (!fabConfig) return null;

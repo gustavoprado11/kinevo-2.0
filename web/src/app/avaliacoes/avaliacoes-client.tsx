@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { AppLayout } from '@/components/layout'
 import type { OnboardingState } from '@kinevo/shared/types/onboarding'
-import { Plus, Activity, Send } from 'lucide-react'
+import { Plus, Activity, Send, ChevronRight } from 'lucide-react'
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
 import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
 import { SessionListItem } from '@/components/assessments/session-list-item'
@@ -159,16 +159,21 @@ export function AvaliacoesClient({
             onboardingState={onboardingState}
         >
             {/* Header — paralelo a /forms */}
-            <div data-onboarding="avaliacoes-header" className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                    <h1 className="text-2xl font-bold tracking-tight text-[#1D1D1F] dark:text-k-text-primary">
-                        Avaliações
-                    </h1>
-                    {headerCount > 0 && (
-                        <span className="px-2.5 py-0.5 rounded-full bg-[#F5F5F7] text-sm text-[#6E6E73] dark:bg-glass-bg dark:text-k-text-tertiary dark:border dark:border-k-border-subtle">
-                            {headerCount}
-                        </span>
-                    )}
+            <div data-onboarding="avaliacoes-header" className="flex items-start justify-between mb-6">
+                <div>
+                    <div className="flex items-center gap-3">
+                        <h1 className="text-2xl font-bold tracking-tight text-[#1D1D1F] dark:text-k-text-primary">
+                            Avaliações
+                        </h1>
+                        {headerCount > 0 && (
+                            <span className="px-2.5 py-0.5 rounded-full bg-[#F5F5F7] text-sm text-[#6E6E73] dark:bg-glass-bg dark:text-k-text-tertiary dark:border dark:border-k-border-subtle">
+                                {headerCount}
+                            </span>
+                        )}
+                    </div>
+                    <p className="mt-1 text-sm text-[#86868B] dark:text-k-text-tertiary">
+                        Sessões presenciais com captura de medições
+                    </p>
                 </div>
                 <div className="flex items-center gap-2">
                     {assessmentTemplates.length > 0 && (
@@ -178,7 +183,7 @@ export function AvaliacoesClient({
                                 setPresetStudentIdForCreate(undefined)
                                 setCreateSessionOpen(true)
                             }}
-                            className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-full transition-all dark:rounded-xl"
+                            className="flex items-center gap-2 px-4 py-2 bg-[#007AFF] hover:bg-[#0066D6] text-white text-sm font-medium rounded-full transition-all dark:bg-violet-600 dark:hover:bg-violet-500 dark:rounded-xl"
                         >
                             <Plus size={14} />
                             Nova avaliação
@@ -220,9 +225,9 @@ export function AvaliacoesClient({
                 {upcomingNext7d.length > 0 && (
                     <div className="bg-white rounded-xl border border-[#D2D2D7] shadow-[0_1px_3px_rgba(0,0,0,0.08)] overflow-hidden dark:bg-transparent dark:border-k-border-subtle dark:shadow-none dark:rounded-none">
                         <div className="flex items-center gap-2 px-5 py-4 border-b border-[#E8E8ED] dark:border-k-border-subtle">
-                            <Send size={14} className="text-violet-600 dark:text-violet-400" />
+                            <Send size={14} className="text-[#007AFF] dark:text-violet-400" />
                             <h2 className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary">Próximas</h2>
-                            <span className="px-1.5 py-0.5 rounded-full bg-violet-500/10 text-[10px] font-bold text-violet-600 border border-violet-500/20 dark:text-violet-400 dark:border-violet-500/20">
+                            <span className="px-1.5 py-0.5 rounded-full bg-[#007AFF]/10 text-[10px] font-bold text-[#007AFF] border border-[#007AFF]/20 dark:bg-violet-500/10 dark:text-violet-400 dark:border-violet-500/20">
                                 {upcomingNext7d.length}
                             </span>
                         </div>
@@ -253,7 +258,7 @@ export function AvaliacoesClient({
                                         onClick={() => setAssessmentFilter(f.key)}
                                         className={`px-3 py-1.5 text-xs font-medium rounded-full transition-all ${
                                             assessmentFilter === f.key
-                                                ? 'bg-violet-600 text-white dark:bg-violet-500/10 dark:text-violet-400 dark:border dark:border-violet-500/30'
+                                                ? 'bg-[#007AFF] text-white dark:bg-violet-500/10 dark:text-violet-400 dark:border dark:border-violet-500/30'
                                                 : 'bg-[#F5F5F7] text-[#6E6E73] hover:bg-[#E8E8ED] dark:bg-glass-bg dark:text-k-text-quaternary dark:border-k-border-subtle dark:hover:text-k-text-secondary'
                                         }`}
                                     >
@@ -283,7 +288,7 @@ export function AvaliacoesClient({
                     // Empty: 0 templates — começa pelo template
                     <div className="rounded-2xl border-2 border-dashed border-k-border-subtle bg-surface-card p-10 text-center">
                         <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-violet-500/10">
-                            <Plus className="h-5 w-5 text-violet-500 dark:text-violet-400" />
+                            <Activity className="h-5 w-5 text-violet-500 dark:text-violet-400" />
                         </div>
                         <p className="text-sm font-semibold text-k-text-primary">Comece criando um template</p>
                         <p className="mx-auto mt-1 max-w-sm text-xs text-k-text-tertiary">
@@ -291,7 +296,7 @@ export function AvaliacoesClient({
                         </p>
                         <button
                             onClick={() => router.push('/avaliacoes/templates/new')}
-                            className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-500"
+                            className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-[#007AFF] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#0066D6] dark:bg-violet-600 dark:hover:bg-violet-500"
                         >
                             <Plus className="h-3.5 w-3.5" />
                             Criar template de avaliação
@@ -310,25 +315,47 @@ export function AvaliacoesClient({
                     </div>
                 )}
 
-                {/* Templates footer — paralelo a "Templates de Formulário" do /forms */}
+                {/* Templates section — paralelo a "Templates de Formulário" do /forms */}
                 {templates.length > 0 && (
                     <div className="bg-white rounded-xl border border-[#D2D2D7] shadow-[0_1px_3px_rgba(0,0,0,0.08)] overflow-hidden dark:bg-transparent dark:border-k-border-subtle dark:shadow-none dark:rounded-none">
-                        <div className="flex items-center justify-between px-5 py-4">
+                        <div className="flex items-center justify-between px-5 py-4 border-b border-[#E8E8ED] dark:border-k-border-subtle">
                             <div className="flex items-center gap-2">
-                                <Activity className="h-4 w-4 text-violet-600 dark:text-violet-400" />
-                                <h2 className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary">
-                                    Templates de avaliação
-                                </h2>
-                                <span className="text-xs text-[#86868B] dark:text-k-text-quaternary">
+                                <h2 className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary">Templates de avaliação</h2>
+                                <span className="text-[#86868B] dark:text-k-text-quaternary">
                                     {templates.length}
                                 </span>
                             </div>
                             <button
                                 onClick={() => router.push('/avaliacoes/templates')}
-                                className="text-xs font-medium text-violet-600 hover:text-violet-500 dark:text-k-text-quaternary dark:hover:text-k-text-secondary transition-colors"
+                                className="text-xs text-[#007AFF] hover:text-[#0056B3] transition-colors font-medium dark:text-k-text-quaternary dark:hover:text-k-text-secondary"
                             >
                                 Gerenciar →
                             </button>
+                        </div>
+
+                        <div className="divide-y divide-[#E8E8ED] dark:divide-k-border-subtle">
+                            {templates.map(t => (
+                                <div
+                                    key={t.id}
+                                    onClick={() => router.push(`/avaliacoes/templates/new?edit=${t.id}`)}
+                                    className="w-full flex items-center justify-between py-3 px-5 hover:bg-[#F5F5F7] transition-all text-left group cursor-pointer dark:hover:bg-glass-bg"
+                                >
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                        <Activity size={14} className="text-violet-600 dark:text-violet-400" />
+                                        <span className="text-sm text-[#1D1D1F] group-hover:text-[#1D1D1F] transition-colors truncate dark:text-k-text-secondary dark:group-hover:text-k-text-primary">
+                                            {t.title}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-3 text-xs text-[#86868B] dark:text-k-text-quaternary shrink-0">
+                                        {t.sectionCount > 0 && (
+                                            <span>{t.sectionCount} {t.sectionCount === 1 ? 'seção' : 'seções'}</span>
+                                        )}
+                                        <span className="text-[#AEAEB2] dark:text-k-text-quaternary">·</span>
+                                        <span>{t.sessionCount} {t.sessionCount === 1 ? 'sessão' : 'sessões'}</span>
+                                        <ChevronRight size={14} className="text-k-border-subtle group-hover:text-k-text-tertiary transition-all" />
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 )}

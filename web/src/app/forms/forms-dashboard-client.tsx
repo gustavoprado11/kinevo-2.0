@@ -304,14 +304,19 @@ export function FormsDashboardClient({
             onboardingState={onboardingState}
         >
             {/* Header */}
-            <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                    <h1 className="text-2xl font-bold tracking-tight text-[#1D1D1F] dark:text-k-text-primary">Formulários</h1>
-                    {submissions.length > 0 && (
-                        <span className="px-2.5 py-0.5 rounded-full bg-[#F5F5F7] text-sm text-[#6E6E73] dark:bg-glass-bg dark:text-k-text-tertiary dark:border dark:border-k-border-subtle">
-                            {submissions.length}
-                        </span>
-                    )}
+            <div className="flex items-start justify-between mb-6">
+                <div>
+                    <div className="flex items-center gap-3">
+                        <h1 className="text-2xl font-bold tracking-tight text-[#1D1D1F] dark:text-k-text-primary">Formulários</h1>
+                        {submissions.length > 0 && (
+                            <span className="px-2.5 py-0.5 rounded-full bg-[#F5F5F7] text-sm text-[#6E6E73] dark:bg-glass-bg dark:text-k-text-tertiary dark:border dark:border-k-border-subtle">
+                                {submissions.length}
+                            </span>
+                        )}
+                    </div>
+                    <p className="mt-1 text-sm text-[#86868B] dark:text-k-text-tertiary">
+                        Anamneses, check-ins e pesquisas que o aluno responde no app
+                    </p>
                 </div>
                 <div className="flex items-center gap-2">
                     <button
