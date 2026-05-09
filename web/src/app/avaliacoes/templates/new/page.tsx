@@ -30,6 +30,25 @@ export default async function NewAssessmentTemplatePage({ searchParams }: Props)
             sections: [],
         }
 
+    // M16 — Step 1 "Partir de Kinevo" lista os seed templates (system).
+    // RLS já restringe ao trainer; trainer_id IS NULL é público read-only.
+    const { data: kinevoTemplatesRaw } = await supabase
+        .from('form_templates')
+        .select('id, title, description, schema_json')
+        .eq('category', 'assessment')
+        .is('trainer_id', null)
+        .order('title')
+
+    const kinevoTemplates = (kinevoTemplatesRaw ?? []).map(t => ({
+        id: t.id,
+        title: t.title,
+        description: t.description,
+        schema: (t.schema_json as AssessmentTemplateSchema | null) ?? {
+            schema_version: '1.0',
+            sections: [],
+        },
+    }))
+
     return (
         <AppLayout
             trainerName={trainer.name}
@@ -40,9 +59,10 @@ export default async function NewAssessmentTemplatePage({ searchParams }: Props)
         >
             <AssessmentBuilderPageClient
                 templateId={existingTemplate?.id ?? null}
-                initialTitle={existingTemplate?.title ?? 'Avaliação Presencial'}
+                initialTitle={existingTemplate?.title ?? ''}
                 initialDescription={existingTemplate?.description ?? null}
                 initialSchema={seed}
+                kinevoTemplates={kinevoTemplates}
             />
         </AppLayout>
     )

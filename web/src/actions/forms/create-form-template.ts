@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 interface CreateFormTemplateInput {
     title: string
     description?: string
-    category: 'anamnese' | 'checkin' | 'survey'
+    category: 'anamnese' | 'checkin' | 'survey' | 'feedback'
     schemaJson: string
     createdSource?: 'manual' | 'ai_assisted'
 }
@@ -28,7 +28,7 @@ export async function createFormTemplate(input: CreateFormTemplateInput) {
     const title = input.title?.trim()
     if (!title) return { success: false, error: 'Título é obrigatório' }
 
-    if (!['anamnese', 'checkin', 'survey'].includes(input.category)) {
+    if (!['anamnese', 'checkin', 'survey', 'feedback'].includes(input.category)) {
         return { success: false, error: 'Categoria inválida' }
     }
 

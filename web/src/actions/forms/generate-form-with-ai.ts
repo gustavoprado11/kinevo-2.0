@@ -49,7 +49,7 @@ function recordRequest(trainerId: string): void {
     trainerRequestTimestamps.set(trainerId, timestamps)
 }
 
-type FormCategory = 'anamnese' | 'checkin' | 'survey'
+type FormCategory = 'anamnese' | 'checkin' | 'survey' | 'feedback'
 type QuestionType = 'short_text' | 'long_text' | 'single_choice' | 'scale' | 'photo'
 
 interface GenerateFormWithAIInput {
@@ -189,6 +189,7 @@ function buildHeuristicDraft(input: GenerateFormWithAIInput): AIResponseContract
         anamnese: 'Anamnese',
         checkin: 'Check-in',
         survey: 'Pesquisa',
+        feedback: 'Feedback do programa',
     }
 
     const maxMinutes = Math.max(2, Math.min(input.maxMinutes || 6, 20))
@@ -290,6 +291,38 @@ function buildHeuristicDraft(input: GenerateFormWithAIInput): AIResponseContract
                 ],
             },
         ],
+        feedback: [
+            {
+                id: 'avaliacao_geral_programa',
+                type: 'scale',
+                label: 'Como você avalia o programa concluído?',
+                required: true,
+                scale: { min: 1, max: 5, min_label: 'Insatisfeito', max_label: 'Excelente' },
+            },
+            {
+                id: 'objetivos_atingidos',
+                type: 'single_choice',
+                label: 'Você atingiu seus objetivos com este programa?',
+                required: true,
+                options: [
+                    { value: 'sim', label: 'Sim, plenamente' },
+                    { value: 'parcialmente', label: 'Parcialmente' },
+                    { value: 'nao', label: 'Não' },
+                ],
+            },
+            {
+                id: 'pontos_fortes_programa',
+                type: 'long_text',
+                label: 'Quais foram os pontos fortes do programa?',
+                required: true,
+            },
+            {
+                id: 'pontos_melhoria_programa',
+                type: 'long_text',
+                label: 'O que poderia ser melhorado num próximo programa?',
+                required: false,
+            },
+        ],
     }
 
     const contextQuestion: DraftQuestion = {
@@ -381,7 +414,7 @@ async function tryOpenAIGeneration(input: GenerateFormWithAIInput): Promise<Open
             template_draft: {
                 title: 'string',
                 description: 'string',
-                category: 'anamnese|checkin|survey',
+                category: 'anamnese|checkin|survey|feedback',
                 estimated_minutes: 'number',
                 questions: [
                     {
@@ -449,7 +482,7 @@ async function tryOpenAIGeneration(input: GenerateFormWithAIInput): Promise<Open
 }
 
 function postProcessContract(raw: AIResponseContract, fallbackInput: GenerateFormWithAIInput): AIResponseContract {
-    const safeCategory: FormCategory = ['anamnese', 'checkin', 'survey'].includes(raw?.template_draft?.category)
+    const safeCategory: FormCategory = ['anamnese', 'checkin', 'survey', 'feedback'].includes(raw?.template_draft?.category)
         ? raw.template_draft.category
         : fallbackInput.category
 

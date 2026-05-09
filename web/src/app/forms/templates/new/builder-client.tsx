@@ -4,7 +4,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AppLayout } from '@/components/layout'
-import { BuilderShell } from '@/components/shared/builder-shell'
+import { BuilderWizardShell } from '@/components/shared/builder-wizard-shell'
 import { createFormTemplate } from '@/actions/forms/create-form-template'
 import { updateFormTemplate } from '@/actions/forms/update-form-template'
 import { generateFormDraftWithAI } from '@/actions/forms/generate-form-with-ai'
@@ -16,9 +16,6 @@ import {
     AlertTriangle,
     GripVertical,
     Loader2,
-    ChevronLeft,
-    Pencil,
-    Check,
     Type,
     AlignLeft,
     SlidersHorizontal,
@@ -26,6 +23,10 @@ import {
     Camera,
     MessageSquarePlus,
     Smartphone,
+    ClipboardList,
+    CheckCircle2,
+    MessageSquare,
+    ThumbsUp,
 } from 'lucide-react'
 import { EvaluationPreview } from '@/components/previews/evaluation-preview/evaluation-preview'
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
@@ -95,7 +96,7 @@ interface BuilderClientProps {
     existingTemplate: ExistingTemplate | null
 }
 
-type BuilderStep = 'choose' | 'ai_setup' | 'editor'
+type FormCategory = 'anamnese' | 'checkin' | 'survey' | 'feedback'
 
 // ─── Constants ──────────────────────────────────────────────────
 
@@ -107,11 +108,43 @@ const QUESTION_TYPES = [
     { value: 'photo', label: 'Upload de foto', desc: 'Imagem do aluno', icon: Camera },
 ]
 
-const CATEGORY_OPTIONS = [
-    { value: 'anamnese', label: 'Anamnese' },
-    { value: 'checkin', label: 'Check-in' },
-    { value: 'survey', label: 'Pesquisa' },
-] as const
+// M16 — 4 cards de tipo no Step 1.
+const CATEGORY_CARDS: Array<{
+    value: FormCategory
+    label: string
+    description: string
+    example: string
+    icon: typeof ClipboardList
+}> = [
+    {
+        value: 'anamnese',
+        label: 'Anamnese',
+        description: 'Conheça o aluno antes de prescrever',
+        example: 'Histórico de saúde, lesões, objetivos',
+        icon: ClipboardList,
+    },
+    {
+        value: 'checkin',
+        label: 'Check-in',
+        description: 'Acompanhe periodicamente como o aluno está',
+        example: 'Sono, energia, dor, motivação',
+        icon: CheckCircle2,
+    },
+    {
+        value: 'survey',
+        label: 'Pesquisa',
+        description: 'Recolha opiniões e dados pontuais',
+        example: 'NPS, satisfação, feedback rápido',
+        icon: MessageSquare,
+    },
+    {
+        value: 'feedback',
+        label: 'Feedback do programa',
+        description: 'Avalie o programa concluído',
+        example: 'Avaliação geral, pontos fortes/fracos',
+        icon: ThumbsUp,
+    },
+]
 
 const stepAnimation = {
     initial: { opacity: 0, y: 20 },
@@ -166,47 +199,6 @@ function questionsToSchema(questions: Question[]): Record<string, unknown> {
     }
 }
 
-// ─── Step Indicator ─────────────────────────────────────────────
-
-const STEP_LABELS: { key: BuilderStep; label: string }[] = [
-    { key: 'choose', label: 'Método' },
-    { key: 'ai_setup', label: 'Configurar' },
-    { key: 'editor', label: 'Editor' },
-]
-
-function StepIndicator({ step, isEditing }: { step: BuilderStep; isEditing: boolean }) {
-    if (isEditing) return null
-    const currentIndex = STEP_LABELS.findIndex((s) => s.key === step)
-
-    return (
-        <div className="flex items-center justify-center gap-3 mb-8">
-            {STEP_LABELS.map((s, i) => (
-                <div key={s.key} className="flex items-center gap-2">
-                    <div
-                        className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold transition-all duration-300 ${
-                            i < currentIndex
-                                ? 'bg-[#34C759] text-white dark:bg-emerald-500'
-                                : i === currentIndex
-                                    ? 'bg-[#007AFF] text-white dark:bg-violet-600'
-                                    : 'bg-[#E8E8ED] text-[#AEAEB2] dark:bg-surface-elevated dark:text-k-text-quaternary'
-                        }`}
-                    >
-                        {i < currentIndex ? <Check size={12} /> : i + 1}
-                    </div>
-                    <span className={`text-xs font-medium transition-colors ${
-                        i <= currentIndex ? 'text-[#1D1D1F] dark:text-k-text-primary' : 'text-[#AEAEB2] dark:text-k-text-quaternary'
-                    }`}>
-                        {s.label}
-                    </span>
-                    {i < STEP_LABELS.length - 1 && (
-                        <div className={`w-8 h-px ml-1 ${i < currentIndex ? 'bg-[#007AFF] dark:bg-emerald-500' : 'bg-[#E8E8ED] dark:bg-surface-elevated'}`} />
-                    )}
-                </div>
-            ))}
-        </div>
-    )
-}
-
 // ─── Main Component ─────────────────────────────────────────────
 
 // ─── Sortable wrapper for question cards ─────────────────────
@@ -235,21 +227,28 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
     const router = useRouter()
     const isEditing = !!existingTemplate
 
-    // Step
-    const [step, setStep] = useState<BuilderStep>(isEditing ? 'editor' : 'choose')
+    // Step (1: Tipo, 2: Configurar, 3: Editor)
+    const [step, setStep] = useState<1 | 2 | 3>(isEditing ? 3 : 1)
 
     // Template fields
     const [title, setTitle] = useState(existingTemplate?.title || '')
     const [description, setDescription] = useState(existingTemplate?.description || '')
-    const [category, setCategory] = useState<'anamnese' | 'checkin' | 'survey'>(
-        (existingTemplate?.category as any) || 'checkin'
+    const [category, setCategory] = useState<FormCategory>(
+        (existingTemplate?.category as FormCategory) || 'checkin'
     )
     const [questions, setQuestions] = useState<Question[]>(
         parseQuestionsFromSchema(existingTemplate?.schema_json)
     )
     const [draftSource, setDraftSource] = useState<'manual' | 'ai_assisted'>(
-        (existingTemplate?.created_source as any) || 'manual'
+        (existingTemplate?.created_source as 'manual' | 'ai_assisted') || 'manual'
     )
+
+    // M16 — toggle "Criar com IA" no Step 2 (default off).
+    // Quando ON, Step 3 começa com prompt textual em vez do editor manual.
+    const [aiEnabled, setAiEnabled] = useState(false)
+    // Step 3 sub-mode: prompt visível enquanto trainer configura IA; some
+    // após "Gerar Draft" bem-sucedido (mostra editor com perguntas geradas).
+    const [aiPromptVisible, setAiPromptVisible] = useState(false)
 
     // Save state
     const [isSaving, setIsSaving] = useState(false)
@@ -421,18 +420,20 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                 return
             }
 
-            setTitle(result.templateDraft.title)
-            setDescription(result.templateDraft.description)
-            setCategory(result.templateDraft.category)
-            setQuestions(parseQuestionsFromSchema(result.templateDraft.schema as any))
+            // Mantém title/description que o trainer pode ter digitado no Step 2;
+            // se vazios, aceita os do draft.
+            if (!title) setTitle(result.templateDraft.title)
+            if (!description) setDescription(result.templateDraft.description)
+            setCategory(result.templateDraft.category as FormCategory)
+            setQuestions(parseQuestionsFromSchema(result.templateDraft.schema as unknown as Record<string, unknown> | null))
             setDraftSource('ai_assisted')
             setAiProviderSource(result.source === 'llm' ? 'llm' : 'heuristic')
             setAiRuntimeNote(result.runtimeNote || null)
             setAiQualityReport(result.qualityReport || null)
             setAiChecklist(result.reviewChecklist || [])
 
-            // Transition to editor after successful generation
-            setStep('editor')
+            // M16 — esconde prompt e mostra editor com perguntas geradas.
+            setAiPromptVisible(false)
         } finally {
             setIsGeneratingAI(false)
         }
@@ -465,7 +466,7 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
             trainerTheme={trainer.theme as 'light' | 'dark' | 'system' | null}
             onboardingState={trainer.onboarding_state ?? null}
         >
-            <BuilderShell
+            <BuilderWizardShell
                 title={
                     isEditing
                         ? `Editar template${title ? ` — ${title}` : ''}`
@@ -478,139 +479,198 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                             : `v${existingTemplate?.version ?? 1}`)
                         : null
                 }
+                currentStep={step}
+                hideStepIndicator={isEditing}
                 onExit={() => router.push('/forms/templates')}
-                onSave={step === 'editor' ? handleSave : undefined}
-                canSave={questions.length > 0 && title.trim().length > 0 && !isSaving}
+                onAdvance={() => {
+                    if (step === 1) {
+                        setStep(2)
+                    } else if (step === 2) {
+                        // M16 — toggle IA decide o sub-mode do Step 3.
+                        if (aiEnabled) {
+                            setDraftSource('ai_assisted')
+                            setAiPromptVisible(true)
+                        } else {
+                            setDraftSource('manual')
+                            setAiPromptVisible(false)
+                        }
+                        setStep(3)
+                    }
+                }}
+                onBack={() => {
+                    if (step === 3) {
+                        // Volta pra Step 2 mas mantém aiPromptVisible reseteado.
+                        setAiPromptVisible(false)
+                        setStep(2)
+                    } else if (step === 2) {
+                        setStep(1)
+                    }
+                }}
+                canAdvance={
+                    step === 1 ? true /* card click já avança */
+                    : step === 2 ? title.trim().length > 0
+                    : false
+                }
+                canSave={questions.length > 0 && title.trim().length > 0 && !isSaving && !aiPromptVisible}
+                onSave={handleSave}
                 isDirty={hasUnsavedChanges}
                 isSaving={isSaving}
-                hideSave={step !== 'editor'}
-                draftKey={`form-builder-draft:${existingTemplate?.id ?? 'new'}`}
             >
-            <div className="min-h-screen bg-surface-primary p-8 font-sans">
+            <div className="bg-surface-primary p-4 font-sans">
                 <div className="max-w-7xl mx-auto">
 
-                    {/* Step indicator */}
-                    <StepIndicator step={step} isEditing={isEditing} />
-
                     {/* Step content */}
-                    <AnimatePresence mode="wait">
+                    <div>
 
                         {/* ════════════════════════════════════════════════
-                            STEP 1: CHOOSE — IA or Manual
+                            STEP 1: TIPO — 4 cards explicativos
                         ════════════════════════════════════════════════ */}
-                        {step === 'choose' && (
-                            <motion.div key="choose" {...stepAnimation}>
-                                <div className="max-w-2xl mx-auto">
-                                    <p className="text-center text-lg font-semibold text-[#1D1D1F] mb-6 dark:text-k-text-primary">
-                                        Como deseja criar seu template?
+                        {step === 1 && (
+                            <div key="step1">
+                                <div className="max-w-3xl mx-auto">
+                                    <p className="text-center text-lg font-semibold text-[#1D1D1F] mb-2 dark:text-k-text-primary">
+                                        Que tipo de formulário você quer criar?
+                                    </p>
+                                    <p className="text-center text-sm text-[#86868B] mb-6 dark:text-k-text-tertiary">
+                                        Escolha o propósito — você poderá ajustar tudo depois.
                                     </p>
 
                                     <div data-onboarding="form-choose-method" className="grid grid-cols-2 gap-4">
-                                        {/* Card: AI */}
-                                        <button
-                                            onClick={() => {
-                                                setDraftSource('ai_assisted')
-                                                setStep('ai_setup')
-                                            }}
-                                            className="group text-left rounded-xl border border-[#D2D2D7] bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.08)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.12)] hover:border-[#007AFF] cursor-pointer transition-all duration-200 dark:border-k-border-primary dark:bg-surface-card dark:shadow-none dark:hover:border-violet-500/30 dark:hover:bg-glass-bg"
-                                        >
-                                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F5F5F7] group-hover:bg-[#007AFF]/10 mb-3 transition-colors dark:bg-surface-elevated dark:group-hover:bg-violet-500/10">
-                                                <Sparkles size={20} className="text-[#AEAEB2] group-hover:text-[#007AFF] dark:text-violet-400" strokeWidth={1.5} />
-                                            </div>
-                                            <h3 className="text-sm font-semibold text-[#1D1D1F] mb-1 dark:text-k-text-primary dark:group-hover:text-violet-300 transition-colors">
-                                                Criar com IA
-                                            </h3>
-                                            <p className="text-xs text-[#86868B] leading-relaxed dark:text-k-text-quaternary">
-                                                Descreva o objetivo e a IA gera as perguntas para revisar.
-                                            </p>
-                                        </button>
-
-                                        {/* Card: Manual */}
-                                        <button
-                                            onClick={() => {
-                                                setDraftSource('manual')
-                                                setStep('editor')
-                                            }}
-                                            className="group text-left rounded-xl border border-[#D2D2D7] bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.08)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.12)] hover:border-[#007AFF] cursor-pointer transition-all duration-200 dark:border-k-border-primary dark:bg-surface-card dark:shadow-none dark:hover:border-blue-500/30 dark:hover:bg-glass-bg"
-                                        >
-                                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F5F5F7] group-hover:bg-[#007AFF]/10 mb-3 transition-colors dark:bg-surface-elevated dark:group-hover:bg-blue-500/10">
-                                                <Pencil size={20} className="text-[#AEAEB2] group-hover:text-[#007AFF] dark:text-blue-400" strokeWidth={1.5} />
-                                            </div>
-                                            <h3 className="text-sm font-semibold text-[#1D1D1F] mb-1 dark:text-k-text-primary dark:group-hover:text-blue-300 transition-colors">
-                                                Criar Manualmente
-                                            </h3>
-                                            <p className="text-xs text-[#86868B] leading-relaxed dark:text-k-text-quaternary">
-                                                Monte do zero, escolhendo cada tipo de pergunta.
-                                            </p>
-                                        </button>
+                                        {CATEGORY_CARDS.map(card => {
+                                            const Icon = card.icon
+                                            const isSelected = category === card.value
+                                            return (
+                                                <button
+                                                    key={card.value}
+                                                    onClick={() => {
+                                                        setCategory(card.value)
+                                                        setStep(2)
+                                                    }}
+                                                    className={`group text-left rounded-xl border bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.08)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.12)] cursor-pointer transition-all duration-200 dark:bg-surface-card dark:shadow-none dark:hover:bg-glass-bg ${
+                                                        isSelected
+                                                            ? 'border-[#007AFF] dark:border-violet-500/30'
+                                                            : 'border-[#D2D2D7] hover:border-[#007AFF] dark:border-k-border-primary dark:hover:border-violet-500/30'
+                                                    }`}
+                                                >
+                                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F5F5F7] group-hover:bg-[#007AFF]/10 mb-3 transition-colors dark:bg-surface-elevated dark:group-hover:bg-violet-500/10">
+                                                        <Icon size={20} className="text-[#AEAEB2] group-hover:text-[#007AFF] dark:text-violet-400" strokeWidth={1.5} />
+                                                    </div>
+                                                    <h3 className="text-sm font-semibold text-[#1D1D1F] mb-1 dark:text-k-text-primary dark:group-hover:text-violet-300 transition-colors">
+                                                        {card.label}
+                                                    </h3>
+                                                    <p className="text-xs text-[#86868B] leading-relaxed mb-2 dark:text-k-text-quaternary">
+                                                        {card.description}
+                                                    </p>
+                                                    <p className="text-[11px] text-[#AEAEB2] italic dark:text-k-text-quaternary/70">
+                                                        Ex: {card.example}
+                                                    </p>
+                                                </button>
+                                            )
+                                        })}
                                     </div>
                                 </div>
-                            </motion.div>
+                            </div>
                         )}
 
                         {/* ════════════════════════════════════════════════
-                            STEP 2: AI SETUP
+                            STEP 2: CONFIGURAR — nome + descrição + toggle IA
                         ════════════════════════════════════════════════ */}
-                        {step === 'ai_setup' && (
-                            <motion.div key="ai_setup" {...stepAnimation}>
+                        {step === 2 && (
+                            <div key="step2">
                                 <div className="max-w-xl mx-auto">
                                     <div className="rounded-2xl border border-[#D2D2D7] bg-white p-8 shadow-[0_1px_3px_rgba(0,0,0,0.08)] space-y-6 dark:border-k-border-primary dark:bg-surface-card dark:shadow-xl">
-                                        {/* Header */}
+                                        {/* Title */}
+                                        <div>
+                                            <label className="mb-1.5 block text-sm font-medium text-[#1D1D1F] dark:text-xs dark:text-k-text-tertiary">
+                                                Nome do template <span className="text-[#FF3B30] dark:text-red-400">*</span>
+                                            </label>
+                                            <input
+                                                type="text"
+                                                placeholder={
+                                                    category === 'anamnese' ? 'Ex: Anamnese inicial completa'
+                                                    : category === 'checkin' ? 'Ex: Check-in semanal'
+                                                    : category === 'survey' ? 'Ex: Pesquisa de satisfação'
+                                                    : 'Ex: Feedback do programa concluído'
+                                                }
+                                                value={title}
+                                                onChange={(e) => setTitle(e.target.value)}
+                                                className="w-full rounded-lg border border-[#D2D2D7] bg-white px-4 py-3 text-sm text-[#1D1D1F] placeholder:text-[#AEAEB2] outline-none focus:border-[#007AFF] focus:ring-1 focus:ring-[#007AFF]/20 transition-all dark:rounded-xl dark:border-k-border-subtle dark:bg-glass-bg dark:text-k-text-primary dark:placeholder:text-k-text-quaternary dark:focus:border-violet-500/50 dark:focus:ring-2 dark:focus:ring-violet-500/10"
+                                            />
+                                        </div>
+
+                                        {/* Description */}
+                                        <div>
+                                            <label className="mb-1.5 block text-sm font-medium text-[#1D1D1F] dark:text-xs dark:text-k-text-tertiary">
+                                                Descrição <span className="font-normal text-[#86868B] dark:text-k-text-quaternary">(opcional)</span>
+                                            </label>
+                                            <textarea
+                                                placeholder="Descrição breve para o aluno"
+                                                value={description}
+                                                onChange={(e) => setDescription(e.target.value)}
+                                                className="min-h-[80px] w-full rounded-lg border border-[#D2D2D7] bg-white px-4 py-3 text-sm text-[#1D1D1F] placeholder:text-[#AEAEB2] outline-none focus:border-[#007AFF] focus:ring-1 focus:ring-[#007AFF]/20 resize-none transition-all dark:rounded-xl dark:border-k-border-subtle dark:bg-glass-bg dark:text-k-text-primary dark:placeholder:text-k-text-quaternary dark:focus:border-violet-500/50 dark:focus:ring-2 dark:focus:ring-violet-500/10"
+                                            />
+                                        </div>
+
+                                        {/* Toggle IA */}
+                                        <div>
+                                            <label className="flex items-start gap-3 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={aiEnabled}
+                                                    onChange={(e) => setAiEnabled(e.target.checked)}
+                                                    className="mt-0.5 h-4 w-4 rounded border-[#D2D2D7] text-[#007AFF] accent-[#007AFF] dark:border-k-border-subtle dark:text-violet-600 dark:accent-violet-600"
+                                                />
+                                                <span className="flex-1">
+                                                    <span className="flex items-center gap-1.5 text-sm font-medium text-[#1D1D1F] dark:text-k-text-primary">
+                                                        <Sparkles size={14} className="text-[#007AFF] dark:text-violet-400" />
+                                                        Criar com IA
+                                                    </span>
+                                                    <span className="mt-0.5 block text-xs text-[#86868B] dark:text-k-text-quaternary">
+                                                        A IA gera as perguntas a partir do seu objetivo. Você revisa e ajusta antes de salvar.
+                                                    </span>
+                                                </span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* ════════════════════════════════════════════════
+                            STEP 3: EDITOR — manual ou prompt IA
+                        ════════════════════════════════════════════════ */}
+                        {step === 3 && aiPromptVisible && (
+                            <div key="step3-ai-prompt">
+                                <div className="max-w-xl mx-auto">
+                                    <div className="rounded-2xl border border-[#D2D2D7] bg-white p-8 shadow-[0_1px_3px_rgba(0,0,0,0.08)] space-y-6 dark:border-k-border-primary dark:bg-surface-card dark:shadow-xl">
                                         <div className="flex items-center gap-3">
                                             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#007AFF]/10 dark:bg-violet-500/10">
                                                 <Sparkles size={20} className="text-[#007AFF] dark:text-violet-400" />
                                             </div>
                                             <div>
                                                 <h2 className="text-lg font-semibold text-[#1D1D1F] dark:font-bold dark:text-k-text-primary">Assistente IA</h2>
-                                                <p className="text-xs text-[#86868B] dark:text-k-text-secondary">Configure e gere seu formulário automaticamente</p>
+                                                <p className="text-xs text-[#86868B] dark:text-k-text-secondary">Descreva o objetivo e a IA gera as perguntas</p>
                                             </div>
                                         </div>
 
-                                        {/* Category — Segmented Control */}
-                                        <div>
-                                            <label className="mb-2 block text-sm font-medium text-[#1D1D1F] dark:text-xs dark:text-k-text-tertiary">
-                                                Categoria
-                                            </label>
-                                            <div className="grid grid-cols-3 gap-1 bg-[#F5F5F7] p-1 rounded-lg dark:bg-surface-inset dark:rounded-xl">
-                                                {CATEGORY_OPTIONS.map((opt) => (
-                                                    <label
-                                                        key={opt.value}
-                                                        className={`
-                                                            flex items-center justify-center rounded-md px-3 py-2.5 cursor-pointer transition-all duration-200
-                                                            ${category === opt.value
-                                                                ? 'bg-white text-[#1D1D1F] shadow-[0_1px_3px_rgba(0,0,0,0.1)] dark:bg-glass-bg-active dark:text-k-text-primary dark:shadow-sm dark:ring-1 dark:ring-k-border-subtle'
-                                                                : 'text-[#6E6E73] hover:text-[#1D1D1F] dark:text-k-text-tertiary dark:hover:text-k-text-secondary dark:hover:bg-glass-bg'}
-                                                        `}
-                                                    >
-                                                        <input
-                                                            type="radio"
-                                                            name="category"
-                                                            value={opt.value}
-                                                            checked={category === opt.value}
-                                                            onChange={() => setCategory(opt.value)}
-                                                            className="sr-only"
-                                                        />
-                                                        <span className="font-semibold text-xs tracking-wide">{opt.label}</span>
-                                                    </label>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        {/* Goal */}
                                         <div>
                                             <label className="mb-1.5 block text-sm font-medium text-[#1D1D1F] dark:text-xs dark:text-k-text-tertiary">
                                                 Objetivo <span className="text-[#FF3B30] dark:text-red-400">*</span>
                                             </label>
                                             <input
                                                 type="text"
-                                                placeholder={category === 'anamnese' ? 'Ex: coleta completa de dados do novo aluno' : category === 'checkin' ? 'Ex: acompanhamento semanal do aluno' : 'Ex: questionário de satisfação com o treino'}
+                                                placeholder={
+                                                    category === 'anamnese' ? 'Ex: coleta completa de dados do novo aluno'
+                                                    : category === 'checkin' ? 'Ex: acompanhamento semanal do aluno'
+                                                    : category === 'survey' ? 'Ex: questionário de satisfação com o treino'
+                                                    : 'Ex: avaliação geral ao fim do programa'
+                                                }
                                                 value={aiGoal}
                                                 onChange={(e) => setAiGoal(e.target.value)}
                                                 className="w-full rounded-lg border border-[#D2D2D7] bg-white px-4 py-3 text-sm text-[#1D1D1F] placeholder:text-[#AEAEB2] outline-none focus:border-[#007AFF] focus:ring-1 focus:ring-[#007AFF]/20 transition-all dark:rounded-xl dark:border-k-border-subtle dark:bg-glass-bg dark:text-k-text-primary dark:placeholder:text-k-text-quaternary dark:focus:border-violet-500/50 dark:focus:ring-2 dark:focus:ring-violet-500/10"
                                             />
                                         </div>
 
-                                        {/* Context */}
                                         <div>
                                             <label className="mb-1.5 block text-sm font-medium text-[#1D1D1F] dark:text-xs dark:text-k-text-tertiary">
                                                 Contexto adicional <span className="font-normal text-[#86868B] dark:text-k-text-quaternary">(opcional)</span>
@@ -623,88 +683,54 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                             />
                                         </div>
 
-                                    </div>
-
-                                    {/* Navigation */}
-                                    <div className="flex items-center justify-between mt-6">
-                                        <button
-                                            onClick={() => setStep('choose')}
-                                            className="flex items-center gap-1.5 text-sm font-medium text-[#007AFF] hover:text-[#0056B3] transition-colors px-4 py-2.5 rounded-xl dark:text-k-text-secondary dark:hover:text-k-text-primary dark:hover:bg-glass-bg"
-                                        >
-                                            <ChevronLeft size={16} />
-                                            Voltar
-                                        </button>
-                                        <button
-                                            onClick={handleGenerateAI}
-                                            disabled={isGeneratingAI || !aiGoal.trim()}
-                                            className="h-11 px-8 bg-[#007AFF] hover:bg-[#0066D6] text-white rounded-full font-medium text-sm transition-all disabled:opacity-50 flex items-center gap-2 dark:bg-violet-600 dark:hover:bg-violet-500 dark:rounded-xl dark:font-semibold dark:shadow-lg dark:shadow-violet-600/20"
-                                        >
-                                            {isGeneratingAI ? (
-                                                <>
-                                                    <Loader2 size={16} className="animate-spin" />
-                                                    Gerando...
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <Sparkles size={16} />
-                                                    Gerar Draft
-                                                </>
-                                            )}
-                                        </button>
+                                        <div className="flex items-center justify-between pt-2">
+                                            <button
+                                                onClick={() => setAiPromptVisible(false)}
+                                                className="text-sm font-medium text-[#86868B] hover:text-[#1D1D1F] transition-colors dark:text-k-text-quaternary dark:hover:text-k-text-primary"
+                                            >
+                                                Pular e editar manualmente
+                                            </button>
+                                            <button
+                                                onClick={handleGenerateAI}
+                                                disabled={isGeneratingAI || !aiGoal.trim()}
+                                                className="h-11 px-8 bg-[#007AFF] hover:bg-[#0066D6] text-white rounded-full font-medium text-sm transition-all disabled:opacity-50 flex items-center gap-2 dark:bg-violet-600 dark:hover:bg-violet-500 dark:rounded-xl"
+                                            >
+                                                {isGeneratingAI ? (
+                                                    <>
+                                                        <Loader2 size={16} className="animate-spin" />
+                                                        Gerando...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Sparkles size={16} />
+                                                        Gerar Draft
+                                                    </>
+                                                )}
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
-                            </motion.div>
+                            </div>
                         )}
 
-                        {/* ════════════════════════════════════════════════
-                            STEP 3: EDITOR
-                        ════════════════════════════════════════════════ */}
-                        {step === 'editor' && (
-                            <motion.div key="editor" {...stepAnimation}>
-                                <div className={`pb-24 ${showPreview ? 'flex gap-8 items-start' : 'max-w-3xl mx-auto'}`}>
+                        {step === 3 && !aiPromptVisible && (
+                            <div key="step3-editor">
+                                <div className={`pb-8 ${showPreview ? 'flex gap-8 items-start' : 'max-w-3xl mx-auto'}`}>
 
                                     {/* Left Column — Form */}
                                     <div className={`space-y-6 ${showPreview ? 'flex-1 min-w-0' : ''}`}>
 
-                                        {/* Card: Configuração */}
-                                        <div className="rounded-xl border border-[#D2D2D7] bg-white p-4 space-y-3 shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:border-k-border-subtle dark:bg-surface-card dark:shadow-none">
-                                            <div className="flex items-start gap-4">
-                                                <input
-                                                    type="text"
-                                                    placeholder="Título do Formulário"
-                                                    value={title}
-                                                    onChange={(e) => setTitle(e.target.value)}
-                                                    className="flex-1 bg-transparent text-base font-semibold text-[#1D1D1F] placeholder:text-[#AEAEB2] outline-none border-b border-transparent focus:border-[#007AFF]/50 pb-1 transition-all dark:text-k-text-primary dark:placeholder:text-k-text-quaternary dark:focus:border-violet-500/50"
-                                                />
-                                                <div className="flex bg-[#F5F5F7] rounded-lg p-0.5 shrink-0 dark:bg-surface-elevated">
-                                                    {CATEGORY_OPTIONS.map((opt) => (
-                                                        <button
-                                                            key={opt.value}
-                                                            type="button"
-                                                            onClick={() => setCategory(opt.value)}
-                                                            className={`px-3 py-1 text-xs rounded-md transition-all ${
-                                                                category === opt.value
-                                                                    ? 'bg-white text-[#1D1D1F] shadow-[0_1px_3px_rgba(0,0,0,0.1)] dark:bg-glass-bg-active dark:text-k-text-primary dark:shadow-sm'
-                                                                    : 'text-[#AEAEB2] hover:text-[#1D1D1F] dark:text-k-text-quaternary dark:hover:text-k-text-secondary'
-                                                            }`}
-                                                        >
-                                                            {opt.label}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                                {draftSource === 'ai_assisted' && (
-                                                    <span className="flex items-center gap-1 rounded-full bg-[#007AFF]/10 px-2 py-0.5 text-[10px] font-bold text-[#007AFF] border border-[#007AFF]/20 shrink-0 dark:bg-violet-500/10 dark:text-violet-400 dark:border-violet-500/20">
-                                                        <Sparkles size={10} strokeWidth={2} />
-                                                        IA
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <textarea
-                                                placeholder="Descrição breve para o aluno (opcional)"
-                                                value={description}
-                                                onChange={(e) => setDescription(e.target.value)}
-                                                className="w-full bg-transparent text-sm text-k-text-secondary placeholder:text-k-text-quaternary outline-none resize-none min-h-[40px]"
-                                            />
+                                        {/* Breadcrumb resumo (categoria + IA badge) */}
+                                        <div className="flex items-center gap-2 text-xs text-[#86868B] dark:text-k-text-tertiary">
+                                            <span className="rounded-full bg-[#F5F5F7] px-2.5 py-0.5 font-medium text-[#1D1D1F] dark:bg-surface-elevated dark:text-k-text-secondary">
+                                                {CATEGORY_CARDS.find(c => c.value === category)?.label ?? category}
+                                            </span>
+                                            {draftSource === 'ai_assisted' && (
+                                                <span className="flex items-center gap-1 rounded-full bg-[#007AFF]/10 px-2 py-0.5 text-[10px] font-bold text-[#007AFF] border border-[#007AFF]/20 dark:bg-violet-500/10 dark:text-violet-400 dark:border-violet-500/20">
+                                                    <Sparkles size={10} strokeWidth={2} />
+                                                    IA
+                                                </span>
+                                            )}
                                         </div>
 
                                         {/* Card: Perguntas */}
@@ -977,61 +1003,13 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                     )}
 
                                 </div>
-                            </motion.div>
+                            </div>
                         )}
-                    </AnimatePresence>
+                    </div>
                 </div>
             </div>
 
-            {/* Sticky Save Footer — only on editor step */}
-            {step === 'editor' && (
-                <div className="fixed bottom-0 left-0 right-0 z-sidebar border-t border-[#E8E8ED] bg-white/95 backdrop-blur-sm dark:border-k-border-subtle dark:bg-surface-card/95">
-                    <div className="max-w-3xl mx-auto px-8 py-3 flex items-center justify-between">
-                        <div className="text-xs text-[#86868B] flex items-center gap-2 dark:text-k-text-quaternary">
-                            <span>{questions.length} pergunta{questions.length !== 1 ? 's' : ''}</span>
-                            <span className="text-[#86868B]/50 dark:text-k-text-quaternary/50">&middot;</span>
-                            <span>~{Math.max(1, Math.ceil(questions.length * 0.8))} min</span>
-                            {hasUnsavedChanges && (
-                                <>
-                                    <span className="text-[#86868B]/50 dark:text-k-text-quaternary/50">&middot;</span>
-                                    <span className="text-[#FF9500] dark:text-yellow-500">Alterações não salvas</span>
-                                </>
-                            )}
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <button
-                                onClick={() => {
-                                    if (hasUnsavedChanges) {
-                                        if (!confirm('Você tem alterações não salvas. Deseja descartar?')) return
-                                    }
-                                    router.push('/forms/templates')
-                                }}
-                                className="text-sm text-[#6E6E73] hover:text-[#1D1D1F] font-medium transition-colors dark:text-k-text-quaternary dark:hover:text-k-text-primary"
-                            >
-                                Cancelar
-                            </button>
-                            <button
-                                onClick={handleSave}
-                                disabled={isSaving || questions.length === 0 || !title.trim()}
-                                className="px-5 py-2 bg-[#007AFF] hover:bg-[#0066D6] text-white text-sm font-medium rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 dark:bg-violet-600 dark:hover:bg-violet-500 dark:rounded-xl"
-                            >
-                                {isSaving ? (
-                                    <>
-                                        <Loader2 size={14} className="animate-spin" />
-                                        Salvando...
-                                    </>
-                                ) : (
-                                    isEditing
-                                        ? (existingTemplate?.trainer_id === null ? 'Salvar como Meu Template' : 'Salvar Alterações')
-                                        : 'Salvar Template'
-                                )}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            </BuilderShell>
+            </BuilderWizardShell>
 
             {/* Tour: Form Builder (auto-start on first visit) */}
             <TourRunner tourId="form_builder" steps={TOUR_STEPS.form_builder} autoStart />
