@@ -19,6 +19,8 @@ interface NavItem {
     href: string
     icon: React.ElementType
     onboardingId?: string
+    /** Extra path prefixes that also activate this nav item (e.g. /forms item ativa em /avaliacoes) */
+    extraActivePrefixes?: string[]
 }
 
 interface SidebarProps {
@@ -48,16 +50,11 @@ const navigation: NavItem[] = [
         onboardingId: 'sidebar-schedule',
     },
     {
-        name: 'Formulários',
+        name: 'Formulários e Avaliações',
         href: '/forms',
         icon: FileText,
         onboardingId: 'sidebar-forms',
-    },
-    {
-        name: 'Avaliações',
-        href: '/avaliacoes',
-        icon: Activity,
-        onboardingId: 'sidebar-avaliacoes',
+        extraActivePrefixes: ['/avaliacoes'],
     },
     {
         name: 'Financeiro',
@@ -106,7 +103,13 @@ export function Sidebar({ financialBadge, trainerName, trainerEmail, trainerAvat
         router.push('/login')
     }
 
-    const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/')
+    const isActive = (hrefOrItem: string | NavItem) => {
+        const matchesPath = (path: string) => pathname === path || pathname.startsWith(path + '/')
+        if (typeof hrefOrItem === 'string') return matchesPath(hrefOrItem)
+        if (matchesPath(hrefOrItem.href)) return true
+        if (hrefOrItem.extraActivePrefixes?.some(matchesPath)) return true
+        return false
+    }
 
     // Close profile popover on outside click
     const handleClickOutside = useCallback((e: MouseEvent) => {
@@ -184,7 +187,7 @@ export function Sidebar({ financialBadge, trainerName, trainerEmail, trainerAvat
             {/* Navigation */}
             <nav className={`flex-1 space-y-0.5 overflow-y-auto overflow-x-hidden ${isCollapsed ? 'px-2' : 'px-4'}`}>
                 {navigation.map((item) => {
-                    const active = isActive(item.href)
+                    const active = isActive(item)
                     const Icon = item.icon
                     return (
                         <div key={item.name} className="relative group/nav">
@@ -253,7 +256,7 @@ export function Sidebar({ financialBadge, trainerName, trainerEmail, trainerAvat
                     {(bibliotecaOpen || isCollapsed) && (
                         <div className={`mt-0.5 space-y-0.5 ${!isCollapsed ? 'pl-3' : ''}`}>
                             {bibliotecaItems.map(item => {
-                                const active = isActive(item.href)
+                                const active = isActive(item)
                                 return (
                                     <div key={item.name} className="relative group/nav">
                                         <Link

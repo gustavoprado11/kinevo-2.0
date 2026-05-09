@@ -7,6 +7,7 @@ import type { OnboardingState } from '@kinevo/shared/types/onboarding'
 import { Plus, Activity, Send, ChevronRight } from 'lucide-react'
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
 import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
+import { FormsAvaliacoesSegmented } from '@/components/forms/forms-avaliacoes-segmented'
 import { SessionListItem } from '@/components/assessments/session-list-item'
 import { CreateSessionModal } from '@/components/assessments/create-session-modal'
 import type { AssessmentSessionListItem } from '@kinevo/shared/types/assessments'
@@ -199,6 +200,8 @@ export function AvaliacoesClient({
                     </button>
                 </div>
             </div>
+
+            <FormsAvaliacoesSegmented active="avaliacoes" />
 
             {/* Proactive CTA — só aparece quando há em atraso */}
             {assessmentCounts.overdue > 0 && (

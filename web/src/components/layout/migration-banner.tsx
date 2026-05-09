@@ -5,16 +5,18 @@ import { Sparkles, X } from 'lucide-react'
 import { useOnboardingStore } from '@/stores/onboarding-store'
 import { updateOnboardingState } from '@/actions/onboarding/update-onboarding-state'
 
-const TIP_ID = 'fase2_migration_banner'
+const TIP_ID = 'm15_unification_banner'
 
-// M8/D1 — comunica a separação Formulários/Avaliações na primeira visita
-// pós-deploy. Persiste em onboarding_state.tips_dismissed.
+// M15 — comunica a re-unificação de Formulários e Avaliações no sidebar
+// (1 item composto + segmented control). Substitui o banner do M8/D1
+// (TIP_ID 'fase2_migration_banner') que comunicava a separação revertida.
 //
-// Importante: o store usa skipHydration:true, então o estado do localStorage
-// não é restaurado no mount — server é a fonte da verdade. Por isso fazemos
-// o sync direto (sem o debounce do _syncToServer) e só ocultamos o banner
-// localmente após a confirmação do server, garantindo que F5 imediato não
-// reapresente o banner.
+// Persiste em onboarding_state.tips_dismissed via store + server action
+// síncrona (mesmo pattern do M8). O store usa skipHydration:true, então
+// o estado do localStorage não é restaurado no mount — server é a fonte
+// da verdade. Por isso fazemos o sync direto (sem o debounce do
+// _syncToServer) e só ocultamos o banner localmente após a confirmação
+// do server, garantindo que F5 imediato não reapresente o banner.
 export function MigrationBanner() {
     const isHydrated = useOnboardingStore(s => s.isHydrated)
     const isDismissed = useOnboardingStore(s => s.state.tips_dismissed.includes(TIP_ID))
@@ -52,7 +54,7 @@ export function MigrationBanner() {
                 <Sparkles className="h-4 w-4 text-[#007AFF] dark:text-violet-400" />
             </div>
             <p className="flex-1 text-sm text-[#1D1D1F] dark:text-k-text-secondary">
-                Renomeamos para <strong className="font-semibold">Formulários</strong> e <strong className="font-semibold">Avaliações</strong>. Os 2 estão no menu lateral.
+                Reorganizamos: <strong className="font-semibold">Formulários e Avaliações</strong> voltaram a viver juntos no menu.
             </p>
             <button
                 type="button"

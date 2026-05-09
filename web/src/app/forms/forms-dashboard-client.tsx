@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
 import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
+import { FormsAvaliacoesSegmented } from '@/components/forms/forms-avaliacoes-segmented'
 
 // --- Helpers ---
 const TIMEZONE = 'America/Sao_Paulo'
@@ -337,6 +338,8 @@ export function FormsDashboardClient({
                     </button>
                 </div>
             </div>
+
+            <FormsAvaliacoesSegmented active="formularios" />
 
             {/* Proactive CTA — só aparece quando há pendência */}
             {pending.length > 0 && (
