@@ -14,7 +14,10 @@ import { X, Search, ClipboardList, Users, Check } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { colors } from '@/theme';
 import { useTrainerStudentsList } from '../../../hooks/useTrainerStudentsList';
-import { useAssessmentTemplates, type AssessmentTemplate } from '../../../hooks/useAssessmentTemplates';
+import {
+    useTrainerAssessmentTemplates,
+    type TrainerAssessmentTemplate,
+} from '../../../hooks/useTrainerAssessmentTemplates';
 import { useAssessmentSessionLifecycle } from '../../../hooks/useAssessmentSessionLifecycle';
 import { toast } from '../../../lib/toast';
 import { SUBJECT_AGE_KEY, SUBJECT_SEX_KEY } from '../../../lib/assessmentComputed';
@@ -25,7 +28,7 @@ import type { MeasurementInput } from '@kinevo/shared/types/assessments';
 interface Props {
     visible: boolean;
     onClose: () => void;
-    onCreated: (sessionId: string, student: TrainerStudent, template: AssessmentTemplate) => void;
+    onCreated: (sessionId: string, student: TrainerStudent, template: TrainerAssessmentTemplate) => void;
 }
 
 type Step = 'student' | 'template' | 'confirm';
@@ -42,7 +45,7 @@ export function CreateSessionModal({ visible, onClose, onCreated }: Props) {
     const [ageRaw, setAgeRaw] = useState('');
 
     const studentsList = useTrainerStudentsList();
-    const templatesList = useAssessmentTemplates();
+    const templatesList = useTrainerAssessmentTemplates();
     const lifecycle = useAssessmentSessionLifecycle();
 
     React.useEffect(() => {
@@ -260,7 +263,7 @@ export function CreateSessionModal({ visible, onClose, onCreated }: Props) {
                                 renderItem={({ item }) => (
                                     <PickRow
                                         title={item.title}
-                                        subtitle={item.description ?? `${item.question_count} testes`}
+                                        subtitle={item.description ?? `${item.section_count} ${item.section_count === 1 ? 'seção' : 'seções'}`}
                                         selected={item.id === templateId}
                                         onPress={() => {
                                             setTemplateId(item.id);
