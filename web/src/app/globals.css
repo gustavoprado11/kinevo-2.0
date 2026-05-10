@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* Kinevo design tokens (auto-generated from @kinevo/shared/tokens v2).
+   Adds `--k-*` vars used pelos componentes V2 (Fase 1+).
+   Não sobrescreve nenhuma var existente — Shield Strategy preservada. */
+@import "./_tokens.generated.css";
+
 /* ═══════════════════════════════════════════════════════════════════
    THE SHIELD STRATEGY — Light Mode Foundation
    

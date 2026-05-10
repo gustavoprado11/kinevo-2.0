@@ -25,7 +25,8 @@
     "include": [
         "types/**/*.ts",
         "utils/**/*.ts",
-        "lib/**/*.ts"
+        "lib/**/*.ts",
+        "tokens/**/*.ts"
     ],
     "exclude": [
         "node_modules"

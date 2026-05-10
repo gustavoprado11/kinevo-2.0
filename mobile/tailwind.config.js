@@ -13,6 +13,14 @@ module.exports = {
                     background: '#0D0D17',
                     surface: '#1A1A2E'
                 }
+            },
+            fontFamily: {
+                sans: ['PlusJakartaSans_500Medium', 'system-ui', 'sans-serif'],
+                'jakarta-regular': ['PlusJakartaSans_400Regular'],
+                'jakarta-medium': ['PlusJakartaSans_500Medium'],
+                'jakarta-semibold': ['PlusJakartaSans_600SemiBold'],
+                'jakarta-bold': ['PlusJakartaSans_700Bold'],
+                'jakarta-extrabold': ['PlusJakartaSans_800ExtraBold'],
             }
         },
     },

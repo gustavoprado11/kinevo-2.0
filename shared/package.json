@@ -13,6 +13,8 @@
         "./types": "./types/index.ts",
         "./types/*": "./types/*",
         "./utils/*": "./utils/*",
-        "./lib/*": "./lib/*"
+        "./lib/*": "./lib/*",
+        "./tokens": "./tokens/index.ts",
+        "./tokens/*": "./tokens/*"
     }
 }

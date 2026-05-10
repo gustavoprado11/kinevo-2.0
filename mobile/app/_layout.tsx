@@ -2,9 +2,18 @@ import React from "react";
 import { Stack, usePathname, useRouter } from "expo-router";
 import { Alert, Platform } from "react-native";
 import * as ScreenOrientation from 'expo-screen-orientation';
+import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
+import {
+    useFonts,
+    PlusJakartaSans_400Regular,
+    PlusJakartaSans_500Medium,
+    PlusJakartaSans_600SemiBold,
+    PlusJakartaSans_700Bold,
+    PlusJakartaSans_800ExtraBold,
+} from "@expo-google-fonts/plus-jakarta-sans";
 import { AuthProvider } from "../contexts/AuthContext";
 import { RoleModeProvider, useRoleMode } from "../contexts/RoleModeContext";
 import { usePushNotifications } from "../hooks/usePushNotifications";
@@ -13,6 +22,9 @@ import { ConnectionBanner } from "../components/shared/ConnectionBanner";
 import { useNetworkStatus } from "../hooks/useNetworkStatus";
 import { colors } from "../theme";
 import "../global.css";
+
+// Mantém splash visível até as fontes carregarem.
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 if (__DEV__) console.log("[Layout] Iniciando RootLayout");
 
@@ -374,12 +386,30 @@ function GlobalOverlays() {
 export default function RootLayout() {
     if (__DEV__) console.log("[Layout] Renderizando Provider Wrapper");
 
+    const [fontsLoaded, fontsError] = useFonts({
+        PlusJakartaSans_400Regular,
+        PlusJakartaSans_500Medium,
+        PlusJakartaSans_600SemiBold,
+        PlusJakartaSans_700Bold,
+        PlusJakartaSans_800ExtraBold,
+    });
+
+    React.useEffect(() => {
+        if (fontsLoaded || fontsError) {
+            SplashScreen.hideAsync().catch(() => {});
+        }
+    }, [fontsLoaded, fontsError]);
+
     // Lock iPhone to portrait; iPad supports all orientations via app.json
     React.useEffect(() => {
         if (Platform.OS === 'ios' && !Platform.isPad) {
             ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
         }
     }, []);
+
+    if (!fontsLoaded && !fontsError) {
+        return null;
+    }
 
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>

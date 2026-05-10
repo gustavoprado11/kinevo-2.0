@@ -10,6 +10,7 @@
     "web": "npm run dev --workspace=web",
     "mobile": "npm run start --workspace=mobile",
     "gen:types": "supabase gen types typescript --project-id $SUPABASE_PROJECT_REF > shared/types/database.ts",
+    "tokens:sync": "npm run sync-tokens --workspace=web",
     "test:coverage": "npm run test:coverage --workspace=shared"
   },
   "overrides": {

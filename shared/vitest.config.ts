@@ -9,6 +9,7 @@ export default defineConfig({
             'lib/**/*.test.ts',
             'utils/**/*.test.ts',
             'constants/**/*.test.ts',
+            'tokens/**/*.test.ts',
         ],
         exclude: ['node_modules'],
         coverage: {
