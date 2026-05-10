@@ -3,7 +3,7 @@ import { ScrollView, Text, View } from "react-native";
 import { Plus } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { PressableScale } from "../../shared/PressableScale";
-import { colors } from "@/theme";
+import { useV2Colors } from "@/hooks/useV2Colors";
 import type { Workout } from "@/stores/program-builder-store";
 
 const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
@@ -21,6 +21,7 @@ export function WorkoutTabBar({
     onSelectWorkout,
     onAddWorkout,
 }: WorkoutTabBarProps) {
+    const colors = useV2Colors();
     const scrollRef = useRef<ScrollView>(null);
 
     useEffect(() => {
@@ -60,9 +61,9 @@ export function WorkoutTabBar({
                                 paddingHorizontal: 14,
                                 paddingVertical: 10,
                                 borderRadius: 14,
-                                backgroundColor: isActive ? colors.brand.primary : '#ffffff',
+                                backgroundColor: isActive ? colors.purple[600] : colors.surface.card,
                                 borderWidth: 1,
-                                borderColor: isActive ? colors.brand.primary : '#e2e8f0',
+                                borderColor: isActive ? colors.purple[600] : colors.border.default,
                                 shadowColor: '#000',
                                 shadowOffset: { width: 0, height: 1 },
                                 shadowOpacity: isActive ? 0.12 : 0.04,
@@ -75,7 +76,7 @@ export function WorkoutTabBar({
                                 style={{
                                     fontSize: 13,
                                     fontWeight: "600",
-                                    color: isActive ? '#ffffff' : colors.text.primary,
+                                    color: isActive ? '#FFFFFF' : colors.text.primary,
                                 }}
                                 numberOfLines={1}
                             >
@@ -101,7 +102,7 @@ export function WorkoutTabBar({
                                                 height: 6,
                                                 borderRadius: 3,
                                                 backgroundColor: isDay
-                                                    ? (isActive ? '#ffffff' : colors.brand.primary)
+                                                    ? (isActive ? '#FFFFFF' : colors.purple[600])
                                                     : (isActive ? 'rgba(255,255,255,0.2)' : '#d1d5db'),
                                             }}
                                         />
@@ -125,7 +126,7 @@ export function WorkoutTabBar({
                         width: 38,
                         height: 38,
                         borderRadius: 12,
-                        backgroundColor: '#ffffff',
+                        backgroundColor: colors.surface.card,
                         borderWidth: 1.5,
                         borderColor: '#e2e8f0',
                         borderStyle: 'dashed',
@@ -133,7 +134,7 @@ export function WorkoutTabBar({
                         justifyContent: "center",
                     }}
                 >
-                    <Plus size={16} color={colors.brand.primary} />
+                    <Plus size={16} color={colors.purple[600]} />
                 </PressableScale>
             </ScrollView>
         </View>

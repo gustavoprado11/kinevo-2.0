@@ -4,6 +4,7 @@ import { FileText, Send, Trash2, Edit3 } from "lucide-react-native";
 import { Swipeable } from "react-native-gesture-handler";
 import * as Haptics from "expo-haptics";
 import type { FormTemplate } from "../../../hooks/useTrainerFormTemplates";
+import { useV2Colors } from "../../../hooks/useV2Colors";
 
 const CATEGORY_LABELS: Record<string, string> = {
     anamnese: "Anamnese",
@@ -19,6 +20,7 @@ interface Props {
 }
 
 export function FormTemplateCard({ template, onAssign, onEdit, onDelete }: Props) {
+    const colors = useV2Colors();
     const swipeableRef = useRef<Swipeable>(null);
 
     const renderRightActions = () => {
@@ -89,12 +91,14 @@ export function FormTemplateCard({ template, onAssign, onEdit, onDelete }: Props
             }}
             activeOpacity={onEdit ? 0.7 : 1}
             style={{
-                backgroundColor: "#ffffff",
+                backgroundColor: colors.surface.card,
                 borderRadius: 14,
                 padding: 16,
                 marginBottom: 10,
                 flexDirection: "row",
                 alignItems: "center",
+                borderWidth: 1,
+                borderColor: colors.border.default,
             }}
         >
             <View
@@ -102,27 +106,27 @@ export function FormTemplateCard({ template, onAssign, onEdit, onDelete }: Props
                     width: 40,
                     height: 40,
                     borderRadius: 10,
-                    backgroundColor: "#f3f0ff",
+                    backgroundColor: colors.purple[100],
                     alignItems: "center",
                     justifyContent: "center",
                     marginRight: 12,
                 }}
             >
-                <FileText size={20} color="#7c3aed" />
+                <FileText size={20} color={colors.purple[700]} />
             </View>
 
             <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 15, fontWeight: "600", color: "#1a1a2e" }}>{template.title}</Text>
+                <Text style={{ fontSize: 15, fontWeight: "600", color: colors.text.primary }}>{template.title}</Text>
                 <View style={{ flexDirection: "row", alignItems: "center", marginTop: 3 }}>
-                    <Text style={{ fontSize: 12, color: "#7c3aed", fontWeight: "500" }}>
+                    <Text style={{ fontSize: 12, color: colors.purple[700], fontWeight: "500" }}>
                         {CATEGORY_LABELS[template.category] || template.category}
                     </Text>
-                    <Text style={{ fontSize: 12, color: "#94a3b8", marginHorizontal: 6 }}>·</Text>
-                    <Text style={{ fontSize: 12, color: "#64748b" }}>
+                    <Text style={{ fontSize: 12, color: colors.text.quaternary, marginHorizontal: 6 }}>·</Text>
+                    <Text style={{ fontSize: 12, color: colors.text.secondary }}>
                         {template.question_count} {template.question_count === 1 ? "pergunta" : "perguntas"}
                     </Text>
-                    <Text style={{ fontSize: 12, color: "#94a3b8", marginHorizontal: 6 }}>·</Text>
-                    <Text style={{ fontSize: 12, color: "#64748b" }}>
+                    <Text style={{ fontSize: 12, color: colors.text.quaternary, marginHorizontal: 6 }}>·</Text>
+                    <Text style={{ fontSize: 12, color: colors.text.secondary }}>
                         {template.response_count} {template.response_count === 1 ? "resposta" : "respostas"}
                     </Text>
                 </View>

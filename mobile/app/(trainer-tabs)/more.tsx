@@ -1,7 +1,8 @@
 import React, { useCallback, useState } from "react";
-import { View, Text, ScrollView, Image, Linking, Alert, ActivityIndicator } from "react-native";
+import { View, Text, ScrollView, Linking, Alert, ActivityIndicator, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
 import {
     ArrowLeftRight,
     Bell,
@@ -10,6 +11,10 @@ import {
     ExternalLink,
     LogOut,
     MessageCircle,
+    Sun,
+    Moon,
+    Monitor,
+    Check,
 } from "lucide-react-native";
 import Animated, { FadeIn, FadeInUp, Easing } from "react-native-reanimated";
 import Constants from "expo-constants";
@@ -17,39 +22,52 @@ import { useRoleMode } from "../../contexts/RoleModeContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { PressableScale } from "../../components/shared/PressableScale";
 import { supabase } from "../../lib/supabase";
+import { v2 } from "@kinevo/shared/tokens";
+import { Avatar, KCard, KStatus, type KStatusType } from "../../components/v2";
+import { useV2Colors } from "../../hooks/useV2Colors";
+import { AdaptiveModal } from "../../components/shared/AdaptiveModal";
+import {
+    useThemePreferenceStore,
+    type ThemeMode,
+} from "../../stores/themePreferenceStore";
+
+// Palette light fallback usada em arrays/configs module-level. Componentes
+// chamam useV2Colors() para tokens sensíveis a modo.
+const { colors, typography, spacing, radius } = v2;
 
 const WEB_BASE_URL = "https://app.kinevo.com.br";
-const SUPPORT_WHATSAPP_URL = "https://wa.me/5531999064997?text=Ol%C3%A1!%20Preciso%20de%20ajuda%20com%20o%20app%20Kinevo.";
+const SUPPORT_WHATSAPP_URL =
+    "https://wa.me/5531999064997?text=Ol%C3%A1!%20Preciso%20de%20ajuda%20com%20o%20app%20Kinevo.";
 
-function subscriptionLabel(status: string | null): { text: string; color: string; bg: string } {
+function subscriptionStatusInfo(status: string | null): { text: string; type: KStatusType } {
     switch (status) {
         case "active":
-            return { text: "Ativa", color: "#16a34a", bg: "#f0fdf4" };
+            return { text: "Pro · ativa", type: "success" };
         case "trialing":
-            return { text: "Teste gratuito", color: "#0ea5e9", bg: "#f0f9ff" };
+            return { text: "Teste gratuito", type: "info" };
         case "past_due":
-            return { text: "Pagamento pendente", color: "#f59e0b", bg: "#fffbeb" };
+            return { text: "Pagamento pendente", type: "warning" };
         case "canceled":
-            return { text: "Cancelada", color: "#ef4444", bg: "#fef2f2" };
+            return { text: "Cancelada", type: "danger" };
         default:
-            return { text: "Sem assinatura", color: "#64748b", bg: "#f1f5f9" };
+            return { text: "Sem assinatura", type: "neutral" };
     }
 }
 
-/** Section header — iOS Settings style */
-function SectionHeader({ title, delay }: { title: string; delay: number }) {
+function SectionLabel({ title, delay }: { title: string; delay: number }) {
+    const colors = useV2Colors();
     return (
         <Animated.Text
             entering={FadeInUp.delay(delay).duration(300).easing(Easing.out(Easing.cubic))}
             style={{
+                fontFamily: "PlusJakartaSans_700Bold",
                 fontSize: 11,
-                fontWeight: "700",
-                color: "#94a3b8",
+                color: colors.text.tertiary,
                 textTransform: "uppercase",
-                letterSpacing: 1.5,
-                marginBottom: 8,
-                marginTop: 24,
-                paddingLeft: 4,
+                letterSpacing: 1.4,
+                marginBottom: spacing[2],
+                marginTop: spacing[5],
+                paddingLeft: 2,
             }}
         >
             {title}
@@ -57,73 +75,115 @@ function SectionHeader({ title, delay }: { title: string; delay: number }) {
     );
 }
 
-/** Reusable row inside a section card */
 function MenuRow({
     icon,
     label,
+    sub,
     onPress,
     trailing,
+    danger,
+    disabled,
 }: {
     icon: React.ReactNode;
     label: string;
+    sub?: React.ReactNode;
     onPress: () => void;
     trailing?: React.ReactNode | null;
+    danger?: boolean;
+    disabled?: boolean;
 }) {
+    const colors = useV2Colors();
     return (
         <PressableScale
             onPress={onPress}
-            pressScale={0.98}
-            style={{ flexDirection: "row", alignItems: "center", paddingVertical: 16, paddingHorizontal: 20 }}
+            pressScale={0.99}
+            disabled={disabled}
+            style={{
+                flexDirection: "row",
+                alignItems: "center",
+                paddingVertical: spacing[3] + 2,
+                paddingHorizontal: spacing[4],
+                opacity: disabled ? 0.6 : 1,
+            }}
+            accessibilityLabel={label}
         >
             {icon}
-            <Text style={{ fontSize: 14, fontWeight: "500", color: "#0f172a", flex: 1 }}>
-                {label}
-            </Text>
-            {trailing !== null && (trailing ?? <ChevronRight size={16} color="#94a3b8" />)}
+            <View style={{ flex: 1, marginLeft: spacing[3] }}>
+                <Text
+                    style={{
+                        fontFamily: "PlusJakartaSans_600SemiBold",
+                        fontSize: 14,
+                        color: danger ? colors.semantic.danger.fg : colors.text.primary,
+                    }}
+                >
+                    {label}
+                </Text>
+                {sub ? <View style={{ marginTop: 4 }}>{sub}</View> : null}
+            </View>
+            {trailing !== null
+                ? trailing ?? <ChevronRight size={16} color={colors.text.quaternary} />
+                : null}
         </PressableScale>
     );
 }
 
 function Divider() {
-    return <View style={{ height: 1, backgroundColor: "#f1f5f9", marginHorizontal: 20 }} />;
+    const colors = useV2Colors();
+    return (
+        <View
+            style={{
+                height: 1,
+                backgroundColor: colors.border.subtle,
+                marginHorizontal: spacing[4],
+            }}
+        />
+    );
 }
 
 function IconBox({ bg, children }: { bg: string; children: React.ReactNode }) {
     return (
-        <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: bg, alignItems: "center", justifyContent: "center", marginRight: 14 }}>
+        <View
+            style={{
+                width: 32,
+                height: 32,
+                borderRadius: radius.sm,
+                backgroundColor: bg,
+                alignItems: "center",
+                justifyContent: "center",
+            }}
+        >
             {children}
         </View>
     );
 }
 
-const CARD_STYLE = {
-    backgroundColor: "#ffffff",
-    borderRadius: 20,
-    overflow: "hidden" as const,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.04)",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
-};
+const APPEARANCE_OPTIONS: Array<{ mode: ThemeMode; label: string; icon: typeof Sun }> = [
+    { mode: "system", label: "Sistema", icon: Monitor },
+    { mode: "light", label: "Claro", icon: Sun },
+    { mode: "dark", label: "Escuro", icon: Moon },
+];
+
+function appearanceLabel(mode: ThemeMode): string {
+    return APPEARANCE_OPTIONS.find((o) => o.mode === mode)?.label ?? "Sistema";
+}
+
+function appearanceIcon(mode: ThemeMode): typeof Sun {
+    return APPEARANCE_OPTIONS.find((o) => o.mode === mode)?.icon ?? Monitor;
+}
 
 export default function MoreScreen() {
+    const colors = useV2Colors();
     const { trainerProfile, subscriptionStatus, switchToStudent } = useRoleMode();
     const { signOut } = useAuth();
     const router = useRouter();
     const appVersion = Constants.expoConfig?.version ?? "1.0.0";
-    const subBadge = subscriptionLabel(subscriptionStatus);
-
-    const initials = trainerProfile?.name
-        ?.split(" ")
-        .slice(0, 2)
-        .map((w) => w[0])
-        .join("")
-        .toUpperCase() || "?";
+    const subInfo = subscriptionStatusInfo(subscriptionStatus);
+    const themeMode = useThemePreferenceStore((s) => s.mode);
+    const setThemeMode = useThemePreferenceStore((s) => s.setMode);
+    const AppearanceIcon = appearanceIcon(themeMode);
 
     const [loadingPortal, setLoadingPortal] = useState(false);
+    const [appearanceModalOpen, setAppearanceModalOpen] = useState(false);
 
     const handleManageSubscription = useCallback(async () => {
         setLoadingPortal(true);
@@ -178,145 +238,352 @@ export default function MoreScreen() {
     };
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: "#F2F2F7" }} edges={["top"]}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.surface.canvas }} edges={["top"]}>
             <ScrollView
                 style={{ flex: 1 }}
-                contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 120 }}
+                contentContainerStyle={{
+                    paddingHorizontal: spacing[5],
+                    paddingTop: spacing[4],
+                    paddingBottom: 120,
+                }}
                 showsVerticalScrollIndicator={false}
             >
                 {/* Header */}
                 <Animated.View entering={FadeIn.duration(400)}>
-                    <Text style={{ fontSize: 28, fontWeight: "800", color: "#0f172a" }}>
+                    <Text
+                        style={{
+                            fontFamily: "PlusJakartaSans_800ExtraBold",
+                            fontSize: typography.display.size,
+                            lineHeight: typography.display.lineHeight,
+                            letterSpacing: typography.display.letterSpacing,
+                            color: colors.text.primary,
+                        }}
+                    >
                         Mais
                     </Text>
                 </Animated.View>
 
-                {/* Trainer Profile Card */}
+                {/* Hero — gradient escuro + glow + Avatar do trainer */}
                 <Animated.View
                     entering={FadeInUp.delay(60).duration(300).easing(Easing.out(Easing.cubic))}
-                    style={{ ...CARD_STYLE, padding: 20, marginTop: 20 }}
+                    style={{
+                        marginTop: spacing[5],
+                        borderRadius: radius.lg,
+                        overflow: "hidden",
+                        shadowColor: colors.purple[700],
+                        shadowOffset: { width: 0, height: 8 },
+                        shadowOpacity: 0.18,
+                        shadowRadius: 24,
+                        elevation: 8,
+                    }}
                 >
-                    <View style={{ flexDirection: "row", alignItems: "center" }}>
-                        {trainerProfile?.avatar_url ? (
-                            <Image
-                                source={{ uri: trainerProfile.avatar_url }}
-                                style={{ width: 52, height: 52, borderRadius: 16, marginRight: 14, backgroundColor: "#f1f5f9" }}
-                            />
-                        ) : (
+                    <LinearGradient
+                        colors={[colors.neutral[900], colors.neutral[800], colors.purple[900]]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={{ padding: spacing[5] }}
+                    >
+                        {/* Glow radial roxo (decorativo) */}
+                        <View
+                            pointerEvents="none"
+                            style={{
+                                position: "absolute",
+                                top: -60,
+                                right: -40,
+                                width: 180,
+                                height: 180,
+                                borderRadius: 90,
+                                backgroundColor: colors.purple[500],
+                                opacity: 0.18,
+                            }}
+                        />
+
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: spacing[3] }}>
                             <View
                                 style={{
-                                    width: 52,
-                                    height: 52,
-                                    borderRadius: 16,
-                                    backgroundColor: "#f5f3ff",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    marginRight: 14,
+                                    padding: 3,
+                                    borderRadius: 999,
+                                    backgroundColor: colors.purple[500],
                                 }}
                             >
-                                <Text style={{ fontSize: 18, fontWeight: "700", color: "#7c3aed" }}>{initials}</Text>
-                            </View>
-                        )}
-                        <View style={{ flex: 1 }}>
-                            <Text style={{ fontSize: 16, fontWeight: "700", color: "#0f172a" }}>
-                                {trainerProfile?.name || "Treinador"}
-                            </Text>
-                            <Text style={{ fontSize: 13, color: "#64748b", marginTop: 2 }}>
-                                {trainerProfile?.email || ""}
-                            </Text>
-                        </View>
-                    </View>
-                </Animated.View>
-
-                {/* ── Comunicação ── */}
-                <SectionHeader title="Comunicação" delay={100} />
-                <Animated.View
-                    entering={FadeInUp.delay(120).duration(300).easing(Easing.out(Easing.cubic))}
-                    style={CARD_STYLE}
-                >
-                    <MenuRow
-                        icon={<IconBox bg="#ede9fe"><Bell size={18} color="#7c3aed" /></IconBox>}
-                        label="Notificações"
-                        onPress={() => router.push("/notification-settings" as any)}
-                    />
-                </Animated.View>
-
-                {/* ── Conta ── */}
-                <SectionHeader title="Conta" delay={160} />
-                <Animated.View
-                    entering={FadeInUp.delay(180).duration(300).easing(Easing.out(Easing.cubic))}
-                    style={CARD_STYLE}
-                >
-                    {/* Subscription */}
-                    <PressableScale
-                        onPress={handleManageSubscription}
-                        pressScale={0.98}
-                        disabled={loadingPortal}
-                        style={{ flexDirection: "row", alignItems: "center", paddingVertical: 16, paddingHorizontal: 20, opacity: loadingPortal ? 0.6 : 1 }}
-                    >
-                        <IconBox bg="#fffbeb">
-                            <Crown size={18} color="#f59e0b" />
-                        </IconBox>
-                        <View style={{ flex: 1 }}>
-                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#0f172a" }}>
-                                Assinatura Kinevo
-                            </Text>
-                            <View style={{ flexDirection: "row", alignItems: "center", marginTop: 4, gap: 6 }}>
-                                <View style={{ backgroundColor: subBadge.bg, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 100 }}>
-                                    <Text style={{ fontSize: 10, fontWeight: "700", color: subBadge.color }}>{subBadge.text}</Text>
+                                <View
+                                    style={{
+                                        padding: 2,
+                                        borderRadius: 999,
+                                        backgroundColor: "#FFFFFF",
+                                    }}
+                                >
+                                    <Avatar
+                                        name={trainerProfile?.name ?? "Treinador"}
+                                        size="lg"
+                                        src={trainerProfile?.avatar_url ?? undefined}
+                                    />
                                 </View>
                             </View>
+
+                            <View style={{ flex: 1 }}>
+                                <View
+                                    style={{ flexDirection: "row", alignItems: "center", gap: spacing[2] }}
+                                >
+                                    <Text
+                                        style={{
+                                            fontFamily: "PlusJakartaSans_800ExtraBold",
+                                            fontSize: 17,
+                                            color: "#FFFFFF",
+                                            letterSpacing: -0.4,
+                                            flex: 1,
+                                        }}
+                                        numberOfLines={1}
+                                    >
+                                        {trainerProfile?.name || "Treinador"}
+                                    </Text>
+                                    {subscriptionStatus === "active" ? (
+                                        <View
+                                            style={{
+                                                backgroundColor: "rgba(245,158,11,0.18)",
+                                                paddingHorizontal: spacing[2],
+                                                paddingVertical: 2,
+                                                borderRadius: radius.sm,
+                                                borderWidth: 1,
+                                                borderColor: "rgba(245,158,11,0.4)",
+                                            }}
+                                        >
+                                            <Text
+                                                style={{
+                                                    fontFamily: "PlusJakartaSans_800ExtraBold",
+                                                    fontSize: 10,
+                                                    color: "#FCD34D",
+                                                    letterSpacing: 0.6,
+                                                }}
+                                            >
+                                                PRO
+                                            </Text>
+                                        </View>
+                                    ) : null}
+                                </View>
+                                <Text
+                                    style={{
+                                        fontFamily: "PlusJakartaSans_500Medium",
+                                        fontSize: 12,
+                                        color: "rgba(255,255,255,0.6)",
+                                        marginTop: 2,
+                                    }}
+                                    numberOfLines={1}
+                                >
+                                    {trainerProfile?.email || ""}
+                                </Text>
+                            </View>
                         </View>
-                        {loadingPortal ? (
-                            <ActivityIndicator size="small" color="#94a3b8" />
-                        ) : (
-                            <ExternalLink size={16} color="#94a3b8" />
-                        )}
-                    </PressableScale>
-
-                    <Divider />
-
-                    {/* Switch to Student */}
-                    <MenuRow
-                        icon={<IconBox bg="#f0fdf4"><ArrowLeftRight size={18} color="#16a34a" /></IconBox>}
-                        label="Alternar para modo aluno"
-                        onPress={handleSwitchToStudent}
-                        trailing={null}
-                    />
+                    </LinearGradient>
                 </Animated.View>
 
-                {/* ── Suporte ── */}
-                <SectionHeader title="Suporte" delay={220} />
+                {/* Comunicação */}
+                <SectionLabel title="Comunicação" delay={120} />
                 <Animated.View
-                    entering={FadeInUp.delay(240).duration(300).easing(Easing.out(Easing.cubic))}
-                    style={CARD_STYLE}
+                    entering={FadeInUp.delay(140).duration(300).easing(Easing.out(Easing.cubic))}
                 >
-                    <MenuRow
-                        icon={<IconBox bg="#f0fdf4"><MessageCircle size={18} color="#16a34a" /></IconBox>}
-                        label="Ajuda via WhatsApp"
-                        onPress={() => Linking.openURL(SUPPORT_WHATSAPP_URL)}
-                        trailing={<ExternalLink size={16} color="#94a3b8" />}
-                    />
-                    <Divider />
-                    <PressableScale
-                        onPress={handleSignOut}
-                        pressScale={0.98}
-                        style={{ flexDirection: "row", alignItems: "center", paddingVertical: 16, paddingHorizontal: 20 }}
-                    >
-                        <IconBox bg="#fef2f2">
-                            <LogOut size={18} color="#ef4444" />
-                        </IconBox>
-                        <Text style={{ fontSize: 14, fontWeight: "500", color: "#ef4444", flex: 1 }}>
-                            Sair da conta
-                        </Text>
-                    </PressableScale>
+                    <KCard style={{ padding: 0 }}>
+                        <MenuRow
+                            icon={
+                                <IconBox bg={colors.purple[100]}>
+                                    <Bell size={16} color={colors.purple[700]} strokeWidth={2.2} />
+                                </IconBox>
+                            }
+                            label="Notificações"
+                            onPress={() => router.push("/notification-settings" as never)}
+                        />
+                    </KCard>
                 </Animated.View>
 
-                {/* Version */}
-                <Text style={{ textAlign: "center", fontSize: 11, color: "#cbd5e1", marginTop: 24 }}>
-                    Kinevo v{appVersion} — Modo Treinador
-                </Text>
+                {/* Conta */}
+                <SectionLabel title="Conta" delay={180} />
+                <Animated.View
+                    entering={FadeInUp.delay(200).duration(300).easing(Easing.out(Easing.cubic))}
+                >
+                    <KCard style={{ padding: 0 }}>
+                        <MenuRow
+                            icon={
+                                <IconBox bg={colors.semantic.warning.bg}>
+                                    <Crown size={16} color={colors.semantic.warning.fg} strokeWidth={2.2} />
+                                </IconBox>
+                            }
+                            label="Assinatura Kinevo"
+                            sub={<KStatus type={subInfo.type} label={subInfo.text} layout="pill" size="sm" />}
+                            onPress={handleManageSubscription}
+                            disabled={loadingPortal}
+                            trailing={
+                                loadingPortal ? (
+                                    <ActivityIndicator size="small" color={colors.text.quaternary} />
+                                ) : (
+                                    <ExternalLink size={16} color={colors.text.quaternary} />
+                                )
+                            }
+                        />
+                        <Divider />
+                        <MenuRow
+                            icon={
+                                <IconBox bg={colors.semantic.success.bg}>
+                                    <ArrowLeftRight size={16} color={colors.semantic.success.fg} strokeWidth={2.2} />
+                                </IconBox>
+                            }
+                            label="Alternar para modo aluno"
+                            onPress={handleSwitchToStudent}
+                        />
+                        <Divider />
+                        <MenuRow
+                            icon={
+                                <IconBox bg={colors.purple[100]}>
+                                    <AppearanceIcon size={16} color={colors.purple[700]} strokeWidth={2.2} />
+                                </IconBox>
+                            }
+                            label="Aparência"
+                            sub={
+                                <Text
+                                    style={{
+                                        fontFamily: "PlusJakartaSans_500Medium",
+                                        fontSize: 12,
+                                        color: colors.text.tertiary,
+                                    }}
+                                >
+                                    {appearanceLabel(themeMode)}
+                                </Text>
+                            }
+                            onPress={() => setAppearanceModalOpen(true)}
+                        />
+                    </KCard>
+                </Animated.View>
+
+                {/* Suporte */}
+                <SectionLabel title="Suporte" delay={240} />
+                <Animated.View
+                    entering={FadeInUp.delay(260).duration(300).easing(Easing.out(Easing.cubic))}
+                >
+                    <KCard style={{ padding: 0 }}>
+                        <MenuRow
+                            icon={
+                                <IconBox bg={colors.semantic.success.bg}>
+                                    <MessageCircle size={16} color={colors.semantic.success.fg} strokeWidth={2.2} />
+                                </IconBox>
+                            }
+                            label="Ajuda via WhatsApp"
+                            onPress={() => Linking.openURL(SUPPORT_WHATSAPP_URL)}
+                            trailing={<ExternalLink size={16} color={colors.text.quaternary} />}
+                        />
+                        <Divider />
+                        <MenuRow
+                            icon={
+                                <IconBox bg={colors.semantic.danger.bg}>
+                                    <LogOut size={16} color={colors.semantic.danger.fg} strokeWidth={2.2} />
+                                </IconBox>
+                            }
+                            label="Sair da conta"
+                            onPress={handleSignOut}
+                            danger
+                            trailing={null}
+                        />
+                    </KCard>
+                </Animated.View>
+
+                {/* Version (long-press em dev abre o DS Showcase) — preservado da Fase 1 */}
+                <Pressable
+                    onLongPress={() => {
+                        if (!__DEV__) return;
+                        router.push("/(dev)/components-showcase");
+                    }}
+                    delayLongPress={800}
+                    accessibilityRole="text"
+                    accessibilityLabel={`Kinevo versão ${appVersion}, modo treinador`}
+                >
+                    <Text
+                        style={{
+                            textAlign: "center",
+                            fontFamily: "PlusJakartaSans_500Medium",
+                            fontSize: 11,
+                            color: colors.text.quaternary,
+                            marginTop: spacing[6],
+                        }}
+                    >
+                        Kinevo v{appVersion} — Modo Treinador
+                    </Text>
+                </Pressable>
             </ScrollView>
+
+            <AdaptiveModal
+                visible={appearanceModalOpen}
+                onClose={() => setAppearanceModalOpen(false)}
+                title="Aparência"
+            >
+                <View style={{ paddingHorizontal: spacing[5], paddingTop: spacing[4], gap: spacing[2] }}>
+                    {APPEARANCE_OPTIONS.map((opt) => {
+                        const isActive = themeMode === opt.mode;
+                        const Icon = opt.icon;
+                        return (
+                            <Pressable
+                                key={opt.mode}
+                                onPress={() => {
+                                    setThemeMode(opt.mode);
+                                    setAppearanceModalOpen(false);
+                                }}
+                                accessibilityRole="radio"
+                                accessibilityLabel={opt.label}
+                                accessibilityState={{ selected: isActive }}
+                                style={{
+                                    flexDirection: "row",
+                                    alignItems: "center",
+                                    gap: spacing[3],
+                                    paddingVertical: spacing[3] + 2,
+                                    paddingHorizontal: spacing[4],
+                                    borderRadius: radius.md,
+                                    borderWidth: 1,
+                                    borderColor: isActive ? colors.purple[300] : colors.border.default,
+                                    backgroundColor: isActive ? colors.surface.tintPurple : colors.surface.card,
+                                }}
+                            >
+                                <View
+                                    style={{
+                                        width: 32,
+                                        height: 32,
+                                        borderRadius: radius.sm,
+                                        backgroundColor: isActive ? colors.purple[100] : colors.neutral[100],
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                    }}
+                                >
+                                    <Icon
+                                        size={16}
+                                        color={isActive ? colors.purple[700] : colors.text.secondary}
+                                        strokeWidth={2.2}
+                                    />
+                                </View>
+                                <Text
+                                    style={{
+                                        flex: 1,
+                                        fontFamily: "PlusJakartaSans_600SemiBold",
+                                        fontSize: 14,
+                                        color: colors.text.primary,
+                                    }}
+                                >
+                                    {opt.label}
+                                </Text>
+                                {isActive ? (
+                                    <Check size={18} color={colors.purple[600]} strokeWidth={2.4} />
+                                ) : null}
+                            </Pressable>
+                        );
+                    })}
+                    <Text
+                        style={{
+                            fontFamily: "PlusJakartaSans_500Medium",
+                            fontSize: 12,
+                            color: colors.text.tertiary,
+                            marginTop: spacing[2],
+                            paddingHorizontal: spacing[2],
+                        }}
+                    >
+                        "Sistema" segue a configuração de aparência do iOS (Ajustes › Tela e Brilho).
+                    </Text>
+                </View>
+            </AdaptiveModal>
         </SafeAreaView>
     );
 }

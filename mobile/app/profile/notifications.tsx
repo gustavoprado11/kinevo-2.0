@@ -3,6 +3,7 @@ import { View, Text, Switch, ScrollView, ActivityIndicator, Alert } from "react-
 import { Stack } from "expo-router";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../contexts/AuthContext";
+import { useV2Colors } from "../../hooks/useV2Colors";
 
 interface NotificationPreferences {
     push_enabled: boolean;
@@ -32,6 +33,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 export default function NotificationSettings() {
+    const colors = useV2Colors();
     const { user } = useAuth();
     const [prefs, setPrefs] = useState<NotificationPreferences>(DEFAULT_PREFS);
     const [loading, setLoading] = useState(true);
@@ -85,7 +87,7 @@ export default function NotificationSettings() {
 
     if (loading) {
         return (
-            <View style={{ flex: 1, backgroundColor: "#F2F2F7", justifyContent: "center", alignItems: "center" }}>
+            <View style={{ flex: 1, backgroundColor: colors.surface.canvas, justifyContent: "center", alignItems: "center" }}>
                 <Stack.Screen options={{ title: "Notificações" }} />
                 <ActivityIndicator color="#7c3aed" />
             </View>
@@ -93,13 +95,13 @@ export default function NotificationSettings() {
     }
 
     return (
-        <View style={{ flex: 1, backgroundColor: "#F2F2F7" }}>
+        <View style={{ flex: 1, backgroundColor: colors.surface.canvas }}>
             <Stack.Screen options={{ title: "Notificações" }} />
             <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 24 }}>
                 {/* Master toggle */}
                 <View
                     style={{
-                        backgroundColor: "#fff",
+                        backgroundColor: colors.surface.card,
                         borderRadius: 16,
                         padding: 16,
                         marginBottom: 24,
@@ -112,8 +114,8 @@ export default function NotificationSettings() {
                 >
                     <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
                         <View style={{ flex: 1 }}>
-                            <Text style={{ color: "#0f172a", fontSize: 16, fontWeight: "600" }}>Notificações push</Text>
-                            <Text style={{ color: "#64748b", fontSize: 13, marginTop: 4 }}>Receber notificações no celular</Text>
+                            <Text style={{ color: colors.text.primary, fontSize: 16, fontWeight: "600" }}>Notificações push</Text>
+                            <Text style={{ color: colors.text.secondary, fontSize: 13, marginTop: 4 }}>Receber notificações no celular</Text>
                         </View>
                         <Switch
                             value={prefs.push_enabled}
@@ -131,7 +133,7 @@ export default function NotificationSettings() {
                             style={{
                                 fontSize: 11,
                                 fontWeight: "700",
-                                color: "#94a3b8",
+                                color: colors.text.tertiary,
                                 textTransform: "uppercase",
                                 letterSpacing: 1.5,
                                 marginBottom: 12,
@@ -142,7 +144,7 @@ export default function NotificationSettings() {
                         </Text>
                         <View
                             style={{
-                                backgroundColor: "#fff",
+                                backgroundColor: colors.surface.card,
                                 borderRadius: 16,
                                 overflow: "hidden",
                                 shadowColor: "#000",
@@ -165,7 +167,7 @@ export default function NotificationSettings() {
                                         borderTopColor: "#f1f5f9",
                                     }}
                                 >
-                                    <Text style={{ color: "#0f172a", fontSize: 14, fontWeight: "500" }}>{label}</Text>
+                                    <Text style={{ color: colors.text.primary, fontSize: 14, fontWeight: "500" }}>{label}</Text>
                                     <Switch
                                         value={prefs.categories[key as keyof typeof prefs.categories]}
                                         onValueChange={() => toggleCategory(key)}

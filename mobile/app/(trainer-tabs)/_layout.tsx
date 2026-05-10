@@ -1,95 +1,17 @@
-import React, { useRef, useEffect, useCallback } from "react";
+import React, { useCallback } from "react";
 import { Tabs, usePathname, useRouter } from "expo-router";
 import { LayoutDashboard, Users, MessageCircle, ClipboardList, MoreHorizontal } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { StyleSheet, View, Text, Platform } from "react-native";
-import { BlurView } from "expo-blur";
-import Animated, {
-    useSharedValue,
-    useAnimatedStyle,
-    withSequence,
-    withTiming,
-} from "react-native-reanimated";
-import * as Haptics from "expo-haptics";
+import { View } from "react-native";
+import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { usePendingSubmissionsCount } from "../../hooks/usePendingSubmissionsCount";
 import { useTrainerConversations } from "../../hooks/useTrainerConversations";
 import { useResponsive } from "../../hooks/useResponsive";
 import { NavigationSidebar, TabConfig } from "../../components/shared/NavigationSidebar";
-import { ANIM } from "../../lib/animations";
+import { BottomNav } from "../../components/v2";
+import { v2 } from "@kinevo/shared/tokens";
 
-// ─── Animated Tab Icon ───
-function AnimatedTabIcon({
-    IconComponent,
-    color,
-    focused,
-    badge,
-}: {
-    IconComponent: typeof LayoutDashboard;
-    color: string;
-    focused: boolean;
-    badge?: number;
-}) {
-    const scale = useSharedValue(1);
-    const prevFocused = useRef(focused);
-
-    useEffect(() => {
-        if (focused && !prevFocused.current) {
-            scale.value = withSequence(
-                withTiming(1.08, { duration: 200, easing: ANIM.timing.fast.easing }),
-                withTiming(1, ANIM.timing.fast)
-            );
-            Haptics.selectionAsync();
-        }
-        prevFocused.current = focused;
-    }, [focused]);
-
-    const animatedStyle = useAnimatedStyle(() => ({
-        transform: [{ scale: scale.value }],
-    }));
-
-    return (
-        <Animated.View style={[animatedStyle, { alignItems: "center", justifyContent: "center" }]}>
-            <View>
-                <IconComponent
-                    size={22}
-                    color={color}
-                    strokeWidth={focused ? 2.5 : 1.5}
-                />
-                {!!badge && badge > 0 && (
-                    <View
-                        style={{
-                            position: "absolute",
-                            top: -6,
-                            right: -10,
-                            minWidth: 16,
-                            height: 16,
-                            borderRadius: 8,
-                            backgroundColor: "#ef4444",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            paddingHorizontal: 4,
-                        }}
-                    >
-                        <Text style={{ fontSize: 10, fontWeight: "700", color: "#ffffff" }}>
-                            {badge > 99 ? "99+" : badge}
-                        </Text>
-                    </View>
-                )}
-            </View>
-            {focused && (
-                <View
-                    style={{
-                        width: 4,
-                        height: 4,
-                        borderRadius: 2,
-                        backgroundColor: color,
-                        marginTop: 4,
-                    }}
-                />
-            )}
-        </Animated.View>
-    );
-}
+const { spacing } = v2;
 
 export default function TrainerTabsLayout() {
     const insets = useSafeAreaInsets();
@@ -100,117 +22,104 @@ export default function TrainerTabsLayout() {
     const pathname = usePathname();
 
     const TRAINER_TABS: TabConfig[] = [
-        { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-        { key: 'students', label: 'Alunos', icon: Users },
-        { key: 'messages', label: 'Mensagens', icon: MessageCircle, badge: totalUnread },
-        { key: 'forms', label: 'Formulários', icon: ClipboardList, badge: pendingFormsCount },
-        { key: 'more', label: 'Mais', icon: MoreHorizontal },
+        { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+        { key: "students", label: "Alunos", icon: Users },
+        { key: "messages", label: "Mensagens", icon: MessageCircle, badge: totalUnread },
+        { key: "forms", label: "Formulários", icon: ClipboardList, badge: pendingFormsCount },
+        { key: "more", label: "Mais", icon: MoreHorizontal },
     ];
 
-    // Determine active tab from pathname
-    const activeTab = TRAINER_TABS.find(t => pathname.includes(t.key))?.key ?? 'dashboard';
+    const activeTab = TRAINER_TABS.find((t) => pathname.includes(t.key))?.key ?? "dashboard";
 
-    const handleTabPress = useCallback((tabKey: string) => {
-        router.navigate(`/(trainer-tabs)/${tabKey}` as any);
-    }, [router]);
+    const handleTabPress = useCallback(
+        (tabKey: string) => {
+            router.navigate(`/(trainer-tabs)/${tabKey}` as never);
+        },
+        [router],
+    );
 
-    const tabBarStyle = isTablet
-        ? { display: 'none' as const }
-        : {
-            position: "absolute" as const,
-            bottom: 0,
-            left: 0,
-            right: 0,
-            backgroundColor: "transparent",
-            borderTopWidth: StyleSheet.hairlineWidth,
-            borderTopColor: "rgba(0, 0, 0, 0.08)",
-            elevation: 0,
-            shadowOpacity: 0,
-            height: 50 + insets.bottom,
-            paddingBottom: insets.bottom,
-        };
+    const renderBottomNav = useCallback(
+        (props: BottomTabBarProps) => {
+            if (isTablet) return null;
+
+            const tabsForNav = props.state.routes
+                .map((route) => {
+                    const cfg = TRAINER_TABS.find((t) => t.key === route.name);
+                    if (!cfg) return null;
+                    const Icon = cfg.icon;
+                    return {
+                        key: route.name,
+                        label: cfg.label,
+                        // Color/strokeWidth são sobrescritos pelo BottomNav via cloneElement.
+                        icon: <Icon size={22} color="#000" strokeWidth={2} />,
+                        badge: cfg.badge,
+                    };
+                })
+                .filter((t): t is NonNullable<typeof t> => t !== null);
+
+            const activeKey = props.state.routes[props.state.index]?.name ?? "dashboard";
+
+            return (
+                <View
+                    pointerEvents="box-none"
+                    style={{
+                        position: "absolute",
+                        left: spacing[3],
+                        right: spacing[3],
+                        bottom: insets.bottom + spacing[2],
+                    }}
+                >
+                    <BottomNav
+                        tabs={tabsForNav}
+                        activeKey={activeKey}
+                        onChange={(key) => {
+                            const target = props.state.routes.find((r) => r.name === key);
+                            if (!target) return;
+                            const event = props.navigation.emit({
+                                type: "tabPress",
+                                target: target.key,
+                                canPreventDefault: true,
+                            });
+                            if (!event.defaultPrevented) {
+                                props.navigation.navigate(target.name);
+                            }
+                        }}
+                        accessibilityLabel="Navegação principal do treinador"
+                    />
+                </View>
+            );
+        },
+        [insets.bottom, isTablet, totalUnread, pendingFormsCount],
+    );
 
     const tabContent = (
         <Tabs
             screenOptions={{
                 headerShown: false,
-                tabBarBackground: () =>
-                    isTablet ? null : (
-                        <BlurView
-                            tint="light"
-                            intensity={90}
-                            style={[
-                                StyleSheet.absoluteFill,
-                                { backgroundColor: "rgba(255, 255, 255, 0.78)" },
-                            ]}
-                        />
-                    ),
-                tabBarStyle,
-                tabBarActiveTintColor: "#7c3aed",
-                tabBarInactiveTintColor: "#94a3b8",
-                tabBarShowLabel: false,
-                tabBarItemStyle: {
-                    height: 50,
-                    paddingTop: 0,
-                    paddingBottom: 0,
-                },
+                tabBarStyle: { display: "none" },
             }}
+            tabBar={renderBottomNav}
         >
             <Tabs.Screen
                 name="dashboard"
-                options={{
-                    title: "Dashboard",
-                    tabBarAccessibilityLabel: "Painel de controle",
-                    tabBarIcon: ({ color, focused }) => (
-                        <AnimatedTabIcon IconComponent={LayoutDashboard} color={color} focused={focused} />
-                    ),
-                }}
+                options={{ title: "Dashboard", tabBarAccessibilityLabel: "Painel de controle" }}
             />
             <Tabs.Screen
                 name="students"
-                options={{
-                    title: "Alunos",
-                    tabBarAccessibilityLabel: "Lista de alunos",
-                    tabBarIcon: ({ color, focused }) => (
-                        <AnimatedTabIcon IconComponent={Users} color={color} focused={focused} />
-                    ),
-                }}
+                options={{ title: "Alunos", tabBarAccessibilityLabel: "Lista de alunos" }}
             />
             <Tabs.Screen
                 name="messages"
-                options={{
-                    title: "Mensagens",
-                    tabBarAccessibilityLabel: "Mensagens",
-                    tabBarIcon: ({ color, focused }) => (
-                        <AnimatedTabIcon IconComponent={MessageCircle} color={color} focused={focused} badge={totalUnread} />
-                    ),
-                }}
+                options={{ title: "Mensagens", tabBarAccessibilityLabel: "Mensagens" }}
             />
             <Tabs.Screen
                 name="forms"
-                options={{
-                    title: "Formulários",
-                    tabBarAccessibilityLabel: "Formulários",
-                    tabBarIcon: ({ color, focused }) => (
-                        <AnimatedTabIcon IconComponent={ClipboardList} color={color} focused={focused} badge={pendingFormsCount} />
-                    ),
-                }}
+                options={{ title: "Formulários", tabBarAccessibilityLabel: "Formulários" }}
             />
-            <Tabs.Screen
-                name="training-room"
-                options={{
-                    href: null,
-                }}
-            />
+            <Tabs.Screen name="training-room" options={{ href: null }} />
             <Tabs.Screen
                 name="more"
-                options={{
-                    title: "Mais",
-                    tabBarAccessibilityLabel: "Mais opções",
-                    tabBarIcon: ({ color, focused }) => (
-                        <AnimatedTabIcon IconComponent={MoreHorizontal} color={color} focused={focused} />
-                    ),
-                }}
+                options={{ title: "Mais", tabBarAccessibilityLabel: "Mais opções" }}
             />
         </Tabs>
     );
@@ -218,16 +127,14 @@ export default function TrainerTabsLayout() {
     if (!isTablet) return tabContent;
 
     return (
-        <View style={{ flexDirection: 'row', flex: 1 }}>
+        <View style={{ flexDirection: "row", flex: 1 }}>
             <NavigationSidebar
                 expanded={isLandscape}
                 tabs={TRAINER_TABS}
                 activeTab={activeTab}
                 onTabPress={handleTabPress}
             />
-            <View style={{ flex: 1 }}>
-                {tabContent}
-            </View>
+            <View style={{ flex: 1 }}>{tabContent}</View>
         </View>
     );
 }

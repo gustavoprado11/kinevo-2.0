@@ -18,6 +18,7 @@ import { RestConnector } from './RestConnector';
 import { SetRow } from './SetRow';
 import { TrainerNote } from './TrainerNote';
 import type { SetPrescription } from '../../lib/hydrateWorkoutSets';
+import { useV2Colors } from '../../hooks/useV2Colors';
 
 export interface SetData {
     weight: string;
@@ -92,6 +93,7 @@ export function ExerciseCard({
     rounds = 1,
     readOnly = false,
 }: ExerciseCardProps) {
+    const colors = useV2Colors();
 
     const handleOpenVideo = () => {
         if (videoUrl) {
@@ -160,7 +162,7 @@ export function ExerciseCard({
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
                 <View style={{ flex: 1, marginRight: 8 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 2 }}>
-                        <Text style={{ fontSize: 15, fontWeight: '700', color: '#0f172a', flexShrink: 1 }}>
+                        <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text.primary, flexShrink: 1 }}>
                             {exerciseName}
                         </Text>
                         {methodChip ? (
@@ -185,12 +187,12 @@ export function ExerciseCard({
                             </View>
                         ) : null}
                     </View>
-                    <Text style={{ color: '#64748b', fontSize: 12 }}>
+                    <Text style={{ color: colors.text.secondary, fontSize: 12 }}>
                         {headerSummary}
                     </Text>
                     {/* Fallback: show "Carga anterior" only when per-set data is unavailable */}
                     {!previousSets?.length && previousLoad && (
-                        <Text style={{ color: '#94a3b8', fontSize: 12, fontStyle: 'italic', marginTop: 2 }}>
+                        <Text style={{ color: colors.text.tertiary, fontSize: 12, fontStyle: 'italic', marginTop: 2 }}>
                             Carga anterior: {previousLoad}
                         </Text>
                     )}
@@ -229,19 +231,19 @@ export function ExerciseCard({
             {/* Column Headers */}
             <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 4, marginBottom: 2 }}>
                 <View style={{ width: 26, marginRight: 6 }}>
-                    <Text style={{ color: '#94a3b8', fontSize: 10, fontWeight: '600', textAlign: 'center' }}>#</Text>
+                    <Text style={{ color: colors.text.tertiary, fontSize: 10, fontWeight: '600', textAlign: 'center' }}>#</Text>
                 </View>
                 <View style={{ width: 58, marginRight: 6 }}>
-                    <Text style={{ color: '#94a3b8', fontSize: 10, fontWeight: '600', textAlign: 'center' }}>Anterior</Text>
+                    <Text style={{ color: colors.text.tertiary, fontSize: 10, fontWeight: '600', textAlign: 'center' }}>Anterior</Text>
                 </View>
                 <View style={{ flex: 1, marginRight: 6 }}>
-                    <Text style={{ color: '#94a3b8', fontSize: 10, fontWeight: '600', textAlign: 'center' }}>Peso</Text>
+                    <Text style={{ color: colors.text.tertiary, fontSize: 10, fontWeight: '600', textAlign: 'center' }}>Peso</Text>
                 </View>
                 <View style={{ flex: 1, marginRight: 6 }}>
-                    <Text style={{ color: '#94a3b8', fontSize: 10, fontWeight: '600', textAlign: 'center' }}>Reps</Text>
+                    <Text style={{ color: colors.text.tertiary, fontSize: 10, fontWeight: '600', textAlign: 'center' }}>Reps</Text>
                 </View>
                 <View style={{ width: 40, alignItems: 'center' }}>
-                    <Check size={10} color="#94a3b8" />
+                    <Check size={10} color={colors.text.tertiary} />
                 </View>
             </View>
 
@@ -277,7 +279,7 @@ export function ExerciseCard({
                                             justifyContent: 'center',
                                             backgroundColor: allDone ? '#7c3aed' : 'transparent',
                                             borderWidth: allDone ? 0 : 1.5,
-                                            borderColor: '#cbd5e1',
+                                            borderColor: colors.border.default,
                                         }}
                                     >
                                         {allDone ? <Check size={12} color="#fff" strokeWidth={3} /> : null}

@@ -17,7 +17,7 @@ import * as Haptics from "expo-haptics";
 import Animated, { FadeInUp, FadeIn } from "react-native-reanimated";
 import DraggableFlatList, { type RenderItemParams } from "react-native-draggable-flatlist";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { colors } from "@/theme";
+import { useV2Colors } from "@/hooks/useV2Colors";
 import { useProgramBuilder } from "@/hooks/useProgramBuilder";
 import { useResponsive } from "@/hooks/useResponsive";
 import { WorkoutTabBar } from "@/components/trainer/program-builder/WorkoutTabBar";
@@ -46,6 +46,7 @@ import type { AgentResult } from "@/hooks/useAIPrescriptionAgent";
 import { toast } from "@/lib/toast";
 
 export default function ProgramBuilderScreen() {
+    const colors = useV2Colors();
     const insets = useSafeAreaInsets();
     const router = useRouter();
     const params = useLocalSearchParams<{ studentId?: string; mode?: string }>();
@@ -405,7 +406,7 @@ export default function ProgramBuilderScreen() {
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
             <KeyboardAvoidingView
-                style={{ flex: 1, backgroundColor: colors.background.primary }}
+                style={{ flex: 1, backgroundColor: colors.surface.canvas }}
                 behavior={Platform.OS === "ios" ? "padding" : undefined}
             >
               <View style={{ flex: 1, flexDirection: isTablet ? 'row' : 'column', paddingTop: insets.top }}>
@@ -433,8 +434,8 @@ export default function ProgramBuilderScreen() {
                             accessibilityLabel="Voltar"
                             style={{ flexDirection: "row", alignItems: "center" }}
                         >
-                            <ChevronLeft size={22} color={colors.brand.primary} />
-                            <Text style={{ fontSize: 16, color: colors.brand.primary, marginLeft: 2 }}>Voltar</Text>
+                            <ChevronLeft size={22} color={colors.purple[600]} />
+                            <Text style={{ fontSize: 16, color: colors.purple[600], marginLeft: 2 }}>Voltar</Text>
                         </TouchableOpacity>
 
                         <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text.primary }}>
@@ -456,14 +457,14 @@ export default function ProgramBuilderScreen() {
                                         style={{
                                             alignItems: "center",
                                             justifyContent: "center",
-                                            backgroundColor: colors.brand.primaryLight,
+                                            backgroundColor: colors.purple[100],
                                             width: 38,
                                             height: 38,
                                             borderRadius: 10,
                                             opacity: hasExercises ? 1 : 0.4,
                                         }}
                                     >
-                                        <Eye size={18} color={colors.brand.primary} />
+                                        <Eye size={18} color={colors.purple[600]} />
                                     </TouchableOpacity>
                                 );
                             })()}
@@ -476,14 +477,14 @@ export default function ProgramBuilderScreen() {
                                     style={{
                                         alignItems: "center",
                                         justifyContent: "center",
-                                        backgroundColor: colors.brand.primaryLight,
+                                        backgroundColor: colors.purple[100],
                                         width: 38,
                                         height: 38,
                                         borderRadius: 10,
                                         opacity: params.studentId == null ? 0.4 : 1,
                                     }}
                                 >
-                                    <Sparkles size={18} color={colors.brand.primary} />
+                                    <Sparkles size={18} color={colors.purple[600]} />
                                 </TouchableOpacity>
                             )}
                             {/* AI menu hidden in edit mode: editing an existing
@@ -497,7 +498,7 @@ export default function ProgramBuilderScreen() {
                                 style={{
                                     flexDirection: "row",
                                     alignItems: "center",
-                                    backgroundColor: colors.brand.primary,
+                                    backgroundColor: colors.purple[600],
                                     paddingHorizontal: 14,
                                     paddingVertical: 8,
                                     borderRadius: 10,
@@ -506,11 +507,11 @@ export default function ProgramBuilderScreen() {
                                 }}
                             >
                                 {isSaving ? (
-                                    <ActivityIndicator size="small" color={colors.text.inverse} />
+                                    <ActivityIndicator size="small" color={'#FFFFFF'} />
                                 ) : (
-                                    <Save size={14} color={colors.text.inverse} />
+                                    <Save size={14} color={'#FFFFFF'} />
                                 )}
-                                <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text.inverse }}>
+                                <Text style={{ fontSize: 14, fontWeight: "600", color: '#FFFFFF' }}>
                                     Salvar
                                 </Text>
                             </TouchableOpacity>
@@ -532,7 +533,7 @@ export default function ProgramBuilderScreen() {
                                 paddingVertical: 10,
                                 paddingHorizontal: 14,
                                 borderRadius: 12,
-                                backgroundColor: '#ffffff',
+                                backgroundColor: colors.surface.card,
                                 borderWidth: 1,
                                 borderColor: '#e2e8f0',
                             }}
@@ -553,7 +554,7 @@ export default function ProgramBuilderScreen() {
                                     paddingVertical: 10,
                                     paddingHorizontal: 14,
                                     borderRadius: 12,
-                                    backgroundColor: '#ffffff',
+                                    backgroundColor: colors.surface.card,
                                     borderWidth: 1,
                                     borderColor: '#e2e8f0',
                                     minHeight: 42,
@@ -566,7 +567,7 @@ export default function ProgramBuilderScreen() {
                                 gap: 5,
                                 paddingHorizontal: 10,
                                 borderRadius: 12,
-                                backgroundColor: '#ffffff',
+                                backgroundColor: colors.surface.card,
                                 borderWidth: 1,
                                 borderColor: '#e2e8f0',
                             }}>
@@ -590,7 +591,7 @@ export default function ProgramBuilderScreen() {
                                         textAlign: 'center',
                                         fontSize: 15,
                                         fontWeight: '700',
-                                        color: colors.brand.primary,
+                                        color: colors.purple[600],
                                     }}
                                 />
                                 <Text style={{ fontSize: 11, color: colors.text.tertiary, fontWeight: '500' }}>
@@ -650,7 +651,7 @@ export default function ProgramBuilderScreen() {
                                     justifyContent: 'center',
                                 }}
                             >
-                                <Trash2 size={14} color={colors.error.default} />
+                                <Trash2 size={14} color={colors.semantic.danger.default} />
                             </TouchableOpacity>
                         </View>
                     )}
@@ -688,7 +689,7 @@ export default function ProgramBuilderScreen() {
                                     justifyContent: 'center',
                                     marginBottom: 16,
                                 }}>
-                                    <Dumbbell size={28} color={colors.brand.primary} strokeWidth={1.5} />
+                                    <Dumbbell size={28} color={colors.purple[600]} strokeWidth={1.5} />
                                 </View>
                                 <Text style={{
                                     fontSize: 16,
@@ -736,12 +737,12 @@ export default function ProgramBuilderScreen() {
                                     flexDirection: "row",
                                     alignItems: "center",
                                     justifyContent: 'center',
-                                    backgroundColor: colors.brand.primary,
+                                    backgroundColor: colors.purple[600],
                                     paddingHorizontal: 24,
                                     paddingVertical: 14,
                                     borderRadius: 16,
                                     gap: 8,
-                                    shadowColor: colors.brand.primary,
+                                    shadowColor: colors.purple[600],
                                     shadowOffset: { width: 0, height: 6 },
                                     shadowOpacity: 0.35,
                                     shadowRadius: 14,
@@ -749,8 +750,8 @@ export default function ProgramBuilderScreen() {
                                     minWidth: 220,
                                 }}
                             >
-                                <Plus size={18} color={colors.text.inverse} strokeWidth={2.5} />
-                                <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text.inverse }}>
+                                <Plus size={18} color={'#FFFFFF'} strokeWidth={2.5} />
+                                <Text style={{ fontSize: 15, fontWeight: "700", color: '#FFFFFF' }}>
                                     Adicionar exercício
                                 </Text>
                             </TouchableOpacity>

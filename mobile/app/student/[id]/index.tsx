@@ -33,6 +33,7 @@ import { EditStudentModal } from "../../../components/trainer/student/EditStuden
 import { SubmissionDetailSheet } from "../../../components/trainer/forms/SubmissionDetailSheet";
 import { useArchiveStudent } from "../../../hooks/useArchiveStudent";
 import { colors } from "@/theme";
+import { useV2Colors } from "@/hooks/useV2Colors";
 import type { Student, StudentModality } from "../../../types/student";
 
 type ProfileTab = "overview" | "programs" | "forms";
@@ -56,6 +57,7 @@ export default function StudentProfileScreen({
     embedded?: boolean;
     studentIdOverride?: string;
 } = {}) {
+    const v2c = useV2Colors();
     const params = useLocalSearchParams<{ id: string }>();
     const id = studentIdOverride ?? params.id;
     const router = useRouter();
@@ -178,11 +180,11 @@ export default function StudentProfileScreen({
 
     if (isLoading || !data) {
         return (
-            <View style={{ flex: 1, backgroundColor: colors.background.primary, paddingTop: embedded ? 0 : insets.top }}>
+            <View style={{ flex: 1, backgroundColor: v2c.surface.canvas, paddingTop: embedded ? 0 : insets.top }}>
                 {!embedded && (
                     <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
                         <TouchableOpacity onPress={() => router.back()} style={{ padding: 8 }}>
-                            <ChevronLeft size={24} color={colors.text.primary} />
+                            <ChevronLeft size={24} color={v2c.text.primary} />
                         </TouchableOpacity>
                     </View>
                 )}
@@ -195,9 +197,9 @@ export default function StudentProfileScreen({
     const statusColor = STATUS_COLORS[student.status] || STATUS_COLORS.active;
 
     return (
-        <View style={{ flex: 1, backgroundColor: colors.background.primary }}>
+        <View style={{ flex: 1, backgroundColor: v2c.surface.canvas }}>
             {/* Header */}
-            <View style={{ backgroundColor: colors.background.card, paddingTop: embedded ? 8 : insets.top, paddingBottom: 0 }}>
+            <View style={{ backgroundColor: v2c.surface.card, paddingTop: embedded ? 8 : insets.top, paddingBottom: 0 }}>
                 {/* Back button — hidden in embedded mode */}
                 {!embedded && (
                     <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8 }}>
@@ -218,7 +220,7 @@ export default function StudentProfileScreen({
                             width: 56,
                             height: 56,
                             borderRadius: 28,
-                            backgroundColor: "#e2e8f0",
+                            backgroundColor: v2c.neutral[200],
                             overflow: "hidden",
                             marginRight: 14,
                         }}
@@ -227,15 +229,15 @@ export default function StudentProfileScreen({
                             <Image source={{ uri: student.avatar_url }} style={{ width: 56, height: 56 }} />
                         ) : (
                             <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-                                <User size={24} color={colors.text.secondary} />
+                                <User size={24} color={v2c.text.secondary} />
                             </View>
                         )}
                     </View>
                     <View style={{ flex: 1 }}>
-                        <Text style={{ fontSize: 20, fontWeight: "700", color: colors.text.primary }}>
+                        <Text style={{ fontSize: 20, fontWeight: "700", color: v2c.text.primary }}>
                             {student.name}
                         </Text>
-                        <Text style={{ fontSize: 13, color: colors.text.secondary, marginTop: 2 }}>
+                        <Text style={{ fontSize: 13, color: v2c.text.secondary, marginTop: 2 }}>
                             {student.email}
                         </Text>
                         <View style={{ flexDirection: "row", gap: 6, marginTop: 6 }}>
@@ -246,7 +248,7 @@ export default function StudentProfileScreen({
                             </View>
                             {student.modality && (
                                 <View style={{ backgroundColor: colors.status.inactiveBg, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
-                                    <Text style={{ fontSize: 11, fontWeight: "600", color: "#475569" }}>
+                                    <Text style={{ fontSize: 11, fontWeight: "600", color: v2c.text.secondary }}>
                                         {MODALITY_LABELS[student.modality] || student.modality}
                                     </Text>
                                 </View>
@@ -268,7 +270,7 @@ export default function StudentProfileScreen({
                                 marginLeft: 8,
                             }}
                         >
-                            <MoreVertical size={20} color={colors.text.secondary} />
+                            <MoreVertical size={20} color={v2c.text.secondary} />
                         </TouchableOpacity>
                     )}
                 </View>

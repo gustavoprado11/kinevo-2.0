@@ -38,6 +38,7 @@ export function SupersetGroup({
     onSwapPress,
     globalIndices,
 }: SupersetGroupProps) {
+    // SupersetGroup só usa brand purple (independe de modo). Hook removido.
     const { currentRound, totalRounds } = computeRoundInfo(exercises);
     const allDone = currentRound >= totalRounds;
 

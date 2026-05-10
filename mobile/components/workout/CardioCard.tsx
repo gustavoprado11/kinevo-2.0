@@ -1,3 +1,6 @@
+// TODO Onda 4b: dark mode adapt — StyleSheet estático com cores neutras hardcoded.
+// Requer migração dos styles para inline (com useV2Colors) ou StyleSheet factory.
+// Fora de escopo da Onda 4a por volume + risco visual.
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated, AppState } from 'react-native';
 import { BlurView } from 'expo-blur';

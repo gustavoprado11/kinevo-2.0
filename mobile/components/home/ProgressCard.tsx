@@ -1,3 +1,4 @@
+// LEGACY — ainda usado em app/(tabs)/home.tsx (modo aluno). Migrar quando refatorar área student (futura fase).
 import React, { useCallback } from "react";
 import { View, Text } from "react-native";
 import { Trophy } from "lucide-react-native";

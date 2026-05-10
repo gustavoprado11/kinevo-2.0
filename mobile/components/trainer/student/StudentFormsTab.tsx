@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, ScrollView, TouchableOpacity } from "react-native";
 import { ClipboardList, CheckCircle, Clock } from "lucide-react-native";
 import type { StudentDetailData } from "../../../hooks/useStudentDetail";
+import { useV2Colors } from "../../../hooks/useV2Colors";
 
 function timeAgo(dateStr: string): string {
     const diff = Date.now() - new Date(dateStr).getTime();
@@ -20,14 +21,15 @@ interface Props {
 }
 
 export function StudentFormsTab({ data, onSubmissionPress }: Props) {
+    const colors = useV2Colors();
     if (data.formSubmissions.length === 0) {
         return (
             <View style={{ flex: 1, alignItems: "center", justifyContent: "center", marginTop: 60 }}>
                 <ClipboardList size={40} color="#d1d5db" />
-                <Text style={{ fontSize: 15, fontWeight: "600", color: "#94a3b8", marginTop: 12 }}>
+                <Text style={{ fontSize: 15, fontWeight: "600", color: colors.text.tertiary, marginTop: 12 }}>
                     Nenhum formulário
                 </Text>
-                <Text style={{ fontSize: 13, color: "#94a3b8", marginTop: 4, textAlign: "center" }}>
+                <Text style={{ fontSize: 13, color: colors.text.tertiary, marginTop: 4, textAlign: "center" }}>
                     Envie formulários na tab Formulários
                 </Text>
             </View>
@@ -39,7 +41,7 @@ export function StudentFormsTab({ data, onSubmissionPress }: Props) {
             contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40 }}
             showsVerticalScrollIndicator={false}
         >
-            <View style={{ backgroundColor: "#ffffff", borderRadius: 14, overflow: "hidden" }}>
+            <View style={{ backgroundColor: colors.surface.card, borderRadius: 14, overflow: "hidden" }}>
                 {data.formSubmissions.map((sub, idx) => {
                     const hasFeedback = !!sub.feedback_sent_at;
                     return (
@@ -57,10 +59,10 @@ export function StudentFormsTab({ data, onSubmissionPress }: Props) {
                             }}
                         >
                             <View style={{ flex: 1 }}>
-                                <Text style={{ fontSize: 14, fontWeight: "500", color: "#1a1a2e" }}>
+                                <Text style={{ fontSize: 14, fontWeight: "500", color: colors.text.primary }}>
                                     {sub.template_title}
                                 </Text>
-                                <Text style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                                <Text style={{ fontSize: 12, color: colors.text.secondary, marginTop: 2 }}>
                                     {timeAgo(sub.submitted_at)}
                                 </Text>
                             </View>

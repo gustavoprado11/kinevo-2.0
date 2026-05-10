@@ -1,3 +1,4 @@
+// LEGACY — ainda usado em app/(tabs)/home.tsx (modo aluno). Migrar quando refatorar área student (futura fase).
 import React from "react";
 import { View, Text, Pressable } from "react-native";
 import { Dumbbell, ChevronRight, Coffee, Check, Play, AlertCircle, PartyPopper, RotateCcw } from "lucide-react-native";

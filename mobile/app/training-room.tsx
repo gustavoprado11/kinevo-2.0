@@ -44,6 +44,7 @@ import { WarmupCardioCard } from '../components/workout/WarmupCardioCard';
 import { ExerciseVideoModal } from '../components/workout/ExerciseVideoModal';
 import { ExerciseSwapModal } from '../components/workout/ExerciseSwapModal';
 import { RestTimerOverlay } from '../components/workout/RestTimerOverlay';
+import { useV2Colors } from '../hooks/useV2Colors';
 
 // ---------------------------------------------------------------------------
 // Elapsed Timer Component
@@ -171,6 +172,7 @@ function StudentChip({
     onPress: () => void;
     onRemove: () => void;
 }) {
+    const colors = useV2Colors();
     const { completed, total } = useTrainingRoomStore.getState().getCompletedSets(session.studentId);
     const hasProgress = session.status === 'in_progress' && total > 0;
 
@@ -332,7 +334,7 @@ function StudentChip({
                     marginTop: -18,
                 }}
             >
-                <X size={10} color="#64748b" strokeWidth={3} />
+                <X size={10} color={colors.text.secondary} strokeWidth={3} />
             </TouchableOpacity>
         </View>
     );
@@ -343,6 +345,7 @@ function StudentChip({
 // ---------------------------------------------------------------------------
 
 export default function TrainingRoomScreen() {
+    const colors = useV2Colors();
     const router = useRouter();
     const sessions = useTrainingRoomStore((s) => s.sessions);
     const activeStudentId = useTrainingRoomStore((s) => s.activeStudentId);
@@ -872,7 +875,7 @@ export default function TrainingRoomScreen() {
         <>
             <Stack.Screen options={{ headerShown: false }} />
             <StatusBar barStyle="dark-content" />
-            <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc' }}>
+            <SafeAreaView style={{ flex: 1, backgroundColor: colors.surface.canvas }}>
                 {/* Header */}
                 <View
                     style={{
@@ -887,8 +890,8 @@ export default function TrainingRoomScreen() {
                         onPress={() => router.back()}
                         style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
                     >
-                        <ArrowLeft size={20} color="#0f172a" />
-                        <Text style={{ fontSize: 17, fontWeight: '700', color: '#0f172a' }}>
+                        <ArrowLeft size={20} color={colors.text.primary} />
+                        <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text.primary }}>
                             Sala de Treino
                         </Text>
                     </TouchableOpacity>
@@ -910,10 +913,10 @@ export default function TrainingRoomScreen() {
                         >
                             <Plus size={32} color="#7c3aed" strokeWidth={1.5} />
                         </View>
-                        <Text style={{ fontSize: 18, fontWeight: '700', color: '#0f172a', marginBottom: 8 }}>
+                        <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text.primary, marginBottom: 8 }}>
                             Sala de Treino
                         </Text>
-                        <Text style={{ fontSize: 14, color: '#64748b', textAlign: 'center', lineHeight: 20, marginBottom: 24 }}>
+                        <Text style={{ fontSize: 14, color: colors.text.secondary, textAlign: 'center', lineHeight: 20, marginBottom: 24 }}>
                             Adicione alunos para iniciar sessões de treino presenciais. Os dados serão salvos no histórico do aluno.
                         </Text>
                         <TouchableOpacity
@@ -988,7 +991,7 @@ export default function TrainingRoomScreen() {
                                     height: 36,
                                     paddingHorizontal: 12,
                                     borderRadius: 18,
-                                    backgroundColor: '#fff',
+                                    backgroundColor: colors.surface.card,
                                     borderWidth: 1,
                                     borderColor: '#e2e8f0',
                                     borderStyle: 'dashed',
@@ -1013,7 +1016,7 @@ export default function TrainingRoomScreen() {
                                     style={{
                                         flexDirection: 'row',
                                         alignItems: 'center',
-                                        backgroundColor: '#fff',
+                                        backgroundColor: colors.surface.card,
                                         borderRadius: 16,
                                         padding: 14,
                                         marginBottom: 16,
@@ -1044,10 +1047,10 @@ export default function TrainingRoomScreen() {
                                         </View>
                                     )}
                                     <View style={{ flex: 1 }}>
-                                        <Text style={{ fontSize: 14, fontWeight: '600', color: '#0f172a' }}>
+                                        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text.primary }}>
                                             {activeSession.workoutName}
                                         </Text>
-                                        <Text style={{ fontSize: 12, color: '#64748b', marginTop: 1 }}>
+                                        <Text style={{ fontSize: 12, color: colors.text.secondary, marginTop: 1 }}>
                                             {activeSession.exercises.length} exercício(s) — {completedSetsTotal}/{totalSets} séries
                                         </Text>
                                     </View>
@@ -1104,7 +1107,7 @@ export default function TrainingRoomScreen() {
                                             onPress={handleDiscardWorkout}
                                             activeOpacity={0.6}
                                             style={{
-                                                backgroundColor: '#fff',
+                                                backgroundColor: colors.surface.card,
                                                 borderRadius: 12,
                                                 paddingVertical: 10,
                                                 paddingHorizontal: 14,

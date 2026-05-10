@@ -13,6 +13,7 @@ import { Stack, useRouter } from 'expo-router';
 import { ChevronLeft, Eye } from 'lucide-react-native';
 import { ExerciseCard } from '@/components/workout/ExerciseCard';
 import { useProgramBuilderStore } from '@/stores/program-builder-store';
+import { useV2Colors } from '@/hooks/useV2Colors';
 import { hydrateSetPrescriptions } from '@/lib/hydrateWorkoutSets';
 import { expandSchemeByRounds } from '@kinevo/shared/lib/prescription/set-scheme';
 import { isCompoundMethod } from '@kinevo/shared/lib/prescription/set-scheme-presets';
@@ -63,6 +64,7 @@ function groupItemsForPreview(items: WorkoutItem[]): PreviewItem[] {
 }
 
 export default function ProgramBuilderPreviewScreen() {
+    const colors = useV2Colors();
     const insets = useSafeAreaInsets();
     const router = useRouter();
     const draft = useProgramBuilderStore((s) => s.draft);
@@ -84,7 +86,7 @@ export default function ProgramBuilderPreviewScreen() {
         <>
             <Stack.Screen options={{ headerShown: false }} />
             <StatusBar barStyle="dark-content" />
-            <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc' }}>
+            <SafeAreaView style={{ flex: 1, backgroundColor: colors.surface.canvas }}>
                 {/* Header */}
                 <View
                     style={{
@@ -95,7 +97,7 @@ export default function ProgramBuilderPreviewScreen() {
                         paddingVertical: 12,
                         borderBottomWidth: StyleSheet.hairlineWidth,
                         borderBottomColor: '#e2e8f0',
-                        backgroundColor: '#ffffff',
+                        backgroundColor: colors.surface.card,
                     }}
                 >
                     <TouchableOpacity
@@ -108,7 +110,7 @@ export default function ProgramBuilderPreviewScreen() {
                         <Text style={{ fontSize: 16, color: '#7c3aed', marginLeft: 2 }}>Voltar</Text>
                     </TouchableOpacity>
                     <Text
-                        style={{ flex: 1, textAlign: 'center', fontSize: 16, fontWeight: '700', color: '#0f172a' }}
+                        style={{ flex: 1, textAlign: 'center', fontSize: 16, fontWeight: '700', color: colors.text.primary }}
                         numberOfLines={1}
                     >
                         {draft.name?.trim() ? draft.name : 'Pré-visualização'}
@@ -197,7 +199,7 @@ export default function ProgramBuilderPreviewScreen() {
                 >
                     {!activeWorkout || activeWorkout.items.length === 0 ? (
                         <View style={{ alignItems: 'center', paddingTop: 80 }}>
-                            <Text style={{ fontSize: 14, color: '#64748b' }}>
+                            <Text style={{ fontSize: 14, color: colors.text.secondary }}>
                                 Adicione exercícios para visualizar o treino.
                             </Text>
                         </View>

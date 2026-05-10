@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import { View, ActivityIndicator, Text, TouchableOpacity } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ChevronLeft } from "lucide-react-native";
-import { colors } from "@/theme";
+import { useV2Colors } from "@/hooks/useV2Colors";
 import { useLoadAssignedProgram } from "@/hooks/useLoadAssignedProgram";
 import { useProgramBuilderStore } from "@/stores/program-builder-store";
 
@@ -17,6 +17,7 @@ import { useProgramBuilderStore } from "@/stores/program-builder-store";
  * save (name/description/duration_weeks). Round 2 will unlock workouts/items.
  */
 export default function EditAssignedProgramRoute() {
+    const colors = useV2Colors();
     const router = useRouter();
     const { assignedProgramId } = useLocalSearchParams<{ assignedProgramId: string }>();
     const { data, loading, error } = useLoadAssignedProgram(assignedProgramId ?? null);
@@ -39,8 +40,8 @@ export default function EditAssignedProgramRoute() {
 
     if (loading) {
         return (
-            <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background.primary }}>
-                <ActivityIndicator size="large" color={colors.brand.primary} />
+            <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.surface.canvas }}>
+                <ActivityIndicator size="large" color={colors.purple[600]} />
                 <Text style={{ marginTop: 12, fontSize: 14, color: colors.text.secondary }}>
                     Carregando programa…
                 </Text>
@@ -50,7 +51,7 @@ export default function EditAssignedProgramRoute() {
 
     if (error) {
         return (
-            <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 24, backgroundColor: colors.background.primary }}>
+            <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 24, backgroundColor: colors.surface.canvas }}>
                 <Text style={{ fontSize: 15, fontWeight: "600", color: colors.text.primary, textAlign: "center" }}>
                     Não foi possível carregar o programa
                 </Text>
@@ -63,8 +64,8 @@ export default function EditAssignedProgramRoute() {
                     accessibilityRole="button"
                     accessibilityLabel="Voltar"
                 >
-                    <ChevronLeft size={18} color={colors.brand.primary} />
-                    <Text style={{ fontSize: 14, color: colors.brand.primary }}>Voltar</Text>
+                    <ChevronLeft size={18} color={colors.purple[600]} />
+                    <Text style={{ fontSize: 14, color: colors.purple[600] }}>Voltar</Text>
                 </TouchableOpacity>
             </View>
         );

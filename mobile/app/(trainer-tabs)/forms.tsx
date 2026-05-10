@@ -7,10 +7,16 @@ import {
     TouchableOpacity,
     RefreshControl,
     Alert,
+    Pressable,
 } from "react-native";
-import { FormsSkeleton } from "../../components/shared/skeletons/FormsSkeleton";
+import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Activity, ClipboardList, FileText, Plus } from "lucide-react-native";
+import { v2 } from "@kinevo/shared/tokens";
+import { KSegmented, KSkeletonRow } from "../../components/v2";
+import { useV2Colors } from "../../hooks/useV2Colors";
+
+const v2Tokens = v2;
 import { EmptyState } from "../../components/shared/EmptyState";
 import { useTrainerFormTemplates, FormTemplate } from "../../hooks/useTrainerFormTemplates";
 import {
@@ -63,6 +69,7 @@ const ASSESSMENT_FILTER_CHIPS: { key: SessionsFilter; label: string }[] = [
 ];
 
 export default function FormsScreen() {
+    const dynColors = useV2Colors();
     const insets = useSafeAreaInsets();
     const { isTablet } = useResponsive();
     const router = useRouter();
@@ -238,130 +245,115 @@ export default function FormsScreen() {
     }, []);
 
     return (
-        <View style={{ flex: 1, backgroundColor: colors.background.primary, paddingTop: insets.top }}>
+        <View style={{ flex: 1, backgroundColor: dynColors.surface.canvas, paddingTop: insets.top }}>
             {/* Header */}
-            <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 }}>
-                <Text style={{ fontSize: 28, fontWeight: "800", color: colors.text.primary }}>
+            <View style={{ paddingHorizontal: v2Tokens.spacing[5], paddingTop: v2Tokens.spacing[4], paddingBottom: v2Tokens.spacing[2] }}>
+                <Text
+                    style={{
+                        fontFamily: "PlusJakartaSans_800ExtraBold",
+                        fontSize: v2Tokens.typography.display.size,
+                        lineHeight: v2Tokens.typography.display.lineHeight,
+                        letterSpacing: v2Tokens.typography.display.letterSpacing,
+                        color: dynColors.text.primary,
+                    }}
+                >
                     Formulários
+                </Text>
+                <Text
+                    style={{
+                        fontFamily: "PlusJakartaSans_500Medium",
+                        fontSize: v2Tokens.typography.bodySm.size,
+                        color: dynColors.text.tertiary,
+                        marginTop: v2Tokens.spacing[1],
+                    }}
+                >
+                    {submissions.counts.pending} pendente{submissions.counts.pending === 1 ? "" : "s"} · {submissions.counts.completed} respondida{submissions.counts.completed === 1 ? "" : "s"}
                 </Text>
             </View>
 
             {/* M11 — Banner in-app de migração (1ª visita pós-deploy). */}
             <MigrationBannerMobile />
 
-            {/* M11 — Segmented control (top-level). */}
-            <View
-                style={{
-                    flexDirection: "row",
-                    marginHorizontal: 20,
-                    marginBottom: 10,
-                    backgroundColor: "#e2e8f0",
-                    borderRadius: 10,
-                    padding: 3,
-                }}
-            >
-                <TabButton
-                    label="Formulários"
-                    active={activeSegment === "formularios"}
-                    onPress={() => {
+            {/* M11 — Segmented control (top-level). KSegmented V2. */}
+            <View style={{ paddingHorizontal: v2Tokens.spacing[5], marginBottom: v2Tokens.spacing[3] }}>
+                <KSegmented<"formularios" | "avaliacoes">
+                    value={activeSegment}
+                    onChange={(seg) => {
                         Haptics.selectionAsync();
-                        setActiveSegment("formularios");
+                        setActiveSegment(seg);
                     }}
-                />
-                <TabButton
-                    label="Avaliações"
-                    badge={draftCount}
-                    active={activeSegment === "avaliacoes"}
-                    onPress={() => {
-                        Haptics.selectionAsync();
-                        setActiveSegment("avaliacoes");
-                    }}
+                    items={[
+                        { value: "formularios", label: "Formulários" },
+                        { value: "avaliacoes", label: "Avaliações", count: draftCount > 0 ? draftCount : undefined },
+                    ]}
+                    accessibilityLabel="Segmento de formulários"
                 />
             </View>
 
-            {/* M11 — Sub-tabs por segmento. */}
-            {activeSegment === "formularios" ? (
-                <View
-                    style={{
-                        flexDirection: "row",
-                        marginHorizontal: 20,
-                        marginBottom: 12,
-                        gap: 6,
-                    }}
-                >
-                    <SubTabButton
-                        label={`Respostas${submissions.counts.pending > 0 ? ` (${submissions.counts.pending})` : ""}`}
-                        active={formsSubTab === "responses"}
-                        onPress={() => setFormsSubTab("responses")}
+            {/* M11 — Sub-tabs por segmento. KSegmented secundário. */}
+            <View style={{ paddingHorizontal: v2Tokens.spacing[5], marginBottom: v2Tokens.spacing[3] }}>
+                {activeSegment === "formularios" ? (
+                    <KSegmented<FormsSubTab>
+                        value={formsSubTab}
+                        onChange={setFormsSubTab}
+                        items={[
+                            { value: "responses", label: "Respostas", count: submissions.counts.pending > 0 ? submissions.counts.pending : undefined },
+                            { value: "templates", label: "Templates" },
+                        ]}
+                        accessibilityLabel="Sub-tab de formulários"
                     />
-                    <SubTabButton
-                        label="Templates"
-                        active={formsSubTab === "templates"}
-                        onPress={() => setFormsSubTab("templates")}
+                ) : (
+                    <KSegmented<AvaliacoesSubTab>
+                        value={avaliacoesSubTab}
+                        onChange={setAvaliacoesSubTab}
+                        items={[
+                            { value: "sessions", label: "Sessões", count: draftCount > 0 ? draftCount : undefined },
+                            { value: "a_templates", label: "Templates" },
+                        ]}
+                        accessibilityLabel="Sub-tab de avaliações"
                     />
-                </View>
-            ) : (
-                <View
-                    style={{
-                        flexDirection: "row",
-                        marginHorizontal: 20,
-                        marginBottom: 12,
-                        gap: 6,
-                    }}
-                >
-                    <SubTabButton
-                        label="Sessões"
-                        badge={draftCount}
-                        active={avaliacoesSubTab === "sessions"}
-                        onPress={() => setAvaliacoesSubTab("sessions")}
-                    />
-                    <SubTabButton
-                        label="Templates"
-                        active={avaliacoesSubTab === "a_templates"}
-                        onPress={() => setAvaliacoesSubTab("a_templates")}
-                    />
-                </View>
-            )}
+                )}
+            </View>
 
-            {/* Filter chips */}
+            {/* Filter chips → KSegmented terciário */}
             {isResponses && (
-                <View style={{ flexDirection: "row", paddingHorizontal: 20, marginBottom: 10, gap: 8 }}>
-                    {FILTER_CHIPS.map((chip) => {
-                        const isActive = submissions.filter === chip.key;
-                        const count = submissions.counts[chip.key];
-                        return (
-                            <FilterChip
-                                key={chip.key}
-                                label={chip.label}
-                                active={isActive}
-                                count={count}
-                                onPress={() => submissions.setFilter(chip.key)}
-                            />
-                        );
-                    })}
+                <View style={{ paddingHorizontal: v2Tokens.spacing[5], marginBottom: v2Tokens.spacing[2] }}>
+                    <KSegmented<typeof FILTER_CHIPS[number]["key"]>
+                        value={submissions.filter}
+                        onChange={submissions.setFilter}
+                        items={FILTER_CHIPS.map((chip) => ({
+                            value: chip.key,
+                            label: chip.label,
+                            count: submissions.counts[chip.key] > 0 ? submissions.counts[chip.key] : undefined,
+                        }))}
+                        accessibilityLabel="Filtro de respostas"
+                    />
                 </View>
             )}
             {isSessions && (
-                <View style={{ flexDirection: "row", paddingHorizontal: 20, marginBottom: 10, gap: 8 }}>
-                    {ASSESSMENT_FILTER_CHIPS.map((chip) => {
-                        const isActive = assessments.filter === chip.key;
-                        const count = assessments.counts[chip.key];
-                        return (
-                            <FilterChip
-                                key={chip.key}
-                                label={chip.label}
-                                active={isActive}
-                                count={count}
-                                onPress={() => assessments.setFilter(chip.key)}
-                            />
-                        );
-                    })}
+                <View style={{ paddingHorizontal: v2Tokens.spacing[5], marginBottom: v2Tokens.spacing[2] }}>
+                    <KSegmented<typeof ASSESSMENT_FILTER_CHIPS[number]["key"]>
+                        value={assessments.filter}
+                        onChange={assessments.setFilter}
+                        items={ASSESSMENT_FILTER_CHIPS.map((chip) => ({
+                            value: chip.key,
+                            label: chip.label,
+                            count: assessments.counts[chip.key] > 0 ? assessments.counts[chip.key] : undefined,
+                        }))}
+                        accessibilityLabel="Filtro de avaliações"
+                    />
                 </View>
             )}
 
             {/* Content */}
             {isLoading ? (
-                <FormsSkeleton />
+                <View style={{ paddingHorizontal: v2Tokens.spacing[5], gap: v2Tokens.spacing[2], marginTop: v2Tokens.spacing[2] }}>
+                    <KSkeletonRow />
+                    <KSkeletonRow />
+                    <KSkeletonRow />
+                    <KSkeletonRow />
+                    <KSkeletonRow />
+                </View>
             ) : isResponses ? (
                 <FlatList
                     key={isTablet ? "submissions-2col" : "submissions-1col"}
@@ -480,22 +472,20 @@ export default function FormsScreen() {
                 />
             )}
 
-            {/* M11 — FAB matrix por (segment, subTab). Hidden em Respostas
+            {/* M11 — FAB V2 matrix por (segment, subTab). Hidden em Respostas
                 (não há ação default) e em Sessões quando lista vazia (o
                 EmptyState exibe um CTA "+ Nova avaliação" próprio). */}
             {(() => {
-                let fabConfig: { onPress: () => void; label: string; color: string } | null = null;
+                let fabConfig: { onPress: () => void; label: string } | null = null;
                 if (isFormTemplates) {
                     fabConfig = {
                         onPress: handleCreateNew,
                         label: "Criar novo template de formulário",
-                        color: "#007AFF",
                     };
                 } else if (isSessions && !isAssessmentsEmpty) {
                     fabConfig = {
                         onPress: handleCreateAssessmentSession,
                         label: "Nova avaliação",
-                        color: colors.status.presencial,
                     };
                 } else if (isAssessmentTemplates) {
                     fabConfig = {
@@ -504,35 +494,38 @@ export default function FormsScreen() {
                             router.push("/assessments/templates/new");
                         },
                         label: "Novo template de avaliação",
-                        color: "#007AFF",
                     };
                 }
                 if (!fabConfig) return null;
                 return (
-                    <TouchableOpacity
+                    <Pressable
                         onPress={fabConfig.onPress}
-                        activeOpacity={0.8}
                         accessibilityLabel={fabConfig.label}
                         accessibilityRole="button"
                         style={{
                             position: "absolute",
-                            right: 20,
-                            bottom: insets.bottom + 66,
+                            right: v2Tokens.spacing[5],
+                            bottom: insets.bottom + 90,
                             width: 56,
                             height: 56,
                             borderRadius: 28,
-                            backgroundColor: fabConfig.color,
-                            alignItems: "center",
-                            justifyContent: "center",
-                            shadowColor: fabConfig.color,
-                            shadowOffset: { width: 0, height: 4 },
-                            shadowOpacity: 0.35,
-                            shadowRadius: 8,
-                            elevation: 6,
+                            overflow: "hidden",
+                            shadowColor: v2Tokens.colors.purple[600],
+                            shadowOffset: { width: 0, height: 8 },
+                            shadowOpacity: 0.32,
+                            shadowRadius: 24,
+                            elevation: 12,
                         }}
                     >
-                        <Plus size={26} color="#ffffff" strokeWidth={2.5} />
-                    </TouchableOpacity>
+                        <LinearGradient
+                            colors={[v2Tokens.colors.purple[600], v2Tokens.colors.purple[700]]}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
+                        >
+                            <Plus size={26} color="#ffffff" strokeWidth={2.5} />
+                        </LinearGradient>
+                    </Pressable>
                 );
             })()}
 
@@ -575,164 +568,6 @@ export default function FormsScreen() {
     );
 }
 
-function TabButton({
-    label,
-    active,
-    badge,
-    onPress,
-}: {
-    label: string;
-    active: boolean;
-    badge?: number;
-    onPress: () => void;
-}) {
-    return (
-        <TouchableOpacity
-            onPress={onPress}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: active }}
-            accessibilityLabel={label}
-            style={{
-                flex: 1,
-                paddingVertical: 8,
-                borderRadius: 8,
-                backgroundColor: active ? colors.background.card : "transparent",
-                alignItems: "center",
-                justifyContent: "center",
-                flexDirection: "row",
-                gap: 6,
-            }}
-        >
-            <Text
-                style={{
-                    fontSize: 14,
-                    fontWeight: "600",
-                    color: active ? colors.text.primary : colors.text.secondary,
-                }}
-            >
-                {label}
-            </Text>
-            {badge !== undefined && badge > 0 && (
-                <View
-                    style={{
-                        minWidth: 18,
-                        height: 18,
-                        borderRadius: 9,
-                        backgroundColor: colors.status.presencial,
-                        paddingHorizontal: 5,
-                        alignItems: "center",
-                        justifyContent: "center",
-                    }}
-                >
-                    <Text style={{ fontSize: 10, fontWeight: "800", color: colors.text.inverse }}>
-                        {badge > 9 ? "9+" : badge}
-                    </Text>
-                </View>
-            )}
-        </TouchableOpacity>
-    );
-}
-
-// M11 — sub-tab pill abaixo do segmented control. Visualmente mais leve que
-// TabButton (sem fundo branco em estado ativo; sublinhado violet/cinza).
-function SubTabButton({
-    label,
-    active,
-    badge,
-    onPress,
-    accent = "default",
-}: {
-    label: string;
-    active: boolean;
-    badge?: number;
-    onPress: () => void;
-    accent?: "default" | "violet";
-}) {
-    const activeColor = accent === "violet" ? "#7c3aed" : colors.text.primary;
-    return (
-        <TouchableOpacity
-            onPress={onPress}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: active }}
-            accessibilityLabel={label}
-            style={{
-                paddingVertical: 6,
-                paddingHorizontal: 12,
-                borderRadius: 999,
-                borderWidth: 1,
-                borderColor: active ? activeColor : "transparent",
-                backgroundColor: active ? activeColor + "10" : "transparent",
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 6,
-            }}
-        >
-            <Text
-                style={{
-                    fontSize: 13,
-                    fontWeight: "600",
-                    color: active ? activeColor : colors.text.secondary,
-                }}
-            >
-                {label}
-            </Text>
-            {badge !== undefined && badge > 0 && (
-                <View
-                    style={{
-                        minWidth: 18,
-                        height: 18,
-                        borderRadius: 9,
-                        backgroundColor: colors.status.presencial,
-                        paddingHorizontal: 5,
-                        alignItems: "center",
-                        justifyContent: "center",
-                    }}
-                >
-                    <Text style={{ fontSize: 10, fontWeight: "800", color: colors.text.inverse }}>
-                        {badge > 9 ? "9+" : badge}
-                    </Text>
-                </View>
-            )}
-        </TouchableOpacity>
-    );
-}
-
-function FilterChip({
-    label,
-    active,
-    count,
-    onPress,
-}: {
-    label: string;
-    active: boolean;
-    count: number;
-    onPress: () => void;
-}) {
-    return (
-        <TouchableOpacity
-            onPress={onPress}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: active }}
-            accessibilityLabel={`Filtro ${label}`}
-            style={{
-                paddingHorizontal: 14,
-                paddingVertical: 7,
-                borderRadius: 20,
-                backgroundColor: active ? colors.brand.primary : colors.background.card,
-            }}
-        >
-            <Text
-                style={{
-                    fontSize: 13,
-                    fontWeight: "600",
-                    color: active ? colors.text.inverse : colors.text.secondary,
-                }}
-            >
-                {label} {count > 0 ? `(${count})` : ""}
-            </Text>
-        </TouchableOpacity>
-    );
-}
 
 function AssessmentsList({
     drafts,

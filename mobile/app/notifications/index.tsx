@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router';
 import { ChevronLeft, Bell, CheckCheck } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Animated, { FadeIn, FadeInUp, Easing } from 'react-native-reanimated';
-import { colors } from '@/theme';
+import { useV2Colors } from '@/hooks/useV2Colors';
 import { toast } from '@/lib/toast';
 import { ResponsiveContainer } from '../../components/shared/ResponsiveContainer';
 import { EmptyState } from '../../components/shared/EmptyState';
@@ -81,6 +81,7 @@ function getDeepLinkForNotification(n: TrainerNotification): { pathname: string;
 // ---------------------------------------------------------------------------
 
 export default function NotificationsScreen() {
+    const colors = useV2Colors();
     const router = useRouter();
     const {
         sections,
@@ -148,7 +149,7 @@ export default function NotificationsScreen() {
     const isEmpty = !isLoading && sections.length === 0;
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }} edges={['top']}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.surface.canvas }} edges={['top']}>
           <ResponsiveContainer maxWidth={800} padding={false}>
             {/* Header */}
             <Animated.View
@@ -187,7 +188,7 @@ export default function NotificationsScreen() {
                         accessibilityLabel="Marcar todas como lidas"
                         hitSlop={12}
                     >
-                        <CheckCheck size={22} color={colors.brand.primary} />
+                        <CheckCheck size={22} color={colors.purple[600]} />
                     </TouchableOpacity>
                 ) : (
                     <View style={{ width: 24 }} />
@@ -217,7 +218,7 @@ export default function NotificationsScreen() {
                         <RefreshControl
                             refreshing={isRefreshing}
                             onRefresh={refresh}
-                            tintColor={colors.brand.primary}
+                            tintColor={colors.purple[600]}
                         />
                     }
                 />

@@ -9,6 +9,7 @@ import { ChevronLeft, Send, Check, CheckCheck, ImageOff, MessageCircle } from 'l
 import * as Haptics from 'expo-haptics';
 import { supabase } from '../../lib/supabase';
 import { useTrainerChatRoom, type ChatMessage } from '../../hooks/useTrainerChatRoom';
+import { useV2Colors } from '../../hooks/useV2Colors';
 
 // ── Helpers ──
 
@@ -35,6 +36,7 @@ function getInitials(name: string): string {
 // ── Component ──
 
 export default function TrainerChatScreen() {
+    const colors = useV2Colors();
     const { studentId } = useLocalSearchParams<{ studentId: string }>();
     const router = useRouter();
     const insets = useSafeAreaInsets();
@@ -111,7 +113,7 @@ export default function TrainerChatScreen() {
                 {showDate && (
                     <View style={{ alignItems: 'center', paddingVertical: 12 }}>
                         <Text style={{
-                            fontSize: 10, fontWeight: '500', color: '#94a3b8',
+                            fontSize: 10, fontWeight: '500', color: colors.text.tertiary,
                             backgroundColor: '#f1f5f9', paddingHorizontal: 12, paddingVertical: 4,
                             borderRadius: 10, overflow: 'hidden',
                         }}>
@@ -206,14 +208,14 @@ export default function TrainerChatScreen() {
     if (!studentId) {
         return (
             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                <Text style={{ color: '#64748b' }}>Aluno não encontrado</Text>
+                <Text style={{ color: colors.text.secondary }}>Aluno não encontrado</Text>
             </View>
         );
     }
 
     return (
         <KeyboardAvoidingView
-            style={{ flex: 1, backgroundColor: '#F2F2F7' }}
+            style={{ flex: 1, backgroundColor: colors.surface.canvas }}
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             keyboardVerticalOffset={0}
         >
@@ -222,11 +224,11 @@ export default function TrainerChatScreen() {
                 flexDirection: 'row', alignItems: 'center', gap: 10,
                 paddingHorizontal: 16, paddingVertical: 10,
                 paddingTop: insets.top + 10,
-                backgroundColor: '#ffffff',
+                backgroundColor: colors.surface.card,
                 borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.06)',
             }}>
                 <Pressable onPress={() => router.back()} hitSlop={12}>
-                    <ChevronLeft size={24} color="#0f172a" />
+                    <ChevronLeft size={24} color={colors.text.primary} />
                 </Pressable>
 
                 {student?.avatar_url ? (
@@ -246,7 +248,7 @@ export default function TrainerChatScreen() {
                     </View>
                 ) : null}
 
-                <Text style={{ fontSize: 16, fontWeight: '700', color: '#0f172a', flex: 1 }}>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text.primary, flex: 1 }}>
                     {student?.name || 'Aluno'}
                 </Text>
             </View>
@@ -275,9 +277,9 @@ export default function TrainerChatScreen() {
                                 alignItems: 'center', justifyContent: 'center',
                                 marginBottom: 12,
                             }}>
-                                <MessageCircle size={24} color="#94a3b8" />
+                                <MessageCircle size={24} color={colors.text.tertiary} />
                             </View>
-                            <Text style={{ color: '#94a3b8', fontSize: 13 }}>
+                            <Text style={{ color: colors.text.tertiary, fontSize: 13 }}>
                                 Nenhuma mensagem ainda. Envie a primeira!
                             </Text>
                         </View>
@@ -305,7 +307,7 @@ export default function TrainerChatScreen() {
 
             {/* Input area */}
             <View style={{
-                backgroundColor: '#ffffff',
+                backgroundColor: colors.surface.card,
                 borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.06)',
                 paddingHorizontal: 12, paddingTop: 8, paddingBottom: 8 + insets.bottom,
             }}>
@@ -325,7 +327,7 @@ export default function TrainerChatScreen() {
                             paddingVertical: 10,
                             fontSize: 15,
                             maxHeight: 100,
-                            color: '#0f172a',
+                            color: colors.text.primary,
                         }}
                     />
 

@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, TouchableOpacity, Image } from "react-native";
 import { MessageSquare, CheckCircle } from "lucide-react-native";
 import type { FormSubmission } from "../../../hooks/useTrainerFormSubmissions";
+import { useV2Colors } from "../../../hooks/useV2Colors";
 
 function timeAgo(dateStr: string): string {
     const diff = Date.now() - new Date(dateStr).getTime();
@@ -23,6 +24,7 @@ interface Props {
 }
 
 export function SubmissionCard({ submission, onPress }: Props) {
+    const colors = useV2Colors();
     const isPending = !submission.feedback_sent_at;
 
     return (
@@ -30,12 +32,14 @@ export function SubmissionCard({ submission, onPress }: Props) {
             onPress={() => onPress(submission)}
             activeOpacity={0.6}
             style={{
-                backgroundColor: "#ffffff",
+                backgroundColor: colors.surface.card,
                 borderRadius: 14,
                 padding: 14,
                 marginBottom: 10,
                 flexDirection: "row",
                 alignItems: "center",
+                borderWidth: 1,
+                borderColor: colors.border.default,
             }}
         >
             {/* Avatar */}
@@ -44,7 +48,7 @@ export function SubmissionCard({ submission, onPress }: Props) {
                     width: 40,
                     height: 40,
                     borderRadius: 20,
-                    backgroundColor: "#e2e8f0",
+                    backgroundColor: colors.neutral[100],
                     marginRight: 12,
                     overflow: "hidden",
                 }}
@@ -56,7 +60,7 @@ export function SubmissionCard({ submission, onPress }: Props) {
                     />
                 ) : (
                     <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-                        <Text style={{ fontSize: 16, fontWeight: "600", color: "#64748b" }}>
+                        <Text style={{ fontSize: 16, fontWeight: "600", color: colors.text.secondary }}>
                             {submission.student_name.charAt(0).toUpperCase()}
                         </Text>
                     </View>
@@ -65,17 +69,17 @@ export function SubmissionCard({ submission, onPress }: Props) {
 
             {/* Content */}
             <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 15, fontWeight: "600", color: "#1a1a2e" }}>
+                <Text style={{ fontSize: 15, fontWeight: "600", color: colors.text.primary }}>
                     {submission.student_name}
                 </Text>
-                <Text style={{ fontSize: 13, color: "#64748b", marginTop: 2 }} numberOfLines={1}>
+                <Text style={{ fontSize: 13, color: colors.text.secondary, marginTop: 2 }} numberOfLines={1}>
                     {submission.template_title}
                 </Text>
             </View>
 
             {/* Status + time */}
             <View style={{ alignItems: "flex-end", marginLeft: 8 }}>
-                <Text style={{ fontSize: 11, color: "#94a3b8" }}>
+                <Text style={{ fontSize: 11, color: colors.text.quaternary }}>
                     {timeAgo(submission.submitted_at)}
                 </Text>
                 <View style={{ marginTop: 4 }}>

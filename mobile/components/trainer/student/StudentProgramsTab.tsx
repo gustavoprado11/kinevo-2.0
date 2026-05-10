@@ -6,6 +6,7 @@ import { useRouter } from "expo-router";
 import { supabase } from "../../../lib/supabase";
 import { getProgramWeek } from "@kinevo/shared/utils/schedule-projection";
 import type { StudentDetailData } from "../../../hooks/useStudentDetail";
+import { useV2Colors } from "../../../hooks/useV2Colors";
 
 interface Props {
     data: StudentDetailData;
@@ -14,6 +15,7 @@ interface Props {
 const DAY_NAMES = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
 export function StudentProgramsTab({ data }: Props) {
+    const colors = useV2Colors();
     const router = useRouter();
 
     // Track which completed programs have reports
@@ -54,10 +56,10 @@ export function StudentProgramsTab({ data }: Props) {
             {data.activeProgram ? (
                 <>
                     <SectionLabel>Programa Ativo</SectionLabel>
-                    <View style={{ backgroundColor: "#ffffff", borderRadius: 14, padding: 16, marginBottom: 20 }}>
+                    <View style={{ backgroundColor: colors.surface.card, borderRadius: 14, padding: 16, marginBottom: 20 }}>
                         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8, gap: 8 }}>
                             <Text
-                                style={{ fontSize: 16, fontWeight: "700", color: "#1a1a2e", flexShrink: 1 }}
+                                style={{ fontSize: 16, fontWeight: "700", color: colors.text.primary, flexShrink: 1 }}
                                 numberOfLines={1}
                             >
                                 {data.activeProgram.name}
@@ -107,18 +109,18 @@ export function StudentProgramsTab({ data }: Props) {
                         </View>
 
                         {data.activeProgram.description && (
-                            <Text style={{ fontSize: 13, color: "#64748b", marginBottom: 8 }}>
+                            <Text style={{ fontSize: 13, color: colors.text.secondary, marginBottom: 8 }}>
                                 {data.activeProgram.description}
                             </Text>
                         )}
 
                         <View style={{ flexDirection: "row", gap: 16, marginBottom: 12 }}>
                             {!!data.activeProgram.duration_weeks && (
-                                <Text style={{ fontSize: 13, color: "#64748b" }}>
+                                <Text style={{ fontSize: 13, color: colors.text.secondary }}>
                                     {data.activeProgram.duration_weeks} semanas
                                 </Text>
                             )}
-                            <Text style={{ fontSize: 13, color: "#64748b" }}>
+                            <Text style={{ fontSize: 13, color: colors.text.secondary }}>
                                 Semana {
                                     data.activeProgram.started_at
                                         ? getProgramWeek(new Date(), data.activeProgram.started_at, data.activeProgram.duration_weeks) ?? (data.activeProgram.duration_weeks || 1)
@@ -137,11 +139,11 @@ export function StudentProgramsTab({ data }: Props) {
                                     borderTopColor: "rgba(0,0,0,0.06)",
                                 }}
                             >
-                                <Text style={{ fontSize: 14, fontWeight: "500", color: "#1a1a2e" }}>
+                                <Text style={{ fontSize: 14, fontWeight: "500", color: colors.text.primary }}>
                                     {w.name}
                                 </Text>
                                 {w.scheduled_days && w.scheduled_days.length > 0 && (
-                                    <Text style={{ fontSize: 12, color: "#64748b", marginTop: 3 }}>
+                                    <Text style={{ fontSize: 12, color: colors.text.secondary, marginTop: 3 }}>
                                         {w.scheduled_days.map((d) => DAY_NAMES[d] || d).join(", ")}
                                     </Text>
                                 )}
@@ -152,10 +154,10 @@ export function StudentProgramsTab({ data }: Props) {
             ) : (
                 <View style={{ alignItems: "center", marginTop: 40, marginBottom: 20 }}>
                     <Calendar size={40} color="#d1d5db" />
-                    <Text style={{ fontSize: 15, fontWeight: "600", color: "#94a3b8", marginTop: 12 }}>
+                    <Text style={{ fontSize: 15, fontWeight: "600", color: colors.text.tertiary, marginTop: 12 }}>
                         Nenhum programa ativo
                     </Text>
-                    <Text style={{ fontSize: 13, color: "#94a3b8", marginTop: 4, textAlign: "center" }}>
+                    <Text style={{ fontSize: 13, color: colors.text.tertiary, marginTop: 4, textAlign: "center" }}>
                         Atribua um programa usando o botão acima
                     </Text>
                 </View>
@@ -165,7 +167,7 @@ export function StudentProgramsTab({ data }: Props) {
             {data.programHistory.length > 0 && (
                 <>
                     <SectionLabel>Histórico</SectionLabel>
-                    <View style={{ backgroundColor: "#ffffff", borderRadius: 14, overflow: "hidden" }}>
+                    <View style={{ backgroundColor: colors.surface.card, borderRadius: 14, overflow: "hidden" }}>
                         {data.programHistory.map((p, idx) => {
                             const reportId = reportMap[p.id];
                             return (
@@ -180,10 +182,10 @@ export function StudentProgramsTab({ data }: Props) {
                                 >
                                     <View style={{ flexDirection: "row", alignItems: "center" }}>
                                         <View style={{ flex: 1 }}>
-                                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#1a1a2e" }}>
+                                            <Text style={{ fontSize: 14, fontWeight: "500", color: colors.text.primary }}>
                                                 {p.name}
                                             </Text>
-                                            <Text style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                                            <Text style={{ fontSize: 12, color: colors.text.secondary, marginTop: 2 }}>
                                                 {p.duration_weeks ? `${p.duration_weeks} semanas` : "—"}
                                                 {p.completed_at && ` · Concluído em ${new Date(p.completed_at).toLocaleDateString("pt-BR")}`}
                                             </Text>
@@ -240,12 +242,13 @@ export function StudentProgramsTab({ data }: Props) {
 }
 
 function SectionLabel({ children }: { children: string }) {
+    const colors = useV2Colors();
     return (
         <Text
             style={{
                 fontSize: 12,
                 fontWeight: "600",
-                color: "#64748b",
+                color: colors.text.secondary,
                 textTransform: "uppercase",
                 letterSpacing: 1,
                 marginBottom: 10,

@@ -8,7 +8,7 @@ import Animated, {
 import { X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useResponsive } from '@/hooks/useResponsive';
-import { colors } from '@/theme';
+import { useV2Colors } from '@/hooks/useV2Colors';
 
 interface AdaptiveModalProps {
     visible: boolean;
@@ -25,6 +25,7 @@ export function AdaptiveModal({
     children,
     width = 480,
 }: AdaptiveModalProps) {
+    const colors = useV2Colors();
     const { isTablet } = useResponsive();
     const insets = useSafeAreaInsets();
     const slideX = useSharedValue(width);
@@ -50,7 +51,7 @@ export function AdaptiveModal({
                 presentationStyle="pageSheet"
                 onRequestClose={onClose}
             >
-                <View style={{ flex: 1, backgroundColor: colors.background.primary }}>
+                <View style={{ flex: 1, backgroundColor: colors.surface.canvas }}>
                     {title && (
                         <View
                             style={{
@@ -61,13 +62,14 @@ export function AdaptiveModal({
                                 paddingTop: insets.top + 12,
                                 paddingBottom: 12,
                                 borderBottomWidth: 0.5,
-                                borderBottomColor: colors.border.primary,
+                                borderBottomColor: colors.border.default,
+                                backgroundColor: colors.surface.card,
                             }}
                         >
-                            <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text.primary }}>
+                            <Text style={{ fontFamily: 'PlusJakartaSans_700Bold', fontSize: 17, color: colors.text.primary }}>
                                 {title}
                             </Text>
-                            <TouchableOpacity onPress={onClose} style={{ padding: 6 }}>
+                            <TouchableOpacity onPress={onClose} style={{ padding: 6 }} accessibilityRole="button" accessibilityLabel="Fechar">
                                 <X size={20} color={colors.text.secondary} />
                             </TouchableOpacity>
                         </View>
@@ -98,7 +100,7 @@ export function AdaptiveModal({
                     style={[
                         {
                             width,
-                            backgroundColor: colors.background.primary,
+                            backgroundColor: colors.surface.canvas,
                             borderTopLeftRadius: 20,
                             borderBottomLeftRadius: 20,
                             shadowColor: '#000',
@@ -120,13 +122,14 @@ export function AdaptiveModal({
                                 paddingTop: insets.top + 12,
                                 paddingBottom: 12,
                                 borderBottomWidth: 0.5,
-                                borderBottomColor: colors.border.primary,
+                                borderBottomColor: colors.border.default,
+                                backgroundColor: colors.surface.card,
                             }}
                         >
-                            <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text.primary }}>
+                            <Text style={{ fontFamily: 'PlusJakartaSans_700Bold', fontSize: 17, color: colors.text.primary }}>
                                 {title}
                             </Text>
-                            <TouchableOpacity onPress={onClose} style={{ padding: 6 }}>
+                            <TouchableOpacity onPress={onClose} style={{ padding: 6 }} accessibilityRole="button" accessibilityLabel="Fechar">
                                 <X size={20} color={colors.text.secondary} />
                             </TouchableOpacity>
                         </View>

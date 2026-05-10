@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, Image } from 'react-native';
 import { Calendar, ClipboardList } from 'lucide-react-native';
 import { colors } from '@/theme';
+import { useV2Colors } from '@/hooks/useV2Colors';
 import { SessionStatusBadge, type BadgeKind } from './SessionStatusBadge';
 import type { AssessmentSessionListItem } from '@kinevo/shared/types/assessments';
 
@@ -36,6 +37,7 @@ function relativeDay(iso: string | null): string {
 }
 
 export function SessionListItem({ session, isDraft, isOverdue, onPress, progress }: Props) {
+    const v2c = useV2Colors();
     const kind: BadgeKind = isDraft
         ? 'draft'
         : isOverdue
@@ -59,15 +61,17 @@ export function SessionListItem({ session, isDraft, isOverdue, onPress, progress
                 flexDirection: 'row',
                 gap: 12,
                 padding: 14,
-                backgroundColor: colors.background.card,
+                backgroundColor: v2c.surface.card,
                 borderRadius: 16,
-                borderLeftWidth: isDraft ? 3 : 0,
-                borderLeftColor: accent,
+                borderWidth: 1,
+                borderColor: v2c.border.default,
+                borderLeftWidth: isDraft ? 3 : 1,
+                borderLeftColor: isDraft ? accent : v2c.border.default,
             }}>
             {session.student_avatar ? (
                 <Image
                     source={{ uri: session.student_avatar }}
-                    style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: colors.background.inset }}
+                    style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: v2c.neutral[100] }}
                 />
             ) : (
                 <View
@@ -88,14 +92,14 @@ export function SessionListItem({ session, isDraft, isOverdue, onPress, progress
             <View style={{ flex: 1, gap: 4 }}>
                 <Text
                     numberOfLines={1}
-                    style={{ fontSize: 15, fontWeight: '700', color: colors.text.primary }}>
+                    style={{ fontSize: 15, fontWeight: '700', color: v2c.text.primary }}>
                     {session.student_name}
                 </Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <ClipboardList size={12} color={colors.text.tertiary} />
+                    <ClipboardList size={12} color={v2c.text.tertiary} />
                     <Text
                         numberOfLines={1}
-                        style={{ fontSize: 12, color: colors.text.tertiary, flex: 1 }}>
+                        style={{ fontSize: 12, color: v2c.text.tertiary, flex: 1 }}>
                         {session.template_title ?? 'Sem template'}
                     </Text>
                 </View>
@@ -103,14 +107,14 @@ export function SessionListItem({ session, isDraft, isOverdue, onPress, progress
                     <SessionStatusBadge kind={kind} />
                     {session.scheduled_at && (
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-                            <Calendar size={11} color={colors.text.tertiary} />
-                            <Text style={{ fontSize: 11, color: colors.text.tertiary }}>
+                            <Calendar size={11} color={v2c.text.tertiary} />
+                            <Text style={{ fontSize: 11, color: v2c.text.tertiary }}>
                                 {relativeDay(session.scheduled_at)}
                             </Text>
                         </View>
                     )}
                     {progress && (
-                        <Text style={{ fontSize: 11, color: colors.text.tertiary, marginLeft: 'auto' }}>
+                        <Text style={{ fontSize: 11, color: v2c.text.tertiary, marginLeft: 'auto' }}>
                             {progress.done}/{progress.total} testes
                         </Text>
                     )}

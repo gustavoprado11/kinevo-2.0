@@ -28,8 +28,10 @@ import type { ExerciseSubstituteOption, ExerciseData, WorkoutNote } from '../../
 import { ShareableCardProps } from '../../components/workout/sharing/types';
 import { watchFinishState } from '../../lib/finishWorkoutFromWatch';
 import { appEvents, WATCH_WORKOUT_FINISHED } from '../../lib/events';
+import { useV2Colors } from '../../hooks/useV2Colors';
 
 export default function WorkoutPlayerScreen() {
+    const colors = useV2Colors();
     const { id } = useLocalSearchParams();
     const router = useRouter();
     const { profile } = useStudentProfile();
@@ -642,24 +644,24 @@ export default function WorkoutPlayerScreen() {
             />
 
             {/* Header */}
-            <View style={{ backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e2e8f0', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12 }}>
+            <View style={{ backgroundColor: colors.surface.card, borderBottomWidth: 1, borderBottomColor: colors.border.default, paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12 }}>
                 {/* Top row: back | name+timer | spacer */}
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                     <TouchableOpacity onPress={() => router.back()} style={{ padding: 8, marginLeft: -8 }} hitSlop={12}>
-                        <ChevronLeft size={24} color="#0f172a" />
+                        <ChevronLeft size={24} color={colors.text.primary} />
                     </TouchableOpacity>
                     <View style={{ alignItems: 'center' }}>
-                        <Text style={{ color: '#0f172a', fontWeight: '700', fontSize: 17 }}>{workoutName}</Text>
-                        <Text style={{ color: '#64748b', fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', fontSize: 13 }}>{duration}</Text>
+                        <Text style={{ color: colors.text.primary, fontWeight: '700', fontSize: 17 }}>{workoutName}</Text>
+                        <Text style={{ color: colors.text.secondary, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', fontSize: 13 }}>{duration}</Text>
                     </View>
                     <View style={{ width: 40 }} />
                 </View>
                 {/* Progress bar */}
                 <View style={{ marginTop: 12 }}>
-                    <View style={{ height: 3, backgroundColor: '#e2e8f0', borderRadius: 2, overflow: 'hidden' }}>
+                    <View style={{ height: 3, backgroundColor: colors.border.default, borderRadius: 2, overflow: 'hidden' }}>
                         <View style={{ height: '100%', width: `${totalSets > 0 ? (completedSets / totalSets) * 100 : 0}%`, backgroundColor: '#7c3aed', borderRadius: 2 }} />
                     </View>
-                    <Text style={{ color: '#94a3b8', fontSize: 11, marginTop: 4, textAlign: 'right' }}>
+                    <Text style={{ color: colors.text.tertiary, fontSize: 11, marginTop: 4, textAlign: 'right' }}>
                         {completedSets}/{totalSets} séries
                     </Text>
                 </View>
@@ -878,7 +880,7 @@ export default function WorkoutPlayerScreen() {
                 paddingHorizontal: 20,
                 paddingTop: 12,
                 paddingBottom: Math.max(insets.bottom, 16),
-                backgroundColor: '#f8fafc',
+                backgroundColor: colors.surface.canvas,
                 borderTopWidth: StyleSheet.hairlineWidth,
                 borderTopColor: '#e2e8f0',
             }}>

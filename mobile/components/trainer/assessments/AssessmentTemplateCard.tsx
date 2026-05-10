@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Activity, ChevronRight } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
-import { colors } from '@/theme';
+import { useV2Colors } from '@/hooks/useV2Colors';
 import type { TrainerAssessmentTemplate } from '../../../hooks/useTrainerAssessmentTemplates';
 
 interface Props {
@@ -13,6 +13,7 @@ interface Props {
 // M11/B2 — card de assessment template. Tap → drill-down pra edit (system
 // templates abrem read-only no edit screen, com clone-on-save no AssessmentBuilderScreen).
 export function AssessmentTemplateCard({ template, onPress }: Props) {
+    const colors = useV2Colors();
     const isSystem = template.trainer_id === null;
     const sectionLabel = template.section_count === 1 ? 'seção' : 'seções';
 
@@ -26,14 +27,14 @@ export function AssessmentTemplateCard({ template, onPress }: Props) {
             accessibilityRole="button"
             accessibilityLabel={`${template.title}, ${template.section_count} ${sectionLabel}`}
             style={{
-                backgroundColor: colors.background.card,
+                backgroundColor: colors.surface.card,
                 borderRadius: 14,
                 padding: 14,
                 flexDirection: 'row',
                 alignItems: 'center',
                 gap: 12,
                 borderWidth: 1,
-                borderColor: colors.border.secondary,
+                borderColor: colors.border.default,
             }}
         >
             <View
@@ -67,7 +68,7 @@ export function AssessmentTemplateCard({ template, onPress }: Props) {
                             paddingHorizontal: 8,
                             paddingVertical: 2,
                             borderRadius: 6,
-                            backgroundColor: isSystem ? '#7c3aed' + '15' : colors.background.inset,
+                            backgroundColor: isSystem ? '#7c3aed' + '15' : colors.neutral[100],
                         }}
                     >
                         <Text

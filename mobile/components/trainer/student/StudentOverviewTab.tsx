@@ -9,6 +9,7 @@ import { useResponsive } from "../../../hooks/useResponsive";
 import { ResponsiveGrid } from "../../shared/ResponsiveGrid";
 import { ResponsiveContainer } from "../../shared/ResponsiveContainer";
 import { SessionDetailSheet } from "../SessionDetailSheet";
+import { useV2Colors } from "../../../hooks/useV2Colors";
 
 function timeAgo(dateStr: string | null): string {
     if (!dateStr) return "Nunca";
@@ -33,6 +34,7 @@ interface Props {
 }
 
 export function StudentOverviewTab({ data }: Props) {
+    const colors = useV2Colors();
     const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
     const adherence =
         data.expectedPerWeek > 0
@@ -83,9 +85,9 @@ export function StudentOverviewTab({ data }: Props) {
             {data.activeProgram && (
                 <>
                     <SectionLabel>Programa Ativo</SectionLabel>
-                    <View style={{ backgroundColor: "#ffffff", borderRadius: 14, padding: 14, marginBottom: 20 }}>
+                    <View style={{ backgroundColor: colors.surface.card, borderRadius: 14, padding: 14, marginBottom: 20 }}>
                         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-                            <Text style={{ fontSize: 15, fontWeight: "600", color: "#1a1a2e" }}>
+                            <Text style={{ fontSize: 15, fontWeight: "600", color: colors.text.primary }}>
                                 {data.activeProgram.name}
                             </Text>
                             {data.activeProgram.ai_generated && (
@@ -95,7 +97,7 @@ export function StudentOverviewTab({ data }: Props) {
                             )}
                         </View>
                         {!!data.activeProgram.duration_weeks && (
-                            <Text style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>
+                            <Text style={{ fontSize: 13, color: colors.text.secondary, marginTop: 4 }}>
                                 {data.activeProgram.duration_weeks} semanas · Semana {
                                     data.activeProgram.started_at
                                         ? getProgramWeek(new Date(), data.activeProgram.started_at, data.activeProgram.duration_weeks) ?? data.activeProgram.duration_weeks
@@ -103,7 +105,7 @@ export function StudentOverviewTab({ data }: Props) {
                                 }
                             </Text>
                         )}
-                        <Text style={{ fontSize: 13, color: "#64748b", marginTop: 2 }}>
+                        <Text style={{ fontSize: 13, color: colors.text.secondary, marginTop: 2 }}>
                             {data.activeProgram.workouts.length} treino(s)
                         </Text>
                     </View>
@@ -113,11 +115,11 @@ export function StudentOverviewTab({ data }: Props) {
             {/* Recent Sessions */}
             <SectionLabel>Sessões Recentes</SectionLabel>
             {data.recentSessions.length === 0 ? (
-                <Text style={{ fontSize: 14, color: "#94a3b8", marginBottom: 20 }}>
+                <Text style={{ fontSize: 14, color: colors.text.tertiary, marginBottom: 20 }}>
                     Nenhuma sessão registrada
                 </Text>
             ) : (
-                <View style={{ backgroundColor: "#ffffff", borderRadius: 14, marginBottom: 20, overflow: "hidden" }}>
+                <View style={{ backgroundColor: colors.surface.card, borderRadius: 14, marginBottom: 20, overflow: "hidden" }}>
                     {data.recentSessions.map((session, idx) => (
                         <TouchableOpacity
                             key={session.id}
@@ -133,16 +135,16 @@ export function StudentOverviewTab({ data }: Props) {
                             }}
                         >
                             <View style={{ flex: 1 }}>
-                                <Text style={{ fontSize: 14, fontWeight: "500", color: "#1a1a2e" }}>
+                                <Text style={{ fontSize: 14, fontWeight: "500", color: colors.text.primary }}>
                                     {session.workout_name || "Treino"}
                                 </Text>
-                                <Text style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                                <Text style={{ fontSize: 12, color: colors.text.secondary, marginTop: 2 }}>
                                     {timeAgo(session.completed_at)}
                                 </Text>
                             </View>
                             <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
                                 {!!session.duration_seconds && (
-                                    <Text style={{ fontSize: 12, color: "#64748b" }}>
+                                    <Text style={{ fontSize: 12, color: colors.text.secondary }}>
                                         {formatDuration(session.duration_seconds)}
                                     </Text>
                                 )}
@@ -190,31 +192,33 @@ function KPICard({
     label: string;
     value: string;
 }) {
+    const colors = useV2Colors();
     return (
         <View
             style={{
                 flex: 1,
-                backgroundColor: "#ffffff",
+                backgroundColor: colors.surface.card,
                 borderRadius: 14,
                 padding: 14,
             }}
         >
             <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 6 }}>
                 {icon}
-                <Text style={{ fontSize: 12, color: "#64748b", marginLeft: 6 }}>{label}</Text>
+                <Text style={{ fontSize: 12, color: colors.text.secondary, marginLeft: 6 }}>{label}</Text>
             </View>
-            <Text style={{ fontSize: 20, fontWeight: "700", color: "#1a1a2e" }}>{value}</Text>
+            <Text style={{ fontSize: 20, fontWeight: "700", color: colors.text.primary }}>{value}</Text>
         </View>
     );
 }
 
 function SectionLabel({ children }: { children: string }) {
+    const colors = useV2Colors();
     return (
         <Text
             style={{
                 fontSize: 12,
                 fontWeight: "600",
-                color: "#64748b",
+                color: colors.text.secondary,
                 textTransform: "uppercase",
                 letterSpacing: 1,
                 marginBottom: 10,

@@ -1,3 +1,4 @@
+// LEGACY — ainda usado em app/financial/index.tsx. Migrar quando refatorar área financeira (futura fase).
 import React from "react";
 import { View, Text } from "react-native";
 import type { LucideIcon } from "lucide-react-native";
