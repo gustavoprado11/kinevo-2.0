@@ -20,6 +20,7 @@ import { useInbox, type InboxItem } from "../../hooks/useInbox";
 import { useUnreadCount, refetchUnreadCounts } from "../../hooks/useUnreadCount";
 import { PressableScale } from "../../components/shared/PressableScale";
 import { ChatView } from "../../components/chat/ChatView";
+import { useV2Colors } from "../../hooks/useV2Colors";
 
 // ── Helpers ──
 function TypeIcon({ type }: { type: InboxItem["type"] }) {
@@ -404,6 +405,7 @@ function NotificationsTab() {
 
 // ── Main Screen ──
 export default function InboxScreen() {
+    const colors = useV2Colors();
     const [activeTab, setActiveTab] = useState<'messages' | 'notifications'>('messages');
     const { messages: unreadMessages, notifications: unreadNotifications } = useUnreadCount();
 
@@ -415,10 +417,10 @@ export default function InboxScreen() {
     );
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: "#F2F2F7" }} edges={["top"]}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.surface.canvas }} edges={["top"]}>
             {/* Header */}
             <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 }}>
-                <Text style={{ fontSize: 30, fontWeight: "800", color: "#0f172a" }}>
+                <Text style={{ fontSize: 30, fontWeight: "800", color: colors.text.primary }}>
                     Mensagens
                 </Text>
             </View>

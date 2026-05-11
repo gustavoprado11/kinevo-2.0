@@ -1,3 +1,10 @@
+// TODO Fase C: migrar Workout Player para componentes V2 student.
+// Fase 6 preservou a estrutura legacy porque WorkoutCelebration, RestTimerOverlay
+// e SetRow (via ExerciseCard) têm integração profunda com useWorkoutSession,
+// Live Activity, WatchConnectivity e useWorkoutFormTriggers. Swap superficial
+// degradaria UX (perderia adjust-time, share modal, watch sync). A migração
+// requer refatoração coordenada do hook e dos sub-componentes, fora do escopo
+// "preservar funcionalidade 100%" desta fase.
 import React, { useEffect, useRef, useCallback, useMemo } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform, Alert, StyleSheet, AppState } from 'react-native';
 import { useLocalSearchParams, Stack, useRouter, useNavigation } from 'expo-router';

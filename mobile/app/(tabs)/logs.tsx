@@ -22,6 +22,9 @@ import { useStudentProfile } from '../../hooks/useStudentProfile';
 import { supabase } from '../../lib/supabase';
 import { WARMUP_TYPE_LABELS, CARDIO_EQUIPMENT_LABELS, type WarmupType, type CardioEquipment, type CardioConfig } from '@kinevo/shared/types/workout-items';
 import { PressableScale } from '../../components/shared/PressableScale';
+import { KRing, KPRCard } from '../../components/v2/student';
+import { useV2Colors } from '../../hooks/useV2Colors';
+import { v2 } from '@kinevo/shared/tokens';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -526,40 +529,7 @@ function HistoryItemRenderer({ item, isFirst }: { item: HistoryWorkoutItem; isFi
     return null;
 }
 
-/* ─── Performance Tab with Count-Up ─── */
-
-function AnimatedCounter({ value, suffix }: { value: number; suffix?: string }) {
-    const [displayValue, setDisplayValue] = useState(0);
-
-    useFocusEffect(
-        useCallback(() => {
-            setDisplayValue(0);
-            const target = value;
-            const duration = 1200;
-            const steps = 40;
-            const stepTime = duration / steps;
-            let current = 0;
-
-            const timer = setInterval(() => {
-                current++;
-                const progress = current / steps;
-                // Ease-out cubic
-                const eased = 1 - Math.pow(1 - progress, 3);
-                const val = Math.round(eased * target);
-                setDisplayValue(val);
-                if (current >= steps) clearInterval(timer);
-            }, stepTime);
-
-            return () => clearInterval(timer);
-        }, [value])
-    );
-
-    return (
-        <Text style={{ fontSize: 36, fontWeight: '800', color: '#0f172a', marginBottom: 4 }}>
-            {displayValue}{suffix || ''}
-        </Text>
-    );
-}
+/* ─── Performance Tab ─── */
 
 function PublishedReportsSection() {
     const { profile } = useStudentProfile();
@@ -624,51 +594,7 @@ function PublishedReportsSection() {
 function PerformanceView({ stats }: { stats: HistoryStats }) {
     return (
         <View>
-            {/* Jornada Card */}
-            <Animated.View
-                entering={FadeInUp.delay(100).duration(ANIM.enter.duration).easing(ANIM.enter.easing)}
-                style={{
-                    backgroundColor: '#ffffff',
-                    borderRadius: 20,
-                    padding: 24,
-                    marginBottom: 24,
-                    borderWidth: 1,
-                    borderColor: 'rgba(0, 0, 0, 0.04)',
-                    shadowColor: '#000',
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.04,
-                    shadowRadius: 8,
-                    elevation: 2,
-                }}
-            >
-                <Text
-                    style={{
-                        fontSize: 12, fontWeight: '700', color: '#94a3b8',
-                        textTransform: 'uppercase', letterSpacing: 1, marginBottom: 20,
-                    }}
-                >
-                    Sua Jornada
-                </Text>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                    <View style={{ alignItems: 'center', flex: 1 }}>
-                        <AnimatedCounter value={stats.totalWorkouts} />
-                        <Text style={labelStyle}>Treinos</Text>
-                    </View>
-                    <View
-                        style={{
-                            alignItems: 'center', flex: 1,
-                            borderLeftWidth: 1, borderRightWidth: 1, borderColor: '#f1f5f9',
-                        }}
-                    >
-                        <AnimatedCounter value={Math.round(stats.totalVolume)} />
-                        <Text style={labelStyle}>Toneladas</Text>
-                    </View>
-                    <View style={{ alignItems: 'center', flex: 1 }}>
-                        <AnimatedCounter value={stats.totalHours} />
-                        <Text style={labelStyle}>Horas</Text>
-                    </View>
-                </View>
-            </Animated.View>
+            <JourneyRingsCard stats={stats} />
 
             {/* Recordes Pessoais */}
             <View>
@@ -687,59 +613,139 @@ function PerformanceView({ stats }: { stats: HistoryStats }) {
                     <Trophy size={14} color="#f59e0b" fill="#f59e0b" />
                 </Animated.View>
 
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
-                    {stats.personalRecords.map((pr, idx) => (
-                        <Animated.View
-                            key={idx}
-                            entering={FadeInUp.delay(200 + idx * ANIM.enter.stagger).duration(ANIM.enter.duration).easing(ANIM.enter.easing)}
-                            style={{ width: '48%', marginBottom: 12 }}
-                        >
-                            <PressableScale
-                                pressScale={0.96}
-                                style={{
-                                    backgroundColor: '#ffffff',
-                                    padding: 16,
-                                    borderRadius: 16,
-                                    borderWidth: 1,
-                                    borderColor: 'rgba(0, 0, 0, 0.04)',
-                                    shadowColor: '#000',
-                                    shadowOffset: { width: 0, height: 2 },
-                                    shadowOpacity: 0.04,
-                                    shadowRadius: 8,
-                                    elevation: 2,
-                                }}
+                {stats.personalRecords.length === 0 ? (
+                    <Text style={{ color: '#64748b', fontStyle: 'italic', width: '100%', textAlign: 'center', paddingVertical: 16, fontSize: 13 }}>
+                        Complete treinos para registrar seus recordes!
+                    </Text>
+                ) : (
+                    stats.personalRecords.map((pr, idx) => {
+                        // PR recente: bateu nos últimos 7 dias.
+                        const daysSince = (Date.now() - new Date(pr.date).getTime()) / 86400000;
+                        const recent = daysSince <= 7;
+                        return (
+                            <Animated.View
+                                key={idx}
+                                entering={FadeInUp.delay(200 + idx * ANIM.enter.stagger).duration(ANIM.enter.duration).easing(ANIM.enter.easing)}
+                                style={{ marginBottom: 12 }}
                             >
-                                <Text
-                                    style={{ fontSize: 14, color: '#64748b', fontWeight: '500', marginBottom: 6 }}
-                                    numberOfLines={1}
-                                >
-                                    {pr.exerciseName}
-                                </Text>
-                                <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
-                                    <Text style={{ fontSize: 30, fontWeight: '800', color: '#0f172a' }}>
-                                        {pr.weight}
-                                    </Text>
-                                    <Text style={{ fontSize: 14, fontWeight: '600', color: '#94a3b8', marginLeft: 3 }}>
-                                        kg
-                                    </Text>
-                                </View>
-                                <Text style={{ fontSize: 12, color: '#94a3b8', marginTop: 6 }}>
-                                    {new Date(pr.date).toLocaleDateString('pt-BR', { day: 'numeric', month: 'short', year: '2-digit' })}
-                                </Text>
-                            </PressableScale>
-                        </Animated.View>
-                    ))}
-                    {stats.personalRecords.length === 0 && (
-                        <Text style={{ color: '#64748b', fontStyle: 'italic', width: '100%', textAlign: 'center', paddingVertical: 16, fontSize: 13 }}>
-                            Complete treinos para registrar seus recordes!
-                        </Text>
-                    )}
-                </View>
+                                <KPRCard
+                                    exercise={pr.exerciseName}
+                                    value={pr.weight}
+                                    unit="kg"
+                                    recent={recent}
+                                    delta={undefined}
+                                />
+                            </Animated.View>
+                        );
+                    })
+                )}
             </View>
 
             {/* Published Program Reports */}
             <PublishedReportsSection />
         </View>
+    );
+}
+
+// ── Jornada card refatorado: 3 KRings concêntricos (Apple Fitness pattern).
+// Cada ring referencia uma dimensão da jornada do aluno. Targets são
+// heurísticos (próximo marco redondo) e existem só pra preencher max do anel.
+function JourneyRingsCard({ stats }: { stats: HistoryStats }) {
+    const colors = useV2Colors();
+    // Próximo marco: ceil(value/10)*10 com piso mínimo pra evitar div zero.
+    const targetFor = (v: number, step: number, floor: number) =>
+        Math.max(floor, Math.ceil(Math.max(v, 1) / step) * step);
+    const workoutsTarget = targetFor(stats.totalWorkouts, 10, 10);
+    const volumeTarget = targetFor(Math.round(stats.totalVolume), 10, 50);
+    const hoursTarget = targetFor(stats.totalHours, 10, 10);
+
+    return (
+        <Animated.View
+            entering={FadeInUp.delay(100).duration(ANIM.enter.duration).easing(ANIM.enter.easing)}
+            style={{
+                backgroundColor: colors.surface.card,
+                borderRadius: 20,
+                padding: 20,
+                marginBottom: 24,
+                borderWidth: 1,
+                borderColor: colors.border.default,
+            }}
+        >
+            <Text
+                style={{
+                    fontSize: 12,
+                    fontWeight: '700',
+                    color: colors.text.tertiary,
+                    textTransform: 'uppercase',
+                    letterSpacing: 1,
+                    marginBottom: 20,
+                }}
+            >
+                Sua Jornada
+            </Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' }}>
+                <View style={{ alignItems: 'center', gap: 8 }}>
+                    <KRing
+                        value={stats.totalWorkouts}
+                        max={workoutsTarget}
+                        size="md"
+                        color="red"
+                        centerContent={
+                            <Text
+                                style={{
+                                    fontFamily: 'PlusJakartaSans_800ExtraBold',
+                                    fontSize: 18,
+                                    color: colors.text.primary,
+                                }}
+                            >
+                                {stats.totalWorkouts}
+                            </Text>
+                        }
+                    />
+                    <Text style={[labelStyle, { color: colors.text.tertiary }]}>Treinos</Text>
+                </View>
+                <View style={{ alignItems: 'center', gap: 8 }}>
+                    <KRing
+                        value={Math.round(stats.totalVolume)}
+                        max={volumeTarget}
+                        size="md"
+                        color="green"
+                        centerContent={
+                            <Text
+                                style={{
+                                    fontFamily: 'PlusJakartaSans_800ExtraBold',
+                                    fontSize: 18,
+                                    color: colors.text.primary,
+                                }}
+                            >
+                                {Math.round(stats.totalVolume)}
+                            </Text>
+                        }
+                    />
+                    <Text style={[labelStyle, { color: colors.text.tertiary }]}>Ton.</Text>
+                </View>
+                <View style={{ alignItems: 'center', gap: 8 }}>
+                    <KRing
+                        value={stats.totalHours}
+                        max={hoursTarget}
+                        size="md"
+                        color="cyan"
+                        centerContent={
+                            <Text
+                                style={{
+                                    fontFamily: 'PlusJakartaSans_800ExtraBold',
+                                    fontSize: 18,
+                                    color: colors.text.primary,
+                                }}
+                            >
+                                {stats.totalHours}
+                            </Text>
+                        }
+                    />
+                    <Text style={[labelStyle, { color: colors.text.tertiary }]}>Horas</Text>
+                </View>
+            </View>
+        </Animated.View>
     );
 }
 

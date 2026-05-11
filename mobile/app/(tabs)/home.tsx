@@ -13,12 +13,14 @@ import { User } from "lucide-react-native";
 import { toDateKey, isDateInProgram } from "@kinevo/shared/utils/schedule-projection";
 
 import { UnifiedCalendar } from "../../components/home/UnifiedCalendar";
-import { ProgressCard } from "../../components/home/ProgressCard";
 import { ActionCard } from "../../components/home/ActionCard";
 import { WorkoutList } from "../../components/home/WorkoutList";
 import { ReportReadyCard } from "../../components/home/ReportReadyCard";
 import { ShareWorkoutModal } from "../../components/workout/ShareWorkoutModal";
 import { useLatestUnreadReport } from "../../hooks/useLatestUnreadReport";
+import { KRing, KStreakBadge } from "../../components/v2/student";
+import { useV2Colors } from "../../hooks/useV2Colors";
+import { v2 } from "@kinevo/shared/tokens";
 
 // ─── Entering animation shorthand ───
 const ENTER = ANIM.enter;
@@ -226,6 +228,42 @@ export default function HomeScreen() {
 
 
 
+    // Simple streak: conta semanas consecutivas (incluindo a atual) com
+    // pelo menos 1 sessão completed. Heurística leve, não sobe até hook.
+    const streakWeeks = useMemo(() => {
+        if (!sessionsMap || sessionsMap.size === 0) return 0;
+        const todayLocal = new Date();
+        const startOfWeek = (d: Date) => {
+            const x = new Date(d);
+            x.setHours(0, 0, 0, 0);
+            x.setDate(x.getDate() - x.getDay());
+            return x;
+        };
+        let cursor = startOfWeek(todayLocal);
+        let count = 0;
+        // Máximo 52 semanas pra evitar loop em datasets grandes
+        for (let i = 0; i < 52; i++) {
+            const weekStart = new Date(cursor);
+            const weekEnd = new Date(cursor);
+            weekEnd.setDate(weekEnd.getDate() + 7);
+            let hasCompleted = false;
+            sessionsMap.forEach((sessions) => {
+                for (const s of sessions) {
+                    if (s.status !== 'completed') continue;
+                    const t = new Date(s.completed_at || s.started_at).getTime();
+                    if (t >= weekStart.getTime() && t < weekEnd.getTime()) {
+                        hasCompleted = true;
+                        break;
+                    }
+                }
+            });
+            if (!hasCompleted) break;
+            count++;
+            cursor.setDate(cursor.getDate() - 7);
+        }
+        return count;
+    }, [sessionsMap]);
+
     // Compute today's completed workout IDs for WorkoutList badges
     const todayCompletedWorkoutIds = useMemo(() => {
         const todayKey = toDateKey(new Date());
@@ -346,15 +384,16 @@ export default function HomeScreen() {
                     </View>
                 ) : (
                     <>
-                        {/* ── Progress Card: Slide-Up stagger delay 200ms ── */}
+                        {/* ── Hero V2 student: KRing meta semanal + KStreakBadge ── */}
                         {programName && (
                             <Animated.View
                                 entering={FadeInUp.delay(100).duration(ENTER.duration).easing(ENTER.easing)}
                             >
-                                <ProgressCard
+                                <WeeklyProgressHero
                                     programName={programName}
-                                    completedSessions={weeklyProgress?.totalSessions || 0}
-                                    targetSessions={weeklyProgress?.targetSessions || 0}
+                                    completed={weeklyProgress?.totalSessions || 0}
+                                    target={weeklyProgress?.targetSessions || 0}
+                                    streak={streakWeeks}
                                 />
                             </Animated.View>
                         )}
@@ -412,5 +451,84 @@ export default function HomeScreen() {
                 sessionId={shareSessionId}
             />
         </ScreenWrapper>
+    );
+}
+
+// ── Hero V2 student: meta semanal via KRing + streak badge.
+// Substitui ProgressCard legacy. Mantém contrato simples (props derivadas
+// do hook useActiveProgram + streak computado inline na tela).
+function WeeklyProgressHero({
+    programName,
+    completed,
+    target,
+    streak,
+}: {
+    programName: string;
+    completed: number;
+    target: number;
+    streak: number;
+}) {
+    const colors = useV2Colors();
+    return (
+        <View
+            style={{
+                backgroundColor: colors.surface.card,
+                borderRadius: v2.radius.lg,
+                borderWidth: 1,
+                borderColor: colors.border.default,
+                padding: 16,
+                marginBottom: 16,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 16,
+            }}
+        >
+            <KRing
+                value={completed}
+                max={Math.max(target, 1)}
+                size="md"
+                color={completed >= target && target > 0 ? 'gold' : 'purple'}
+                label={`${completed}/${Math.max(target, 0)}`}
+            />
+            <View style={{ flex: 1, gap: 6 }}>
+                <Text
+                    style={{
+                        fontFamily: 'PlusJakartaSans_700Bold',
+                        fontSize: 10,
+                        letterSpacing: 1.2,
+                        textTransform: 'uppercase',
+                        color: colors.text.tertiary,
+                    }}
+                    numberOfLines={1}
+                >
+                    Programa atual
+                </Text>
+                <Text
+                    style={{
+                        fontFamily: 'PlusJakartaSans_800ExtraBold',
+                        fontSize: 18,
+                        letterSpacing: -0.4,
+                        color: colors.text.primary,
+                    }}
+                    numberOfLines={1}
+                >
+                    {programName}
+                </Text>
+                <Text
+                    style={{
+                        fontFamily: 'PlusJakartaSans_500Medium',
+                        fontSize: 12,
+                        color: colors.text.secondary,
+                    }}
+                >
+                    Meta semanal: {completed}/{target} treinos
+                </Text>
+                {streak >= 2 ? (
+                    <View style={{ marginTop: 4 }}>
+                        <KStreakBadge count={streak} unit="semanas" size="xs" variant="pill" />
+                    </View>
+                ) : null}
+            </View>
+        </View>
     );
 }

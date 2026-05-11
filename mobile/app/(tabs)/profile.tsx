@@ -10,6 +10,7 @@ import { useRouter } from "expo-router";
 import Animated, { FadeInUp, FadeIn, Easing } from "react-native-reanimated";
 import { LogOut, Settings, HelpCircle, Shield, ChevronRight, CreditCard, Users } from "lucide-react-native";
 import { PressableScale } from "../../components/shared/PressableScale";
+import { useV2Colors } from "../../hooks/useV2Colors";
 
 // ── Menu item config with semantic colors ──
 const MENU_ITEMS = [
@@ -48,6 +49,7 @@ const MENU_ITEMS = [
 ] as const;
 
 export default function ProfileScreen() {
+    const colors = useV2Colors();
     const router = useRouter();
     const { user, signOut } = useAuth();
     const { profile, isUploading, updateAvatar } = useStudentProfile();
@@ -80,7 +82,7 @@ export default function ProfileScreen() {
     const displayEmail = profile?.email ?? user?.email;
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: "#F2F2F7" }} edges={["top"]}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.surface.canvas }} edges={["top"]}>
             <ScrollView
                 style={{ flex: 1 }}
                 contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 120 }}
