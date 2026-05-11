@@ -2,7 +2,7 @@ import React, { useCallback, useState } from "react";
 import { View, Text, TextInput, FlatList, TouchableOpacity } from "react-native";
 import { Search, Dumbbell, Play, Plus } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
-import { colors } from "@/theme";
+import { useV2Colors } from "@/hooks/useV2Colors";
 import { useExerciseLibrary, type Exercise } from "@/hooks/useExerciseLibrary";
 import { useExerciseCrud, type ExerciseFormData } from "@/hooks/useExerciseCrud";
 import { VideoPreviewModal } from "./VideoPreviewModal";
@@ -14,6 +14,7 @@ interface ExercisePanelProps {
 }
 
 export function ExercisePanel({ onSelectExercise, visible }: ExercisePanelProps) {
+    const colors = useV2Colors();
     const {
         exercises,
         muscleGroups,
@@ -56,9 +57,9 @@ export function ExercisePanel({ onSelectExercise, visible }: ExercisePanelProps)
         <View
             style={{
                 width: 280,
-                backgroundColor: colors.background.card,
+                backgroundColor: colors.surface.card,
                 borderRightWidth: 1,
-                borderRightColor: colors.border.primary,
+                borderRightColor: colors.border.default,
             }}
         >
             {/* Header */}
@@ -81,11 +82,11 @@ export function ExercisePanel({ onSelectExercise, visible }: ExercisePanelProps)
                             paddingHorizontal: 8,
                             paddingVertical: 4,
                             borderRadius: 6,
-                            backgroundColor: '#f5f3ff',
+                            backgroundColor: colors.purple[100],
                         }}
                     >
-                        <Plus size={12} color={colors.brand.primary} strokeWidth={2.5} />
-                        <Text style={{ fontSize: 11, fontWeight: '600', color: colors.brand.primary }}>
+                        <Plus size={12} color={colors.purple[600]} strokeWidth={2.5} />
+                        <Text style={{ fontSize: 11, fontWeight: '600', color: colors.purple[600] }}>
                             Novo
                         </Text>
                     </TouchableOpacity>
@@ -96,11 +97,11 @@ export function ExercisePanel({ onSelectExercise, visible }: ExercisePanelProps)
                     style={{
                         flexDirection: 'row',
                         alignItems: 'center',
-                        backgroundColor: colors.background.primary,
+                        backgroundColor: colors.surface.canvas,
                         borderRadius: 10,
                         paddingHorizontal: 10,
                         borderWidth: 1,
-                        borderColor: colors.border.primary,
+                        borderColor: colors.border.default,
                     }}
                 >
                     <Search size={16} color={colors.text.tertiary} />
@@ -142,14 +143,14 @@ export function ExercisePanel({ onSelectExercise, visible }: ExercisePanelProps)
                                 paddingHorizontal: 10,
                                 paddingVertical: 5,
                                 borderRadius: 8,
-                                backgroundColor: isActive ? colors.brand.primaryLight : colors.background.primary,
+                                backgroundColor: isActive ? colors.purple[100] : colors.surface.canvas,
                             }}
                         >
                             <Text
                                 style={{
                                     fontSize: 11,
                                     fontWeight: '600',
-                                    color: isActive ? colors.brand.primary : colors.text.secondary,
+                                    color: isActive ? colors.purple[600] : colors.text.secondary,
                                 }}
                             >
                                 {label}
@@ -191,15 +192,15 @@ export function ExercisePanel({ onSelectExercise, visible }: ExercisePanelProps)
                                 width: 32,
                                 height: 32,
                                 borderRadius: 8,
-                                backgroundColor: item.video_url ? '#f5f3ff' : colors.brand.primaryLight,
+                                backgroundColor: colors.purple[100],
                                 alignItems: 'center',
                                 justifyContent: 'center',
                             }}
                         >
                             {item.video_url ? (
-                                <Play size={14} color={colors.brand.primary} fill={colors.brand.primary} />
+                                <Play size={14} color={colors.purple[600]} fill={colors.purple[600]} />
                             ) : (
-                                <Dumbbell size={14} color={colors.brand.primary} />
+                                <Dumbbell size={14} color={colors.purple[600]} />
                             )}
                         </TouchableOpacity>
                         <View style={{ flex: 1 }}>

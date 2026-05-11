@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity } from "react-native";
 import * as Haptics from "expo-haptics";
-import { colors } from "@/theme";
+import { useV2Colors } from "@/hooks/useV2Colors";
 
 interface SetRepsInputProps {
     sets: number;
@@ -12,6 +12,7 @@ interface SetRepsInputProps {
 }
 
 export function SetRepsInput({ sets, reps, restSeconds, onUpdate, compact }: SetRepsInputProps) {
+    const colors = useV2Colors();
     const [isEditing, setIsEditing] = useState(false);
     const [editSets, setEditSets] = useState(String(sets));
     const [editReps, setEditReps] = useState(reps);
@@ -47,7 +48,7 @@ export function SetRepsInput({ sets, reps, restSeconds, onUpdate, compact }: Set
                             width: 40,
                             height: 32,
                             borderRadius: 8,
-                            backgroundColor: colors.background.inset,
+                            backgroundColor: colors.border.default,
                             textAlign: "center",
                             fontSize: 14,
                             fontWeight: "600",
@@ -68,7 +69,7 @@ export function SetRepsInput({ sets, reps, restSeconds, onUpdate, compact }: Set
                             width: 44,
                             height: 32,
                             borderRadius: 8,
-                            backgroundColor: colors.background.inset,
+                            backgroundColor: colors.border.default,
                             textAlign: "center",
                             fontSize: 14,
                             fontWeight: "600",
@@ -89,7 +90,7 @@ export function SetRepsInput({ sets, reps, restSeconds, onUpdate, compact }: Set
                             width: 44,
                             height: 32,
                             borderRadius: 8,
-                            backgroundColor: colors.background.inset,
+                            backgroundColor: colors.border.default,
                             textAlign: "center",
                             fontSize: 14,
                             fontWeight: "600",
@@ -106,11 +107,11 @@ export function SetRepsInput({ sets, reps, restSeconds, onUpdate, compact }: Set
                         paddingHorizontal: 10,
                         paddingVertical: 6,
                         borderRadius: 8,
-                        backgroundColor: colors.brand.primary,
+                        backgroundColor: colors.purple[600],
                         marginTop: 12,
                     }}
                 >
-                    <Text style={{ fontSize: 12, fontWeight: "600", color: colors.text.inverse }}>OK</Text>
+                    <Text style={{ fontSize: 12, fontWeight: "600", color: '#FFFFFF' }}>OK</Text>
                 </TouchableOpacity>
             </View>
         );
@@ -125,7 +126,7 @@ export function SetRepsInput({ sets, reps, restSeconds, onUpdate, compact }: Set
                 accessibilityHint="Toque para editar"
                 style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
             >
-                <Text style={{ fontSize: 12, fontWeight: '600', color: colors.brand.primary }}>
+                <Text style={{ fontSize: 12, fontWeight: '600', color: colors.purple[600] }}>
                     {sets}×{reps}
                 </Text>
                 <Text style={{ fontSize: 11, color: colors.text.tertiary }}>

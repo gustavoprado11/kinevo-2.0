@@ -103,7 +103,7 @@ export function WorkoutTabBar({
                                                 borderRadius: 3,
                                                 backgroundColor: isDay
                                                     ? (isActive ? '#FFFFFF' : colors.purple[600])
-                                                    : (isActive ? 'rgba(255,255,255,0.2)' : '#d1d5db'),
+                                                    : (isActive ? 'rgba(255,255,255,0.2)' : colors.text.quaternary),
                                             }}
                                         />
                                     );
@@ -128,7 +128,7 @@ export function WorkoutTabBar({
                         borderRadius: 12,
                         backgroundColor: colors.surface.card,
                         borderWidth: 1.5,
-                        borderColor: '#e2e8f0',
+                        borderColor: colors.border.default,
                         borderStyle: 'dashed',
                         alignItems: "center",
                         justifyContent: "center",

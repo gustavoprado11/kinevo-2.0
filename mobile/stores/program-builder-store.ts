@@ -261,6 +261,9 @@ interface ProgramBuilderState {
      *  `rounds` defaults to 1 when omitted (linear method). */
     setSetScheme: (workoutId: string, itemId: string, scheme: WorkoutSet[] | null, methodKey: MethodKey | null, rounds?: number) => void;
     removeItem: (workoutId: string, itemId: string) => void;
+    /** Duplica um item dentro do mesmo treino, inserindo logo após o original.
+     *  Reaplica order_index sequencial. Mantém set_scheme/method/rounds. */
+    duplicateItem: (workoutId: string, itemId: string) => void;
     reorderItems: (workoutId: string, newItems: WorkoutItem[]) => void;
 
     // Persistence
@@ -977,6 +980,35 @@ export const useProgramBuilderStore = create<ProgramBuilderState>()(
                 },
                 isDirty: true,
             })),
+
+            duplicateItem: (workoutId, itemId) => set((state) => {
+                const workout = state.draft.workouts.find(w => w.id === workoutId);
+                if (!workout) return state;
+                const sourceIdx = workout.items.findIndex(it => it.id === itemId);
+                if (sourceIdx === -1) return state;
+                const source = workout.items[sourceIdx];
+                const clone: WorkoutItem = {
+                    ...source,
+                    id: Crypto.randomUUID(),
+                    parent_item_id: null,
+                    set_scheme: source.set_scheme ? source.set_scheme.map(s => ({ ...s })) : null,
+                    substitute_exercise_ids: [...source.substitute_exercise_ids],
+                };
+                const inserted = [
+                    ...workout.items.slice(0, sourceIdx + 1),
+                    clone,
+                    ...workout.items.slice(sourceIdx + 1),
+                ].map((it, i) => ({ ...it, order_index: i }));
+                return {
+                    draft: {
+                        ...state.draft,
+                        workouts: state.draft.workouts.map(w =>
+                            w.id === workoutId ? { ...w, items: inserted } : w
+                        ),
+                    },
+                    isDirty: true,
+                };
+            }),
 
             reorderItems: (workoutId, newItems) => set((state) => ({
                 draft: {

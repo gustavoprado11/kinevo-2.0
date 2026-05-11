@@ -3,7 +3,7 @@ import { View, Text, TextInput, FlatList, TouchableOpacity } from "react-native"
 import BottomSheet, { BottomSheetBackdrop, BottomSheetView } from "@gorhom/bottom-sheet";
 import { Search, X, Dumbbell, Play, Plus } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
-import { colors } from "@/theme";
+import { useV2Colors } from "@/hooks/useV2Colors";
 import { useExerciseLibrary, type Exercise } from "@/hooks/useExerciseLibrary";
 import { useExerciseCrud, type ExerciseFormData } from "@/hooks/useExerciseCrud";
 import { VideoPreviewModal } from "./VideoPreviewModal";
@@ -22,6 +22,7 @@ const toTitleCase = (s: string): string =>
     s.toLowerCase().replace(/(^|\s)\p{L}/gu, (c) => c.toUpperCase());
 
 export function ExercisePickerModal({ visible, onClose, onSelect }: ExercisePickerModalProps) {
+    const colors = useV2Colors();
     const bottomSheetRef = useRef<BottomSheet>(null);
     const snapPoints = useMemo(() => ["75%", "95%"], []);
 
@@ -94,7 +95,7 @@ export function ExercisePickerModal({ visible, onClose, onSelect }: ExercisePick
             enablePanDownToClose
             backdropComponent={renderBackdrop}
             handleIndicatorStyle={{ backgroundColor: colors.text.quaternary }}
-            backgroundStyle={{ backgroundColor: colors.background.primary }}
+            backgroundStyle={{ backgroundColor: colors.surface.canvas }}
         >
             <BottomSheetView style={{ flex: 1 }}>
                 {/* Header */}
@@ -121,11 +122,11 @@ export function ExercisePickerModal({ visible, onClose, onSelect }: ExercisePick
                                 paddingHorizontal: 10,
                                 paddingVertical: 6,
                                 borderRadius: 8,
-                                backgroundColor: '#f5f3ff',
+                                backgroundColor: colors.purple[100],
                             }}
                         >
-                            <Plus size={14} color={colors.brand.primary} strokeWidth={2.5} />
-                            <Text style={{ fontSize: 12, fontWeight: '600', color: colors.brand.primary }}>
+                            <Plus size={14} color={colors.purple[600]} strokeWidth={2.5} />
+                            <Text style={{ fontSize: 12, fontWeight: '600', color: colors.purple[600] }}>
                                 Novo
                             </Text>
                         </TouchableOpacity>
@@ -147,12 +148,12 @@ export function ExercisePickerModal({ visible, onClose, onSelect }: ExercisePick
                     style={{
                         flexDirection: "row",
                         alignItems: "center",
-                        backgroundColor: colors.background.card,
+                        backgroundColor: colors.surface.card,
                         borderRadius: 12,
                         marginHorizontal: 20,
                         paddingHorizontal: 12,
                         borderWidth: 1,
-                        borderColor: colors.border.primary,
+                        borderColor: colors.border.default,
                     }}
                 >
                     <Search size={16} color={colors.text.tertiary} />
@@ -194,16 +195,16 @@ export function ExercisePickerModal({ visible, onClose, onSelect }: ExercisePick
                                     paddingHorizontal: 12,
                                     paddingVertical: 6,
                                     borderRadius: 100,
-                                    backgroundColor: isActive ? colors.brand.primary : colors.background.card,
+                                    backgroundColor: isActive ? colors.purple[600] : colors.surface.card,
                                     borderWidth: 1,
-                                    borderColor: isActive ? colors.brand.primary : colors.border.primary,
+                                    borderColor: isActive ? colors.purple[600] : colors.border.default,
                                 }}
                             >
                                 <Text
                                     style={{
                                         fontSize: 12,
                                         fontWeight: "600",
-                                        color: isActive ? colors.text.inverse : colors.text.secondary,
+                                        color: isActive ? '#FFFFFF' : colors.text.secondary,
                                     }}
                                 >
                                     {item.name}
@@ -230,9 +231,9 @@ export function ExercisePickerModal({ visible, onClose, onSelect }: ExercisePick
                                 padding: 12,
                                 marginBottom: 4,
                                 borderRadius: 12,
-                                backgroundColor: colors.background.card,
+                                backgroundColor: colors.surface.card,
                                 borderWidth: 1,
-                                borderColor: colors.border.primary,
+                                borderColor: colors.border.default,
                             }}
                         >
                             {/* Thumbnail / Icon — play overlay if has video */}
@@ -251,16 +252,16 @@ export function ExercisePickerModal({ visible, onClose, onSelect }: ExercisePick
                                     width: 42,
                                     height: 42,
                                     borderRadius: 12,
-                                    backgroundColor: item.video_url ? '#f5f3ff' : colors.brand.primaryLight,
+                                    backgroundColor: colors.purple[100],
                                     alignItems: "center",
                                     justifyContent: "center",
                                     marginRight: 12,
                                 }}
                             >
                                 {item.video_url ? (
-                                    <Play size={18} color={colors.brand.primary} fill={colors.brand.primary} />
+                                    <Play size={18} color={colors.purple[600]} fill={colors.purple[600]} />
                                 ) : (
-                                    <Dumbbell size={16} color={colors.brand.primary} />
+                                    <Dumbbell size={16} color={colors.purple[600]} />
                                 )}
                             </TouchableOpacity>
 

@@ -2,7 +2,7 @@ import React, { useState, useMemo } from "react";
 import { View, Text, LayoutAnimation, UIManager, Platform } from "react-native";
 import { Dumbbell, ChevronDown, ChevronUp } from "lucide-react-native";
 import { PressableScale } from "../../shared/PressableScale";
-import { colors } from "@/theme";
+import { useV2Colors } from "@/hooks/useV2Colors";
 import { calculateVolume, getVolumeColor } from "./volume-helpers";
 import type { Workout } from "@/stores/program-builder-store";
 
@@ -16,6 +16,7 @@ interface VolumeSummaryProps {
 }
 
 export function VolumeSummary({ workouts }: VolumeSummaryProps) {
+    const colors = useV2Colors();
     const [expanded, setExpanded] = useState(false);
 
     const volumeByGroup = useMemo(() => calculateVolume(workouts), [workouts]);
@@ -42,10 +43,10 @@ export function VolumeSummary({ workouts }: VolumeSummaryProps) {
         <View style={{
             marginHorizontal: 20,
             marginBottom: 8,
-            backgroundColor: colors.background.card,
+            backgroundColor: colors.surface.card,
             borderRadius: 12,
             borderWidth: 1,
-            borderColor: colors.border.primary,
+            borderColor: colors.border.default,
             overflow: 'hidden',
         }}>
             {/* Collapsed bar (always visible) */}
@@ -60,7 +61,7 @@ export function VolumeSummary({ workouts }: VolumeSummaryProps) {
                     gap: 8,
                 }}
             >
-                <Dumbbell size={14} color={colors.brand.primary} strokeWidth={2.5} />
+                <Dumbbell size={14} color={colors.purple[600]} strokeWidth={2.5} />
 
                 <View style={{ flex: 1, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                     {sortedGroups.slice(0, expanded ? undefined : 5).map(([group, volume]) => (
@@ -89,7 +90,7 @@ export function VolumeSummary({ workouts }: VolumeSummaryProps) {
             {/* Expanded detail */}
             {expanded && (
                 <View style={{ paddingHorizontal: 14, paddingBottom: 14, gap: 8 }}>
-                    <View style={{ height: 1, backgroundColor: colors.border.primary }} />
+                    <View style={{ height: 1, backgroundColor: colors.border.default }} />
 
                     {sortedGroups.map(([group, volume]) => (
                         <View key={group} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
@@ -106,7 +107,7 @@ export function VolumeSummary({ workouts }: VolumeSummaryProps) {
                                 flex: 1,
                                 height: 6,
                                 borderRadius: 3,
-                                backgroundColor: '#f1f5f9',
+                                backgroundColor: colors.surface.card2,
                             }}>
                                 <View style={{
                                     width: `${Math.min(100, (volume / maxVolume) * 100)}%`,

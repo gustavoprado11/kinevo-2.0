@@ -12,20 +12,20 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ChevronLeft, Save, Plus, Trash2, Dumbbell, Sparkles, Eye } from "lucide-react-native";
+import { ChevronLeft, Save, Plus, Eye, Calendar, Layers, Timer } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
-import Animated, { FadeInUp, FadeIn } from "react-native-reanimated";
+import Animated, { FadeInUp } from "react-native-reanimated";
 import DraggableFlatList, { type RenderItemParams } from "react-native-draggable-flatlist";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useV2Colors } from "@/hooks/useV2Colors";
 import { useProgramBuilder } from "@/hooks/useProgramBuilder";
 import { useResponsive } from "@/hooks/useResponsive";
-import { WorkoutTabBar } from "@/components/trainer/program-builder/WorkoutTabBar";
+import { WorkoutSelectorCard, WorkoutSelectorAddCard } from "@/components/trainer/program-builder/WorkoutSelectorCard";
+import { EmptyWorkoutState } from "@/components/trainer/program-builder/EmptyWorkoutState";
 import { WorkoutItemRow } from "@/components/trainer/program-builder/WorkoutItemRow";
 import { SetSchemeEditor, type SetSchemeEditorResult } from "@/components/trainer/program-builder/SetSchemeEditor";
 import { ExercisePickerModal } from "@/components/trainer/program-builder/ExercisePickerModal";
 import { ExercisePanel } from "@/components/trainer/program-builder/ExercisePanel";
-import { DaySelector, computeOccupiedDays } from "@/components/trainer/program-builder/DaySelector";
 import { VolumeSummary } from "@/components/trainer/program-builder/VolumeSummary";
 import { EmptyState } from "@/components/shared/EmptyState";
 import type { WorkoutItem } from "@/stores/program-builder-store";
@@ -58,6 +58,8 @@ export default function ProgramBuilderScreen() {
     const initFromAiSnapshot = useProgramBuilderStore((s) => s.initFromAiSnapshot);
     const setSetScheme = useProgramBuilderStore((s) => s.setSetScheme);
     const [setSchemeEditingItemId, setSetSchemeEditingItemId] = useState<string | null>(null);
+    const [nameFocused, setNameFocused] = useState(false);
+    const [descriptionFocused, setDescriptionFocused] = useState(false);
     const { data: studentDetail } = useStudentDetail(params.studentId ?? null);
     const aiEnabled = studentDetail?.aiEnabled ?? false;
     const studentName = studentDetail?.student.name ?? "";
@@ -73,11 +75,11 @@ export default function ProgramBuilderScreen() {
         updateDurationWeeks,
         addWorkout,
         removeWorkout,
-        updateWorkoutFrequency,
         setCurrentWorkout,
         addExercise,
         updateItem,
         removeItem,
+        duplicateItem,
         reorderItems,
         reset,
         saveAsTemplate,
@@ -116,10 +118,39 @@ export default function ProgramBuilderScreen() {
 
     const currentWorkout = draft.workouts.find(w => w.id === currentWorkoutId) ?? draft.workouts[0] ?? null;
 
-    const occupiedDays = useMemo(
-        () => computeOccupiedDays(draft.workouts, currentWorkoutId),
-        [draft.workouts, currentWorkoutId]
-    );
+    // Meta chips: cada um só aparece quando há dado real para mostrar.
+    // Duração é editável na linha 1 do header (com label "Duração"); aqui são
+    // métricas derivadas do conteúdo:
+    // - exerciseCount: total de itens entre todos os treinos (>0).
+    // - avgWorkoutMinutes: estimativa simples por treino com items, com média
+    //   sobre os treinos populados. Fórmula por item:
+    //     sets * (reps_estimadas * 3s + rest_seconds)
+    //   reps_estimadas: extrai primeiro número de strings tipo "10" / "8-12" / "AMRAP".
+    const metaChips = useMemo(() => {
+        const populatedWorkouts = draft.workouts.filter((w) => w.items.length > 0);
+        const exerciseCount = populatedWorkouts.reduce((acc, w) => acc + w.items.length, 0);
+
+        let avgWorkoutMinutes: number | null = null;
+        if (populatedWorkouts.length > 0) {
+            const totals = populatedWorkouts.map((w) => {
+                const seconds = w.items.reduce((acc, it) => {
+                    const repsMatch = String(it.reps ?? '').match(/\d+/);
+                    const reps = repsMatch ? parseInt(repsMatch[0], 10) : 10;
+                    const rest = it.rest_seconds ?? 60;
+                    const sets = it.sets ?? 3;
+                    return acc + sets * (reps * 3 + rest);
+                }, 0);
+                return seconds / 60;
+            });
+            const sum = totals.reduce((a, b) => a + b, 0);
+            avgWorkoutMinutes = Math.round(sum / totals.length);
+        }
+
+        return {
+            exerciseCount: exerciseCount > 0 ? exerciseCount : null,
+            avgWorkoutMinutes,
+        };
+    }, [draft.workouts]);
 
     const handleSave = useCallback(async () => {
         if (!draft.name.trim()) {
@@ -226,8 +257,6 @@ export default function ProgramBuilderScreen() {
                     }
                 } else if (choice === "text_paste") {
                     setShowTextSheet(true);
-                } else if (choice === "select_existing") {
-                    setShowAssignWizard(true);
                 }
             },
         });
@@ -350,6 +379,10 @@ export default function ProgramBuilderScreen() {
                 workoutId={currentWorkout.id}
                 onUpdate={(updates) => updateItem(currentWorkout.id, item.id, updates)}
                 onDelete={() => removeItem(currentWorkout.id, item.id)}
+                onDuplicate={() => {
+                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+                    duplicateItem(currentWorkout.id, item.id);
+                }}
                 onEditSets={() => setSetSchemeEditingItemId(item.id)}
                 onExitAdvanced={() => {
                     // Toggle "Modo simples" no card: limpa set_scheme/method/rounds
@@ -374,7 +407,7 @@ export default function ProgramBuilderScreen() {
                 isActive={isActive}
             />
         );
-    }, [currentWorkout, updateItem, removeItem, setSetScheme]);
+    }, [currentWorkout, updateItem, removeItem, duplicateItem, setSetScheme]);
 
     const editingItem = useMemo(() => {
         if (!setSchemeEditingItemId || !currentWorkout) return null;
@@ -418,159 +451,43 @@ export default function ProgramBuilderScreen() {
                     />
                 )}
                 <View style={{ flex: 1 }}>
-                    {/* Header */}
-                    <View
-                        style={{
+                    {/* Header — premium 3-line layout
+                        Linha 1: back + duração inline (compact)
+                        Linha 2: título grande (hero)
+                        Linha 3: meta chips contextuais + actions */}
+                    <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 14, gap: 12 }}>
+                        {/* Linha 1 — back + duração */}
+                        <View style={{
                             flexDirection: "row",
                             alignItems: "center",
                             justifyContent: "space-between",
-                            paddingHorizontal: 16,
-                            paddingVertical: 12,
-                        }}
-                    >
-                        <TouchableOpacity
-                            onPress={handleBack}
-                            accessibilityRole="button"
-                            accessibilityLabel="Voltar"
-                            style={{ flexDirection: "row", alignItems: "center" }}
-                        >
-                            <ChevronLeft size={22} color={colors.purple[600]} />
-                            <Text style={{ fontSize: 16, color: colors.purple[600], marginLeft: 2 }}>Voltar</Text>
-                        </TouchableOpacity>
-
-                        <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text.primary }}>
-                            {isEditMode ? "Editar programa" : "Novo programa"}
-                        </Text>
-
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                            {(() => {
-                                const hasExercises = draft.workouts.some((w) => w.items.length > 0);
-                                return (
-                                    <TouchableOpacity
-                                        onPress={() => {
-                                            Haptics.selectionAsync();
-                                            router.push('/program-builder/preview');
-                                        }}
-                                        disabled={!hasExercises}
-                                        accessibilityRole="button"
-                                        accessibilityLabel="Visualizar como aluno"
-                                        style={{
-                                            alignItems: "center",
-                                            justifyContent: "center",
-                                            backgroundColor: colors.purple[100],
-                                            width: 38,
-                                            height: 38,
-                                            borderRadius: 10,
-                                            opacity: hasExercises ? 1 : 0.4,
-                                        }}
-                                    >
-                                        <Eye size={18} color={colors.purple[600]} />
-                                    </TouchableOpacity>
-                                );
-                            })()}
-                            {!isEditMode && (
-                                <TouchableOpacity
-                                    onPress={openAIMenu}
-                                    disabled={params.studentId == null}
-                                    accessibilityRole="button"
-                                    accessibilityLabel="Como deseja prescrever"
-                                    style={{
-                                        alignItems: "center",
-                                        justifyContent: "center",
-                                        backgroundColor: colors.purple[100],
-                                        width: 38,
-                                        height: 38,
-                                        borderRadius: 10,
-                                        opacity: params.studentId == null ? 0.4 : 1,
-                                    }}
-                                >
-                                    <Sparkles size={18} color={colors.purple[600]} />
-                                </TouchableOpacity>
-                            )}
-                            {/* AI menu hidden in edit mode: editing an existing
-                                program through AI regeneration is its own flow
-                                (assign new program), not part of this surface. */}
+                        }}>
                             <TouchableOpacity
-                                onPress={handleSave}
-                                disabled={isSaving}
+                                onPress={handleBack}
                                 accessibilityRole="button"
-                                accessibilityLabel="Salvar programa"
-                                style={{
-                                    flexDirection: "row",
-                                    alignItems: "center",
-                                    backgroundColor: colors.purple[600],
-                                    paddingHorizontal: 14,
-                                    paddingVertical: 8,
-                                    borderRadius: 10,
-                                    opacity: isSaving ? 0.6 : 1,
-                                    gap: 4,
-                                }}
+                                accessibilityLabel="Voltar"
+                                hitSlop={8}
+                                style={{ flexDirection: "row", alignItems: "center", marginLeft: -4 }}
                             >
-                                {isSaving ? (
-                                    <ActivityIndicator size="small" color={'#FFFFFF'} />
-                                ) : (
-                                    <Save size={14} color={'#FFFFFF'} />
-                                )}
-                                <Text style={{ fontSize: 14, fontWeight: "600", color: '#FFFFFF' }}>
-                                    Salvar
-                                </Text>
+                                <ChevronLeft size={22} color={colors.purple[600]} />
+                                <Text style={{ fontSize: 15, color: colors.purple[600], marginLeft: 2 }}>Voltar</Text>
                             </TouchableOpacity>
-                        </View>
-                    </View>
 
-                    {/* Program metadata */}
-                    <View style={{ paddingHorizontal: 20, gap: 8, marginBottom: 6 }}>
-                        <TextInput
-                            value={draft.name}
-                            onChangeText={updateName}
-                            placeholder="Nome do programa"
-                            placeholderTextColor="#b0b0b8"
-                            accessibilityLabel="Nome do programa"
-                            style={{
-                                fontSize: 18,
-                                fontWeight: "700",
-                                color: colors.text.primary,
-                                paddingVertical: 10,
-                                paddingHorizontal: 14,
-                                borderRadius: 12,
-                                backgroundColor: colors.surface.card,
-                                borderWidth: 1,
-                                borderColor: '#e2e8f0',
-                            }}
-                        />
-                        {/* Description + Duration row */}
-                        <View style={{ flexDirection: 'row', gap: 8 }}>
-                            <TextInput
-                                value={draft.description}
-                                onChangeText={updateDescription}
-                                placeholder="Descrição (opcional)"
-                                placeholderTextColor="#b0b0b8"
-                                accessibilityLabel="Descrição do programa"
-                                multiline
-                                style={{
-                                    flex: 1,
-                                    fontSize: 13,
-                                    color: colors.text.primary,
-                                    paddingVertical: 10,
-                                    paddingHorizontal: 14,
-                                    borderRadius: 12,
-                                    backgroundColor: colors.surface.card,
-                                    borderWidth: 1,
-                                    borderColor: '#e2e8f0',
-                                    minHeight: 42,
-                                }}
-                            />
-                            {/* Duration — compact pill */}
                             <View style={{
                                 flexDirection: 'row',
                                 alignItems: 'center',
-                                gap: 5,
+                                gap: 6,
                                 paddingHorizontal: 10,
-                                borderRadius: 12,
+                                paddingVertical: 6,
+                                borderRadius: 10,
                                 backgroundColor: colors.surface.card,
                                 borderWidth: 1,
-                                borderColor: '#e2e8f0',
+                                borderColor: colors.border.default,
                             }}>
+                                <Calendar size={13} color={colors.text.tertiary} />
+                                <Text style={{ fontSize: 12, color: colors.text.tertiary, fontWeight: '500' }}>
+                                    Duração
+                                </Text>
                                 <TextInput
                                     value={draft.duration_weeks != null ? String(draft.duration_weeks) : ''}
                                     onChangeText={(text) => {
@@ -580,23 +497,165 @@ export default function ProgramBuilderScreen() {
                                         );
                                     }}
                                     placeholder="–"
-                                    placeholderTextColor="#c7c7cc"
+                                    placeholderTextColor={colors.text.quaternary}
                                     keyboardType="number-pad"
                                     accessibilityLabel="Duração em semanas"
                                     style={{
-                                        width: 32,
-                                        height: 32,
-                                        borderRadius: 7,
-                                        backgroundColor: '#f5f3ff',
+                                        minWidth: 22,
                                         textAlign: 'center',
-                                        fontSize: 15,
+                                        fontSize: 14,
                                         fontWeight: '700',
                                         color: colors.purple[600],
+                                        padding: 0,
                                     }}
                                 />
-                                <Text style={{ fontSize: 11, color: colors.text.tertiary, fontWeight: '500' }}>
+                                <Text style={{ fontSize: 12, color: colors.text.tertiary, fontWeight: '500' }}>
                                     sem
                                 </Text>
+                            </View>
+                        </View>
+
+                        {/* Linha 2 — título hero (Nome do programa) */}
+                        <TextInput
+                            value={draft.name}
+                            onChangeText={updateName}
+                            onFocus={() => setNameFocused(true)}
+                            onBlur={() => setNameFocused(false)}
+                            placeholder={isEditMode ? "Editar programa" : "Nome do programa"}
+                            placeholderTextColor={colors.text.tertiary}
+                            accessibilityLabel="Nome do programa"
+                            style={{
+                                fontSize: 26,
+                                fontWeight: "800",
+                                color: colors.text.primary,
+                                paddingVertical: 14,
+                                paddingHorizontal: 16,
+                                borderRadius: 14,
+                                backgroundColor: colors.surface.card,
+                                borderWidth: nameFocused ? 2 : 1,
+                                borderColor: nameFocused ? colors.purple[500] : colors.border.default,
+                                letterSpacing: -0.4,
+                            }}
+                        />
+
+                        {/* Descrição — secondary */}
+                        <TextInput
+                            value={draft.description}
+                            onChangeText={updateDescription}
+                            onFocus={() => setDescriptionFocused(true)}
+                            onBlur={() => setDescriptionFocused(false)}
+                            placeholder="Descrição (opcional)"
+                            placeholderTextColor={colors.text.tertiary}
+                            accessibilityLabel="Descrição do programa"
+                            multiline
+                            style={{
+                                fontSize: 14,
+                                color: colors.text.secondary,
+                                paddingVertical: 12,
+                                paddingHorizontal: 16,
+                                borderRadius: 12,
+                                backgroundColor: colors.surface.card,
+                                borderWidth: descriptionFocused ? 2 : 1,
+                                borderColor: descriptionFocused ? colors.purple[500] : colors.border.default,
+                                minHeight: 48,
+                            }}
+                        />
+
+                        {/* Linha 3 — meta chips + actions */}
+                        <View style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: 8,
+                        }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, flexWrap: 'wrap' }}>
+                                {/* duração editável vive na linha 1 (com label "Duração"); aqui só
+                                    métricas derivadas dos exercícios. */}
+                                {metaChips.exerciseCount != null && (
+                                    <View style={{
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        gap: 4,
+                                        paddingHorizontal: 9,
+                                        paddingVertical: 5,
+                                        borderRadius: 8,
+                                        backgroundColor: colors.surface.card2,
+                                    }}>
+                                        <Layers size={11} color={colors.text.secondary} />
+                                        <Text style={{ fontSize: 11, fontWeight: '600', color: colors.text.secondary }}>
+                                            {metaChips.exerciseCount} exerc.
+                                        </Text>
+                                    </View>
+                                )}
+                                {metaChips.avgWorkoutMinutes != null && (
+                                    <View style={{
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        gap: 4,
+                                        paddingHorizontal: 9,
+                                        paddingVertical: 5,
+                                        borderRadius: 8,
+                                        backgroundColor: colors.surface.card2,
+                                    }}>
+                                        <Timer size={11} color={colors.text.secondary} />
+                                        <Text style={{ fontSize: 11, fontWeight: '600', color: colors.text.secondary }}>
+                                            ~{metaChips.avgWorkoutMinutes} min
+                                        </Text>
+                                    </View>
+                                )}
+                            </View>
+
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                                {(() => {
+                                    const hasExercises = draft.workouts.some((w) => w.items.length > 0);
+                                    return (
+                                        <TouchableOpacity
+                                            onPress={() => {
+                                                Haptics.selectionAsync();
+                                                router.push('/program-builder/preview');
+                                            }}
+                                            disabled={!hasExercises}
+                                            accessibilityRole="button"
+                                            accessibilityLabel="Visualizar como aluno"
+                                            style={{
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                                backgroundColor: colors.purple[100],
+                                                width: 36,
+                                                height: 36,
+                                                borderRadius: 10,
+                                                opacity: hasExercises ? 1 : 0.4,
+                                            }}
+                                        >
+                                            <Eye size={17} color={colors.purple[600]} />
+                                        </TouchableOpacity>
+                                    );
+                                })()}
+                                <TouchableOpacity
+                                    onPress={handleSave}
+                                    disabled={isSaving}
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Salvar programa"
+                                    style={{
+                                        flexDirection: "row",
+                                        alignItems: "center",
+                                        backgroundColor: colors.purple[600],
+                                        paddingHorizontal: 14,
+                                        paddingVertical: 8,
+                                        borderRadius: 10,
+                                        opacity: isSaving ? 0.6 : 1,
+                                        gap: 4,
+                                    }}
+                                >
+                                    {isSaving ? (
+                                        <ActivityIndicator size="small" color={'#FFFFFF'} />
+                                    ) : (
+                                        <Save size={14} color={'#FFFFFF'} />
+                                    )}
+                                    <Text style={{ fontSize: 14, fontWeight: "600", color: '#FFFFFF' }}>
+                                        Salvar
+                                    </Text>
+                                </TouchableOpacity>
                             </View>
                         </View>
                     </View>
@@ -604,57 +663,42 @@ export default function ProgramBuilderScreen() {
                     {/* Volume Summary */}
                     <VolumeSummary workouts={draft.workouts} />
 
-                    {/* Workout tabs */}
-                    <WorkoutTabBar
-                        workouts={draft.workouts}
-                        currentWorkoutId={currentWorkoutId}
-                        onSelectWorkout={setCurrentWorkout}
-                        onAddWorkout={addWorkout}
-                    />
-
-                    {/* Current workout header — single compact row */}
-                    {currentWorkout && (
-                        <View style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
+                    {/* Workout selector — horizontal scroll de cards premium */}
+                    <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={{
                             paddingHorizontal: 20,
-                            paddingTop: 2,
-                            paddingBottom: 10,
+                            paddingVertical: 8,
                             gap: 10,
-                        }}>
-                            <Text
-                                style={{ fontSize: 15, fontWeight: "700", color: colors.text.primary }}
-                                numberOfLines={1}
-                            >
-                                {currentWorkout.name}
-                            </Text>
-
-                            <View style={{ flex: 1 }}>
-                                <DaySelector
-                                    frequency={currentWorkout.frequency}
-                                    occupiedDays={occupiedDays}
-                                    onUpdateFrequency={(days) => updateWorkoutFrequency(currentWorkout.id, days)}
-                                />
-                            </View>
-
-                            <TouchableOpacity
-                                onPress={() => handleDeleteWorkout(currentWorkout.id, currentWorkout.name)}
-                                accessibilityRole="button"
-                                accessibilityLabel={`Excluir ${currentWorkout.name}`}
-                                hitSlop={8}
-                                style={{
-                                    width: 30,
-                                    height: 30,
-                                    borderRadius: 8,
-                                    backgroundColor: '#fef2f2',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
+                            alignItems: 'center',
+                        }}
+                        style={{ flexGrow: 0 }}
+                    >
+                        {draft.workouts.map((workout) => (
+                            <WorkoutSelectorCard
+                                key={workout.id}
+                                workout={workout}
+                                isActive={workout.id === currentWorkoutId}
+                                onPress={() => {
+                                    Haptics.selectionAsync();
+                                    setCurrentWorkout(workout.id);
                                 }}
-                            >
-                                <Trash2 size={14} color={colors.semantic.danger.default} />
-                            </TouchableOpacity>
-                        </View>
-                    )}
+                                onLongPress={() => {
+                                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                                    handleDeleteWorkout(workout.id, workout.name);
+                                }}
+                            />
+                        ))}
+                        <WorkoutSelectorAddCard
+                            onPress={() => {
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                addWorkout();
+                            }}
+                            pulse={draft.workouts.every((w) => w.items.length === 0)}
+                        />
+                    </ScrollView>
+
 
                     {/* Exercise list */}
                     {currentWorkout && currentWorkout.items.length > 0 ? (
@@ -671,50 +715,29 @@ export default function ProgramBuilderScreen() {
                             contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 120 }}
                             showsVerticalScrollIndicator={false}
                         />
-                    ) : (
+                    ) : currentWorkout ? (
                         <ScrollView
-                            contentContainerStyle={{ flex: 1, paddingHorizontal: 20, justifyContent: 'center' }}
+                            contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingBottom: 40 }}
                             showsVerticalScrollIndicator={false}
                         >
-                            <Animated.View
-                                entering={FadeIn.duration(400)}
-                                style={{ alignItems: 'center', paddingBottom: 80 }}
-                            >
-                                <View style={{
-                                    width: 64,
-                                    height: 64,
-                                    borderRadius: 20,
-                                    backgroundColor: '#f5f3ff',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    marginBottom: 16,
-                                }}>
-                                    <Dumbbell size={28} color={colors.purple[600]} strokeWidth={1.5} />
-                                </View>
-                                <Text style={{
-                                    fontSize: 16,
-                                    fontWeight: "600",
-                                    color: colors.text.secondary,
-                                    textAlign: "center",
-                                    marginBottom: 6,
-                                }}>
-                                    Nenhum exercício
-                                </Text>
-                                <Text style={{
-                                    fontSize: 13,
-                                    color: colors.text.tertiary,
-                                    textAlign: "center",
-                                    lineHeight: 19,
-                                    maxWidth: 240,
-                                }}>
-                                    Toque em "Adicionar exercício" para começar a montar este treino
-                                </Text>
-                            </Animated.View>
+                            <EmptyWorkoutState
+                                workoutName={currentWorkout.name}
+                                onAddExercise={() => setShowExercisePicker(true)}
+                                onUseAI={openAIMenu}
+                                onUseTemplate={() => {
+                                    if (!params.studentId) {
+                                        toast.info("Selecione um aluno", "Para usar um programa existente, abra o builder a partir de um aluno.");
+                                        return;
+                                    }
+                                    setShowAssignWizard(true);
+                                }}
+                            />
                         </ScrollView>
-                    )}
+                    ) : null}
 
-                    {/* FAB - Add Exercise (phone only) */}
-                    {currentWorkout && !isTablet && (
+                    {/* FAB - Add Exercise (phone only). Esconde no empty state:
+                        EmptyWorkoutState já fornece o CTA primary equivalente. */}
+                    {currentWorkout && currentWorkout.items.length > 0 && !isTablet && (
                         <Animated.View
                             entering={FadeInUp.delay(200).duration(400).springify()}
                             style={{

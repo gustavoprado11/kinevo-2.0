@@ -26,7 +26,7 @@ import {
 } from "@kinevo/shared/lib/prescription/set-scheme-presets";
 import { Minus } from "lucide-react-native";
 
-import { colors } from "@/theme";
+import { useV2Colors } from "@/hooks/useV2Colors";
 import { SetSchemeCard } from "./SetSchemeCard";
 import { SetSchemePresetChips } from "./SetSchemePresetChips";
 
@@ -102,6 +102,7 @@ export function SetSchemeEditor({
     onSave,
     onClose,
 }: SetSchemeEditorProps) {
+    const colors = useV2Colors();
     const insets = useSafeAreaInsets();
 
     const [scheme, setScheme] = useState<WorkoutSet[]>(() =>
@@ -265,7 +266,7 @@ export function SetSchemeEditor({
             onRequestClose={onClose}
         >
             <KeyboardAvoidingView
-                style={{ flex: 1, backgroundColor: colors.background.primary }}
+                style={{ flex: 1, backgroundColor: colors.surface.canvas }}
                 behavior={Platform.OS === "ios" ? "padding" : undefined}
             >
                 <View style={{ flex: 1, paddingTop: insets.top || 12 }}>
@@ -277,9 +278,9 @@ export function SetSchemeEditor({
                             justifyContent: "space-between",
                             paddingHorizontal: 16,
                             paddingVertical: 12,
-                            backgroundColor: colors.background.card,
+                            backgroundColor: colors.surface.card,
                             borderBottomWidth: 1,
-                            borderBottomColor: colors.border.primary,
+                            borderBottomColor: colors.border.default,
                         }}
                     >
                         <TouchableOpacity
@@ -304,14 +305,14 @@ export function SetSchemeEditor({
                             accessibilityLabel="Salvar"
                             style={{ paddingHorizontal: 12, paddingVertical: 6 }}
                         >
-                            <Text style={{ fontSize: 14, fontWeight: "700", color: colors.brand.primary }}>
+                            <Text style={{ fontSize: 14, fontWeight: "700", color: colors.purple[600] }}>
                                 Salvar
                             </Text>
                         </TouchableOpacity>
                     </View>
 
                     {/* Preset chips */}
-                    <View style={{ paddingVertical: 8, backgroundColor: colors.background.card, borderBottomWidth: 1, borderBottomColor: colors.border.primary }}>
+                    <View style={{ paddingVertical: 8, backgroundColor: colors.surface.card, borderBottomWidth: 1, borderBottomColor: colors.border.default }}>
                         <SetSchemePresetChips activeKey={displayKey} onApply={applyPresetKey} />
                     </View>
 
@@ -335,8 +336,8 @@ export function SetSchemeEditor({
                                 borderColor: "rgba(124, 58, 237, 0.25)",
                             }}
                         >
-                            <Repeat size={12} color={colors.brand.primary} />
-                            <Text style={{ fontSize: 11, fontWeight: "700", color: colors.brand.primary }}>
+                            <Repeat size={12} color={colors.purple[600]} />
+                            <Text style={{ fontSize: 11, fontWeight: "700", color: colors.purple[600] }}>
                                 {isCompound && effectiveRounds > 1
                                     ? `${effectiveRounds} rodadas × ${phasesPerRound} fases · ${totalPhases} fases totais`
                                     : `${phasesPerRound} fases`}
@@ -353,9 +354,9 @@ export function SetSchemeEditor({
                                 justifyContent: "space-between",
                                 paddingHorizontal: 16,
                                 paddingVertical: 10,
-                                backgroundColor: colors.background.card,
+                                backgroundColor: colors.surface.card,
                                 borderBottomWidth: 1,
-                                borderBottomColor: colors.border.primary,
+                                borderBottomColor: colors.border.default,
                                 gap: 12,
                             }}
                         >
@@ -377,13 +378,13 @@ export function SetSchemeEditor({
                                         width: 32,
                                         height: 32,
                                         borderRadius: 8,
-                                        backgroundColor: rounds <= 1 ? colors.background.primary : colors.brand.primaryLight,
+                                        backgroundColor: rounds <= 1 ? colors.surface.canvas : colors.purple[100],
                                         alignItems: "center",
                                         justifyContent: "center",
                                         opacity: rounds <= 1 ? 0.4 : 1,
                                     }}
                                 >
-                                    <Minus size={16} color={colors.brand.primary} />
+                                    <Minus size={16} color={colors.purple[600]} />
                                 </TouchableOpacity>
                                 <Text
                                     style={{
@@ -391,7 +392,7 @@ export function SetSchemeEditor({
                                         textAlign: "center",
                                         fontSize: 17,
                                         fontWeight: "800",
-                                        color: colors.brand.primary,
+                                        color: colors.purple[600],
                                         fontVariant: ["tabular-nums"],
                                     }}
                                 >
@@ -406,13 +407,13 @@ export function SetSchemeEditor({
                                         width: 32,
                                         height: 32,
                                         borderRadius: 8,
-                                        backgroundColor: rounds >= 20 ? colors.background.primary : colors.brand.primaryLight,
+                                        backgroundColor: rounds >= 20 ? colors.surface.canvas : colors.purple[100],
                                         alignItems: "center",
                                         justifyContent: "center",
                                         opacity: rounds >= 20 ? 0.4 : 1,
                                     }}
                                 >
-                                    <Plus size={16} color={colors.brand.primary} />
+                                    <Plus size={16} color={colors.purple[600]} />
                                 </TouchableOpacity>
                             </View>
                         </View>
@@ -477,11 +478,11 @@ export function SetSchemeEditor({
                                 style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 4, paddingHorizontal: 6 }}
                             >
                                 {showAdvancedFields ? (
-                                    <ChevronUp size={12} color={colors.brand.primary} />
+                                    <ChevronUp size={12} color={colors.purple[600]} />
                                 ) : (
-                                    <ChevronDown size={12} color={colors.brand.primary} />
+                                    <ChevronDown size={12} color={colors.purple[600]} />
                                 )}
-                                <Text style={{ fontSize: 11, fontWeight: "600", color: colors.brand.primary }}>
+                                <Text style={{ fontSize: 11, fontWeight: "600", color: colors.purple[600] }}>
                                     {showAdvancedFields ? "Ocultar RIR e Cadência" : "Prescrever RIR e Cadência"}
                                 </Text>
                             </TouchableOpacity>
@@ -527,14 +528,14 @@ export function SetSchemeEditor({
                                 borderRadius: 12,
                                 borderWidth: 1,
                                 borderStyle: "dashed",
-                                borderColor: colors.brand.primary,
-                                backgroundColor: colors.brand.primaryLight,
+                                borderColor: colors.purple[600],
+                                backgroundColor: colors.purple[100],
                                 gap: 6,
                                 marginTop: 4,
                             }}
                         >
-                            <Plus size={16} color={colors.brand.primary} />
-                            <Text style={{ fontSize: 13, fontWeight: "600", color: colors.brand.primary }}>
+                            <Plus size={16} color={colors.purple[600]} />
+                            <Text style={{ fontSize: 13, fontWeight: "600", color: colors.purple[600] }}>
                                 {isCompound ? "Adicionar fase" : "Adicionar série"}
                             </Text>
                         </TouchableOpacity>

@@ -6,7 +6,7 @@ import { ChevronDown, Copy, Minus, Plus, Trash2 } from "lucide-react-native";
 import type { SetType, WorkoutSet } from "@kinevo/shared/types/prescription";
 import { SET_TYPE_OPTIONS } from "@kinevo/shared/types/prescription";
 
-import { colors } from "@/theme";
+import { useV2Colors } from "@/hooks/useV2Colors";
 
 /** Cor da borda esquerda por tipo (Fase 4.5c §4). Mantém o card sem borda
  *  colorida quando o tipo é `normal` — comportamento atual byte-a-byte. */
@@ -54,6 +54,14 @@ export function SetSchemeCard({
     onDuplicate,
     onRemove,
 }: SetSchemeCardProps) {
+    const colors = useV2Colors();
+    const inputStyle = {
+        flex: 1,
+        fontSize: 13,
+        color: colors.text.primary,
+        paddingVertical: 4,
+        paddingHorizontal: 0,
+    } as const;
     const usePct = set.weight_target_pct1rm !== null;
     const weightValue = usePct ? set.weight_target_pct1rm : set.weight_target_kg;
 
@@ -110,12 +118,12 @@ export function SetSchemeCard({
     return (
         <View
             style={{
-                backgroundColor: colors.background.card,
+                backgroundColor: colors.surface.card,
                 borderRadius: 14,
                 padding: 12,
                 marginBottom: 10,
                 borderWidth: 1,
-                borderColor: colors.border.primary,
+                borderColor: colors.border.default,
                 // Borda esquerda colorida pra tipos != normal (Fase 4.5c §4).
                 ...(leftBorderColor
                     ? { borderLeftWidth: 3, borderLeftColor: leftBorderColor }
@@ -134,13 +142,13 @@ export function SetSchemeCard({
                         width: 24,
                         height: 24,
                         borderRadius: 6,
-                        backgroundColor: colors.brand.primaryLight,
+                        backgroundColor: colors.purple[100],
                         alignItems: "center",
                         justifyContent: "center",
                         marginRight: 8,
                     }}
                 >
-                    <Text style={{ fontSize: 12, fontWeight: "700", color: colors.brand.primary }}>
+                    <Text style={{ fontSize: 12, fontWeight: "700", color: colors.purple[600] }}>
                         {set.set_number}
                     </Text>
                 </View>
@@ -189,7 +197,7 @@ export function SetSchemeCard({
                         opacity: canRemove ? 1 : 0.3,
                     }}
                 >
-                    <Trash2 size={16} color={colors.error.default} />
+                    <Trash2 size={16} color={colors.semantic.danger.default} />
                 </TouchableOpacity>
             </View>
 
@@ -210,16 +218,16 @@ export function SetSchemeCard({
                                 paddingHorizontal: 10,
                                 paddingVertical: 5,
                                 borderRadius: 999,
-                                backgroundColor: active ? colors.brand.primary : "transparent",
+                                backgroundColor: active ? colors.purple[600] : "transparent",
                                 borderWidth: 1,
-                                borderColor: active ? colors.brand.primary : colors.border.secondary,
+                                borderColor: active ? colors.purple[600] : colors.border.default,
                             }}
                         >
                             <Text
                                 style={{
                                     fontSize: 11,
                                     fontWeight: "600",
-                                    color: active ? colors.text.inverse : colors.text.secondary,
+                                    color: active ? '#FFFFFF' : colors.text.secondary,
                                 }}
                             >
                                 {SET_TYPE_LABELS[t]}
@@ -263,7 +271,7 @@ export function SetSchemeCard({
                         paddingVertical: 4,
                         marginLeft: 6,
                         borderRadius: 6,
-                        backgroundColor: colors.background.inset,
+                        backgroundColor: colors.border.default,
                     }}
                 >
                     <Text style={{ fontSize: 10, fontWeight: "700", color: colors.text.tertiary }}>
@@ -316,6 +324,7 @@ export function SetSchemeCard({
 }
 
 function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
+    const colors = useV2Colors();
     return (
         <View
             style={{
@@ -323,7 +332,7 @@ function FieldRow({ label, children }: { label: string; children: React.ReactNod
                 alignItems: "center",
                 paddingVertical: 6,
                 borderTopWidth: 1,
-                borderTopColor: colors.border.primary,
+                borderTopColor: colors.border.default,
             }}
         >
             <Text
@@ -354,6 +363,15 @@ function Stepper({
     onDec: () => void;
     onInc: () => void;
 }) {
+    const colors = useV2Colors();
+    const stepperButtonStyle = {
+        width: 28,
+        height: 28,
+        borderRadius: 8,
+        backgroundColor: colors.border.default,
+        alignItems: "center" as const,
+        justifyContent: "center" as const,
+    };
     return (
         <View style={{ flexDirection: "row", alignItems: "center" }}>
             <TouchableOpacity
@@ -392,20 +410,3 @@ function formatNumber(n: number): string {
     if (Number.isInteger(n)) return String(n);
     return n.toFixed(1);
 }
-
-const inputStyle = {
-    flex: 1,
-    fontSize: 13,
-    color: colors.text.primary,
-    paddingVertical: 4,
-    paddingHorizontal: 0,
-} as const;
-
-const stepperButtonStyle = {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-    backgroundColor: colors.background.inset,
-    alignItems: "center" as const,
-    justifyContent: "center" as const,
-};

@@ -2,7 +2,7 @@ import React, { useCallback } from "react";
 import { View, Text } from "react-native";
 import * as Haptics from "expo-haptics";
 import { PressableScale } from "../../shared/PressableScale";
-import { colors } from "@/theme";
+import { useV2Colors } from "@/hooks/useV2Colors";
 import { DAYS } from "./day-helpers";
 
 export { computeOccupiedDays } from "./day-helpers";
@@ -14,6 +14,7 @@ interface DaySelectorProps {
 }
 
 export function DaySelector({ frequency, occupiedDays, onUpdateFrequency }: DaySelectorProps) {
+    const colors = useV2Colors();
     const handleToggle = useCallback((dayKey: string) => {
         const isOccupied = occupiedDays.includes(dayKey) && !frequency.includes(dayKey);
         if (isOccupied) return;
@@ -31,11 +32,11 @@ export function DaySelector({ frequency, occupiedDays, onUpdateFrequency }: DayS
         <View style={{
             flexDirection: 'row',
             gap: 2,
-            backgroundColor: hasSelection ? '#f8f7ff' : '#f9fafb',
+            backgroundColor: hasSelection ? colors.purple[100] : colors.surface.card2,
             borderRadius: 10,
             padding: 3,
             borderWidth: 1,
-            borderColor: hasSelection ? '#ede9fe' : '#e5e7eb',
+            borderColor: hasSelection ? colors.purple[200] : colors.border.default,
         }}>
             {DAYS.map((day) => {
                 const isSelected = frequency.includes(day.key);
@@ -56,13 +57,13 @@ export function DaySelector({ frequency, occupiedDays, onUpdateFrequency }: DayS
                             alignItems: 'center',
                             justifyContent: 'center',
                             backgroundColor: isSelected
-                                ? colors.brand.primary
+                                ? colors.purple[600]
                                 : isOccupied
-                                    ? '#e5e7eb'
+                                    ? colors.border.default
                                     : 'transparent',
                             // Subtle shadow on selected buttons
                             ...(isSelected ? {
-                                shadowColor: colors.brand.primary,
+                                shadowColor: colors.purple[600],
                                 shadowOffset: { width: 0, height: 1 },
                                 shadowOpacity: 0.3,
                                 shadowRadius: 3,
@@ -74,10 +75,10 @@ export function DaySelector({ frequency, occupiedDays, onUpdateFrequency }: DayS
                             fontSize: 11,
                             fontWeight: isSelected ? '800' : '600',
                             color: isSelected
-                                ? '#ffffff'
+                                ? '#FFFFFF'
                                 : isOccupied
-                                    ? '#c4c4cc'
-                                    : '#8b8b97',
+                                    ? colors.text.quaternary
+                                    : colors.text.tertiary,
                         }}>
                             {day.label}
                         </Text>

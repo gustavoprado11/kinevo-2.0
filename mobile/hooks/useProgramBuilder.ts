@@ -600,6 +600,7 @@ export function useProgramBuilder() {
         addExercise: store.addExercise,
         updateItem: store.updateItem,
         removeItem: store.removeItem,
+        duplicateItem: store.duplicateItem,
         reorderItems: store.reorderItems,
         reset: store.reset,
         saveAsTemplate,

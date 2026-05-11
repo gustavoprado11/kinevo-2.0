@@ -5,7 +5,7 @@ import * as Haptics from "expo-haptics";
 import type { MethodKey } from "@kinevo/shared/types/prescription";
 import { SYSTEM_PRESETS } from "@kinevo/shared/lib/prescription/set-scheme-presets";
 
-import { colors } from "@/theme";
+import { useV2Colors } from "@/hooks/useV2Colors";
 
 interface SetSchemePresetChipsProps {
     activeKey: MethodKey | null;
@@ -30,6 +30,7 @@ const PRESET_ORDER: Array<Exclude<MethodKey, "standard" | "custom">> = [
  *  - Customizado é manualmente clicável e preserva `set_scheme`/`rounds`
  *    — só rotula a intenção do trainer. */
 export function SetSchemePresetChips({ activeKey, onApply }: SetSchemePresetChipsProps) {
+    const colors = useV2Colors();
     const renderChip = (
         key: Exclude<MethodKey, "standard">,
         label: string,
@@ -51,14 +52,14 @@ export function SetSchemePresetChips({ activeKey, onApply }: SetSchemePresetChip
                     paddingHorizontal: 12,
                     paddingVertical: 6,
                     borderRadius: 8,
-                    backgroundColor: active ? colors.brand.primary : "transparent",
+                    backgroundColor: active ? colors.purple[600] : "transparent",
                 }}
             >
                 <Text
                     style={{
                         fontSize: 12,
                         fontWeight: active ? "700" : "600",
-                        color: active ? colors.text.inverse : colors.text.secondary,
+                        color: active ? '#FFFFFF' : colors.text.secondary,
                     }}
                 >
                     {label}
@@ -78,7 +79,7 @@ export function SetSchemePresetChips({ activeKey, onApply }: SetSchemePresetChip
                     flexDirection: "row",
                     alignItems: "center",
                     gap: 2,
-                    backgroundColor: colors.background.inset,
+                    backgroundColor: colors.border.default,
                     borderRadius: 10,
                     padding: 2,
                 }}
