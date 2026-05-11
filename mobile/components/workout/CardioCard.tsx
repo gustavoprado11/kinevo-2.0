@@ -15,7 +15,7 @@ import {
 } from '@kinevo/shared/types/workout-items';
 import type { ExerciseData } from '../../hooks/useWorkoutSession';
 import type { TimerUpdateData } from '../../hooks/useLiveActivity';
-import { useV2Colors, type V2Palette } from '../../hooks/useV2Colors';
+import { useV2Colors, useIsDark, type V2Palette } from '../../hooks/useV2Colors';
 
 interface CardioCardProps {
     exercise: ExerciseData;
@@ -51,6 +51,7 @@ function formatTimer(seconds: number): string {
 
 export function CardioCard({ exercise, disabled, onCardioToggle, onTimerUpdate, onTimerStop }: CardioCardProps) {
     const colors = useV2Colors();
+    const isDark = useIsDark();
     const styles = makeStyles(colors);
     const config = (exercise.item_config || {}) as CardioConfig;
     const mode: CardioMode = config.mode || 'continuous';
@@ -468,7 +469,7 @@ export function CardioCard({ exercise, disabled, onCardioToggle, onTimerUpdate, 
         return (
             <BlurView
                 intensity={60}
-                tint="light"
+                tint={isDark ? 'dark' : 'light'}
                 className="rounded-2xl overflow-hidden"
                 style={[styles.container, { backgroundColor: 'rgba(240, 253, 244, 0.7)' }]}
             >
@@ -495,7 +496,7 @@ export function CardioCard({ exercise, disabled, onCardioToggle, onTimerUpdate, 
         return (
             <BlurView
                 intensity={60}
-                tint="light"
+                tint={isDark ? 'dark' : 'light'}
                 className="rounded-2xl overflow-hidden"
                 style={styles.completedContainer}
             >
@@ -523,7 +524,7 @@ export function CardioCard({ exercise, disabled, onCardioToggle, onTimerUpdate, 
         return (
             <BlurView
                 intensity={60}
-                tint="light"
+                tint={isDark ? 'dark' : 'light'}
                 className="rounded-2xl overflow-hidden"
                 style={styles.container}
             >
@@ -552,7 +553,7 @@ export function CardioCard({ exercise, disabled, onCardioToggle, onTimerUpdate, 
         return (
             <BlurView
                 intensity={60}
-                tint="light"
+                tint={isDark ? 'dark' : 'light'}
                 className="rounded-2xl overflow-hidden"
                 style={styles.container}
             >
@@ -623,7 +624,7 @@ export function CardioCard({ exercise, disabled, onCardioToggle, onTimerUpdate, 
         return (
             <BlurView
                 intensity={60}
-                tint="light"
+                tint={isDark ? 'dark' : 'light'}
                 className="rounded-2xl overflow-hidden"
                 style={styles.container}
             >
@@ -695,7 +696,7 @@ export function CardioCard({ exercise, disabled, onCardioToggle, onTimerUpdate, 
     return (
         <BlurView
             intensity={60}
-            tint="light"
+            tint={isDark ? 'dark' : 'light'}
             className="rounded-2xl overflow-hidden"
             style={styles.container}
         >
@@ -843,7 +844,7 @@ function makeStyles(colors: V2Palette) {
         },
         progressBarTrack: {
             height: 6,
-            backgroundColor: colors.neutral[200],
+            backgroundColor: colors.surface.card2,
             borderRadius: 3,
             overflow: 'hidden',
             marginBottom: 8,
@@ -857,7 +858,7 @@ function makeStyles(colors: V2Palette) {
             width: 32,
             height: 32,
             borderRadius: 16,
-            backgroundColor: colors.neutral[100],
+            backgroundColor: colors.surface.card2,
             alignItems: 'center',
             justifyContent: 'center',
         },
@@ -865,7 +866,7 @@ function makeStyles(colors: V2Palette) {
             width: 40,
             height: 40,
             borderRadius: 20,
-            backgroundColor: colors.neutral[200],
+            backgroundColor: colors.surface.card2,
             alignItems: 'center',
             justifyContent: 'center',
         },

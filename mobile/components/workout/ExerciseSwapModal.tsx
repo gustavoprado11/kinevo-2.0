@@ -40,10 +40,10 @@ export function ExerciseSwapModal({
             animationType="slide"
             onRequestClose={onClose}
         >
-            <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }}>
+            <View style={{ flex: 1, backgroundColor: isDark ? 'rgba(0,0,0,0.72)' : 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
                 <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
                     <BlurView
-                        intensity={90}
+                        intensity={isDark ? 100 : 90}
                         tint={isDark ? 'dark' : 'light'}
                         style={{
                             backgroundColor: colors.surface.glass,
@@ -66,7 +66,7 @@ export function ExerciseSwapModal({
                                 <ArrowRightLeft size={18} color="#7c3aed" />
                                 <Text style={{ color: colors.text.primary, fontSize: 18, fontWeight: '700' }}>Substituir Exercício</Text>
                             </View>
-                            <TouchableOpacity onPress={onClose} style={{ padding: 8, backgroundColor: colors.neutral[100], borderRadius: 999 }}>
+                            <TouchableOpacity onPress={onClose} style={{ padding: 8, backgroundColor: colors.surface.card2, borderRadius: 999 }}>
                                 <X size={18} color={colors.text.tertiary} />
                             </TouchableOpacity>
                         </View>
@@ -75,64 +75,77 @@ export function ExerciseSwapModal({
                             {exerciseName ? `Atual: ${exerciseName}` : 'Selecione um substituto.'}
                         </Text>
 
-                        <View className="mb-6">
-                            <View className="flex-row items-center rounded-2xl border border-white/60 bg-white/40 px-3 overflow-hidden">
-                                <Search size={16} color="#64748b" />
+                        <View style={{ marginBottom: 24 }}>
+                            <View style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                borderRadius: 16,
+                                borderWidth: 1,
+                                borderColor: colors.border.default,
+                                backgroundColor: colors.surface.card2,
+                                paddingHorizontal: 12,
+                                overflow: 'hidden',
+                            }}>
+                                <Search size={16} color={colors.text.tertiary} />
                                 <TextInput
                                     value={searchQuery}
                                     onChangeText={onSearchQueryChange}
                                     placeholder="Buscar exercício para troca..."
-                                    placeholderTextColor="#94a3b8"
-                                    className="flex-1 px-2 py-4 text-slate-900 font-medium"
+                                    placeholderTextColor={colors.text.quaternary}
+                                    style={{ flex: 1, paddingHorizontal: 8, paddingVertical: 16, color: colors.text.primary, fontWeight: '500' }}
                                     autoCapitalize="none"
                                     autoCorrect={false}
                                 />
                                 {searchQuery.length > 0 && (
-                                    <TouchableOpacity onPress={() => onSearchQueryChange('')} className="p-1">
-                                        <X size={14} color="#64748b" />
+                                    <TouchableOpacity onPress={() => onSearchQueryChange('')} style={{ padding: 4 }}>
+                                        <X size={14} color={colors.text.tertiary} />
                                     </TouchableOpacity>
                                 )}
                             </View>
                         </View>
 
                         {isLoading ? (
-                            <View className="py-10 items-center justify-center">
+                            <View style={{ paddingVertical: 40, alignItems: 'center', justifyContent: 'center' }}>
                                 <ActivityIndicator size="large" color="#8B5CF6" />
-                                <Text className="text-slate-400 mt-3">Carregando substituicoes...</Text>
+                                <Text style={{ color: colors.text.tertiary, marginTop: 12 }}>Carregando substituicoes...</Text>
                             </View>
                         ) : (
                             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-                                <Text className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">
+                                <Text style={{ color: colors.text.tertiary, fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 8 }}>
                                     Sugestões rápidas
                                 </Text>
                                 {options.length === 0 ? (
-                                    <View className="py-10 items-center justify-center">
-                                        <RefreshCw size={20} color="#64748B" />
-                                        <Text className="text-slate-400 mt-3 text-center">
+                                    <View style={{ paddingVertical: 40, alignItems: 'center', justifyContent: 'center' }}>
+                                        <RefreshCw size={20} color={colors.text.tertiary} />
+                                        <Text style={{ color: colors.text.tertiary, marginTop: 12, textAlign: 'center' }}>
                                             Nenhuma sugestao disponivel para este exercicio.
                                         </Text>
                                     </View>
                                 ) : (
-                                    <View className="mb-5">
+                                    <View style={{ marginBottom: 20 }}>
                                         {options.map((option) => (
                                             <TouchableOpacity
                                                 key={option.id}
                                                 onPress={() => onSelect(option)}
-                                                className="py-4 border-b border-slate-100"
+                                                style={{ paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: colors.border.default }}
                                             >
-                                                <View className="flex-row items-start justify-between">
-                                                    <Text className="text-slate-900 font-semibold flex-1 mr-3 text-base">{option.name}</Text>
-                                                    <View className={`px-2 py-1 rounded-full border ${option.source === 'manual'
-                                                        ? 'bg-violet-50 border-violet-100'
-                                                        : 'bg-slate-50 border-slate-200'
-                                                        }`}>
-                                                        <Text className={`text-[10px] font-bold uppercase ${option.source === 'manual' ? 'text-violet-600' : 'text-slate-500'}`}>
+                                                <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                                                    <Text style={{ color: colors.text.primary, fontWeight: '600', flex: 1, marginRight: 12, fontSize: 16 }}>{option.name}</Text>
+                                                    <View style={{
+                                                        paddingHorizontal: 8,
+                                                        paddingVertical: 4,
+                                                        borderRadius: 999,
+                                                        borderWidth: 1,
+                                                        backgroundColor: option.source === 'manual' ? 'rgba(124,58,237,0.14)' : colors.surface.card2,
+                                                        borderColor: option.source === 'manual' ? 'rgba(124,58,237,0.32)' : colors.border.default,
+                                                    }}>
+                                                        <Text style={{ fontSize: 10, fontWeight: '700', textTransform: 'uppercase', color: option.source === 'manual' ? '#7c3aed' : colors.text.secondary }}>
                                                             {option.source === 'manual' ? 'Treinador' : 'Automática'}
                                                         </Text>
                                                     </View>
                                                 </View>
 
-                                                <Text className="text-slate-500 text-xs mt-1">
+                                                <Text style={{ color: colors.text.tertiary, fontSize: 12, marginTop: 4 }}>
                                                     {(option.muscle_groups || []).join(', ') || 'Grupo muscular não informado'}
                                                 </Text>
                                             </TouchableOpacity>
@@ -140,38 +153,45 @@ export function ExerciseSwapModal({
                                     </View>
                                 )}
 
-                                <Text className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">
+                                <Text style={{ color: colors.text.tertiary, fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 8 }}>
                                     Busca manual
                                 </Text>
                                 {isSearching ? (
-                                    <View className="py-6 items-center justify-center">
+                                    <View style={{ paddingVertical: 24, alignItems: 'center', justifyContent: 'center' }}>
                                         <ActivityIndicator size="small" color="#7c3aed" />
-                                        <Text className="text-slate-500 mt-2 text-sm">Buscando...</Text>
+                                        <Text style={{ color: colors.text.tertiary, marginTop: 8, fontSize: 14 }}>Buscando...</Text>
                                     </View>
                                 ) : searchQuery.trim().length < 2 ? (
-                                    <Text className="text-slate-400 text-sm mb-4 italic">
+                                    <Text style={{ color: colors.text.tertiary, fontSize: 14, marginBottom: 16, fontStyle: 'italic' }}>
                                         Digite ao menos 2 letras para buscar exercícios similares.
                                     </Text>
                                 ) : searchResults.length === 0 ? (
-                                    <Text className="text-slate-400 text-sm mb-4 italic">
+                                    <Text style={{ color: colors.text.tertiary, fontSize: 14, marginBottom: 16, fontStyle: 'italic' }}>
                                         Nenhum exercício encontrado para essa busca.
                                     </Text>
                                 ) : (
-                                    <View className="mb-2">
+                                    <View style={{ marginBottom: 8 }}>
                                         {searchResults.map((option) => (
                                             <TouchableOpacity
                                                 key={`search-${option.id}`}
                                                 onPress={() => onSelect(option)}
-                                                className="py-4 border-b border-slate-100"
+                                                style={{ paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: colors.border.default }}
                                             >
-                                                <View className="flex-row items-start justify-between">
-                                                    <Text className="text-slate-900 font-semibold flex-1 mr-3 text-base">{option.name}</Text>
-                                                    <View className="px-2 py-1 rounded-full border bg-slate-50 border-slate-200">
-                                                        <Text className="text-[10px] font-bold uppercase text-slate-500">Busca</Text>
+                                                <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                                                    <Text style={{ color: colors.text.primary, fontWeight: '600', flex: 1, marginRight: 12, fontSize: 16 }}>{option.name}</Text>
+                                                    <View style={{
+                                                        paddingHorizontal: 8,
+                                                        paddingVertical: 4,
+                                                        borderRadius: 999,
+                                                        borderWidth: 1,
+                                                        backgroundColor: colors.surface.card2,
+                                                        borderColor: colors.border.default,
+                                                    }}>
+                                                        <Text style={{ fontSize: 10, fontWeight: '700', textTransform: 'uppercase', color: colors.text.secondary }}>Busca</Text>
                                                     </View>
                                                 </View>
 
-                                                <Text className="text-slate-500 text-xs mt-1">
+                                                <Text style={{ color: colors.text.tertiary, fontSize: 12, marginTop: 4 }}>
                                                     {(option.muscle_groups || []).join(', ') || 'Grupo muscular não informado'}
                                                 </Text>
                                             </TouchableOpacity>

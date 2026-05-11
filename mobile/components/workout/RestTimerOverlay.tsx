@@ -81,7 +81,7 @@ export function RestTimerOverlay({
                             style={styles.skipButton}
                         >
                             <Text style={styles.skipText}>Pular</Text>
-                            <X size={14} color={colors.text.tertiary} />
+                            <X size={14} color={colors.text.secondary} />
                         </BlurView>
                     </TouchableOpacity>
                 </View>
@@ -177,7 +177,7 @@ function makeStyles(colors: V2Palette) {
         handle: {
             width: 36,
             height: 4,
-            backgroundColor: colors.neutral[200],
+            backgroundColor: colors.surface.card2,
             borderRadius: 2,
             marginBottom: 16,
         },
@@ -210,7 +210,7 @@ function makeStyles(colors: V2Palette) {
             borderColor: colors.border.subtle,
         },
         skipText: {
-            color: colors.text.tertiary,
+            color: colors.text.secondary,
             fontSize: 14,
             fontWeight: '600',
         },
@@ -244,21 +244,22 @@ function makeStyles(colors: V2Palette) {
             borderRadius: 14,
             overflow: 'hidden',
             borderWidth: 1,
-            borderColor: colors.border.subtle,
+            borderColor: colors.border.default,
         },
         adjustButton: {
             paddingVertical: 10,
             paddingHorizontal: 20,
-            backgroundColor: 'rgba(248, 250, 252, 0.4)',
+            // Tint roxo sutil — contrasta em ambos modos via alpha brand.
+            backgroundColor: 'rgba(124, 58, 237, 0.14)',
         },
         adjustText: {
-            color: colors.text.tertiary,
+            color: colors.text.primary,
             fontSize: 14,
             fontWeight: '700',
             fontVariant: ['tabular-nums'],
         },
         exerciseName: {
-            color: colors.text.quaternary,
+            color: colors.text.secondary,
             fontSize: 12,
             textAlign: 'center',
         },

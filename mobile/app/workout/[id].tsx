@@ -910,7 +910,7 @@ export default function WorkoutPlayerScreen() {
                     disabled={isSubmitting}
                     activeOpacity={0.8}
                     style={{
-                        backgroundColor: allSetsCompleted ? '#7c3aed' : colors.neutral[200],
+                        backgroundColor: allSetsCompleted ? '#7c3aed' : colors.surface.card2,
                         borderRadius: 16,
                         height: 52,
                         alignItems: 'center',

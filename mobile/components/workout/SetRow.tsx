@@ -145,7 +145,7 @@ export function SetRow({
                     },
                     isCompleted
                         ? { backgroundColor: 'rgba(124, 58, 237, 0.15)' }
-                        : { backgroundColor: colors.neutral[100] },
+                        : { backgroundColor: colors.surface.card2 },
                 ]}>
                     <Text style={[
                         { fontSize: 12, fontWeight: '600' },
@@ -202,7 +202,7 @@ export function SetRow({
                         style={[
                             {
                                 height: 38,
-                                backgroundColor: colors.neutral[100],
+                                backgroundColor: colors.surface.card2,
                                 borderRadius: 10,
                                 textAlign: 'center',
                                 fontWeight: '600',
@@ -214,7 +214,7 @@ export function SetRow({
                             readOnly && { opacity: 0.85 },
                         ]}
                         placeholder={weightPlaceholder}
-                        placeholderTextColor={hasWeightTarget ? 'rgba(124, 58, 237, 0.55)' : (hasPrevious ? colors.text.quaternary : colors.neutral[300])}
+                        placeholderTextColor={hasWeightTarget ? 'rgba(124, 58, 237, 0.55)' : (hasPrevious ? colors.text.quaternary : colors.text.quaternary)}
                         keyboardType="decimal-pad"
                         returnKeyType="next"
                         value={weight}
@@ -248,7 +248,7 @@ export function SetRow({
                         style={[
                             {
                                 height: 38,
-                                backgroundColor: colors.neutral[100],
+                                backgroundColor: colors.surface.card2,
                                 borderRadius: 10,
                                 textAlign: 'center',
                                 fontWeight: '600',
@@ -260,7 +260,7 @@ export function SetRow({
                             readOnly && { opacity: 0.85 },
                         ]}
                         placeholder={repsPlaceholder}
-                        placeholderTextColor={hasTarget ? 'rgba(124, 58, 237, 0.55)' : (hasPrevious ? colors.text.quaternary : colors.neutral[300])}
+                        placeholderTextColor={hasTarget ? 'rgba(124, 58, 237, 0.55)' : (hasPrevious ? colors.text.quaternary : colors.text.quaternary)}
                         keyboardType="number-pad"
                         returnKeyType="done"
                         value={reps}
@@ -286,7 +286,7 @@ export function SetRow({
                             },
                             isCompleted
                                 ? { backgroundColor: '#7c3aed' }
-                                : { backgroundColor: colors.neutral[200] },
+                                : { backgroundColor: colors.surface.card2, borderWidth: 1, borderColor: colors.border.default },
                         ]}
                     >
                         {isCompleted ? (

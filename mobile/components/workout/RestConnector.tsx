@@ -192,8 +192,8 @@ function getStyleForFlavor(
         case 'endRound':
         case 'endExercise':
             return {
-                bg: colors.neutral[100],
-                border: colors.neutral[300],
+                bg: colors.surface.card2,
+                border: colors.border.default,
                 fg: colors.text.primary,
                 weight: '700',
             };

@@ -280,7 +280,7 @@ function makeStyles(colors: V2Palette) {
         handle: {
             width: 36,
             height: 5,
-            backgroundColor: colors.neutral[300],
+            backgroundColor: colors.surface.card2,
             borderRadius: 2.5,
             alignSelf: 'center',
             marginBottom: 18,
@@ -302,7 +302,7 @@ function makeStyles(colors: V2Palette) {
             width: 32,
             height: 32,
             borderRadius: 16,
-            backgroundColor: colors.neutral[200],
+            backgroundColor: colors.surface.card2,
             alignItems: 'center',
             justifyContent: 'center',
         },
@@ -458,7 +458,7 @@ function makeStyles(colors: V2Palette) {
             marginBottom: 4,
         },
         submitBtnDisabled: {
-            backgroundColor: colors.neutral[200],
+            backgroundColor: colors.surface.card2,
         },
         submitText: {
             fontSize: 17,

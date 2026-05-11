@@ -18,7 +18,7 @@ import { RestConnector } from './RestConnector';
 import { SetRow } from './SetRow';
 import { TrainerNote } from './TrainerNote';
 import type { SetPrescription } from '../../lib/hydrateWorkoutSets';
-import { useV2Colors } from '../../hooks/useV2Colors';
+import { useV2Colors, useIsDark } from '../../hooks/useV2Colors';
 
 export interface SetData {
     weight: string;
@@ -94,6 +94,7 @@ export function ExerciseCard({
     readOnly = false,
 }: ExerciseCardProps) {
     const colors = useV2Colors();
+    const isDark = useIsDark();
 
     const handleOpenVideo = () => {
         if (videoUrl) {
@@ -142,13 +143,13 @@ export function ExerciseCard({
     return (
         <BlurView
             intensity={60}
-            tint="light"
+            tint={isDark ? 'dark' : 'light'}
             className="rounded-2xl"
             style={{
                 overflow: 'hidden',
-                backgroundColor: 'rgba(255, 255, 255, 0.7)',
+                backgroundColor: colors.surface.glass,
                 borderWidth: 1,
-                borderColor: 'rgba(255, 255, 255, 0.6)',
+                borderColor: colors.border.subtle,
                 padding: 12,
                 marginBottom: 12,
                 shadowColor: '#000',

@@ -385,7 +385,7 @@ function makeStyles(colors: V2Palette) {
             width: 34,
             height: 34,
             borderRadius: 17,
-            backgroundColor: colors.neutral[100],
+            backgroundColor: colors.surface.card2,
             alignItems: 'center',
             justifyContent: 'center',
         },
@@ -414,7 +414,7 @@ function makeStyles(colors: V2Palette) {
 
         // ── Segmented Control ──
         segmentContainer: {
-            backgroundColor: colors.neutral[100],
+            backgroundColor: colors.surface.card2,
             borderRadius: 14,
             padding: 4,
             flexDirection: 'row',
@@ -459,7 +459,7 @@ function makeStyles(colors: V2Palette) {
             alignItems: 'center',
             justifyContent: 'center',
             gap: 8,
-            backgroundColor: colors.neutral[100],
+            backgroundColor: colors.surface.card2,
             paddingHorizontal: 16,
             paddingVertical: 12,
             borderRadius: 14,
