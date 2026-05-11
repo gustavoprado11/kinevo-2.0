@@ -19,6 +19,7 @@ import Animated, {
 import { ChevronDown, ChevronLeft, ChevronRight, Check } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { ANIM } from "../../lib/animations";
+import { useV2Colors } from "../../hooks/useV2Colors";
 import {
     generateCalendarDays,
     getWeekRange,
@@ -41,6 +42,8 @@ const MONTH_ROW_HEIGHT = 48;
 const MONTH_HEADER_HEIGHT = 44; // nav row
 const MONTH_DAY_HEADER_HEIGHT = 26; // D S T Q Q S S row
 
+// Indicadores semânticos no calendário — cores neutras estáticas (não
+// alternam light/dark; são pontos sutis que funcionam em ambos modos).
 const STATUS_COLORS: Record<CalendarDay["status"], string> = {
     done: "#22c55e",
     done_historic: "#22c55e",
@@ -89,6 +92,7 @@ function WeekRow({
     onDayPress: (date: Date) => void;
     calendarWidth: number;
 }) {
+    const colors = useV2Colors();
     const selectedKey = toDateKey(selectedDate);
 
     return (
@@ -114,7 +118,7 @@ function WeekRow({
                                 textTransform: "uppercase",
                                 marginBottom: 10,
                                 fontWeight: isSelected ? "600" : isToday ? "500" : "400",
-                                color: isSelected ? "#7c3aed" : "#94a3b8",
+                                color: isSelected ? "#7c3aed" : colors.text.quaternary,
                             }}
                         >
                             {DAY_NAMES[index]}
@@ -135,7 +139,7 @@ function WeekRow({
                                     style={{
                                         fontSize: 14,
                                         fontWeight: isSelected ? "700" : isToday ? "600" : "400",
-                                        color: isSelected ? "#ffffff" : isToday ? "#0f172a" : "#64748b",
+                                        color: isSelected ? "#ffffff" : isToday ? colors.text.primary : colors.text.tertiary,
                                     }}
                                 >
                                     {day.date.getDate()}
@@ -144,7 +148,7 @@ function WeekRow({
 
                             {day.status === 'compensated' ? (
                                 <View style={{ marginTop: 4, height: 8, width: 8, alignItems: 'center', justifyContent: 'center' }}>
-                                    <Check size={8} color="#94a3b8" strokeWidth={3} />
+                                    <Check size={8} color={colors.text.quaternary}strokeWidth={3} />
                                 </View>
                             ) : (
                                 <View
@@ -165,6 +169,7 @@ function WeekRow({
     );
 }
 
+// Wrap export para passar colors via context implícito do useV2Colors interno.
 export function UnifiedCalendar({
     workouts,
     sessionsMap,
@@ -176,6 +181,7 @@ export function UnifiedCalendar({
     onWeekChange,
     fetchRange,
 }: UnifiedCalendarProps) {
+    const colors = useV2Colors();
     const { width: screenWidth } = useWindowDimensions();
     const CALENDAR_WIDTH = screenWidth - CALENDAR_PADDING;
 
@@ -362,7 +368,7 @@ export function UnifiedCalendar({
                                 fontWeight: "600",
                                 letterSpacing: 2,
                                 textTransform: "uppercase",
-                                color: "#94a3b8",
+                                color: colors.text.quaternary,
                             }}
                         >
                             {weekLabel}
@@ -391,13 +397,13 @@ export function UnifiedCalendar({
                     // Month navigation
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
                         <TouchableOpacity onPress={() => navigateMonth(-1)} style={{ padding: 4 }}>
-                            <ChevronLeft size={16} color="#94a3b8" />
+                            <ChevronLeft size={16} color={colors.text.quaternary}/>
                         </TouchableOpacity>
                         <Text
                             style={{
                                 fontSize: 13,
                                 fontWeight: "700",
-                                color: "#0f172a",
+                                color: colors.text.primary,
                                 textTransform: "capitalize",
                                 letterSpacing: 1,
                             }}
@@ -405,7 +411,7 @@ export function UnifiedCalendar({
                             {monthLabel}
                         </Text>
                         <TouchableOpacity onPress={() => navigateMonth(1)} style={{ padding: 4 }}>
-                            <ChevronRight size={16} color="#94a3b8" />
+                            <ChevronRight size={16} color={colors.text.quaternary}/>
                         </TouchableOpacity>
                     </View>
                 )}
@@ -413,7 +419,7 @@ export function UnifiedCalendar({
                 {/* Chevron toggle */}
                 <TouchableOpacity onPress={toggleExpand} style={{ padding: 6 }}>
                     <Animated.View style={chevronStyle}>
-                        <ChevronDown size={16} color="#94a3b8" />
+                        <ChevronDown size={16} color={colors.text.quaternary}/>
                     </Animated.View>
                 </TouchableOpacity>
             </View>
@@ -461,7 +467,7 @@ export function UnifiedCalendar({
                                     fontWeight: "600",
                                     letterSpacing: 2,
                                     textTransform: "uppercase",
-                                    color: "#94a3b8",
+                                    color: colors.text.quaternary,
                                 }}
                             >
                                 {name}
@@ -515,7 +521,7 @@ export function UnifiedCalendar({
                                                 ? "#ffffff"
                                                 : isToday
                                                     ? "#7c3aed"
-                                                    : "#334155",
+                                                    : colors.text.secondary,
                                         }}
                                     >
                                         {day.date.getDate()}
@@ -524,7 +530,7 @@ export function UnifiedCalendar({
 
                                 {day.status === 'compensated' && isCurrentMonth ? (
                                     <View style={{ position: "absolute", bottom: 1, alignItems: 'center', justifyContent: 'center' }}>
-                                        <Check size={7} color="#94a3b8" strokeWidth={3} />
+                                        <Check size={7} color={colors.text.quaternary}strokeWidth={3} />
                                     </View>
                                 ) : dotColor && isCurrentMonth ? (
                                     <View

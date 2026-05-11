@@ -220,7 +220,7 @@ export default function ProfileScreen() {
                         style={{
                             fontSize: 12,
                             fontWeight: "700",
-                            color: "#94a3b8",
+                            color: colors.text.tertiary,
                             textTransform: "uppercase",
                             letterSpacing: 1,
                             marginBottom: 8,
@@ -232,12 +232,12 @@ export default function ProfileScreen() {
 
                     <View
                         style={{
-                            backgroundColor: '#ffffff',
+                            backgroundColor: colors.surface.card,
                             borderRadius: 20,
                             overflow: "hidden",
                             marginBottom: 24,
                             borderWidth: 1,
-                            borderColor: 'rgba(0, 0, 0, 0.04)',
+                            borderColor: colors.border.default,
                             shadowColor: '#000',
                             shadowOffset: { width: 0, height: 2 },
                             shadowOpacity: 0.04,
@@ -281,7 +281,7 @@ export default function ProfileScreen() {
                                         <View
                                             style={{
                                                 height: 1,
-                                                backgroundColor: "#f1f5f9",
+                                                backgroundColor: colors.border.subtle,
                                                 marginLeft: 66,
                                                 marginRight: 20,
                                             }}
@@ -428,7 +428,7 @@ export default function ProfileScreen() {
                         style={{
                             textAlign: "center",
                             fontSize: 11,
-                            color: "#94a3b8",
+                            color: colors.text.quaternary,
                             paddingVertical: 8,
                         }}
                     >
@@ -534,6 +534,7 @@ function MenuItem({
     onPress: () => void;
     index: number;
 }) {
+    const colors = useV2Colors();
     return (
         <Animated.View entering={FadeInUp.delay(150 + index * 20).duration(400).easing(Easing.out(Easing.cubic))}>
             <PressableScale
@@ -555,7 +556,7 @@ function MenuItem({
                         style={{
                             fontSize: 16,
                             fontWeight: "500",
-                            color: "#0f172a",
+                            color: colors.text.primary,
                         }}
                     >
                         {label}
@@ -565,7 +566,7 @@ function MenuItem({
                             style={{
                                 fontSize: 12,
                                 fontWeight: "500",
-                                color: "#64748b",
+                                color: colors.text.tertiary,
                                 marginTop: 2,
                             }}
                         >
@@ -573,7 +574,7 @@ function MenuItem({
                         </Text>
                     ) : null}
                 </View>
-                <ChevronRight size={16} color="#cbd5e1" strokeWidth={1.5} />
+                <ChevronRight size={16} color={colors.text.quaternary} strokeWidth={1.5} />
             </PressableScale>
         </Animated.View>
     );

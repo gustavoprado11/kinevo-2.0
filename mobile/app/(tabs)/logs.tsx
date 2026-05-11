@@ -164,17 +164,18 @@ function AnimatedSegmentedControl({
 
 // ── Main Screen ──
 export default function LogsScreen() {
+    const colors = useV2Colors();
     const [activeTab, setActiveTab] = useState<'history' | 'performance'>('history');
     const { history, stats, isLoading } = useWorkoutHistory();
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#F2F2F7' }} edges={['top']}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.surface.canvas }} edges={['top']}>
             {/* Header */}
             <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 }}>
-                <Text style={{ fontSize: 30, fontWeight: '800', color: '#0f172a' }}>
+                <Text style={{ fontSize: 30, fontWeight: '800', color: colors.text.primary }}>
                     Histórico de Treinos
                 </Text>
-                <Text style={{ fontSize: 14, color: '#64748b', marginTop: 4 }}>
+                <Text style={{ fontSize: 14, color: colors.text.tertiary, marginTop: 4 }}>
                     Acompanhe sua evolução
                 </Text>
             </View>
@@ -187,7 +188,7 @@ export default function LogsScreen() {
                 showsVerticalScrollIndicator={false}
             >
                 {isLoading ? (
-                    <Text style={{ color: '#64748b', textAlign: 'center', marginTop: 40 }}>
+                    <Text style={{ color: colors.text.tertiary, textAlign: 'center', marginTop: 40 }}>
                         Carregando histórico...
                     </Text>
                 ) : activeTab === 'history' ? (
@@ -203,6 +204,7 @@ export default function LogsScreen() {
 /* ─── History Tab ─── */
 
 function HistoryList({ history }: { history: HistorySession[] }) {
+    const colors = useV2Colors();
     if (!history.length) {
         return (
             <Animated.View
@@ -211,13 +213,13 @@ function HistoryList({ history }: { history: HistorySession[] }) {
             >
                 <View
                     style={{
-                        width: 64, height: 64, backgroundColor: '#f1f5f9',
+                        width: 64, height: 64, backgroundColor: colors.neutral[100],
                         borderRadius: 32, alignItems: 'center', justifyContent: 'center', marginBottom: 16,
                     }}
                 >
-                    <Calendar size={28} color="#94a3b8" />
+                    <Calendar size={28} color={colors.text.quaternary} />
                 </View>
-                <Text style={{ color: '#64748b', textAlign: 'center', fontSize: 14 }}>
+                <Text style={{ color: colors.text.tertiary, textAlign: 'center', fontSize: 14 }}>
                     Nenhum treino registrado ainda.
                 </Text>
             </Animated.View>
@@ -230,7 +232,7 @@ function HistoryList({ history }: { history: HistorySession[] }) {
 
             <Text
                 style={{
-                    fontSize: 12, fontWeight: '700', color: '#94a3b8',
+                    fontSize: 12, fontWeight: '700', color: colors.text.tertiary,
                     textTransform: 'uppercase', letterSpacing: 1,
                     marginBottom: 12, paddingHorizontal: 4,
                 }}
@@ -345,6 +347,7 @@ function SummaryStat({ label, value }: { label: string; value: string }) {
 }
 
 function HistoryCard({ session }: { session: HistorySession }) {
+    const colors = useV2Colors();
     const [expanded, setExpanded] = useState(false);
     const chevronRotation = useSharedValue(0);
 
@@ -372,12 +375,12 @@ function HistoryCard({ session }: { session: HistorySession }) {
             onPress={toggleExpand}
             pressScale={0.97}
             style={{
-                backgroundColor: '#ffffff',
+                backgroundColor: colors.surface.card,
                 borderRadius: 20,
                 marginBottom: 14,
                 overflow: 'hidden',
                 borderWidth: 1,
-                borderColor: 'rgba(0, 0, 0, 0.04)',
+                borderColor: colors.border.default,
                 shadowColor: '#000',
                 shadowOffset: { width: 0, height: 2 },
                 shadowOpacity: 0.04,
@@ -390,7 +393,7 @@ function HistoryCard({ session }: { session: HistorySession }) {
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <View style={{ flex: 1, marginRight: 12 }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                            <Text style={{ fontSize: 18, fontWeight: '700', color: '#0f172a' }}>
+                            <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text.primary }}>
                                 {session.workout_name}
                             </Text>
                             {session.is_intense && (
@@ -409,7 +412,7 @@ function HistoryCard({ session }: { session: HistorySession }) {
                             )}
                         </View>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                            <Text style={{ fontSize: 12, color: '#94a3b8', fontWeight: '600', textTransform: 'uppercase' }}>
+                            <Text style={{ fontSize: 12, color: colors.text.quaternary, fontWeight: '600', textTransform: 'uppercase' }}>
                                 {dateStr}
                             </Text>
                             {session.has_pre_checkin && (
@@ -427,7 +430,7 @@ function HistoryCard({ session }: { session: HistorySession }) {
                         </View>
                     </View>
                     <Animated.View style={chevronStyle}>
-                        <ChevronDown size={18} color="#cbd5e1" />
+                        <ChevronDown size={18} color={colors.text.quaternary} />
                     </Animated.View>
                 </View>
 
@@ -435,28 +438,28 @@ function HistoryCard({ session }: { session: HistorySession }) {
                 <View
                     style={{
                         flexDirection: 'row', alignItems: 'center', marginTop: 12,
-                        paddingTop: 12, borderTopWidth: 1, borderTopColor: '#f1f5f9', gap: 20,
+                        paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.border.subtle, gap: 20,
                     }}
                 >
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                         <Clock size={14} color="#64748b" />
-                        <Text style={{ fontSize: 14, fontWeight: '500', color: '#64748b' }}>
+                        <Text style={{ fontSize: 14, fontWeight: '500', color: colors.text.tertiary }}>
                             {session.duration_seconds != null
                                 ? `${Math.floor(session.duration_seconds / 60)} min`
                                 : '—'}
                         </Text>
                     </View>
-                    <View style={{ width: 1, height: 12, backgroundColor: '#e2e8f0' }} />
+                    <View style={{ width: 1, height: 12, backgroundColor: colors.border.default }} />
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                         <Dumbbell size={14} color="#64748b" />
-                        <Text style={{ fontSize: 14, fontWeight: '500', color: '#64748b' }}>
+                        <Text style={{ fontSize: 14, fontWeight: '500', color: colors.text.tertiary }}>
                             {(session.volume_load / 1000).toFixed(1)} <Text>ton</Text>
                         </Text>
                     </View>
-                    <View style={{ width: 1, height: 12, backgroundColor: '#e2e8f0' }} />
+                    <View style={{ width: 1, height: 12, backgroundColor: colors.border.default }} />
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                         <Repeat size={14} color="#64748b" />
-                        <Text style={{ fontSize: 14, fontWeight: '500', color: '#64748b' }}>
+                        <Text style={{ fontSize: 14, fontWeight: '500', color: colors.text.tertiary }}>
                             {totalSets} <Text>séries</Text>
                         </Text>
                     </View>
@@ -481,7 +484,7 @@ function HistoryCard({ session }: { session: HistorySession }) {
                                     marginTop: idx === 0 ? 0 : 12,
                                     paddingTop: idx === 0 ? 0 : 12,
                                     borderTopWidth: idx === 0 ? 0 : 1,
-                                    borderTopColor: '#f1f5f9',
+                                    borderTopColor: colors.border.subtle,
                                 }}
                             >
                                 <ExerciseSetsView name={exercise.name} sets={exercise.sets} />
@@ -497,11 +500,12 @@ function HistoryCard({ session }: { session: HistorySession }) {
 /* ─── Workout Item Renderers ─── */
 
 function ExerciseSetsView({ name, sets }: { name: string; sets: { id: string; weight: number; reps: number; completed: boolean }[] }) {
+    const colors = useV2Colors();
     return (
         <>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
                 <View style={{ width: 3, height: 16, backgroundColor: '#7c3aed', borderRadius: 2, marginRight: 10 }} />
-                <Text style={{ fontSize: 14, fontWeight: '500', color: '#64748b', flex: 1 }}>{name}</Text>
+                <Text style={{ fontSize: 14, fontWeight: '500', color: colors.text.tertiary, flex: 1 }}>{name}</Text>
             </View>
             <View style={{ gap: 6, paddingLeft: 13 }}>
                 {sets.map((set, setIdx) => (
@@ -513,9 +517,9 @@ function ExerciseSetsView({ name, sets }: { name: string; sets: { id: string; we
                             paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10,
                         }}
                     >
-                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#94a3b8', width: 28 }}>#{setIdx + 1}</Text>
-                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#0f172a', width: 72, textAlign: 'center' }}>{set.weight}kg</Text>
-                        <Text style={{ fontSize: 12, color: '#64748b', width: 56, textAlign: 'right' }}>{set.reps} reps</Text>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: colors.text.quaternary, width: 28 }}>#{setIdx + 1}</Text>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: colors.text.primary, width: 72, textAlign: 'center' }}>{set.weight}kg</Text>
+                        <Text style={{ fontSize: 12, color: colors.text.tertiary, width: 56, textAlign: 'right' }}>{set.reps} reps</Text>
                         <View style={{ width: 20, alignItems: 'flex-end' }}>
                             {set.completed && <Check size={14} color="#34d399" strokeWidth={2.5} />}
                         </View>
@@ -527,7 +531,8 @@ function ExerciseSetsView({ name, sets }: { name: string; sets: { id: string; we
 }
 
 function HistoryItemRenderer({ item, isFirst }: { item: HistoryWorkoutItem; isFirst: boolean }) {
-    const separator = !isFirst ? { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#f1f5f9' } : {};
+    const colors = useV2Colors();
+    const separator = !isFirst ? { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.border.subtle } : {};
 
     if (item.itemType === 'warmup') {
         const config = item.itemConfig as { warmup_type?: WarmupType; duration_minutes?: number; description?: string } | undefined;
@@ -539,9 +544,9 @@ function HistoryItemRenderer({ item, isFirst }: { item: HistoryWorkoutItem; isFi
                         <Flame size={16} color="#ea580c" />
                     </View>
                     <View style={{ flex: 1 }}>
-                        <Text style={{ fontSize: 14, fontWeight: '600', color: '#0f172a' }}>{label}</Text>
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text.primary }}>{label}</Text>
                         {(config?.duration_minutes || config?.description) && (
-                            <Text style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>
+                            <Text style={{ fontSize: 12, color: colors.text.quaternary, marginTop: 2 }}>
                                 {config?.duration_minutes ? `${config.duration_minutes} min` : ''}{config?.duration_minutes && config?.description ? ' · ' : ''}{config?.description || ''}
                             </Text>
                         )}
@@ -569,12 +574,12 @@ function HistoryItemRenderer({ item, isFirst }: { item: HistoryWorkoutItem; isFi
                         <Dumbbell size={16} color="#3b82f6" />
                     </View>
                     <View style={{ flex: 1 }}>
-                        <Text style={{ fontSize: 14, fontWeight: '600', color: '#0f172a' }}>
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text.primary }}>
                             {equipLabel}
-                            {mode ? <Text style={{ fontSize: 12, fontWeight: '400', color: '#94a3b8' }}> · {mode === 'continuous' ? 'Contínuo' : 'Intervalado'}</Text> : null}
+                            {mode ? <Text style={{ fontSize: 12, fontWeight: '400', color: colors.text.quaternary }}> · {mode === 'continuous' ? 'Contínuo' : 'Intervalado'}</Text> : null}
                         </Text>
                         {details.length > 0 && (
-                            <Text style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>{details.join(' · ')}</Text>
+                            <Text style={{ fontSize: 12, color: colors.text.quaternary, marginTop: 2 }}>{details.join(' · ')}</Text>
                         )}
                     </View>
                 </View>
@@ -586,7 +591,7 @@ function HistoryItemRenderer({ item, isFirst }: { item: HistoryWorkoutItem; isFi
         return (
             <View style={{ ...separator as any }}>
                 <View style={{ backgroundColor: '#f8fafc', borderRadius: 10, padding: 10 }}>
-                    <Text style={{ fontSize: 12, color: '#64748b', fontStyle: 'italic' }}>{item.notes}</Text>
+                    <Text style={{ fontSize: 12, color: colors.text.tertiary, fontStyle: 'italic' }}>{item.notes}</Text>
                 </View>
             </View>
         );
@@ -630,6 +635,7 @@ function HistoryItemRenderer({ item, isFirst }: { item: HistoryWorkoutItem; isFi
 /* ─── Performance Tab ─── */
 
 function PublishedReportsSection() {
+    const colors = useV2Colors();
     const { profile } = useStudentProfile();
     const router = useRouter();
     const [reports, setReports] = useState<{ id: string; program_name: string; program_started_at: string | null; program_completed_at: string | null; status: string }[]>([]);
@@ -652,7 +658,7 @@ function PublishedReportsSection() {
     return (
         <Animated.View entering={FadeInUp.delay(400).duration(ANIM.enter.duration).easing(ANIM.enter.easing)}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16, marginTop: 8, paddingHorizontal: 4 }}>
-                <Text style={{ fontSize: 12, fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 1 }}>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: colors.text.quaternary, textTransform: 'uppercase', letterSpacing: 1 }}>
                     Relatórios de Programa
                 </Text>
                 <FileText size={14} color="#7c3aed" />
@@ -668,19 +674,19 @@ function PublishedReportsSection() {
                         activeOpacity={0.7}
                         onPress={() => router.push({ pathname: "/report/[id]", params: { id: r.id } } as any)}
                         style={{
-                            backgroundColor: '#ffffff',
+                            backgroundColor: colors.surface.card,
                             borderRadius: 16,
                             padding: 16,
                             marginBottom: 10,
                             borderWidth: 1,
-                            borderColor: 'rgba(0,0,0,0.04)',
+                            borderColor: colors.border.default,
                         }}
                     >
-                        <Text style={{ fontSize: 15, fontWeight: '600', color: '#0f172a' }} numberOfLines={1}>
+                        <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text.primary }} numberOfLines={1}>
                             {r.program_name}
                         </Text>
                         {period ? (
-                            <Text style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>{period}</Text>
+                            <Text style={{ fontSize: 12, color: colors.text.quaternary, marginTop: 4 }}>{period}</Text>
                         ) : null}
                     </TouchableOpacity>
                 );
@@ -690,6 +696,7 @@ function PublishedReportsSection() {
 }
 
 function PerformanceView({ stats }: { stats: HistoryStats }) {
+    const colors = useV2Colors();
     return (
         <View>
             <JourneyRingsCard stats={stats} />
@@ -702,7 +709,7 @@ function PerformanceView({ stats }: { stats: HistoryStats }) {
                 >
                     <Text
                         style={{
-                            fontSize: 12, fontWeight: '700', color: '#94a3b8',
+                            fontSize: 12, fontWeight: '700', color: colors.text.quaternary,
                             textTransform: 'uppercase', letterSpacing: 1,
                         }}
                     >
@@ -712,7 +719,7 @@ function PerformanceView({ stats }: { stats: HistoryStats }) {
                 </Animated.View>
 
                 {stats.personalRecords.length === 0 ? (
-                    <Text style={{ color: '#64748b', fontStyle: 'italic', width: '100%', textAlign: 'center', paddingVertical: 16, fontSize: 13 }}>
+                    <Text style={{ color: colors.text.tertiary, fontStyle: 'italic', width: '100%', textAlign: 'center', paddingVertical: 16, fontSize: 13 }}>
                         Complete treinos para registrar seus recordes!
                     </Text>
                 ) : (
@@ -847,9 +854,9 @@ function JourneyRingsCard({ stats }: { stats: HistoryStats }) {
     );
 }
 
+// Used by JourneyRingsCard which overrides `color` via inline style array.
 const labelStyle = {
     fontSize: 10,
-    color: '#94a3b8',
     textTransform: 'uppercase' as const,
     letterSpacing: 1.5,
     fontWeight: '700' as const,

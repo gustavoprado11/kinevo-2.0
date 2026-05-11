@@ -11,6 +11,7 @@ import { PressableScale } from "../shared/PressableScale";
 import * as Haptics from "expo-haptics";
 import { ANIM } from "../../lib/animations";
 import type { PendingWorkout, WeeklyProgress } from "@kinevo/shared/utils/schedule-projection";
+import { useV2Colors, type V2Palette } from "../../hooks/useV2Colors";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -105,6 +106,8 @@ export function ActionCard({
     timeContext = 'today',
     onPress,
 }: ActionCardProps) {
+    const colors = useV2Colors();
+    const styles = makeStyles(colors);
     // ─── Non-today view: keep legacy behavior for past/future dates ───
     if (timeContext !== 'today') {
         const workout = selectedWorkout;
@@ -240,12 +243,12 @@ export function ActionCard({
                         </View>
                         <Text style={styles.heroTitle}>{workout.name}</Text>
                         {workout.notes && (
-                            <Text style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }} numberOfLines={1}>
+                            <Text style={{ fontSize: 13, color: colors.text.tertiary, marginBottom: 16 }} numberOfLines={1}>
                                 {workout.notes}
                             </Text>
                         )}
                         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 }}>
-                            <Text style={{ fontSize: 14, fontWeight: '500', color: '#64748b' }}>
+                            <Text style={{ fontSize: 14, fontWeight: '500', color: colors.text.tertiary }}>
                                 {(Array.isArray(workout.items) ? workout.items.length : workout.items?.length) || 0} exercícios
                             </Text>
                         </View>
@@ -282,12 +285,12 @@ export function ActionCard({
                         </View>
                         <Text style={styles.heroTitle}>{todayWorkout.name}</Text>
                         {todayWorkout.notes && (
-                            <Text style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }} numberOfLines={1}>
+                            <Text style={{ fontSize: 13, color: colors.text.tertiary, marginBottom: 16 }} numberOfLines={1}>
                                 {todayWorkout.notes}
                             </Text>
                         )}
                         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 }}>
-                            <Text style={{ fontSize: 14, fontWeight: '500', color: '#64748b' }}>
+                            <Text style={{ fontSize: 14, fontWeight: '500', color: colors.text.tertiary }}>
                                 {(Array.isArray(todayWorkout.items) ? todayWorkout.items.length : todayWorkout.items?.length) || 0} exercícios
                             </Text>
                             <View style={styles.startButton}>
@@ -361,7 +364,7 @@ export function ActionCard({
                             </View>
                         </PressableScale>
                         {pending.length > 1 && (
-                            <Text style={{ fontSize: 12, color: '#94a3b8', marginTop: 8, textAlign: 'center' }}>
+                            <Text style={{ fontSize: 12, color: colors.text.quaternary, marginTop: 8, textAlign: 'center' }}>
                                 e mais {pending.length - 1} treino{pending.length - 1 > 1 ? 's' : ''}
                             </Text>
                         )}
@@ -438,7 +441,7 @@ export function ActionCard({
                             era para {nextPending.originalDay} ({nextPending.missedDate})
                         </Text>
                         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 }}>
-                            <Text style={{ fontSize: 14, fontWeight: '500', color: '#64748b' }}>
+                            <Text style={{ fontSize: 14, fontWeight: '500', color: colors.text.tertiary }}>
                                 {nextPending.exerciseCount} exercícios
                             </Text>
                             <View style={[styles.startButton, { backgroundColor: '#f59e0b' }]}>
@@ -450,7 +453,7 @@ export function ActionCard({
                 </PressableScale>
 
                 {pending.length > 1 && (
-                    <Text style={{ fontSize: 12, color: '#94a3b8', marginTop: 10, textAlign: 'center' }}>
+                    <Text style={{ fontSize: 12, color: colors.text.quaternary, marginTop: 10, textAlign: 'center' }}>
                         e mais {pending.length - 1} treino{pending.length - 1 > 1 ? 's' : ''} pendente{pending.length - 1 > 1 ? 's' : ''}
                     </Text>
                 )}
@@ -503,132 +506,135 @@ export function ActionCard({
     );
 }
 
-// ── Shared styles ──
-const styles = {
-    sectionTitle: {
-        fontSize: 18,
-        fontWeight: '700' as const,
-        color: '#0f172a',
-        marginBottom: 14,
-        letterSpacing: 0.5,
-    },
-    cardShell: {
-        borderRadius: 24,
-        overflow: 'hidden' as const,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.04,
-        shadowRadius: 8,
-        elevation: 2,
-    },
-    cardInner: {
-        backgroundColor: '#ffffff',
-        flexDirection: 'row' as const,
-        alignItems: 'center' as const,
-        paddingVertical: 18,
-        paddingHorizontal: 20,
-        borderRadius: 24,
-        borderWidth: 1,
-        borderColor: 'rgba(0, 0, 0, 0.04)',
-    },
-    heroCardInner: {
-        backgroundColor: '#ffffff',
-        padding: 24,
-        borderRadius: 24,
-        borderWidth: 1,
-        borderColor: 'rgba(0, 0, 0, 0.04)',
-    },
-    completedShell: {
-        borderRadius: 24,
-        overflow: 'hidden' as const,
-        shadowColor: '#10b981',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 16,
-        elevation: 4,
-    },
-    completedInner: {
-        flexDirection: 'row' as const,
-        alignItems: 'center' as const,
-        paddingVertical: 18,
-        paddingHorizontal: 20,
-        borderRadius: 24,
-        borderWidth: 1,
-        borderColor: 'rgba(16, 185, 129, 0.15)',
-        backgroundColor: '#f0fdf9',
-    },
-    checkIcon: {
-        height: 48,
-        width: 48,
-        borderRadius: 24,
-        backgroundColor: '#dcfce7',
-        alignItems: 'center' as const,
-        justifyContent: 'center' as const,
-        marginRight: 16,
-        shadowColor: '#10b981',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.25,
-        shadowRadius: 8,
-        elevation: 4,
-    },
-    iconBadge: {
-        height: 48,
-        width: 48,
-        borderRadius: 14,
-        alignItems: 'center' as const,
-        justifyContent: 'center' as const,
-        marginRight: 16,
-    },
-    heroIcon: {
-        height: 44,
-        width: 44,
-        borderRadius: 22,
-        backgroundColor: 'rgba(124, 58, 237, 0.08)',
-        alignItems: 'center' as const,
-        justifyContent: 'center' as const,
-    },
-    badge: {
-        backgroundColor: '#f1f5f9',
-        paddingHorizontal: 12,
-        paddingVertical: 5,
-        borderRadius: 20,
-    },
-    badgeText: {
-        color: '#64748b',
-        fontSize: 9,
-        fontWeight: '700' as const,
-        textTransform: 'uppercase' as const,
-        letterSpacing: 2.5,
-    },
-    heroTitle: {
-        fontSize: 24,
-        fontWeight: '800' as const,
-        color: '#0f172a',
-        marginBottom: 6,
-    },
-    startButton: {
-        flexDirection: 'row' as const,
-        alignItems: 'center' as const,
-        backgroundColor: '#7c3aed',
-        paddingHorizontal: 16,
-        paddingVertical: 10,
-        borderRadius: 16,
-        shadowColor: '#8b5cf6',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
-        elevation: 4,
-        gap: 6,
-    },
-    cardTitle: {
-        fontSize: 15,
-        fontWeight: '600' as const,
-        color: '#0f172a',
-        marginBottom: 3,
-    },
-    cardSubtitle: {
-        fontSize: 13,
-        color: '#64748b',
-        marginTop: 2,
-    },
-};
+// ── Shared styles factory ── (recebe paleta v2 → suporta dark mode)
+function makeStyles(colors: V2Palette) {
+    return {
+        sectionTitle: {
+            fontSize: 18,
+            fontWeight: '700' as const,
+            color: colors.text.primary,
+            marginBottom: 14,
+            letterSpacing: 0.5,
+        },
+        cardShell: {
+            borderRadius: 24,
+            overflow: 'hidden' as const,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.04,
+            shadowRadius: 8,
+            elevation: 2,
+        },
+        cardInner: {
+            backgroundColor: colors.surface.card,
+            flexDirection: 'row' as const,
+            alignItems: 'center' as const,
+            paddingVertical: 18,
+            paddingHorizontal: 20,
+            borderRadius: 24,
+            borderWidth: 1,
+            borderColor: colors.border.default,
+        },
+        heroCardInner: {
+            backgroundColor: colors.surface.card,
+            padding: 24,
+            borderRadius: 24,
+            borderWidth: 1,
+            borderColor: colors.border.default,
+        },
+        completedShell: {
+            borderRadius: 24,
+            overflow: 'hidden' as const,
+            shadowColor: '#10b981',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.1,
+            shadowRadius: 16,
+            elevation: 4,
+        },
+        completedInner: {
+            flexDirection: 'row' as const,
+            alignItems: 'center' as const,
+            paddingVertical: 18,
+            paddingHorizontal: 20,
+            borderRadius: 24,
+            borderWidth: 1,
+            borderColor: 'rgba(16, 185, 129, 0.15)',
+            // Tint verde sutil — funciona em ambos modos.
+            backgroundColor: 'rgba(16,185,129,0.06)',
+        },
+        checkIcon: {
+            height: 48,
+            width: 48,
+            borderRadius: 24,
+            backgroundColor: 'rgba(16,185,129,0.18)',
+            alignItems: 'center' as const,
+            justifyContent: 'center' as const,
+            marginRight: 16,
+            shadowColor: '#10b981',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.25,
+            shadowRadius: 8,
+            elevation: 4,
+        },
+        iconBadge: {
+            height: 48,
+            width: 48,
+            borderRadius: 14,
+            alignItems: 'center' as const,
+            justifyContent: 'center' as const,
+            marginRight: 16,
+        },
+        heroIcon: {
+            height: 44,
+            width: 44,
+            borderRadius: 22,
+            backgroundColor: 'rgba(124, 58, 237, 0.08)',
+            alignItems: 'center' as const,
+            justifyContent: 'center' as const,
+        },
+        badge: {
+            backgroundColor: colors.neutral[100],
+            paddingHorizontal: 12,
+            paddingVertical: 5,
+            borderRadius: 20,
+        },
+        badgeText: {
+            color: colors.text.tertiary,
+            fontSize: 9,
+            fontWeight: '700' as const,
+            textTransform: 'uppercase' as const,
+            letterSpacing: 2.5,
+        },
+        heroTitle: {
+            fontSize: 24,
+            fontWeight: '800' as const,
+            color: colors.text.primary,
+            marginBottom: 6,
+        },
+        startButton: {
+            flexDirection: 'row' as const,
+            alignItems: 'center' as const,
+            backgroundColor: '#7c3aed',
+            paddingHorizontal: 16,
+            paddingVertical: 10,
+            borderRadius: 16,
+            shadowColor: '#8b5cf6',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.2,
+            shadowRadius: 8,
+            elevation: 4,
+            gap: 6,
+        },
+        cardTitle: {
+            fontSize: 15,
+            fontWeight: '600' as const,
+            color: colors.text.primary,
+            marginBottom: 3,
+        },
+        cardSubtitle: {
+            fontSize: 13,
+            color: colors.text.tertiary,
+            marginTop: 2,
+        },
+    };
+}

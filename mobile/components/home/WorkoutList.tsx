@@ -3,6 +3,7 @@ import { View, Text } from "react-native";
 import { Dumbbell, ChevronRight, Check, Minus } from "lucide-react-native";
 import { PressableScale } from "../shared/PressableScale";
 import type { WeeklyProgress } from "@kinevo/shared/utils/schedule-projection";
+import { useV2Colors } from "../../hooks/useV2Colors";
 
 interface WorkoutListProps {
     workouts: any[];
@@ -12,11 +13,20 @@ interface WorkoutListProps {
 }
 
 export function WorkoutList({ workouts, onWorkoutPress, weeklyProgress, todayCompletedIds }: WorkoutListProps) {
+    const colors = useV2Colors();
     if (workouts.length === 0) return null;
 
     return (
         <View>
-            <Text className="text-xl font-bold text-slate-900 mb-4 tracking-wide">
+            <Text
+                style={{
+                    fontSize: 20,
+                    fontWeight: '700',
+                    color: colors.text.primary,
+                    marginBottom: 16,
+                    letterSpacing: 0.4,
+                }}
+            >
                 Seus Treinos
             </Text>
             {workouts.map((workout, index) => {
@@ -44,11 +54,11 @@ export function WorkoutList({ workouts, onWorkoutPress, weeklyProgress, todayCom
                     >
                         <View
                             style={{
-                                backgroundColor: '#ffffff',
+                                backgroundColor: colors.surface.card,
                                 borderWidth: 1,
                                 borderColor: isFullyDone
                                     ? 'rgba(16, 185, 129, 0.15)'
-                                    : 'rgba(0, 0, 0, 0.04)',
+                                    : colors.border.default,
                                 flexDirection: 'row',
                                 alignItems: 'center',
                                 paddingVertical: 18,
@@ -63,8 +73,8 @@ export function WorkoutList({ workouts, onWorkoutPress, weeklyProgress, todayCom
                                     width: 48,
                                     borderRadius: 14,
                                     backgroundColor: isFullyDone
-                                        ? '#dcfce7'
-                                        : '#f5f3ff',
+                                        ? 'rgba(16,185,129,0.14)'
+                                        : 'rgba(124,58,237,0.12)',
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     marginRight: 16,
@@ -83,7 +93,7 @@ export function WorkoutList({ workouts, onWorkoutPress, weeklyProgress, todayCom
                                     style={{
                                         fontSize: 15,
                                         fontWeight: '600',
-                                        color: isFullyDone ? '#64748b' : '#0f172a',
+                                        color: isFullyDone ? colors.text.tertiary : colors.text.primary,
                                         marginBottom: 3,
                                     }}
                                 >
@@ -94,7 +104,7 @@ export function WorkoutList({ workouts, onWorkoutPress, weeklyProgress, todayCom
                                     <Text
                                         style={{
                                             fontSize: 12,
-                                            color: '#64748b',
+                                            color: colors.text.tertiary,
                                             fontWeight: '400',
                                             marginBottom: 2,
                                         }}
@@ -108,7 +118,7 @@ export function WorkoutList({ workouts, onWorkoutPress, weeklyProgress, todayCom
                                     <Text
                                         style={{
                                             fontSize: 12,
-                                            color: '#94a3b8',
+                                            color: colors.text.quaternary,
                                             fontWeight: '400',
                                         }}
                                     >
@@ -124,11 +134,11 @@ export function WorkoutList({ workouts, onWorkoutPress, weeklyProgress, todayCom
                                             <Text style={{
                                                 fontSize: 11,
                                                 fontWeight: '600',
-                                                color: isFullyDone ? '#16a34a' : isPartial ? '#f59e0b' : '#94a3b8',
+                                                color: isFullyDone ? '#16a34a' : isPartial ? '#f59e0b' : colors.text.quaternary,
                                             }}>
                                                 {completed}/{expected}
                                             </Text>
-                                            <Text style={{ fontSize: 11, color: '#94a3b8' }}>
+                                            <Text style={{ fontSize: 11, color: colors.text.quaternary }}>
                                                 sem.
                                             </Text>
                                         </View>
@@ -157,7 +167,7 @@ export function WorkoutList({ workouts, onWorkoutPress, weeklyProgress, todayCom
                             </View>
 
                             {/* Chevron */}
-                            <ChevronRight size={18} color={isFullyDone ? '#a7f3d0' : '#cbd5e1'} strokeWidth={1.5} />
+                            <ChevronRight size={18} color={isFullyDone ? '#A7F3D0' : colors.text.quaternary} strokeWidth={1.5} />
                         </View>
                     </PressableScale>
                 );
