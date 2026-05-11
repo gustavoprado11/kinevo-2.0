@@ -3,7 +3,7 @@ import {
     View, Text, Modal, Pressable, Platform, Alert, useWindowDimensions, StyleSheet,
 } from 'react-native';
 import {
-    Share2, X, Camera, Image as ImageIcon, Trophy, FileText, LayoutTemplate,
+    Share2, X, Camera, Image as ImageIcon, Trophy, FileText, Target,
 } from 'lucide-react-native';
 import Animated, {
     useSharedValue, useAnimatedStyle, withTiming, withSequence,
@@ -23,7 +23,6 @@ import { PhotoOverlayTemplate } from './sharing/PhotoOverlayTemplate';
 import { MaxLoadsTemplate } from './sharing/MaxLoadsTemplate';
 import { FullWorkoutTemplate } from './sharing/FullWorkoutTemplate';
 import { SummaryTemplate } from './sharing/SummaryTemplate';
-import { PRTemplate } from './sharing/PRTemplate';
 import { ShareableCardProps } from './sharing/types';
 
 interface ShareWorkoutModalProps {
@@ -44,7 +43,7 @@ function computePreviewScale(screenWidth: number, screenHeight: number) {
     return { previewScale, scaledH: CARD_H * previewScale };
 }
 
-type TemplateType = 'photo' | 'highlights' | 'full_workout' | 'summary' | 'pr';
+type TemplateType = 'photo' | 'highlights' | 'full_workout' | 'summary';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -263,7 +262,7 @@ export function ShareWorkoutModal({ visible, onClose, data, sessionId }: ShareWo
         { key: 'photo', label: 'Foto', Icon: Camera },
         { key: 'highlights', label: 'Destaques', Icon: Trophy },
         { key: 'full_workout', label: 'Completo', Icon: FileText },
-        { key: 'summary', label: 'Resumo', Icon: LayoutTemplate },
+        { key: 'summary', label: 'Meta', Icon: Target },
     ];
 
     return (
@@ -294,7 +293,6 @@ export function ShareWorkoutModal({ visible, onClose, data, sessionId }: ShareWo
                                 {selectedTemplate === 'highlights' && <MaxLoadsTemplate {...templateData} />}
                                 {selectedTemplate === 'full_workout' && <FullWorkoutTemplate {...templateData} />}
                                 {selectedTemplate === 'summary' && <SummaryTemplate {...templateData} />}
-                                {selectedTemplate === 'pr' && <PRTemplate {...templateData} />}
                             </ViewShot>
                         </View>
                     </View>

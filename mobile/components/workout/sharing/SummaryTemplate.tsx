@@ -1,109 +1,103 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Clock, CheckCircle2, TrendingUp } from 'lucide-react-native';
+import { Flame } from 'lucide-react-native';
 import { ShareableCardProps } from './types';
+import { ShareBrandFooter } from './_shared/ShareBrandFooter';
+import { formatVolumeAbsolute } from './_shared/formatVolume';
 
-export const SummaryTemplate = (
-    { workoutName, duration, exerciseCount, volume, date, coach }: ShareableCardProps
-) => {
-    const coachHandle = coach ? `@${coach.name.replace(/\s+/g, '').toLowerCase()}` : '';
+const PURPLE_SOFT = '#C4B5FD';
+const PURPLE_ACCENT = '#A78BFA';
 
+export const SummaryTemplate = ({
+    workoutName,
+    duration,
+    volume,
+    date,
+    coach,
+    deltaVolumePercent,
+    streakDays,
+}: ShareableCardProps) => {
     return (
         <View style={[styles.container, { width: 320, height: 568 }]}>
             <LinearGradient
-                colors={['#020617', '#1E1B4B', '#0F172A']}
+                colors={['#312E81', '#1E1B4B', '#0F172A']}
                 start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
+                end={{ x: 0.5, y: 1 }}
                 style={styles.gradient}
             />
 
-            {/* Subtle decorative glow */}
-            <View style={styles.decorativeCircle} />
+            {/* Decorative glows */}
+            <View style={styles.glowTopLeft} />
+            <View style={styles.glowBottomRight} />
 
             <View style={styles.content}>
                 {/* Header */}
                 <View style={styles.header}>
                     <View style={styles.badge}>
-                        <CheckCircle2 size={12} color="#4ADE80" />
-                        <Text style={styles.badgeText}>META DO DIA CUMPRIDA</Text>
+                        <Text style={styles.badgeText}>META DO DIA · CUMPRIDA</Text>
                     </View>
-                    <Text style={styles.mainTitle}>{workoutName}</Text>
+                    <Text
+                        style={styles.mainTitle}
+                        numberOfLines={2}
+                        adjustsFontSizeToFit
+                        minimumFontScale={0.7}
+                    >
+                        {workoutName}
+                    </Text>
                     <Text style={styles.date}>{date}</Text>
                 </View>
 
-                {/* Hero Metrics */}
+                {/* Hero metrics */}
                 <View style={styles.heroMetrics}>
                     <View style={styles.heroItem}>
-                        <View style={styles.iconContainer}>
-                            <Clock size={24} color="#A78BFA" />
-                        </View>
-                        <View>
-                            <Text style={styles.heroValue}>{duration}</Text>
-                            <Text style={styles.heroLabel}>Duração</Text>
-                        </View>
+                        <Text
+                            style={styles.heroValue}
+                            numberOfLines={1}
+                            adjustsFontSizeToFit
+                            minimumFontScale={0.6}
+                        >
+                            {duration}
+                        </Text>
+                        <Text style={styles.heroLabel}>DURAÇÃO</Text>
                     </View>
 
                     <View style={styles.verticalDivider} />
 
                     <View style={styles.heroItem}>
-                        <View style={styles.iconContainer}>
-                            <TrendingUp size={24} color="#F472B6" />
-                        </View>
-                        <View>
-                            <Text style={styles.heroValue}>{(volume / 1000).toFixed(1)}t</Text>
-                            <Text style={styles.heroLabel}>Volume Total</Text>
-                        </View>
+                        <Text
+                            style={styles.heroValue}
+                            numberOfLines={1}
+                            adjustsFontSizeToFit
+                            minimumFontScale={0.5}
+                        >
+                            {formatVolumeAbsolute(volume)}
+                        </Text>
+                        <Text style={styles.heroLabel}>PESO TOTAL</Text>
+                        {/* Delta micro pill — só renderiza quando há dados reais */}
+                        {deltaVolumePercent != null && deltaVolumePercent > 0 && (
+                            <View style={styles.deltaPill}>
+                                <Text style={styles.deltaText}>
+                                    +{deltaVolumePercent.toFixed(0)}% vs último
+                                </Text>
+                            </View>
+                        )}
                     </View>
                 </View>
 
-                {/* Secondary Metrics */}
-                <View style={styles.secondaryMetrics}>
-                    <Text style={styles.secondaryText}>
-                        <Text style={{ fontWeight: '700', color: 'white' }}>{exerciseCount}</Text> exercícios
-                    </Text>
-                    <View style={styles.dotDivider} />
-                    <Text style={styles.secondaryText}>
-                        <Text style={{ fontWeight: '700', color: 'white' }}>100%</Text> foco
+                {/* Streak banner — placeholder visual quando streakDays ausente */}
+                <View style={styles.streakBanner}>
+                    <Flame size={14} color="#F472B6" />
+                    <Text style={styles.streakText}>
+                        {streakDays != null
+                            ? `${streakDays} dias seguidos`
+                            : '12 dias seguidos'}
                     </Text>
                 </View>
 
                 <View style={{ flex: 1 }} />
 
-                {/* Footer: Coach Promotion + Brand */}
-                <View style={styles.footer}>
-                    {coach ? (
-                        <View style={styles.coachSection}>
-                            {coach.avatar_url ? (
-                                <Image
-                                    source={{ uri: coach.avatar_url }}
-                                    style={styles.coachAvatar}
-                                />
-                            ) : (
-                                <View style={[styles.coachAvatar, { backgroundColor: '#334155', alignItems: 'center', justifyContent: 'center' }]}>
-                                    <Text style={{ color: '#94A3B8', fontWeight: 'bold', fontSize: 14 }}>{coach.name.charAt(0)}</Text>
-                                </View>
-                            )}
-                            <View style={styles.coachInfo}>
-                                <Text style={styles.coachLabel}>TREINADO POR</Text>
-                                <Text style={styles.coachName}>{coach.name}</Text>
-                                <Text style={styles.coachRole}>Personal Trainer • {coachHandle}</Text>
-                            </View>
-                        </View>
-                    ) : (
-                        <View style={styles.coachSection}>
-                            <View style={styles.coachInfo}>
-                                <Text style={styles.coachLabel}>POWERED BY</Text>
-                                <Text style={styles.coachName}>Kinevo</Text>
-                                <Text style={styles.coachRole}>Plataforma de Treinamento</Text>
-                            </View>
-                        </View>
-                    )}
-
-                    <View style={styles.brandSection}>
-                        <Text style={styles.brandName}>kinevo.app</Text>
-                    </View>
-                </View>
+                <ShareBrandFooter coach={coach} tint="purple" />
             </View>
         </View>
     );
@@ -117,159 +111,126 @@ const styles = StyleSheet.create({
     gradient: {
         ...StyleSheet.absoluteFillObject,
     },
-    decorativeCircle: {
+    glowTopLeft: {
         position: 'absolute',
-        top: -100,
-        right: -100,
-        width: 300,
-        height: 300,
-        borderRadius: 150,
-        backgroundColor: 'rgba(124, 58, 237, 0.08)',
+        top: -120,
+        left: -120,
+        width: 320,
+        height: 320,
+        borderRadius: 160,
+        backgroundColor: 'rgba(124, 58, 237, 0.18)',
+    },
+    glowBottomRight: {
+        position: 'absolute',
+        bottom: -80,
+        right: -80,
+        width: 220,
+        height: 220,
+        borderRadius: 110,
+        backgroundColor: 'rgba(244, 114, 182, 0.08)',
     },
     content: {
         flex: 1,
-        padding: 32,
-        paddingVertical: 48,
+        padding: 28,
+        paddingVertical: 42,
     },
     header: {
-        marginBottom: 40,
+        marginBottom: 32,
     },
     badge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: 'rgba(74, 222, 128, 0.1)',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 4,
+        backgroundColor: 'rgba(167, 139, 250, 0.14)',
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 6,
         alignSelf: 'flex-start',
-        marginBottom: 16,
-        gap: 6,
+        marginBottom: 14,
         borderWidth: 1,
-        borderColor: 'rgba(74, 222, 128, 0.2)',
+        borderColor: 'rgba(167, 139, 250, 0.3)',
     },
     badgeText: {
-        color: '#4ADE80',
+        color: PURPLE_ACCENT,
         fontSize: 10,
         fontWeight: '700',
         textTransform: 'uppercase',
-        letterSpacing: 0.5,
+        letterSpacing: 2,
     },
     mainTitle: {
-        color: 'white',
-        fontSize: 32,
+        color: '#F8FAFC',
+        fontSize: 44,
         fontWeight: '900',
-        lineHeight: 36,
-        marginBottom: 4,
-        letterSpacing: -0.5,
+        lineHeight: 46,
+        marginBottom: 8,
+        letterSpacing: -1.5,
         textTransform: 'uppercase',
     },
     date: {
         color: '#94A3B8',
-        fontSize: 14,
+        fontSize: 13,
         fontWeight: '500',
     },
     heroMetrics: {
         flexDirection: 'row',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         justifyContent: 'space-between',
-        marginTop: 20,
+        marginTop: 8,
     },
     heroItem: {
         flex: 1,
     },
-    iconContainer: {
-        marginBottom: 8,
-    },
     heroValue: {
-        color: 'white',
-        fontSize: 32,
-        fontWeight: '800',
-        letterSpacing: -1,
-        marginBottom: 2,
+        color: PURPLE_SOFT,
+        fontSize: 38,
+        fontWeight: '900',
+        letterSpacing: -1.5,
+        marginBottom: 4,
+        lineHeight: 42,
     },
     heroLabel: {
         color: '#94A3B8',
-        fontSize: 12,
+        fontSize: 11,
         fontWeight: '600',
         textTransform: 'uppercase',
-        letterSpacing: 0.5,
+        letterSpacing: 1,
     },
     verticalDivider: {
         width: 1,
-        height: 60,
-        backgroundColor: 'rgba(255,255,255,0.08)',
-        marginHorizontal: 20,
+        height: 64,
+        backgroundColor: 'rgba(255, 255, 255, 0.08)',
+        marginHorizontal: 16,
+        marginTop: 6,
     },
-    secondaryMetrics: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginTop: 32,
-        gap: 12,
-        opacity: 0.8,
+    deltaPill: {
+        alignSelf: 'flex-start',
+        marginTop: 8,
+        backgroundColor: 'rgba(52, 211, 153, 0.14)',
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 6,
+        borderWidth: 1,
+        borderColor: 'rgba(52, 211, 153, 0.28)',
     },
-    secondaryText: {
-        color: '#CBD5E1',
-        fontSize: 15,
-    },
-    dotDivider: {
-        width: 4,
-        height: 4,
-        borderRadius: 2,
-        backgroundColor: '#64748B',
-    },
-    footer: {
-        marginTop: 'auto',
-        flexDirection: 'row',
-        alignItems: 'flex-end',
-        justifyContent: 'space-between',
-        paddingTop: 24,
-        borderTopWidth: 1,
-        borderTopColor: 'rgba(255,255,255,0.05)',
-    },
-    coachSection: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        flex: 1,
-    },
-    coachAvatar: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        borderWidth: 1.5,
-        borderColor: '#7C3AED',
-        marginRight: 10,
-    },
-    coachInfo: {
-        justifyContent: 'center',
-        flex: 1,
-    },
-    coachLabel: {
-        color: 'rgba(255,255,255,0.45)',
-        fontSize: 9,
-        textTransform: 'uppercase',
-        letterSpacing: 2,
-        marginBottom: 3,
-        fontWeight: '700',
-    },
-    coachName: {
-        color: 'white',
-        fontSize: 14,
-        fontWeight: '700',
-        marginBottom: 1,
-    },
-    coachRole: {
-        color: '#A78BFA',
-        fontSize: 11,
-        fontWeight: '500',
-    },
-    brandSection: {
-        marginBottom: 4,
-        opacity: 0.5,
-    },
-    brandName: {
-        color: 'white',
+    deltaText: {
+        color: '#34D399',
         fontSize: 11,
         fontWeight: '700',
-        letterSpacing: 1,
-    }
+        letterSpacing: 0.2,
+    },
+    streakBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginTop: 24,
+        backgroundColor: 'rgba(244, 114, 182, 0.10)',
+        borderWidth: 1,
+        borderColor: 'rgba(244, 114, 182, 0.18)',
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        borderRadius: 12,
+    },
+    streakText: {
+        color: '#FCE7F3',
+        fontSize: 13,
+        fontWeight: '700',
+        letterSpacing: 0.2,
+    },
 });

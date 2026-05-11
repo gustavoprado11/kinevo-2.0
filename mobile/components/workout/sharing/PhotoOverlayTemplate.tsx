@@ -2,7 +2,10 @@ import React from 'react';
 import { View, Text, StyleSheet, Image, ImageBackground } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Camera } from 'lucide-react-native';
+import Svg, { Circle } from 'react-native-svg';
 import { ShareableCardProps } from './types';
+import { rpeColor } from './_shared/rpeColor';
+import { formatVolumeCompact } from './_shared/formatVolume';
 
 function formatDurationShort(duration: string): string {
     const parts = duration.split(':');
@@ -14,13 +17,6 @@ function formatDurationShort(duration: string): string {
         return m > 0 ? `${h}h${m}m` : `${h}h`;
     }
     return duration;
-}
-
-function formatVolumeShort(kg: number): string {
-    if (kg >= 1000) {
-        return `${(kg / 1000).toFixed(1).replace(/\.0$/, '')}t`;
-    }
-    return `${Math.round(kg)}kg`;
 }
 
 function formatRelativeDate(dateStr: string): string {
@@ -45,6 +41,49 @@ function shortenName(name: string): string {
     return `${parts[0]} ${parts[parts.length - 1].charAt(0)}.`;
 }
 
+function shortenHandle(fullName: string): string {
+    const parts = fullName.trim().split(/\s+/);
+    if (parts.length === 1) return `@${parts[0].toLowerCase()}`;
+    const first = parts[0].toLowerCase();
+    const lastInitial = parts[parts.length - 1].charAt(0).toLowerCase();
+    return `@${first}.${lastInitial}`;
+}
+
+interface AchievementCorner {
+    label: string;
+    bg: string;
+    border: string;
+    color: string;
+}
+
+function pickAchievement(
+    rpe: number | undefined,
+    prCount: number | undefined,
+): AchievementCorner {
+    if ((prCount ?? 0) > 0) {
+        return {
+            label: 'RECORDE',
+            bg: 'rgba(244, 196, 78, 0.20)',
+            border: 'rgba(244, 196, 78, 0.5)',
+            color: '#F4C04E',
+        };
+    }
+    if (rpe != null && rpe >= 8) {
+        return {
+            label: 'INTENSO',
+            bg: 'rgba(239, 68, 68, 0.20)',
+            border: 'rgba(239, 68, 68, 0.5)',
+            color: '#FCA5A5',
+        };
+    }
+    return {
+        label: '@kinevo.app',
+        bg: 'rgba(124, 58, 237, 0.22)',
+        border: 'rgba(167, 139, 250, 0.5)',
+        color: '#C4B5FD',
+    };
+}
+
 export const PhotoOverlayTemplate = ({
     workoutName,
     duration,
@@ -56,6 +95,7 @@ export const PhotoOverlayTemplate = ({
     completedSets,
     totalSets,
     rpe,
+    prCount,
 }: ShareableCardProps) => {
     if (!backgroundImageUri) {
         return (
@@ -68,15 +108,23 @@ export const PhotoOverlayTemplate = ({
         );
     }
 
-    // Build stats array
     const stats: string[] = [formatDurationShort(duration)];
-    if (volume > 0) stats.push(formatVolumeShort(volume));
+    if (volume > 0) stats.push(formatVolumeCompact(volume));
     if (completedSets != null && totalSets != null) {
         stats.push(`${completedSets}/${totalSets}`);
     } else if (exerciseCount > 0) {
         stats.push(`${exerciseCount} ex.`);
     }
-    if (rpe != null) stats.push(`RPE ${rpe}`);
+
+    const achievement = pickAchievement(rpe, prCount);
+
+    // RPE ring math
+    const RING_SIZE = 28;
+    const RING_R = 12;
+    const RING_CIRC = 2 * Math.PI * RING_R; // ≈ 75.4
+    const rpeValue = rpe ?? 0;
+    const rpeDash = `${(rpeValue / 10) * RING_CIRC} ${RING_CIRC}`;
+    const rpeStroke = rpe != null ? rpeColor(rpe) : 'rgba(255,255,255,0.4)';
 
     return (
         <View style={[styles.container, { width: 320, height: 568 }]}>
@@ -85,17 +133,55 @@ export const PhotoOverlayTemplate = ({
                 style={styles.imageBackground}
                 resizeMode="cover"
             >
-                {/* Subtle gradient only on bottom 35% */}
+                {/* Top-left pill: date label */}
+                <View style={styles.topLeftPill}>
+                    <View style={styles.liveDot} />
+                    <Text
+                        style={styles.topLeftText}
+                        numberOfLines={1}
+                    >
+                        {formatRelativeDate(date).toUpperCase()}
+                    </Text>
+                </View>
+
+                {/* Top-right achievement */}
+                <View
+                    style={[
+                        styles.topRightBadge,
+                        {
+                            backgroundColor: achievement.bg,
+                            borderColor: achievement.border,
+                        },
+                    ]}
+                >
+                    <Text
+                        style={[
+                            styles.topRightText,
+                            { color: achievement.color },
+                            achievement.label.startsWith('@') && {
+                                textTransform: 'none',
+                                letterSpacing: 0.3,
+                            },
+                        ]}
+                    >
+                        {achievement.label}
+                    </Text>
+                </View>
+
+                {/* Subtle gradient bottom */}
                 <LinearGradient
                     colors={['transparent', 'rgba(0,0,0,0.15)', 'rgba(0,0,0,0.6)']}
-                    locations={[0, 0.4, 1]}
+                    locations={[0, 0.5, 1]}
                     style={styles.bottomGradient}
                 />
 
-                {/* Glass info card at bottom */}
+                {/* Glass info card */}
                 <View style={styles.infoContainer}>
                     <View style={styles.glassCard}>
-                        {/* Row 1: Workout name + date */}
+                        {/* Top highlight border */}
+                        <View style={styles.glassTopHighlight} />
+
+                        {/* Row 1: workout + date */}
                         <View style={styles.titleRow}>
                             <Text style={styles.workoutName} numberOfLines={1}>
                                 {workoutName}
@@ -105,40 +191,87 @@ export const PhotoOverlayTemplate = ({
                             </Text>
                         </View>
 
-                        {/* Row 2: Stats inline */}
+                        {/* Row 2: stats inline */}
                         <View style={styles.statsRow}>
                             {stats.map((stat, i) => (
                                 <React.Fragment key={i}>
-                                    {i > 0 && <Text style={styles.statDot}>{'\u00B7'}</Text>}
+                                    {i > 0 && <Text style={styles.statDot}>·</Text>}
                                     <Text style={styles.statText}>{stat}</Text>
                                 </React.Fragment>
                             ))}
                         </View>
 
-                        {/* Row 3: Trainer + branding */}
+                        {/* Row 3: trainer + RPE ring */}
                         <View style={styles.trainerRow}>
-                            {coach ? (
-                                <>
-                                    {coach.avatar_url ? (
-                                        <Image
-                                            source={{ uri: coach.avatar_url }}
-                                            style={styles.miniAvatar}
-                                        />
-                                    ) : (
-                                        <View style={[styles.miniAvatar, styles.miniAvatarFallback]}>
-                                            <Text style={styles.miniAvatarInitial}>
-                                                {coach.name.charAt(0)}
+                            <View style={styles.trainerSection}>
+                                {coach ? (
+                                    <>
+                                        {coach.avatar_url ? (
+                                            <Image
+                                                source={{ uri: coach.avatar_url }}
+                                                style={styles.miniAvatar}
+                                            />
+                                        ) : (
+                                            <View
+                                                style={[
+                                                    styles.miniAvatar,
+                                                    styles.miniAvatarFallback,
+                                                ]}
+                                            >
+                                                <Text style={styles.miniAvatarInitial}>
+                                                    {coach.name.charAt(0)}
+                                                </Text>
+                                            </View>
+                                        )}
+                                        <View style={styles.trainerTextCol}>
+                                            <Text
+                                                style={styles.trainerName}
+                                                numberOfLines={1}
+                                            >
+                                                {shortenName(coach.name)}
+                                            </Text>
+                                            <Text
+                                                style={styles.trainerHandle}
+                                                numberOfLines={1}
+                                            >
+                                                {shortenHandle(coach.name)}
                                             </Text>
                                         </View>
-                                    )}
-                                    <Text style={styles.trainerName}>
-                                        {shortenName(coach.name)}
+                                    </>
+                                ) : (
+                                    <Text style={styles.brand}>kinevo.app</Text>
+                                )}
+                            </View>
+
+                            {rpe != null && (
+                                <View style={styles.rpeSection}>
+                                    <Svg width={RING_SIZE} height={RING_SIZE}>
+                                        <Circle
+                                            cx={14}
+                                            cy={14}
+                                            r={RING_R}
+                                            stroke="rgba(255,255,255,0.18)"
+                                            strokeWidth={3}
+                                            fill="none"
+                                        />
+                                        <Circle
+                                            cx={14}
+                                            cy={14}
+                                            r={RING_R}
+                                            stroke={rpeStroke}
+                                            strokeWidth={3}
+                                            fill="none"
+                                            strokeDasharray={rpeDash}
+                                            strokeLinecap="round"
+                                            transform={`rotate(-90 14 14)`}
+                                        />
+                                    </Svg>
+                                    <Text
+                                        style={[styles.rpeValue, { color: rpeStroke }]}
+                                    >
+                                        {rpe}
                                     </Text>
-                                    <Text style={styles.dot}>{'\u00B7'}</Text>
-                                    <Text style={styles.brand}>kinevo</Text>
-                                </>
-                            ) : (
-                                <Text style={styles.brand}>kinevo.app</Text>
+                                </View>
                             )}
                         </View>
                     </View>
@@ -158,6 +291,48 @@ const styles = StyleSheet.create({
         width: '100%',
         height: '100%',
     },
+    topLeftPill: {
+        position: 'absolute',
+        top: 16,
+        left: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        backgroundColor: 'rgba(0, 0, 0, 0.45)',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.18)',
+        borderRadius: 100,
+        maxWidth: 140,
+    },
+    liveDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: '#34D399',
+    },
+    topLeftText: {
+        color: '#F1F5F9',
+        fontSize: 10,
+        fontWeight: '800',
+        letterSpacing: 1.2,
+    },
+    topRightBadge: {
+        position: 'absolute',
+        top: 16,
+        right: 16,
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 6,
+        borderWidth: 1,
+    },
+    topRightText: {
+        fontSize: 11,
+        fontWeight: '800',
+        textTransform: 'uppercase',
+        letterSpacing: 1,
+    },
     bottomGradient: {
         position: 'absolute',
         bottom: 0,
@@ -167,19 +342,26 @@ const styles = StyleSheet.create({
     },
     infoContainer: {
         position: 'absolute',
-        bottom: 24,
+        bottom: 20,
         left: 16,
         right: 16,
     },
     glassCard: {
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        borderRadius: 16,
-        padding: 14,
-        borderWidth: StyleSheet.hairlineWidth,
-        borderColor: 'rgba(255, 255, 255, 0.12)',
+        backgroundColor: 'rgba(0, 0, 0, 0.62)',
+        borderRadius: 18,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.14)',
+        overflow: 'hidden',
     },
-
-    // Title row
+    glassTopHighlight: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: 1,
+        backgroundColor: 'rgba(255, 255, 255, 0.22)',
+    },
     titleRow: {
         flexDirection: 'row',
         alignItems: 'baseline',
@@ -188,48 +370,53 @@ const styles = StyleSheet.create({
     },
     workoutName: {
         fontSize: 18,
-        fontWeight: '700',
-        color: '#fff',
+        fontWeight: '800',
+        color: '#FFFFFF',
         flex: 1,
         marginRight: 8,
+        letterSpacing: -0.3,
     },
     date: {
-        fontSize: 12,
+        fontSize: 11,
         color: 'rgba(255, 255, 255, 0.55)',
         fontWeight: '500',
     },
-
-    // Stats row
     statsRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 10,
+        marginBottom: 12,
         gap: 6,
     },
     statText: {
-        fontSize: 13,
+        fontSize: 12,
         fontWeight: '600',
         color: 'rgba(255, 255, 255, 0.88)',
         fontVariant: ['tabular-nums'],
     },
     statDot: {
-        fontSize: 13,
-        color: 'rgba(255, 255, 255, 0.3)',
+        fontSize: 12,
+        color: 'rgba(255, 255, 255, 0.25)',
+        fontWeight: '700',
     },
-
-    // Trainer row
     trainerRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 6,
-        paddingTop: 9,
-        borderTopWidth: StyleSheet.hairlineWidth,
+        justifyContent: 'space-between',
+        paddingTop: 10,
+        borderTopWidth: 1,
         borderTopColor: 'rgba(255, 255, 255, 0.1)',
+        gap: 12,
+    },
+    trainerSection: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        flex: 1,
     },
     miniAvatar: {
-        width: 20,
-        height: 20,
-        borderRadius: 10,
+        width: 22,
+        height: 22,
+        borderRadius: 11,
         overflow: 'hidden',
     },
     miniAvatarFallback: {
@@ -240,24 +427,37 @@ const styles = StyleSheet.create({
     miniAvatarInitial: {
         color: '#94a3b8',
         fontWeight: '700',
-        fontSize: 9,
+        fontSize: 10,
+    },
+    trainerTextCol: {
+        flex: 1,
     },
     trainerName: {
         fontSize: 12,
-        fontWeight: '600',
-        color: 'rgba(255, 255, 255, 0.75)',
+        fontWeight: '700',
+        color: '#FFFFFF',
+        marginBottom: 1,
     },
-    dot: {
+    trainerHandle: {
+        fontSize: 10,
+        fontWeight: '600',
+        color: '#A78BFA',
+    },
+    rpeSection: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    rpeValue: {
         fontSize: 12,
-        color: 'rgba(255, 255, 255, 0.3)',
+        fontWeight: '800',
+        letterSpacing: 0.3,
+        marginLeft: 6,
     },
     brand: {
         fontSize: 12,
-        fontWeight: '500',
-        color: 'rgba(124, 58, 237, 0.85)',
+        fontWeight: '700',
+        color: '#A78BFA',
     },
-
-    // Placeholder
     placeholderContainer: {
         flex: 1,
         backgroundColor: '#1e293b',

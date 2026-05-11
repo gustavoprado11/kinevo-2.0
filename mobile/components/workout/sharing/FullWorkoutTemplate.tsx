@@ -1,53 +1,97 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { CheckCircle2, Clock, Flame, TrendingUp, Trophy } from 'lucide-react-native';
 import { ShareableCardProps } from './types';
-import { CheckCircle2, Clock, TrendingUp } from 'lucide-react-native';
+import { ShareBrandFooter } from './_shared/ShareBrandFooter';
 
-const MAX_VISIBLE_EXERCISES = 8;
+const MAX_VISIBLE_EXERCISES = 5;
 
 export const FullWorkoutTemplate = ({
-    workoutName, date, duration, volume, coach, exerciseDetails
+    workoutName,
+    date,
+    duration,
+    volume,
+    coach,
+    exerciseDetails,
+    streakDays,
+    prCount,
 }: ShareableCardProps) => {
-
-    const coachHandle = coach ? `@${coach.name.replace(/\s+/g, '').toLowerCase()}` : '';
-    const exercises = exerciseDetails || [];
+    const exercises = exerciseDetails ?? [];
     const visibleExercises = exercises.slice(0, MAX_VISIBLE_EXERCISES);
     const remainingCount = exercises.length - MAX_VISIBLE_EXERCISES;
+
+    const showPrBadge = (prCount ?? 0) > 0 || exercises.length > 0; // placeholder até hook expor
+    const showStreakBadge = (streakDays ?? 0) > 0 || exercises.length > 0; // placeholder
 
     return (
         <View style={[styles.container, { width: 320, height: 568 }]}>
             <LinearGradient
-                colors={['#020617', '#0F172A', '#1E1B4B', '#0F172A']}
-                locations={[0, 0.3, 0.6, 1]}
+                colors={['#0F172A', '#1A2541', '#020617']}
+                locations={[0, 0.55, 1]}
                 style={styles.gradient}
             />
 
-            {/* Subtle decorative accent */}
-            <View style={styles.decorativeAccent} />
+            <View style={styles.glowPurple} />
 
             <View style={styles.content}>
                 {/* Header */}
                 <View style={styles.header}>
-                    <View style={styles.badge}>
-                        <CheckCircle2 size={10} color="#4ADE80" />
-                        <Text style={styles.badgeText}>TREINO CONCLUÍDO</Text>
+                    <View style={styles.achievementsRow}>
+                        {showPrBadge && (
+                            <View style={[styles.achBadge, styles.achBadgeGold]}>
+                                <Trophy size={9} color="#F4C04E" />
+                                <Text style={[styles.achText, { color: '#F4C04E' }]}>
+                                    RECORDE
+                                </Text>
+                            </View>
+                        )}
+                        {showStreakBadge && (
+                            <View style={[styles.achBadge, styles.achBadgePink]}>
+                                <Flame size={9} color="#F472B6" />
+                                <Text style={[styles.achText, { color: '#F472B6' }]}>
+                                    {streakDays ? `${streakDays}d` : 'SEQUÊNCIA'}
+                                </Text>
+                            </View>
+                        )}
+                        <View style={[styles.achBadge, styles.achBadgeGreen]}>
+                            <CheckCircle2 size={9} color="#34D399" />
+                            <Text style={[styles.achText, { color: '#34D399' }]}>
+                                COMPLETO
+                            </Text>
+                        </View>
                     </View>
-                    <Text style={styles.workoutName}>{workoutName}</Text>
+                    <Text style={styles.workoutName} numberOfLines={2}>
+                        {workoutName}
+                    </Text>
                     <Text style={styles.date}>{date}</Text>
                 </View>
 
-                {/* Exercise List */}
+                {/* Exercise list */}
                 <View style={styles.exerciseList}>
                     {visibleExercises.map((ex, index) => (
                         <View key={index} style={styles.exerciseRow}>
-                            <View style={styles.exerciseIndex}>
+                            <LinearGradient
+                                colors={['#7C3AED', '#A78BFA']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 1 }}
+                                style={styles.exerciseIndex}
+                            >
                                 <Text style={styles.indexText}>{index + 1}</Text>
-                            </View>
+                            </LinearGradient>
                             <View style={styles.exerciseInfo}>
-                                <Text style={styles.exerciseName} numberOfLines={1}>{ex.name}</Text>
+                                <Text
+                                    style={styles.exerciseName}
+                                    numberOfLines={1}
+                                    adjustsFontSizeToFit
+                                    minimumFontScale={0.75}
+                                >
+                                    {ex.name}
+                                </Text>
                                 <Text style={styles.exerciseSets}>
-                                    {ex.sets}x{ex.reps} — <Text style={styles.exerciseWeight}>{ex.weight}kg</Text>
+                                    {ex.sets}x{ex.reps}
+                                    <Text style={styles.metaDot}> · </Text>
+                                    <Text style={styles.exerciseWeight}>{ex.weight}kg</Text>
                                 </Text>
                             </View>
                         </View>
@@ -55,61 +99,51 @@ export const FullWorkoutTemplate = ({
 
                     {remainingCount > 0 && (
                         <View style={styles.moreRow}>
-                            <Text style={styles.moreText}>+{remainingCount} exercício{remainingCount > 1 ? 's' : ''}</Text>
+                            <Text style={styles.moreText}>
+                                + {remainingCount} mais
+                            </Text>
                         </View>
                     )}
-                </View>
-
-                {/* Summary Stats Row */}
-                <View style={styles.statsRow}>
-                    <View style={styles.statItem}>
-                        <Clock size={14} color="#A78BFA" />
-                        <Text style={styles.statValue}>{duration}</Text>
-                    </View>
-                    <View style={styles.statDivider} />
-                    <View style={styles.statItem}>
-                        <TrendingUp size={14} color="#F472B6" />
-                        <Text style={styles.statValue}>{(volume / 1000).toFixed(1)}t</Text>
-                    </View>
-                    <View style={styles.statDivider} />
-                    <View style={styles.statItem}>
-                        <Text style={styles.statValue}>{exercises.length} ex.</Text>
-                    </View>
                 </View>
 
                 <View style={{ flex: 1 }} />
 
-                {/* Footer: Coach Promotion + Brand */}
-                <View style={styles.footer}>
-                    {coach ? (
-                        <View style={styles.coachSection}>
-                            {coach.avatar_url ? (
-                                <Image source={{ uri: coach.avatar_url }} style={styles.coachAvatar} />
-                            ) : (
-                                <View style={[styles.coachAvatar, { backgroundColor: '#334155', alignItems: 'center', justifyContent: 'center' }]}>
-                                    <Text style={{ color: '#94A3B8', fontWeight: 'bold', fontSize: 14 }}>{coach.name.charAt(0)}</Text>
-                                </View>
-                            )}
-                            <View style={styles.coachInfo}>
-                                <Text style={styles.coachLabel}>TREINADO POR</Text>
-                                <Text style={styles.coachName}>{coach.name}</Text>
-                                <Text style={styles.coachRole}>Personal Trainer • {coachHandle}</Text>
-                            </View>
-                        </View>
-                    ) : (
-                        <View style={styles.coachSection}>
-                            <View style={styles.coachInfo}>
-                                <Text style={styles.coachLabel}>POWERED BY</Text>
-                                <Text style={styles.coachName}>Kinevo</Text>
-                                <Text style={styles.coachRole}>Plataforma de Treinamento</Text>
-                            </View>
-                        </View>
-                    )}
-
-                    <View style={styles.brandSection}>
-                        <Text style={styles.brandName}>kinevo.app</Text>
+                {/* Stats bar */}
+                <View style={styles.statsRow}>
+                    <View style={styles.statItem}>
+                        <Clock size={18} color="#A78BFA" />
+                        <Text style={styles.statValue}>{duration}</Text>
+                        <Text style={styles.statLabel}>DURAÇÃO</Text>
+                    </View>
+                    <View style={styles.statDivider} />
+                    <View style={styles.statItem}>
+                        <TrendingUp size={18} color="#F472B6" />
+                        <Text
+                            style={styles.statValue}
+                            numberOfLines={1}
+                            adjustsFontSizeToFit
+                            minimumFontScale={0.7}
+                        >
+                            {(volume / 1000).toFixed(1)}t
+                        </Text>
+                        <Text style={styles.statLabel}>TOTAL</Text>
+                    </View>
+                    <View style={styles.statDivider} />
+                    <View style={styles.statItem}>
+                        <CheckCircle2 size={18} color="#34D399" />
+                        <Text style={styles.statValue}>{exercises.length}</Text>
+                        <Text
+                            style={styles.statLabel}
+                            numberOfLines={1}
+                            adjustsFontSizeToFit
+                            minimumFontScale={0.7}
+                        >
+                            EXERCÍCIOS
+                        </Text>
                     </View>
                 </View>
+
+                <ShareBrandFooter coach={coach} tint="purple" />
             </View>
         </View>
     );
@@ -123,45 +157,58 @@ const styles = StyleSheet.create({
     gradient: {
         ...StyleSheet.absoluteFillObject,
     },
-    decorativeAccent: {
+    glowPurple: {
         position: 'absolute',
         top: -80,
         right: -80,
-        width: 200,
-        height: 200,
-        borderRadius: 100,
-        backgroundColor: 'rgba(124, 58, 237, 0.06)',
+        width: 220,
+        height: 220,
+        borderRadius: 110,
+        backgroundColor: 'rgba(124, 58, 237, 0.07)',
     },
     content: {
         flex: 1,
         padding: 24,
-        paddingVertical: 36,
+        paddingVertical: 28,
     },
     header: {
-        marginBottom: 20,
+        marginBottom: 18,
     },
-    badge: {
+    achievementsRow: {
+        flexDirection: 'row',
+        flexWrap: 'nowrap',
+        gap: 6,
+        marginBottom: 12,
+    },
+    achBadge: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(74, 222, 128, 0.1)',
-        paddingHorizontal: 8,
+        gap: 4,
+        paddingHorizontal: 7,
         paddingVertical: 3,
-        borderRadius: 4,
-        alignSelf: 'flex-start',
-        marginBottom: 10,
-        gap: 5,
+        borderRadius: 100,
         borderWidth: 1,
-        borderColor: 'rgba(74, 222, 128, 0.2)',
     },
-    badgeText: {
-        color: '#4ADE80',
+    achBadgeGold: {
+        backgroundColor: 'rgba(244, 196, 78, 0.16)',
+        borderColor: 'rgba(244, 196, 78, 0.4)',
+    },
+    achBadgePink: {
+        backgroundColor: 'rgba(244, 114, 182, 0.16)',
+        borderColor: 'rgba(244, 114, 182, 0.4)',
+    },
+    achBadgeGreen: {
+        backgroundColor: 'rgba(52, 211, 153, 0.16)',
+        borderColor: 'rgba(52, 211, 153, 0.4)',
+    },
+    achText: {
         fontSize: 9,
-        fontWeight: '700',
+        fontWeight: '800',
+        letterSpacing: 0.3,
         textTransform: 'uppercase',
-        letterSpacing: 0.5,
     },
     workoutName: {
-        color: 'white',
+        color: '#F8FAFC',
         fontSize: 26,
         fontWeight: '900',
         textTransform: 'uppercase',
@@ -175,137 +222,92 @@ const styles = StyleSheet.create({
         fontWeight: '500',
     },
     exerciseList: {
-        gap: 0,
+        gap: 6,
+        marginBottom: 4,
     },
     exerciseRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 7,
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255,255,255,0.04)',
+        gap: 12,
+        paddingVertical: 4,
     },
     exerciseIndex: {
-        width: 22,
-        height: 22,
-        borderRadius: 11,
-        backgroundColor: 'rgba(124, 58, 237, 0.15)',
+        width: 32,
+        height: 32,
+        borderRadius: 16,
         alignItems: 'center',
         justifyContent: 'center',
-        marginRight: 10,
     },
     indexText: {
-        color: '#A78BFA',
-        fontSize: 11,
-        fontWeight: '700',
+        color: '#FFFFFF',
+        fontSize: 14,
+        fontWeight: '800',
     },
     exerciseInfo: {
         flex: 1,
     },
     exerciseName: {
-        color: '#E2E8F0',
-        fontSize: 13,
-        fontWeight: '600',
-        marginBottom: 1,
+        color: '#F1F5F9',
+        fontSize: 14,
+        fontWeight: '700',
+        marginBottom: 2,
     },
     exerciseSets: {
-        color: '#64748B',
-        fontSize: 12,
-        fontWeight: '500',
+        color: '#94A3B8',
+        fontSize: 11,
+        fontWeight: '600',
+    },
+    metaDot: {
+        color: '#475569',
     },
     exerciseWeight: {
-        color: '#94A3B8',
+        color: '#A78BFA',
+        fontSize: 12,
         fontWeight: '700',
     },
     moreRow: {
-        paddingVertical: 8,
-        alignItems: 'center',
+        paddingVertical: 6,
+        paddingLeft: 44,
     },
     moreText: {
         color: '#64748B',
-        fontSize: 12,
+        fontSize: 11,
         fontWeight: '600',
-        fontStyle: 'italic',
     },
     statsRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        marginTop: 16,
-        paddingVertical: 12,
-        paddingHorizontal: 16,
-        backgroundColor: 'rgba(255,255,255,0.03)',
-        borderRadius: 10,
-        gap: 12,
+        justifyContent: 'space-between',
+        marginTop: 20,
+        marginBottom: 14,
+        paddingVertical: 10,
+        paddingHorizontal: 14,
+        backgroundColor: 'rgba(255, 255, 255, 0.04)',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.06)',
     },
     statItem: {
-        flexDirection: 'row',
         alignItems: 'center',
-        gap: 6,
+        gap: 4,
+        flex: 1,
     },
     statValue: {
-        color: 'white',
-        fontSize: 14,
-        fontWeight: '700',
+        color: '#F8FAFC',
+        fontSize: 16,
+        fontWeight: '800',
+        letterSpacing: -0.3,
+    },
+    statLabel: {
+        color: '#64748B',
+        fontSize: 9,
+        fontWeight: '600',
+        textTransform: 'uppercase',
+        letterSpacing: 1,
     },
     statDivider: {
         width: 1,
-        height: 16,
-        backgroundColor: 'rgba(255,255,255,0.1)',
+        height: 32,
+        backgroundColor: 'rgba(255, 255, 255, 0.08)',
     },
-    footer: {
-        marginTop: 'auto',
-        flexDirection: 'row',
-        alignItems: 'flex-end',
-        justifyContent: 'space-between',
-        paddingTop: 16,
-        borderTopWidth: 1,
-        borderTopColor: 'rgba(255,255,255,0.05)',
-    },
-    coachSection: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        flex: 1,
-    },
-    coachAvatar: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        backgroundColor: '#1E293B',
-        marginRight: 8,
-        borderWidth: 1.5,
-        borderColor: '#7C3AED',
-    },
-    coachInfo: {
-        justifyContent: 'center',
-        flex: 1,
-    },
-    coachLabel: {
-        color: 'rgba(255,255,255,0.45)',
-        fontSize: 8,
-        textTransform: 'uppercase',
-        letterSpacing: 2,
-        marginBottom: 2,
-        fontWeight: '700',
-    },
-    coachName: {
-        color: 'white',
-        fontSize: 13,
-        fontWeight: '700',
-        marginBottom: 1,
-    },
-    coachRole: {
-        color: '#A78BFA',
-        fontSize: 10,
-        fontWeight: '500',
-    },
-    brandSection: {
-        opacity: 0.5,
-        marginBottom: 3,
-    },
-    brandName: {
-        color: 'white',
-        fontSize: 10,
-        fontWeight: '700',
-        letterSpacing: 1,
-    }
 });

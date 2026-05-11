@@ -25,4 +25,12 @@ export interface ShareableCardProps {
         reps: number;
         weight: number;
     }[];
+
+    // ── NOVOS CAMPOS (todos opcionais) ──
+    /** Streak de dias consecutivos com treino (para banners e badges). */
+    streakDays?: number;
+    /** Delta de volume vs último treino do mesmo nome (positivo = melhor). */
+    deltaVolumePercent?: number;
+    /** Quantidade de PRs ganhos nesta sessão. */
+    prCount?: number;
 }
