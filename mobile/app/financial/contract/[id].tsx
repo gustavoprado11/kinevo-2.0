@@ -31,6 +31,7 @@ import { useStripeStatus } from "../../../hooks/useStripeStatus";
 import { ContractTimeline } from "../../../components/financial/ContractTimeline";
 import { NewSubscriptionSheet } from "../../../components/financial/NewSubscriptionSheet";
 import type { DisplayStatus } from "../../../types/financial";
+import { useV2Colors } from "../../../hooks/useV2Colors";
 
 const API_URL = process.env.EXPO_PUBLIC_WEB_URL || "https://app.kinevo.com.br";
 
@@ -66,6 +67,7 @@ function formatDate(dateStr: string | null): string {
 }
 
 export default function ContractDetailScreen() {
+    const colors = useV2Colors();
     const router = useRouter();
     const { id } = useLocalSearchParams<{ id: string }>();
     const { student, events, isLoading, refresh } = useContractDetail(id || null);
@@ -239,19 +241,19 @@ export default function ContractDetailScreen() {
         return (
             <>
                 <Stack.Screen options={{ headerShown: false }} />
-                <SafeAreaView style={{ flex: 1, backgroundColor: "#F2F2F7" }} edges={["top"]}>
+                <SafeAreaView style={{ flex: 1, backgroundColor: colors.surface.canvas }} edges={["top"]}>
                     <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 12 }}>
                         <TouchableOpacity onPress={() => router.back()} hitSlop={12}>
-                            <ChevronLeft size={24} color="#0f172a" />
+                            <ChevronLeft size={24} color={colors.text.primary} />
                         </TouchableOpacity>
-                        <Text style={{ fontSize: 18, fontWeight: "700", color: "#0f172a" }}>Contrato</Text>
+                        <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text.primary }}>Contrato</Text>
                         <View style={{ width: 24 }} />
                     </View>
                     <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
                         {isLoading ? (
-                            <ActivityIndicator color="#7c3aed" size="large" />
+                            <ActivityIndicator color={colors.purple[600]} size="large" />
                         ) : (
-                            <Text style={{ fontSize: 15, color: "#94a3b8" }}>Contrato não encontrado</Text>
+                            <Text style={{ fontSize: 15, color: colors.text.tertiary }}>Contrato não encontrado</Text>
                         )}
                     </View>
                 </SafeAreaView>
@@ -286,7 +288,7 @@ export default function ContractDetailScreen() {
     return (
         <>
             <Stack.Screen options={{ headerShown: false }} />
-            <SafeAreaView style={{ flex: 1, backgroundColor: "#F2F2F7" }} edges={["top"]}>
+            <SafeAreaView style={{ flex: 1, backgroundColor: colors.surface.canvas }} edges={["top"]}>
                 {/* Custom Header */}
                 <View style={{
                     flexDirection: "row",
@@ -301,10 +303,10 @@ export default function ContractDetailScreen() {
                         accessibilityLabel="Voltar"
                         hitSlop={12}
                     >
-                        <ChevronLeft size={24} color="#0f172a" />
+                        <ChevronLeft size={24} color={colors.text.primary} />
                     </TouchableOpacity>
 
-                    <Text style={{ fontSize: 18, fontWeight: "700", color: "#0f172a" }} numberOfLines={1}>
+                    <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text.primary }} numberOfLines={1}>
                         {student.student_name}
                     </Text>
 
@@ -321,7 +323,7 @@ export default function ContractDetailScreen() {
                     {/* Student Info Card */}
                     <View
                         style={{
-                            backgroundColor: "#ffffff",
+                            backgroundColor: colors.surface.card,
                             borderRadius: 16,
                             padding: 20,
                             marginBottom: 16,
@@ -333,7 +335,7 @@ export default function ContractDetailScreen() {
                             {student.avatar_url ? (
                                 <Image
                                     source={{ uri: student.avatar_url }}
-                                    style={{ width: 52, height: 52, borderRadius: 16, marginRight: 14, backgroundColor: "#f1f5f9" }}
+                                    style={{ width: 52, height: 52, borderRadius: 16, marginRight: 14, backgroundColor: colors.surface.card2 }}
                                 />
                             ) : (
                                 <View
@@ -341,21 +343,21 @@ export default function ContractDetailScreen() {
                                         width: 52,
                                         height: 52,
                                         borderRadius: 16,
-                                        backgroundColor: "#f5f3ff",
+                                        backgroundColor: colors.purple[100],
                                         alignItems: "center",
                                         justifyContent: "center",
                                         marginRight: 14,
                                     }}
                                 >
-                                    <Text style={{ fontSize: 18, fontWeight: "700", color: "#7c3aed" }}>{initials}</Text>
+                                    <Text style={{ fontSize: 18, fontWeight: "700", color: colors.purple[600] }}>{initials}</Text>
                                 </View>
                             )}
                             <View style={{ flex: 1 }}>
-                                <Text style={{ fontSize: 18, fontWeight: "700", color: "#0f172a" }}>
+                                <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text.primary }}>
                                     {student.student_name}
                                 </Text>
                                 {student.plan_title && (
-                                    <Text style={{ fontSize: 13, color: "#64748b", marginTop: 2 }}>
+                                    <Text style={{ fontSize: 13, color: colors.text.secondary, marginTop: 2 }}>
                                         {student.plan_title}
                                     </Text>
                                 )}
@@ -410,7 +412,7 @@ export default function ContractDetailScreen() {
                                 gap: 8,
                                 paddingVertical: 16,
                                 borderRadius: 14,
-                                backgroundColor: "#7c3aed",
+                                backgroundColor: colors.purple[600],
                                 marginBottom: 16,
                             }}
                         >
@@ -425,7 +427,7 @@ export default function ContractDetailScreen() {
                     {student.display_status === "canceling" && (
                         <View
                             style={{
-                                backgroundColor: "#fffbeb",
+                                backgroundColor: colors.semantic.warning.bg,
                                 borderRadius: 12,
                                 padding: 14,
                                 flexDirection: "row",
@@ -435,7 +437,7 @@ export default function ContractDetailScreen() {
                             }}
                         >
                             <Info size={18} color="#f59e0b" />
-                            <Text style={{ flex: 1, fontSize: 13, color: "#92400e", lineHeight: 18 }}>
+                            <Text style={{ flex: 1, fontSize: 13, color: colors.semantic.warning.fg, lineHeight: 18 }}>
                                 Cancelamento agendado para o fim do ciclo atual
                                 {student.current_period_end ? ` (${formatDate(student.current_period_end)})` : ""}.
                             </Text>
@@ -459,7 +461,7 @@ export default function ContractDetailScreen() {
                                 <ActionButton
                                     label="Gerar link de pagamento"
                                     icon={LinkIcon}
-                                    color="#7c3aed"
+                                    color={colors.purple[600]}
                                     bg="#f5f3ff"
                                     loading={actionLoading === "checkout"}
                                     onPress={handleCheckoutLink}
@@ -491,7 +493,7 @@ export default function ContractDetailScreen() {
                                 gap: 8,
                                 paddingVertical: 14,
                                 borderRadius: 14,
-                                backgroundColor: "#fef2f2",
+                                backgroundColor: colors.semantic.danger.bg,
                                 marginBottom: 20,
                             }}
                         >
@@ -500,7 +502,7 @@ export default function ContractDetailScreen() {
                             ) : (
                                 <>
                                     <Ban size={16} color="#ef4444" />
-                                    <Text style={{ fontSize: 14, fontWeight: "600", color: "#ef4444" }}>
+                                    <Text style={{ fontSize: 14, fontWeight: "600", color: colors.semantic.danger.default }}>
                                         Cancelar contrato
                                     </Text>
                                 </>
@@ -509,12 +511,12 @@ export default function ContractDetailScreen() {
                     )}
 
                     {/* Timeline */}
-                    <Text style={{ fontSize: 11, fontWeight: "600", color: "#94a3b8", letterSpacing: 1, textTransform: "uppercase", marginBottom: 10 }}>
+                    <Text style={{ fontSize: 11, fontWeight: "600", color: colors.text.tertiary, letterSpacing: 1, textTransform: "uppercase", marginBottom: 10 }}>
                         HISTÓRICO
                     </Text>
                     <View
                         style={{
-                            backgroundColor: "#ffffff",
+                            backgroundColor: colors.surface.card,
                             borderRadius: 16,
                             padding: 16,
                             borderWidth: 1,
@@ -547,11 +549,12 @@ export default function ContractDetailScreen() {
 }
 
 function DetailRow({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
+    const colors = useV2Colors();
     return (
         <View style={{ flexDirection: "row", alignItems: "center" }}>
-            <Icon size={14} color="#94a3b8" style={{ marginRight: 8 }} />
-            <Text style={{ fontSize: 13, color: "#94a3b8", width: 90 }}>{label}</Text>
-            <Text style={{ fontSize: 13, fontWeight: "500", color: "#0f172a", flex: 1 }}>{value}</Text>
+            <Icon size={14} color={colors.text.tertiary} style={{ marginRight: 8 }} />
+            <Text style={{ fontSize: 13, color: colors.text.tertiary, width: 90 }}>{label}</Text>
+            <Text style={{ fontSize: 13, fontWeight: "500", color: colors.text.primary, flex: 1 }}>{value}</Text>
         </View>
     );
 }

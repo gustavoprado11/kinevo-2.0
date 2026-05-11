@@ -14,7 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ChevronLeft, Plus, Loader2 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
-import { colors } from '@/theme';
+import { useV2Colors } from '@/hooks/useV2Colors';
 import { supabase } from '../../../../lib/supabase';
 import { useRoleMode } from '../../../../contexts/RoleModeContext';
 import { toast } from '../../../../lib/toast';
@@ -56,6 +56,7 @@ function genId(prefix: string) {
 // B1 entrega: criar/editar/remover seções com título inline. Adicionar testes
 // é placeholder (B2 entrega TestLibrarySheet/TestPropertiesSheet).
 export function AssessmentBuilderScreen({ templateId }: Props) {
+    const colors = useV2Colors();
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const { trainerId } = useRoleMode();
@@ -297,9 +298,9 @@ export function AssessmentBuilderScreen({ templateId }: Props) {
 
     if (loading) {
         return (
-            <View style={{ flex: 1, backgroundColor: colors.background.primary, paddingTop: insets.top }}>
+            <View style={{ flex: 1, backgroundColor: colors.surface.canvas, paddingTop: insets.top }}>
                 <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                    <ActivityIndicator color={colors.brand.primary} />
+                    <ActivityIndicator color={colors.purple[600]} />
                 </View>
             </View>
         );
@@ -307,7 +308,7 @@ export function AssessmentBuilderScreen({ templateId }: Props) {
 
     return (
         <KeyboardAvoidingView
-            style={{ flex: 1, backgroundColor: colors.background.primary }}
+            style={{ flex: 1, backgroundColor: colors.surface.canvas }}
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
             {/* Header */}
@@ -317,8 +318,8 @@ export function AssessmentBuilderScreen({ templateId }: Props) {
                     paddingHorizontal: 16,
                     paddingBottom: 12,
                     borderBottomWidth: 1,
-                    borderBottomColor: colors.border.secondary,
-                    backgroundColor: colors.background.card,
+                    borderBottomColor: colors.border.default,
+                    backgroundColor: colors.surface.card,
                 }}
             >
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -339,7 +340,7 @@ export function AssessmentBuilderScreen({ templateId }: Props) {
                             paddingHorizontal: 14,
                             paddingVertical: 8,
                             borderRadius: 10,
-                            backgroundColor: canSave ? colors.brand.primary : colors.background.elevated,
+                            backgroundColor: canSave ? colors.purple[600] : colors.surface.card2,
                             opacity: saving ? 0.7 : 1,
                             flexDirection: 'row',
                             alignItems: 'center',
@@ -353,7 +354,7 @@ export function AssessmentBuilderScreen({ templateId }: Props) {
                     </TouchableOpacity>
                 </View>
                 {restoredFromDraft && (
-                    <Text style={{ marginTop: 6, fontSize: 11, color: colors.brand.primary }}>
+                    <Text style={{ marginTop: 6, fontSize: 11, color: colors.purple[600] }}>
                         Rascunho restaurado
                     </Text>
                 )}
@@ -376,9 +377,9 @@ export function AssessmentBuilderScreen({ templateId }: Props) {
                         placeholder="Ex.: Avaliação Inicial"
                         placeholderTextColor={colors.text.quaternary}
                         style={{
-                            backgroundColor: colors.background.card,
+                            backgroundColor: colors.surface.card,
                             borderWidth: 1,
-                            borderColor: colors.border.secondary,
+                            borderColor: colors.border.default,
                             borderRadius: 10,
                             paddingHorizontal: 12,
                             paddingVertical: 10,
@@ -400,9 +401,9 @@ export function AssessmentBuilderScreen({ templateId }: Props) {
                         placeholderTextColor={colors.text.quaternary}
                         multiline
                         style={{
-                            backgroundColor: colors.background.card,
+                            backgroundColor: colors.surface.card,
                             borderWidth: 1,
-                            borderColor: colors.border.secondary,
+                            borderColor: colors.border.default,
                             borderRadius: 10,
                             paddingHorizontal: 12,
                             paddingVertical: 10,
@@ -426,16 +427,16 @@ export function AssessmentBuilderScreen({ templateId }: Props) {
                         onPress={addSection}
                         style={{
                             borderWidth: 1.5,
-                            borderColor: colors.border.secondary,
+                            borderColor: colors.border.default,
                             borderStyle: 'dashed',
                             borderRadius: 12,
                             padding: 24,
                             alignItems: 'center',
-                            backgroundColor: colors.background.card,
+                            backgroundColor: colors.surface.card,
                         }}
                     >
-                        <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colors.brand.primary + '14', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
-                            <Plus size={18} color={colors.brand.primary} />
+                        <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colors.purple[600] + '14', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
+                            <Plus size={18} color={colors.purple[600]} />
                         </View>
                         <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text.primary }}>
                             Adicionar primeira seção
@@ -474,7 +475,7 @@ export function AssessmentBuilderScreen({ templateId }: Props) {
                             style={{
                                 marginTop: 8,
                                 borderWidth: 1,
-                                borderColor: colors.brand.primary + '40',
+                                borderColor: colors.purple[600] + '40',
                                 borderRadius: 10,
                                 paddingVertical: 10,
                                 alignItems: 'center',
@@ -483,8 +484,8 @@ export function AssessmentBuilderScreen({ templateId }: Props) {
                                 gap: 6,
                             }}
                         >
-                            <Plus size={14} color={colors.brand.primary} />
-                            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.brand.primary }}>
+                            <Plus size={14} color={colors.purple[600]} />
+                            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.purple[600] }}>
                                 Adicionar seção
                             </Text>
                         </TouchableOpacity>

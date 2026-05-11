@@ -15,6 +15,7 @@ import { X, Plus, AlignLeft, FileText, ListChecks, SlidersHorizontal, Camera } f
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { QuestionEditor } from "./QuestionEditor";
+import { useV2Colors } from "../../../hooks/useV2Colors";
 import type {
     Question,
     QuestionType,
@@ -81,8 +82,26 @@ function createDefaultQuestion(type: QuestionType): Question {
 }
 
 export function FormBuilderModal({ visible, template, onClose, onSave, isSaving }: Props) {
+    const colors = useV2Colors();
     const insets = useSafeAreaInsets();
     const isEditing = !!template;
+    const labelStyle = {
+        fontSize: 12,
+        fontWeight: "600" as const,
+        color: colors.text.secondary,
+        textTransform: "uppercase" as const,
+        letterSpacing: 1,
+        marginBottom: 8,
+    };
+    const inputStyle = {
+        backgroundColor: colors.surface.card,
+        borderRadius: 12,
+        padding: 14,
+        fontSize: 14,
+        color: colors.text.primary,
+        borderWidth: 1,
+        borderColor: colors.border.default,
+    };
 
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
@@ -187,7 +206,7 @@ export function FormBuilderModal({ visible, template, onClose, onSave, isSaving 
         <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
             <KeyboardAvoidingView
                 behavior={Platform.OS === "ios" ? "padding" : undefined}
-                style={{ flex: 1, backgroundColor: "#F2F2F7" }}
+                style={{ flex: 1, backgroundColor: colors.surface.canvas }}
             >
                 {/* Header */}
                 <View
@@ -200,13 +219,13 @@ export function FormBuilderModal({ visible, template, onClose, onSave, isSaving 
                         justifyContent: "space-between",
                         borderBottomWidth: 0.5,
                         borderBottomColor: "rgba(0,0,0,0.08)",
-                        backgroundColor: "#ffffff",
+                        backgroundColor: colors.surface.card,
                     }}
                 >
                     <TouchableOpacity onPress={handleClose} hitSlop={10} accessibilityLabel="Fechar">
-                        <X size={24} color="#64748b" />
+                        <X size={24} color={colors.text.secondary} />
                     </TouchableOpacity>
-                    <Text style={{ fontSize: 17, fontWeight: "700", color: "#1a1a2e" }}>
+                    <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text.primary }}>
                         {isEditing ? "Editar template" : "Novo template"}
                     </Text>
                     <View style={{ width: 24 }} />
@@ -256,19 +275,19 @@ export function FormBuilderModal({ visible, template, onClose, onSave, isSaving 
                                         flex: 1,
                                         paddingVertical: 10,
                                         borderRadius: 10,
-                                        backgroundColor: isActive ? "#7c3aed" : "#ffffff",
+                                        backgroundColor: isActive ? colors.purple[600] : colors.surface.card,
                                         borderWidth: 1,
-                                        borderColor: isActive ? "#7c3aed" : "rgba(0,0,0,0.08)",
+                                        borderColor: isActive ? colors.purple[600] : colors.border.default,
                                         alignItems: "center",
                                         gap: 4,
                                     }}
                                 >
-                                    <CatIcon size={18} color={isActive ? "#ffffff" : opt.color} />
+                                    <CatIcon size={18} color={isActive ? "#FFFFFF" : opt.color} />
                                     <Text
                                         style={{
                                             fontSize: 12,
                                             fontWeight: "600",
-                                            color: isActive ? "#ffffff" : "#64748b",
+                                            color: isActive ? "#FFFFFF" : colors.text.secondary,
                                         }}
                                     >
                                         {opt.label}
@@ -283,7 +302,7 @@ export function FormBuilderModal({ visible, template, onClose, onSave, isSaving 
 
                     {/* Questions header */}
                     <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 14 }}>
-                        <Text style={{ fontSize: 16, fontWeight: "700", color: "#0f172a", flex: 1 }}>
+                        <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text.primary, flex: 1 }}>
                             Perguntas ({questions.length})
                         </Text>
                     </View>
@@ -306,7 +325,7 @@ export function FormBuilderModal({ visible, template, onClose, onSave, isSaving 
                     {questions.length === 0 && (
                         <View
                             style={{
-                                backgroundColor: "#ffffff",
+                                backgroundColor: colors.surface.card,
                                 borderRadius: 14,
                                 padding: 32,
                                 alignItems: "center",
@@ -315,7 +334,7 @@ export function FormBuilderModal({ visible, template, onClose, onSave, isSaving 
                                 borderStyle: "dashed",
                             }}
                         >
-                            <Text style={{ fontSize: 14, color: "#94a3b8", textAlign: "center" }}>
+                            <Text style={{ fontSize: 14, color: colors.text.tertiary, textAlign: "center" }}>
                                 Nenhuma pergunta adicionada ainda.{"\n"}Toque no botão abaixo para começar.
                             </Text>
                         </View>
@@ -333,7 +352,7 @@ export function FormBuilderModal({ visible, template, onClose, onSave, isSaving 
                             alignItems: "center",
                             justifyContent: "center",
                             gap: 8,
-                            backgroundColor: "#f5f3ff",
+                            backgroundColor: colors.purple[100],
                             borderRadius: 12,
                             paddingVertical: 14,
                             marginTop: 12,
@@ -342,8 +361,8 @@ export function FormBuilderModal({ visible, template, onClose, onSave, isSaving 
                             borderStyle: "dashed",
                         }}
                     >
-                        <Plus size={18} color="#7c3aed" strokeWidth={2.5} />
-                        <Text style={{ fontSize: 14, fontWeight: "600", color: "#7c3aed" }}>
+                        <Plus size={18} color={colors.purple[600]} strokeWidth={2.5} />
+                        <Text style={{ fontSize: 14, fontWeight: "600", color: colors.purple[600] }}>
                             Adicionar pergunta
                         </Text>
                     </TouchableOpacity>
@@ -352,7 +371,7 @@ export function FormBuilderModal({ visible, template, onClose, onSave, isSaving 
                     {showAddMenu && (
                         <View
                             style={{
-                                backgroundColor: "#ffffff",
+                                backgroundColor: colors.surface.card,
                                 borderRadius: 14,
                                 marginTop: 8,
                                 overflow: "hidden",
@@ -377,12 +396,12 @@ export function FormBuilderModal({ visible, template, onClose, onSave, isSaving 
                                             borderBottomColor: "rgba(0,0,0,0.06)",
                                         }}
                                     >
-                                        <Icon size={20} color="#7c3aed" />
+                                        <Icon size={20} color={colors.purple[600]} />
                                         <View style={{ flex: 1 }}>
-                                            <Text style={{ fontSize: 14, fontWeight: "600", color: "#0f172a" }}>
+                                            <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text.primary }}>
                                                 {qt.label}
                                             </Text>
-                                            <Text style={{ fontSize: 12, color: "#94a3b8" }}>{qt.desc}</Text>
+                                            <Text style={{ fontSize: 12, color: colors.text.tertiary }}>{qt.desc}</Text>
                                         </View>
                                     </TouchableOpacity>
                                 );
@@ -397,7 +416,7 @@ export function FormBuilderModal({ visible, template, onClose, onSave, isSaving 
                         paddingHorizontal: 20,
                         paddingVertical: 12,
                         paddingBottom: insets.bottom + 12,
-                        backgroundColor: "#ffffff",
+                        backgroundColor: colors.surface.card,
                         borderTopWidth: 0.5,
                         borderTopColor: "rgba(0,0,0,0.08)",
                     }}
@@ -411,10 +430,10 @@ export function FormBuilderModal({ visible, template, onClose, onSave, isSaving 
                                 gap: 16,
                             }}
                         >
-                            <Text style={{ fontSize: 12, color: "#64748b" }}>
+                            <Text style={{ fontSize: 12, color: colors.text.secondary }}>
                                 {questions.length} {questions.length === 1 ? "pergunta" : "perguntas"}
                             </Text>
-                            <Text style={{ fontSize: 12, color: "#64748b" }}>
+                            <Text style={{ fontSize: 12, color: colors.text.secondary }}>
                                 ~{Math.max(1, Math.ceil(questions.length * 0.5))} min
                             </Text>
                         </View>
@@ -448,21 +467,3 @@ export function FormBuilderModal({ visible, template, onClose, onSave, isSaving 
     );
 }
 
-const labelStyle = {
-    fontSize: 12,
-    fontWeight: "600" as const,
-    color: "#64748b",
-    textTransform: "uppercase" as const,
-    letterSpacing: 1,
-    marginBottom: 8,
-};
-
-const inputStyle = {
-    backgroundColor: "#ffffff",
-    borderRadius: 12,
-    padding: 14,
-    fontSize: 14,
-    color: "#1a1a2e",
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.04)",
-};

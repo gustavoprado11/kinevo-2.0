@@ -1,7 +1,8 @@
 import React from "react";
 import { View, Text, TouchableOpacity, ActivityIndicator } from "react-native";
 import { RefreshCw } from "lucide-react-native";
-import { colors, spacing, typography } from "@/theme";
+import { spacing, typography } from "@/theme";
+import { useV2Colors } from "@/hooks/useV2Colors";
 import { useStudentProgress } from "../../../hooks/useStudentProgress";
 import { useResponsive } from "../../../hooks/useResponsive";
 import { ProgressSummaryCards } from "./ProgressSummaryCards";
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export function ProgressCharts({ studentId, expectedPerWeek }: Props) {
+    const colors = useV2Colors();
     const { isTablet } = useResponsive();
     const { weeklyData, summary, isLoading, error, refresh } = useStudentProgress(
         studentId,
@@ -23,7 +25,7 @@ export function ProgressCharts({ studentId, expectedPerWeek }: Props) {
     if (isLoading) {
         return (
             <View style={{ paddingVertical: 24, alignItems: "center" }}>
-                <ActivityIndicator size="small" color={colors.brand.primary} />
+                <ActivityIndicator size="small" color={colors.purple[600]} />
                 <Text style={{ fontSize: typography.size.sm, color: colors.text.tertiary, marginTop: 8 }}>
                     Carregando progressão...
                 </Text>
@@ -33,7 +35,7 @@ export function ProgressCharts({ studentId, expectedPerWeek }: Props) {
 
     if (error) {
         return (
-            <View style={{ backgroundColor: colors.background.card, borderRadius: 14, padding: spacing.lg, alignItems: "center" }}>
+            <View style={{ backgroundColor: colors.surface.card, borderRadius: 14, padding: spacing.lg, alignItems: "center" }}>
                 <Text style={{ fontSize: typography.size.md, color: colors.text.tertiary, marginBottom: 12 }}>
                     Erro ao carregar dados de progressão
                 </Text>
@@ -46,11 +48,11 @@ export function ProgressCharts({ studentId, expectedPerWeek }: Props) {
                         paddingHorizontal: 14,
                         paddingVertical: 8,
                         borderRadius: 10,
-                        backgroundColor: colors.brand.primaryLight,
+                        backgroundColor: colors.purple[100],
                     }}
                 >
-                    <RefreshCw size={14} color={colors.brand.primary} />
-                    <Text style={{ fontSize: typography.size.md, fontWeight: typography.weight.semibold, color: colors.brand.primary }}>
+                    <RefreshCw size={14} color={colors.purple[600]} />
+                    <Text style={{ fontSize: typography.size.md, fontWeight: typography.weight.semibold, color: colors.purple[600] }}>
                         Tentar novamente
                     </Text>
                 </TouchableOpacity>

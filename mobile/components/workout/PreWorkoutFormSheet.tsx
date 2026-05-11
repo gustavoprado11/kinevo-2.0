@@ -5,6 +5,7 @@ import { ClipboardCheck } from 'lucide-react-native';
 import Animated, { FadeInUp, Easing } from 'react-native-reanimated';
 import { FormRenderer } from '../forms/FormRenderer';
 import type { TriggerData } from '../../hooks/useWorkoutFormTriggers';
+import { useV2Colors } from '../../hooks/useV2Colors';
 
 interface PreWorkoutFormSheetProps {
     visible: boolean;
@@ -14,6 +15,7 @@ interface PreWorkoutFormSheetProps {
 }
 
 export function PreWorkoutFormSheet({ visible, trigger, onSubmit, onSkip }: PreWorkoutFormSheetProps) {
+    const colors = useV2Colors();
     const insets = useSafeAreaInsets();
 
     return (
@@ -25,7 +27,7 @@ export function PreWorkoutFormSheet({ visible, trigger, onSubmit, onSkip }: PreW
         >
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                style={{ flex: 1, backgroundColor: '#F2F2F7' }}
+                style={{ flex: 1, backgroundColor: colors.surface.canvas }}
             >
                 <View style={{ flex: 1, paddingTop: Platform.OS === 'ios' ? 20 : insets.top }}>
                     {/* Header */}
@@ -47,18 +49,18 @@ export function PreWorkoutFormSheet({ visible, trigger, onSubmit, onSkip }: PreW
                                     justifyContent: 'center',
                                 }}
                             >
-                                <ClipboardCheck size={20} color="#7c3aed" />
+                                <ClipboardCheck size={20} color={colors.purple[600]} />
                             </View>
                             <View style={{ flex: 1 }}>
-                                <Text style={{ color: '#0f172a', fontWeight: '800', fontSize: 17 }}>
+                                <Text style={{ color: colors.text.primary, fontWeight: '800', fontSize: 17 }}>
                                     {trigger.title}
                                 </Text>
-                                <Text style={{ color: '#7c3aed', fontSize: 12, fontWeight: '600', marginTop: 2 }}>
+                                <Text style={{ color: colors.purple[600], fontSize: 12, fontWeight: '600', marginTop: 2 }}>
                                     Check-in pré-treino
                                 </Text>
                             </View>
                         </View>
-                        <Text style={{ color: '#64748b', fontSize: 13, lineHeight: 19 }}>
+                        <Text style={{ color: colors.text.secondary, fontSize: 13, lineHeight: 19 }}>
                             Responda antes de iniciar o treino
                         </Text>
                     </Animated.View>

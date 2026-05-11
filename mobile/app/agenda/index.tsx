@@ -5,6 +5,7 @@ import { Stack, useRouter } from "expo-router";
 import { ChevronLeft, Plus } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { AgendaDayView } from "../../components/trainer/agenda/AgendaDayView";
+import { useV2Colors } from "../../hooks/useV2Colors";
 import { CreateAppointmentSheet } from "../../components/trainer/agenda/CreateAppointmentSheet";
 import { AppointmentDetailSheet } from "../../components/trainer/agenda/AppointmentDetailSheet";
 import {
@@ -19,6 +20,7 @@ function addDays(d: Date, days: number): Date {
 }
 
 export default function AgendaScreen() {
+    const colors = useV2Colors();
     const router = useRouter();
     const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
     const [createOpen, setCreateOpen] = useState(false);
@@ -57,7 +59,7 @@ export default function AgendaScreen() {
     return (
         <>
             <Stack.Screen options={{ headerShown: false }} />
-            <SafeAreaView style={{ flex: 1, backgroundColor: "#F2F2F7" }} edges={["top"]}>
+            <SafeAreaView style={{ flex: 1, backgroundColor: colors.surface.canvas }} edges={["top"]}>
                 {/* Custom header */}
                 <View
                     style={{
@@ -79,9 +81,9 @@ export default function AgendaScreen() {
                             opacity: pressed ? 0.6 : 1,
                         })}
                     >
-                        <ChevronLeft size={24} color="#0f172a" />
+                        <ChevronLeft size={24} color={colors.text.primary} />
                     </Pressable>
-                    <Text style={{ fontSize: 17, fontWeight: "600", color: "#0f172a", marginLeft: 4 }}>
+                    <Text style={{ fontSize: 17, fontWeight: "600", color: colors.text.primary, marginLeft: 4 }}>
                         Agenda
                     </Text>
                 </View>
@@ -104,14 +106,14 @@ export default function AgendaScreen() {
                             bottom: 100,
                             left: 20,
                             right: 20,
-                            backgroundColor: "#fef2f2",
+                            backgroundColor: colors.semantic.danger.bg,
                             borderRadius: 12,
                             padding: 12,
                             borderWidth: 1,
                             borderColor: "#fecaca",
                         }}
                     >
-                        <Text style={{ fontSize: 12, color: "#b91c1c" }}>{error}</Text>
+                        <Text style={{ fontSize: 12, color: colors.semantic.danger.fg }}>{error}</Text>
                     </View>
                 ) : null}
 
@@ -125,7 +127,7 @@ export default function AgendaScreen() {
                         width: 56,
                         height: 56,
                         borderRadius: 28,
-                        backgroundColor: "#7c3aed",
+                        backgroundColor: colors.purple[600],
                         alignItems: "center",
                         justifyContent: "center",
                         shadowColor: "#7c3aed",

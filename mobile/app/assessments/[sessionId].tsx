@@ -10,7 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ChevronLeft, Check, AlertCircle } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
-import { colors } from '@/theme';
+import { useV2Colors } from '@/hooks/useV2Colors';
 import { useAssessmentSession } from '../../hooks/useAssessmentSession';
 import { useAssessmentSessionDraft } from '../../hooks/useAssessmentSessionDraft';
 import { useAssessmentSessionLifecycle } from '../../hooks/useAssessmentSessionLifecycle';
@@ -42,6 +42,7 @@ import {
 type FlatTest = AssessmentTest & { section_title: string };
 
 export default function SessionScreen() {
+    const colors = useV2Colors();
     const insets = useSafeAreaInsets();
     const router = useRouter();
     const { sessionId } = useLocalSearchParams<{ sessionId: string }>();
@@ -306,15 +307,15 @@ export default function SessionScreen() {
 
     if (!sessionId || session.isLoading || session.orphaned) {
         return (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background.primary }}>
-                <ActivityIndicator color={colors.brand.primary} />
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.surface.canvas }}>
+                <ActivityIndicator color={colors.purple[600]} />
             </View>
         );
     }
     if (session.error || !session.detail) {
         return (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, backgroundColor: colors.background.primary }}>
-                <AlertCircle size={32} color={colors.error.default} />
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, backgroundColor: colors.surface.canvas }}>
+                <AlertCircle size={32} color={colors.semantic.danger.default} />
                 <Text style={{ marginTop: 12, color: colors.text.secondary, textAlign: 'center' }}>
                     {session.error ?? 'Sessão não encontrada'}
                 </Text>
@@ -326,16 +327,16 @@ export default function SessionScreen() {
     const isCompleted = session.detail.session.status === 'completed';
 
     return (
-        <View style={{ flex: 1, backgroundColor: colors.background.primary }}>
+        <View style={{ flex: 1, backgroundColor: colors.surface.canvas }}>
             {/* Header */}
             <View
                 style={{
                     paddingTop: insets.top + 8,
                     paddingHorizontal: 16,
                     paddingBottom: 12,
-                    backgroundColor: colors.background.card,
+                    backgroundColor: colors.surface.card,
                     borderBottomWidth: 1,
-                    borderBottomColor: colors.border.primary,
+                    borderBottomColor: colors.border.default,
                 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                     <TouchableOpacity
@@ -358,12 +359,12 @@ export default function SessionScreen() {
                 </View>
 
                 {/* progress bar */}
-                <View style={{ marginTop: 12, height: 4, backgroundColor: colors.background.inset, borderRadius: 2 }}>
+                <View style={{ marginTop: 12, height: 4, backgroundColor: colors.border.default, borderRadius: 2 }}>
                     <View
                         style={{
                             width: `${requiredCount === 0 ? 0 : (completedRequiredCount / requiredCount) * 100}%`,
                             height: 4,
-                            backgroundColor: colors.status.presencial,
+                            backgroundColor: colors.purple[600],
                             borderRadius: 2,
                         }}
                     />
@@ -376,7 +377,7 @@ export default function SessionScreen() {
                     <View
                         style={{
                             marginTop: 10,
-                            backgroundColor: colors.warning.light,
+                            backgroundColor: colors.semantic.warning.bg,
                             borderRadius: 10,
                             paddingHorizontal: 12,
                             paddingVertical: 8,
@@ -384,8 +385,8 @@ export default function SessionScreen() {
                             alignItems: 'center',
                             gap: 8,
                         }}>
-                        <ActivityIndicator size="small" color={colors.warning.default} />
-                        <Text style={{ fontSize: 12, color: colors.warning.default, flex: 1 }}>
+                        <ActivityIndicator size="small" color={colors.semantic.warning.default} />
+                        <Text style={{ fontSize: 12, color: colors.semantic.warning.default, flex: 1 }}>
                             Sincronizando alterações...
                         </Text>
                     </View>
@@ -397,7 +398,7 @@ export default function SessionScreen() {
                 {flatTests.length === 0 && (
                     <View
                         style={{
-                            backgroundColor: colors.background.card,
+                            backgroundColor: colors.surface.card,
                             borderRadius: 14,
                             padding: 24,
                             alignItems: 'center',
@@ -464,9 +465,9 @@ export default function SessionScreen() {
                         paddingHorizontal: 16,
                         paddingTop: 12,
                         paddingBottom: insets.bottom + 12,
-                        backgroundColor: colors.background.card,
+                        backgroundColor: colors.surface.card,
                         borderTopWidth: 1,
-                        borderTopColor: colors.border.primary,
+                        borderTopColor: colors.border.default,
                     }}>
                     <TouchableOpacity
                         onPress={onFinalize}
@@ -475,7 +476,7 @@ export default function SessionScreen() {
                         accessibilityLabel="Finalizar avaliação"
                         accessibilityState={{ disabled: !allRequiredDone || lifecycle.finalizing }}
                         style={{
-                            backgroundColor: allRequiredDone && !lifecycle.finalizing ? colors.brand.primary : colors.background.inset,
+                            backgroundColor: allRequiredDone && !lifecycle.finalizing ? colors.purple[600] : colors.border.default,
                             borderRadius: 14,
                             paddingVertical: 16,
                             alignItems: 'center',
@@ -484,11 +485,11 @@ export default function SessionScreen() {
                             gap: 8,
                         }}>
                         {lifecycle.finalizing ? (
-                            <ActivityIndicator color={colors.text.inverse} />
+                            <ActivityIndicator color={'#FFFFFF'} />
                         ) : (
                             <>
-                                <Check size={18} color={allRequiredDone ? colors.text.inverse : colors.text.tertiary} />
-                                <Text style={{ fontSize: 16, fontWeight: '800', color: allRequiredDone ? colors.text.inverse : colors.text.tertiary }}>
+                                <Check size={18} color={allRequiredDone ? '#FFFFFF' : colors.text.tertiary} />
+                                <Text style={{ fontSize: 16, fontWeight: '800', color: allRequiredDone ? '#FFFFFF' : colors.text.tertiary }}>
                                     {allRequiredDone ? 'Finalizar avaliação' : `Faltam ${requiredCount - completedRequiredCount} testes`}
                                 </Text>
                             </>
@@ -502,12 +503,12 @@ export default function SessionScreen() {
                     <TouchableOpacity
                         onPress={() => router.push({ pathname: '/assessments/[sessionId]/result', params: { sessionId } })}
                         style={{
-                            backgroundColor: colors.brand.primary,
+                            backgroundColor: colors.purple[600],
                             borderRadius: 14,
                             paddingVertical: 16,
                             alignItems: 'center',
                         }}>
-                        <Text style={{ fontSize: 16, fontWeight: '800', color: colors.text.inverse }}>
+                        <Text style={{ fontSize: 16, fontWeight: '800', color: '#FFFFFF' }}>
                             Ver resultado
                         </Text>
                     </TouchableOpacity>

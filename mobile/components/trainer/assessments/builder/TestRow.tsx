@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { ChevronRight, Trash2 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
-import { colors } from '@/theme';
+import { useV2Colors } from '@/hooks/useV2Colors';
 import type { AssessmentTest } from '@kinevo/shared/types/assessments';
 
 interface Props {
@@ -14,6 +14,7 @@ interface Props {
 // M10A/B2 — row de teste dentro de SectionCard. Tap no body abre
 // TestPropertiesSheet pra editar; trash button remove.
 export function TestRow({ test, onEdit, onRemove }: Props) {
+    const colors = useV2Colors();
     const subtitle = formatSubtitle(test);
     return (
         <View
@@ -24,7 +25,7 @@ export function TestRow({ test, onEdit, onRemove }: Props) {
                 paddingVertical: 10,
                 gap: 8,
                 borderBottomWidth: 1,
-                borderBottomColor: colors.border.secondary,
+                borderBottomColor: colors.border.default,
             }}
         >
             <TouchableOpacity

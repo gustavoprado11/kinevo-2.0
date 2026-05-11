@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, TextInput, Pressable, Image } from "react-native";
 import { Upload, Camera } from "lucide-react-native";
+import { useV2Colors } from "../../hooks/useV2Colors";
 
 // ---------------------------------------------------------------------------
 // Types — shared across FormRenderer and inbox
@@ -49,6 +50,7 @@ export function FormFieldRenderer({
     onPickImage,
     disabled,
 }: FormFieldRendererProps) {
+    const colors = useV2Colors();
     // ── Short / Long Text ──
     if (question.type === "short_text" || question.type === "long_text") {
         return (
@@ -62,17 +64,17 @@ export function FormFieldRenderer({
                 editable={!disabled}
                 style={{
                     borderWidth: 1,
-                    borderColor: "#e2e8f0",
+                    borderColor: colors.border.default,
                     borderRadius: 10,
                     padding: 10,
-                    color: "#0f172a",
-                    backgroundColor: "#f8fafc",
+                    color: colors.text.primary,
+                    backgroundColor: colors.surface.card2,
                     minHeight: question.type === "long_text" ? 90 : 44,
                     textAlignVertical: "top",
                     marginTop: 8,
                     opacity: disabled ? 0.6 : 1,
                 }}
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor={colors.text.tertiary}
             />
         );
     }
@@ -99,7 +101,7 @@ export function FormFieldRenderer({
                                 opacity: disabled ? 0.6 : 1,
                             }}
                         >
-                            <Text style={{ color: "#0f172a", fontSize: 14 }}>{opt.label}</Text>
+                            <Text style={{ color: colors.text.primary, fontSize: 14 }}>{opt.label}</Text>
                         </Pressable>
                     );
                 })}
@@ -149,10 +151,10 @@ export function FormFieldRenderer({
                                 }}
                             >
                                 {isSelected && (
-                                    <Text style={{ color: "#fff", fontSize: 12, fontWeight: "700" }}>✓</Text>
+                                    <Text style={{ color: "#FFFFFF", fontSize: 12, fontWeight: "700" }}>✓</Text>
                                 )}
                             </View>
-                            <Text style={{ color: "#0f172a", fontSize: 14, flex: 1 }}>{opt.label}</Text>
+                            <Text style={{ color: colors.text.primary, fontSize: 14, flex: 1 }}>{opt.label}</Text>
                         </Pressable>
                     );
                 })}
@@ -192,7 +194,7 @@ export function FormFieldRenderer({
                                 opacity: disabled ? 0.6 : 1,
                             }}
                         >
-                            <Text style={{ color: "#0f172a", fontWeight: "700", fontSize }}>
+                            <Text style={{ color: colors.text.primary, fontWeight: "700", fontSize }}>
                                 {value}
                             </Text>
                         </Pressable>
@@ -224,8 +226,8 @@ export function FormFieldRenderer({
                             opacity: disabled ? 0.6 : 1,
                         }}
                     >
-                        <Upload size={16} color="#7c3aed" />
-                        <Text style={{ color: "#7c3aed", fontWeight: "600", fontSize: 13 }}>
+                        <Upload size={16} color={colors.purple[600]} />
+                        <Text style={{ color: colors.purple[600], fontWeight: "600", fontSize: 13 }}>
                             {file ? "Trocar foto" : "Selecionar foto"}
                         </Text>
                     </Pressable>
@@ -253,12 +255,12 @@ export function FormFieldRenderer({
                     borderRadius: 12,
                     borderWidth: 1,
                     borderStyle: "dashed",
-                    borderColor: "#e2e8f0",
-                    backgroundColor: "#f8fafc",
+                    borderColor: colors.border.default,
+                    backgroundColor: colors.surface.card2,
                 }}
             >
-                <Camera size={18} color="#94a3b8" />
-                <Text style={{ color: "#94a3b8", fontSize: 13 }}>
+                <Camera size={18} color={colors.text.tertiary} />
+                <Text style={{ color: colors.text.tertiary, fontSize: 13 }}>
                     Foto não disponível neste contexto
                 </Text>
             </View>

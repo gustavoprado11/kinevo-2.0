@@ -114,7 +114,7 @@ export default function TrainerChatScreen() {
                     <View style={{ alignItems: 'center', paddingVertical: 12 }}>
                         <Text style={{
                             fontSize: 10, fontWeight: '500', color: colors.text.tertiary,
-                            backgroundColor: '#f1f5f9', paddingHorizontal: 12, paddingVertical: 4,
+                            backgroundColor: colors.surface.card2, paddingHorizontal: 12, paddingVertical: 4,
                             borderRadius: 10, overflow: 'hidden',
                         }}>
                             {formatDateSeparator(item.created_at)}
@@ -134,10 +134,10 @@ export default function TrainerChatScreen() {
                         borderBottomLeftRadius: isTrainer ? 18 : 6,
                         paddingHorizontal: 14,
                         paddingVertical: 10,
-                        backgroundColor: isTrainer ? '#7c3aed' : '#ffffff',
+                        backgroundColor: isTrainer ? colors.purple[600] : colors.surface.card,
                         ...(isTrainer ? {} : {
                             borderWidth: 1,
-                            borderColor: 'rgba(0,0,0,0.06)',
+                            borderColor: colors.border.default,
                             shadowColor: '#000',
                             shadowOffset: { width: 0, height: 1 },
                             shadowOpacity: 0.04,
@@ -149,12 +149,12 @@ export default function TrainerChatScreen() {
                             failedImages.has(item.id) ? (
                                 <View style={{
                                     width: 220, height: 100, borderRadius: 12,
-                                    backgroundColor: isTrainer ? 'rgba(255,255,255,0.1)' : '#f1f5f9',
+                                    backgroundColor: isTrainer ? 'rgba(255,255,255,0.1)' : colors.surface.card2,
                                     alignItems: 'center', justifyContent: 'center',
                                     marginBottom: item.content ? 6 : 0,
                                 }}>
-                                    <ImageOff size={24} color={isTrainer ? 'rgba(255,255,255,0.4)' : '#94a3b8'} />
-                                    <Text style={{ fontSize: 11, color: isTrainer ? 'rgba(255,255,255,0.4)' : '#94a3b8', marginTop: 4 }}>
+                                    <ImageOff size={24} color={isTrainer ? 'rgba(255,255,255,0.4)' : colors.text.tertiary} />
+                                    <Text style={{ fontSize: 11, color: isTrainer ? 'rgba(255,255,255,0.4)' : colors.text.tertiary, marginTop: 4 }}>
                                         Imagem indisponível
                                     </Text>
                                 </View>
@@ -174,7 +174,7 @@ export default function TrainerChatScreen() {
                         {item.content && (
                             <Text style={{
                                 fontSize: 15, lineHeight: 20,
-                                color: isTrainer ? '#ffffff' : '#0f172a',
+                                color: isTrainer ? '#FFFFFF' : colors.text.primary,
                             }}>
                                 {item.content}
                             </Text>
@@ -187,7 +187,7 @@ export default function TrainerChatScreen() {
                         }}>
                             <Text style={{
                                 fontSize: 10,
-                                color: isTrainer ? 'rgba(255,255,255,0.5)' : '#94a3b8',
+                                color: isTrainer ? 'rgba(255,255,255,0.5)' : colors.text.tertiary,
                             }}>
                                 {formatTime(item.created_at)}
                             </Text>
@@ -239,10 +239,10 @@ export default function TrainerChatScreen() {
                 ) : student ? (
                     <View style={{
                         width: 32, height: 32, borderRadius: 16,
-                        backgroundColor: '#f5f3ff',
+                        backgroundColor: colors.purple[100],
                         alignItems: 'center', justifyContent: 'center',
                     }}>
-                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#7c3aed' }}>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: colors.purple[600] }}>
                             {getInitials(student.name)}
                         </Text>
                     </View>
@@ -256,7 +256,7 @@ export default function TrainerChatScreen() {
             {/* Messages */}
             {isLoading ? (
                 <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                    <ActivityIndicator size="small" color="#7c3aed" />
+                    <ActivityIndicator size="small" color={colors.purple[600]} />
                 </View>
             ) : (
                 <FlatList
@@ -273,7 +273,7 @@ export default function TrainerChatScreen() {
                         <View style={{ alignItems: 'center', paddingVertical: 32 }}>
                             <View style={{
                                 width: 56, height: 56, borderRadius: 28,
-                                backgroundColor: '#f1f5f9',
+                                backgroundColor: colors.surface.card2,
                                 alignItems: 'center', justifyContent: 'center',
                                 marginBottom: 12,
                             }}>
@@ -288,9 +288,9 @@ export default function TrainerChatScreen() {
                         hasMore ? (
                             <Pressable onPress={handleLoadMore} style={{ alignItems: 'center', paddingVertical: 12 }}>
                                 {isLoadingMore ? (
-                                    <ActivityIndicator size="small" color="#7c3aed" />
+                                    <ActivityIndicator size="small" color={colors.purple[600]} />
                                 ) : (
-                                    <Text style={{ fontSize: 12, color: '#7c3aed', fontWeight: '600' }}>
+                                    <Text style={{ fontSize: 12, color: colors.purple[600], fontWeight: '600' }}>
                                         Carregar anteriores
                                     </Text>
                                 )}
@@ -308,7 +308,7 @@ export default function TrainerChatScreen() {
             {/* Input area */}
             <View style={{
                 backgroundColor: colors.surface.card,
-                borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.06)',
+                borderTopWidth: 1, borderTopColor: colors.border.default,
                 paddingHorizontal: 12, paddingTop: 8, paddingBottom: 8 + insets.bottom,
             }}>
                 <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8 }}>
@@ -316,12 +316,12 @@ export default function TrainerChatScreen() {
                         value={text}
                         onChangeText={setText}
                         placeholder="Mensagem..."
-                        placeholderTextColor="#94a3b8"
+                        placeholderTextColor={colors.text.tertiary}
                         multiline
                         maxLength={2000}
                         style={{
                             flex: 1,
-                            backgroundColor: '#f1f5f9',
+                            backgroundColor: colors.surface.card2,
                             borderRadius: 20,
                             paddingHorizontal: 16,
                             paddingVertical: 10,
@@ -336,14 +336,14 @@ export default function TrainerChatScreen() {
                         disabled={!canSend}
                         style={{
                             width: 36, height: 36, borderRadius: 18,
-                            backgroundColor: canSend ? '#7c3aed' : '#e2e8f0',
+                            backgroundColor: canSend ? colors.purple[600] : colors.border.default,
                             alignItems: 'center', justifyContent: 'center',
                         }}
                     >
                         {isSending ? (
-                            <ActivityIndicator size="small" color="#ffffff" />
+                            <ActivityIndicator size="small" color="#FFFFFF" />
                         ) : (
-                            <Send size={16} color={canSend ? '#ffffff' : '#94a3b8'} strokeWidth={2} />
+                            <Send size={16} color={canSend ? '#FFFFFF' : colors.text.tertiary} strokeWidth={2} />
                         )}
                     </Pressable>
                 </View>

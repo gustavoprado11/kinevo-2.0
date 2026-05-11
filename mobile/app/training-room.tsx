@@ -239,9 +239,9 @@ function StudentChip({
                         borderRadius: R,
                         backgroundColor: isDragging
                             ? 'rgba(124, 58, 237, 0.15)'
-                            : isActive ? 'rgba(124, 58, 237, 0.1)' : '#fff',
+                            : isActive ? 'rgba(124, 58, 237, 0.1)' : colors.surface.card,
                         borderWidth: 1,
-                        borderColor: isActive ? 'rgba(124, 58, 237, 0.3)' : '#e2e8f0',
+                        borderColor: isActive ? 'rgba(124, 58, 237, 0.3)' : colors.border.default,
                         shadowColor: isDragging ? '#000' : 'transparent',
                         shadowOffset: { width: 0, height: isDragging ? 4 : 0 },
                         shadowOpacity: isDragging ? 0.15 : 0,
@@ -327,7 +327,7 @@ function StudentChip({
                     width: 18,
                     height: 18,
                     borderRadius: 9,
-                    backgroundColor: '#e2e8f0',
+                    backgroundColor: colors.border.default,
                     alignItems: 'center',
                     justifyContent: 'center',
                     marginLeft: -10,
@@ -905,13 +905,15 @@ export default function TrainingRoomScreen() {
                                 width: 72,
                                 height: 72,
                                 borderRadius: 22,
-                                backgroundColor: '#f5f3ff',
+                                backgroundColor: colors.surface.card2,
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 marginBottom: 20,
+                                borderWidth: 1,
+                                borderColor: colors.border.default,
                             }}
                         >
-                            <Plus size={32} color="#7c3aed" strokeWidth={1.5} />
+                            <Plus size={32} color={colors.purple[600]} strokeWidth={1.5} />
                         </View>
                         <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text.primary, marginBottom: 8 }}>
                             Sala de Treino
@@ -993,12 +995,12 @@ export default function TrainingRoomScreen() {
                                     borderRadius: 18,
                                     backgroundColor: colors.surface.card,
                                     borderWidth: 1,
-                                    borderColor: '#e2e8f0',
+                                    borderColor: colors.border.default,
                                     borderStyle: 'dashed',
                                 }}
                             >
-                                <Plus size={14} color="#7c3aed" />
-                                <Text style={{ fontSize: 12, fontWeight: '600', color: '#7c3aed' }}>
+                                <Plus size={14} color={colors.purple[600]} />
+                                <Text style={{ fontSize: 12, fontWeight: '600', color: colors.purple[600] }}>
                                     Aluno
                                 </Text>
                             </TouchableOpacity>
@@ -1035,13 +1037,13 @@ export default function TrainingRoomScreen() {
                                                 width: 40,
                                                 height: 40,
                                                 borderRadius: 20,
-                                                backgroundColor: '#f5f3ff',
+                                                backgroundColor: colors.purple[100],
                                                 alignItems: 'center',
                                                 justifyContent: 'center',
                                                 marginRight: 12,
                                             }}
                                         >
-                                            <Text style={{ fontSize: 14, fontWeight: '700', color: '#7c3aed' }}>
+                                            <Text style={{ fontSize: 14, fontWeight: '700', color: colors.purple[600] }}>
                                                 {activeSession.studentName.charAt(0).toUpperCase()}
                                             </Text>
                                         </View>

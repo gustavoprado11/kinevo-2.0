@@ -10,6 +10,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 import { supabase } from '../../lib/supabase';
 import { useTrainerChat, type ChatMessage } from '../../hooks/useTrainerChat';
+import { useV2Colors } from '../../hooks/useV2Colors';
 
 // ── Helpers ──
 
@@ -42,6 +43,7 @@ interface ChatViewProps {
 // ── Component ──
 
 export function ChatView({ showBackButton = false }: ChatViewProps) {
+    const colors = useV2Colors();
     const router = useRouter();
     const insets = useSafeAreaInsets();
 
@@ -207,8 +209,8 @@ export function ChatView({ showBackButton = false }: ChatViewProps) {
                 {showDate && (
                     <View style={{ alignItems: 'center', paddingVertical: 12 }}>
                         <Text style={{
-                            fontSize: 10, fontWeight: '500', color: '#94a3b8',
-                            backgroundColor: '#f1f5f9', paddingHorizontal: 12, paddingVertical: 4,
+                            fontSize: 10, fontWeight: '500', color: colors.text.tertiary,
+                            backgroundColor: colors.surface.card2, paddingHorizontal: 12, paddingVertical: 4,
                             borderRadius: 10, overflow: 'hidden',
                         }}>
                             {formatDateSeparator(item.created_at)}
@@ -228,10 +230,10 @@ export function ChatView({ showBackButton = false }: ChatViewProps) {
                         borderBottomLeftRadius: isStudent ? 18 : 6,
                         paddingHorizontal: 14,
                         paddingVertical: 10,
-                        backgroundColor: isStudent ? '#7c3aed' : '#ffffff',
+                        backgroundColor: isStudent ? colors.purple[600] : colors.surface.card,
                         ...(isStudent ? {} : {
                             borderWidth: 1,
-                            borderColor: 'rgba(0,0,0,0.06)',
+                            borderColor: colors.border.default,
                             shadowColor: '#000',
                             shadowOffset: { width: 0, height: 1 },
                             shadowOpacity: 0.04,
@@ -243,12 +245,12 @@ export function ChatView({ showBackButton = false }: ChatViewProps) {
                             failedImages.has(item.id) ? (
                                 <View style={{
                                     width: 220, height: 100, borderRadius: 12,
-                                    backgroundColor: isStudent ? 'rgba(255,255,255,0.1)' : '#f1f5f9',
+                                    backgroundColor: isStudent ? 'rgba(255,255,255,0.1)' : colors.surface.card2,
                                     alignItems: 'center', justifyContent: 'center',
                                     marginBottom: item.content ? 6 : 0,
                                 }}>
-                                    <ImageOff size={24} color={isStudent ? 'rgba(255,255,255,0.4)' : '#94a3b8'} />
-                                    <Text style={{ fontSize: 11, color: isStudent ? 'rgba(255,255,255,0.4)' : '#94a3b8', marginTop: 4 }}>
+                                    <ImageOff size={24} color={isStudent ? 'rgba(255,255,255,0.4)' : colors.text.tertiary} />
+                                    <Text style={{ fontSize: 11, color: isStudent ? 'rgba(255,255,255,0.4)' : colors.text.tertiary, marginTop: 4 }}>
                                         Imagem indisponível
                                     </Text>
                                 </View>
@@ -268,7 +270,7 @@ export function ChatView({ showBackButton = false }: ChatViewProps) {
                         {item.content && (
                             <Text style={{
                                 fontSize: 15, lineHeight: 20,
-                                color: isStudent ? '#ffffff' : '#0f172a',
+                                color: isStudent ? '#FFFFFF' : colors.text.primary,
                             }}>
                                 {item.content}
                             </Text>
@@ -281,7 +283,7 @@ export function ChatView({ showBackButton = false }: ChatViewProps) {
                         }}>
                             <Text style={{
                                 fontSize: 10,
-                                color: isStudent ? 'rgba(255,255,255,0.5)' : '#94a3b8',
+                                color: isStudent ? 'rgba(255,255,255,0.5)' : colors.text.tertiary,
                             }}>
                                 {formatTime(item.created_at)}
                             </Text>
@@ -303,10 +305,10 @@ export function ChatView({ showBackButton = false }: ChatViewProps) {
     if (!studentId && !isLoading) {
         return (
             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 }}>
-                <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
-                    <MessageCircle size={24} color="#94a3b8" />
+                <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: colors.surface.card2, alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+                    <MessageCircle size={24} color={colors.text.tertiary} />
                 </View>
-                <Text style={{ fontSize: 14, fontWeight: '600', color: '#64748b', textAlign: 'center' }}>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text.secondary, textAlign: 'center' }}>
                     Você ainda não tem um treinador vinculado.
                 </Text>
             </View>
@@ -323,12 +325,12 @@ export function ChatView({ showBackButton = false }: ChatViewProps) {
             <View style={{
                 flexDirection: 'row', alignItems: 'center', gap: 10,
                 paddingHorizontal: 16, paddingVertical: 10,
-                backgroundColor: '#ffffff',
+                backgroundColor: colors.surface.card,
                 borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.06)',
             }}>
                 {showBackButton && (
                     <Pressable onPress={() => router.back()} hitSlop={12}>
-                        <ChevronLeft size={24} color="#0f172a" />
+                        <ChevronLeft size={24} color={colors.text.primary} />
                     </Pressable>
                 )}
 
@@ -340,16 +342,16 @@ export function ChatView({ showBackButton = false }: ChatViewProps) {
                 ) : trainer ? (
                     <View style={{
                         width: 32, height: 32, borderRadius: 16,
-                        backgroundColor: '#f5f3ff',
+                        backgroundColor: colors.purple[100],
                         alignItems: 'center', justifyContent: 'center',
                     }}>
-                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#7c3aed' }}>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: colors.purple[600] }}>
                             {getInitials(trainer.name)}
                         </Text>
                     </View>
                 ) : null}
 
-                <Text style={{ fontSize: 16, fontWeight: '700', color: '#0f172a', flex: 1 }}>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text.primary, flex: 1 }}>
                     {trainer?.name || 'Treinador'}
                 </Text>
             </View>
@@ -357,7 +359,7 @@ export function ChatView({ showBackButton = false }: ChatViewProps) {
             {/* Messages */}
             {isLoading ? (
                 <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                    <ActivityIndicator size="small" color="#7c3aed" />
+                    <ActivityIndicator size="small" color={colors.purple[600]} />
                 </View>
             ) : (
                 <FlatList
@@ -368,7 +370,7 @@ export function ChatView({ showBackButton = false }: ChatViewProps) {
                     contentContainerStyle={{ paddingVertical: 8, flexGrow: 1, justifyContent: messages.length === 0 ? 'center' : undefined }}
                     ListEmptyComponent={
                         <View style={{ alignItems: 'center', paddingVertical: 32 }}>
-                            <Text style={{ color: '#94a3b8', fontSize: 13 }}>
+                            <Text style={{ color: colors.text.tertiary, fontSize: 13 }}>
                                 Nenhuma mensagem ainda. Envie a primeira!
                             </Text>
                         </View>
@@ -377,9 +379,9 @@ export function ChatView({ showBackButton = false }: ChatViewProps) {
                         hasMore ? (
                             <Pressable onPress={loadMore} style={{ alignItems: 'center', paddingVertical: 12 }}>
                                 {isLoadingMore ? (
-                                    <ActivityIndicator size="small" color="#7c3aed" />
+                                    <ActivityIndicator size="small" color={colors.purple[600]} />
                                 ) : (
-                                    <Text style={{ fontSize: 12, color: '#7c3aed', fontWeight: '600' }}>
+                                    <Text style={{ fontSize: 12, color: colors.purple[600], fontWeight: '600' }}>
                                         Carregar anteriores
                                     </Text>
                                 )}
@@ -396,7 +398,7 @@ export function ChatView({ showBackButton = false }: ChatViewProps) {
 
             {/* Input area */}
             <View style={{
-                backgroundColor: '#ffffff',
+                backgroundColor: colors.surface.card,
                 borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.06)',
                 paddingHorizontal: 12, paddingTop: 8, paddingBottom: 8 + tabBarPadding,
             }}>
@@ -412,11 +414,11 @@ export function ChatView({ showBackButton = false }: ChatViewProps) {
                             style={{
                                 position: 'absolute', top: -6, right: -6,
                                 width: 20, height: 20, borderRadius: 10,
-                                backgroundColor: '#0f172a',
+                                backgroundColor: colors.text.primary,
                                 alignItems: 'center', justifyContent: 'center',
                             }}
                         >
-                            <X size={10} color="#ffffff" strokeWidth={3} />
+                            <X size={10} color={colors.surface.card} strokeWidth={3} />
                         </Pressable>
                     </View>
                 )}
@@ -425,7 +427,7 @@ export function ChatView({ showBackButton = false }: ChatViewProps) {
                     {/* TODO: Re-enable image upload after fixing RN XMLHttpRequest/FormData issue with Supabase Storage */}
                     {/*
                     <Pressable onPress={pickImage} hitSlop={8} style={{ paddingBottom: 6 }}>
-                        <ImagePlus size={22} color="#94a3b8" strokeWidth={1.5} />
+                        <ImagePlus size={22} color={colors.text.tertiary} strokeWidth={1.5} />
                     </Pressable>
                     */}
 
@@ -433,18 +435,18 @@ export function ChatView({ showBackButton = false }: ChatViewProps) {
                         value={text}
                         onChangeText={setText}
                         placeholder="Mensagem..."
-                        placeholderTextColor="#94a3b8"
+                        placeholderTextColor={colors.text.tertiary}
                         multiline
                         maxLength={2000}
                         style={{
                             flex: 1,
-                            backgroundColor: '#f1f5f9',
+                            backgroundColor: colors.surface.card2,
                             borderRadius: 20,
                             paddingHorizontal: 16,
                             paddingVertical: 10,
                             fontSize: 15,
                             maxHeight: 100,
-                            color: '#0f172a',
+                            color: colors.text.primary,
                         }}
                     />
 
@@ -453,14 +455,14 @@ export function ChatView({ showBackButton = false }: ChatViewProps) {
                         disabled={!canSend}
                         style={{
                             width: 36, height: 36, borderRadius: 18,
-                            backgroundColor: canSend ? '#7c3aed' : '#e2e8f0',
+                            backgroundColor: canSend ? colors.purple[600] : colors.border.default,
                             alignItems: 'center', justifyContent: 'center',
                         }}
                     >
                         {isSending ? (
-                            <ActivityIndicator size="small" color="#ffffff" />
+                            <ActivityIndicator size="small" color="#FFFFFF" />
                         ) : (
-                            <Send size={16} color={canSend ? '#ffffff' : '#94a3b8'} strokeWidth={2} />
+                            <Send size={16} color={canSend ? '#FFFFFF' : colors.text.tertiary} strokeWidth={2} />
                         )}
                     </Pressable>
                 </View>

@@ -5,6 +5,7 @@ import { ClipboardCheck } from 'lucide-react-native';
 import Animated, { FadeInUp, Easing } from 'react-native-reanimated';
 import { FormRenderer } from '../forms/FormRenderer';
 import type { TriggerData } from '../../hooks/useWorkoutFormTriggers';
+import { useV2Colors } from '../../hooks/useV2Colors';
 
 interface PostWorkoutFormSheetProps {
     visible: boolean;
@@ -14,6 +15,7 @@ interface PostWorkoutFormSheetProps {
 }
 
 export function PostWorkoutFormSheet({ visible, trigger, onSubmit, onSkip }: PostWorkoutFormSheetProps) {
+    const colors = useV2Colors();
     const insets = useSafeAreaInsets();
 
     return (
@@ -25,7 +27,7 @@ export function PostWorkoutFormSheet({ visible, trigger, onSubmit, onSkip }: Pos
         >
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                style={{ flex: 1, backgroundColor: '#F2F2F7' }}
+                style={{ flex: 1, backgroundColor: colors.surface.canvas }}
             >
                 <View style={{ flex: 1, paddingTop: Platform.OS === 'ios' ? 20 : insets.top }}>
                     {/* Header */}
@@ -50,7 +52,7 @@ export function PostWorkoutFormSheet({ visible, trigger, onSubmit, onSkip }: Pos
                                 <ClipboardCheck size={20} color="#10b981" />
                             </View>
                             <View style={{ flex: 1 }}>
-                                <Text style={{ color: '#0f172a', fontWeight: '800', fontSize: 17 }}>
+                                <Text style={{ color: colors.text.primary, fontWeight: '800', fontSize: 17 }}>
                                     {trigger.title}
                                 </Text>
                                 <Text style={{ color: '#10b981', fontSize: 12, fontWeight: '600', marginTop: 2 }}>
@@ -58,7 +60,7 @@ export function PostWorkoutFormSheet({ visible, trigger, onSubmit, onSkip }: Pos
                                 </Text>
                             </View>
                         </View>
-                        <Text style={{ color: '#64748b', fontSize: 13, lineHeight: 19 }}>
+                        <Text style={{ color: colors.text.secondary, fontSize: 13, lineHeight: 19 }}>
                             Responda antes de finalizar
                         </Text>
                     </Animated.View>

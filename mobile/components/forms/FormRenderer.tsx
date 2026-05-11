@@ -4,6 +4,7 @@ import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import * as SecureStore from "expo-secure-store";
 import { FormFieldRenderer, type Question } from "./FormFieldRenderer";
+import { useV2Colors } from "../../hooks/useV2Colors";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -66,6 +67,7 @@ function normalizeQuestions(raw: any[]): Question[] {
 // ---------------------------------------------------------------------------
 
 export function FormRenderer(props: FormRendererProps) {
+    const colors = useV2Colors();
     const {
         schema,
         initialAnswers,
@@ -216,7 +218,7 @@ export function FormRenderer(props: FormRendererProps) {
                     <View
                         key={question.id}
                         style={{
-                            backgroundColor: "#ffffff",
+                            backgroundColor: colors.surface.card,
                             borderRadius: 20,
                             padding: 14,
                             borderWidth: 1,
@@ -228,9 +230,9 @@ export function FormRenderer(props: FormRendererProps) {
                             elevation: 2,
                         }}
                     >
-                        <Text style={{ color: "#0f172a", fontWeight: "700", fontSize: 15, marginBottom: 4 }}>
+                        <Text style={{ color: colors.text.primary, fontWeight: "700", fontSize: 15, marginBottom: 4 }}>
                             {question.label}
-                            {question.required ? <Text style={{ color: "#ef4444" }}> *</Text> : null}
+                            {question.required ? <Text style={{ color: colors.semantic.danger.default }}> *</Text> : null}
                         </Text>
                         <FormFieldRenderer
                             question={question}
@@ -252,14 +254,14 @@ export function FormRenderer(props: FormRendererProps) {
                                 height: 50,
                                 borderRadius: 14,
                                 borderWidth: 1,
-                                borderColor: "#e2e8f0",
-                                backgroundColor: "#f8fafc",
+                                borderColor: colors.border.default,
+                                backgroundColor: colors.surface.card2,
                                 alignItems: "center",
                                 justifyContent: "center",
                                 opacity: isDisabled ? 0.5 : 1,
                             }}
                         >
-                            <Text style={{ color: "#64748b", fontWeight: "600", fontSize: 15 }}>
+                            <Text style={{ color: colors.text.secondary, fontWeight: "600", fontSize: 15 }}>
                                 {skipLabel}
                             </Text>
                         </Pressable>
@@ -272,16 +274,16 @@ export function FormRenderer(props: FormRendererProps) {
                             flex: 1,
                             height: 50,
                             borderRadius: 14,
-                            backgroundColor: "#7c3aed",
+                            backgroundColor: colors.purple[600],
                             alignItems: "center",
                             justifyContent: "center",
                             opacity: isDisabled ? 0.5 : 1,
                         }}
                     >
                         {showLoading ? (
-                            <ActivityIndicator color="#fff" size="small" />
+                            <ActivityIndicator color="#FFFFFF" size="small" />
                         ) : (
-                            <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>
+                            <Text style={{ color: "#FFFFFF", fontWeight: "700", fontSize: 15 }}>
                                 {submitLabel}
                             </Text>
                         )}
@@ -316,9 +318,9 @@ export function FormRenderer(props: FormRendererProps) {
                         elevation: 2,
                     }}
                 >
-                    <Text style={{ color: "#0f172a", fontWeight: "700", fontSize: 15, marginBottom: 4 }}>
+                    <Text style={{ color: colors.text.primary, fontWeight: "700", fontSize: 15, marginBottom: 4 }}>
                         {question.label}
-                        {question.required ? <Text style={{ color: "#ef4444" }}> *</Text> : null}
+                        {question.required ? <Text style={{ color: colors.semantic.danger.default }}> *</Text> : null}
                     </Text>
                     <FormFieldRenderer
                         question={question}
@@ -356,7 +358,7 @@ export function FormRenderer(props: FormRendererProps) {
                                 borderRadius: 16,
                             }}
                         >
-                            <Text style={{ color: "#fff", fontWeight: "800", fontSize: 16, letterSpacing: 0.5 }}>
+                            <Text style={{ color: "#FFFFFF", fontWeight: "800", fontSize: 16, letterSpacing: 0.5 }}>
                                 {showLoading ? "ENVIANDO..." : submitLabel.toUpperCase()}
                             </Text>
                         </LinearGradient>

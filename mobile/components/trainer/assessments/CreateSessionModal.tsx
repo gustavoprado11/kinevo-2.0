@@ -12,7 +12,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X, Search, ClipboardList, Users, Check } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
-import { colors } from '@/theme';
+import { useV2Colors } from '@/hooks/useV2Colors';
 import { useTrainerStudentsList } from '../../../hooks/useTrainerStudentsList';
 import {
     useTrainerAssessmentTemplates,
@@ -34,6 +34,7 @@ interface Props {
 type Step = 'student' | 'template' | 'confirm';
 
 export function CreateSessionModal({ visible, onClose, onCreated }: Props) {
+    const colors = useV2Colors();
     const insets = useSafeAreaInsets();
     const [step, setStep] = useState<Step>('student');
     const [studentId, setStudentId] = useState<string | null>(null);
@@ -139,7 +140,7 @@ export function CreateSessionModal({ visible, onClose, onCreated }: Props) {
 
     return (
         <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-            <View style={{ flex: 1, backgroundColor: colors.background.primary }}>
+            <View style={{ flex: 1, backgroundColor: colors.surface.canvas }}>
                 {/* Header */}
                 <View
                     style={{
@@ -149,9 +150,9 @@ export function CreateSessionModal({ visible, onClose, onCreated }: Props) {
                         flexDirection: 'row',
                         alignItems: 'center',
                         gap: 12,
-                        backgroundColor: colors.background.card,
+                        backgroundColor: colors.surface.card,
                         borderBottomWidth: 1,
-                        borderBottomColor: colors.border.primary,
+                        borderBottomColor: colors.border.default,
                     }}>
                     <TouchableOpacity
                         onPress={onClose}
@@ -164,7 +165,7 @@ export function CreateSessionModal({ visible, onClose, onCreated }: Props) {
                     <Text style={{ fontSize: 17, fontWeight: '800', color: colors.text.primary, flex: 1 }}>
                         Nova avaliação
                     </Text>
-                    <Text style={{ fontSize: 12, fontWeight: '700', color: colors.status.presencial }}>
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: colors.purple[600] }}>
                         {step === 'student' ? '1' : step === 'template' ? '2' : '3'}/3
                     </Text>
                 </View>
@@ -178,10 +179,10 @@ export function CreateSessionModal({ visible, onClose, onCreated }: Props) {
                                     alignItems: 'center',
                                     gap: 10,
                                     paddingHorizontal: 14,
-                                    backgroundColor: colors.background.card,
+                                    backgroundColor: colors.surface.card,
                                     borderRadius: 12,
                                     borderWidth: 1,
-                                    borderColor: colors.border.secondary,
+                                    borderColor: colors.border.default,
                                 }}>
                                 <Search size={18} color={colors.text.tertiary} />
                                 <TextInput
@@ -201,7 +202,7 @@ export function CreateSessionModal({ visible, onClose, onCreated }: Props) {
                             </View>
                         </View>
                         {studentsList.isLoading ? (
-                            <ActivityIndicator style={{ marginTop: 40 }} color={colors.brand.primary} />
+                            <ActivityIndicator style={{ marginTop: 40 }} color={colors.purple[600]} />
                         ) : (
                             <FlatList
                                 data={filteredStudents}
@@ -221,7 +222,7 @@ export function CreateSessionModal({ visible, onClose, onCreated }: Props) {
                                             setStudentId(item.id);
                                             setStep('template');
                                         }}
-                                        icon={<Users size={18} color={colors.brand.primary} />}
+                                        icon={<Users size={18} color={colors.purple[600]} />}
                                     />
                                 )}
                             />
@@ -232,7 +233,7 @@ export function CreateSessionModal({ visible, onClose, onCreated }: Props) {
                 {step === 'template' && (
                     <View style={{ flex: 1 }}>
                         {templatesList.isLoading ? (
-                            <ActivityIndicator style={{ marginTop: 40 }} color={colors.brand.primary} />
+                            <ActivityIndicator style={{ marginTop: 40 }} color={colors.purple[600]} />
                         ) : templatesList.templates.length === 0 ? (
                             <View style={{ padding: 24, gap: 12, alignItems: 'center' }}>
                                 <ClipboardList size={36} color={colors.text.quaternary} />
@@ -269,7 +270,7 @@ export function CreateSessionModal({ visible, onClose, onCreated }: Props) {
                                             setTemplateId(item.id);
                                             setStep('confirm');
                                         }}
-                                        icon={<ClipboardList size={18} color={colors.status.presencial} />}
+                                        icon={<ClipboardList size={18} color={colors.purple[600]} />}
                                     />
                                 )}
                             />
@@ -333,7 +334,7 @@ export function CreateSessionModal({ visible, onClose, onCreated }: Props) {
                                     inputMode="numeric"
                                     accessibilityLabel="Idade do aluno em anos"
                                     style={{
-                                        backgroundColor: colors.background.card,
+                                        backgroundColor: colors.surface.card,
                                         borderRadius: 12,
                                         paddingHorizontal: 14,
                                         paddingVertical: 12,
@@ -343,12 +344,12 @@ export function CreateSessionModal({ visible, onClose, onCreated }: Props) {
                                         borderWidth: 1,
                                         borderColor:
                                             ageParsed !== null
-                                                ? colors.brand.primary
-                                                : colors.border.secondary,
+                                                ? colors.purple[600]
+                                                : colors.border.default,
                                     }}
                                 />
                                 {ageRaw.trim().length > 0 && ageParsed === null && (
-                                    <Text style={{ fontSize: 11, color: colors.warning.default }}>
+                                    <Text style={{ fontSize: 11, color: colors.semantic.warning.default }}>
                                         Idade deve estar entre 5 e 120 anos.
                                     </Text>
                                 )}
@@ -402,7 +403,7 @@ export function CreateSessionModal({ visible, onClose, onCreated }: Props) {
                                     placeholderTextColor={colors.text.tertiary}
                                     multiline
                                     style={{
-                                        backgroundColor: colors.background.card,
+                                        backgroundColor: colors.surface.card,
                                         borderRadius: 12,
                                         padding: 12,
                                         fontSize: 14,
@@ -410,7 +411,7 @@ export function CreateSessionModal({ visible, onClose, onCreated }: Props) {
                                         minHeight: 80,
                                         textAlignVertical: 'top',
                                         borderWidth: 1,
-                                        borderColor: colors.border.secondary,
+                                        borderColor: colors.border.default,
                                     }}
                                 />
                             </View>
@@ -424,20 +425,20 @@ export function CreateSessionModal({ visible, onClose, onCreated }: Props) {
                                 accessibilityLabel="Criar sessão"
                                 accessibilityState={{ disabled: !canConfirm || lifecycle.creating }}
                                 style={{
-                                    backgroundColor: canConfirm ? colors.brand.primary : colors.background.inset,
+                                    backgroundColor: canConfirm ? colors.purple[600] : colors.border.default,
                                     borderRadius: 14,
                                     paddingVertical: 16,
                                     alignItems: 'center',
                                     opacity: lifecycle.creating ? 0.7 : 1,
                                 }}>
                                 {lifecycle.creating ? (
-                                    <ActivityIndicator color={colors.text.inverse} />
+                                    <ActivityIndicator color={'#FFFFFF'} />
                                 ) : (
                                     <Text
                                         style={{
                                             fontSize: 16,
                                             fontWeight: '800',
-                                            color: canConfirm ? colors.text.inverse : colors.text.tertiary,
+                                            color: canConfirm ? '#FFFFFF' : colors.text.tertiary,
                                         }}>
                                         Criar sessão
                                     </Text>
@@ -458,6 +459,7 @@ function PickRow(props: {
     onPress: () => void;
     icon: React.ReactNode;
 }) {
+    const colors = useV2Colors();
     return (
         <TouchableOpacity
             onPress={props.onPress}
@@ -470,17 +472,17 @@ function PickRow(props: {
                 alignItems: 'center',
                 gap: 12,
                 padding: 14,
-                backgroundColor: colors.background.card,
+                backgroundColor: colors.surface.card,
                 borderRadius: 14,
                 borderWidth: 1,
-                borderColor: props.selected ? colors.brand.primary : colors.border.primary,
+                borderColor: props.selected ? colors.purple[600] : colors.border.default,
             }}>
             <View
                 style={{
                     width: 36,
                     height: 36,
                     borderRadius: 12,
-                    backgroundColor: colors.brand.primaryLight,
+                    backgroundColor: colors.purple[100],
                     alignItems: 'center',
                     justifyContent: 'center',
                 }}>
@@ -500,16 +502,17 @@ function PickRow(props: {
                     </Text>
                 )}
             </View>
-            {props.selected && <Check size={18} color={colors.brand.primary} />}
+            {props.selected && <Check size={18} color={colors.purple[600]} />}
         </TouchableOpacity>
     );
 }
 
 function Summary({ label, value }: { label: string; value: string }) {
+    const colors = useV2Colors();
     return (
         <View
             style={{
-                backgroundColor: colors.background.card,
+                backgroundColor: colors.surface.card,
                 borderRadius: 14,
                 padding: 14,
                 gap: 4,
@@ -530,6 +533,7 @@ function Summary({ label, value }: { label: string; value: string }) {
 }
 
 function ScheduleChip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+    const colors = useV2Colors();
     return (
         <TouchableOpacity
             onPress={onPress}
@@ -540,16 +544,16 @@ function ScheduleChip({ label, active, onPress }: { label: string; active: boole
                 flex: 1,
                 paddingVertical: 12,
                 borderRadius: 12,
-                backgroundColor: active ? colors.brand.primary : colors.background.card,
+                backgroundColor: active ? colors.purple[600] : colors.surface.card,
                 alignItems: 'center',
                 borderWidth: 1,
-                borderColor: active ? colors.brand.primary : colors.border.secondary,
+                borderColor: active ? colors.purple[600] : colors.border.default,
             }}>
             <Text
                 style={{
                     fontSize: 14,
                     fontWeight: '700',
-                    color: active ? colors.text.inverse : colors.text.primary,
+                    color: active ? '#FFFFFF' : colors.text.primary,
                 }}>
                 {label}
             </Text>

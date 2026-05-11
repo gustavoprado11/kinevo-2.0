@@ -10,4 +10,10 @@ export {
 export { spacing, type Spacing } from './spacing';
 export { radius, type Radius } from './radius';
 export { shadows, type Shadows } from './shadows';
+export {
+  elevation,
+  type Elevation,
+  type ElevationLevel,
+  type ElevationMode,
+} from './elevation';
 export { motion, easings, durations, type Motion } from './motion';

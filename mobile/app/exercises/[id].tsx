@@ -20,6 +20,7 @@ import { ExerciseFormModal } from "../../components/trainer/exercises/ExerciseFo
 import { extractYouTubeId, isDirectVideoUrl } from "../../utils/youtube";
 import { toast } from "../../lib/toast";
 import type { ExerciseFormData } from "../../hooks/useExerciseCrud";
+import { useV2Colors } from "../../hooks/useV2Colors";
 
 // Lazy-load expo-av
 let ExpoVideo: any = null;
@@ -35,13 +36,16 @@ try {
     // expo-av not available
 }
 
-const DIFFICULTY_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-    beginner: { label: "Iniciante", color: "#16a34a", bg: "#f0fdf4" },
-    intermediate: { label: "Intermediário", color: "#f59e0b", bg: "#fffbeb" },
-    advanced: { label: "Avançado", color: "#ef4444", bg: "#fef2f2" },
-};
+function getDifficultyConfig(colors: ReturnType<typeof useV2Colors>): Record<string, { label: string; color: string; bg: string }> {
+    return {
+        beginner: { label: "Iniciante", color: colors.semantic.success.default, bg: colors.semantic.success.bg },
+        intermediate: { label: "Intermediário", color: colors.semantic.warning.default, bg: colors.semantic.warning.bg },
+        advanced: { label: "Avançado", color: colors.semantic.danger.default, bg: colors.semantic.danger.bg },
+    };
+}
 
 export default function ExerciseDetailScreen() {
+    const colors = useV2Colors();
     const { id } = useLocalSearchParams<{ id: string }>();
     const { width } = useWindowDimensions();
     const { user } = useAuth();
@@ -137,14 +141,14 @@ export default function ExerciseDetailScreen() {
 
     const videoId = exercise ? extractYouTubeId(exercise.video_url) : null;
     const isDirect = exercise ? isDirectVideoUrl(exercise.video_url) : false;
-    const difficulty = exercise?.difficulty_level ? DIFFICULTY_CONFIG[exercise.difficulty_level] : null;
+    const difficulty = exercise?.difficulty_level ? getDifficultyConfig(colors)[exercise.difficulty_level] : null;
 
     if (isLoading) {
         return (
             <>
-                <Stack.Screen options={{ title: "Exercício", headerStyle: { backgroundColor: "#F2F2F7" }, headerTintColor: "#0f172a" }} />
-                <View style={{ flex: 1, backgroundColor: "#F2F2F7", justifyContent: "center", alignItems: "center" }}>
-                    <ActivityIndicator size="large" color="#7c3aed" />
+                <Stack.Screen options={{ title: "Exercício", headerStyle: { backgroundColor: colors.surface.canvas }, headerTintColor: "#0f172a" }} />
+                <View style={{ flex: 1, backgroundColor: colors.surface.canvas, justifyContent: "center", alignItems: "center" }}>
+                    <ActivityIndicator size="large" color={colors.purple[600]} />
                 </View>
             </>
         );
@@ -153,9 +157,9 @@ export default function ExerciseDetailScreen() {
     if (!exercise) {
         return (
             <>
-                <Stack.Screen options={{ title: "Exercício", headerStyle: { backgroundColor: "#F2F2F7" }, headerTintColor: "#0f172a" }} />
-                <View style={{ flex: 1, backgroundColor: "#F2F2F7", justifyContent: "center", alignItems: "center" }}>
-                    <Text style={{ fontSize: 16, color: "#64748b" }}>Exercício não encontrado</Text>
+                <Stack.Screen options={{ title: "Exercício", headerStyle: { backgroundColor: colors.surface.canvas }, headerTintColor: "#0f172a" }} />
+                <View style={{ flex: 1, backgroundColor: colors.surface.canvas, justifyContent: "center", alignItems: "center" }}>
+                    <Text style={{ fontSize: 16, color: colors.text.secondary }}>Exercício não encontrado</Text>
                 </View>
             </>
         );
@@ -163,9 +167,9 @@ export default function ExerciseDetailScreen() {
 
     return (
         <>
-            <Stack.Screen options={{ title: exercise.name, headerStyle: { backgroundColor: "#F2F2F7" }, headerTintColor: "#0f172a" }} />
+            <Stack.Screen options={{ title: exercise.name, headerStyle: { backgroundColor: colors.surface.canvas }, headerTintColor: "#0f172a" }} />
             <ScrollView
-                style={{ flex: 1, backgroundColor: "#F2F2F7" }}
+                style={{ flex: 1, backgroundColor: colors.surface.canvas }}
                 contentContainerStyle={{ paddingBottom: 60 }}
             >
                 {/* Video */}
@@ -196,7 +200,7 @@ export default function ExerciseDetailScreen() {
                 <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
                     <View
                         style={{
-                            backgroundColor: "#ffffff",
+                            backgroundColor: colors.surface.card,
                             borderRadius: 14,
                             padding: 16,
                             borderWidth: 1,
@@ -205,16 +209,16 @@ export default function ExerciseDetailScreen() {
                     >
                         {/* Name + badge */}
                         <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
-                            <Text style={{ fontSize: 18, fontWeight: "700", color: "#0f172a", flex: 1 }}>
+                            <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text.primary, flex: 1 }}>
                                 {exercise.name}
                             </Text>
                             {isSystem ? (
-                                <View style={{ backgroundColor: "#f1f5f9", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
-                                    <Text style={{ fontSize: 10, fontWeight: "700", color: "#64748b" }}>SISTEMA</Text>
+                                <View style={{ backgroundColor: colors.surface.card2, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
+                                    <Text style={{ fontSize: 10, fontWeight: "700", color: colors.text.secondary }}>SISTEMA</Text>
                                 </View>
                             ) : (
-                                <View style={{ backgroundColor: "#f5f3ff", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
-                                    <Text style={{ fontSize: 10, fontWeight: "700", color: "#7c3aed" }}>CUSTOM</Text>
+                                <View style={{ backgroundColor: colors.purple[100], paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
+                                    <Text style={{ fontSize: 10, fontWeight: "700", color: colors.purple[600] }}>CUSTOM</Text>
                                 </View>
                             )}
                         </View>
@@ -222,13 +226,13 @@ export default function ExerciseDetailScreen() {
                         {/* Tags */}
                         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
                             {exercise.muscle_groups.map((mg) => (
-                                <View key={mg.id} style={{ backgroundColor: "#f5f3ff", paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10 }}>
-                                    <Text style={{ fontSize: 12, fontWeight: "600", color: "#7c3aed" }}>{mg.name}</Text>
+                                <View key={mg.id} style={{ backgroundColor: colors.purple[100], paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10 }}>
+                                    <Text style={{ fontSize: 12, fontWeight: "600", color: colors.purple[600] }}>{mg.name}</Text>
                                 </View>
                             ))}
                             {exercise.equipment && (
-                                <View style={{ backgroundColor: "#f1f5f9", paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10 }}>
-                                    <Text style={{ fontSize: 12, fontWeight: "600", color: "#64748b" }}>{exercise.equipment}</Text>
+                                <View style={{ backgroundColor: colors.surface.card2, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10 }}>
+                                    <Text style={{ fontSize: 12, fontWeight: "600", color: colors.text.secondary }}>{exercise.equipment}</Text>
                                 </View>
                             )}
                             {difficulty && (
@@ -241,10 +245,10 @@ export default function ExerciseDetailScreen() {
                         {/* Instructions */}
                         {exercise.instructions && (
                             <>
-                                <Text style={{ fontSize: 13, fontWeight: "600", color: "#64748b", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
+                                <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text.secondary, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
                                     Instruções
                                 </Text>
-                                <Text style={{ fontSize: 14, color: "#374151", lineHeight: 22 }}>
+                                <Text style={{ fontSize: 14, color: colors.text.primary, lineHeight: 22 }}>
                                     {exercise.instructions}
                                 </Text>
                             </>
@@ -267,14 +271,14 @@ export default function ExerciseDetailScreen() {
                                 flexDirection: "row",
                                 alignItems: "center",
                                 justifyContent: "center",
-                                backgroundColor: "#7c3aed",
+                                backgroundColor: colors.purple[600],
                                 borderRadius: 14,
                                 paddingVertical: 14,
                                 gap: 8,
                             }}
                         >
-                            <Pencil size={18} color="#ffffff" />
-                            <Text style={{ fontSize: 15, fontWeight: "700", color: "#ffffff" }}>
+                            <Pencil size={18} color="#FFFFFF" />
+                            <Text style={{ fontSize: 15, fontWeight: "700", color: "#FFFFFF" }}>
                                 Editar exercício
                             </Text>
                         </TouchableOpacity>
@@ -288,14 +292,14 @@ export default function ExerciseDetailScreen() {
                                 flexDirection: "row",
                                 alignItems: "center",
                                 justifyContent: "center",
-                                backgroundColor: "#fef2f2",
+                                backgroundColor: colors.semantic.danger.bg,
                                 borderRadius: 14,
                                 paddingVertical: 14,
                                 gap: 8,
                             }}
                         >
-                            <Trash2 size={18} color="#ef4444" />
-                            <Text style={{ fontSize: 15, fontWeight: "700", color: "#ef4444" }}>
+                            <Trash2 size={18} color={colors.semantic.danger.default} />
+                            <Text style={{ fontSize: 15, fontWeight: "700", color: colors.semantic.danger.default }}>
                                 Excluir exercício
                             </Text>
                         </TouchableOpacity>
@@ -309,14 +313,14 @@ export default function ExerciseDetailScreen() {
                                 flexDirection: "row",
                                 alignItems: "center",
                                 justifyContent: "center",
-                                backgroundColor: "#f1f5f9",
+                                backgroundColor: colors.surface.card2,
                                 borderRadius: 12,
                                 paddingVertical: 12,
                                 gap: 8,
                             }}
                         >
-                            <Shield size={16} color="#94a3b8" />
-                            <Text style={{ fontSize: 13, fontWeight: "500", color: "#94a3b8" }}>
+                            <Shield size={16} color={colors.text.tertiary} />
+                            <Text style={{ fontSize: 13, fontWeight: "500", color: colors.text.tertiary }}>
                                 Exercício do sistema — somente leitura
                             </Text>
                         </View>

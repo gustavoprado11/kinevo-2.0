@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, Image } from "react-native";
 import type { SchemaQuestion } from "../../../hooks/useTrainerFormSubmissionDetail";
+import { useV2Colors } from "../../../hooks/useV2Colors";
 
 interface Props {
     question: SchemaQuestion;
@@ -8,6 +9,7 @@ interface Props {
 }
 
 export function AnswerRenderer({ question: rawQuestion, answer }: Props) {
+    const colors = useV2Colors();
     // Normalize options: plain strings → { value, label } objects
     const question = {
         ...rawQuestion,
@@ -23,24 +25,26 @@ export function AnswerRenderer({ question: rawQuestion, answer }: Props) {
     return (
         <View style={{ marginBottom: 20 }}>
             {/* Question label */}
-            <Text style={{ fontSize: 13, fontWeight: "600", color: "#64748b", marginBottom: 6 }}>
+            <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text.secondary, marginBottom: 6 }}>
                 {question.label}
-                {question.required && <Text style={{ color: "#ef4444" }}> *</Text>}
+                {question.required && <Text style={{ color: colors.semantic.danger.default }}> *</Text>}
             </Text>
 
             {/* Answer */}
-            {renderAnswer(question, value, files)}
+            {renderAnswer(question, value, files, colors)}
         </View>
     );
 }
 
-function renderAnswer(question: SchemaQuestion, value: any, files: any) {
+type V2Palette = ReturnType<typeof useV2Colors>;
+
+function renderAnswer(question: SchemaQuestion, value: any, files: any, colors: V2Palette) {
     switch (question.type) {
         case "short_text":
         case "long_text":
             return (
-                <View style={{ backgroundColor: "#f8fafc", borderRadius: 10, padding: 12 }}>
-                    <Text style={{ fontSize: 15, color: "#1a1a2e", lineHeight: 22 }}>
+                <View style={{ backgroundColor: colors.surface.card2, borderRadius: 10, padding: 12 }}>
+                    <Text style={{ fontSize: 15, color: colors.text.primary, lineHeight: 22 }}>
                         {value || "—"}
                     </Text>
                 </View>
@@ -60,10 +64,10 @@ function renderAnswer(question: SchemaQuestion, value: any, files: any) {
                                     paddingVertical: 8,
                                     paddingHorizontal: 12,
                                     marginBottom: 4,
-                                    backgroundColor: isSelected ? "#f3f0ff" : "#f8fafc",
+                                    backgroundColor: isSelected ? colors.purple[100] : colors.surface.card2,
                                     borderRadius: 10,
                                     borderWidth: isSelected ? 1.5 : 0,
-                                    borderColor: isSelected ? "#7c3aed" : "transparent",
+                                    borderColor: isSelected ? colors.purple[600] : "transparent",
                                 }}
                             >
                                 <View
@@ -72,7 +76,7 @@ function renderAnswer(question: SchemaQuestion, value: any, files: any) {
                                         height: 18,
                                         borderRadius: 9,
                                         borderWidth: 2,
-                                        borderColor: isSelected ? "#7c3aed" : "#cbd5e1",
+                                        borderColor: isSelected ? colors.purple[600] : colors.border.default,
                                         alignItems: "center",
                                         justifyContent: "center",
                                         marginRight: 10,
@@ -84,7 +88,7 @@ function renderAnswer(question: SchemaQuestion, value: any, files: any) {
                                                 width: 10,
                                                 height: 10,
                                                 borderRadius: 5,
-                                                backgroundColor: "#7c3aed",
+                                                backgroundColor: colors.purple[600],
                                             }}
                                         />
                                     )}
@@ -92,7 +96,7 @@ function renderAnswer(question: SchemaQuestion, value: any, files: any) {
                                 <Text
                                     style={{
                                         fontSize: 14,
-                                        color: isSelected ? "#7c3aed" : "#475569",
+                                        color: isSelected ? colors.purple[600] : colors.text.secondary,
                                         fontWeight: isSelected ? "600" : "400",
                                     }}
                                 >
@@ -125,7 +129,7 @@ function renderAnswer(question: SchemaQuestion, value: any, files: any) {
                                         width: btnSize,
                                         height: btnSize,
                                         borderRadius: btnSize / 2,
-                                        backgroundColor: isSelected ? "#7c3aed" : "#f1f5f9",
+                                        backgroundColor: isSelected ? colors.purple[600] : colors.surface.card2,
                                         alignItems: "center",
                                         justifyContent: "center",
                                     }}
@@ -134,7 +138,7 @@ function renderAnswer(question: SchemaQuestion, value: any, files: any) {
                                         style={{
                                             fontSize: items.length > 7 ? 12 : 14,
                                             fontWeight: "600",
-                                            color: isSelected ? "#ffffff" : "#64748b",
+                                            color: isSelected ? "#FFFFFF" : colors.text.secondary,
                                         }}
                                     >
                                         {num}
@@ -145,10 +149,10 @@ function renderAnswer(question: SchemaQuestion, value: any, files: any) {
                     </View>
                     {(question.scale?.minLabel || question.scale?.maxLabel) && (
                         <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 4 }}>
-                            <Text style={{ fontSize: 11, color: "#94a3b8" }}>
+                            <Text style={{ fontSize: 11, color: colors.text.tertiary }}>
                                 {question.scale?.minLabel || ""}
                             </Text>
-                            <Text style={{ fontSize: 11, color: "#94a3b8" }}>
+                            <Text style={{ fontSize: 11, color: colors.text.tertiary }}>
                                 {question.scale?.maxLabel || ""}
                             </Text>
                         </View>
@@ -168,20 +172,20 @@ function renderAnswer(question: SchemaQuestion, value: any, files: any) {
                                 width: 80,
                                 height: 80,
                                 borderRadius: 10,
-                                backgroundColor: "#e2e8f0",
+                                backgroundColor: colors.border.default,
                             }}
                         />
                     ))}
                     {(!files || files.length === 0) && (
-                        <Text style={{ fontSize: 14, color: "#94a3b8" }}>Nenhuma foto</Text>
+                        <Text style={{ fontSize: 14, color: colors.text.tertiary }}>Nenhuma foto</Text>
                     )}
                 </View>
             );
 
         default:
             return (
-                <View style={{ backgroundColor: "#f8fafc", borderRadius: 10, padding: 12 }}>
-                    <Text style={{ fontSize: 15, color: "#1a1a2e" }}>
+                <View style={{ backgroundColor: colors.surface.card2, borderRadius: 10, padding: 12 }}>
+                    <Text style={{ fontSize: 15, color: colors.text.primary }}>
                         {typeof value === "string" || typeof value === "number" ? String(value) : "—"}
                     </Text>
                 </View>

@@ -17,8 +17,10 @@ import { useTrainerPlans, TrainerPlan } from "../../../hooks/useTrainerPlans";
 import { PlanCard } from "../../../components/financial/PlanCard";
 import { PlanFormSheet } from "../../../components/financial/PlanFormSheet";
 import { EmptyState } from "../../../components/shared/EmptyState";
+import { useV2Colors } from "../../../hooks/useV2Colors";
 
 export default function PlansScreen() {
+    const colors = useV2Colors();
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const {
@@ -94,7 +96,7 @@ export default function PlansScreen() {
     return (
         <>
             <Stack.Screen options={{ headerShown: false }} />
-            <SafeAreaView style={{ flex: 1, backgroundColor: "#F2F2F7" }} edges={["top"]}>
+            <SafeAreaView style={{ flex: 1, backgroundColor: colors.surface.canvas }} edges={["top"]}>
                 {/* Custom Header */}
                 <View style={{
                     flexDirection: "row",
@@ -109,10 +111,10 @@ export default function PlansScreen() {
                         accessibilityLabel="Voltar"
                         hitSlop={12}
                     >
-                        <ChevronLeft size={24} color="#0f172a" />
+                        <ChevronLeft size={24} color={colors.text.primary} />
                     </TouchableOpacity>
 
-                    <Text style={{ fontSize: 18, fontWeight: "700", color: "#0f172a" }}>
+                    <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text.primary }}>
                         Meus Planos
                     </Text>
 
@@ -125,14 +127,14 @@ export default function PlansScreen() {
                         style={{
                             flexDirection: "row",
                             alignItems: "center",
-                            backgroundColor: "#ffffff",
+                            backgroundColor: colors.surface.card,
                             borderRadius: 12,
                             paddingHorizontal: 12,
                             borderWidth: 1,
                             borderColor: "rgba(0,0,0,0.06)",
                         }}
                     >
-                        <Search size={16} color="#94a3b8" />
+                        <Search size={16} color={colors.text.tertiary} />
                         <TextInput
                             value={search}
                             onChangeText={setSearch}
@@ -143,7 +145,7 @@ export default function PlansScreen() {
                                 paddingVertical: 10,
                                 paddingHorizontal: 8,
                                 fontSize: 14,
-                                color: "#0f172a",
+                                color: colors.text.primary,
                             }}
                             returnKeyType="search"
                             autoCorrect={false}
@@ -154,7 +156,7 @@ export default function PlansScreen() {
                 {/* Plans List */}
                 {isLoading ? (
                     <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-                        <ActivityIndicator color="#7c3aed" size="large" />
+                        <ActivityIndicator color={colors.purple[600]} size="large" />
                     </View>
                 ) : (
                     <FlatList
@@ -187,7 +189,7 @@ export default function PlansScreen() {
                         width: 56,
                         height: 56,
                         borderRadius: 28,
-                        backgroundColor: "#7c3aed",
+                        backgroundColor: colors.purple[600],
                         alignItems: "center",
                         justifyContent: "center",
                         shadowColor: "#7c3aed",

@@ -1,7 +1,8 @@
 import React from "react";
 import { View, Text } from "react-native";
 import { TrendingUp, TrendingDown, Minus, Target, Flame } from "lucide-react-native";
-import { colors, spacing, typography } from "@/theme";
+import { spacing, typography } from "@/theme";
+import { useV2Colors } from "@/hooks/useV2Colors";
 import { useResponsive } from "../../../hooks/useResponsive";
 import type { ProgressSummary } from "../../../hooks/useStudentProgress";
 
@@ -10,11 +11,20 @@ interface Props {
 }
 
 export function ProgressSummaryCards({ summary }: Props) {
+    const colors = useV2Colors();
+    const cardStyle = {
+        flex: 1,
+        backgroundColor: colors.surface.card,
+        borderRadius: 14,
+        padding: spacing.md,
+        borderWidth: 1,
+        borderColor: colors.border.default,
+    } as const;
     const trendColor =
         summary.tonnageTrendDirection === "up"
-            ? colors.success.default
+            ? colors.semantic.success.default
             : summary.tonnageTrendDirection === "down"
-              ? colors.error.default
+              ? colors.semantic.danger.default
               : colors.text.tertiary;
 
     const trendIcon =
@@ -35,10 +45,10 @@ export function ProgressSummaryCards({ summary }: Props) {
 
     const adherenceColor =
         summary.adherencePercent >= 80
-            ? colors.success.default
+            ? colors.semantic.success.default
             : summary.adherencePercent >= 60
-              ? colors.warning.default
-              : colors.error.default;
+              ? colors.semantic.warning.default
+              : colors.semantic.danger.default;
 
     return (
         <View style={{ flexDirection: "row", gap: spacing.sm }}>
@@ -67,7 +77,7 @@ export function ProgressSummaryCards({ summary }: Props) {
                     {summary.adherencePercent}%
                 </Text>
                 {/* Mini progress bar */}
-                <View style={{ height: 3, backgroundColor: colors.background.inset, borderRadius: 2, marginTop: 6 }}>
+                <View style={{ height: 3, backgroundColor: colors.border.default, borderRadius: 2, marginTop: 6 }}>
                     <View
                         style={{
                             height: 3,
@@ -101,9 +111,3 @@ export function ProgressSummaryCards({ summary }: Props) {
     );
 }
 
-const cardStyle = {
-    flex: 1,
-    backgroundColor: colors.background.card,
-    borderRadius: 14,
-    padding: spacing.md,
-} as const;

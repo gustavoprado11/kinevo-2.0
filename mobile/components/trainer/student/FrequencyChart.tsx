@@ -9,7 +9,8 @@ import Svg, {
     Stop,
 } from "react-native-svg";
 import { CalendarCheck } from "lucide-react-native";
-import { colors, spacing, typography } from "@/theme";
+import { spacing, typography } from "@/theme";
+import { useV2Colors } from "@/hooks/useV2Colors";
 import type { WeeklyProgress } from "../../../hooks/useStudentProgress";
 
 const DEFAULT_CHART_HEIGHT = 160;
@@ -23,7 +24,15 @@ interface Props {
 }
 
 export function FrequencyChart({ data, expectedPerWeek, chartHeight = DEFAULT_CHART_HEIGHT, weeksToShow = 8 }: Props) {
+    const colors = useV2Colors();
     const [containerWidth, setContainerWidth] = useState(0);
+    const cardStyle = {
+        backgroundColor: colors.surface.card,
+        borderRadius: 14,
+        padding: spacing.lg,
+        borderWidth: 1,
+        borderColor: colors.border.default,
+    } as const;
 
     const onLayout = (e: LayoutChangeEvent) => {
         setContainerWidth(e.nativeEvent.layout.width);
@@ -36,7 +45,7 @@ export function FrequencyChart({ data, expectedPerWeek, chartHeight = DEFAULT_CH
         return (
             <View style={cardStyle}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 }}>
-                    <CalendarCheck size={14} color={colors.info.default} />
+                    <CalendarCheck size={14} color={colors.semantic.info.default} />
                     <Text style={{ fontSize: typography.size.base, fontWeight: typography.weight.semibold, color: colors.text.primary }}>
                         Frequência Semanal
                     </Text>
@@ -69,7 +78,7 @@ export function FrequencyChart({ data, expectedPerWeek, chartHeight = DEFAULT_CH
             {/* Header */}
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                    <CalendarCheck size={14} color={colors.info.default} />
+                    <CalendarCheck size={14} color={colors.semantic.info.default} />
                     <Text style={{ fontSize: typography.size.base, fontWeight: typography.weight.semibold, color: colors.text.primary }}>
                         Frequência Semanal
                     </Text>
@@ -77,7 +86,7 @@ export function FrequencyChart({ data, expectedPerWeek, chartHeight = DEFAULT_CH
                 {/* Legend */}
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
-                        <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: colors.brand.primary }} />
+                        <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: colors.purple[600] }} />
                         <Text style={{ fontSize: 9, color: colors.text.tertiary }}>Realizadas</Text>
                     </View>
                     {expectedPerWeek > 0 && (
@@ -113,10 +122,10 @@ export function FrequencyChart({ data, expectedPerWeek, chartHeight = DEFAULT_CH
 
                         const metGoal = expectedPerWeek > 0 && d.sessionCount >= expectedPerWeek;
                         const barColor = d.sessionCount === 0
-                            ? colors.background.inset
+                            ? colors.border.default
                             : metGoal
-                              ? colors.brand.primary
-                              : colors.warning.default;
+                              ? colors.purple[600]
+                              : colors.semantic.warning.default;
 
                         return (
                             <React.Fragment key={i}>
@@ -166,8 +175,3 @@ export function FrequencyChart({ data, expectedPerWeek, chartHeight = DEFAULT_CH
     );
 }
 
-const cardStyle = {
-    backgroundColor: colors.background.card,
-    borderRadius: 14,
-    padding: spacing.lg,
-} as const;

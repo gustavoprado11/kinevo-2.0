@@ -14,6 +14,7 @@ import {
 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import type { Question, QuestionType } from "../../../hooks/useFormTemplateCrud";
+import { useV2Colors } from "../../../hooks/useV2Colors";
 
 const QUESTION_TYPE_CONFIG: Record<QuestionType, { icon: typeof AlignLeft; label: string; color: string }> = {
     short_text: { icon: AlignLeft, label: "Texto curto", color: "#3b82f6" },
@@ -42,6 +43,7 @@ export function QuestionEditor({
     onMoveUp,
     onMoveDown,
 }: Props) {
+    const colors = useV2Colors();
     const config = QUESTION_TYPE_CONFIG[question.type];
     const IconComponent = config.icon;
 
@@ -96,7 +98,7 @@ export function QuestionEditor({
     return (
         <View
             style={{
-                backgroundColor: "#ffffff",
+                backgroundColor: colors.surface.card,
                 borderRadius: 14,
                 padding: 16,
                 marginBottom: 12,
@@ -132,7 +134,7 @@ export function QuestionEditor({
                     style={{ padding: 6, opacity: index === 0 ? 0.3 : 1 }}
                     accessibilityLabel="Mover para cima"
                 >
-                    <ChevronUp size={18} color="#64748b" />
+                    <ChevronUp size={18} color={colors.text.secondary} />
                 </TouchableOpacity>
                 <TouchableOpacity
                     onPress={() => {
@@ -143,7 +145,7 @@ export function QuestionEditor({
                     style={{ padding: 6, opacity: index === totalQuestions - 1 ? 0.3 : 1 }}
                     accessibilityLabel="Mover para baixo"
                 >
-                    <ChevronDown size={18} color="#64748b" />
+                    <ChevronDown size={18} color={colors.text.secondary} />
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -154,26 +156,26 @@ export function QuestionEditor({
                     style={{ padding: 6 }}
                     accessibilityLabel="Excluir pergunta"
                 >
-                    <Trash2 size={16} color="#ef4444" />
+                    <Trash2 size={16} color={colors.semantic.danger.default} />
                 </TouchableOpacity>
             </View>
 
             {/* Question label */}
-            <Text style={{ fontSize: 12, fontWeight: "600", color: "#94a3b8", marginBottom: 4 }}>
+            <Text style={{ fontSize: 12, fontWeight: "600", color: colors.text.tertiary, marginBottom: 4 }}>
                 Pergunta {index + 1}
             </Text>
             <TextInput
                 value={question.label}
                 onChangeText={handleLabelChange}
                 placeholder="Digite o texto da pergunta..."
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor={colors.text.tertiary}
                 multiline
                 style={{
-                    backgroundColor: "#f8fafc",
+                    backgroundColor: colors.surface.card2,
                     borderRadius: 10,
                     padding: 12,
                     fontSize: 14,
-                    color: "#0f172a",
+                    color: colors.text.primary,
                     borderWidth: 1,
                     borderColor: "rgba(0,0,0,0.04)",
                     minHeight: 44,
@@ -192,37 +194,37 @@ export function QuestionEditor({
                         height: 20,
                         borderRadius: 4,
                         borderWidth: 2,
-                        borderColor: question.required ? "#7c3aed" : "#cbd5e1",
-                        backgroundColor: question.required ? "#7c3aed" : "transparent",
+                        borderColor: question.required ? colors.purple[600] : colors.border.default,
+                        backgroundColor: question.required ? colors.purple[600] : "transparent",
                         alignItems: "center",
                         justifyContent: "center",
                     }}
                 >
                     {question.required && (
-                        <Text style={{ color: "#fff", fontSize: 12, fontWeight: "700" }}>✓</Text>
+                        <Text style={{ color: "#FFFFFF", fontSize: 12, fontWeight: "700" }}>✓</Text>
                     )}
                 </View>
-                <Text style={{ fontSize: 13, color: "#64748b" }}>Obrigatória</Text>
+                <Text style={{ fontSize: 13, color: colors.text.secondary }}>Obrigatória</Text>
             </TouchableOpacity>
 
             {/* Placeholder for text types */}
             {(question.type === "short_text" || question.type === "long_text") && (
                 <View style={{ marginTop: 12 }}>
-                    <Text style={{ fontSize: 11, fontWeight: "600", color: "#94a3b8", marginBottom: 4 }}>
+                    <Text style={{ fontSize: 11, fontWeight: "600", color: colors.text.tertiary, marginBottom: 4 }}>
                         Placeholder (opcional)
                     </Text>
                     <TextInput
                         value={question.placeholder || ""}
                         onChangeText={handlePlaceholderChange}
                         placeholder="Texto de exemplo..."
-                        placeholderTextColor="#cbd5e1"
+                        placeholderTextColor={colors.text.quaternary}
                         style={{
-                            backgroundColor: "#f8fafc",
+                            backgroundColor: colors.surface.card2,
                             borderRadius: 8,
                             paddingHorizontal: 12,
                             paddingVertical: 8,
                             fontSize: 13,
-                            color: "#0f172a",
+                            color: colors.text.primary,
                             borderWidth: 1,
                             borderColor: "rgba(0,0,0,0.04)",
                         }}
@@ -233,7 +235,7 @@ export function QuestionEditor({
             {/* Options for single_choice */}
             {question.type === "single_choice" && (
                 <View style={{ marginTop: 12, gap: 8 }}>
-                    <Text style={{ fontSize: 11, fontWeight: "600", color: "#94a3b8" }}>Opções</Text>
+                    <Text style={{ fontSize: 11, fontWeight: "600", color: colors.text.tertiary }}>Opções</Text>
                     {(question.options || []).map((opt, i) => (
                         <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                             <View
@@ -242,29 +244,29 @@ export function QuestionEditor({
                                     height: 16,
                                     borderRadius: 8,
                                     borderWidth: 2,
-                                    borderColor: "#cbd5e1",
+                                    borderColor: colors.border.default,
                                 }}
                             />
                             <TextInput
                                 value={opt.label}
                                 onChangeText={(t) => handleOptionChange(i, t)}
                                 placeholder={`Opção ${i + 1}`}
-                                placeholderTextColor="#cbd5e1"
+                                placeholderTextColor={colors.text.quaternary}
                                 style={{
                                     flex: 1,
-                                    backgroundColor: "#f8fafc",
+                                    backgroundColor: colors.surface.card2,
                                     borderRadius: 8,
                                     paddingHorizontal: 12,
                                     paddingVertical: 8,
                                     fontSize: 13,
-                                    color: "#0f172a",
+                                    color: colors.text.primary,
                                     borderWidth: 1,
                                     borderColor: "rgba(0,0,0,0.04)",
                                 }}
                             />
                             {(question.options || []).length > 2 && (
                                 <TouchableOpacity onPress={() => handleRemoveOption(i)} style={{ padding: 4 }}>
-                                    <X size={16} color="#94a3b8" />
+                                    <X size={16} color={colors.text.tertiary} />
                                 </TouchableOpacity>
                             )}
                         </View>
@@ -273,8 +275,8 @@ export function QuestionEditor({
                         onPress={handleAddOption}
                         style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 8 }}
                     >
-                        <Plus size={14} color="#7c3aed" />
-                        <Text style={{ fontSize: 13, fontWeight: "600", color: "#7c3aed" }}>Adicionar opção</Text>
+                        <Plus size={14} color={colors.purple[600]} />
+                        <Text style={{ fontSize: 13, fontWeight: "600", color: colors.purple[600] }}>Adicionar opção</Text>
                     </TouchableOpacity>
                 </View>
             )}
@@ -282,21 +284,21 @@ export function QuestionEditor({
             {/* Scale config */}
             {question.type === "scale" && (
                 <View style={{ marginTop: 12, gap: 10 }}>
-                    <Text style={{ fontSize: 11, fontWeight: "600", color: "#94a3b8" }}>Configuração da escala</Text>
+                    <Text style={{ fontSize: 11, fontWeight: "600", color: colors.text.tertiary }}>Configuração da escala</Text>
                     <View style={{ flexDirection: "row", gap: 12 }}>
                         <View style={{ flex: 1 }}>
-                            <Text style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Mínimo</Text>
+                            <Text style={{ fontSize: 11, color: colors.text.tertiary, marginBottom: 4 }}>Mínimo</Text>
                             <TextInput
                                 value={String(question.scale?.min ?? 1)}
                                 onChangeText={(t) => handleScaleChange("min", parseInt(t) || 0)}
                                 keyboardType="number-pad"
                                 style={{
-                                    backgroundColor: "#f8fafc",
+                                    backgroundColor: colors.surface.card2,
                                     borderRadius: 8,
                                     paddingHorizontal: 12,
                                     paddingVertical: 8,
                                     fontSize: 14,
-                                    color: "#0f172a",
+                                    color: colors.text.primary,
                                     textAlign: "center",
                                     borderWidth: 1,
                                     borderColor: "rgba(0,0,0,0.04)",
@@ -304,18 +306,18 @@ export function QuestionEditor({
                             />
                         </View>
                         <View style={{ flex: 1 }}>
-                            <Text style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Máximo</Text>
+                            <Text style={{ fontSize: 11, color: colors.text.tertiary, marginBottom: 4 }}>Máximo</Text>
                             <TextInput
                                 value={String(question.scale?.max ?? 10)}
                                 onChangeText={(t) => handleScaleChange("max", parseInt(t) || 10)}
                                 keyboardType="number-pad"
                                 style={{
-                                    backgroundColor: "#f8fafc",
+                                    backgroundColor: colors.surface.card2,
                                     borderRadius: 8,
                                     paddingHorizontal: 12,
                                     paddingVertical: 8,
                                     fontSize: 14,
-                                    color: "#0f172a",
+                                    color: colors.text.primary,
                                     textAlign: "center",
                                     borderWidth: 1,
                                     borderColor: "rgba(0,0,0,0.04)",
@@ -325,38 +327,38 @@ export function QuestionEditor({
                     </View>
                     <View style={{ flexDirection: "row", gap: 12 }}>
                         <View style={{ flex: 1 }}>
-                            <Text style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Label mínimo</Text>
+                            <Text style={{ fontSize: 11, color: colors.text.tertiary, marginBottom: 4 }}>Label mínimo</Text>
                             <TextInput
                                 value={question.scale?.min_label || ""}
                                 onChangeText={(t) => handleScaleChange("min_label", t)}
                                 placeholder="Ex: Péssimo"
-                                placeholderTextColor="#cbd5e1"
+                                placeholderTextColor={colors.text.quaternary}
                                 style={{
-                                    backgroundColor: "#f8fafc",
+                                    backgroundColor: colors.surface.card2,
                                     borderRadius: 8,
                                     paddingHorizontal: 12,
                                     paddingVertical: 8,
                                     fontSize: 13,
-                                    color: "#0f172a",
+                                    color: colors.text.primary,
                                     borderWidth: 1,
                                     borderColor: "rgba(0,0,0,0.04)",
                                 }}
                             />
                         </View>
                         <View style={{ flex: 1 }}>
-                            <Text style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Label máximo</Text>
+                            <Text style={{ fontSize: 11, color: colors.text.tertiary, marginBottom: 4 }}>Label máximo</Text>
                             <TextInput
                                 value={question.scale?.max_label || ""}
                                 onChangeText={(t) => handleScaleChange("max_label", t)}
                                 placeholder="Ex: Excelente"
-                                placeholderTextColor="#cbd5e1"
+                                placeholderTextColor={colors.text.quaternary}
                                 style={{
-                                    backgroundColor: "#f8fafc",
+                                    backgroundColor: colors.surface.card2,
                                     borderRadius: 8,
                                     paddingHorizontal: 12,
                                     paddingVertical: 8,
                                     fontSize: 13,
-                                    color: "#0f172a",
+                                    color: colors.text.primary,
                                     borderWidth: 1,
                                     borderColor: "rgba(0,0,0,0.04)",
                                 }}
@@ -379,8 +381,8 @@ export function QuestionEditor({
                         gap: 8,
                     }}
                 >
-                    <Camera size={14} color="#ef4444" />
-                    <Text style={{ fontSize: 12, color: "#64748b", flex: 1 }}>
+                    <Camera size={14} color={colors.semantic.danger.default} />
+                    <Text style={{ fontSize: 12, color: colors.text.secondary, flex: 1 }}>
                         O aluno poderá enviar uma foto da câmera ou galeria
                     </Text>
                 </View>

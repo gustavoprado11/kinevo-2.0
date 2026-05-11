@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Check, ChevronRight, Circle } from 'lucide-react-native';
-import { colors } from '@/theme';
+import { useV2Colors } from '@/hooks/useV2Colors';
 
 export type TestState = 'pending' | 'in_progress' | 'done';
 
@@ -20,17 +20,18 @@ interface Props {
 }
 
 export function TestChecklistItem({ testId, label, type_label, state, value_summary, isCurrent, onPress }: Props) {
+    const colors = useV2Colors();
     const done = state === 'done';
     const icon = done ? (
-        <Check size={18} color={colors.text.inverse} />
+        <Check size={18} color={'#FFFFFF'} />
     ) : (
-        <Circle size={18} color={isCurrent ? colors.brand.primary : colors.text.quaternary} strokeWidth={1.8} />
+        <Circle size={18} color={isCurrent ? colors.purple[600] : colors.text.quaternary} strokeWidth={1.8} />
     );
     const iconBg = done
-        ? colors.status.active
+        ? colors.semantic.success.default
         : isCurrent
-            ? colors.brand.primary + '22'
-            : colors.background.inset;
+            ? colors.purple[600] + '22'
+            : colors.border.default;
 
     return (
         <TouchableOpacity
@@ -45,10 +46,10 @@ export function TestChecklistItem({ testId, label, type_label, state, value_summ
                 alignItems: 'center',
                 gap: 12,
                 padding: 14,
-                backgroundColor: colors.background.card,
+                backgroundColor: colors.surface.card,
                 borderRadius: 14,
                 borderWidth: isCurrent ? 1 : 0,
-                borderColor: isCurrent ? colors.brand.primary : 'transparent',
+                borderColor: isCurrent ? colors.purple[600] : 'transparent',
                 opacity: done ? 0.7 : 1,
             }}>
             <View

@@ -13,6 +13,7 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 interface PressableScaleProps {
     children: React.ReactNode;
     onPress?: () => void;
+    onLongPress?: () => void;
     disabled?: boolean;
     style?: StyleProp<ViewStyle>;
     /** Scale to shrink to on press. Default: 0.97 */
@@ -42,6 +43,7 @@ interface PressableScaleProps {
 export function PressableScale({
     children,
     onPress,
+    onLongPress,
     disabled = false,
     style,
     pressScale = 0.97,
@@ -75,6 +77,7 @@ export function PressableScale({
     return (
         <AnimatedPressable
             onPress={onPress}
+            onLongPress={onLongPress}
             onPressIn={handlePressIn}
             onPressOut={handlePressOut}
             disabled={disabled}

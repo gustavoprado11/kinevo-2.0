@@ -17,6 +17,7 @@ import { useTrainingRoomStudents, useFetchStudentWorkout } from '../../hooks/use
 import { useTrainingRoomStore, MAX_SIMULTANEOUS_STUDENTS } from '../../stores/training-room-store';
 import type { SessionSetupData } from '../../stores/training-room-store';
 import { useRoleMode } from '../../contexts/RoleModeContext';
+import { useV2Colors } from '../../hooks/useV2Colors';
 
 interface StudentPickerModalProps {
     visible: boolean;
@@ -44,6 +45,7 @@ interface StudentWithWorkouts {
 }
 
 export function StudentPickerModal({ visible, onClose }: StudentPickerModalProps) {
+    const colors = useV2Colors();
     const { students, isLoading, refresh } = useTrainingRoomStudents();
     const { fetchWorkout, isLoading: isAdding } = useFetchStudentWorkout();
     const { trainerId } = useRoleMode();
@@ -186,21 +188,21 @@ export function StudentPickerModal({ visible, onClose }: StudentPickerModalProps
                         width: 40,
                         height: 40,
                         borderRadius: 20,
-                        backgroundColor: '#f5f3ff',
+                        backgroundColor: colors.purple[100],
                         alignItems: 'center',
                         justifyContent: 'center',
                     }}
                 >
-                    <Text style={{ fontSize: 14, fontWeight: '700', color: '#7c3aed' }}>
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: colors.purple[600] }}>
                         {item.name.charAt(0).toUpperCase()}
                     </Text>
                 </View>
             )}
             <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 14, fontWeight: '600', color: '#0f172a' }}>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text.primary }}>
                     {item.name}
                 </Text>
-                <Text style={{ fontSize: 12, color: '#64748b', marginTop: 1 }}>
+                <Text style={{ fontSize: 12, color: colors.text.secondary, marginTop: 1 }}>
                     {item.program
                         ? item.todayWorkouts.length > 0
                             ? `Hoje: ${item.todayWorkouts.map((w) => w.name).join(', ')}`
@@ -214,7 +216,7 @@ export function StudentPickerModal({ visible, onClose }: StudentPickerModalProps
                         width: 8,
                         height: 8,
                         borderRadius: 4,
-                        backgroundColor: item.todayWorkouts.length > 0 ? '#10b981' : '#e2e8f0',
+                        backgroundColor: item.todayWorkouts.length > 0 ? colors.semantic.success.default : colors.border.default,
                     }}
                 />
             )}
@@ -228,7 +230,7 @@ export function StudentPickerModal({ visible, onClose }: StudentPickerModalProps
 
     return (
         <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
-            <View style={{ flex: 1, backgroundColor: '#f8fafc' }}>
+            <View style={{ flex: 1, backgroundColor: colors.surface.canvas }}>
                 {/* Header */}
                 <View
                     style={{
@@ -248,12 +250,12 @@ export function StudentPickerModal({ visible, onClose }: StudentPickerModalProps
                             style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
                         >
                             <ChevronLeft size={18} color="#7c3aed" />
-                            <Text style={{ fontSize: 14, color: '#7c3aed', fontWeight: '500' }}>
+                            <Text style={{ fontSize: 14, color: colors.purple[600], fontWeight: '500' }}>
                                 Voltar
                             </Text>
                         </TouchableOpacity>
                     ) : (
-                        <Text style={{ fontSize: 17, fontWeight: '700', color: '#0f172a' }}>
+                        <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text.primary }}>
                             Adicionar Aluno
                         </Text>
                     )}
@@ -271,17 +273,17 @@ export function StudentPickerModal({ visible, onClose }: StudentPickerModalProps
                                 style={{
                                     flexDirection: 'row',
                                     alignItems: 'center',
-                                    backgroundColor: '#fff',
+                                    backgroundColor: colors.surface.card,
                                     borderRadius: 12,
                                     paddingHorizontal: 12,
                                     borderWidth: 1,
-                                    borderColor: '#e2e8f0',
+                                    borderColor: colors.border.default,
                                 }}
                             >
-                                <Search size={16} color="#94a3b8" />
+                                <Search size={16} color={colors.text.tertiary} />
                                 <TextInput
                                     placeholder="Buscar aluno..."
-                                    placeholderTextColor="#94a3b8"
+                                    placeholderTextColor={colors.text.tertiary}
                                     value={search}
                                     onChangeText={setSearch}
                                     style={{
@@ -289,7 +291,7 @@ export function StudentPickerModal({ visible, onClose }: StudentPickerModalProps
                                         paddingVertical: 10,
                                         paddingHorizontal: 8,
                                         fontSize: 14,
-                                        color: '#0f172a',
+                                        color: colors.text.primary,
                                     }}
                                     autoFocus
                                 />
@@ -303,7 +305,7 @@ export function StudentPickerModal({ visible, onClose }: StudentPickerModalProps
                             </View>
                         ) : filtered.length === 0 ? (
                             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                                <Text style={{ fontSize: 14, color: '#94a3b8' }}>
+                                <Text style={{ fontSize: 14, color: colors.text.tertiary }}>
                                     {search ? 'Nenhum aluno encontrado' : 'Nenhum aluno disponível'}
                                 </Text>
                             </View>
@@ -326,7 +328,7 @@ export function StudentPickerModal({ visible, onClose }: StudentPickerModalProps
                                 alignItems: 'center',
                                 gap: 12,
                                 padding: 14,
-                                backgroundColor: '#fff',
+                                backgroundColor: colors.surface.card,
                                 borderRadius: 14,
                                 marginBottom: 20,
                                 borderWidth: 1,
@@ -344,21 +346,21 @@ export function StudentPickerModal({ visible, onClose }: StudentPickerModalProps
                                         width: 40,
                                         height: 40,
                                         borderRadius: 20,
-                                        backgroundColor: '#f5f3ff',
+                                        backgroundColor: colors.purple[100],
                                         alignItems: 'center',
                                         justifyContent: 'center',
                                     }}
                                 >
-                                    <Text style={{ fontSize: 14, fontWeight: '700', color: '#7c3aed' }}>
+                                    <Text style={{ fontSize: 14, fontWeight: '700', color: colors.purple[600] }}>
                                         {selectedStudent.name.charAt(0).toUpperCase()}
                                     </Text>
                                 </View>
                             )}
                             <View>
-                                <Text style={{ fontSize: 15, fontWeight: '600', color: '#0f172a' }}>
+                                <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text.primary }}>
                                     {selectedStudent.name}
                                 </Text>
-                                <Text style={{ fontSize: 12, color: '#64748b' }}>
+                                <Text style={{ fontSize: 12, color: colors.text.secondary }}>
                                     {selectedStudent.program?.name || 'Sem programa'}
                                 </Text>
                             </View>
@@ -366,13 +368,13 @@ export function StudentPickerModal({ visible, onClose }: StudentPickerModalProps
 
                         {!selectedStudent.program ? (
                             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                                <Text style={{ fontSize: 14, color: '#94a3b8', textAlign: 'center' }}>
+                                <Text style={{ fontSize: 14, color: colors.text.tertiary, textAlign: 'center' }}>
                                     Este aluno não possui um programa ativo.
                                 </Text>
                             </View>
                         ) : selectedStudent.workoutOptions.length === 0 ? (
                             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                                <Text style={{ fontSize: 14, color: '#94a3b8', textAlign: 'center' }}>
+                                <Text style={{ fontSize: 14, color: colors.text.tertiary, textAlign: 'center' }}>
                                     Nenhum treino encontrado neste programa.
                                 </Text>
                             </View>
@@ -411,7 +413,7 @@ export function StudentPickerModal({ visible, onClose }: StudentPickerModalProps
                                             style={{
                                                 fontSize: 11,
                                                 fontWeight: '700',
-                                                color: '#94a3b8',
+                                                color: colors.text.tertiary,
                                                 textTransform: 'uppercase',
                                                 letterSpacing: 1.5,
                                                 marginBottom: 8,
@@ -433,7 +435,7 @@ export function StudentPickerModal({ visible, onClose }: StudentPickerModalProps
                                 )}
 
                                 {error && (
-                                    <Text style={{ marginTop: 12, fontSize: 12, color: '#ef4444' }}>
+                                    <Text style={{ marginTop: 12, fontSize: 12, color: colors.semantic.danger.default }}>
                                         {error}
                                     </Text>
                                 )}
@@ -448,7 +450,7 @@ export function StudentPickerModal({ visible, onClose }: StudentPickerModalProps
                                     disabled={!selectedWorkoutId || isAdding}
                                     activeOpacity={0.7}
                                     style={{
-                                        backgroundColor: selectedWorkoutId ? '#7c3aed' : '#e2e8f0',
+                                        backgroundColor: selectedWorkoutId ? colors.purple[600] : colors.border.default,
                                         borderRadius: 14,
                                         paddingVertical: 14,
                                         alignItems: 'center',
@@ -458,13 +460,13 @@ export function StudentPickerModal({ visible, onClose }: StudentPickerModalProps
                                     }}
                                 >
                                     {isAdding ? (
-                                        <ActivityIndicator size="small" color="#fff" />
+                                        <ActivityIndicator size="small" color="#FFFFFF" />
                                     ) : (
                                         <Text
                                             style={{
                                                 fontSize: 15,
                                                 fontWeight: '700',
-                                                color: selectedWorkoutId ? '#fff' : '#94a3b8',
+                                                color: selectedWorkoutId ? '#FFFFFF' : colors.text.tertiary,
                                             }}
                                         >
                                             {selectedWorkoutOption
@@ -495,6 +497,7 @@ function WorkoutOptionButton({
     isSelected: boolean;
     onSelect: () => void;
 }) {
+    const colors = useV2Colors();
     return (
         <TouchableOpacity
             onPress={onSelect}
@@ -506,9 +509,9 @@ function WorkoutOptionButton({
                 padding: 12,
                 borderRadius: 12,
                 marginBottom: 6,
-                backgroundColor: isSelected ? 'rgba(124, 58, 237, 0.08)' : '#fff',
+                backgroundColor: isSelected ? 'rgba(124, 58, 237, 0.08)' : colors.surface.card,
                 borderWidth: 1,
-                borderColor: isSelected ? 'rgba(124, 58, 237, 0.3)' : '#f1f5f9',
+                borderColor: isSelected ? 'rgba(124, 58, 237, 0.3)' : colors.border.subtle,
             }}
         >
             <View
@@ -539,7 +542,7 @@ function WorkoutOptionButton({
                         width: 8,
                         height: 8,
                         borderRadius: 4,
-                        backgroundColor: '#7c3aed',
+                        backgroundColor: colors.purple[600],
                     }}
                 />
             )}

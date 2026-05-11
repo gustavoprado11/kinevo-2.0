@@ -19,6 +19,7 @@ import { useStripeStatus } from "../../hooks/useStripeStatus";
 import { ContractCard } from "../../components/financial/ContractCard";
 import { NewSubscriptionSheet } from "../../components/financial/NewSubscriptionSheet";
 import type { FinancialStudent } from "../../types/financial";
+import { useV2Colors } from "../../hooks/useV2Colors";
 
 const FILTERS: { key: ContractFilter; label: string }[] = [
     { key: "all", label: "Todos" },
@@ -29,6 +30,7 @@ const FILTERS: { key: ContractFilter; label: string }[] = [
 ];
 
 export default function ContractsScreen() {
+    const colors = useV2Colors();
     const router = useRouter();
     const {
         contracts,
@@ -68,7 +70,7 @@ export default function ContractsScreen() {
     return (
         <>
             <Stack.Screen options={{ headerShown: false }} />
-            <SafeAreaView style={{ flex: 1, backgroundColor: "#F2F2F7" }} edges={["top"]}>
+            <SafeAreaView style={{ flex: 1, backgroundColor: colors.surface.canvas }} edges={["top"]}>
                 {/* Custom Header */}
                 <View style={{
                     flexDirection: "row",
@@ -83,10 +85,10 @@ export default function ContractsScreen() {
                         accessibilityLabel="Voltar"
                         hitSlop={12}
                     >
-                        <ChevronLeft size={24} color="#0f172a" />
+                        <ChevronLeft size={24} color={colors.text.primary} />
                     </TouchableOpacity>
 
-                    <Text style={{ fontSize: 18, fontWeight: "700", color: "#0f172a" }}>
+                    <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text.primary }}>
                         Assinaturas
                     </Text>
 
@@ -99,14 +101,14 @@ export default function ContractsScreen() {
                         style={{
                             flexDirection: "row",
                             alignItems: "center",
-                            backgroundColor: "#ffffff",
+                            backgroundColor: colors.surface.card,
                             borderRadius: 12,
                             paddingHorizontal: 12,
                             borderWidth: 1,
                             borderColor: "rgba(0,0,0,0.06)",
                         }}
                     >
-                        <Search size={16} color="#94a3b8" />
+                        <Search size={16} color={colors.text.tertiary} />
                         <TextInput
                             value={search}
                             onChangeText={setSearch}
@@ -117,7 +119,7 @@ export default function ContractsScreen() {
                                 paddingVertical: 10,
                                 paddingHorizontal: 8,
                                 fontSize: 14,
-                                color: "#0f172a",
+                                color: colors.text.primary,
                             }}
                             returnKeyType="search"
                             autoCorrect={false}
@@ -167,7 +169,7 @@ export default function ContractsScreen() {
                 {/* Contract List */}
                 {isLoading ? (
                     <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-                        <ActivityIndicator color="#7c3aed" size="large" />
+                        <ActivityIndicator color={colors.purple[600]} size="large" />
                     </View>
                 ) : (
                     <FlatList

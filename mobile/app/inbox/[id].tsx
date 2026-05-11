@@ -13,6 +13,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { PressableScale } from "../../components/shared/PressableScale";
 import { FormRenderer } from "../../components/forms/FormRenderer";
 import type { Question } from "../../components/forms/FormFieldRenderer";
+import { useV2Colors } from "../../hooks/useV2Colors";
 
 interface InboxItem {
     id: string;
@@ -40,6 +41,7 @@ interface LocalDraft {
 }
 
 export default function InboxItemDetailScreen() {
+    const colors = useV2Colors();
     const router = useRouter();
     const { user } = useAuth();
     const { id } = useLocalSearchParams<{ id: string }>();
@@ -336,7 +338,7 @@ export default function InboxItemDetailScreen() {
     }, [discardLocalDraft, router, submission]);
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: "#F2F2F7" }} edges={["top"]}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.surface.canvas }} edges={["top"]}>
             <Stack.Screen options={{ headerShown: false }} />
 
             <View
@@ -346,23 +348,23 @@ export default function InboxItemDetailScreen() {
                     paddingBottom: 10,
                     flexDirection: "row",
                     alignItems: "center",
-                    backgroundColor: "#F2F2F7",
+                    backgroundColor: colors.surface.canvas,
                 }}
             >
                 <Pressable onPress={() => router.back()} style={{ marginRight: 10 }}>
-                    <ChevronLeft size={22} color="#64748b" />
+                    <ChevronLeft size={22} color={colors.text.secondary} />
                 </Pressable>
-                <Text style={{ color: "#0f172a", fontWeight: "700", fontSize: 17 }}>Detalhe da Inbox</Text>
+                <Text style={{ color: colors.text.primary, fontWeight: "700", fontSize: 17 }}>Detalhe da Inbox</Text>
             </View>
 
             {isLoading ? (
                 <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-                    <ActivityIndicator color="#7c3aed" />
-                    <Text style={{ marginTop: 10, color: "#94a3b8" }}>Carregando item...</Text>
+                    <ActivityIndicator color={colors.purple[600]} />
+                    <Text style={{ marginTop: 10, color: colors.text.tertiary }}>Carregando item...</Text>
                 </View>
             ) : !item ? (
                 <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-                    <Text style={{ color: "#94a3b8" }}>Item não encontrado.</Text>
+                    <Text style={{ color: colors.text.tertiary }}>Item não encontrado.</Text>
                 </View>
             ) : (
                 <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 30 }}>
@@ -382,12 +384,12 @@ export default function InboxItemDetailScreen() {
                             elevation: 2,
                         }}
                     >
-                        <Text style={{ color: "#0f172a", fontWeight: "800", fontSize: 16 }}>{item.title}</Text>
+                        <Text style={{ color: colors.text.primary, fontWeight: "800", fontSize: 16 }}>{item.title}</Text>
                         {!!templateDescription && (
-                            <Text style={{ color: "#64748b", marginTop: 6, fontSize: 13, lineHeight: 19 }}>{templateDescription}</Text>
+                            <Text style={{ color: colors.text.secondary, marginTop: 6, fontSize: 13, lineHeight: 19 }}>{templateDescription}</Text>
                         )}
                         {!!item.subtitle && item.subtitle !== "Novo formulário" && (
-                            <Text style={{ color: "#94a3b8", marginTop: 4, fontSize: 12 }}>{item.subtitle}</Text>
+                            <Text style={{ color: colors.text.tertiary, marginTop: 4, fontSize: 12 }}>{item.subtitle}</Text>
                         )}
                     </Animated.View>
 
@@ -442,10 +444,10 @@ export default function InboxItemDetailScreen() {
                                             }}
                                         />
 
-                                        <Text style={{ color: "#059669", fontWeight: "700", fontSize: 14, marginBottom: 8 }}>
+                                        <Text style={{ color: colors.semantic.success.fg, fontWeight: "700", fontSize: 14, marginBottom: 8 }}>
                                             Feedback do treinador
                                         </Text>
-                                        <Text style={{ color: "#1e293b", lineHeight: 22, fontSize: 15 }}>
+                                        <Text style={{ color: colors.text.primary, lineHeight: 22, fontSize: 15 }}>
                                             {submission?.trainer_feedback?.message ||
                                                 item.payload?.feedback_preview ||
                                                 "Novo feedback disponível."}
@@ -457,7 +459,7 @@ export default function InboxItemDetailScreen() {
                             {submission && questions.length > 0 && (
                                 <View style={{ marginTop: 20 }}>
                                     <Animated.View entering={FadeInUp.delay(250).duration(300).easing(Easing.out(Easing.cubic))}>
-                                        <Text style={{ color: "#94a3b8", fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 2, marginBottom: 10, paddingLeft: 1 }}>
+                                        <Text style={{ color: colors.text.tertiary, fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 2, marginBottom: 10, paddingLeft: 1 }}>
                                             Suas respostas
                                         </Text>
                                     </Animated.View>
@@ -492,10 +494,10 @@ export default function InboxItemDetailScreen() {
                                                         elevation: 1,
                                                     }}
                                                 >
-                                                    <Text style={{ color: "#94a3b8", fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>
+                                                    <Text style={{ color: colors.text.tertiary, fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>
                                                         {question.label}
                                                     </Text>
-                                                    <Text style={{ color: "#0f172a", fontSize: 14, lineHeight: 20 }}>{answerText}</Text>
+                                                    <Text style={{ color: colors.text.primary, fontSize: 14, lineHeight: 20 }}>{answerText}</Text>
                                                 </View>
                                             </Animated.View>
                                         );
@@ -512,7 +514,7 @@ export default function InboxItemDetailScreen() {
                                     style={{
                                         borderWidth: 1,
                                         borderColor: "#bbf7d0",
-                                        backgroundColor: "#f0fdf4",
+                                        backgroundColor: colors.semantic.success.bg,
                                         borderRadius: 12,
                                         padding: 12,
                                         flexDirection: "row",
@@ -522,7 +524,7 @@ export default function InboxItemDetailScreen() {
                                     }}
                                 >
                                     <CheckCircle2 size={16} color="#16a34a" />
-                                    <Text style={{ color: "#16a34a", fontWeight: "500" }}>Formulário já enviado.</Text>
+                                    <Text style={{ color: colors.semantic.success.default, fontWeight: "500" }}>Formulário já enviado.</Text>
                                 </View>
                             )}
 

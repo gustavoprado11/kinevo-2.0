@@ -89,7 +89,7 @@ export default function NotificationSettings() {
         return (
             <View style={{ flex: 1, backgroundColor: colors.surface.canvas, justifyContent: "center", alignItems: "center" }}>
                 <Stack.Screen options={{ title: "Notificações" }} />
-                <ActivityIndicator color="#7c3aed" />
+                <ActivityIndicator color={colors.purple[600]} />
             </View>
         );
     }
@@ -182,7 +182,7 @@ export default function NotificationSettings() {
 
                 {saving && (
                     <View style={{ alignItems: "center", marginTop: 16 }}>
-                        <ActivityIndicator size="small" color="#7c3aed" />
+                        <ActivityIndicator size="small" color={colors.purple[600]} />
                     </View>
                 )}
             </ScrollView>

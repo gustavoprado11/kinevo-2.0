@@ -24,6 +24,7 @@ import { ExerciseFormModal } from "../../components/trainer/exercises/ExerciseFo
 import { MuscleGroupManagerModal } from "../../components/trainer/exercises/MuscleGroupManagerModal";
 import { useMuscleGroupCrud } from "../../hooks/useMuscleGroupCrud";
 import { toast } from "../../lib/toast";
+import { useV2Colors } from "../../hooks/useV2Colors";
 
 
 
@@ -38,6 +39,7 @@ function SwipeableExerciseCard({
     isOwner: boolean;
     onDelete: () => void;
 }) {
+    const colors = useV2Colors();
     const swipeableRef = useRef<Swipeable>(null);
 
     const isSystem = exercise.owner_id === null;
@@ -54,7 +56,7 @@ function SwipeableExerciseCard({
                 accessibilityLabel="Excluir exercício"
                 accessibilityRole="button"
                 style={{
-                    backgroundColor: "#ef4444",
+                    backgroundColor: colors.semantic.danger.default,
                     justifyContent: "center",
                     alignItems: "center",
                     width: 80,
@@ -63,7 +65,7 @@ function SwipeableExerciseCard({
                     marginLeft: 8,
                 }}
             >
-                <Trash2 size={20} color="#ffffff" />
+                <Trash2 size={20} color="#FFFFFF" />
                 <Text style={{ fontSize: 11, fontWeight: "600", color: "#ffffff", marginTop: 4 }}>
                     Excluir
                 </Text>
@@ -75,7 +77,7 @@ function SwipeableExerciseCard({
         <PressableScale onPress={onPress} pressScale={0.98}>
             <View
                 style={{
-                    backgroundColor: "#ffffff",
+                    backgroundColor: colors.surface.card,
                     borderRadius: 16,
                     padding: 16,
                     marginBottom: 10,
@@ -89,24 +91,24 @@ function SwipeableExerciseCard({
                 }}
             >
                 <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 10 }}>
-                    <Text style={{ fontSize: 15, fontWeight: "700", color: "#0f172a", flex: 1, marginRight: 8 }} numberOfLines={1}>
+                    <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text.primary, flex: 1, marginRight: 8 }} numberOfLines={1}>
                         {exercise.name}
                     </Text>
                     {isSystem ? (
-                        <View style={{ backgroundColor: "#f1f5f9", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
-                            <Text style={{ fontSize: 9, fontWeight: "700", color: "#94a3b8", letterSpacing: 0.5 }}>SISTEMA</Text>
+                        <View style={{ backgroundColor: colors.surface.card2, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
+                            <Text style={{ fontSize: 9, fontWeight: "700", color: colors.text.tertiary, letterSpacing: 0.5 }}>SISTEMA</Text>
                         </View>
                     ) : (
-                        <View style={{ backgroundColor: "#f5f3ff", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
-                            <Text style={{ fontSize: 9, fontWeight: "700", color: "#7c3aed", letterSpacing: 0.5 }}>CUSTOM</Text>
+                        <View style={{ backgroundColor: colors.purple[100], paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
+                            <Text style={{ fontSize: 9, fontWeight: "700", color: colors.purple[600], letterSpacing: 0.5 }}>CUSTOM</Text>
                         </View>
                     )}
                 </View>
 
                 <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
                     {exercise.muscle_groups.map((mg) => (
-                        <View key={mg.id} style={{ backgroundColor: "#f5f3ff", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}>
-                            <Text style={{ fontSize: 11, fontWeight: "600", color: "#7c3aed" }}>{mg.name}</Text>
+                        <View key={mg.id} style={{ backgroundColor: colors.purple[100], paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}>
+                            <Text style={{ fontSize: 11, fontWeight: "600", color: colors.purple[600] }}>{mg.name}</Text>
                         </View>
                     ))}
 
@@ -131,6 +133,7 @@ function SwipeableExerciseCard({
 }
 
 export default function ExercisesListScreen() {
+    const colors = useV2Colors();
     const router = useRouter();
     const { user } = useAuth();
     const {
@@ -187,7 +190,7 @@ export default function ExercisesListScreen() {
     return (
         <>
             <Stack.Screen options={{ headerShown: false }} />
-            <SafeAreaView style={{ flex: 1, backgroundColor: "#F2F2F7" }} edges={["top"]}>
+            <SafeAreaView style={{ flex: 1, backgroundColor: colors.surface.canvas }} edges={["top"]}>
                 {/* Header */}
                 <View style={{
                     flexDirection: "row",
@@ -210,9 +213,9 @@ export default function ExercisesListScreen() {
                             justifyContent: "center",
                         }}
                     >
-                        <ChevronLeft size={24} color="#0f172a" />
+                        <ChevronLeft size={24} color={colors.text.primary} />
                     </TouchableOpacity>
-                    <Text style={{ flex: 1, fontSize: 20, fontWeight: "700", color: "#0f172a" }}>
+                    <Text style={{ flex: 1, fontSize: 20, fontWeight: "700", color: colors.text.primary }}>
                         Exercícios
                     </Text>
                     <TouchableOpacity
@@ -226,12 +229,12 @@ export default function ExercisesListScreen() {
                             width: 36,
                             height: 36,
                             borderRadius: 10,
-                            backgroundColor: "#f5f3ff",
+                            backgroundColor: colors.purple[100],
                             alignItems: "center",
                             justifyContent: "center",
                         }}
                     >
-                        <Settings size={18} color="#7c3aed" />
+                        <Settings size={18} color={colors.purple[600]} />
                     </TouchableOpacity>
                 </View>
 
@@ -244,7 +247,7 @@ export default function ExercisesListScreen() {
                         style={{
                             flexDirection: "row",
                             alignItems: "center",
-                            backgroundColor: "#ffffff",
+                            backgroundColor: colors.surface.card,
                             borderRadius: 14,
                             paddingHorizontal: 14,
                             paddingVertical: 12,
@@ -253,13 +256,13 @@ export default function ExercisesListScreen() {
                             borderColor: "rgba(0,0,0,0.05)",
                         }}
                     >
-                        <Search size={18} color="#94a3b8" />
+                        <Search size={18} color={colors.text.tertiary} />
                         <TextInput
                             value={search}
                             onChangeText={setSearch}
                             placeholder="Buscar exercício..."
                             placeholderTextColor="#94a3b8"
-                            style={{ flex: 1, fontSize: 14, color: "#0f172a" }}
+                            style={{ flex: 1, fontSize: 14, color: colors.text.primary }}
                             accessibilityLabel="Buscar exercício"
                         />
                     </View>
@@ -325,11 +328,11 @@ export default function ExercisesListScreen() {
                 {/* List */}
                 {isLoading ? (
                     <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-                        <ActivityIndicator size="large" color="#7c3aed" />
+                        <ActivityIndicator size="large" color={colors.purple[600]} />
                     </View>
                 ) : exercises.length === 0 ? (
                     <EmptyState
-                        icon={<Dumbbell size={40} color="#cbd5e1" />}
+                        icon={<Dumbbell size={40} color={colors.text.quaternary} />}
                         title="Nenhum exercício encontrado"
                         description="Tente ajustar os filtros ou crie um novo exercício"
                     />
@@ -372,7 +375,7 @@ export default function ExercisesListScreen() {
                             width: 56,
                             height: 56,
                             borderRadius: 28,
-                            backgroundColor: "#7c3aed",
+                            backgroundColor: colors.purple[600],
                             alignItems: "center",
                             justifyContent: "center",
                             shadowColor: "#7c3aed",
@@ -382,7 +385,7 @@ export default function ExercisesListScreen() {
                             elevation: 6,
                         }}
                     >
-                        <Plus size={24} color="#ffffff" strokeWidth={2.5} />
+                        <Plus size={24} color="#FFFFFF" strokeWidth={2.5} />
                     </TouchableOpacity>
                 </Animated.View>
             </SafeAreaView>

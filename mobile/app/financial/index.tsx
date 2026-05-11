@@ -21,12 +21,14 @@ import { StatCard } from "../../components/trainer/StatCard";
 import { StripeStatusCard } from "../../components/financial/StripeStatusCard";
 import { TransactionRow } from "../../components/financial/TransactionRow";
 import { NewSubscriptionSheet } from "../../components/financial/NewSubscriptionSheet";
+import { useV2Colors } from "../../hooks/useV2Colors";
 
 function formatCurrency(value: number): string {
     return `R$ ${value.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
 }
 
 export default function FinancialDashboardScreen() {
+    const colors = useV2Colors();
     const router = useRouter();
     const { data, isLoading, isRefreshing, refresh } = useFinancialDashboard();
     const { status: stripeStatus, isLoading: stripeLoading } = useStripeStatus();
@@ -48,7 +50,7 @@ export default function FinancialDashboardScreen() {
     return (
         <>
             <Stack.Screen options={{ headerShown: false }} />
-            <SafeAreaView style={{ flex: 1, backgroundColor: "#F2F2F7" }} edges={["top"]}>
+            <SafeAreaView style={{ flex: 1, backgroundColor: colors.surface.canvas }} edges={["top"]}>
                 {/* Custom Header */}
                 <View style={{
                     flexDirection: "row",
@@ -63,10 +65,10 @@ export default function FinancialDashboardScreen() {
                         accessibilityLabel="Voltar"
                         hitSlop={12}
                     >
-                        <ChevronLeft size={24} color="#0f172a" />
+                        <ChevronLeft size={24} color={colors.text.primary} />
                     </TouchableOpacity>
 
-                    <Text style={{ fontSize: 18, fontWeight: "700", color: "#0f172a" }}>
+                    <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text.primary }}>
                         Financeiro
                     </Text>
 
@@ -76,7 +78,7 @@ export default function FinancialDashboardScreen() {
                         style={{
                             flexDirection: "row",
                             alignItems: "center",
-                            backgroundColor: "#7c3aed",
+                            backgroundColor: colors.purple[600],
                             paddingHorizontal: 12,
                             paddingVertical: 6,
                             borderRadius: 100,
@@ -91,7 +93,7 @@ export default function FinancialDashboardScreen() {
                 </View>
                 {isLoading ? (
                     <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-                        <ActivityIndicator color="#7c3aed" size="large" />
+                        <ActivityIndicator color={colors.purple[600]} size="large" />
                     </View>
                 ) : (
                     <ScrollView
@@ -139,7 +141,7 @@ export default function FinancialDashboardScreen() {
                         </View>
 
                         {/* Stripe Status */}
-                        <Text style={{ fontSize: 11, fontWeight: "600", color: "#94a3b8", letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>
+                        <Text style={{ fontSize: 11, fontWeight: "600", color: colors.text.tertiary, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>
                             STRIPE CONNECT
                         </Text>
                         <View style={{ marginBottom: 20 }}>
@@ -154,7 +156,7 @@ export default function FinancialDashboardScreen() {
                                 activeOpacity={0.7}
                                 style={{
                                     flex: 1,
-                                    backgroundColor: "#ffffff",
+                                    backgroundColor: colors.surface.card,
                                     borderRadius: 16,
                                     padding: 16,
                                     borderWidth: 1,
@@ -162,17 +164,17 @@ export default function FinancialDashboardScreen() {
                                 }}
                             >
                                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                                    <Wallet size={14} color="#64748b" />
-                                    <Text style={{ fontSize: 13, fontWeight: "600", color: "#0f172a" }}>Planos</Text>
+                                    <Wallet size={14} color={colors.text.secondary} />
+                                    <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text.primary }}>Planos</Text>
                                 </View>
-                                <Text style={{ fontSize: 12, color: "#64748b", marginBottom: 10 }}>
+                                <Text style={{ fontSize: 12, color: colors.text.secondary, marginBottom: 10 }}>
                                     {activePlans.length === 0
                                         ? "Nenhum plano criado"
                                         : `${activePlans.length} plano${activePlans.length > 1 ? "s" : ""} ativo${activePlans.length > 1 ? "s" : ""}`}
                                 </Text>
                                 <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                                    <Text style={{ fontSize: 12, fontWeight: "600", color: "#7c3aed" }}>Gerenciar</Text>
-                                    <ArrowRight size={12} color="#7c3aed" />
+                                    <Text style={{ fontSize: 12, fontWeight: "600", color: colors.purple[600] }}>Gerenciar</Text>
+                                    <ArrowRight size={12} color={colors.purple[600]} />
                                 </View>
                             </TouchableOpacity>
 
@@ -182,7 +184,7 @@ export default function FinancialDashboardScreen() {
                                 activeOpacity={0.7}
                                 style={{
                                     flex: 1,
-                                    backgroundColor: "#ffffff",
+                                    backgroundColor: colors.surface.card,
                                     borderRadius: 16,
                                     padding: 16,
                                     borderWidth: 1,
@@ -190,28 +192,28 @@ export default function FinancialDashboardScreen() {
                                 }}
                             >
                                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                                    <Users size={14} color="#64748b" />
-                                    <Text style={{ fontSize: 13, fontWeight: "600", color: "#0f172a" }}>Assinaturas</Text>
+                                    <Users size={14} color={colors.text.secondary} />
+                                    <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text.primary }}>Assinaturas</Text>
                                 </View>
-                                <Text style={{ fontSize: 12, color: "#64748b", marginBottom: 10 }}>
+                                <Text style={{ fontSize: 12, color: colors.text.secondary, marginBottom: 10 }}>
                                     {(data?.payingCount || 0) === 0
                                         ? "Nenhum aluno pagante"
                                         : `${data?.payingCount} aluno${(data?.payingCount || 0) > 1 ? "s" : ""} pagante${(data?.payingCount || 0) > 1 ? "s" : ""}`}
                                 </Text>
                                 <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                                    <Text style={{ fontSize: 12, fontWeight: "600", color: "#7c3aed" }}>Gerenciar</Text>
-                                    <ArrowRight size={12} color="#7c3aed" />
+                                    <Text style={{ fontSize: 12, fontWeight: "600", color: colors.purple[600] }}>Gerenciar</Text>
+                                    <ArrowRight size={12} color={colors.purple[600]} />
                                 </View>
                             </TouchableOpacity>
                         </View>
 
                         {/* Recent Transactions */}
-                        <Text style={{ fontSize: 11, fontWeight: "600", color: "#94a3b8", letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>
+                        <Text style={{ fontSize: 11, fontWeight: "600", color: colors.text.tertiary, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>
                             TRANSAÇÕES RECENTES
                         </Text>
                         <View
                             style={{
-                                backgroundColor: "#ffffff",
+                                backgroundColor: colors.surface.card,
                                 borderRadius: 16,
                                 overflow: "hidden",
                                 borderWidth: 1,
@@ -224,17 +226,17 @@ export default function FinancialDashboardScreen() {
                                     <View key={tx.id}>
                                         <TransactionRow transaction={tx} />
                                         {idx < data.recentTransactions.length - 1 && (
-                                            <View style={{ height: 1, backgroundColor: "#f1f5f9", marginHorizontal: 16 }} />
+                                            <View style={{ height: 1, backgroundColor: colors.surface.card2, marginHorizontal: 16 }} />
                                         )}
                                     </View>
                                 ))
                             ) : (
                                 <View style={{ padding: 24, alignItems: "center" }}>
                                     <DollarSign size={32} color="#cbd5e1" style={{ marginBottom: 8 }} />
-                                    <Text style={{ fontSize: 14, fontWeight: "600", color: "#94a3b8" }}>
+                                    <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text.tertiary }}>
                                         Nenhuma transação recente
                                     </Text>
-                                    <Text style={{ fontSize: 12, color: "#cbd5e1", marginTop: 4 }}>
+                                    <Text style={{ fontSize: 12, color: colors.text.quaternary, marginTop: 4 }}>
                                         Transações aparecerão aqui automaticamente
                                     </Text>
                                 </View>

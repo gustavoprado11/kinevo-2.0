@@ -10,7 +10,8 @@ import Svg, {
     Text as SvgText,
 } from "react-native-svg";
 import { Dumbbell, TrendingUp, TrendingDown, Minus } from "lucide-react-native";
-import { colors, spacing, typography } from "@/theme";
+import { spacing, typography } from "@/theme";
+import { useV2Colors } from "@/hooks/useV2Colors";
 import type { WeeklyProgress, ProgressSummary } from "../../../hooks/useStudentProgress";
 
 const DEFAULT_CHART_HEIGHT = 200;
@@ -29,7 +30,15 @@ interface Props {
 }
 
 export function TonnageChart({ data, summary, chartHeight = DEFAULT_CHART_HEIGHT, weeksToShow = 8 }: Props) {
+    const colors = useV2Colors();
     const [containerWidth, setContainerWidth] = useState(0);
+    const cardStyle = {
+        backgroundColor: colors.surface.card,
+        borderRadius: 14,
+        padding: spacing.lg,
+        borderWidth: 1,
+        borderColor: colors.border.default,
+    } as const;
 
     const onLayout = (e: LayoutChangeEvent) => {
         setContainerWidth(e.nativeEvent.layout.width);
@@ -48,9 +57,9 @@ export function TonnageChart({ data, summary, chartHeight = DEFAULT_CHART_HEIGHT
 
     const trendColor =
         summary.tonnageTrendDirection === "up"
-            ? colors.success.default
+            ? colors.semantic.success.default
             : summary.tonnageTrendDirection === "down"
-              ? colors.error.default
+              ? colors.semantic.danger.default
               : colors.text.tertiary;
 
     const TrendIcon =
@@ -64,7 +73,7 @@ export function TonnageChart({ data, summary, chartHeight = DEFAULT_CHART_HEIGHT
         return (
             <View style={cardStyle}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 }}>
-                    <Dumbbell size={14} color={colors.brand.primary} />
+                    <Dumbbell size={14} color={colors.purple[600]} />
                     <Text style={{ fontSize: typography.size.base, fontWeight: typography.weight.semibold, color: colors.text.primary }}>
                         Progressão de Carga
                     </Text>
@@ -105,7 +114,7 @@ export function TonnageChart({ data, summary, chartHeight = DEFAULT_CHART_HEIGHT
             {/* Header */}
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                    <Dumbbell size={14} color={colors.brand.primary} />
+                    <Dumbbell size={14} color={colors.purple[600]} />
                     <Text style={{ fontSize: typography.size.base, fontWeight: typography.weight.semibold, color: colors.text.primary }}>
                         Progressão de Carga
                     </Text>
@@ -125,8 +134,8 @@ export function TonnageChart({ data, summary, chartHeight = DEFAULT_CHART_HEIGHT
                 <Svg width={containerWidth} height={chartHeight}>
                     <Defs>
                         <LinearGradient id="tonnageGrad" x1="0" y1="0" x2="0" y2="1">
-                            <Stop offset="0%" stopColor={colors.brand.primary} stopOpacity={0.2} />
-                            <Stop offset="100%" stopColor={colors.brand.primary} stopOpacity={0} />
+                            <Stop offset="0%" stopColor={colors.purple[600]} stopOpacity={0.2} />
+                            <Stop offset="100%" stopColor={colors.purple[600]} stopOpacity={0} />
                         </LinearGradient>
                     </Defs>
 
@@ -138,7 +147,7 @@ export function TonnageChart({ data, summary, chartHeight = DEFAULT_CHART_HEIGHT
                                 y1={g.y}
                                 x2={containerWidth - PADDING.right}
                                 y2={g.y}
-                                stroke={colors.border.primary}
+                                stroke={colors.border.default}
                                 strokeWidth={0.5}
                             />
                             {i > 0 && (
@@ -161,7 +170,7 @@ export function TonnageChart({ data, summary, chartHeight = DEFAULT_CHART_HEIGHT
                     {/* Line */}
                     <Path
                         d={pathD}
-                        stroke={colors.brand.primary}
+                        stroke={colors.purple[600]}
                         strokeWidth={2.5}
                         fill="none"
                         strokeLinecap="round"
@@ -175,8 +184,8 @@ export function TonnageChart({ data, summary, chartHeight = DEFAULT_CHART_HEIGHT
                             cx={p.x}
                             cy={p.y}
                             r={chartData[i].totalTonnage > 0 ? 4 : 0}
-                            fill={colors.brand.primary}
-                            stroke={colors.background.card}
+                            fill={colors.purple[600]}
+                            stroke={colors.surface.card}
                             strokeWidth={1.5}
                         />
                     ))}
@@ -203,7 +212,7 @@ export function TonnageChart({ data, summary, chartHeight = DEFAULT_CHART_HEIGHT
             )}
 
             {/* Summary row */}
-            <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 8, paddingTop: 8, borderTopWidth: 0.5, borderTopColor: colors.border.primary }}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 8, paddingTop: 8, borderTopWidth: 0.5, borderTopColor: colors.border.default }}>
                 <View>
                     <Text style={{ fontSize: 9, fontWeight: typography.weight.semibold, color: colors.text.tertiary, textTransform: "uppercase" }}>
                         Primeira sem.
@@ -225,8 +234,3 @@ export function TonnageChart({ data, summary, chartHeight = DEFAULT_CHART_HEIGHT
     );
 }
 
-const cardStyle = {
-    backgroundColor: colors.background.card,
-    borderRadius: 14,
-    padding: spacing.lg,
-} as const;

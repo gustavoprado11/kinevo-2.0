@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity } from 'react-native';
 import { Trash2, Plus } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
-import { colors } from '@/theme';
+import { useV2Colors } from '@/hooks/useV2Colors';
 import type { AssessmentSection, AssessmentTest } from '@kinevo/shared/types/assessments';
 import { TestRow } from './TestRow';
 
@@ -22,6 +22,7 @@ interface Props {
 // (placeholder em B1) + botão remover. Em B2, adiciona TestRow + Add CTA
 // que dispara TestLibrarySheet.
 export function SectionCard({ section, onRename, onRemove, onAddTest, onEditTest, onRemoveTest }: Props) {
+    const colors = useV2Colors();
     const [editing, setEditing] = useState(false);
     const [draftTitle, setDraftTitle] = useState(section.title);
 
@@ -38,9 +39,9 @@ export function SectionCard({ section, onRename, onRemove, onAddTest, onEditTest
     return (
         <View
             style={{
-                backgroundColor: colors.background.card,
+                backgroundColor: colors.surface.card,
                 borderWidth: 1,
-                borderColor: colors.border.secondary,
+                borderColor: colors.border.default,
                 borderRadius: 12,
                 marginBottom: 10,
                 overflow: 'hidden',
@@ -55,7 +56,7 @@ export function SectionCard({ section, onRename, onRemove, onAddTest, onEditTest
                     paddingVertical: 10,
                     gap: 8,
                     borderBottomWidth: section.tests.length > 0 ? 1 : 0,
-                    borderBottomColor: colors.border.secondary,
+                    borderBottomColor: colors.border.default,
                 }}
             >
                 {editing ? (
@@ -132,11 +133,11 @@ export function SectionCard({ section, onRename, onRemove, onAddTest, onEditTest
                         gap: 6,
                         paddingVertical: 10,
                         borderTopWidth: 1,
-                        borderTopColor: colors.border.secondary,
+                        borderTopColor: colors.border.default,
                     }}
                 >
-                    <Plus size={14} color={colors.brand.primary} />
-                    <Text style={{ fontSize: 12, fontWeight: '600', color: colors.brand.primary }}>
+                    <Plus size={14} color={colors.purple[600]} />
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: colors.purple[600] }}>
                         Adicionar teste
                     </Text>
                 </TouchableOpacity>

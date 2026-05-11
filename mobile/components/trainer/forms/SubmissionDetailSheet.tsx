@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { supabase } from "../../../lib/supabase";
 import { useTrainerFormSubmissionDetail } from "../../../hooks/useTrainerFormSubmissionDetail";
 import { AnswerRenderer } from "./AnswerRenderer";
+import { useV2Colors } from "../../../hooks/useV2Colors";
 
 function timeAgo(dateStr: string): string {
     const diff = Date.now() - new Date(dateStr).getTime();
@@ -40,6 +41,7 @@ interface Props {
 }
 
 export function SubmissionDetailSheet({ visible, submissionId, onClose, onFeedbackSent }: Props) {
+    const colors = useV2Colors();
     const insets = useSafeAreaInsets();
     const { submission, isLoading, refetch } = useTrainerFormSubmissionDetail(
         visible ? submissionId : null
@@ -79,7 +81,7 @@ export function SubmissionDetailSheet({ visible, submissionId, onClose, onFeedba
         <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
             <KeyboardAvoidingView
                 behavior={Platform.OS === "ios" ? "padding" : undefined}
-                style={{ flex: 1, backgroundColor: "#F2F2F7" }}
+                style={{ flex: 1, backgroundColor: colors.surface.canvas }}
             >
                 {/* Header */}
                 <View
@@ -90,15 +92,15 @@ export function SubmissionDetailSheet({ visible, submissionId, onClose, onFeedba
                         flexDirection: "row",
                         alignItems: "center",
                         justifyContent: "space-between",
-                        backgroundColor: "#ffffff",
+                        backgroundColor: colors.surface.card,
                         borderBottomWidth: 0.5,
                         borderBottomColor: "rgba(0,0,0,0.08)",
                     }}
                 >
                     <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityLabel="Fechar" accessibilityRole="button">
-                        <X size={24} color="#64748b" />
+                        <X size={24} color={colors.text.secondary} />
                     </TouchableOpacity>
-                    <Text style={{ fontSize: 17, fontWeight: "700", color: "#1a1a2e" }}>
+                    <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text.primary }}>
                         Detalhes
                     </Text>
                     <View style={{ width: 24 }} />
@@ -119,7 +121,7 @@ export function SubmissionDetailSheet({ visible, submissionId, onClose, onFeedba
                                 style={{
                                     flexDirection: "row",
                                     alignItems: "center",
-                                    backgroundColor: "#ffffff",
+                                    backgroundColor: colors.surface.card,
                                     borderRadius: 14,
                                     padding: 14,
                                     marginBottom: 16,
@@ -130,7 +132,7 @@ export function SubmissionDetailSheet({ visible, submissionId, onClose, onFeedba
                                         width: 44,
                                         height: 44,
                                         borderRadius: 22,
-                                        backgroundColor: "#e2e8f0",
+                                        backgroundColor: colors.border.default,
                                         overflow: "hidden",
                                         marginRight: 12,
                                     }}
@@ -142,17 +144,17 @@ export function SubmissionDetailSheet({ visible, submissionId, onClose, onFeedba
                                         />
                                     ) : (
                                         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-                                            <Text style={{ fontSize: 18, fontWeight: "600", color: "#64748b" }}>
+                                            <Text style={{ fontSize: 18, fontWeight: "600", color: colors.text.secondary }}>
                                                 {submission.student_name.charAt(0)}
                                             </Text>
                                         </View>
                                     )}
                                 </View>
                                 <View style={{ flex: 1 }}>
-                                    <Text style={{ fontSize: 16, fontWeight: "600", color: "#1a1a2e" }}>
+                                    <Text style={{ fontSize: 16, fontWeight: "600", color: colors.text.primary }}>
                                         {submission.student_name}
                                     </Text>
-                                    <Text style={{ fontSize: 13, color: "#64748b", marginTop: 2 }}>
+                                    <Text style={{ fontSize: 13, color: colors.text.secondary, marginTop: 2 }}>
                                         {submission.template_title}
                                     </Text>
                                 </View>
@@ -172,7 +174,7 @@ export function SubmissionDetailSheet({ visible, submissionId, onClose, onFeedba
                                             </Text>
                                         </View>
                                     )}
-                                    <Text style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>
+                                    <Text style={{ fontSize: 11, color: colors.text.tertiary, marginTop: 4 }}>
                                         {timeAgo(submission.submitted_at)}
                                     </Text>
                                 </View>
@@ -183,7 +185,7 @@ export function SubmissionDetailSheet({ visible, submissionId, onClose, onFeedba
                                 style={{
                                     fontSize: 12,
                                     fontWeight: "600",
-                                    color: "#64748b",
+                                    color: colors.text.secondary,
                                     textTransform: "uppercase",
                                     letterSpacing: 1,
                                     marginBottom: 12,
@@ -192,12 +194,12 @@ export function SubmissionDetailSheet({ visible, submissionId, onClose, onFeedba
                                 Respostas
                             </Text>
 
-                            <View style={{ backgroundColor: "#ffffff", borderRadius: 14, padding: 16, marginBottom: 20 }}>
+                            <View style={{ backgroundColor: colors.surface.card, borderRadius: 14, padding: 16, marginBottom: 20 }}>
                                 {questions.map((q) => (
                                     <AnswerRenderer key={q.id} question={q} answer={answers[q.id]} />
                                 ))}
                                 {questions.length === 0 && (
-                                    <Text style={{ fontSize: 14, color: "#94a3b8", textAlign: "center" }}>
+                                    <Text style={{ fontSize: 14, color: colors.text.tertiary, textAlign: "center" }}>
                                         Nenhuma resposta
                                     </Text>
                                 )}
@@ -210,7 +212,7 @@ export function SubmissionDetailSheet({ visible, submissionId, onClose, onFeedba
                                         style={{
                                             fontSize: 12,
                                             fontWeight: "600",
-                                            color: "#64748b",
+                                            color: colors.text.secondary,
                                             textTransform: "uppercase",
                                             letterSpacing: 1,
                                             marginBottom: 12,
@@ -227,12 +229,12 @@ export function SubmissionDetailSheet({ visible, submissionId, onClose, onFeedba
                                             borderLeftColor: "#16a34a",
                                         }}
                                     >
-                                        <Text style={{ fontSize: 14, color: "#1a1a2e", lineHeight: 20 }}>
+                                        <Text style={{ fontSize: 14, color: colors.text.primary, lineHeight: 20 }}>
                                             {submission.trainer_feedback.message ||
                                                 submission.trainer_feedback.text ||
                                                 "Feedback enviado"}
                                         </Text>
-                                        <Text style={{ fontSize: 11, color: "#94a3b8", marginTop: 6 }}>
+                                        <Text style={{ fontSize: 11, color: colors.text.tertiary, marginTop: 6 }}>
                                             Enviado {timeAgo(submission.feedback_sent_at!)}
                                         </Text>
                                     </View>
@@ -247,7 +249,7 @@ export function SubmissionDetailSheet({ visible, submissionId, onClose, onFeedba
                                     paddingHorizontal: 20,
                                     paddingVertical: 12,
                                     paddingBottom: insets.bottom + 12,
-                                    backgroundColor: "#ffffff",
+                                    backgroundColor: colors.surface.card,
                                     borderTopWidth: 0.5,
                                     borderTopColor: "rgba(0,0,0,0.08)",
                                 }}
@@ -265,7 +267,7 @@ export function SubmissionDetailSheet({ visible, submissionId, onClose, onFeedba
                                             paddingHorizontal: 14,
                                             paddingVertical: 12,
                                             fontSize: 14,
-                                            color: "#1a1a2e",
+                                            color: colors.text.primary,
                                             maxHeight: 100,
                                         }}
                                         placeholderTextColor="#94a3b8"
@@ -296,7 +298,7 @@ export function SubmissionDetailSheet({ visible, submissionId, onClose, onFeedba
                     </>
                 ) : (
                     <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-                        <Text style={{ fontSize: 15, color: "#94a3b8" }}>
+                        <Text style={{ fontSize: 15, color: colors.text.tertiary }}>
                             Submissão não encontrada
                         </Text>
                     </View>

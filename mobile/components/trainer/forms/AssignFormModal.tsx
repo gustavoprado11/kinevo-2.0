@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { supabase } from "../../../lib/supabase";
 import { useTrainerStudentsList } from "../../../hooks/useTrainerStudentsList";
 import type { FormTemplate } from "../../../hooks/useTrainerFormTemplates";
+import { useV2Colors } from "../../../hooks/useV2Colors";
 
 interface Props {
     visible: boolean;
@@ -54,6 +55,7 @@ function computeNextDue(frequency: Frequency): string {
 }
 
 export function AssignFormModal({ visible, template, onClose, onSuccess }: Props) {
+    const colors = useV2Colors();
     const insets = useSafeAreaInsets();
     const { students, isLoading: studentsLoading } = useTrainerStudentsList();
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -164,7 +166,7 @@ export function AssignFormModal({ visible, template, onClose, onSuccess }: Props
         <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
             <KeyboardAvoidingView
                 behavior={Platform.OS === "ios" ? "padding" : undefined}
-                style={{ flex: 1, backgroundColor: "#F2F2F7" }}
+                style={{ flex: 1, backgroundColor: colors.surface.canvas }}
             >
                 {/* Header */}
                 <View
@@ -177,13 +179,13 @@ export function AssignFormModal({ visible, template, onClose, onSuccess }: Props
                         justifyContent: "space-between",
                         borderBottomWidth: 0.5,
                         borderBottomColor: "rgba(0,0,0,0.08)",
-                        backgroundColor: "#ffffff",
+                        backgroundColor: colors.surface.card,
                     }}
                 >
                     <TouchableOpacity onPress={handleClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityLabel="Fechar" accessibilityRole="button">
-                        <X size={24} color="#64748b" />
+                        <X size={24} color={colors.text.secondary} />
                     </TouchableOpacity>
-                    <Text style={{ fontSize: 17, fontWeight: "700", color: "#1a1a2e" }}>
+                    <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text.primary }}>
                         Enviar Formulário
                     </Text>
                     <View style={{ width: 24 }} />
@@ -191,11 +193,11 @@ export function AssignFormModal({ visible, template, onClose, onSuccess }: Props
 
                 {/* Template info */}
                 {template && (
-                    <View style={{ paddingHorizontal: 20, paddingVertical: 12, backgroundColor: "#ffffff", marginBottom: 8 }}>
-                        <Text style={{ fontSize: 15, fontWeight: "600", color: "#1a1a2e" }}>
+                    <View style={{ paddingHorizontal: 20, paddingVertical: 12, backgroundColor: colors.surface.card, marginBottom: 8 }}>
+                        <Text style={{ fontSize: 15, fontWeight: "600", color: colors.text.primary }}>
                             {template.title}
                         </Text>
-                        <Text style={{ fontSize: 13, color: "#64748b", marginTop: 2 }}>
+                        <Text style={{ fontSize: 13, color: colors.text.secondary, marginTop: 2 }}>
                             {template.question_count} perguntas
                         </Text>
                     </View>
@@ -203,7 +205,7 @@ export function AssignFormModal({ visible, template, onClose, onSuccess }: Props
 
                 {/* Deadline */}
                 <View style={{ paddingHorizontal: 20, paddingVertical: 12 }}>
-                    <Text style={{ fontSize: 12, fontWeight: "600", color: "#64748b", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
+                    <Text style={{ fontSize: 12, fontWeight: "600", color: colors.text.secondary, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
                         Prazo
                     </Text>
                     <View style={{ flexDirection: "row", gap: 8 }}>
@@ -240,15 +242,15 @@ export function AssignFormModal({ visible, template, onClose, onSuccess }: Props
                         onChangeText={setMessage}
                         multiline
                         style={{
-                            backgroundColor: "#ffffff",
+                            backgroundColor: colors.surface.card,
                             borderRadius: 12,
                             padding: 14,
                             fontSize: 14,
-                            color: "#1a1a2e",
+                            color: colors.text.primary,
                             minHeight: 50,
                             maxHeight: 80,
                         }}
-                        placeholderTextColor="#94a3b8"
+                        placeholderTextColor={colors.text.tertiary}
                     />
                 </View>
 
@@ -261,14 +263,14 @@ export function AssignFormModal({ visible, template, onClose, onSuccess }: Props
                             flexDirection: "row",
                             alignItems: "center",
                             justifyContent: "space-between",
-                            backgroundColor: "#ffffff",
+                            backgroundColor: colors.surface.card,
                             borderRadius: 12,
                             padding: 14,
                         }}
                     >
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                             <RefreshCw size={16} color={isRecurring ? "#7c3aed" : "#94a3b8"} />
-                            <Text style={{ fontSize: 14, fontWeight: "600", color: "#1a1a2e" }}>
+                            <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text.primary }}>
                                 Envio recorrente
                             </Text>
                         </View>
@@ -287,7 +289,7 @@ export function AssignFormModal({ visible, template, onClose, onSuccess }: Props
                                     width: 20,
                                     height: 20,
                                     borderRadius: 10,
-                                    backgroundColor: "#ffffff",
+                                    backgroundColor: colors.surface.card,
                                     alignSelf: isRecurring ? "flex-end" : "flex-start",
                                 }}
                             />
@@ -327,18 +329,18 @@ export function AssignFormModal({ visible, template, onClose, onSuccess }: Props
                         style={{
                             flexDirection: "row",
                             alignItems: "center",
-                            backgroundColor: "#ffffff",
+                            backgroundColor: colors.surface.card,
                             borderRadius: 12,
                             paddingHorizontal: 12,
                         }}
                     >
-                        <Search size={16} color="#94a3b8" />
+                        <Search size={16} color={colors.text.tertiary} />
                         <TextInput
                             placeholder="Buscar aluno..."
                             value={search}
                             onChangeText={setSearch}
-                            style={{ flex: 1, paddingVertical: 10, paddingLeft: 8, fontSize: 14, color: "#1a1a2e" }}
-                            placeholderTextColor="#94a3b8"
+                            style={{ flex: 1, paddingVertical: 10, paddingLeft: 8, fontSize: 14, color: colors.text.primary }}
+                            placeholderTextColor={colors.text.tertiary}
                         />
                     </View>
                 </View>
@@ -348,12 +350,12 @@ export function AssignFormModal({ visible, template, onClose, onSuccess }: Props
                     onPress={toggleAll}
                     style={{ paddingHorizontal: 20, paddingVertical: 8, flexDirection: "row", alignItems: "center" }}
                 >
-                    <Text style={{ fontSize: 13, fontWeight: "600", color: "#7c3aed" }}>
+                    <Text style={{ fontSize: 13, fontWeight: "600", color: colors.purple[600] }}>
                         {selectedIds.size === filteredStudents.length && filteredStudents.length > 0
                             ? "Desmarcar todos"
                             : "Selecionar todos"}
                     </Text>
-                    <Text style={{ fontSize: 13, color: "#94a3b8", marginLeft: 8 }}>
+                    <Text style={{ fontSize: 13, color: colors.text.tertiary, marginLeft: 8 }}>
                         {selectedIds.size} selecionado(s)
                     </Text>
                 </TouchableOpacity>
@@ -386,7 +388,7 @@ export function AssignFormModal({ visible, template, onClose, onSuccess }: Props
                                         width: 32,
                                         height: 32,
                                         borderRadius: 16,
-                                        backgroundColor: "#e2e8f0",
+                                        backgroundColor: colors.border.default,
                                         overflow: "hidden",
                                         marginRight: 10,
                                     }}
@@ -395,13 +397,13 @@ export function AssignFormModal({ visible, template, onClose, onSuccess }: Props
                                         <Image source={{ uri: item.avatar_url }} style={{ width: 32, height: 32 }} />
                                     ) : (
                                         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-                                            <Text style={{ fontSize: 13, fontWeight: "600", color: "#64748b" }}>
+                                            <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text.secondary }}>
                                                 {item.name.charAt(0)}
                                             </Text>
                                         </View>
                                     )}
                                 </View>
-                                <Text style={{ flex: 1, fontSize: 14, fontWeight: "500", color: "#1a1a2e" }}>
+                                <Text style={{ flex: 1, fontSize: 14, fontWeight: "500", color: colors.text.primary }}>
                                     {item.name}
                                 </Text>
                                 {isSelected && (
@@ -410,12 +412,12 @@ export function AssignFormModal({ visible, template, onClose, onSuccess }: Props
                                             width: 22,
                                             height: 22,
                                             borderRadius: 11,
-                                            backgroundColor: "#7c3aed",
+                                            backgroundColor: colors.purple[600],
                                             alignItems: "center",
                                             justifyContent: "center",
                                         }}
                                     >
-                                        <Check size={14} color="#ffffff" strokeWidth={3} />
+                                        <Check size={14} color="#FFFFFF" strokeWidth={3} />
                                     </View>
                                 )}
                             </TouchableOpacity>
@@ -423,9 +425,9 @@ export function AssignFormModal({ visible, template, onClose, onSuccess }: Props
                     }}
                     ListEmptyComponent={
                         studentsLoading ? (
-                            <ActivityIndicator style={{ marginTop: 40 }} color="#7c3aed" />
+                            <ActivityIndicator style={{ marginTop: 40 }} color={colors.purple[600]} />
                         ) : (
-                            <Text style={{ textAlign: "center", color: "#94a3b8", marginTop: 40 }}>
+                            <Text style={{ textAlign: "center", color: colors.text.tertiary, marginTop: 40 }}>
                                 Nenhum aluno encontrado
                             </Text>
                         )
@@ -438,7 +440,7 @@ export function AssignFormModal({ visible, template, onClose, onSuccess }: Props
                         paddingHorizontal: 20,
                         paddingVertical: 12,
                         paddingBottom: insets.bottom + 12,
-                        backgroundColor: "#ffffff",
+                        backgroundColor: colors.surface.card,
                         borderTopWidth: 0.5,
                         borderTopColor: "rgba(0,0,0,0.08)",
                     }}
@@ -455,7 +457,7 @@ export function AssignFormModal({ visible, template, onClose, onSuccess }: Props
                         activeOpacity={0.7}
                     >
                         {isSending ? (
-                            <ActivityIndicator color="#ffffff" />
+                            <ActivityIndicator color="#FFFFFF" />
                         ) : (
                             <Text style={{ fontSize: 16, fontWeight: "700", color: "#ffffff" }}>
                                 Enviar para {selectedIds.size} aluno(s)

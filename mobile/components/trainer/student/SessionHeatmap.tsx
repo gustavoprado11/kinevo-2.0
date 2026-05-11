@@ -3,8 +3,8 @@ import { View, Text, TouchableOpacity, useWindowDimensions } from "react-native"
 import { ChevronLeft, ChevronRight } from "lucide-react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 import { useStudentHeatmap, type HeatmapDay } from "../../../hooks/useStudentHeatmap";
-import { colors } from "../../../theme/colors";
 import { spacing } from "../../../theme/spacing";
+import { useV2Colors } from "../../../hooks/useV2Colors";
 
 // ─── Constants ───────────────────────────────────────────────────────
 const WEEKDAY_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
@@ -29,7 +29,9 @@ function getDayNumber(dateStr: string): number {
 }
 
 // ─── Intensity → visual mapping ──────────────────────────────────────
-function getCellColors(count: number, isCurrentMonth: boolean) {
+type V2Palette = ReturnType<typeof useV2Colors>;
+
+function getCellColors(count: number, isCurrentMonth: boolean, colors: V2Palette) {
     if (!isCurrentMonth) {
         return {
             bg: "transparent",
@@ -46,16 +48,16 @@ function getCellColors(count: number, isCurrentMonth: boolean) {
     }
     if (count === 1) {
         return {
-            bg: colors.brand.primaryLight,
-            text: colors.brand.primary,
-            dot: colors.brand.primary,
+            bg: colors.purple[100],
+            text: colors.purple[600],
+            dot: colors.purple[600],
         };
     }
     // count >= 2
     return {
-        bg: colors.brand.primary,
-        text: "#ffffff",
-        dot: "#ffffff",
+        bg: colors.purple[600],
+        text: "#FFFFFF",
+        dot: "#FFFFFF",
     };
 }
 
@@ -80,14 +82,15 @@ const CalendarCell = React.memo(function CalendarCell({
     isSelected: boolean;
     onPress: (date: string) => void;
 }) {
+    const colors = useV2Colors();
     const dayNum = getDayNumber(day.date);
-    const { bg, text, dot } = getCellColors(day.count, day.isCurrentMonth);
+    const { bg, text, dot } = getCellColors(day.count, day.isCurrentMonth, colors);
 
     const hasBorder = isToday || isSelected;
     const borderColor = isToday
-        ? colors.brand.primary
+        ? colors.purple[600]
         : isSelected
-            ? colors.brand.primaryDark
+            ? colors.purple[700]
             : "transparent";
 
     return (
@@ -99,7 +102,7 @@ const CalendarCell = React.memo(function CalendarCell({
                 width: cellSize,
                 height: cellSize,
                 borderRadius: cellSize * 0.28,
-                backgroundColor: isSelected && day.count > 0 ? colors.brand.primaryDark : bg,
+                backgroundColor: isSelected && day.count > 0 ? colors.purple[700] : bg,
                 borderWidth: hasBorder ? 2 : 0,
                 borderColor,
                 alignItems: "center",
@@ -144,6 +147,7 @@ const CalendarCell = React.memo(function CalendarCell({
 
 // ─── Main Component ──────────────────────────────────────────────────
 export function SessionHeatmap({ studentId }: { studentId: string }) {
+    const colors = useV2Colors();
     const { width: screenWidth } = useWindowDimensions();
 
     const {
@@ -232,7 +236,7 @@ export function SessionHeatmap({ studentId }: { studentId: string }) {
     // ─── Loading ──────────────────────────────────────────────────
     if (isLoading) {
         return (
-            <View style={{ backgroundColor: colors.background.card, borderRadius: 16, padding: spacing.lg, marginBottom: spacing.xl }}>
+            <View style={{ backgroundColor: colors.surface.card, borderRadius: 16, padding: spacing.lg, marginBottom: spacing.xl }}>
                 <Text style={{ fontSize: 13, color: colors.text.tertiary, textAlign: "center" }}>
                     Carregando histórico...
                 </Text>
@@ -260,7 +264,7 @@ export function SessionHeatmap({ studentId }: { studentId: string }) {
             {/* Calendar card */}
             <View
                 style={{
-                    backgroundColor: colors.background.card,
+                    backgroundColor: colors.surface.card,
                     borderRadius: 16,
                     padding: CARD_HORIZONTAL_PADDING,
                     shadowColor: "#000",
@@ -288,7 +292,7 @@ export function SessionHeatmap({ studentId }: { studentId: string }) {
                             width: 36,
                             height: 36,
                             borderRadius: 10,
-                            backgroundColor: colors.background.primary,
+                            backgroundColor: colors.surface.canvas,
                             alignItems: "center",
                             justifyContent: "center",
                         }}
@@ -316,7 +320,7 @@ export function SessionHeatmap({ studentId }: { studentId: string }) {
                             width: 36,
                             height: 36,
                             borderRadius: 10,
-                            backgroundColor: colors.background.primary,
+                            backgroundColor: colors.surface.canvas,
                             alignItems: "center",
                             justifyContent: "center",
                         }}
@@ -385,7 +389,7 @@ export function SessionHeatmap({ studentId }: { studentId: string }) {
                         marginTop: spacing.md,
                         paddingTop: spacing.md,
                         borderTopWidth: 1,
-                        borderTopColor: colors.border.primary,
+                        borderTopColor: colors.border.default,
                     }}
                 >
                     {/* Summary */}
@@ -435,7 +439,7 @@ export function SessionHeatmap({ studentId }: { studentId: string }) {
                 <Animated.View
                     entering={FadeIn.duration(200)}
                     style={{
-                        backgroundColor: colors.background.card,
+                        backgroundColor: colors.surface.card,
                         borderRadius: 14,
                         padding: spacing.lg,
                         marginTop: spacing.sm,
@@ -473,7 +477,7 @@ export function SessionHeatmap({ studentId }: { studentId: string }) {
                                 alignItems: "center",
                                 paddingVertical: spacing.sm,
                                 borderTopWidth: idx === 0 ? 0 : 1,
-                                borderTopColor: colors.border.primary,
+                                borderTopColor: colors.border.default,
                             }}
                         >
                             <View
