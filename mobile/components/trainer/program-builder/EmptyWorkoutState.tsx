@@ -16,14 +16,15 @@ import { useV2Colors } from "@/hooks/useV2Colors";
 
 interface EmptyWorkoutStateProps {
     workoutName: string;
-    onAddExercise: () => void;
+    /** Abre o AddBlockSheet com as 4 opções (Exercício / Aquecimento / Cardio / Nota). */
+    onAddBlock: () => void;
     onUseAI: () => void;
     onUseTemplate: () => void;
 }
 
 export function EmptyWorkoutState({
     workoutName,
-    onAddExercise,
+    onAddBlock,
     onUseAI,
     onUseTemplate,
 }: EmptyWorkoutStateProps) {
@@ -112,18 +113,18 @@ export function EmptyWorkoutState({
                 maxWidth: 280,
                 marginBottom: 24,
             }}>
-                Adicione exercícios manualmente, gere com IA a partir do perfil do aluno ou parte de um template salvo.
+                Adicione exercícios, aquecimento, cardio ou notas técnicas. Use IA pra gerar a partir do perfil do aluno ou parta de um template.
             </Text>
 
             {/* CTA primary full-width */}
             <PressableScale
                 onPress={() => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    onAddExercise();
+                    onAddBlock();
                 }}
                 pressScale={0.97}
                 accessibilityRole="button"
-                accessibilityLabel="Adicionar exercício"
+                accessibilityLabel="Adicionar bloco ao treino"
                 style={{
                     flexDirection: 'row',
                     alignItems: 'center',
@@ -144,7 +145,7 @@ export function EmptyWorkoutState({
             >
                 <Plus size={18} color={'#FFFFFF'} strokeWidth={2.5} />
                 <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFFFFF' }}>
-                    Adicionar exercício
+                    Adicionar bloco
                 </Text>
             </PressableScale>
 

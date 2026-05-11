@@ -25,6 +25,10 @@ import { EmptyWorkoutState } from "@/components/trainer/program-builder/EmptyWor
 import { WorkoutItemRow } from "@/components/trainer/program-builder/WorkoutItemRow";
 import { SetSchemeEditor, type SetSchemeEditorResult } from "@/components/trainer/program-builder/SetSchemeEditor";
 import { ExercisePickerModal } from "@/components/trainer/program-builder/ExercisePickerModal";
+import { AddBlockSheet } from "@/components/trainer/program-builder/AddBlockSheet";
+import { EditNoteSheet } from "@/components/trainer/program-builder/EditNoteSheet";
+import { EditWarmupSheet } from "@/components/trainer/program-builder/EditWarmupSheet";
+import { EditCardioSheet, type CardioObjective } from "@/components/trainer/program-builder/EditCardioSheet";
 import { ExercisePanel } from "@/components/trainer/program-builder/ExercisePanel";
 import { VolumeSummary } from "@/components/trainer/program-builder/VolumeSummary";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -54,9 +58,16 @@ export default function ProgramBuilderScreen() {
     const [showAISheet, setShowAISheet] = useState(false);
     const [showTextSheet, setShowTextSheet] = useState(false);
     const [showAssignWizard, setShowAssignWizard] = useState(false);
+    const [showAddBlockSheet, setShowAddBlockSheet] = useState(false);
+    const [editingNoteItemId, setEditingNoteItemId] = useState<string | null>(null);
+    const [editingWarmupItemId, setEditingWarmupItemId] = useState<string | null>(null);
+    const [editingCardioItemId, setEditingCardioItemId] = useState<string | null>(null);
     const { isTablet } = useResponsive();
     const initFromAiSnapshot = useProgramBuilderStore((s) => s.initFromAiSnapshot);
     const setSetScheme = useProgramBuilderStore((s) => s.setSetScheme);
+    const addNote = useProgramBuilderStore((s) => s.addNote);
+    const addWarmup = useProgramBuilderStore((s) => s.addWarmup);
+    const addCardio = useProgramBuilderStore((s) => s.addCardio);
     const [setSchemeEditingItemId, setSetSchemeEditingItemId] = useState<string | null>(null);
     const [nameFocused, setNameFocused] = useState(false);
     const [descriptionFocused, setDescriptionFocused] = useState(false);
@@ -127,13 +138,22 @@ export default function ProgramBuilderScreen() {
     //     sets * (reps_estimadas * 3s + rest_seconds)
     //   reps_estimadas: extrai primeiro número de strings tipo "10" / "8-12" / "AMRAP".
     const metaChips = useMemo(() => {
-        const populatedWorkouts = draft.workouts.filter((w) => w.items.length > 0);
-        const exerciseCount = populatedWorkouts.reduce((acc, w) => acc + w.items.length, 0);
+        // Contagem de "exerc." considera apenas item_type === 'exercise'.
+        // Blocos de note/warmup/cardio são prescritos via outros affordances e
+        // não entram na métrica de volume do programa.
+        const populatedWorkouts = draft.workouts.filter((w) =>
+            w.items.some((it) => it.item_type === 'exercise'),
+        );
+        const exerciseCount = populatedWorkouts.reduce(
+            (acc, w) => acc + w.items.filter((it) => it.item_type === 'exercise').length,
+            0,
+        );
 
         let avgWorkoutMinutes: number | null = null;
         if (populatedWorkouts.length > 0) {
             const totals = populatedWorkouts.map((w) => {
-                const seconds = w.items.reduce((acc, it) => {
+                const exerciseItems = w.items.filter((it) => it.item_type === 'exercise');
+                const seconds = exerciseItems.reduce((acc, it) => {
                     const repsMatch = String(it.reps ?? '').match(/\d+/);
                     const reps = repsMatch ? parseInt(repsMatch[0], 10) : 10;
                     const rest = it.rest_seconds ?? 60;
@@ -158,9 +178,9 @@ export default function ProgramBuilderScreen() {
             return;
         }
 
-        const hasExercises = draft.workouts.some(w => w.items.length > 0);
-        if (!hasExercises) {
-            Alert.alert("Programa vazio", "Adicione pelo menos um exercício.");
+        const hasBlocks = draft.workouts.some(w => w.items.length > 0);
+        if (!hasBlocks) {
+            Alert.alert("Programa vazio", "Adicione pelo menos um bloco ao programa.");
             return;
         }
 
@@ -209,8 +229,13 @@ export default function ProgramBuilderScreen() {
                 reset();
                 router.back();
             }
-        } catch {
-            // Error already handled by toast in the hook
+        } catch (err) {
+            const message = err instanceof Error ? err.message : 'Erro desconhecido';
+            console.error('[program-builder] save failed:', err);
+            Alert.alert(
+                'Erro ao salvar',
+                `${message}\n\nTente novamente. Se persistir, contate o suporte.`
+            );
         }
     }, [draft, params.studentId, saveAndAssign, saveAsNewProgramDiscardingAi, saveAsTemplate, reset, router, isEditMode, saveAssignedProgramFull]);
 
@@ -384,6 +409,9 @@ export default function ProgramBuilderScreen() {
                     duplicateItem(currentWorkout.id, item.id);
                 }}
                 onEditSets={() => setSetSchemeEditingItemId(item.id)}
+                onEditNote={() => setEditingNoteItemId(item.id)}
+                onEditWarmup={() => setEditingWarmupItemId(item.id)}
+                onEditCardio={() => setEditingCardioItemId(item.id)}
                 onExitAdvanced={() => {
                     // Toggle "Modo simples" no card: limpa set_scheme/method/rounds
                     // e re-popula agregados via summarize. Mesma lógica do web
@@ -722,7 +750,7 @@ export default function ProgramBuilderScreen() {
                         >
                             <EmptyWorkoutState
                                 workoutName={currentWorkout.name}
-                                onAddExercise={() => setShowExercisePicker(true)}
+                                onAddBlock={() => setShowAddBlockSheet(true)}
                                 onUseAI={openAIMenu}
                                 onUseTemplate={() => {
                                     if (!params.studentId) {
@@ -751,10 +779,10 @@ export default function ProgramBuilderScreen() {
                             <TouchableOpacity
                                 onPress={() => {
                                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                    setShowExercisePicker(true);
+                                    setShowAddBlockSheet(true);
                                 }}
                                 accessibilityRole="button"
-                                accessibilityLabel="Adicionar exercício"
+                                accessibilityLabel="Adicionar bloco ao treino"
                                 activeOpacity={0.85}
                                 style={{
                                     flexDirection: "row",
@@ -775,7 +803,7 @@ export default function ProgramBuilderScreen() {
                             >
                                 <Plus size={18} color={'#FFFFFF'} strokeWidth={2.5} />
                                 <Text style={{ fontSize: 15, fontWeight: "700", color: '#FFFFFF' }}>
-                                    Adicionar exercício
+                                    Adicionar
                                 </Text>
                             </TouchableOpacity>
                         </Animated.View>
@@ -789,6 +817,123 @@ export default function ProgramBuilderScreen() {
                             onSelect={handleExerciseSelected}
                         />
                     )}
+
+                    {/* Add Block Sheet — 4 options (exercise/warmup/cardio/note) */}
+                    {!isTablet && (
+                        <AddBlockSheet
+                            visible={showAddBlockSheet}
+                            onClose={() => setShowAddBlockSheet(false)}
+                            onAddExercise={() => {
+                                setShowAddBlockSheet(false);
+                                setShowExercisePicker(true);
+                            }}
+                            onAddWarmup={() => {
+                                if (!currentWorkout) return;
+                                addWarmup(currentWorkout.id);
+                                setShowAddBlockSheet(false);
+                            }}
+                            onAddCardio={() => {
+                                if (!currentWorkout) return;
+                                addCardio(currentWorkout.id);
+                                setShowAddBlockSheet(false);
+                            }}
+                            onAddNote={() => {
+                                if (!currentWorkout) return;
+                                addNote(currentWorkout.id);
+                                setShowAddBlockSheet(false);
+                            }}
+                        />
+                    )}
+
+                    {/* Edit Note Sheet */}
+                    {!isTablet && currentWorkout && (() => {
+                        const editingItem = editingNoteItemId
+                            ? currentWorkout.items.find((it) => it.id === editingNoteItemId)
+                            : null;
+                        return (
+                            <EditNoteSheet
+                                visible={!!editingItem}
+                                initialText={editingItem?.notes ?? ""}
+                                onSave={(text) => {
+                                    if (editingItem) {
+                                        updateItem(currentWorkout.id, editingItem.id, { notes: text });
+                                    }
+                                    setEditingNoteItemId(null);
+                                }}
+                                onClose={() => setEditingNoteItemId(null)}
+                            />
+                        );
+                    })()}
+
+                    {/* Edit Warmup Sheet */}
+                    {!isTablet && currentWorkout && (() => {
+                        const editingItem = editingWarmupItemId
+                            ? currentWorkout.items.find((it) => it.id === editingWarmupItemId)
+                            : null;
+                        const initialDescription =
+                            typeof editingItem?.item_config?.description === "string"
+                                ? (editingItem.item_config.description as string)
+                                : "";
+                        return (
+                            <EditWarmupSheet
+                                visible={!!editingItem}
+                                initialDescription={initialDescription}
+                                onSave={(description) => {
+                                    if (editingItem) {
+                                        updateItem(currentWorkout.id, editingItem.id, {
+                                            item_config: {
+                                                warmup_type: "free",
+                                                description,
+                                            },
+                                        });
+                                    }
+                                    setEditingWarmupItemId(null);
+                                }}
+                                onClose={() => setEditingWarmupItemId(null)}
+                            />
+                        );
+                    })()}
+
+                    {/* Edit Cardio Sheet */}
+                    {!isTablet && currentWorkout && (() => {
+                        const editingItem = editingCardioItemId
+                            ? currentWorkout.items.find((it) => it.id === editingCardioItemId)
+                            : null;
+                        const cfg = editingItem?.item_config ?? {};
+                        const initialConfig = {
+                            modality: typeof cfg.modality === "string" ? cfg.modality : "",
+                            objective:
+                                cfg.objective === "distance"
+                                    ? ("distance" as CardioObjective)
+                                    : ("time" as CardioObjective),
+                            target:
+                                typeof cfg.target === "number" && Number.isFinite(cfg.target)
+                                    ? (cfg.target as number)
+                                    : null,
+                            notes: typeof cfg.notes === "string" ? cfg.notes : "",
+                        };
+                        return (
+                            <EditCardioSheet
+                                visible={!!editingItem}
+                                initialConfig={initialConfig}
+                                onSave={(next) => {
+                                    if (editingItem) {
+                                        updateItem(currentWorkout.id, editingItem.id, {
+                                            item_config: {
+                                                mode: next.mode,
+                                                modality: next.modality,
+                                                objective: next.objective,
+                                                ...(next.target !== null ? { target: next.target } : {}),
+                                                ...(next.notes ? { notes: next.notes } : {}),
+                                            },
+                                        });
+                                    }
+                                    setEditingCardioItemId(null);
+                                }}
+                                onClose={() => setEditingCardioItemId(null)}
+                            />
+                        );
+                    })()}
                 </View>
               </View>
 

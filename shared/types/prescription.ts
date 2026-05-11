@@ -170,10 +170,17 @@ export interface GeneratedWorkout {
     items: GeneratedWorkoutItem[]
 }
 
-/** A single item in a generated workout (exercise, warmup, or cardio) */
+/** A single item in a generated workout (exercise, warmup, cardio, note, or superset) */
 export interface GeneratedWorkoutItem {
-    /** Item type: 'exercise' (default), 'warmup', or 'cardio' */
-    item_type?: 'exercise' | 'warmup' | 'cardio'
+    /**
+     * Item type:
+     * - `'exercise'` (default): movement with sets/reps/load.
+     * - `'warmup'`: warm-up block. Content in `item_config` (warmup_type, description).
+     * - `'cardio'`: cardio block. Content in `item_config` (mode, objective, target, notes).
+     * - `'note'`: trainer text note for the student. Text in `notes`; exercise fields null.
+     * - `'superset'`: virtual parent grouping children via `parent_item_id`.
+     */
+    item_type?: 'exercise' | 'warmup' | 'cardio' | 'note' | 'superset'
     /** exercise.id from the library (null for warmup/cardio) */
     exercise_id?: string | null
     /** Snapshot: exercise name at generation time (null for warmup/cardio) */
@@ -611,7 +618,7 @@ export interface TrainingMethodPreset {
 // mobile workspace (no Zustand, no MMKV).
 
 export interface ProgramDraftWorkoutItemLike {
-    item_type: 'exercise' | 'superset'
+    item_type: 'exercise' | 'superset' | 'note' | 'warmup' | 'cardio'
     order_index: number
     parent_item_id: string | null
     exercise_id: string

@@ -7,6 +7,9 @@ import * as Haptics from "expo-haptics";
 import { useV2Colors } from "@/hooks/useV2Colors";
 import { useResponsive } from "@/hooks/useResponsive";
 import { SetRepsInput } from "./SetRepsInput";
+import { NoteItemRow } from "./NoteItemRow";
+import { WarmupItemRow } from "./WarmupItemRow";
+import { CardioItemRow } from "./CardioItemRow";
 import type { WorkoutItem } from "@/stores/program-builder-store";
 import type { MethodKey } from "@kinevo/shared/types/prescription";
 import { SYSTEM_PRESETS } from "@kinevo/shared/lib/prescription/set-scheme-presets";
@@ -24,6 +27,12 @@ interface WorkoutItemRowProps {
      *  e re-popula os agregados via summarize. Quando ausente, o botão
      *  só entra (sem toggle de saída). */
     onExitAdvanced?: () => void;
+    /** Trigger pra abrir o EditNoteSheet quando item.item_type === 'note'. */
+    onEditNote?: () => void;
+    /** Trigger pra abrir o EditWarmupSheet quando item.item_type === 'warmup'. */
+    onEditWarmup?: () => void;
+    /** Trigger pra abrir o EditCardioSheet quando item.item_type === 'cardio'. */
+    onEditCardio?: () => void;
     drag?: () => void;
     isActive?: boolean;
 }
@@ -108,9 +117,45 @@ export function WorkoutItemRow({
     onDuplicate,
     onEditSets,
     onExitAdvanced,
+    onEditNote,
+    onEditWarmup,
+    onEditCardio,
     drag,
     isActive,
 }: WorkoutItemRowProps) {
+    // Note/Warmup/Cardio items renderizam como rows dedicadas. Early return
+    // ANTES de qualquer hook pra evitar hooks order mismatch entre tipos.
+    if (item.item_type === 'note') {
+        return (
+            <NoteItemRow
+                item={item}
+                onEdit={onEditNote ?? (() => { })}
+                onDelete={onDelete}
+                drag={drag}
+            />
+        );
+    }
+    if (item.item_type === 'warmup') {
+        return (
+            <WarmupItemRow
+                item={item}
+                onEdit={onEditWarmup ?? (() => { })}
+                onDelete={onDelete}
+                drag={drag}
+            />
+        );
+    }
+    if (item.item_type === 'cardio') {
+        return (
+            <CardioItemRow
+                item={item}
+                onEdit={onEditCardio ?? (() => { })}
+                onDelete={onDelete}
+                drag={drag}
+            />
+        );
+    }
+
     const colors = useV2Colors();
     const { isTablet } = useResponsive();
     const padding = isTablet ? 14 : 10;

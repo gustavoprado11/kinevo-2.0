@@ -84,7 +84,10 @@ export function buildSnapshotFromDraft(
             }
 
             const generatedItem: GeneratedWorkoutItem = {
-                item_type: 'exercise',
+                // Propagate the draft's item_type so that note/warmup/cardio
+                // blocks (created on mobile by the trainer) round-trip through
+                // the snapshot. Falls back to 'exercise' if undefined.
+                item_type: (item.item_type ?? 'exercise') as GeneratedWorkoutItem['item_type'],
                 order_index: item.order_index,
                 exercise_id: item.exercise_id || null,
                 exercise_name: item.exercise_name || null,

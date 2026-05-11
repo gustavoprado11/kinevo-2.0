@@ -28,8 +28,12 @@ export function WorkoutSelectorCard({ workout, isActive, onPress, onLongPress }:
     const colors = useV2Colors();
 
     const { exerciseCount, totalSets } = useMemo(() => {
-        const exerciseCount = workout.items.length;
-        const totalSets = workout.items.reduce((acc, it) => {
+        // Apenas item_type === 'exercise' conta como "exerc." e contribui
+        // pra "séries". Blocos de note/warmup/cardio são contabilizados em
+        // outras métricas (não no chip do selector).
+        const exerciseItems = workout.items.filter((it) => it.item_type === 'exercise');
+        const exerciseCount = exerciseItems.length;
+        const totalSets = exerciseItems.reduce((acc, it) => {
             const schemeLen = it.set_scheme?.length ?? 0;
             return acc + (schemeLen > 0 ? schemeLen : (it.sets ?? 0));
         }, 0);

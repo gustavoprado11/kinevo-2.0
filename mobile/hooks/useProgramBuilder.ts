@@ -87,9 +87,9 @@ export function useProgramBuilder() {
             throw new Error("Nome do programa é obrigatório");
         }
 
-        const hasExercises = draft.workouts.some(w => w.items.length > 0);
-        if (!hasExercises) {
-            throw new Error("Adicione pelo menos um exercício");
+        const hasBlocks = draft.workouts.some(w => w.items.length > 0);
+        if (!hasBlocks) {
+            throw new Error("Adicione pelo menos um bloco ao programa");
         }
 
         store.setSaving(true);
@@ -141,7 +141,14 @@ export function useProgramBuilder() {
                             item_type: item.item_type,
                             order_index: item.order_index,
                             parent_item_id: null,
-                            exercise_id: item.item_type === 'superset' ? null : item.exercise_id,
+                            // Apenas item_type === 'exercise' carrega exercise_id real.
+                            // Note/warmup/cardio/superset persistem como NULL (CHECK
+                            // constraint do banco aceita NULL pra esses tipos). O
+                            // `|| null` é safety pra evitar '' (UUID inválido).
+                            exercise_id:
+                                item.item_type === 'exercise'
+                                    ? (item.exercise_id || null)
+                                    : null,
                             substitute_exercise_ids: item.substitute_exercise_ids,
                             sets: aggs.sets,
                             reps: aggs.reps,
@@ -176,7 +183,10 @@ export function useProgramBuilder() {
                             item_type: item.item_type,
                             order_index: item.order_index,
                             parent_item_id: dbParentId,
-                            exercise_id: item.exercise_id,
+                            // Safety: superset children são sempre 'exercise' mas
+                            // coerce '' → null pra evitar UUID inválido caso o
+                            // store algum dia tenha child sem exercise_id.
+                            exercise_id: item.exercise_id || null,
                             substitute_exercise_ids: item.substitute_exercise_ids,
                             sets: item.sets,
                             reps: item.reps,
@@ -328,9 +338,9 @@ export function useProgramBuilder() {
         if (!draft.name.trim()) {
             return { ok: false, reason: "ERROR", message: "Nome do programa é obrigatório." };
         }
-        const hasExercises = draft.workouts.some((w) => w.items.length > 0);
-        if (!hasExercises) {
-            return { ok: false, reason: "ERROR", message: "Adicione pelo menos um exercício." };
+        const hasBlocks = draft.workouts.some((w) => w.items.length > 0);
+        if (!hasBlocks) {
+            return { ok: false, reason: "ERROR", message: "Adicione pelo menos um bloco ao programa." };
         }
 
         const originalWorkoutIds = new Set(draft.originalWorkoutIds);
@@ -437,7 +447,13 @@ export function useProgramBuilder() {
                         item_type: item.item_type,
                         order_index: item.order_index,
                         parent_item_id: null,
-                        exercise_id: item.item_type === "superset" ? null : item.exercise_id,
+                        // Apenas item_type === 'exercise' carrega exercise_id real.
+                        // Note/warmup/cardio/superset persistem como NULL. O
+                        // `|| null` é safety pra evitar '' (UUID inválido).
+                        exercise_id:
+                            item.item_type === "exercise"
+                                ? (item.exercise_id || null)
+                                : null,
                         substitute_exercise_ids: item.substitute_exercise_ids ?? [],
                         sets: aggs.sets,
                         reps: aggs.reps,
@@ -520,7 +536,9 @@ export function useProgramBuilder() {
                         item_type: child.item_type,
                         order_index: child.order_index,
                         parent_item_id: dbParentId,
-                        exercise_id: child.exercise_id,
+                        // Safety: superset children são sempre 'exercise' mas
+                        // coerce '' → null pra alinhamento com o CHECK constraint.
+                        exercise_id: child.exercise_id || null,
                         substitute_exercise_ids: child.substitute_exercise_ids ?? [],
                         sets: child.sets,
                         reps: child.reps,

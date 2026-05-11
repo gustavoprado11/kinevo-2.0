@@ -39,7 +39,14 @@ try {
 
 export interface WorkoutItem {
     id: string;
-    item_type: 'exercise' | 'superset';
+    /**
+     * - `'exercise'`: movement com séries/reps/carga.
+     * - `'superset'`: parent virtual que agrupa filhos via `parent_item_id`.
+     * - `'note'`: bloco de nota técnica. `notes` é o texto.
+     * - `'warmup'`: bloco de aquecimento. Conteúdo em `item_config` (warmup_type, description).
+     * - `'cardio'`: bloco de cardio. Conteúdo em `item_config` (mode, objective, target, notes).
+     */
+    item_type: 'exercise' | 'superset' | 'note' | 'warmup' | 'cardio';
     order_index: number;
     parent_item_id: string | null;
     exercise_id: string;
@@ -256,10 +263,16 @@ interface ProgramBuilderState {
         equipment: string | null;
         muscle_groups: { id: string; name: string }[];
     }) => void;
-    updateItem: (workoutId: string, itemId: string, updates: Partial<Pick<WorkoutItem, 'sets' | 'reps' | 'rest_seconds' | 'notes' | 'set_scheme' | 'method_key' | 'rounds'>>) => void;
+    updateItem: (workoutId: string, itemId: string, updates: Partial<Pick<WorkoutItem, 'sets' | 'reps' | 'rest_seconds' | 'notes' | 'set_scheme' | 'method_key' | 'rounds' | 'item_config'>>) => void;
     /** Replace per-set scheme + method + rounds on an item. Used by SetSchemeEditor.
      *  `rounds` defaults to 1 when omitted (linear method). */
     setSetScheme: (workoutId: string, itemId: string, scheme: WorkoutSet[] | null, methodKey: MethodKey | null, rounds?: number) => void;
+    /** Cria item de nota técnica no final do workout. Trainer edita via EditNoteSheet. */
+    addNote: (workoutId: string, initialText?: string) => void;
+    /** Cria item de aquecimento no final do workout. Default: warmup_type 'free'. */
+    addWarmup: (workoutId: string, initialDescription?: string) => void;
+    /** Cria item de cardio no final do workout. Default: mode 'continuous', objective 'time'. */
+    addCardio: (workoutId: string, initialNotes?: string) => void;
     removeItem: (workoutId: string, itemId: string) => void;
     /** Duplica um item dentro do mesmo treino, inserindo logo após o original.
      *  Reaplica order_index sequencial. Mantém set_scheme/method/rounds. */
@@ -338,9 +351,14 @@ function workoutsFromAssignedProgram(rows: AssignedWorkoutRow[]): Workout[] {
                 )
                 : { scheme: [] as WorkoutSet[], rounds: 1 };
             const finalScheme = collapsed.scheme.length > 0 ? collapsed.scheme : null;
+            const rawType = it.item_type;
+            const normalizedType: WorkoutItem['item_type'] =
+                rawType === 'superset' || rawType === 'note' || rawType === 'warmup' || rawType === 'cardio'
+                    ? rawType
+                    : 'exercise';
             return {
                 id: it.id,
-                item_type: (it.item_type === 'superset' ? 'superset' : 'exercise') as 'exercise' | 'superset',
+                item_type: normalizedType,
                 order_index: it.order_index,
                 parent_item_id: it.parent_item_id,
                 exercise_id: it.exercise_id ?? '',
@@ -915,6 +933,121 @@ export const useProgramBuilderStore = create<ProgramBuilderState>()(
                     rounds: 1,
                 };
 
+                return {
+                    draft: {
+                        ...state.draft,
+                        workouts: state.draft.workouts.map(w =>
+                            w.id === workoutId
+                                ? { ...w, items: [...w.items, newItem] }
+                                : w
+                        ),
+                    },
+                    isDirty: true,
+                };
+            }),
+
+            addNote: (workoutId, initialText) => set((state) => {
+                const workout = state.draft.workouts.find(w => w.id === workoutId);
+                if (!workout) return state;
+                const newItem: WorkoutItem = {
+                    id: Crypto.randomUUID(),
+                    item_type: 'note',
+                    order_index: workout.items.length,
+                    parent_item_id: null,
+                    exercise_id: '',
+                    exercise_name: '',
+                    exercise_equipment: null,
+                    exercise_muscle_groups: [],
+                    sets: 0,
+                    reps: '',
+                    rest_seconds: 0,
+                    notes: initialText ?? 'Nova anotação',
+                    exercise_function: null,
+                    item_config: {},
+                    substitute_exercise_ids: [],
+                    set_scheme: null,
+                    method_key: null,
+                    rounds: 1,
+                };
+                return {
+                    draft: {
+                        ...state.draft,
+                        workouts: state.draft.workouts.map(w =>
+                            w.id === workoutId
+                                ? { ...w, items: [...w.items, newItem] }
+                                : w
+                        ),
+                    },
+                    isDirty: true,
+                };
+            }),
+
+            addWarmup: (workoutId, initialDescription) => set((state) => {
+                const workout = state.draft.workouts.find(w => w.id === workoutId);
+                if (!workout) return state;
+                const newItem: WorkoutItem = {
+                    id: Crypto.randomUUID(),
+                    item_type: 'warmup',
+                    order_index: workout.items.length,
+                    parent_item_id: null,
+                    exercise_id: '',
+                    exercise_name: '',
+                    exercise_equipment: null,
+                    exercise_muscle_groups: [],
+                    sets: 0,
+                    reps: '',
+                    rest_seconds: 0,
+                    notes: null,
+                    exercise_function: null,
+                    item_config: {
+                        warmup_type: 'free',
+                        ...(initialDescription ? { description: initialDescription } : {}),
+                    },
+                    substitute_exercise_ids: [],
+                    set_scheme: null,
+                    method_key: null,
+                    rounds: 1,
+                };
+                return {
+                    draft: {
+                        ...state.draft,
+                        workouts: state.draft.workouts.map(w =>
+                            w.id === workoutId
+                                ? { ...w, items: [...w.items, newItem] }
+                                : w
+                        ),
+                    },
+                    isDirty: true,
+                };
+            }),
+
+            addCardio: (workoutId, initialNotes) => set((state) => {
+                const workout = state.draft.workouts.find(w => w.id === workoutId);
+                if (!workout) return state;
+                const newItem: WorkoutItem = {
+                    id: Crypto.randomUUID(),
+                    item_type: 'cardio',
+                    order_index: workout.items.length,
+                    parent_item_id: null,
+                    exercise_id: '',
+                    exercise_name: '',
+                    exercise_equipment: null,
+                    exercise_muscle_groups: [],
+                    sets: 0,
+                    reps: '',
+                    rest_seconds: 0,
+                    notes: null,
+                    exercise_function: null,
+                    item_config: {
+                        mode: 'continuous',
+                        objective: 'time',
+                        ...(initialNotes ? { notes: initialNotes } : {}),
+                    },
+                    substitute_exercise_ids: [],
+                    set_scheme: null,
+                    method_key: null,
+                    rounds: 1,
+                };
                 return {
                     draft: {
                         ...state.draft,

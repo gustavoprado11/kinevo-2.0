@@ -14,6 +14,9 @@ interface PressableScaleProps {
     children: React.ReactNode;
     onPress?: () => void;
     onLongPress?: () => void;
+    /** Long-press threshold in ms. Default React Native = 500. Pass 150 to
+     *  match the program-builder drag-handle UX. */
+    delayLongPress?: number;
     disabled?: boolean;
     style?: StyleProp<ViewStyle>;
     /** Scale to shrink to on press. Default: 0.97 */
@@ -44,6 +47,7 @@ export function PressableScale({
     children,
     onPress,
     onLongPress,
+    delayLongPress,
     disabled = false,
     style,
     pressScale = 0.97,
@@ -78,6 +82,7 @@ export function PressableScale({
         <AnimatedPressable
             onPress={onPress}
             onLongPress={onLongPress}
+            delayLongPress={delayLongPress}
             onPressIn={handlePressIn}
             onPressOut={handlePressOut}
             disabled={disabled}

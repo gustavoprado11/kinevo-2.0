@@ -134,6 +134,113 @@ describe('buildSnapshotFromDraft', () => {
         expect(snap.workouts[0].scheduled_days).toEqual([])
     })
 
+    it('serializes note items preserving item_type and notes text', () => {
+        const draft = makeDraft({
+            workouts: [
+                {
+                    name: 'Treino A',
+                    order_index: 0,
+                    frequency: ['mon'],
+                    items: [
+                        makeItem({
+                            item_type: 'note',
+                            exercise_id: '',
+                            exercise_name: '',
+                            exercise_muscle_groups: [],
+                            exercise_equipment: null,
+                            sets: 0,
+                            reps: '',
+                            rest_seconds: 0,
+                            notes: 'Lembrete: foco em técnica antes da carga.',
+                            item_config: {},
+                        }),
+                    ],
+                },
+            ],
+        })
+        const snap = buildSnapshotFromDraft(draft)
+        const item = snap.workouts[0].items[0]
+        expect(item.item_type).toBe('note')
+        expect(item.notes).toBe('Lembrete: foco em técnica antes da carga.')
+        expect(item.exercise_id).toBeNull()
+    })
+
+    it('serializes warmup items preserving item_config description', () => {
+        const draft = makeDraft({
+            workouts: [
+                {
+                    name: 'Treino A',
+                    order_index: 0,
+                    frequency: ['mon'],
+                    items: [
+                        makeItem({
+                            item_type: 'warmup',
+                            exercise_id: '',
+                            exercise_name: '',
+                            exercise_muscle_groups: [],
+                            exercise_equipment: null,
+                            sets: 0,
+                            reps: '',
+                            rest_seconds: 0,
+                            notes: null,
+                            item_config: {
+                                warmup_type: 'free',
+                                description: 'Bike 5min Z2 + mobilidade ombro.',
+                            },
+                        }),
+                    ],
+                },
+            ],
+        })
+        const snap = buildSnapshotFromDraft(draft)
+        const item = snap.workouts[0].items[0]
+        expect(item.item_type).toBe('warmup')
+        expect(item.item_config).toEqual({
+            warmup_type: 'free',
+            description: 'Bike 5min Z2 + mobilidade ombro.',
+        })
+    })
+
+    it('serializes cardio items preserving item_config mode/objective/notes', () => {
+        const draft = makeDraft({
+            workouts: [
+                {
+                    name: 'Treino A',
+                    order_index: 0,
+                    frequency: ['mon'],
+                    items: [
+                        makeItem({
+                            item_type: 'cardio',
+                            exercise_id: '',
+                            exercise_name: '',
+                            exercise_muscle_groups: [],
+                            exercise_equipment: null,
+                            sets: 0,
+                            reps: '',
+                            rest_seconds: 0,
+                            notes: null,
+                            item_config: {
+                                mode: 'continuous',
+                                objective: 'time',
+                                target: 20,
+                                notes: 'Esteira inclinação 5%.',
+                            },
+                        }),
+                    ],
+                },
+            ],
+        })
+        const snap = buildSnapshotFromDraft(draft)
+        const item = snap.workouts[0].items[0]
+        expect(item.item_type).toBe('cardio')
+        expect(item.item_config).toEqual({
+            mode: 'continuous',
+            objective: 'time',
+            target: 20,
+            notes: 'Esteira inclinação 5%.',
+        })
+    })
+
     it('roundtrip without supersets preserves exercise_id, sets, reps, rest_seconds', () => {
         const original: PrescriptionOutputSnapshot = {
             program: { name: 'P', description: 'd', duration_weeks: 6 },
