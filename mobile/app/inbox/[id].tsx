@@ -372,11 +372,11 @@ export default function InboxItemDetailScreen() {
                     <Animated.View
                         entering={FadeInUp.delay(50).duration(300).easing(Easing.out(Easing.cubic))}
                         style={{
-                            backgroundColor: '#ffffff',
+                            backgroundColor: colors.surface.card,
                             borderRadius: 20,
                             padding: 16,
                             borderWidth: 1,
-                            borderColor: 'rgba(0, 0, 0, 0.04)',
+                            borderColor: colors.border.default,
                             shadowColor: '#000',
                             shadowOffset: { width: 0, height: 2 },
                             shadowOpacity: 0.04,
@@ -481,12 +481,12 @@ export default function InboxItemDetailScreen() {
                                             >
                                                 <View
                                                     style={{
-                                                        backgroundColor: '#ffffff',
+                                                        backgroundColor: colors.surface.card,
                                                         borderRadius: 16,
                                                         padding: 14,
                                                         marginBottom: 10,
                                                         borderWidth: 1,
-                                                        borderColor: 'rgba(0, 0, 0, 0.04)',
+                                                        borderColor: colors.border.default,
                                                         shadowColor: '#000',
                                                         shadowOffset: { width: 0, height: 1 },
                                                         shadowOpacity: 0.03,

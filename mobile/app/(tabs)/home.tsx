@@ -28,6 +28,7 @@ import { Trophy } from "lucide-react-native";
 const ENTER = ANIM.enter;
 
 export default function HomeScreen() {
+    const colors = useV2Colors();
     const router = useRouter();
     const { user } = useAuth();
     const { profile, refreshProfile } = useStudentProfile();
@@ -313,13 +314,13 @@ export default function HomeScreen() {
                             style={{ width: 32, height: 32, borderRadius: 8 }}
                         />
                         <View>
-                            <Text className="text-slate-500 text-xs font-medium">
+                            <Text style={{ fontSize: 12, fontWeight: '500', color: colors.text.tertiary }}>
                                 {getGreeting()},
                             </Text>
-                            <Text className="text-xl font-bold text-slate-900">
+                            <Text style={{ fontSize: 20, fontWeight: '700', color: colors.text.primary }}>
                                 {displayName}
                             </Text>
-                            <Text className="text-slate-500 text-xs mt-1">
+                            <Text style={{ fontSize: 12, color: colors.text.tertiary, marginTop: 4 }}>
                                 {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
                             </Text>
                         </View>
@@ -343,12 +344,12 @@ export default function HomeScreen() {
                                     width: 48,
                                     height: 48,
                                     borderRadius: 24,
-                                    backgroundColor: '#e2e8f0',
+                                    backgroundColor: colors.neutral[200],
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                 }}
                             >
-                                <User size={24} color="#475569" />
+                                <User size={24} color={colors.text.secondary} />
                             </View>
                         )}
                     </TouchableOpacity>
@@ -382,7 +383,7 @@ export default function HomeScreen() {
                 {isLoading && !programName ? (
                     <View className="py-20 items-center">
                         <ActivityIndicator color="#7c3aed" />
-                        <Text className="text-slate-500 mt-4 font-medium">Sincronizando...</Text>
+                        <Text style={{ color: colors.text.tertiary, marginTop: 16, fontWeight: '500' }}>Sincronizando...</Text>
                     </View>
                 ) : (
                     <>
@@ -438,7 +439,7 @@ export default function HomeScreen() {
                                 />
                             ) : (
                                 <View className="items-center py-6">
-                                    <Text className="text-slate-400">Nenhum treino encontrado neste programa.</Text>
+                                    <Text style={{ color: colors.text.quaternary }}>Nenhum treino encontrado neste programa.</Text>
                                 </View>
                             )}
                         </Animated.View>

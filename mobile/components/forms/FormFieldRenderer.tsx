@@ -94,8 +94,8 @@ export function FormFieldRenderer({
                             }
                             style={{
                                 borderWidth: 1,
-                                borderColor: isSelected ? "#7c3aed" : "#e2e8f0",
-                                backgroundColor: isSelected ? "#f5f3ff" : "#f8fafc",
+                                borderColor: isSelected ? "#7c3aed" : colors.border.default,
+                                backgroundColor: isSelected ? "rgba(124,58,237,0.14)" : colors.surface.card2,
                                 borderRadius: 10,
                                 padding: 10,
                                 opacity: disabled ? 0.6 : 1,
@@ -128,8 +128,8 @@ export function FormFieldRenderer({
                             }}
                             style={{
                                 borderWidth: 1,
-                                borderColor: isSelected ? "#7c3aed" : "#e2e8f0",
-                                backgroundColor: isSelected ? "#f5f3ff" : "#f8fafc",
+                                borderColor: isSelected ? "#7c3aed" : colors.border.default,
+                                backgroundColor: isSelected ? "rgba(124,58,237,0.14)" : colors.surface.card2,
                                 borderRadius: 10,
                                 padding: 10,
                                 flexDirection: "row",
@@ -144,7 +144,7 @@ export function FormFieldRenderer({
                                     height: 20,
                                     borderRadius: 4,
                                     borderWidth: 1.5,
-                                    borderColor: isSelected ? "#7c3aed" : "#cbd5e1",
+                                    borderColor: isSelected ? "#7c3aed" : colors.text.quaternary,
                                     backgroundColor: isSelected ? "#7c3aed" : "transparent",
                                     alignItems: "center",
                                     justifyContent: "center",
@@ -189,8 +189,8 @@ export function FormFieldRenderer({
                                 alignItems: "center",
                                 justifyContent: "center",
                                 borderWidth: 1,
-                                borderColor: selected ? "#7c3aed" : "#e2e8f0",
-                                backgroundColor: selected ? "#f5f3ff" : "#f8fafc",
+                                borderColor: selected ? "#7c3aed" : colors.border.default,
+                                backgroundColor: selected ? "rgba(124,58,237,0.14)" : colors.surface.card2,
                                 opacity: disabled ? 0.6 : 1,
                             }}
                         >
