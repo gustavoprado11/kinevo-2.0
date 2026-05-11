@@ -231,6 +231,7 @@ function SwipeableInboxCard({
     index: number;
     showSwipe?: boolean;
 }) {
+    const colors = useV2Colors();
     const translateX = useRef(new RNAnimated.Value(0)).current;
     const swipeThreshold = -80;
     const didTriggerHaptic = useRef(false);
@@ -298,8 +299,8 @@ function SwipeableInboxCard({
                     onPress={() => { resetSwipe(); onPress(item); }}
                     pressScale={0.98}
                     style={{
-                        backgroundColor: '#ffffff', borderRadius: 20, padding: 14,
-                        borderWidth: 1, borderColor: 'rgba(0, 0, 0, 0.04)',
+                        backgroundColor: colors.surface.card, borderRadius: 20, padding: 14,
+                        borderWidth: 1, borderColor: colors.border.default,
                         shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
                         shadowOpacity: 0.04, shadowRadius: 8, elevation: 2,
                     }}
@@ -309,17 +310,17 @@ function SwipeableInboxCard({
                             <TypeIconBubble type={item.type} />
                         </View>
                         <View style={{ flex: 1 }}>
-                            <Text style={{ color: "#0f172a", fontWeight: "700", fontSize: 14 }}>{item.title}</Text>
+                            <Text style={{ color: colors.text.primary, fontWeight: "700", fontSize: 14 }}>{item.title}</Text>
                             {!!item.subtitle && (
-                                <Text style={{ color: "#64748b", fontSize: 12, marginTop: 2 }} numberOfLines={2}>{item.subtitle}</Text>
+                                <Text style={{ color: colors.text.tertiary, fontSize: 12, marginTop: 2 }} numberOfLines={2}>{item.subtitle}</Text>
                             )}
                             <View style={{ flexDirection: "row", marginTop: 8, gap: 8 }}>
-                                <Text style={{ color: "#94a3b8", fontSize: 10, fontWeight: "700", letterSpacing: 1 }}>{typeLabel(item.type).toUpperCase()}</Text>
-                                <Text style={{ color: "#cbd5e1", fontSize: 10 }}>•</Text>
-                                <Text style={{ color: "#94a3b8", fontSize: 10, fontWeight: "700", letterSpacing: 1 }}>{statusLabel(item.status).toUpperCase()}</Text>
+                                <Text style={{ color: colors.text.quaternary, fontSize: 10, fontWeight: "700", letterSpacing: 1 }}>{typeLabel(item.type).toUpperCase()}</Text>
+                                <Text style={{ color: colors.text.quaternary, fontSize: 10 }}>•</Text>
+                                <Text style={{ color: colors.text.quaternary, fontSize: 10, fontWeight: "700", letterSpacing: 1 }}>{statusLabel(item.status).toUpperCase()}</Text>
                             </View>
                         </View>
-                        <ChevronRight size={18} color="#cbd5e1" />
+                        <ChevronRight size={18} color={colors.text.quaternary} />
                     </View>
                 </PressableScale>
             </RNAnimated.View>
@@ -329,14 +330,15 @@ function SwipeableInboxCard({
 
 // ── Unread Widget ──
 function UnreadWidget({ count }: { count: number }) {
+    const colors = useV2Colors();
     if (count === 0) {
         return (
             <Animated.View entering={FadeIn.duration(400)} style={{
-                marginTop: 16, marginBottom: 16, backgroundColor: '#ecfdf5', borderRadius: 16,
+                marginTop: 16, marginBottom: 16, backgroundColor: 'rgba(16,185,129,0.10)', borderRadius: 16,
                 paddingVertical: 14, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center',
-                gap: 10, borderWidth: 1, borderColor: 'rgba(16, 185, 129, 0.12)',
+                gap: 10, borderWidth: 1, borderColor: 'rgba(16, 185, 129, 0.18)',
             }}>
-                <CheckCircle2 size={20} color="#10b981" fill="#d1fae5" />
+                <CheckCircle2 size={20} color="#10b981" fill="#D1FAE5" />
                 <Text style={{ fontSize: 14, fontWeight: '700', color: '#059669', flex: 1 }}>Tudo em dia!</Text>
                 <Text style={{ fontSize: 12, color: '#10b981', fontWeight: '500' }}>Inbox zero</Text>
             </Animated.View>
@@ -345,16 +347,16 @@ function UnreadWidget({ count }: { count: number }) {
 
     return (
         <Animated.View entering={FadeIn.duration(400)} style={{
-            marginTop: 16, marginBottom: 16, backgroundColor: '#ffffff', borderRadius: 20, padding: 20,
+            marginTop: 16, marginBottom: 16, backgroundColor: colors.surface.card, borderRadius: 20, padding: 20,
             flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-            borderWidth: 1, borderColor: 'rgba(0, 0, 0, 0.04)',
+            borderWidth: 1, borderColor: colors.border.default,
             shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 2,
         }}>
             <View>
-                <Text style={{ color: '#94a3b8', fontSize: 11, fontWeight: '600', letterSpacing: 1, textTransform: 'uppercase' }}>Não lidos</Text>
+                <Text style={{ color: colors.text.quaternary, fontSize: 11, fontWeight: '600', letterSpacing: 1, textTransform: 'uppercase' }}>Não lidos</Text>
                 <Text style={{ color: '#7c3aed', fontSize: 32, fontWeight: '900', marginTop: 2 }}>{count}</Text>
             </View>
-            <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#f5f3ff', alignItems: 'center', justifyContent: 'center' }}>
+            <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(124,58,237,0.12)', alignItems: 'center', justifyContent: 'center' }}>
                 <InboxIcon size={20} color="#7c3aed" />
             </View>
         </Animated.View>
@@ -363,18 +365,20 @@ function UnreadWidget({ count }: { count: number }) {
 
 // ── Empty State ──
 function EmptyState({ label }: { label: string }) {
+    const colors = useV2Colors();
     return (
         <View style={{ alignItems: 'center', paddingVertical: 32, gap: 10 }}>
-            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center' }}>
-                <InboxIcon size={22} color="#cbd5e1" />
+            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: colors.neutral[100], alignItems: 'center', justifyContent: 'center' }}>
+                <InboxIcon size={22} color={colors.text.quaternary} />
             </View>
-            <Text style={{ color: '#94a3b8', fontSize: 13, fontWeight: '500' }}>{label}</Text>
+            <Text style={{ color: colors.text.tertiary, fontSize: 13, fontWeight: '500' }}>{label}</Text>
         </View>
     );
 }
 
 // ── Notifications Content (former Inbox content) ──
 function NotificationsTab() {
+    const colors = useV2Colors();
     const router = useRouter();
     const {
         pendingItems, completedItems, unreadCount,
@@ -410,11 +414,11 @@ function NotificationsTab() {
             <UnreadWidget count={unreadCount} />
 
             <Animated.View entering={FadeInUp.delay(60).duration(300).easing(Easing.out(Easing.cubic))}>
-                <Text style={sectionLabelStyle}>Pendentes</Text>
+                <Text style={[sectionLabelStyle, { color: colors.text.quaternary }]}>Pendentes</Text>
             </Animated.View>
 
             {isLoading ? (
-                <Text style={{ color: "#94a3b8", marginBottom: 18, fontSize: 13 }}>Carregando...</Text>
+                <Text style={{ color: colors.text.quaternary, marginBottom: 18, fontSize: 13 }}>Carregando...</Text>
             ) : pendingItems.length === 0 ? (
                 <EmptyState label="Nenhuma pendência no momento" />
             ) : (
@@ -424,7 +428,7 @@ function NotificationsTab() {
             )}
 
             <Animated.View entering={FadeInUp.delay(120).duration(300).easing(Easing.out(Easing.cubic))}>
-                <Text style={[sectionLabelStyle, { marginTop: 16 }]}>Concluídos</Text>
+                <Text style={[sectionLabelStyle, { color: colors.text.quaternary, marginTop: 16 }]}>Concluídos</Text>
             </Animated.View>
 
             {completedItems.length === 0 ? (
@@ -599,9 +603,9 @@ function TrainerCardHero({
     );
 }
 
+// Color override aplicado nos call sites (via useV2Colors).
 const sectionLabelStyle = {
     marginBottom: 10,
-    color: "#94a3b8",
     fontSize: 11,
     letterSpacing: 2,
     fontWeight: "700" as const,

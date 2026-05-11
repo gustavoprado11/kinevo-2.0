@@ -31,6 +31,7 @@ import * as Sharing from "expo-sharing";
 import { supabase } from "../../lib/supabase";
 import { useRoleMode } from "../../contexts/RoleModeContext";
 import { generateReportHTML } from "../../lib/reports/program-report-pdf";
+import { useV2Colors } from "../../hooks/useV2Colors";
 
 // ── Types (mirrored from web service — kept local to avoid cross-package import) ──
 
@@ -115,29 +116,38 @@ interface ProgramReport {
 }
 
 // ── Colors ──
+//
+// Hook-based palette: deriva semantic tokens da paleta v2 ativa
+// (auto-adapt light/dark via useV2Colors). Brand purple + cores
+// semânticas (success/warning/danger) mantêm hex fixos (independem
+// de modo). Apenas surface/text/border alternam.
 
-const COLORS = {
-    bg: "#F2F2F7",
-    card: "#ffffff",
-    primary: "#7c3aed",
-    primaryLight: "#f3f0ff",
-    text: "#1a1a2e",
-    textSecondary: "#64748b",
-    textMuted: "#94a3b8",
-    green: "#16a34a",
-    greenBg: "#dcfce7",
-    amber: "#d97706",
-    amberBg: "#fef3c7",
-    red: "#ef4444",
-    blue: "#3b82f6",
-    border: "rgba(0,0,0,0.06)",
-};
+function useReportColors() {
+    const v2 = useV2Colors();
+    return {
+        bg: v2.surface.canvas,
+        card: v2.surface.card,
+        primary: "#7c3aed",
+        primaryLight: "rgba(124,58,237,0.12)",
+        text: v2.text.primary,
+        textSecondary: v2.text.tertiary,
+        textMuted: v2.text.quaternary,
+        green: "#16a34a",
+        greenBg: "rgba(16,185,129,0.16)",
+        amber: "#d97706",
+        amberBg: "rgba(245,158,11,0.16)",
+        red: "#ef4444",
+        blue: "#3b82f6",
+        border: v2.border.default,
+    };
+}
 
 const PROGRESSION_COLORS = ["#7c3aed", "#3b82f6", "#f59e0b"];
 
 // ── Main Screen ──
 
 export default function ReportScreen() {
+    const COLORS = useReportColors();
     const { id } = useLocalSearchParams<{ id: string }>();
     const router = useRouter();
     const insets = useSafeAreaInsets();
@@ -747,6 +757,7 @@ export default function ReportScreen() {
 // ============================================================================
 
 function StatusBadge({ status }: { status: "draft" | "published" }) {
+    const COLORS = useReportColors();
     const isDraft = status === "draft";
     return (
         <View
@@ -775,6 +786,7 @@ function KPICard({
     value: string;
     subtitle?: string | null;
 }) {
+    const COLORS = useReportColors();
     return (
         <View style={{ flex: 1, backgroundColor: COLORS.card, borderRadius: 14, padding: 14 }}>
             <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 6 }}>
@@ -790,6 +802,7 @@ function KPICard({
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
+    const COLORS = useReportColors();
     if (typeof children === "string") {
         return (
             <Text
@@ -820,6 +833,7 @@ function BarChart({
     color: string;
     formatLabel?: (v: number) => string;
 }) {
+    const COLORS = useReportColors();
     const max = Math.max(...data, 1);
     const chartHeight = 120;
 
@@ -870,6 +884,7 @@ function LineChart({
     color: string;
     maxY?: number;
 }) {
+    const COLORS = useReportColors();
     const validValues = data.filter((v): v is number => v !== null);
     if (validValues.length === 0) return null;
 
@@ -946,6 +961,7 @@ function LineChart({
 // ── Multi-line Chart (Progression) ──
 
 function MultiLineChart({ exercises }: { exercises: ReportExerciseProgression[] }) {
+    const COLORS = useReportColors();
     const allWeights = exercises.flatMap((e) => e.weekly_max_weight.filter((v): v is number => v !== null));
     if (allWeights.length === 0) return null;
 
@@ -1075,6 +1091,7 @@ function ProgressBar({
     value: number;
     max: number;
 }) {
+    const COLORS = useReportColors();
     const pct = max > 0 ? Math.min((value / max) * 100, 100) : 0;
 
     return (
@@ -1087,7 +1104,7 @@ function ProgressBar({
                     {value}/{max}
                 </Text>
             </View>
-            <View style={{ height: 8, backgroundColor: "#f1f5f9", borderRadius: 4 }}>
+            <View style={{ height: 8, backgroundColor: COLORS.border, borderRadius: 4 }}>
                 <View
                     style={{
                         height: 8,
@@ -1104,6 +1121,7 @@ function ProgressBar({
 // ── Muscle Group Breakdown ──
 
 function MuscleGroupBreakdown({ total }: { total: Record<string, number> }) {
+    const COLORS = useReportColors();
     const entries = Object.entries(total).filter(([, v]) => v > 0);
     if (entries.length === 0) return null;
 
@@ -1140,7 +1158,7 @@ function MuscleGroupBreakdown({ total }: { total: Record<string, number> }) {
                                 {count}
                             </Text>
                         </View>
-                        <View style={{ height: 8, backgroundColor: "#f1f5f9", borderRadius: 4 }}>
+                        <View style={{ height: 8, backgroundColor: COLORS.border, borderRadius: 4 }}>
                             <View
                                 style={{
                                     height: 8,
@@ -1223,8 +1241,10 @@ function formatDeltaPct(v: number): string {
 }
 
 // Cor do delta em três estados — evita pintar 0 de verde.
+// Green/red são semantic colors estáticos. Para neutral, uso valor fixo
+// pois esta função roda em module scope (sem hook).
 function deltaColor(v: number): string {
-    if (v > 0) return COLORS.green;
-    if (v < 0) return COLORS.red;
-    return COLORS.textSecondary;
+    if (v > 0) return "#16a34a";
+    if (v < 0) return "#ef4444";
+    return "#94a3b8";
 }
