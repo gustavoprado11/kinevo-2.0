@@ -21,6 +21,8 @@ import { useLatestUnreadReport } from "../../hooks/useLatestUnreadReport";
 import { KRing, KStreakBadge } from "../../components/v2/student";
 import { useV2Colors } from "../../hooks/useV2Colors";
 import { v2 } from "@kinevo/shared/tokens";
+import { LinearGradient } from "expo-linear-gradient";
+import { Trophy } from "lucide-react-native";
 
 // ─── Entering animation shorthand ───
 const ENTER = ANIM.enter;
@@ -440,6 +442,30 @@ export default function HomeScreen() {
                                 </View>
                             )}
                         </Animated.View>
+
+                        {/* ── Achievements grid (V2 polish) ── */}
+                        {programName && (
+                            <Animated.View
+                                entering={FadeInUp.delay(220).duration(ENTER.duration).easing(ENTER.easing)}
+                            >
+                                <AchievementsGrid
+                                    streak={streakWeeks}
+                                    totalCompletedThisProgram={weeklyProgressFull?.completedCount ?? weeklyProgress?.totalSessions ?? 0}
+                                />
+                            </Animated.View>
+                        )}
+
+                        {/* ── Weekly summary narrativo (V2 polish) ── */}
+                        {programName && (
+                            <Animated.View
+                                entering={FadeInUp.delay(260).duration(ENTER.duration).easing(ENTER.easing)}
+                            >
+                                <WeeklySummaryCard
+                                    completed={weeklyProgress?.totalSessions ?? 0}
+                                    target={weeklyProgress?.targetSessions ?? 0}
+                                />
+                            </Animated.View>
+                        )}
                     </>
                 )}
             </ScrollView>
@@ -454,9 +480,9 @@ export default function HomeScreen() {
     );
 }
 
-// ── Hero V2 student: meta semanal via KRing + streak badge.
-// Substitui ProgressCard legacy. Mantém contrato simples (props derivadas
-// do hook useActiveProgram + streak computado inline na tela).
+// ── Hero V2 student: dark gradient + KRing + KStreakBadge + glow.
+// Substitui ProgressCard legacy. Apenas presentation — props derivadas
+// de useActiveProgram + streak computado inline.
 function WeeklyProgressHero({
     programName,
     completed,
@@ -468,7 +494,238 @@ function WeeklyProgressHero({
     target: number;
     streak: number;
 }) {
+    const isComplete = target > 0 && completed >= target;
+    return (
+        <View
+            style={{
+                borderRadius: v2.radius.xl,
+                marginBottom: 16,
+                overflow: 'hidden',
+                borderWidth: 1,
+                borderColor: 'rgba(255,255,255,0.06)',
+                shadowColor: '#7C3AED',
+                shadowOffset: { width: 0, height: 12 },
+                shadowOpacity: 0.18,
+                shadowRadius: 24,
+                elevation: 8,
+            }}
+        >
+            <LinearGradient
+                colors={['#18181B', '#27272A', '#3B0764', '#5B21B6']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{ padding: 20 }}
+            >
+                {/* Top row: eyebrow + program name + trophy */}
+                <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 18 }}>
+                    <View style={{ flex: 1, marginRight: 12 }}>
+                        <Text
+                            style={{
+                                fontFamily: 'PlusJakartaSans_700Bold',
+                                fontSize: 10,
+                                letterSpacing: 1.4,
+                                textTransform: 'uppercase',
+                                color: 'rgba(255,255,255,0.5)',
+                                marginBottom: 4,
+                            }}
+                        >
+                            Programa atual
+                        </Text>
+                        <Text
+                            style={{
+                                fontFamily: 'PlusJakartaSans_800ExtraBold',
+                                fontSize: 19,
+                                letterSpacing: -0.4,
+                                color: '#FFFFFF',
+                            }}
+                            numberOfLines={2}
+                        >
+                            {programName}
+                        </Text>
+                    </View>
+                    <LinearGradient
+                        colors={['#FCD34D', '#F59E0B']}
+                        style={{
+                            width: 40,
+                            height: 40,
+                            borderRadius: 12,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            shadowColor: '#F59E0B',
+                            shadowOffset: { width: 0, height: 4 },
+                            shadowOpacity: 0.4,
+                            shadowRadius: 10,
+                        }}
+                    >
+                        <Trophy size={20} color="#78350F" strokeWidth={2.5} />
+                    </LinearGradient>
+                </View>
+
+                {/* Progress row: KRing + stats */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+                    <KRing
+                        value={completed}
+                        max={Math.max(target, 1)}
+                        size="md"
+                        color={isComplete ? 'gold' : 'purple'}
+                        centerContent={
+                            <Text
+                                style={{
+                                    fontFamily: 'PlusJakartaSans_800ExtraBold',
+                                    fontSize: 18,
+                                    color: '#FFFFFF',
+                                }}
+                            >
+                                {completed}/{Math.max(target, 0)}
+                            </Text>
+                        }
+                    />
+                    <View style={{ flex: 1, gap: 4 }}>
+                        <Text
+                            style={{
+                                fontFamily: 'PlusJakartaSans_700Bold',
+                                fontSize: 9.5,
+                                letterSpacing: 1.1,
+                                textTransform: 'uppercase',
+                                color: 'rgba(255,255,255,0.55)',
+                            }}
+                        >
+                            Meta semanal
+                        </Text>
+                        <Text
+                            style={{
+                                fontFamily: 'PlusJakartaSans_800ExtraBold',
+                                fontSize: 22,
+                                letterSpacing: -0.6,
+                                color: '#FFFFFF',
+                            }}
+                        >
+                            {completed}/{target} treinos
+                        </Text>
+                        {streak >= 2 ? (
+                            <View style={{ marginTop: 6, alignSelf: 'flex-start' }}>
+                                <KStreakBadge count={streak} unit="semanas" size="sm" variant="pill" />
+                            </View>
+                        ) : null}
+                    </View>
+                </View>
+            </LinearGradient>
+        </View>
+    );
+}
+
+// ── Achievements grid (3 cards inline). Cards usam dados disponíveis:
+// streak (já temos), PR mais recente (não temos no hook de home), milestone
+// de total treinos (não temos longitudinal). Por isso, omitimos cards
+// quando hook não expõe dado — não inventamos números.
+function AchievementsGrid({
+    streak,
+    totalCompletedThisProgram,
+}: {
+    streak: number;
+    totalCompletedThisProgram: number;
+}) {
     const colors = useV2Colors();
+    // Marco arbitrário pra "rumo a": próximo múltiplo de 25 acima do atual.
+    const milestoneTarget = Math.max(25, Math.ceil((totalCompletedThisProgram + 1) / 25) * 25);
+
+    return (
+        <View style={{ marginBottom: 16 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10, paddingHorizontal: 2 }}>
+                <Text
+                    style={{
+                        fontFamily: 'PlusJakartaSans_700Bold',
+                        fontSize: 11,
+                        letterSpacing: 1.2,
+                        textTransform: 'uppercase',
+                        color: colors.text.tertiary,
+                    }}
+                >
+                    Suas conquistas
+                </Text>
+            </View>
+
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+                <AchievementCard
+                    icon="🔥"
+                    title={streak >= 2 ? `${streak} semanas` : 'Comece um streak'}
+                    subtitle={streak >= 2 ? 'consistente' : 'treine 2 sem.'}
+                    locked={streak < 2}
+                />
+                <AchievementCard
+                    icon="💪"
+                    title={`${totalCompletedThisProgram} treinos`}
+                    subtitle="neste programa"
+                    locked={totalCompletedThisProgram === 0}
+                />
+                <AchievementCard
+                    icon="⭐"
+                    title={`${totalCompletedThisProgram}/${milestoneTarget}`}
+                    subtitle="rumo a marco"
+                    locked
+                />
+            </View>
+        </View>
+    );
+}
+
+function AchievementCard({
+    icon,
+    title,
+    subtitle,
+    locked,
+}: {
+    icon: string;
+    title: string;
+    subtitle: string;
+    locked?: boolean;
+}) {
+    const colors = useV2Colors();
+    return (
+        <View
+            style={{
+                flex: 1,
+                backgroundColor: colors.surface.card,
+                borderRadius: v2.radius.md,
+                borderWidth: 1,
+                borderColor: colors.border.default,
+                padding: 12,
+                gap: 6,
+                opacity: locked ? 0.6 : 1,
+            }}
+        >
+            <Text style={{ fontSize: 22 }}>{icon}</Text>
+            <Text
+                style={{
+                    fontFamily: 'PlusJakartaSans_700Bold',
+                    fontSize: 13,
+                    color: colors.text.primary,
+                }}
+                numberOfLines={1}
+            >
+                {title}
+            </Text>
+            <Text
+                style={{
+                    fontFamily: 'PlusJakartaSans_500Medium',
+                    fontSize: 11,
+                    color: colors.text.tertiary,
+                }}
+                numberOfLines={1}
+            >
+                {subtitle}
+            </Text>
+        </View>
+    );
+}
+
+// ── Weekly summary narrativo. Usa apenas dados disponíveis no
+// hook useActiveProgram (totalSessions desta semana). Volume + PRs +
+// aderência completa não estão expostos aqui → frase mais curta.
+function WeeklySummaryCard({ completed, target }: { completed: number; target: number }) {
+    const colors = useV2Colors();
+    if (completed === 0) return null;
+    const adherence = target > 0 ? Math.round((completed / target) * 100) : 0;
     return (
         <View
             style={{
@@ -478,57 +735,31 @@ function WeeklyProgressHero({
                 borderColor: colors.border.default,
                 padding: 16,
                 marginBottom: 16,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 16,
             }}
         >
-            <KRing
-                value={completed}
-                max={Math.max(target, 1)}
-                size="md"
-                color={completed >= target && target > 0 ? 'gold' : 'purple'}
-                label={`${completed}/${Math.max(target, 0)}`}
-            />
-            <View style={{ flex: 1, gap: 6 }}>
-                <Text
-                    style={{
-                        fontFamily: 'PlusJakartaSans_700Bold',
-                        fontSize: 10,
-                        letterSpacing: 1.2,
-                        textTransform: 'uppercase',
-                        color: colors.text.tertiary,
-                    }}
-                    numberOfLines={1}
-                >
-                    Programa atual
+            <Text
+                style={{
+                    fontFamily: 'PlusJakartaSans_500Medium',
+                    fontSize: 13,
+                    color: colors.text.secondary,
+                    lineHeight: 20,
+                }}
+            >
+                Você treinou{' '}
+                <Text style={{ fontFamily: 'PlusJakartaSans_700Bold', color: colors.text.primary }}>
+                    {completed} {completed === 1 ? 'vez' : 'vezes'}
                 </Text>
-                <Text
-                    style={{
-                        fontFamily: 'PlusJakartaSans_800ExtraBold',
-                        fontSize: 18,
-                        letterSpacing: -0.4,
-                        color: colors.text.primary,
-                    }}
-                    numberOfLines={1}
-                >
-                    {programName}
-                </Text>
-                <Text
-                    style={{
-                        fontFamily: 'PlusJakartaSans_500Medium',
-                        fontSize: 12,
-                        color: colors.text.secondary,
-                    }}
-                >
-                    Meta semanal: {completed}/{target} treinos
-                </Text>
-                {streak >= 2 ? (
-                    <View style={{ marginTop: 4 }}>
-                        <KStreakBadge count={streak} unit="semanas" size="xs" variant="pill" />
-                    </View>
-                ) : null}
-            </View>
+                {target > 0 ? (
+                    <>
+                        {' '}esta semana — aderência{' '}
+                        <Text style={{ fontFamily: 'PlusJakartaSans_700Bold', color: colors.text.primary }}>
+                            {adherence}%
+                        </Text>
+                        .{' '}
+                    </>
+                ) : '. '}
+                <Text style={{ fontStyle: 'italic', color: '#7C3AED' }}>Continue assim 💪</Text>
+            </Text>
         </View>
     );
 }

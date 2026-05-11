@@ -1,14 +1,14 @@
 import React, { useRef, useCallback, useState } from "react";
 import { useFocusEffect } from "expo-router";
 import {
-    View, Text, ScrollView, RefreshControl, Pressable,
+    View, Text, Image, ScrollView, RefreshControl, Pressable,
     Animated as RNAnimated, PanResponder,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import {
     FileText, MessageSquare, Bell, ChevronRight, CheckCircle2,
-    Inbox as InboxIcon, Trash2, MessageCircle, Award,
+    Inbox as InboxIcon, Trash2, MessageCircle, Award, AlertCircle, User,
 } from "lucide-react-native";
 import Animated, {
     FadeInUp, FadeIn, Easing,
@@ -18,16 +18,56 @@ import * as Haptics from "expo-haptics";
 import { ANIM } from "../../lib/animations";
 import { useInbox, type InboxItem } from "../../hooks/useInbox";
 import { useUnreadCount, refetchUnreadCounts } from "../../hooks/useUnreadCount";
+import { useStudentProfile } from "../../hooks/useStudentProfile";
 import { PressableScale } from "../../components/shared/PressableScale";
 import { ChatView } from "../../components/chat/ChatView";
 import { useV2Colors } from "../../hooks/useV2Colors";
+import { LinearGradient } from "expo-linear-gradient";
 
 // ── Helpers ──
-function TypeIcon({ type }: { type: InboxItem["type"] }) {
-    if (type === "form_request") return <FileText size={18} color="#7c3aed" />;
-    if (type === "feedback") return <MessageSquare size={18} color="#16a34a" />;
-    if (type === "program_report_published") return <Award size={18} color="#d97706" />;
-    return <Bell size={18} color="#0ea5e9" />;
+// Themed icon mapping: cada tipo de InboxItem ganha cor/ícone próprio.
+// Match com InboxItemType em mobile/hooks/useInbox.ts:
+//   form_request | feedback | system_alert | text_message | program_report_published
+type IconTheme = {
+    Icon: React.ComponentType<{ size: number; color: string; strokeWidth?: number }>;
+    fg: string;
+    /** Gradient [start, end] usado no bg do ícone. */
+    grad: [string, string];
+};
+
+function getIconTheme(type: InboxItem["type"]): IconTheme {
+    if (type === "form_request")
+        return { Icon: FileText, fg: '#7C3AED', grad: ['#EDE9FE', '#DDD6FE'] };
+    if (type === "feedback")
+        return { Icon: MessageSquare, fg: '#047857', grad: ['#D1FAE5', '#A7F3D0'] };
+    if (type === "program_report_published")
+        return { Icon: Award, fg: '#B45309', grad: ['#FEF3C7', '#FDE68A'] };
+    if (type === "system_alert")
+        return { Icon: AlertCircle, fg: '#B91C1C', grad: ['#FEE2E2', '#FECACA'] };
+    if (type === "text_message")
+        return { Icon: MessageCircle, fg: '#1D4ED8', grad: ['#DBEAFE', '#BFDBFE'] };
+    return { Icon: Bell, fg: '#0EA5E9', grad: ['#E0F2FE', '#BAE6FD'] };
+}
+
+function TypeIconBubble({ type }: { type: InboxItem["type"] }) {
+    const theme = getIconTheme(type);
+    const { Icon } = theme;
+    return (
+        <LinearGradient
+            colors={theme.grad}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{
+                width: 40,
+                height: 40,
+                borderRadius: 12,
+                alignItems: 'center',
+                justifyContent: 'center',
+            }}
+        >
+            <Icon size={18} color={theme.fg} strokeWidth={2} />
+        </LinearGradient>
+    );
 }
 
 function typeLabel(type: InboxItem["type"]) {
@@ -233,11 +273,6 @@ function SwipeableInboxCard({
         }).start();
     };
 
-    const iconBg =
-        item.type === "feedback" ? "#ecfdf5" :
-            item.type === "form_request" ? "#f5f3ff" :
-                item.type === "program_report_published" ? "#fef3c7" : "#f0f9ff";
-
     return (
         <Animated.View
             entering={FadeInUp.delay(index * 35).duration(300).easing(Easing.out(Easing.cubic))}
@@ -270,8 +305,8 @@ function SwipeableInboxCard({
                     }}
                 >
                     <View style={{ flexDirection: "row", alignItems: "center" }}>
-                        <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: iconBg, alignItems: "center", justifyContent: "center", marginRight: 12 }}>
-                            <TypeIcon type={item.type} />
+                        <View style={{ marginRight: 12 }}>
+                            <TypeIconBubble type={item.type} />
                         </View>
                         <View style={{ flex: 1 }}>
                             <Text style={{ color: "#0f172a", fontWeight: "700", fontSize: 14 }}>{item.title}</Text>
@@ -406,6 +441,7 @@ function NotificationsTab() {
 // ── Main Screen ──
 export default function InboxScreen() {
     const colors = useV2Colors();
+    const { profile } = useStudentProfile();
     const [activeTab, setActiveTab] = useState<'messages' | 'notifications'>('messages');
     const { messages: unreadMessages, notifications: unreadNotifications } = useUnreadCount();
 
@@ -425,6 +461,17 @@ export default function InboxScreen() {
                 </Text>
             </View>
 
+            {/* Trainer card hero (V2 polish) — só renderiza se aluno tem coach.
+                Online status / response time não estão expostos pelo hook,
+                então omitimos esses placeholders pra não inventar dados. */}
+            {profile?.coach ? (
+                <TrainerCardHero
+                    name={profile.coach.name}
+                    avatarUrl={profile.coach.avatar_url}
+                    onPress={() => setActiveTab('messages')}
+                />
+            ) : null}
+
             <AnimatedSegmentedControl
                 activeTab={activeTab}
                 onTabChange={setActiveTab}
@@ -438,6 +485,117 @@ export default function InboxScreen() {
                 <NotificationsTab />
             )}
         </SafeAreaView>
+    );
+}
+
+// ── Trainer card hero: dark gradient + avatar + eyebrow + nome.
+// Online status / response time omitidos (hook não expõe).
+function TrainerCardHero({
+    name,
+    avatarUrl,
+    onPress,
+}: {
+    name: string;
+    avatarUrl: string | null;
+    onPress: () => void;
+}) {
+    const initials = name
+        .split(' ')
+        .map((p) => p[0])
+        .slice(0, 2)
+        .join('')
+        .toUpperCase();
+    return (
+        <Pressable
+            onPress={onPress}
+            accessibilityRole="button"
+            accessibilityLabel={`Abrir conversa com ${name}`}
+            style={{
+                marginHorizontal: 20,
+                marginBottom: 4,
+                borderRadius: 20,
+                overflow: 'hidden',
+                borderWidth: 1,
+                borderColor: 'rgba(255,255,255,0.06)',
+            }}
+        >
+            <LinearGradient
+                colors={['#18181B', '#27272A', '#3B0764']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{
+                    padding: 16,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 14,
+                }}
+            >
+                {/* Avatar com border branca */}
+                <View
+                    style={{
+                        width: 48,
+                        height: 48,
+                        borderRadius: 24,
+                        borderWidth: 2,
+                        borderColor: 'rgba(255,255,255,0.9)',
+                        overflow: 'hidden',
+                        backgroundColor: '#5B21B6',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                    }}
+                >
+                    {avatarUrl ? (
+                        <Image source={{ uri: avatarUrl }} style={{ width: '100%', height: '100%' }} />
+                    ) : (
+                        <Text
+                            style={{
+                                fontFamily: 'PlusJakartaSans_800ExtraBold',
+                                fontSize: 16,
+                                color: '#FFFFFF',
+                            }}
+                        >
+                            {initials || <User size={20} color="#FFFFFF" />}
+                        </Text>
+                    )}
+                </View>
+                <View style={{ flex: 1, gap: 2 }}>
+                    <Text
+                        style={{
+                            fontFamily: 'PlusJakartaSans_700Bold',
+                            fontSize: 9.5,
+                            letterSpacing: 1,
+                            textTransform: 'uppercase',
+                            color: 'rgba(255,255,255,0.5)',
+                        }}
+                    >
+                        Seu treinador
+                    </Text>
+                    <Text
+                        style={{
+                            fontFamily: 'PlusJakartaSans_800ExtraBold',
+                            fontSize: 15,
+                            letterSpacing: -0.2,
+                            color: '#FFFFFF',
+                        }}
+                        numberOfLines={1}
+                    >
+                        {name}
+                    </Text>
+                </View>
+                <View
+                    style={{
+                        width: 30,
+                        height: 30,
+                        borderRadius: 15,
+                        backgroundColor: 'rgba(255,255,255,0.14)',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                    }}
+                >
+                    <ChevronRight size={16} color="#FFFFFF" strokeWidth={2.5} />
+                </View>
+            </LinearGradient>
+        </Pressable>
     );
 }
 

@@ -25,6 +25,7 @@ import { PressableScale } from '../../components/shared/PressableScale';
 import { KRing, KPRCard } from '../../components/v2/student';
 import { useV2Colors } from '../../hooks/useV2Colors';
 import { v2 } from '@kinevo/shared/tokens';
+import { LinearGradient } from 'expo-linear-gradient';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -225,6 +226,8 @@ function HistoryList({ history }: { history: HistorySession[] }) {
 
     return (
         <View>
+            <HistorySummaryCard history={history} />
+
             <Text
                 style={{
                     fontSize: 12, fontWeight: '700', color: '#94a3b8',
@@ -242,6 +245,101 @@ function HistoryList({ history }: { history: HistorySession[] }) {
                     <HistoryCard session={session} />
                 </Animated.View>
             ))}
+        </View>
+    );
+}
+
+// ── Summary card roxo gradient. Calcula no front (filter da semana
+// atual) usando sessões expostas pelo hook useWorkoutHistory.
+// "Aderência" requer meta semanal (não exposta aqui) → omitida.
+function HistorySummaryCard({ history }: { history: HistorySession[] }) {
+    const now = new Date();
+    const startOfWeek = new Date(now);
+    startOfWeek.setHours(0, 0, 0, 0);
+    startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(endOfWeek.getDate() + 7);
+
+    let weekCount = 0;
+    let weekVolumeKg = 0;
+    for (const s of history) {
+        const t = new Date(s.completed_at).getTime();
+        if (t >= startOfWeek.getTime() && t < endOfWeek.getTime()) {
+            weekCount++;
+            weekVolumeKg += s.volume_load;
+        }
+    }
+    const weekVolumeTon = (weekVolumeKg / 1000).toFixed(1);
+
+    return (
+        <Animated.View
+            entering={FadeInUp.delay(60).duration(ANIM.enter.duration).easing(ANIM.enter.easing)}
+            style={{
+                marginBottom: 16,
+                borderRadius: 20,
+                overflow: 'hidden',
+                shadowColor: '#7C3AED',
+                shadowOffset: { width: 0, height: 8 },
+                shadowOpacity: 0.22,
+                shadowRadius: 18,
+                elevation: 6,
+            }}
+        >
+            <LinearGradient
+                colors={['#7C3AED', '#6D28D9', '#4C1D95']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{ padding: 18 }}
+            >
+                <Text
+                    style={{
+                        fontFamily: 'PlusJakartaSans_700Bold',
+                        fontSize: 10,
+                        letterSpacing: 1.2,
+                        textTransform: 'uppercase',
+                        color: 'rgba(255,255,255,0.65)',
+                        marginBottom: 14,
+                    }}
+                >
+                    Esta semana
+                </Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                    <SummaryStat label="Treinos" value={String(weekCount)} />
+                    <View style={{ width: 1, backgroundColor: 'rgba(255,255,255,0.18)' }} />
+                    <SummaryStat label="Volume" value={`${weekVolumeTon}t`} />
+                    <View style={{ width: 1, backgroundColor: 'rgba(255,255,255,0.18)' }} />
+                    <SummaryStat label="Total" value={String(history.length)} />
+                </View>
+            </LinearGradient>
+        </Animated.View>
+    );
+}
+
+function SummaryStat({ label, value }: { label: string; value: string }) {
+    return (
+        <View style={{ flex: 1, alignItems: 'center', gap: 4 }}>
+            <Text
+                style={{
+                    fontFamily: 'PlusJakartaSans_800ExtraBold',
+                    fontSize: 26,
+                    letterSpacing: -0.8,
+                    color: '#FFFFFF',
+                }}
+                numberOfLines={1}
+            >
+                {value}
+            </Text>
+            <Text
+                style={{
+                    fontFamily: 'PlusJakartaSans_700Bold',
+                    fontSize: 10,
+                    letterSpacing: 0.8,
+                    textTransform: 'uppercase',
+                    color: 'rgba(255,255,255,0.7)',
+                }}
+            >
+                {label}
+            </Text>
         </View>
     );
 }
