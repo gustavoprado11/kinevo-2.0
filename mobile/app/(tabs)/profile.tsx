@@ -1,5 +1,6 @@
 import React from "react";
-import { View, Text, Alert, ScrollView } from "react-native";
+import { View, Text, Alert, ScrollView, Pressable } from "react-native";
+import Constants from "expo-constants";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../contexts/AuthContext";
 import { useStudentProfile } from "../../hooks/useStudentProfile";
@@ -321,6 +322,28 @@ export default function ProfileScreen() {
                         </View>
                     </PressableScale>
                 </Animated.View>
+
+                {/* Version footer (long-press em dev abre o Student DS Showcase) */}
+                <Pressable
+                    onLongPress={() => {
+                        if (!__DEV__) return;
+                        router.push("/(dev)/student-showcase");
+                    }}
+                    delayLongPress={800}
+                    accessibilityRole="text"
+                    accessibilityLabel={`Kinevo versão ${Constants.expoConfig?.version ?? "1.0.0"}`}
+                >
+                    <Text
+                        style={{
+                            textAlign: "center",
+                            fontSize: 11,
+                            color: "#94a3b8",
+                            paddingVertical: 8,
+                        }}
+                    >
+                        Kinevo v{Constants.expoConfig?.version ?? "1.0.0"}
+                    </Text>
+                </Pressable>
             </ScrollView>
         </SafeAreaView>
     );
