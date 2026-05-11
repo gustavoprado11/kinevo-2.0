@@ -3,6 +3,7 @@ import React from 'react';
 import { Text, View } from 'react-native';
 
 import type { SetType } from '@kinevo/shared/types/prescription';
+import { useV2Colors } from '../../hooks/useV2Colors';
 
 export interface RestConnectorProps {
     /** Descanso em segundos prescrito após a série atual. */
@@ -62,7 +63,8 @@ export function RestConnector({
     });
     if (!variant) return null;
 
-    const styles = STYLE_BY_FLAVOR[variant.flavor];
+    const colors = useV2Colors();
+    const styles = getStyleForFlavor(variant.flavor, colors);
     const Icon = variant.flavor === 'dropImmediate' ? ChevronsDown : Clock;
 
     return (
@@ -76,7 +78,7 @@ export function RestConnector({
                 paddingHorizontal: 4,
             }}
         >
-            <View style={{ flex: 1, height: 1, backgroundColor: '#e2e8f0' }} />
+            <View style={{ flex: 1, height: 1, backgroundColor: colors.border.default }} />
             <View
                 style={{
                     flexDirection: 'row',
@@ -103,7 +105,7 @@ export function RestConnector({
                     {variant.label}
                 </Text>
             </View>
-            <View style={{ flex: 1, height: 1, backgroundColor: '#e2e8f0' }} />
+            <View style={{ flex: 1, height: 1, backgroundColor: colors.border.default }} />
         </View>
     );
 }
@@ -165,44 +167,44 @@ function getRestVariant({
     return { label: `Descanso · ${safeRest}s`, flavor: 'default' };
 }
 
-const STYLE_BY_FLAVOR: Record<
-    RestFlavor,
-    { bg: string; border: string; fg: string; weight: '600' | '700' }
-> = {
-    dropImmediate: {
-        bg: 'rgba(244, 63, 94, 0.08)',
-        border: 'rgba(244, 63, 94, 0.25)',
-        fg: '#be123c',
-        weight: '600',
-    },
-    restPause: {
-        bg: 'rgba(124, 58, 237, 0.08)',
-        border: 'rgba(124, 58, 237, 0.25)',
-        fg: '#6d28d9',
-        weight: '600',
-    },
-    endRound: {
-        bg: '#f1f5f9',
-        border: '#cbd5e1',
-        fg: '#1e293b',
-        weight: '700',
-    },
-    endExercise: {
-        bg: '#f1f5f9',
-        border: '#cbd5e1',
-        fg: '#1e293b',
-        weight: '700',
-    },
-    noRest: {
-        bg: '#f8fafc',
-        border: '#e2e8f0',
-        fg: '#475569',
-        weight: '600',
-    },
-    default: {
-        bg: '#f8fafc',
-        border: '#e2e8f0',
-        fg: '#475569',
-        weight: '600',
-    },
-};
+// Estilos por flavor. Rgba pra drop/restPause (alpha-channel funciona em ambos
+// modos). Neutrals via tokens da paleta v2 ativa pra endRound/endExercise/
+// noRest/default — adaptam automaticamente light/dark.
+function getStyleForFlavor(
+    flavor: RestFlavor,
+    colors: ReturnType<typeof useV2Colors>,
+): { bg: string; border: string; fg: string; weight: '600' | '700' } {
+    switch (flavor) {
+        case 'dropImmediate':
+            return {
+                bg: 'rgba(244, 63, 94, 0.08)',
+                border: 'rgba(244, 63, 94, 0.25)',
+                fg: '#be123c',
+                weight: '600',
+            };
+        case 'restPause':
+            return {
+                bg: 'rgba(124, 58, 237, 0.08)',
+                border: 'rgba(124, 58, 237, 0.25)',
+                fg: '#6d28d9',
+                weight: '600',
+            };
+        case 'endRound':
+        case 'endExercise':
+            return {
+                bg: colors.neutral[100],
+                border: colors.neutral[300],
+                fg: colors.text.primary,
+                weight: '700',
+            };
+        case 'noRest':
+        case 'default':
+        default:
+            return {
+                bg: colors.surface.card2,
+                border: colors.border.default,
+                fg: colors.text.secondary,
+                weight: '600',
+            };
+    }
+}

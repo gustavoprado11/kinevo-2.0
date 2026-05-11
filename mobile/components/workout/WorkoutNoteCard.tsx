@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { StickyNote, ChevronDown, ChevronUp } from 'lucide-react-native';
+import { useV2Colors } from '../../hooks/useV2Colors';
 
 interface WorkoutNoteCardProps {
     note: string;
 }
 
 export function WorkoutNoteCard({ note }: WorkoutNoteCardProps) {
+    const colors = useV2Colors();
     const [collapsed, setCollapsed] = useState(false);
 
     return (
@@ -29,8 +31,7 @@ export function WorkoutNoteCard({ note }: WorkoutNoteCardProps) {
             <View style={{ flex: 1 }}>
                 <Text
                     numberOfLines={collapsed ? 1 : undefined}
-                    className="text-sm text-slate-600"
-                    style={{ lineHeight: 20 }}
+                    style={{ fontSize: 14, color: colors.text.secondary, lineHeight: 20 }}
                 >
                     {note}
                 </Text>

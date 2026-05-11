@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { X, Clock, Dumbbell, Target, TrendingUp } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
+import { useV2Colors, type V2Palette } from '../../hooks/useV2Colors';
 
 interface WorkoutSummaryData {
     duration: string;
@@ -50,6 +51,8 @@ function formatVolume(kg: number): string {
 }
 
 function SummaryItem({ icon, value, label }: { icon: React.ReactNode; value: string; label: string }) {
+    const colors = useV2Colors();
+    const styles = makeStyles(colors);
     return (
         <View style={styles.summaryItem}>
             {icon}
@@ -60,6 +63,8 @@ function SummaryItem({ icon, value, label }: { icon: React.ReactNode; value: str
 }
 
 export function WorkoutFeedbackModal({ visible, onClose, onConfirm, summary }: WorkoutFeedbackModalProps) {
+    const colors = useV2Colors();
+    const styles = makeStyles(colors);
     const [rpe, setRpe] = useState<number | null>(null);
     const [feedback, setFeedback] = useState('');
     const [isFocused, setIsFocused] = useState(false);
@@ -249,217 +254,219 @@ export function WorkoutFeedbackModal({ visible, onClose, onConfirm, summary }: W
     );
 }
 
-const styles = StyleSheet.create({
-    backdrop: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.4)',
-        justifyContent: 'flex-end',
-    },
-    kavContainer: {
-        width: '100%',
-    },
-    sheet: {
-        backgroundColor: '#F2F2F7',
-        borderTopLeftRadius: 28,
-        borderTopRightRadius: 28,
-        paddingTop: 12,
-        paddingHorizontal: 16,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: -4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 16,
-        elevation: 14,
-        maxHeight: '90%',
-    },
-    handle: {
-        width: 36,
-        height: 5,
-        backgroundColor: '#d1d1d6',
-        borderRadius: 2.5,
-        alignSelf: 'center',
-        marginBottom: 18,
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: 20,
-        paddingHorizontal: 4,
-    },
-    title: {
-        fontSize: 22,
-        fontWeight: '700',
-        color: '#1c1c1e',
-        letterSpacing: -0.3,
-    },
-    closeBtn: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        backgroundColor: '#e5e5ea',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
+function makeStyles(colors: V2Palette) {
+    return StyleSheet.create({
+        backdrop: {
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.4)',
+            justifyContent: 'flex-end',
+        },
+        kavContainer: {
+            width: '100%',
+        },
+        sheet: {
+            backgroundColor: colors.surface.canvas,
+            borderTopLeftRadius: 28,
+            borderTopRightRadius: 28,
+            paddingTop: 12,
+            paddingHorizontal: 16,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: -4 },
+            shadowOpacity: 0.1,
+            shadowRadius: 16,
+            elevation: 14,
+            maxHeight: '90%',
+        },
+        handle: {
+            width: 36,
+            height: 5,
+            backgroundColor: colors.neutral[300],
+            borderRadius: 2.5,
+            alignSelf: 'center',
+            marginBottom: 18,
+        },
+        header: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 20,
+            paddingHorizontal: 4,
+        },
+        title: {
+            fontSize: 22,
+            fontWeight: '700',
+            color: colors.text.primary,
+            letterSpacing: -0.3,
+        },
+        closeBtn: {
+            width: 32,
+            height: 32,
+            borderRadius: 16,
+            backgroundColor: colors.neutral[200],
+            alignItems: 'center',
+            justifyContent: 'center',
+        },
 
-    // Summary
-    summaryGrid: {
-        flexDirection: 'row',
-        backgroundColor: '#ffffff',
-        borderRadius: 14,
-        padding: 14,
-        marginBottom: 20,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.04,
-        shadowRadius: 3,
-        elevation: 1,
-    },
-    summaryItem: {
-        flex: 1,
-        alignItems: 'center',
-        gap: 4,
-    },
-    summaryValue: {
-        fontSize: 17,
-        fontWeight: '700',
-        color: '#1c1c1e',
-        fontVariant: ['tabular-nums'],
-    },
-    summaryLabel: {
-        fontSize: 11,
-        color: '#8e8e93',
-        fontWeight: '500',
-    },
+        // Summary
+        summaryGrid: {
+            flexDirection: 'row',
+            backgroundColor: colors.surface.card,
+            borderRadius: 14,
+            padding: 14,
+            marginBottom: 20,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.04,
+            shadowRadius: 3,
+            elevation: 1,
+        },
+        summaryItem: {
+            flex: 1,
+            alignItems: 'center',
+            gap: 4,
+        },
+        summaryValue: {
+            fontSize: 17,
+            fontWeight: '700',
+            color: colors.text.primary,
+            fontVariant: ['tabular-nums'],
+        },
+        summaryLabel: {
+            fontSize: 11,
+            color: colors.text.tertiary,
+            fontWeight: '500',
+        },
 
-    // Intensity
-    intensitySection: {
-        marginBottom: 20,
-        paddingHorizontal: 4,
-    },
-    intensityTitle: {
-        fontSize: 15,
-        fontWeight: '600',
-        color: '#1c1c1e',
-        marginBottom: 10,
-    },
-    intensityValueRow: {
-        flexDirection: 'row',
-        alignItems: 'baseline',
-        gap: 4,
-        marginBottom: 14,
-        minHeight: 40,
-    },
-    intensityValue: {
-        fontSize: 34,
-        fontWeight: '700',
-        fontVariant: ['tabular-nums'],
-    },
-    intensityOf: {
-        fontSize: 17,
-        color: '#8e8e93',
-        fontWeight: '500',
-    },
-    intensityBadge: {
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 8,
-        marginLeft: 8,
-    },
-    intensityBadgeText: {
-        fontSize: 13,
-        fontWeight: '600',
-    },
-    intensityPlaceholder: {
-        fontSize: 14,
-        color: '#aeaeb2',
-    },
-    buttonsRow: {
-        flexDirection: 'row',
-        gap: 6,
-        marginBottom: 8,
-    },
-    rpeBtn: {
-        flex: 1,
-        aspectRatio: 1,
-        borderRadius: 10,
-        backgroundColor: '#ffffff',
-        alignItems: 'center',
-        justifyContent: 'center',
-        maxHeight: 38,
-    },
-    rpeBtnText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#3a3a3c',
-        fontVariant: ['tabular-nums'],
-    },
-    anchorsRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        paddingHorizontal: 2,
-    },
-    anchorText: {
-        fontSize: 11,
-        color: '#aeaeb2',
-        fontWeight: '500',
-    },
+        // Intensity
+        intensitySection: {
+            marginBottom: 20,
+            paddingHorizontal: 4,
+        },
+        intensityTitle: {
+            fontSize: 15,
+            fontWeight: '600',
+            color: colors.text.primary,
+            marginBottom: 10,
+        },
+        intensityValueRow: {
+            flexDirection: 'row',
+            alignItems: 'baseline',
+            gap: 4,
+            marginBottom: 14,
+            minHeight: 40,
+        },
+        intensityValue: {
+            fontSize: 34,
+            fontWeight: '700',
+            fontVariant: ['tabular-nums'],
+        },
+        intensityOf: {
+            fontSize: 17,
+            color: colors.text.tertiary,
+            fontWeight: '500',
+        },
+        intensityBadge: {
+            paddingHorizontal: 10,
+            paddingVertical: 4,
+            borderRadius: 8,
+            marginLeft: 8,
+        },
+        intensityBadgeText: {
+            fontSize: 13,
+            fontWeight: '600',
+        },
+        intensityPlaceholder: {
+            fontSize: 14,
+            color: colors.text.quaternary,
+        },
+        buttonsRow: {
+            flexDirection: 'row',
+            gap: 6,
+            marginBottom: 8,
+        },
+        rpeBtn: {
+            flex: 1,
+            aspectRatio: 1,
+            borderRadius: 10,
+            backgroundColor: colors.surface.card,
+            alignItems: 'center',
+            justifyContent: 'center',
+            maxHeight: 38,
+        },
+        rpeBtnText: {
+            fontSize: 14,
+            fontWeight: '600',
+            color: colors.text.secondary,
+            fontVariant: ['tabular-nums'],
+        },
+        anchorsRow: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            paddingHorizontal: 2,
+        },
+        anchorText: {
+            fontSize: 11,
+            color: colors.text.quaternary,
+            fontWeight: '500',
+        },
 
-    // Observations
-    observationsSection: {
-        marginBottom: 8,
-        paddingHorizontal: 4,
-    },
-    observationsTitle: {
-        fontSize: 15,
-        fontWeight: '600',
-        color: '#1c1c1e',
-        marginBottom: 8,
-    },
-    optional: {
-        fontWeight: '400',
-        color: '#aeaeb2',
-    },
-    textarea: {
-        backgroundColor: '#ffffff',
-        borderRadius: 12,
-        padding: 14,
-        minHeight: 80,
-        maxHeight: 120,
-        fontSize: 15,
-        color: '#1c1c1e',
-        lineHeight: 22,
-    },
-    textareaFocused: {
-        shadowColor: '#7c3aed',
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.15,
-        shadowRadius: 6,
-        elevation: 2,
-    },
+        // Observations
+        observationsSection: {
+            marginBottom: 8,
+            paddingHorizontal: 4,
+        },
+        observationsTitle: {
+            fontSize: 15,
+            fontWeight: '600',
+            color: colors.text.primary,
+            marginBottom: 8,
+        },
+        optional: {
+            fontWeight: '400',
+            color: colors.text.quaternary,
+        },
+        textarea: {
+            backgroundColor: colors.surface.card,
+            borderRadius: 12,
+            padding: 14,
+            minHeight: 80,
+            maxHeight: 120,
+            fontSize: 15,
+            color: colors.text.primary,
+            lineHeight: 22,
+        },
+        textareaFocused: {
+            shadowColor: '#7c3aed',
+            shadowOffset: { width: 0, height: 0 },
+            shadowOpacity: 0.15,
+            shadowRadius: 6,
+            elevation: 2,
+        },
 
-    // Footer
-    footerSafe: {
-        paddingTop: 12,
-        paddingBottom: 8,
-    },
-    submitBtn: {
-        height: 52,
-        borderRadius: 14,
-        backgroundColor: '#7c3aed',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginHorizontal: 4,
-        marginBottom: 4,
-    },
-    submitBtnDisabled: {
-        backgroundColor: '#e5e5ea',
-    },
-    submitText: {
-        fontSize: 17,
-        fontWeight: '600',
-        color: '#fff',
-    },
-    submitTextDisabled: {
-        color: '#aeaeb2',
-    },
-});
+        // Footer
+        footerSafe: {
+            paddingTop: 12,
+            paddingBottom: 8,
+        },
+        submitBtn: {
+            height: 52,
+            borderRadius: 14,
+            backgroundColor: '#7c3aed',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginHorizontal: 4,
+            marginBottom: 4,
+        },
+        submitBtnDisabled: {
+            backgroundColor: colors.neutral[200],
+        },
+        submitText: {
+            fontSize: 17,
+            fontWeight: '600',
+            color: '#fff',
+        },
+        submitTextDisabled: {
+            color: colors.text.quaternary,
+        },
+    });
+}

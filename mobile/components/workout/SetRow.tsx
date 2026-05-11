@@ -9,6 +9,7 @@ import {
 } from '@kinevo/shared/lib/prescription/set-scheme';
 import { buildSetMetaLabel, isAmrapReps } from '@kinevo/shared/lib/prescription/set-meta-label';
 import { SetTypeBadge } from './SetTypeBadge';
+import { useV2Colors } from '../../hooks/useV2Colors';
 
 interface SetRowProps {
     index: number;
@@ -58,6 +59,7 @@ export function SetRow({
     tempoTarget,
     readOnly = false,
 }: SetRowProps) {
+    const colors = useV2Colors();
 
     const handleToggle = () => {
         if (!isCompleted) {
@@ -143,11 +145,11 @@ export function SetRow({
                     },
                     isCompleted
                         ? { backgroundColor: 'rgba(124, 58, 237, 0.15)' }
-                        : { backgroundColor: '#f1f5f9' },
+                        : { backgroundColor: colors.neutral[100] },
                 ]}>
                     <Text style={[
                         { fontSize: 12, fontWeight: '600' },
-                        isCompleted ? { color: '#7c3aed' } : { color: '#64748b' },
+                        isCompleted ? { color: '#7c3aed' } : { color: colors.text.tertiary },
                     ]}>
                         {index + 1}
                     </Text>
@@ -170,7 +172,7 @@ export function SetRow({
                     <Text style={{
                         fontSize: 12,
                         fontWeight: '500',
-                        color: '#94a3b8',
+                        color: colors.text.quaternary,
                         fontVariant: ['tabular-nums'],
                     }}>
                         {hasPrevious
@@ -200,19 +202,19 @@ export function SetRow({
                         style={[
                             {
                                 height: 38,
-                                backgroundColor: '#f5f5f7',
+                                backgroundColor: colors.neutral[100],
                                 borderRadius: 10,
                                 textAlign: 'center',
                                 fontWeight: '600',
                                 fontSize: 15,
-                                color: '#0f172a',
+                                color: colors.text.primary,
                                 fontVariant: ['tabular-nums'],
                             },
                             isCompleted && { backgroundColor: 'rgba(124, 58, 237, 0.08)', color: '#7c3aed' },
                             readOnly && { opacity: 0.85 },
                         ]}
                         placeholder={weightPlaceholder}
-                        placeholderTextColor={hasWeightTarget ? 'rgba(124, 58, 237, 0.55)' : (hasPrevious ? '#94a3b8' : '#cbd5e1')}
+                        placeholderTextColor={hasWeightTarget ? 'rgba(124, 58, 237, 0.55)' : (hasPrevious ? colors.text.quaternary : colors.neutral[300])}
                         keyboardType="decimal-pad"
                         returnKeyType="next"
                         value={weight}
@@ -246,19 +248,19 @@ export function SetRow({
                         style={[
                             {
                                 height: 38,
-                                backgroundColor: '#f5f5f7',
+                                backgroundColor: colors.neutral[100],
                                 borderRadius: 10,
                                 textAlign: 'center',
                                 fontWeight: '600',
                                 fontSize: 15,
-                                color: '#0f172a',
+                                color: colors.text.primary,
                                 fontVariant: ['tabular-nums'],
                             },
                             isCompleted && { backgroundColor: 'rgba(124, 58, 237, 0.08)', color: '#7c3aed' },
                             readOnly && { opacity: 0.85 },
                         ]}
                         placeholder={repsPlaceholder}
-                        placeholderTextColor={hasTarget ? 'rgba(124, 58, 237, 0.55)' : (hasPrevious ? '#94a3b8' : '#cbd5e1')}
+                        placeholderTextColor={hasTarget ? 'rgba(124, 58, 237, 0.55)' : (hasPrevious ? colors.text.quaternary : colors.neutral[300])}
                         keyboardType="number-pad"
                         returnKeyType="done"
                         value={reps}
@@ -284,7 +286,7 @@ export function SetRow({
                             },
                             isCompleted
                                 ? { backgroundColor: '#7c3aed' }
-                                : { backgroundColor: '#e8e8ed' },
+                                : { backgroundColor: colors.neutral[200] },
                         ]}
                     >
                         {isCompleted ? (
@@ -295,7 +297,7 @@ export function SetRow({
                                 height: 18,
                                 borderRadius: 9,
                                 borderWidth: 2,
-                                borderColor: '#c7c7cc',
+                                borderColor: colors.text.quaternary,
                             }} />
                         )}
                     </TouchableOpacity>

@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { Text, TouchableOpacity } from 'react-native';
 import { MessageSquare } from 'lucide-react-native';
+import { useV2Colors } from '../../hooks/useV2Colors';
 
 interface TrainerNoteProps {
     note: string;
 }
 
 export function TrainerNote({ note }: TrainerNoteProps) {
+    const colors = useV2Colors();
     const [expanded, setExpanded] = useState(false);
 
     return (
@@ -26,8 +28,7 @@ export function TrainerNote({ note }: TrainerNoteProps) {
             <MessageSquare size={14} color="#8b5cf6" style={{ marginTop: 1 }} />
             <Text
                 numberOfLines={expanded ? undefined : 2}
-                className="text-sm text-slate-600 flex-1"
-                style={{ lineHeight: 20 }}
+                style={{ fontSize: 14, color: colors.text.secondary, flex: 1, lineHeight: 20 }}
             >
                 {note}
             </Text>

@@ -4,6 +4,7 @@ import { X } from 'lucide-react-native';
 import { BlurView } from 'expo-blur';
 import Svg, { Circle } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
+import { useV2Colors, useIsDark, type V2Palette } from '../../hooks/useV2Colors';
 
 interface RestTimerOverlayProps {
     endTime: number;
@@ -27,6 +28,9 @@ export function RestTimerOverlay({
     onComplete,
     onAdjustTime,
 }: RestTimerOverlayProps) {
+    const colors = useV2Colors();
+    const isDark = useIsDark();
+    const styles = makeStyles(colors);
     const [remaining, setRemaining] = useState(() =>
         Math.max(0, Math.ceil((endTime - Date.now()) / 1000))
     );
@@ -57,7 +61,7 @@ export function RestTimerOverlay({
         <View style={styles.overlay}>
             <BlurView
                 intensity={100}
-                tint="light"
+                tint={isDark ? 'dark' : 'light'}
                 style={styles.container}
             >
                 {/* Handle bar */}
@@ -73,11 +77,11 @@ export function RestTimerOverlay({
                     >
                         <BlurView
                             intensity={40}
-                            tint="light"
+                            tint={isDark ? 'dark' : 'light'}
                             style={styles.skipButton}
                         >
                             <Text style={styles.skipText}>Pular</Text>
-                            <X size={14} color="#64748B" />
+                            <X size={14} color={colors.text.tertiary} />
                         </BlurView>
                     </TouchableOpacity>
                 </View>
@@ -90,7 +94,7 @@ export function RestTimerOverlay({
                             cx={CIRCLE_SIZE / 2}
                             cy={CIRCLE_SIZE / 2}
                             r={RADIUS}
-                            stroke="#e2e8f0"
+                            stroke={colors.border.default}
                             strokeWidth={STROKE_WIDTH}
                             fill="none"
                         />
@@ -122,7 +126,7 @@ export function RestTimerOverlay({
                         activeOpacity={0.6}
                         style={styles.adjustButtonOuter}
                     >
-                        <BlurView intensity={40} tint="light" style={styles.adjustButton}>
+                        <BlurView intensity={40} tint={isDark ? 'dark' : 'light'} style={styles.adjustButton}>
                             <Text style={styles.adjustText}>-15s</Text>
                         </BlurView>
                     </TouchableOpacity>
@@ -132,7 +136,7 @@ export function RestTimerOverlay({
                         activeOpacity={0.6}
                         style={styles.adjustButtonOuter}
                     >
-                        <BlurView intensity={40} tint="light" style={styles.adjustButton}>
+                        <BlurView intensity={40} tint={isDark ? 'dark' : 'light'} style={styles.adjustButton}>
                             <Text style={styles.adjustText}>+30s</Text>
                         </BlurView>
                     </TouchableOpacity>
@@ -145,116 +149,118 @@ export function RestTimerOverlay({
     );
 }
 
-const styles = StyleSheet.create({
-    overlay: {
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-    },
-    container: {
-        backgroundColor: 'rgba(255, 255, 255, 0.7)',
-        borderTopLeftRadius: 32,
-        borderTopRightRadius: 32,
-        borderTopWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.5)',
-        paddingTop: 16,
-        paddingBottom: 44,
-        paddingHorizontal: 24,
-        alignItems: 'center',
-        shadowColor: '#7C3AED',
-        shadowOffset: { width: 0, height: -8 },
-        shadowOpacity: 0.1,
-        shadowRadius: 24,
-        elevation: 12,
-        overflow: 'hidden',
-    },
-    handle: {
-        width: 36,
-        height: 4,
-        backgroundColor: '#E2E8F0',
-        borderRadius: 2,
-        marginBottom: 16,
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        width: '100%',
-        marginBottom: 20,
-    },
-    label: {
-        color: '#64748B',
-        fontSize: 11,
-        fontWeight: '600',
-        textTransform: 'uppercase',
-        letterSpacing: 2,
-    },
-    skipButtonOuter: {
-        borderRadius: 12,
-        overflow: 'hidden',
-    },
-    skipButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        paddingVertical: 8,
-        paddingHorizontal: 14,
-        backgroundColor: 'rgba(148, 163, 184, 0.15)',
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.2)',
-    },
-    skipText: {
-        color: '#64748B',
-        fontSize: 14,
-        fontWeight: '600',
-    },
-    timerContainer: {
-        width: CIRCLE_SIZE,
-        height: CIRCLE_SIZE,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 20,
-    },
-    timerTextContainer: {
-        position: 'absolute',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    timerText: {
-        color: '#0F172A',
-        fontSize: 48,
-        fontWeight: '200',
-        fontVariant: ['tabular-nums'],
-        letterSpacing: 2,
-    },
-    adjustRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 16,
-        marginBottom: 16,
-    },
-    adjustButtonOuter: {
-        borderRadius: 14,
-        overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.5)',
-    },
-    adjustButton: {
-        paddingVertical: 10,
-        paddingHorizontal: 20,
-        backgroundColor: 'rgba(248, 250, 252, 0.4)',
-    },
-    adjustText: {
-        color: '#64748B',
-        fontSize: 14,
-        fontWeight: '700',
-        fontVariant: ['tabular-nums'],
-    },
-    exerciseName: {
-        color: '#94A3B8',
-        fontSize: 12,
-        textAlign: 'center',
-    },
-});
+function makeStyles(colors: V2Palette) {
+    return StyleSheet.create({
+        overlay: {
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+        },
+        container: {
+            backgroundColor: colors.surface.glass,
+            borderTopLeftRadius: 32,
+            borderTopRightRadius: 32,
+            borderTopWidth: 1,
+            borderColor: colors.border.subtle,
+            paddingTop: 16,
+            paddingBottom: 44,
+            paddingHorizontal: 24,
+            alignItems: 'center',
+            shadowColor: '#7C3AED',
+            shadowOffset: { width: 0, height: -8 },
+            shadowOpacity: 0.1,
+            shadowRadius: 24,
+            elevation: 12,
+            overflow: 'hidden',
+        },
+        handle: {
+            width: 36,
+            height: 4,
+            backgroundColor: colors.neutral[200],
+            borderRadius: 2,
+            marginBottom: 16,
+        },
+        header: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            width: '100%',
+            marginBottom: 20,
+        },
+        label: {
+            color: colors.text.tertiary,
+            fontSize: 11,
+            fontWeight: '600',
+            textTransform: 'uppercase',
+            letterSpacing: 2,
+        },
+        skipButtonOuter: {
+            borderRadius: 12,
+            overflow: 'hidden',
+        },
+        skipButton: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 6,
+            paddingVertical: 8,
+            paddingHorizontal: 14,
+            backgroundColor: 'rgba(148, 163, 184, 0.15)',
+            borderWidth: 1,
+            borderColor: colors.border.subtle,
+        },
+        skipText: {
+            color: colors.text.tertiary,
+            fontSize: 14,
+            fontWeight: '600',
+        },
+        timerContainer: {
+            width: CIRCLE_SIZE,
+            height: CIRCLE_SIZE,
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: 20,
+        },
+        timerTextContainer: {
+            position: 'absolute',
+            alignItems: 'center',
+            justifyContent: 'center',
+        },
+        timerText: {
+            color: colors.text.primary,
+            fontSize: 48,
+            fontWeight: '200',
+            fontVariant: ['tabular-nums'],
+            letterSpacing: 2,
+        },
+        adjustRow: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 16,
+            marginBottom: 16,
+        },
+        adjustButtonOuter: {
+            borderRadius: 14,
+            overflow: 'hidden',
+            borderWidth: 1,
+            borderColor: colors.border.subtle,
+        },
+        adjustButton: {
+            paddingVertical: 10,
+            paddingHorizontal: 20,
+            backgroundColor: 'rgba(248, 250, 252, 0.4)',
+        },
+        adjustText: {
+            color: colors.text.tertiary,
+            fontSize: 14,
+            fontWeight: '700',
+            fontVariant: ['tabular-nums'],
+        },
+        exerciseName: {
+            color: colors.text.quaternary,
+            fontSize: 12,
+            textAlign: 'center',
+        },
+    });
+}

@@ -1,6 +1,4 @@
-// TODO Onda 4b: dark mode adapt — StyleSheet estático com cores neutras hardcoded.
-// Requer migração dos styles para inline (com useV2Colors) ou StyleSheet factory.
-// Fora de escopo da Onda 4a por volume + risco visual.
+// Fase 7: dark mode adapt via makeStyles(colors) factory + useV2Colors.
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated, AppState } from 'react-native';
 import { BlurView } from 'expo-blur';
@@ -17,6 +15,7 @@ import {
 } from '@kinevo/shared/types/workout-items';
 import type { ExerciseData } from '../../hooks/useWorkoutSession';
 import type { TimerUpdateData } from '../../hooks/useLiveActivity';
+import { useV2Colors, type V2Palette } from '../../hooks/useV2Colors';
 
 interface CardioCardProps {
     exercise: ExerciseData;
@@ -51,6 +50,8 @@ function formatTimer(seconds: number): string {
 }
 
 export function CardioCard({ exercise, disabled, onCardioToggle, onTimerUpdate, onTimerStop }: CardioCardProps) {
+    const colors = useV2Colors();
+    const styles = makeStyles(colors);
     const config = (exercise.item_config || {}) as CardioConfig;
     const mode: CardioMode = config.mode || 'continuous';
     const isInterval = mode === 'interval' && !!config.intervals;
@@ -752,219 +753,221 @@ export function CardioCard({ exercise, disabled, onCardioToggle, onTimerUpdate, 
     );
 }
 
-const styles = StyleSheet.create({
-    container: {
-        backgroundColor: 'rgba(255, 255, 255, 0.7)',
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.6)',
-        padding: 12,
-        marginBottom: 12,
-        borderRadius: 16,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-        elevation: 3,
-    },
-    completedContainer: {
-        backgroundColor: 'rgba(249, 250, 251, 0.8)',
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.5)',
-        paddingVertical: 12,
-        paddingHorizontal: 12,
-        marginBottom: 12,
-        borderRadius: 16,
-        opacity: 0.7,
-    },
-    headerRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    title: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#0f172a',
-    },
-    completedTitle: {
-        fontSize: 14,
-        fontWeight: '500',
-        color: '#6b7280',
-        flex: 1,
-    },
-    completedTime: {
-        fontSize: 14,
-        color: '#9ca3af',
-        fontVariant: ['tabular-nums'],
-        marginRight: 4,
-    },
-    subtitle: {
-        fontSize: 14,
-        color: '#6b7280',
-        marginTop: 4,
-    },
-    estimatedDuration: {
-        fontSize: 13,
-        color: '#9ca3af',
-        marginTop: 2,
-    },
-    notesText: {
-        fontSize: 13,
-        color: '#6b7280',
-        marginTop: 4,
-        lineHeight: 18,
-    },
-    equipmentInline: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-    },
-    equipmentText: {
-        fontSize: 13,
-        color: '#9ca3af',
-        fontWeight: '500',
-    },
-    equipmentLabelBold: {
-        fontSize: 14,
-        color: '#374151',
-        fontWeight: '600',
-    },
-    timerDisplay: {
-        fontSize: 26,
-        fontWeight: '200',
-        color: '#1f2937',
-        textAlign: 'center',
-        fontVariant: ['tabular-nums'],
-        letterSpacing: 2,
-        marginTop: 8,
-        marginBottom: 8,
-    },
-    progressBarTrack: {
-        height: 6,
-        backgroundColor: '#e5e7eb',
-        borderRadius: 3,
-        overflow: 'hidden',
-        marginBottom: 8,
-    },
-    progressBarFill: {
-        height: '100%',
-        backgroundColor: '#06b6d4',
-        borderRadius: 3,
-    },
-    controlCircle: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        backgroundColor: '#f3f4f6',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    checkCircleUnchecked: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: '#e8e8ed',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    checkCircleCompleted: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: '#7c3aed',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    checkCircleInner: {
-        width: 18,
-        height: 18,
-        borderRadius: 9,
-        borderWidth: 2,
-        borderColor: '#c7c7cc',
-    },
-    intensityRow: {
-        alignItems: 'center',
-        marginBottom: 4,
-    },
-    intensityBadge: {
-        backgroundColor: 'rgba(6, 182, 212, 0.08)',
-        paddingVertical: 4,
-        paddingHorizontal: 12,
-        borderRadius: 100,
-    },
-    intensityText: {
-        fontSize: 13,
-        color: '#0891b2',
-        fontWeight: '600',
-    },
-    phaseBadgeRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginTop: 8,
-    },
-    phaseBadge: {
-        paddingHorizontal: 14,
-        paddingVertical: 5,
-        borderRadius: 8,
-    },
-    phaseText: {
-        fontSize: 12,
-        fontWeight: '800',
-        letterSpacing: 2,
-        textTransform: 'uppercase',
-    },
-    roundLabel: {
-        fontSize: 13,
-        color: '#6b7280',
-        textAlign: 'center',
-        marginTop: 4,
-    },
-    dotsRow: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        gap: 6,
-        marginTop: 6,
-    },
-    dot: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-    },
-    // Countdown
-    countdownCenter: {
-        alignItems: 'center',
-        paddingVertical: 20,
-    },
-    countdownNumber: {
-        fontSize: 40,
-        fontWeight: '700',
-        color: '#1f2937',
-        fontVariant: ['tabular-nums'],
-    },
-    countdownLabel: {
-        fontSize: 11,
-        fontWeight: '600',
-        color: '#9ca3af',
-        letterSpacing: 3,
-        marginTop: 4,
-        textTransform: 'uppercase',
-    },
-    // Completing
-    completingCenter: {
-        alignItems: 'center',
-        paddingVertical: 24,
-    },
-    completingRounds: {
-        fontSize: 15,
-        fontWeight: '600',
-        color: '#374151',
-        marginTop: 8,
-    },
-    completingLabel: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: '#1f2937',
-        marginTop: 4,
-    },
-});
+function makeStyles(colors: V2Palette) {
+    return StyleSheet.create({
+        container: {
+            backgroundColor: colors.surface.glass,
+            borderWidth: 1,
+            borderColor: colors.border.subtle,
+            padding: 12,
+            marginBottom: 12,
+            borderRadius: 16,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.05,
+            shadowRadius: 8,
+            elevation: 3,
+        },
+        completedContainer: {
+            backgroundColor: colors.surface.card2,
+            borderWidth: 1,
+            borderColor: colors.border.subtle,
+            paddingVertical: 12,
+            paddingHorizontal: 12,
+            marginBottom: 12,
+            borderRadius: 16,
+            opacity: 0.7,
+        },
+        headerRow: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 8,
+        },
+        title: {
+            fontSize: 16,
+            fontWeight: '600',
+            color: colors.text.primary,
+        },
+        completedTitle: {
+            fontSize: 14,
+            fontWeight: '500',
+            color: colors.text.tertiary,
+            flex: 1,
+        },
+        completedTime: {
+            fontSize: 14,
+            color: colors.text.quaternary,
+            fontVariant: ['tabular-nums'],
+            marginRight: 4,
+        },
+        subtitle: {
+            fontSize: 14,
+            color: colors.text.tertiary,
+            marginTop: 4,
+        },
+        estimatedDuration: {
+            fontSize: 13,
+            color: colors.text.quaternary,
+            marginTop: 2,
+        },
+        notesText: {
+            fontSize: 13,
+            color: colors.text.tertiary,
+            marginTop: 4,
+            lineHeight: 18,
+        },
+        equipmentInline: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 6,
+        },
+        equipmentText: {
+            fontSize: 13,
+            color: colors.text.quaternary,
+            fontWeight: '500',
+        },
+        equipmentLabelBold: {
+            fontSize: 14,
+            color: colors.text.secondary,
+            fontWeight: '600',
+        },
+        timerDisplay: {
+            fontSize: 26,
+            fontWeight: '200',
+            color: colors.text.primary,
+            textAlign: 'center',
+            fontVariant: ['tabular-nums'],
+            letterSpacing: 2,
+            marginTop: 8,
+            marginBottom: 8,
+        },
+        progressBarTrack: {
+            height: 6,
+            backgroundColor: colors.neutral[200],
+            borderRadius: 3,
+            overflow: 'hidden',
+            marginBottom: 8,
+        },
+        progressBarFill: {
+            height: '100%',
+            backgroundColor: '#06b6d4',
+            borderRadius: 3,
+        },
+        controlCircle: {
+            width: 32,
+            height: 32,
+            borderRadius: 16,
+            backgroundColor: colors.neutral[100],
+            alignItems: 'center',
+            justifyContent: 'center',
+        },
+        checkCircleUnchecked: {
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            backgroundColor: colors.neutral[200],
+            alignItems: 'center',
+            justifyContent: 'center',
+        },
+        checkCircleCompleted: {
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            backgroundColor: '#7c3aed',
+            alignItems: 'center',
+            justifyContent: 'center',
+        },
+        checkCircleInner: {
+            width: 18,
+            height: 18,
+            borderRadius: 9,
+            borderWidth: 2,
+            borderColor: colors.text.quaternary,
+        },
+        intensityRow: {
+            alignItems: 'center',
+            marginBottom: 4,
+        },
+        intensityBadge: {
+            backgroundColor: 'rgba(6, 182, 212, 0.08)',
+            paddingVertical: 4,
+            paddingHorizontal: 12,
+            borderRadius: 100,
+        },
+        intensityText: {
+            fontSize: 13,
+            color: '#0891b2',
+            fontWeight: '600',
+        },
+        phaseBadgeRow: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginTop: 8,
+        },
+        phaseBadge: {
+            paddingHorizontal: 14,
+            paddingVertical: 5,
+            borderRadius: 8,
+        },
+        phaseText: {
+            fontSize: 12,
+            fontWeight: '800',
+            letterSpacing: 2,
+            textTransform: 'uppercase',
+        },
+        roundLabel: {
+            fontSize: 13,
+            color: colors.text.tertiary,
+            textAlign: 'center',
+            marginTop: 4,
+        },
+        dotsRow: {
+            flexDirection: 'row',
+            justifyContent: 'center',
+            gap: 6,
+            marginTop: 6,
+        },
+        dot: {
+            width: 6,
+            height: 6,
+            borderRadius: 3,
+        },
+        // Countdown
+        countdownCenter: {
+            alignItems: 'center',
+            paddingVertical: 20,
+        },
+        countdownNumber: {
+            fontSize: 40,
+            fontWeight: '700',
+            color: colors.text.primary,
+            fontVariant: ['tabular-nums'],
+        },
+        countdownLabel: {
+            fontSize: 11,
+            fontWeight: '600',
+            color: colors.text.quaternary,
+            letterSpacing: 3,
+            marginTop: 4,
+            textTransform: 'uppercase',
+        },
+        // Completing
+        completingCenter: {
+            alignItems: 'center',
+            paddingVertical: 24,
+        },
+        completingRounds: {
+            fontSize: 15,
+            fontWeight: '600',
+            color: colors.text.secondary,
+            marginTop: 8,
+        },
+        completingLabel: {
+            fontSize: 18,
+            fontWeight: '600',
+            color: colors.text.primary,
+            marginTop: 4,
+        },
+    });
+}

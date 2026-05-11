@@ -4,6 +4,7 @@ import { ArrowRightLeft, RefreshCw, Search, X } from 'lucide-react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { ExerciseSubstituteOption } from '../../hooks/useWorkoutSession';
+import { useV2Colors, useIsDark } from '../../hooks/useV2Colors';
 
 interface ExerciseSwapModalProps {
     visible: boolean;
@@ -30,6 +31,8 @@ export function ExerciseSwapModal({
     searchResults,
     isSearching
 }: ExerciseSwapModalProps) {
+    const colors = useV2Colors();
+    const isDark = useIsDark();
     return (
         <Modal
             visible={visible}
@@ -41,16 +44,16 @@ export function ExerciseSwapModal({
                 <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
                     <BlurView
                         intensity={90}
-                        tint="light"
+                        tint={isDark ? 'dark' : 'light'}
                         style={{
-                            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                            backgroundColor: colors.surface.glass,
                             borderTopLeftRadius: 32,
                             borderTopRightRadius: 32,
                             padding: 24,
                             paddingBottom: 40,
                             maxHeight: '80%',
                             borderTopWidth: 1,
-                            borderTopColor: 'rgba(255, 255, 255, 0.5)',
+                            borderTopColor: colors.border.subtle,
                             shadowColor: '#000',
                             shadowOffset: { width: 0, height: -4 },
                             shadowOpacity: 0.1,
@@ -61,14 +64,14 @@ export function ExerciseSwapModal({
                         <View className="flex-row items-center justify-between mb-4">
                             <View className="flex-row items-center gap-2">
                                 <ArrowRightLeft size={18} color="#7c3aed" />
-                                <Text className="text-slate-900 text-lg font-bold">Substituir Exercício</Text>
+                                <Text style={{ color: colors.text.primary, fontSize: 18, fontWeight: '700' }}>Substituir Exercício</Text>
                             </View>
-                            <TouchableOpacity onPress={onClose} className="p-2 bg-slate-100 rounded-full">
-                                <X size={18} color="#64748b" />
+                            <TouchableOpacity onPress={onClose} style={{ padding: 8, backgroundColor: colors.neutral[100], borderRadius: 999 }}>
+                                <X size={18} color={colors.text.tertiary} />
                             </TouchableOpacity>
                         </View>
 
-                        <Text className="text-slate-500 text-sm mb-4">
+                        <Text style={{ color: colors.text.tertiary, fontSize: 14, marginBottom: 16 }}>
                             {exerciseName ? `Atual: ${exerciseName}` : 'Selecione um substituto.'}
                         </Text>
 

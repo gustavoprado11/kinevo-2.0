@@ -634,9 +634,9 @@ export default function WorkoutPlayerScreen() {
     if (isLoading) {
         return (
             <ScreenWrapper>
-                <View className="flex-1 items-center justify-center bg-slate-50">
+                <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface.canvas }}>
                     <ActivityIndicator size="large" color="#8b5cf6" />
-                    <Text className="text-slate-500 mt-4">Carregando treino...</Text>
+                    <Text style={{ color: colors.text.tertiary, marginTop: 16 }}>Carregando treino...</Text>
                 </View>
             </ScreenWrapper>
         );
@@ -666,7 +666,7 @@ export default function WorkoutPlayerScreen() {
                 {/* Progress bar */}
                 <View style={{ marginTop: 12 }}>
                     <View style={{ height: 3, backgroundColor: colors.border.default, borderRadius: 2, overflow: 'hidden' }}>
-                        <View style={{ height: '100%', width: `${totalSets > 0 ? (completedSets / totalSets) * 100 : 0}%`, backgroundColor: '#7c3aed', borderRadius: 2 }} />
+                        <View style={{ height: '100%', width: `${totalSets > 0 ? (completedSets / totalSets) * 100 : 0}%`, backgroundColor: colors.purple[600], borderRadius: 2 }} />
                     </View>
                     <Text style={{ color: colors.text.tertiary, fontSize: 11, marginTop: 4, textAlign: 'right' }}>
                         {completedSets}/{totalSets} séries
@@ -676,11 +676,11 @@ export default function WorkoutPlayerScreen() {
 
             <KeyboardAvoidingView
                 behavior="padding"
-                className="flex-1 bg-slate-50"
+                style={{ flex: 1, backgroundColor: colors.surface.canvas }}
                 keyboardVerticalOffset={Platform.OS === "ios" ? 10 : 0}
             >
                 <ScrollView
-                    className="flex-1 px-4 pt-4 bg-slate-50"
+                    style={{ flex: 1, paddingHorizontal: 16, paddingTop: 16, backgroundColor: colors.surface.canvas }}
                     contentContainerStyle={{ paddingBottom: restTimer ? 260 : 24 }}
                     showsVerticalScrollIndicator={false}
                     keyboardShouldPersistTaps="handled"
@@ -889,7 +889,7 @@ export default function WorkoutPlayerScreen() {
                 paddingBottom: Math.max(insets.bottom, 16),
                 backgroundColor: colors.surface.canvas,
                 borderTopWidth: StyleSheet.hairlineWidth,
-                borderTopColor: '#e2e8f0',
+                borderTopColor: colors.border.default,
             }}>
                 <TouchableOpacity
                     onPress={() => {
@@ -910,7 +910,7 @@ export default function WorkoutPlayerScreen() {
                     disabled={isSubmitting}
                     activeOpacity={0.8}
                     style={{
-                        backgroundColor: allSetsCompleted ? '#7c3aed' : '#e2e8f0',
+                        backgroundColor: allSetsCompleted ? '#7c3aed' : colors.neutral[200],
                         borderRadius: 16,
                         height: 52,
                         alignItems: 'center',
@@ -918,10 +918,10 @@ export default function WorkoutPlayerScreen() {
                     }}
                 >
                     {isSubmitting ? (
-                        <ActivityIndicator size="small" color={allSetsCompleted ? '#fff' : '#64748b'} />
+                        <ActivityIndicator size="small" color={allSetsCompleted ? '#fff' : colors.text.tertiary} />
                     ) : (
                         <Text style={{
-                            color: allSetsCompleted ? '#fff' : '#64748b',
+                            color: allSetsCompleted ? '#fff' : colors.text.tertiary,
                             fontWeight: '700',
                             fontSize: 16,
                         }}>

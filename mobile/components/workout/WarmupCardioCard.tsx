@@ -1,11 +1,10 @@
-// TODO Onda 4b: dark mode adapt — StyleSheet estático com cores neutras hardcoded.
-// Requer migração dos styles para inline (com useV2Colors) ou StyleSheet factory.
-// Fora de escopo da Onda 4a por volume + risco visual.
+// Fase 7: dark mode adapt via makeStyles(colors) factory + useV2Colors.
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { Flame, Activity, Clock, Timer, Check, Play, Pause, SkipForward, Square } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import type { ExerciseData } from '../../hooks/useWorkoutSession';
+import { useV2Colors, type V2Palette } from '../../hooks/useV2Colors';
 
 interface WarmupCardioCardProps {
     exercise: ExerciseData;
@@ -172,6 +171,8 @@ function formatTimer(seconds: number): string {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export function WarmupCardioCard({ exercise, disabled, onCardioToggle }: WarmupCardioCardProps) {
+    const colors = useV2Colors();
+    const styles = makeStyles(colors);
     const [completed, setCompleted] = useState(
         exercise.setsData.length > 0 && exercise.setsData[0].completed
     );
@@ -420,153 +421,155 @@ export function WarmupCardioCard({ exercise, disabled, onCardioToggle }: WarmupC
     );
 }
 
-const styles = StyleSheet.create({
-    container: {
-        borderWidth: 1,
-        borderRadius: 16,
-        padding: 14,
-        marginBottom: 12,
-    },
-    row: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        gap: 12,
-    },
-    iconWrap: {
-        width: 36,
-        height: 36,
-        borderRadius: 12,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    content: {
-        flex: 1,
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: 4,
-    },
-    label: {
-        fontSize: 12,
-        fontWeight: '700',
-    },
-    checkBtn: {
-        width: 28,
-        height: 28,
-        borderRadius: 14,
-        borderWidth: 2,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    playBtn: {
-        width: 28,
-        height: 28,
-        borderRadius: 14,
-        borderWidth: 1.5,
-        borderColor: 'rgba(6,182,212,0.3)',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    warmupDesc: {
-        fontSize: 14,
-        color: '#92400e',
-        lineHeight: 20,
-        marginBottom: 2,
-    },
-    seeMore: {
-        fontSize: 11,
-        color: '#f97316',
-        fontWeight: '600',
-        marginTop: 2,
-    },
-    detail: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-    },
-    detailText: {
-        fontSize: 12,
-        color: 'rgba(255,255,255,0.5)',
-    },
-    notes: {
-        fontSize: 12,
-        color: 'rgba(255,255,255,0.4)',
-        marginTop: 6,
-    },
+function makeStyles(colors: V2Palette) {
+    return StyleSheet.create({
+        container: {
+            borderWidth: 1,
+            borderRadius: 16,
+            padding: 14,
+            marginBottom: 12,
+        },
+        row: {
+            flexDirection: 'row',
+            alignItems: 'flex-start',
+            gap: 12,
+        },
+        iconWrap: {
+            width: 36,
+            height: 36,
+            borderRadius: 12,
+            alignItems: 'center',
+            justifyContent: 'center',
+        },
+        content: {
+            flex: 1,
+        },
+        header: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 4,
+        },
+        label: {
+            fontSize: 12,
+            fontWeight: '700',
+        },
+        checkBtn: {
+            width: 28,
+            height: 28,
+            borderRadius: 14,
+            borderWidth: 2,
+            alignItems: 'center',
+            justifyContent: 'center',
+        },
+        playBtn: {
+            width: 28,
+            height: 28,
+            borderRadius: 14,
+            borderWidth: 1.5,
+            borderColor: 'rgba(6,182,212,0.3)',
+            alignItems: 'center',
+            justifyContent: 'center',
+        },
+        warmupDesc: {
+            fontSize: 14,
+            color: colors.text.secondary,
+            lineHeight: 20,
+            marginBottom: 2,
+        },
+        seeMore: {
+            fontSize: 11,
+            color: '#f97316',
+            fontWeight: '600',
+            marginTop: 2,
+        },
+        detail: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 4,
+        },
+        detailText: {
+            fontSize: 12,
+            color: colors.text.tertiary,
+        },
+        notes: {
+            fontSize: 12,
+            color: colors.text.quaternary,
+            marginTop: 6,
+        },
 
-    // Timer styles
-    timerContainer: {
-        marginTop: 12,
-        alignItems: 'center',
-        paddingVertical: 12,
-        borderTopWidth: StyleSheet.hairlineWidth,
-        borderTopColor: 'rgba(255,255,255,0.08)',
-    },
-    phaseBadge: {
-        paddingHorizontal: 12,
-        paddingVertical: 4,
-        borderRadius: 8,
-        marginBottom: 8,
-    },
-    phaseText: {
-        fontSize: 11,
-        fontWeight: '800',
-        letterSpacing: 2,
-    },
-    timerDisplay: {
-        fontSize: 36,
-        fontWeight: '200',
-        color: '#06b6d4',
-        fontVariant: ['tabular-nums'],
-        letterSpacing: 2,
-    },
-    roundText: {
-        fontSize: 12,
-        color: 'rgba(255,255,255,0.4)',
-        marginTop: 4,
-    },
-    roundProgress: {
-        flexDirection: 'row',
-        gap: 4,
-        marginTop: 8,
-    },
-    roundDot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-    },
-    intensityHint: {
-        fontSize: 12,
-        color: 'rgba(255,255,255,0.4)',
-        marginTop: 4,
-    },
-    equipmentTag: {
-        fontSize: 11,
-        color: 'rgba(6,182,212,0.6)',
-        marginTop: 4,
-    },
-    timerControls: {
-        flexDirection: 'row',
-        gap: 12,
-        marginTop: 16,
-    },
-    controlBtn: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        backgroundColor: 'rgba(6,182,212,0.2)',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    controlBtnOutline: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        borderWidth: 1.5,
-        borderColor: 'rgba(255,255,255,0.12)',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-});
+        // Timer styles
+        timerContainer: {
+            marginTop: 12,
+            alignItems: 'center',
+            paddingVertical: 12,
+            borderTopWidth: StyleSheet.hairlineWidth,
+            borderTopColor: colors.border.subtle,
+        },
+        phaseBadge: {
+            paddingHorizontal: 12,
+            paddingVertical: 4,
+            borderRadius: 8,
+            marginBottom: 8,
+        },
+        phaseText: {
+            fontSize: 11,
+            fontWeight: '800',
+            letterSpacing: 2,
+        },
+        timerDisplay: {
+            fontSize: 36,
+            fontWeight: '200',
+            color: '#06b6d4',
+            fontVariant: ['tabular-nums'],
+            letterSpacing: 2,
+        },
+        roundText: {
+            fontSize: 12,
+            color: colors.text.quaternary,
+            marginTop: 4,
+        },
+        roundProgress: {
+            flexDirection: 'row',
+            gap: 4,
+            marginTop: 8,
+        },
+        roundDot: {
+            width: 8,
+            height: 8,
+            borderRadius: 4,
+        },
+        intensityHint: {
+            fontSize: 12,
+            color: colors.text.quaternary,
+            marginTop: 4,
+        },
+        equipmentTag: {
+            fontSize: 11,
+            color: 'rgba(6,182,212,0.6)',
+            marginTop: 4,
+        },
+        timerControls: {
+            flexDirection: 'row',
+            gap: 12,
+            marginTop: 16,
+        },
+        controlBtn: {
+            width: 44,
+            height: 44,
+            borderRadius: 22,
+            backgroundColor: 'rgba(6,182,212,0.2)',
+            alignItems: 'center',
+            justifyContent: 'center',
+        },
+        controlBtnOutline: {
+            width: 44,
+            height: 44,
+            borderRadius: 22,
+            borderWidth: 1.5,
+            borderColor: colors.border.subtle,
+            alignItems: 'center',
+            justifyContent: 'center',
+        },
+    });
+}

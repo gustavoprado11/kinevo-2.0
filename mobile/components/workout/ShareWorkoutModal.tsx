@@ -16,6 +16,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSessionStats } from '../../hooks/useSessionStats';
+import { useV2Colors, type V2Palette } from '../../hooks/useV2Colors';
 
 // Templates
 import { PhotoOverlayTemplate } from './sharing/PhotoOverlayTemplate';
@@ -94,6 +95,8 @@ function TemplateSegment({
     onSelect: (key: TemplateType) => void;
     screenWidth: number;
 }) {
+    const colors = useV2Colors();
+    const styles = makeStyles(colors);
     const pillX = useSharedValue(templates.findIndex(t => t.key === selected));
 
     useEffect(() => {
@@ -131,12 +134,12 @@ function TemplateSegment({
                         }}
                         style={styles.segmentTab}
                     >
-                        <t.Icon size={14} color={isActive ? '#0f172a' : '#94a3b8'} />
+                        <t.Icon size={14} color={isActive ? colors.text.primary : colors.text.quaternary} />
                         <Text
                             style={{
                                 fontSize: 12,
                                 fontWeight: isActive ? '600' : '500',
-                                color: isActive ? '#0f172a' : '#94a3b8',
+                                color: isActive ? colors.text.primary : colors.text.quaternary,
                             }}
                         >
                             {t.label}
@@ -150,6 +153,8 @@ function TemplateSegment({
 
 // ── Main Modal ──
 export function ShareWorkoutModal({ visible, onClose, data, sessionId }: ShareWorkoutModalProps) {
+    const colors = useV2Colors();
+    const styles = makeStyles(colors);
     const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
     const { previewScale: PREVIEW_SCALE, scaledH: SCALED_H } = computePreviewScale(SCREEN_WIDTH, SCREEN_HEIGHT);
     const insets = useSafeAreaInsets();
@@ -341,146 +346,148 @@ export function ShareWorkoutModal({ visible, onClose, data, sessionId }: ShareWo
     );
 }
 
-const styles = StyleSheet.create({
-    overlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        justifyContent: 'flex-end',
-    },
-    modalSheet: {
-        backgroundColor: '#ffffff',
-        borderTopLeftRadius: 28,
-        borderTopRightRadius: 28,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: -4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 16,
-        elevation: 20,
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingTop: 20,
-        paddingBottom: 14,
-        paddingHorizontal: 24,
-        position: 'relative',
-    },
-    title: {
-        fontSize: 17,
-        fontWeight: '600',
-        color: '#0f172a',
-        letterSpacing: 0.2,
-    },
-    closeButton: {
-        position: 'absolute',
-        right: 20,
-        top: 16,
-        width: 34,
-        height: 34,
-        borderRadius: 17,
-        backgroundColor: '#f1f5f9',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
+function makeStyles(colors: V2Palette) {
+    return StyleSheet.create({
+        overlay: {
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            justifyContent: 'flex-end',
+        },
+        modalSheet: {
+            backgroundColor: colors.surface.canvas,
+            borderTopLeftRadius: 28,
+            borderTopRightRadius: 28,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: -4 },
+            shadowOpacity: 0.1,
+            shadowRadius: 16,
+            elevation: 20,
+        },
+        header: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingTop: 20,
+            paddingBottom: 14,
+            paddingHorizontal: 24,
+            position: 'relative',
+        },
+        title: {
+            fontSize: 17,
+            fontWeight: '600',
+            color: colors.text.primary,
+            letterSpacing: 0.2,
+        },
+        closeButton: {
+            position: 'absolute',
+            right: 20,
+            top: 16,
+            width: 34,
+            height: 34,
+            borderRadius: 17,
+            backgroundColor: colors.neutral[100],
+            alignItems: 'center',
+            justifyContent: 'center',
+        },
 
-    // ── Preview ──
-    previewWrapper: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 24,
-    },
-    previewFrame: {
-        width: CARD_W,
-        height: CARD_H,
-        position: 'absolute',
-        borderRadius: 16,
-        overflow: 'hidden',
-        backgroundColor: '#f8fafc',
-        borderWidth: 1,
-        borderColor: 'rgba(0, 0, 0, 0.06)',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.06,
-        shadowRadius: 12,
-        elevation: 6,
-    },
+        // ── Preview ──
+        previewWrapper: {
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: 24,
+        },
+        previewFrame: {
+            width: CARD_W,
+            height: CARD_H,
+            position: 'absolute',
+            borderRadius: 16,
+            overflow: 'hidden',
+            backgroundColor: colors.surface.card2,
+            borderWidth: 1,
+            borderColor: colors.border.subtle,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.06,
+            shadowRadius: 12,
+            elevation: 6,
+        },
 
-    // ── Segmented Control ──
-    segmentContainer: {
-        backgroundColor: '#f1f5f9',
-        borderRadius: 14,
-        padding: 4,
-        flexDirection: 'row',
-        marginHorizontal: 24,
-        marginBottom: 20,
-        position: 'relative',
-    },
-    segmentPill: {
-        position: 'absolute',
-        top: 4,
-        left: 4,
-        bottom: 4,
-        borderRadius: 11,
-        backgroundColor: '#ffffff',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.08,
-        shadowRadius: 3,
-        elevation: 2,
-    },
-    segmentTab: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 10,
-        gap: 5,
-        zIndex: 1,
-    },
+        // ── Segmented Control ──
+        segmentContainer: {
+            backgroundColor: colors.neutral[100],
+            borderRadius: 14,
+            padding: 4,
+            flexDirection: 'row',
+            marginHorizontal: 24,
+            marginBottom: 20,
+            position: 'relative',
+        },
+        segmentPill: {
+            position: 'absolute',
+            top: 4,
+            left: 4,
+            bottom: 4,
+            borderRadius: 11,
+            backgroundColor: colors.surface.card,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.08,
+            shadowRadius: 3,
+            elevation: 2,
+        },
+        segmentTab: {
+            flex: 1,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingVertical: 10,
+            gap: 5,
+            zIndex: 1,
+        },
 
-    // ── Photo Controls ──
-    photoControls: {
-        flexDirection: 'row',
-        gap: 12,
-        justifyContent: 'center',
-        marginBottom: 20,
-        paddingHorizontal: 24,
-    },
-    photoButton: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
-        backgroundColor: '#f1f5f9',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        borderRadius: 14,
-    },
-    photoButtonText: {
-        color: '#475569',
-        fontSize: 14,
-        fontWeight: '500',
-    },
+        // ── Photo Controls ──
+        photoControls: {
+            flexDirection: 'row',
+            gap: 12,
+            justifyContent: 'center',
+            marginBottom: 20,
+            paddingHorizontal: 24,
+        },
+        photoButton: {
+            flex: 1,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            backgroundColor: colors.neutral[100],
+            paddingHorizontal: 16,
+            paddingVertical: 12,
+            borderRadius: 14,
+        },
+        photoButtonText: {
+            color: colors.text.secondary,
+            fontSize: 14,
+            fontWeight: '500',
+        },
 
-    // ── Share Button ──
-    footer: {
-        paddingHorizontal: 24,
-    },
-    shareButton: {
-        backgroundColor: '#7c3aed',
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 16,
-        borderRadius: 14,
-        gap: 8,
-    },
-    shareText: {
-        color: 'white',
-        fontWeight: '700',
-        fontSize: 16,
-        letterSpacing: 0.2,
-    },
-});
+        // ── Share Button ──
+        footer: {
+            paddingHorizontal: 24,
+        },
+        shareButton: {
+            backgroundColor: '#7c3aed',
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingVertical: 16,
+            borderRadius: 14,
+            gap: 8,
+        },
+        shareText: {
+            color: 'white',
+            fontWeight: '700',
+            fontSize: 16,
+            letterSpacing: 0.2,
+        },
+    });
+}
