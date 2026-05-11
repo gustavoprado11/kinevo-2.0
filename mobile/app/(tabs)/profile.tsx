@@ -19,50 +19,10 @@ import { v2 } from "@kinevo/shared/tokens";
 import { AdaptiveModal } from "../../components/shared/AdaptiveModal";
 import { useThemePreferenceStore, type ThemeMode } from "../../stores/themePreferenceStore";
 
-// ── Menu item config with semantic colors ──
+// ── Menu item config movido para dentro do componente ──
+// Os iconBg são rgba semi-transparentes que se adaptam ao surface (claro/escuro)
+// e o iconColor neutro usa token (text.secondary) que inverte por modo.
 // Item 'appearance' não tem `route` — abre AdaptiveModal local.
-const MENU_ITEMS = [
-    {
-        id: 'settings',
-        label: 'Configurações',
-        Icon: Settings,
-        iconColor: '#475569',
-        iconBg: '#f1f5f9',
-        route: '/profile/settings',
-    },
-    {
-        id: 'appearance',
-        label: 'Aparência',
-        Icon: Monitor,
-        iconColor: '#7c3aed',
-        iconBg: '#f5f3ff',
-        route: null,
-    },
-    {
-        id: 'subscription',
-        label: 'Minha Assinatura',
-        Icon: CreditCard,
-        iconColor: '#2563eb',
-        iconBg: '#eff6ff',
-        route: '/profile/subscription',
-    },
-    {
-        id: 'support',
-        label: 'Suporte',
-        Icon: HelpCircle,
-        iconColor: '#7c3aed',
-        iconBg: '#f5f3ff',
-        route: '/profile/support',
-    },
-    {
-        id: 'privacy',
-        label: 'Privacidade',
-        Icon: Shield,
-        iconColor: '#059669',
-        iconBg: '#ecfdf5',
-        route: '/profile/privacy',
-    },
-] as const;
 
 // ── Appearance options (mirror de (trainer-tabs)/more.tsx pra consistência) ──
 const APPEARANCE_OPTIONS: Array<{ mode: ThemeMode; label: string; icon: typeof Sun }> = [
@@ -85,6 +45,51 @@ export default function ProfileScreen() {
     const { user, signOut } = useAuth();
     const { profile, isUploading, updateAvatar } = useStudentProfile();
     const { isTrainer, switchToTrainer, subscriptionStatus } = useRoleMode();
+
+    // Menu items com tints rgba (funcionam em light e dark) + iconColor neutro
+    // via token que inverte automaticamente entre os modos.
+    const MENU_ITEMS = [
+        {
+            id: 'settings',
+            label: 'Configurações',
+            Icon: Settings,
+            iconColor: colors.text.secondary,
+            iconBg: 'rgba(113, 113, 122, 0.12)',
+            route: '/profile/settings',
+        },
+        {
+            id: 'appearance',
+            label: 'Aparência',
+            Icon: Monitor,
+            iconColor: '#7c3aed',
+            iconBg: 'rgba(124, 58, 237, 0.12)',
+            route: null as string | null,
+        },
+        {
+            id: 'subscription',
+            label: 'Minha Assinatura',
+            Icon: CreditCard,
+            iconColor: '#2563eb',
+            iconBg: 'rgba(37, 99, 235, 0.14)',
+            route: '/profile/subscription',
+        },
+        {
+            id: 'support',
+            label: 'Suporte',
+            Icon: HelpCircle,
+            iconColor: '#7c3aed',
+            iconBg: 'rgba(124, 58, 237, 0.12)',
+            route: '/profile/support',
+        },
+        {
+            id: 'privacy',
+            label: 'Privacidade',
+            Icon: Shield,
+            iconColor: '#10b981',
+            iconBg: 'rgba(16, 185, 129, 0.14)',
+            route: '/profile/privacy',
+        },
+    ];
 
     // Tema (Sistema/Claro/Escuro) — store global persiste em MMKV
     // e propaga para todas as telas via useV2Colors.
@@ -319,14 +324,14 @@ export default function ProfileScreen() {
                         >
                             <View
                                 style={{
-                                    backgroundColor: '#f5f3ff',
+                                    backgroundColor: 'rgba(124, 58, 237, 0.10)',
                                     flexDirection: "row",
                                     alignItems: "center",
                                     paddingVertical: 16,
                                     paddingHorizontal: 20,
                                     borderRadius: 20,
                                     borderWidth: 1,
-                                    borderColor: 'rgba(124, 58, 237, 0.12)',
+                                    borderColor: 'rgba(124, 58, 237, 0.18)',
                                 }}
                             >
                                 <View
@@ -334,7 +339,7 @@ export default function ProfileScreen() {
                                         height: 32,
                                         width: 32,
                                         borderRadius: 8,
-                                        backgroundColor: "rgba(124, 58, 237, 0.12)",
+                                        backgroundColor: "rgba(124, 58, 237, 0.16)",
                                         alignItems: "center",
                                         justifyContent: "center",
                                         marginRight: 14,
@@ -376,14 +381,14 @@ export default function ProfileScreen() {
                     >
                         <View
                             style={{
-                                backgroundColor: '#fef2f2',
+                                backgroundColor: 'rgba(239, 68, 68, 0.10)',
                                 flexDirection: "row",
                                 alignItems: "center",
                                 paddingVertical: 16,
                                 paddingHorizontal: 20,
                                 borderRadius: 20,
                                 borderWidth: 1,
-                                borderColor: 'rgba(239, 68, 68, 0.08)',
+                                borderColor: 'rgba(239, 68, 68, 0.18)',
                             }}
                         >
                             <View
@@ -391,7 +396,7 @@ export default function ProfileScreen() {
                                     height: 32,
                                     width: 32,
                                     borderRadius: 8,
-                                    backgroundColor: "rgba(239, 68, 68, 0.1)",
+                                    backgroundColor: "rgba(239, 68, 68, 0.16)",
                                     alignItems: "center",
                                     justifyContent: "center",
                                     marginRight: 14,

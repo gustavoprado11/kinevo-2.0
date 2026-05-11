@@ -1,12 +1,14 @@
 import { View, Text, TouchableOpacity, Linking, Alert } from "react-native";
 import { Stack } from "expo-router";
 import { MessageCircle, HelpCircle } from "lucide-react-native";
+import { useV2Colors } from "../../hooks/useV2Colors";
 
 // TODO: Substituir pelo número real de WhatsApp do suporte
 const WHATSAPP_NUMBER = "5531999064997";
 const WHATSAPP_MESSAGE = "Olá! Preciso de ajuda com o app Kinevo.";
 
 export default function SupportScreen() {
+    const colors = useV2Colors();
     const handleWhatsApp = async () => {
         const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(WHATSAPP_MESSAGE)}`;
 
@@ -24,12 +26,12 @@ export default function SupportScreen() {
 
     return (
         <>
-            <Stack.Screen options={{ title: "Suporte", headerStyle: { backgroundColor: '#f8fafc' }, headerTintColor: '#0f172a' }} />
-            <View style={{ flex: 1, backgroundColor: "#f8fafc", paddingHorizontal: 20, paddingTop: 24 }}>
+            <Stack.Screen options={{ title: "Suporte" }} />
+            <View style={{ flex: 1, backgroundColor: colors.surface.canvas, paddingHorizontal: 20, paddingTop: 24 }}>
                 {/* Info Card */}
                 <View
                     style={{
-                        backgroundColor: "#fff",
+                        backgroundColor: colors.surface.card,
                         borderRadius: 24,
                         padding: 24,
                         alignItems: "center",
@@ -46,7 +48,7 @@ export default function SupportScreen() {
                             width: 56,
                             height: 56,
                             borderRadius: 28,
-                            backgroundColor: "#f5f3ff",
+                            backgroundColor: "rgba(124,58,237,0.12)",
                             alignItems: "center",
                             justifyContent: "center",
                             marginBottom: 16,
@@ -58,7 +60,7 @@ export default function SupportScreen() {
                         style={{
                             fontSize: 16,
                             fontWeight: "700",
-                            color: "#0f172a",
+                            color: colors.text.primary,
                             marginBottom: 8,
                             textAlign: "center",
                         }}
@@ -68,7 +70,7 @@ export default function SupportScreen() {
                     <Text
                         style={{
                             fontSize: 13,
-                            color: "#64748b",
+                            color: colors.text.tertiary,
                             textAlign: "center",
                             lineHeight: 20,
                         }}

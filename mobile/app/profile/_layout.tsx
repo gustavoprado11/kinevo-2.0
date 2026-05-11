@@ -1,9 +1,11 @@
 import { Stack, useRouter } from "expo-router";
 import { Text, TouchableOpacity } from "react-native";
 import { ChevronLeft } from "lucide-react-native";
+import { useV2Colors } from "../../hooks/useV2Colors";
 
 export default function ProfileLayout() {
     const router = useRouter();
+    const colors = useV2Colors();
 
     const goToProfile = () => {
         router.navigate("/(tabs)/profile");
@@ -12,11 +14,11 @@ export default function ProfileLayout() {
     return (
         <Stack
             screenOptions={{
-                headerStyle: { backgroundColor: "#F2F2F7" },
-                headerTintColor: "#0f172a",
-                headerTitleStyle: { fontWeight: "600", fontSize: 16, color: "#0f172a" },
+                headerStyle: { backgroundColor: colors.surface.canvas },
+                headerTintColor: colors.text.primary,
+                headerTitleStyle: { fontWeight: "600", fontSize: 16, color: colors.text.primary },
                 headerShadowVisible: false,
-                contentStyle: { backgroundColor: "#F2F2F7" },
+                contentStyle: { backgroundColor: colors.surface.canvas },
                 gestureEnabled: true,
                 gestureDirection: 'horizontal',
                 animation: 'slide_from_right',

@@ -1,13 +1,15 @@
 import { ScrollView, Text, View } from "react-native";
 import { Stack } from "expo-router";
 import type { ReactNode } from "react";
+import { useV2Colors } from "../../hooks/useV2Colors";
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
+    const colors = useV2Colors();
     return (
         <View style={{ marginBottom: 20 }}>
             <Text
                 style={{
-                    color: "#f1f5f9",
+                    color: colors.text.primary,
                     fontSize: 16,
                     fontWeight: "700",
                     marginBottom: 8,
@@ -17,7 +19,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
             </Text>
             <Text
                 style={{
-                    color: "#94a3b8",
+                    color: colors.text.secondary,
                     fontSize: 13,
                     lineHeight: 21,
                 }}
@@ -29,6 +31,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 }
 
 export default function PrivacyPolicyScreen() {
+    const colors = useV2Colors();
     return (
         <>
             <Stack.Screen options={{ title: "Privacidade" }} />
@@ -37,10 +40,10 @@ export default function PrivacyPolicyScreen() {
                 contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 22, paddingBottom: 40 }}
                 showsVerticalScrollIndicator={false}
             >
-                <Text style={{ color: "#f8fafc", fontSize: 26, fontWeight: "800", marginBottom: 6 }}>
+                <Text style={{ color: colors.text.primary, fontSize: 26, fontWeight: "800", marginBottom: 6 }}>
                     Política de Privacidade
                 </Text>
-                <Text style={{ color: "#64748b", fontSize: 12, marginBottom: 22 }}>
+                <Text style={{ color: colors.text.tertiary, fontSize: 12, marginBottom: 22 }}>
                     Última atualização: 10/02/2026
                 </Text>
 

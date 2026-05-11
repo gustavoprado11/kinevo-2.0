@@ -14,6 +14,7 @@ import {
     FileText,
     XCircle,
 } from "lucide-react-native";
+import { useV2Colors } from "../../hooks/useV2Colors";
 
 const WEB_URL = process.env.EXPO_PUBLIC_WEB_URL || "https://app.kinevo.com.br";
 
@@ -52,6 +53,7 @@ function formatDate(dateStr: string): string {
 }
 
 export default function SubscriptionScreen() {
+    const colors = useV2Colors();
     const router = useRouter();
     const { contract, isLoading, refresh } = useStudentSubscription();
     const [isCanceling, setIsCanceling] = useState(false);
@@ -128,7 +130,7 @@ export default function SubscriptionScreen() {
                 <Stack.Screen options={{ title: "Minha Assinatura" }} />
                 <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
                     <ActivityIndicator color="#8b5cf6" />
-                    <Text style={{ color: "#64748b", marginTop: 12, fontSize: 13 }}>
+                    <Text style={{ color: colors.text.tertiary, marginTop: 12, fontSize: 13 }}>
                         Carregando...
                     </Text>
                 </View>
@@ -139,11 +141,11 @@ export default function SubscriptionScreen() {
     if (!contract) {
         return (
             <>
-                <Stack.Screen options={{ title: "Minha Assinatura", headerStyle: { backgroundColor: '#f8fafc' }, headerTintColor: '#0f172a' }} />
+                <Stack.Screen options={{ title: "Minha Assinatura" }} />
                 <View
                     style={{
                         flex: 1,
-                        backgroundColor: "#f8fafc",
+                        backgroundColor: colors.surface.canvas,
                         alignItems: "center",
                         justifyContent: "center",
                         paddingHorizontal: 32,
@@ -154,7 +156,7 @@ export default function SubscriptionScreen() {
                             width: 64,
                             height: 64,
                             borderRadius: 32,
-                            backgroundColor: "#f1f5f9",
+                            backgroundColor: colors.neutral[100],
                             alignItems: "center",
                             justifyContent: "center",
                             marginBottom: 16,
@@ -166,7 +168,7 @@ export default function SubscriptionScreen() {
                         style={{
                             fontSize: 16,
                             fontWeight: "700",
-                            color: "#0f172a",
+                            color: colors.text.primary,
                             marginBottom: 6,
                         }}
                     >
@@ -175,7 +177,7 @@ export default function SubscriptionScreen() {
                     <Text
                         style={{
                             fontSize: 13,
-                            color: "#64748b",
+                            color: colors.text.tertiary,
                             textAlign: "center",
                             lineHeight: 20,
                         }}
@@ -193,16 +195,16 @@ export default function SubscriptionScreen() {
 
     return (
         <>
-            <Stack.Screen options={{ title: "Minha Assinatura", headerStyle: { backgroundColor: '#f8fafc' }, headerTintColor: '#0f172a' }} />
+            <Stack.Screen options={{ title: "Minha Assinatura" }} />
             <ScrollView
-                style={{ flex: 1, backgroundColor: "#f8fafc" }}
+                style={{ flex: 1, backgroundColor: colors.surface.canvas }}
                 contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 24, paddingBottom: 40 }}
                 showsVerticalScrollIndicator={false}
             >
                 {/* Plan Overview Card */}
                 <View
                     style={{
-                        backgroundColor: "#fff",
+                        backgroundColor: colors.surface.card,
                         borderRadius: 16,
                         padding: 24,
                         alignItems: "center",
@@ -218,7 +220,7 @@ export default function SubscriptionScreen() {
                         style={{
                             fontSize: 18,
                             fontWeight: "700",
-                            color: "#0f172a",
+                            color: colors.text.primary,
                             marginBottom: 8,
                             textAlign: "center",
                         }}
@@ -242,7 +244,7 @@ export default function SubscriptionScreen() {
                                 style={{
                                     fontSize: 28,
                                     fontWeight: "800",
-                                    color: "#0f172a",
+                                    color: colors.text.primary,
                                 }}
                             >
                                 {formatCurrency(contract.amount)}
@@ -250,7 +252,7 @@ export default function SubscriptionScreen() {
                             <Text
                                 style={{
                                     fontSize: 14,
-                                    color: "#64748b",
+                                    color: colors.text.tertiary,
                                     marginLeft: 4,
                                 }}
                             >
@@ -263,7 +265,7 @@ export default function SubscriptionScreen() {
                 {/* Details Card */}
                 <View
                     style={{
-                        backgroundColor: "#fff",
+                        backgroundColor: colors.surface.card,
                         borderRadius: 16,
                         overflow: "hidden",
                         marginBottom: 20,
@@ -307,7 +309,7 @@ export default function SubscriptionScreen() {
                         icon={<Tag size={20} color="#64748b" strokeWidth={1.5} />}
                         label="Tipo de Cobrança"
                         value={
-                            <Text style={{ fontSize: 13, fontWeight: "600", color: "#0f172a" }}>
+                            <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text.primary }}>
                                 {billingLabel}
                             </Text>
                         }
@@ -325,7 +327,7 @@ export default function SubscriptionScreen() {
                                         style={{
                                             fontSize: 13,
                                             fontWeight: "600",
-                                            color: "#0f172a",
+                                            color: colors.text.primary,
                                         }}
                                     >
                                         {formatDate(contract.current_period_end)}
@@ -372,7 +374,7 @@ export default function SubscriptionScreen() {
                     onPress={() => router.push("/profile/payment-history")}
                     activeOpacity={0.6}
                     style={{
-                        backgroundColor: "#fff",
+                        backgroundColor: colors.surface.card,
                         borderRadius: 16,
                         flexDirection: "row",
                         alignItems: "center",
@@ -403,7 +405,7 @@ export default function SubscriptionScreen() {
                         style={{
                             fontSize: 14,
                             fontWeight: "500",
-                            color: "#0f172a",
+                            color: colors.text.primary,
                             flex: 1,
                         }}
                     >
@@ -465,6 +467,7 @@ function DetailRow({
     label: string;
     value: React.ReactNode;
 }) {
+    const colors = useV2Colors();
     return (
         <View
             style={{
@@ -479,7 +482,7 @@ function DetailRow({
                     height: 40,
                     width: 40,
                     borderRadius: 12,
-                    backgroundColor: "#f1f5f9",
+                    backgroundColor: colors.neutral[100],
                     alignItems: "center",
                     justifyContent: "center",
                     marginRight: 14,
@@ -490,7 +493,7 @@ function DetailRow({
             <Text
                 style={{
                     fontSize: 13,
-                    color: "#64748b",
+                    color: colors.text.tertiary,
                     flex: 1,
                 }}
             >
@@ -502,11 +505,12 @@ function DetailRow({
 }
 
 function Divider() {
+    const colors = useV2Colors();
     return (
         <View
             style={{
                 height: 1,
-                backgroundColor: "#f1f5f9",
+                backgroundColor: colors.neutral[100],
                 marginHorizontal: 20,
             }}
         />

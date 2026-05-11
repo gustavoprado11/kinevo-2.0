@@ -4,6 +4,7 @@ import { Stack } from "expo-router";
 import { supabase } from "../../lib/supabase";
 import { useStudentProfile } from "../../hooks/useStudentProfile";
 import { CreditCard } from "lucide-react-native";
+import { useV2Colors } from "../../hooks/useV2Colors";
 
 interface Transaction {
     id: string;
@@ -40,6 +41,7 @@ function formatDate(dateStr: string): string {
 }
 
 export default function PaymentHistoryScreen() {
+    const colors = useV2Colors();
     const { profile } = useStudentProfile();
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -92,7 +94,7 @@ export default function PaymentHistoryScreen() {
         return (
             <View
                 style={{
-                    backgroundColor: "#1A1A2E",
+                    backgroundColor: colors.surface.card,
                     borderRadius: 14,
                     padding: 16,
                     marginBottom: 10,
@@ -111,7 +113,7 @@ export default function PaymentHistoryScreen() {
                         style={{
                             fontSize: 14,
                             fontWeight: "600",
-                            color: "#e2e8f0",
+                            color: colors.text.primary,
                             flex: 1,
                             marginRight: 12,
                         }}
@@ -123,7 +125,7 @@ export default function PaymentHistoryScreen() {
                         style={{
                             fontSize: 14,
                             fontWeight: "700",
-                            color: "#f1f5f9",
+                            color: colors.text.primary,
                         }}
                     >
                         {formatCurrency(item.amount_gross, item.currency)}
@@ -138,7 +140,7 @@ export default function PaymentHistoryScreen() {
                         alignItems: "center",
                     }}
                 >
-                    <Text style={{ fontSize: 12, color: "#64748b" }}>
+                    <Text style={{ fontSize: 12, color: colors.text.tertiary }}>
                         {formatDate(item.created_at)}
                     </Text>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
@@ -171,7 +173,7 @@ export default function PaymentHistoryScreen() {
                 <Stack.Screen options={{ title: "Histórico de Pagamentos" }} />
                 <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
                     <ActivityIndicator color="#8b5cf6" />
-                    <Text style={{ color: "#64748b", marginTop: 12, fontSize: 13 }}>
+                    <Text style={{ color: colors.text.tertiary, marginTop: 12, fontSize: 13 }}>
                         Carregando...
                     </Text>
                 </View>
@@ -206,18 +208,18 @@ export default function PaymentHistoryScreen() {
                                 width: 64,
                                 height: 64,
                                 borderRadius: 32,
-                                backgroundColor: "#1A1A2E",
+                                backgroundColor: colors.surface.card,
                                 alignItems: "center",
                                 justifyContent: "center",
                                 marginBottom: 16,
                             }}
                         >
-                            <CreditCard size={28} color="#64748b" strokeWidth={1.5} />
+                            <CreditCard size={28} color={colors.text.tertiary} strokeWidth={1.5} />
                         </View>
                         <Text
                             style={{
                                 fontSize: 14,
-                                color: "#64748b",
+                                color: colors.text.tertiary,
                                 textAlign: "center",
                             }}
                         >

@@ -2,8 +2,10 @@ import { View, Text, TouchableOpacity, Alert } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { FileText, Shield, Trash2, ChevronRight } from "lucide-react-native";
 import { useStudentProfile } from "../../hooks/useStudentProfile";
+import { useV2Colors } from "../../hooks/useV2Colors";
 
 export default function PrivacyScreen() {
+    const colors = useV2Colors();
     const router = useRouter();
     const { deleteAccount } = useStudentProfile();
 
@@ -52,14 +54,14 @@ export default function PrivacyScreen() {
 
     return (
         <>
-            <Stack.Screen options={{ title: "Legal", headerStyle: { backgroundColor: '#f8fafc' }, headerTintColor: '#0f172a' }} />
-            <View style={{ flex: 1, backgroundColor: "#f8fafc", paddingHorizontal: 20, paddingTop: 24 }}>
+            <Stack.Screen options={{ title: "Legal" }} />
+            <View style={{ flex: 1, backgroundColor: colors.surface.canvas, paddingHorizontal: 20, paddingTop: 24 }}>
                 {/* Legal Documents */}
                 <Text
                     style={{
                         fontSize: 11,
                         fontWeight: "700",
-                        color: "#94a3b8",
+                        color: colors.text.quaternary,
                         textTransform: "uppercase",
                         letterSpacing: 1.5,
                         marginBottom: 12,
@@ -71,7 +73,7 @@ export default function PrivacyScreen() {
 
                 <View
                     style={{
-                        backgroundColor: "#fff",
+                        backgroundColor: colors.surface.card,
                         borderRadius: 16,
                         overflow: "hidden",
                         marginBottom: 28,
@@ -97,7 +99,7 @@ export default function PrivacyScreen() {
                                 height: 40,
                                 width: 40,
                                 borderRadius: 12,
-                                backgroundColor: "#f1f5f9",
+                                backgroundColor: colors.neutral[100],
                                 alignItems: "center",
                                 justifyContent: "center",
                                 marginRight: 14,
@@ -105,13 +107,13 @@ export default function PrivacyScreen() {
                         >
                             <FileText size={20} color="#64748b" strokeWidth={1.5} />
                         </View>
-                        <Text style={{ fontSize: 14, fontWeight: "500", color: "#0f172a", flex: 1 }}>
+                        <Text style={{ fontSize: 14, fontWeight: "500", color: colors.text.primary, flex: 1 }}>
                             Termos de Uso
                         </Text>
                         <ChevronRight size={16} color="#475569" strokeWidth={1.5} />
                     </TouchableOpacity>
 
-                    <View style={{ height: 1, backgroundColor: "#f1f5f9", marginHorizontal: 20 }} />
+                    <View style={{ height: 1, backgroundColor: colors.neutral[100], marginHorizontal: 20 }} />
 
                     <TouchableOpacity
                         onPress={() => router.push("/profile/privacy-policy")}
@@ -128,7 +130,7 @@ export default function PrivacyScreen() {
                                 height: 40,
                                 width: 40,
                                 borderRadius: 12,
-                                backgroundColor: "#f1f5f9",
+                                backgroundColor: colors.neutral[100],
                                 alignItems: "center",
                                 justifyContent: "center",
                                 marginRight: 14,
@@ -136,7 +138,7 @@ export default function PrivacyScreen() {
                         >
                             <Shield size={20} color="#64748b" strokeWidth={1.5} />
                         </View>
-                        <Text style={{ fontSize: 14, fontWeight: "500", color: "#0f172a", flex: 1 }}>
+                        <Text style={{ fontSize: 14, fontWeight: "500", color: colors.text.primary, flex: 1 }}>
                             Política de Privacidade
                         </Text>
                         <ChevronRight size={16} color="#475569" strokeWidth={1.5} />
@@ -162,7 +164,7 @@ export default function PrivacyScreen() {
                     onPress={handleDeleteAccount}
                     activeOpacity={0.7}
                     style={{
-                        backgroundColor: "#fff",
+                        backgroundColor: colors.surface.card,
                         borderRadius: 16,
                         flexDirection: "row",
                         alignItems: "center",
