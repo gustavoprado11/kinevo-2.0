@@ -15,6 +15,46 @@ export interface WorkoutSetData {
     completed: boolean;
 }
 
+/**
+ * Detecta se a prescrição por set é heterogênea (trainer prescreveu targets
+ * diferentes entre sets — ex: pirâmide 40×12 / 60×10 / 70×8). Quando true,
+ * o waterfall de autopreenchimento em `handleSetChange` é desligado pra que
+ * cada set respeite seu próprio target prescrito.
+ *
+ * Retorna false pra modo simples (todos sets com mesmo target) ou quando
+ * `setScheme` está vazio (programas legados sem per-set rollout).
+ *
+ * @param field Campo sendo editado pelo aluno (weight | reps). Determina
+ *              qual atributo do scheme inspecionar:
+ *              - weight → weight_target_kg
+ *              - reps   → reps_target
+ */
+function hasHeterogeneousSetScheme(
+    setScheme: SetPrescription[] | undefined,
+    field: 'weight' | 'reps'
+): boolean {
+    if (!setScheme || setScheme.length < 2) return false;
+
+    if (field === 'weight') {
+        const targets = setScheme.map((s) => s.weight_target_kg);
+        // Só considera heterogêneo se há pelo menos 2 valores numéricos
+        // distintos. null/undefined uniformes = modo simples (sem target
+        // específico de peso — peso vem do histórico do aluno).
+        const numericTargets = targets.filter((t): t is number => typeof t === 'number');
+        if (numericTargets.length < 2) return false;
+        const unique = new Set(numericTargets);
+        return unique.size > 1;
+    }
+
+    // field === 'reps'
+    const targets = setScheme
+        .map((s) => (s.reps_target ?? '').trim())
+        .filter((t) => t.length > 0);
+    if (targets.length < 2) return false;
+    const unique = new Set(targets);
+    return unique.size > 1;
+}
+
 export interface PreviousSetData {
     set_number: number;
     weight: number;
@@ -635,7 +675,8 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
     const handleSetChange = (exerciseIndex: number, setIndex: number, field: 'weight' | 'reps', value: string) => {
         setExercises(prev => {
             const newExercises = JSON.parse(JSON.stringify(prev)); // Deep copy for safety
-            const sets = newExercises[exerciseIndex].setsData;
+            const exercise = newExercises[exerciseIndex];
+            const sets = exercise.setsData;
 
             // Get the value BEFORE the update
             const oldValue = sets[setIndex][field];
@@ -643,19 +684,29 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
             // Update the current set
             sets[setIndex][field] = value;
 
-            // Smart Waterfall Logic: Propagate to subsequent sets
-            // Rule: Propagate if the next set is empty OR if it matched the *old* value (was previously auto-filled)
-            for (let i = setIndex + 1; i < sets.length; i++) {
-                const currentNextValue = sets[i][field];
+            // ── Custom set_scheme detection ──
+            // Quando o trainer prescreve séries heterogêneas (pirâmide, drop-set,
+            // cluster — sets com targets distintos), NÃO propagamos o valor pra
+            // séries seguintes. Cada série deve respeitar o que foi prescrito.
+            // Pra séries em modo simples (todos sets com mesmo target ou sem
+            // scheme), o waterfall continua ativo.
+            const isHeterogeneous = hasHeterogeneousSetScheme(exercise.setScheme, field);
 
-                // Conditions to propagate:
-                // 1. The target field is empty
-                // 2. The target field matches the oldValue (meaning it was likely following the waterfall)
-                if (currentNextValue === '' || currentNextValue === oldValue) {
-                    sets[i][field] = value;
-                } else {
-                    // Stop propagation if we hit a manually changed value (rock in the waterfall)
-                    break;
+            if (!isHeterogeneous) {
+                // Smart Waterfall Logic: Propagate to subsequent sets
+                // Rule: Propagate if the next set is empty OR if it matched the *old* value (was previously auto-filled)
+                for (let i = setIndex + 1; i < sets.length; i++) {
+                    const currentNextValue = sets[i][field];
+
+                    // Conditions to propagate:
+                    // 1. The target field is empty
+                    // 2. The target field matches the oldValue (meaning it was likely following the waterfall)
+                    if (currentNextValue === '' || currentNextValue === oldValue) {
+                        sets[i][field] = value;
+                    } else {
+                        // Stop propagation if we hit a manually changed value (rock in the waterfall)
+                        break;
+                    }
                 }
             }
 
