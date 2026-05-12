@@ -60,3 +60,16 @@ audit/
 /prompts-*.md
 /prompt-*.md
 /kinevo-*.md
+
+# Design work + specs locais (orchestrator workflow)
+/SPEC_FASE_*.md
+/Kinevo_*.html
+/Kinevo*.html
+/Kinevo *.html
+/Kinevo_*.md
+/Diagnostico_*.md
+/wearables-mockup.html
+/_kinevo-uxui-figures/
+/EXERCISE_ITEM_CARD_BEFORE_REFACTOR.txt
+docs/prd/PROMPT_claude_code_preferencias.md
+.claude/commands/

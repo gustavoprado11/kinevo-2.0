@@ -176,23 +176,24 @@ export function FormRenderer(props: FormRendererProps) {
 
     // ── Validation & Submit ──
     const handleSubmit = useCallback(async () => {
-        // Client-side required validation for inline mode
-        if (mode === "inline") {
-            for (const q of questions) {
-                if (!q.required) continue;
-                const a = answers[q.id];
-                if (a === undefined || a === null || a === "") {
+        // Client-side required validation — runs for all modes.
+        // Without this, the RPC submit_form_submission raises
+        // 'Required field missing: <question_id>' which leaks the
+        // internal id (e.g. 'ra01') to the user in English.
+        for (const q of questions) {
+            if (!q.required) continue;
+            const a = answers[q.id];
+            if (a === undefined || a === null || a === "") {
+                Alert.alert("Campo obrigatório", q.label);
+                return;
+            }
+            if (typeof a === "object") {
+                const hasValue =
+                    a.value !== undefined && a.value !== "" && a.value !== null;
+                const hasValues = Array.isArray(a.values) && a.values.length > 0;
+                if (!hasValue && !hasValues) {
                     Alert.alert("Campo obrigatório", q.label);
                     return;
-                }
-                if (typeof a === "object") {
-                    const hasValue =
-                        a.value !== undefined && a.value !== "" && a.value !== null;
-                    const hasValues = Array.isArray(a.values) && a.values.length > 0;
-                    if (!hasValue && !hasValues) {
-                        Alert.alert("Campo obrigatório", q.label);
-                        return;
-                    }
                 }
             }
         }

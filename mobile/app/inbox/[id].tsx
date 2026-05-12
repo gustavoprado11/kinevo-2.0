@@ -323,7 +323,21 @@ export default function InboxItemDetailScreen() {
             });
 
             if (error) {
-                Alert.alert("Validação", error.message || "Não foi possível enviar o formulário.");
+                // Defensive fallback: client-side validation in FormRenderer already
+                // catches required fields before submit. If the RPC still raises
+                // 'Required field missing: <question_id>' (e.g., client desync),
+                // map the id back to the question label so the user sees a human
+                // message instead of internal id like 'ra01'.
+                let userMessage = error.message || "Não foi possível enviar o formulário.";
+                const missingMatch = /Required field missing:\s*(.+)$/i.exec(userMessage);
+                if (missingMatch) {
+                    const missingId = missingMatch[1].trim();
+                    const q = questions.find((x) => x.id === missingId);
+                    userMessage = q
+                        ? `Campo obrigatório não preenchido: ${q.label}`
+                        : "Algum campo obrigatório não foi preenchido. Confira o formulário antes de enviar.";
+                }
+                Alert.alert("Validação", userMessage);
                 return;
             }
 
