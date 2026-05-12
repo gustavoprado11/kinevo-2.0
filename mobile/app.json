@@ -2,7 +2,7 @@
   "expo": {
     "name": "Kinevo",
     "slug": "kinevo",
-    "version": "1.2.8",
+    "version": "1.2.9",
     "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.kinevo.mobile",
-      "buildNumber": "25",
+      "buildNumber": "26",
       "appleTeamId": "3D5M22J52M",
       "entitlements": {
         "com.apple.developer.healthkit": true,
@@ -28,6 +28,9 @@
           "UIInterfaceOrientationPortraitUpsideDown",
           "UIInterfaceOrientationLandscapeLeft",
           "UIInterfaceOrientationLandscapeRight"
+        ],
+        "UIBackgroundModes": [
+          "remote-notification"
         ],
         "ITSAppUsesNonExemptEncryption": false,
         "NSSupportsLiveActivities": true,
@@ -44,7 +47,8 @@
       "googleServicesFile": "./google-services.json",
       "edgeToEdgeEnabled": true,
       "permissions": [
-        "android.permission.RECORD_AUDIO"
+        "android.permission.RECORD_AUDIO",
+        "android.permission.POST_NOTIFICATIONS"
       ]
     },
     "web": {

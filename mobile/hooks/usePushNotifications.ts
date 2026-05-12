@@ -3,10 +3,28 @@ import { Platform } from "react-native";
 import * as Notifications from "expo-notifications";
 import type { EventSubscription } from "expo-modules-core";
 import { useRouter } from "expo-router";
+import Constants from "expo-constants";
 import { supabase } from "../lib/supabase";
 import { useNotificationStore } from "../stores/notification-store";
 
 const API_URL = process.env.EXPO_PUBLIC_WEB_URL || "https://app.kinevo.com.br";
+
+/**
+ * Resolve the EAS projectId in the order Expo recommends:
+ * 1. Constants.expoConfig?.extra?.eas?.projectId  (managed config — set in app.json)
+ * 2. Constants.easConfig?.projectId               (legacy)
+ * 3. process.env.EXPO_PUBLIC_EAS_PROJECT_ID       (escape hatch via env)
+ *
+ * In standalone builds, env vars are baked at build time and may not be present.
+ * The app.json value is always available, so it must be the primary source.
+ */
+function resolveProjectId(): string | undefined {
+    const fromExtra = (Constants.expoConfig?.extra as { eas?: { projectId?: string } } | undefined)?.eas
+        ?.projectId;
+    const fromLegacy = (Constants as unknown as { easConfig?: { projectId?: string } }).easConfig?.projectId;
+    const fromEnv = process.env.EXPO_PUBLIC_EAS_PROJECT_ID;
+    return fromExtra ?? fromLegacy ?? fromEnv;
+}
 
 function getCategoryFromType(type: string): string {
     if (['form_request', 'feedback', 'form_submission'].includes(type)) return 'forms';
@@ -35,11 +53,21 @@ async function registerForPushNotificationsAsync(): Promise<string | null> {
         return null;
     }
 
-    const tokenData = await Notifications.getExpoPushTokenAsync({
-        projectId: process.env.EXPO_PUBLIC_EAS_PROJECT_ID,
-    });
+    const projectId = resolveProjectId();
+    if (!projectId) {
+        console.error(
+            "[push] Missing EAS projectId. Set extra.eas.projectId in app.json or EXPO_PUBLIC_EAS_PROJECT_ID in .env.",
+        );
+        return null;
+    }
 
-    return tokenData.data;
+    try {
+        const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
+        return tokenData.data;
+    } catch (err) {
+        console.error("[push] Failed to obtain Expo push token:", err);
+        return null;
+    }
 }
 
 async function registerTokenOnBackend(expoPushToken: string, role: "trainer" | "student") {

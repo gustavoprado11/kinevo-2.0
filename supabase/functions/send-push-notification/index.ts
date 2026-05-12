@@ -116,9 +116,28 @@ async function handleTrainerNotification(record: Record<string, any>) {
     const result = await response.json();
     const tickets = result.data ?? [];
 
-    // 4. Handle DeviceNotRegistered
+    // 4. Handle ticket errors — log every non-OK ticket, deactivate token on DeviceNotRegistered.
     for (let i = 0; i < tickets.length; i++) {
-        if (tickets[i].status === "error" && tickets[i].details?.error === "DeviceNotRegistered") {
+        const t = tickets[i];
+        if (t.status !== "error") continue;
+        const errType = t.details?.error ?? "unknown";
+
+        // Structured log — never breaks send flow.
+        try {
+            await supabaseAdmin.from("push_errors").insert({
+                push_token_id: tokens[i].id,
+                user_id: trainerId,
+                role: "trainer",
+                notification_id: notificationId,
+                error_type: errType,
+                error_message: t.message ?? null,
+                raw_ticket: t,
+            });
+        } catch (logErr) {
+            console.error("[send-push] Failed to log push error:", logErr);
+        }
+
+        if (errType === "DeviceNotRegistered") {
             await supabaseAdmin
                 .from("push_tokens")
                 .update({ active: false, updated_at: new Date().toISOString() })
@@ -231,7 +250,26 @@ async function handleStudentNotification(record: Record<string, any>) {
     const tickets = result.data ?? [];
 
     for (let i = 0; i < tickets.length; i++) {
-        if (tickets[i].status === "error" && tickets[i].details?.error === "DeviceNotRegistered") {
+        const t = tickets[i];
+        if (t.status !== "error") continue;
+        const errType = t.details?.error ?? "unknown";
+
+        // Structured log — never breaks send flow.
+        try {
+            await supabaseAdmin.from("push_errors").insert({
+                push_token_id: tokens[i].id,
+                user_id: student.auth_user_id,
+                role: "student",
+                notification_id: inboxItemId,
+                error_type: errType,
+                error_message: t.message ?? null,
+                raw_ticket: t,
+            });
+        } catch (logErr) {
+            console.error("[send-push] Failed to log push error:", logErr);
+        }
+
+        if (errType === "DeviceNotRegistered") {
             await supabaseAdmin
                 .from("push_tokens")
                 .update({ active: false, updated_at: new Date().toISOString() })
