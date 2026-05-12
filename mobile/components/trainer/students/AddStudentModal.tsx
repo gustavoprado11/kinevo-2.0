@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import * as Linking from "expo-linking";
 import { useCreateStudent } from "../../../hooks/useCreateStudent";
+import { useV2Colors } from "../../../hooks/useV2Colors";
 
 let Clipboard: any = null;
 try {
@@ -39,7 +40,36 @@ interface Credentials {
 
 export function AddStudentModal({ visible, onClose, onStudentCreated }: AddStudentModalProps) {
     const insets = useSafeAreaInsets();
+    const colors = useV2Colors();
     const { createStudent, isCreating } = useCreateStudent();
+
+    // Inline styles que dependem de colors (substituem os const externos
+    // labelStyle / inputRow / inputStyle que usavam cores hardcoded).
+    const labelStyle = {
+        fontSize: 12,
+        fontWeight: "600" as const,
+        color: colors.text.tertiary,
+        textTransform: "uppercase" as const,
+        letterSpacing: 1,
+        marginBottom: 8,
+        marginTop: 16,
+    };
+    const inputRow = {
+        flexDirection: "row" as const,
+        alignItems: "center" as const,
+        backgroundColor: colors.surface.card,
+        borderRadius: 12,
+        paddingHorizontal: 14,
+        gap: 10,
+        borderWidth: 1,
+        borderColor: colors.border.subtle,
+    };
+    const inputStyle = {
+        flex: 1,
+        paddingVertical: 14,
+        fontSize: 14,
+        color: colors.text.primary,
+    };
 
     // Form state
     const [name, setName] = useState("");
@@ -135,7 +165,7 @@ export function AddStudentModal({ visible, onClose, onStudentCreated }: AddStude
         <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
             <KeyboardAvoidingView
                 behavior={Platform.OS === "ios" ? "padding" : undefined}
-                style={{ flex: 1, backgroundColor: "#F2F2F7" }}
+                style={{ flex: 1, backgroundColor: colors.surface.canvas }}
             >
                 {/* Header */}
                 <View style={{
@@ -146,8 +176,8 @@ export function AddStudentModal({ visible, onClose, onStudentCreated }: AddStude
                     alignItems: "center",
                     justifyContent: "space-between",
                     borderBottomWidth: 0.5,
-                    borderBottomColor: "rgba(0,0,0,0.08)",
-                    backgroundColor: "#ffffff",
+                    borderBottomColor: colors.border.default,
+                    backgroundColor: colors.surface.card,
                 }}>
                     <TouchableOpacity
                         onPress={onClose}
@@ -155,9 +185,9 @@ export function AddStudentModal({ visible, onClose, onStudentCreated }: AddStude
                         accessibilityLabel="Fechar"
                         accessibilityRole="button"
                     >
-                        <X size={24} color="#64748b" />
+                        <X size={24} color={colors.text.tertiary} />
                     </TouchableOpacity>
-                    <Text style={{ fontSize: 17, fontWeight: "700", color: "#1a1a2e" }}>
+                    <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text.primary }}>
                         {step === "form" ? "Novo Aluno" : "Credenciais"}
                     </Text>
                     <View style={{ width: 24 }} />
@@ -174,26 +204,26 @@ export function AddStudentModal({ visible, onClose, onStudentCreated }: AddStude
                         >
                             {error && (
                                 <View style={{
-                                    backgroundColor: "#fef2f2",
+                                    backgroundColor: "rgba(239,68,68,0.12)",
                                     borderRadius: 12,
                                     padding: 14,
                                     marginBottom: 16,
                                     borderWidth: 1,
-                                    borderColor: "#fecaca",
+                                    borderColor: "rgba(239,68,68,0.3)",
                                 }}>
-                                    <Text style={{ fontSize: 13, color: "#dc2626" }}>{error}</Text>
+                                    <Text style={{ fontSize: 13, color: "#ef4444" }}>{error}</Text>
                                 </View>
                             )}
 
                             {/* Name */}
                             <Text style={labelStyle}>Nome completo *</Text>
                             <View style={inputRow}>
-                                <User size={16} color="#94a3b8" />
+                                <User size={16} color={colors.text.quaternary} />
                                 <TextInput
                                     value={name}
                                     onChangeText={setName}
                                     placeholder="Ex: João Silva"
-                                    placeholderTextColor="#94a3b8"
+                                    placeholderTextColor={colors.text.quaternary}
                                     style={inputStyle}
                                     autoCapitalize="words"
                                     accessibilityLabel="Nome do aluno"
@@ -203,12 +233,12 @@ export function AddStudentModal({ visible, onClose, onStudentCreated }: AddStude
                             {/* Email */}
                             <Text style={labelStyle}>Email *</Text>
                             <View style={inputRow}>
-                                <Mail size={16} color="#94a3b8" />
+                                <Mail size={16} color={colors.text.quaternary} />
                                 <TextInput
                                     value={email}
                                     onChangeText={setEmail}
                                     placeholder="aluno@email.com"
-                                    placeholderTextColor="#94a3b8"
+                                    placeholderTextColor={colors.text.quaternary}
                                     style={inputStyle}
                                     keyboardType="email-address"
                                     autoCapitalize="none"
@@ -220,12 +250,12 @@ export function AddStudentModal({ visible, onClose, onStudentCreated }: AddStude
                             {/* Phone */}
                             <Text style={labelStyle}>Telefone (WhatsApp)</Text>
                             <View style={inputRow}>
-                                <Phone size={16} color="#94a3b8" />
+                                <Phone size={16} color={colors.text.quaternary} />
                                 <TextInput
                                     value={phone}
                                     onChangeText={setPhone}
                                     placeholder="(11) 99999-9999"
-                                    placeholderTextColor="#94a3b8"
+                                    placeholderTextColor={colors.text.quaternary}
                                     style={inputStyle}
                                     keyboardType="phone-pad"
                                     accessibilityLabel="Telefone do aluno"
@@ -236,11 +266,11 @@ export function AddStudentModal({ visible, onClose, onStudentCreated }: AddStude
                             <Text style={labelStyle}>Modalidade</Text>
                             <View style={{
                                 flexDirection: "row",
-                                backgroundColor: "#ffffff",
+                                backgroundColor: colors.surface.card,
                                 borderRadius: 12,
                                 padding: 4,
                                 borderWidth: 1,
-                                borderColor: "rgba(0,0,0,0.05)",
+                                borderColor: colors.border.subtle,
                             }}>
                                 {(["online", "presential"] as const).map((opt) => {
                                     const isActive = modality === opt;
@@ -266,11 +296,11 @@ export function AddStudentModal({ visible, onClose, onStudentCreated }: AddStude
                                                 backgroundColor: isActive ? "#7c3aed" : "transparent",
                                             }}
                                         >
-                                            <Icon size={16} color={isActive ? "#ffffff" : "#94a3b8"} />
+                                            <Icon size={16} color={isActive ? "#ffffff" : colors.text.quaternary} />
                                             <Text style={{
                                                 fontSize: 13,
                                                 fontWeight: "600",
-                                                color: isActive ? "#ffffff" : "#64748b",
+                                                color: isActive ? "#ffffff" : colors.text.tertiary,
                                             }}>
                                                 {opt === "online" ? "Online" : "Presencial"}
                                             </Text>
@@ -285,9 +315,9 @@ export function AddStudentModal({ visible, onClose, onStudentCreated }: AddStude
                             paddingHorizontal: 20,
                             paddingVertical: 12,
                             paddingBottom: insets.bottom + 12,
-                            backgroundColor: "#ffffff",
+                            backgroundColor: colors.surface.card,
                             borderTopWidth: 0.5,
-                            borderTopColor: "rgba(0,0,0,0.08)",
+                            borderTopColor: colors.border.default,
                         }}>
                             <TouchableOpacity
                                 onPress={handleSubmit}
@@ -296,7 +326,7 @@ export function AddStudentModal({ visible, onClose, onStudentCreated }: AddStude
                                 accessibilityLabel="Criar aluno"
                                 accessibilityRole="button"
                                 style={{
-                                    backgroundColor: canSubmit ? "#7c3aed" : "#d1d5db",
+                                    backgroundColor: canSubmit ? "#7c3aed" : colors.surface.card2,
                                     borderRadius: 14,
                                     paddingVertical: 16,
                                     alignItems: "center",
@@ -318,40 +348,40 @@ export function AddStudentModal({ visible, onClose, onStudentCreated }: AddStude
                         <View style={{ alignItems: "center", marginTop: 20, marginBottom: 24 }}>
                             <View style={{
                                 width: 60, height: 60, borderRadius: 30,
-                                backgroundColor: "#f0fdf4",
+                                backgroundColor: "rgba(22,163,74,0.12)",
                                 alignItems: "center", justifyContent: "center",
                                 marginBottom: 12,
                             }}>
                                 <Check size={28} color="#16a34a" />
                             </View>
-                            <Text style={{ fontSize: 18, fontWeight: "700", color: "#0f172a" }}>
+                            <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text.primary }}>
                                 Aluno criado!
                             </Text>
-                            <Text style={{ fontSize: 13, color: "#94a3b8", marginTop: 4, textAlign: "center" }}>
+                            <Text style={{ fontSize: 13, color: colors.text.tertiary, marginTop: 4, textAlign: "center" }}>
                                 Compartilhe as credenciais com {credentials?.name}
                             </Text>
                         </View>
 
                         {/* Credentials card */}
                         <View style={{
-                            backgroundColor: "#ffffff",
+                            backgroundColor: colors.surface.card,
                             borderRadius: 16,
                             padding: 20,
                             borderWidth: 1,
-                            borderColor: "rgba(0,0,0,0.05)",
+                            borderColor: colors.border.subtle,
                             gap: 12,
                         }}>
                             <View>
-                                <Text style={{ fontSize: 11, fontWeight: "600", color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1 }}>
+                                <Text style={{ fontSize: 11, fontWeight: "600", color: colors.text.tertiary, textTransform: "uppercase", letterSpacing: 1 }}>
                                     Email
                                 </Text>
-                                <Text style={{ fontSize: 15, fontWeight: "600", color: "#0f172a", marginTop: 4 }} selectable>
+                                <Text style={{ fontSize: 15, fontWeight: "600", color: colors.text.primary, marginTop: 4 }} selectable>
                                     {credentials?.email}
                                 </Text>
                             </View>
-                            <View style={{ height: 1, backgroundColor: "#f1f5f9" }} />
+                            <View style={{ height: 1, backgroundColor: colors.border.default }} />
                             <View>
-                                <Text style={{ fontSize: 11, fontWeight: "600", color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1 }}>
+                                <Text style={{ fontSize: 11, fontWeight: "600", color: colors.text.tertiary, textTransform: "uppercase", letterSpacing: 1 }}>
                                     Senha temporária
                                 </Text>
                                 <Text
@@ -403,11 +433,11 @@ export function AddStudentModal({ visible, onClose, onStudentCreated }: AddStude
                                     alignItems: "center",
                                     justifyContent: "center",
                                     gap: 8,
-                                    backgroundColor: "#f5f3ff",
+                                    backgroundColor: "rgba(124,58,237,0.10)",
                                     borderRadius: 14,
                                     paddingVertical: 16,
                                     borderWidth: 1,
-                                    borderColor: "#ede9fe",
+                                    borderColor: "rgba(124,58,237,0.20)",
                                 }}
                             >
                                 {copied ? (
@@ -430,15 +460,15 @@ export function AddStudentModal({ visible, onClose, onStudentCreated }: AddStude
                                     alignItems: "center",
                                     justifyContent: "center",
                                     gap: 8,
-                                    backgroundColor: "#ffffff",
+                                    backgroundColor: colors.surface.card,
                                     borderRadius: 14,
                                     paddingVertical: 16,
                                     borderWidth: 1,
-                                    borderColor: "rgba(0,0,0,0.05)",
+                                    borderColor: colors.border.subtle,
                                 }}
                             >
-                                <Share2 size={18} color="#64748b" />
-                                <Text style={{ fontSize: 15, fontWeight: "600", color: "#64748b" }}>
+                                <Share2 size={18} color={colors.text.tertiary} />
+                                <Text style={{ fontSize: 15, fontWeight: "600", color: colors.text.tertiary }}>
                                     Compartilhar
                                 </Text>
                             </TouchableOpacity>
@@ -470,30 +500,3 @@ export function AddStudentModal({ visible, onClose, onStudentCreated }: AddStude
     );
 }
 
-const labelStyle = {
-    fontSize: 12,
-    fontWeight: "600" as const,
-    color: "#64748b",
-    textTransform: "uppercase" as const,
-    letterSpacing: 1,
-    marginBottom: 8,
-    marginTop: 16,
-};
-
-const inputRow = {
-    flexDirection: "row" as const,
-    alignItems: "center" as const,
-    backgroundColor: "#ffffff",
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    gap: 10,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.04)",
-};
-
-const inputStyle = {
-    flex: 1,
-    paddingVertical: 14,
-    fontSize: 14,
-    color: "#1a1a2e",
-};
