@@ -3,22 +3,23 @@ import { View, Text, Image } from "react-native";
 import { ChevronRight } from "lucide-react-native";
 import { PressableScale } from "../shared/PressableScale";
 import type { FinancialStudent, DisplayStatus } from "../../types/financial";
+import { useV2Colors } from "../../hooks/useV2Colors";
 
 const STATUS_CONFIG: Record<DisplayStatus, { bg: string; text: string; label: string }> = {
-    courtesy: { bg: "#eff6ff", text: "#3b82f6", label: "Cortesia" },
-    awaiting_payment: { bg: "#f0f9ff", text: "#0ea5e9", label: "Aguardando" },
-    active: { bg: "#f0fdf4", text: "#16a34a", label: "Ativo" },
-    grace_period: { bg: "#fff7ed", text: "#f97316", label: "Vence hoje" },
-    canceling: { bg: "#fffbeb", text: "#f59e0b", label: "Cancelando" },
-    overdue: { bg: "#fef2f2", text: "#ef4444", label: "Inadimplente" },
-    canceled: { bg: "#f1f5f9", text: "#64748b", label: "Encerrado" },
+    courtesy: { bg: "rgba(59,130,246,0.12)", text: "#3b82f6", label: "Cortesia" },
+    awaiting_payment: { bg: "rgba(14,165,233,0.12)", text: "#0ea5e9", label: "Aguardando" },
+    active: { bg: "rgba(34,197,94,0.12)", text: "#16a34a", label: "Ativo" },
+    grace_period: { bg: "rgba(249,115,22,0.12)", text: "#f97316", label: "Vence hoje" },
+    canceling: { bg: "rgba(245,158,11,0.12)", text: "#f59e0b", label: "Cancelando" },
+    overdue: { bg: "rgba(239,68,68,0.12)", text: "#ef4444", label: "Inadimplente" },
+    canceled: { bg: "rgba(148,163,184,0.16)", text: "#94a3b8", label: "Encerrado" },
 };
 
 const BILLING_CONFIG: Record<string, { bg: string; text: string; label: string }> = {
-    stripe_auto: { bg: "#f5f3ff", text: "#7c3aed", label: "Stripe" },
-    manual_recurring: { bg: "#eff6ff", text: "#3b82f6", label: "Manual" },
-    manual_one_off: { bg: "#f1f5f9", text: "#64748b", label: "Avulso" },
-    courtesy: { bg: "#f0fdf4", text: "#16a34a", label: "Cortesia" },
+    stripe_auto: { bg: "rgba(124,58,237,0.12)", text: "#7c3aed", label: "Stripe" },
+    manual_recurring: { bg: "rgba(59,130,246,0.12)", text: "#3b82f6", label: "Manual" },
+    manual_one_off: { bg: "rgba(148,163,184,0.16)", text: "#94a3b8", label: "Avulso" },
+    courtesy: { bg: "rgba(34,197,94,0.12)", text: "#16a34a", label: "Cortesia" },
 };
 
 function formatCurrency(value: number | null): string {
@@ -37,6 +38,7 @@ interface Props {
 }
 
 export function ContractCard({ student, onPress }: Props) {
+    const colors = useV2Colors();
     const statusCfg = STATUS_CONFIG[student.display_status] || STATUS_CONFIG.courtesy;
     const billingCfg = student.billing_type
         ? BILLING_CONFIG[student.billing_type] || BILLING_CONFIG.manual_recurring
@@ -54,14 +56,14 @@ export function ContractCard({ student, onPress }: Props) {
             onPress={onPress}
             pressScale={0.98}
             style={{
-                backgroundColor: "#ffffff",
+                backgroundColor: colors.surface.card,
                 borderRadius: 16,
                 padding: 16,
                 marginBottom: 10,
                 flexDirection: "row",
                 alignItems: "center",
                 borderWidth: 1,
-                borderColor: "rgba(0,0,0,0.04)",
+                borderColor: colors.border.subtle,
                 shadowColor: "#000",
                 shadowOffset: { width: 0, height: 1 },
                 shadowOpacity: 0.03,
@@ -73,7 +75,7 @@ export function ContractCard({ student, onPress }: Props) {
             {student.avatar_url ? (
                 <Image
                     source={{ uri: student.avatar_url }}
-                    style={{ width: 44, height: 44, borderRadius: 14, marginRight: 12, backgroundColor: "#f1f5f9" }}
+                    style={{ width: 44, height: 44, borderRadius: 14, marginRight: 12, backgroundColor: colors.surface.card2 }}
                 />
             ) : (
                 <View
@@ -81,7 +83,7 @@ export function ContractCard({ student, onPress }: Props) {
                         width: 44,
                         height: 44,
                         borderRadius: 14,
-                        backgroundColor: "#f5f3ff",
+                        backgroundColor: colors.purple[100],
                         alignItems: "center",
                         justifyContent: "center",
                         marginRight: 12,
@@ -93,7 +95,7 @@ export function ContractCard({ student, onPress }: Props) {
 
             {/* Info */}
             <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 15, fontWeight: "600", color: "#0f172a" }} numberOfLines={1}>
+                <Text style={{ fontSize: 15, fontWeight: "600", color: colors.text.primary }} numberOfLines={1}>
                     {student.student_name}
                 </Text>
 
@@ -114,12 +116,12 @@ export function ContractCard({ student, onPress }: Props) {
                 {/* Plan + value */}
                 <View style={{ flexDirection: "row", alignItems: "center", marginTop: 4, gap: 6 }}>
                     {student.plan_title && (
-                        <Text style={{ fontSize: 12, color: "#64748b" }} numberOfLines={1}>
+                        <Text style={{ fontSize: 12, color: colors.text.tertiary }} numberOfLines={1}>
                             {student.plan_title}
                         </Text>
                     )}
                     {student.amount !== null && (
-                        <Text style={{ fontSize: 12, fontWeight: "600", color: "#475569" }}>
+                        <Text style={{ fontSize: 12, fontWeight: "600", color: colors.text.secondary }}>
                             {formatCurrency(student.amount)}
                             {student.plan_interval ? `/${student.plan_interval === "month" ? "mês" : student.plan_interval === "quarter" ? "trim" : "ano"}` : ""}
                         </Text>
@@ -128,13 +130,13 @@ export function ContractCard({ student, onPress }: Props) {
 
                 {/* Due date */}
                 {student.current_period_end && student.display_status !== "courtesy" && student.display_status !== "canceled" && (
-                    <Text style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>
+                    <Text style={{ fontSize: 11, color: colors.text.quaternary, marginTop: 2 }}>
                         Vence {formatDate(student.current_period_end)}
                     </Text>
                 )}
             </View>
 
-            <ChevronRight size={18} color="#cbd5e1" />
+            <ChevronRight size={18} color={colors.text.quaternary} />
         </PressableScale>
     );
 }

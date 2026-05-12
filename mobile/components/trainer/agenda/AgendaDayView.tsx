@@ -18,6 +18,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { AppointmentCard } from "./AppointmentCard";
 import type { AgendaOccurrence } from "../../../hooks/useAgendaOccurrences";
+import { useV2Colors } from "../../../hooks/useV2Colors";
 
 interface AgendaDayViewProps {
     selectedDate: Date;
@@ -90,6 +91,7 @@ export function AgendaDayView({
     onPressAppointment,
     onCreatePress,
 }: AgendaDayViewProps) {
+    const colors = useV2Colors();
     const today = useMemo(() => new Date(), []);
     const isToday = isSameDay(selectedDate, today);
     const dayKey = toLocalDateKey(selectedDate);
@@ -140,15 +142,15 @@ export function AgendaDayView({
     }));
 
     return (
-        <View style={{ flex: 1, backgroundColor: "#F2F2F7" }}>
+        <View style={{ flex: 1, backgroundColor: colors.surface.canvas }}>
             {/* Header */}
             <View style={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 16 }}>
                 <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
                     <View>
-                        <Text style={{ fontSize: 28, fontWeight: "800", color: "#0f172a" }}>
+                        <Text style={{ fontSize: 28, fontWeight: "800", color: colors.text.primary }}>
                             {formatTitle(selectedDate, today)}
                         </Text>
-                        <Text style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>
+                        <Text style={{ fontSize: 13, color: colors.text.tertiary, marginTop: 4 }}>
                             {formatSubtitle(selectedDate)}
                         </Text>
                     </View>
@@ -191,17 +193,17 @@ export function AgendaDayView({
                             width: 36,
                             height: 36,
                             borderRadius: 18,
-                            backgroundColor: "#ffffff",
+                            backgroundColor: colors.surface.card,
                             alignItems: "center",
                             justifyContent: "center",
                             opacity: pressed ? 0.7 : 1,
                             borderWidth: 1,
-                            borderColor: "rgba(0,0,0,0.04)",
+                            borderColor: colors.border.subtle,
                         })}
                     >
-                        <ChevronLeft size={18} color="#0f172a" />
+                        <ChevronLeft size={18} color={colors.text.primary} />
                     </Pressable>
-                    <Text style={{ fontSize: 13, fontWeight: "600", color: "#64748b" }}>
+                    <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text.tertiary }}>
                         {dayOccurrences.length === 0
                             ? "Sem agendamentos"
                             : `${dayOccurrences.length} agendamento${dayOccurrences.length > 1 ? "s" : ""}`}
@@ -212,15 +214,15 @@ export function AgendaDayView({
                             width: 36,
                             height: 36,
                             borderRadius: 18,
-                            backgroundColor: "#ffffff",
+                            backgroundColor: colors.surface.card,
                             alignItems: "center",
                             justifyContent: "center",
                             opacity: pressed ? 0.7 : 1,
                             borderWidth: 1,
-                            borderColor: "rgba(0,0,0,0.04)",
+                            borderColor: colors.border.subtle,
                         })}
                     >
-                        <ChevronRight size={18} color="#0f172a" />
+                        <ChevronRight size={18} color={colors.text.primary} />
                     </Pressable>
                 </View>
             </View>
@@ -249,7 +251,7 @@ export function AgendaDayView({
                                         width: 64,
                                         height: 64,
                                         borderRadius: 20,
-                                        backgroundColor: "#f5f3ff",
+                                        backgroundColor: colors.purple[100],
                                         alignItems: "center",
                                         justifyContent: "center",
                                         marginBottom: 16,
@@ -257,10 +259,10 @@ export function AgendaDayView({
                                 >
                                     <CalendarIcon size={28} color="#7c3aed" />
                                 </View>
-                                <Text style={{ fontSize: 16, fontWeight: "700", color: "#0f172a", textAlign: "center" }}>
+                                <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text.primary, textAlign: "center" }}>
                                     Sem agendamentos
                                 </Text>
-                                <Text style={{ fontSize: 13, color: "#64748b", textAlign: "center", marginTop: 6, lineHeight: 19 }}>
+                                <Text style={{ fontSize: 13, color: colors.text.tertiary, textAlign: "center", marginTop: 6, lineHeight: 19 }}>
                                     Nenhum atendimento para este dia.{"\n"}Crie um novo agendamento usando o botão "+".
                                 </Text>
                                 <Pressable

@@ -1,6 +1,6 @@
 import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
-import { colors } from "@/theme";
+import { useV2Colors } from "@/hooks/useV2Colors";
 
 interface EmptyStateProps {
     icon: React.ReactNode;
@@ -11,6 +11,7 @@ interface EmptyStateProps {
 }
 
 export function EmptyState({ icon, title, description, actionLabel, onAction }: EmptyStateProps) {
+    const colors = useV2Colors();
     return (
         <View
             accessibilityRole="alert"
@@ -34,13 +35,13 @@ export function EmptyState({ icon, title, description, actionLabel, onAction }: 
                     accessibilityLabel={actionLabel}
                     style={{
                         marginTop: 20,
-                        backgroundColor: colors.brand.primary,
+                        backgroundColor: "#7c3aed",
                         paddingHorizontal: 20,
                         paddingVertical: 10,
                         borderRadius: 10,
                     }}
                 >
-                    <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text.inverse }}>
+                    <Text style={{ fontSize: 14, fontWeight: "600", color: "#ffffff" }}>
                         {actionLabel}
                     </Text>
                 </TouchableOpacity>

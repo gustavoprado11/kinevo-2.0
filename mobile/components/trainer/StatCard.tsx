@@ -2,8 +2,8 @@
 import React from "react";
 import { View, Text } from "react-native";
 import type { LucideIcon } from "lucide-react-native";
-import { colors } from "@/theme";
 import { useResponsive } from "@/hooks/useResponsive";
+import { useV2Colors } from "@/hooks/useV2Colors";
 
 interface StatCardProps {
     label: string;
@@ -15,6 +15,7 @@ interface StatCardProps {
 }
 
 export function StatCard({ label, value, icon: Icon, iconColor, iconBg, subtitle }: StatCardProps) {
+    const colors = useV2Colors();
     const { isTablet, spacingScale, fontScale } = useResponsive();
     const padding = isTablet ? 20 : 16;
     const iconSize = isTablet ? 44 : 36;
@@ -26,11 +27,11 @@ export function StatCard({ label, value, icon: Icon, iconColor, iconBg, subtitle
             accessibilityLabel={`${label}: ${value}${subtitle ? `, ${subtitle}` : ''}`}
             style={{
                 flex: 1,
-                backgroundColor: colors.background.card,
+                backgroundColor: colors.surface.card,
                 borderRadius: 20,
                 padding,
                 borderWidth: 1,
-                borderColor: colors.border.primary,
+                borderColor: colors.border.subtle,
                 shadowColor: "#000",
                 shadowOffset: { width: 0, height: 2 },
                 shadowOpacity: 0.04,

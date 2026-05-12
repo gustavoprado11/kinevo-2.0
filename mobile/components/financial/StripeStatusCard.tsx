@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, TouchableOpacity, ActivityIndicator, Linking } from "react-native";
 import { CheckCircle, AlertTriangle, XCircle } from "lucide-react-native";
 import type { StripeConnectStatus } from "../../types/financial";
+import { useV2Colors } from "../../hooks/useV2Colors";
 
 const STRIPE_DASHBOARD_URL = "https://dashboard.stripe.com";
 
@@ -11,11 +12,12 @@ interface Props {
 }
 
 export function StripeStatusCard({ status, isLoading }: Props) {
+    const colors = useV2Colors();
     if (isLoading) {
         return (
             <View
                 style={{
-                    backgroundColor: "#ffffff",
+                    backgroundColor: colors.surface.card,
                     borderRadius: 16,
                     padding: 16,
                     alignItems: "center",
@@ -34,7 +36,7 @@ export function StripeStatusCard({ status, isLoading }: Props) {
                 onPress={() => Linking.openURL("https://app.kinevo.com.br/financial")}
                 activeOpacity={0.7}
                 style={{
-                    backgroundColor: "#fef2f2",
+                    backgroundColor: "rgba(239,68,68,0.12)",
                     borderRadius: 16,
                     padding: 16,
                     flexDirection: "row",
@@ -44,10 +46,10 @@ export function StripeStatusCard({ status, isLoading }: Props) {
             >
                 <XCircle size={20} color="#ef4444" />
                 <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 14, fontWeight: "600", color: "#991b1b" }}>
+                    <Text style={{ fontSize: 14, fontWeight: "600", color: "#ef4444" }}>
                         Stripe não conectado
                     </Text>
-                    <Text style={{ fontSize: 12, color: "#b91c1c", marginTop: 2 }}>
+                    <Text style={{ fontSize: 12, color: "#ef4444", marginTop: 2 }}>
                         Configure pelo painel web para receber pagamentos
                     </Text>
                 </View>
@@ -61,7 +63,7 @@ export function StripeStatusCard({ status, isLoading }: Props) {
                 onPress={() => Linking.openURL(STRIPE_DASHBOARD_URL)}
                 activeOpacity={0.7}
                 style={{
-                    backgroundColor: "#fffbeb",
+                    backgroundColor: "rgba(245,158,11,0.12)",
                     borderRadius: 16,
                     padding: 16,
                     flexDirection: "row",
@@ -71,10 +73,10 @@ export function StripeStatusCard({ status, isLoading }: Props) {
             >
                 <AlertTriangle size={20} color="#f59e0b" />
                 <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 14, fontWeight: "600", color: "#92400e" }}>
+                    <Text style={{ fontSize: 14, fontWeight: "600", color: "#f59e0b" }}>
                         Configuração pendente
                     </Text>
-                    <Text style={{ fontSize: 12, color: "#a16207", marginTop: 2 }}>
+                    <Text style={{ fontSize: 12, color: "#f59e0b", marginTop: 2 }}>
                         Complete seu cadastro no Stripe para ativar cobranças
                     </Text>
                 </View>
@@ -85,7 +87,7 @@ export function StripeStatusCard({ status, isLoading }: Props) {
     return (
         <View
             style={{
-                backgroundColor: "#f0fdf4",
+                backgroundColor: "rgba(34,197,94,0.12)",
                 borderRadius: 16,
                 padding: 16,
                 flexDirection: "row",
@@ -95,10 +97,10 @@ export function StripeStatusCard({ status, isLoading }: Props) {
         >
             <CheckCircle size={20} color="#16a34a" />
             <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 14, fontWeight: "600", color: "#166534" }}>
+                <Text style={{ fontSize: 14, fontWeight: "600", color: "#16a34a" }}>
                     Stripe conectado
                 </Text>
-                <Text style={{ fontSize: 12, color: "#15803d", marginTop: 2 }}>
+                <Text style={{ fontSize: 12, color: "#16a34a", marginTop: 2 }}>
                     Cobranças e pagamentos ativos
                 </Text>
             </View>

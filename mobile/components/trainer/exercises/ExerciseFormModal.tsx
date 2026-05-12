@@ -17,6 +17,7 @@ import { MuscleGroupPicker } from "./MuscleGroupPicker";
 import { VideoUploadField } from "./VideoUploadField";
 import type { Exercise } from "../../../hooks/useExerciseLibrary";
 import type { ExerciseFormData } from "../../../hooks/useExerciseCrud";
+import { useV2Colors } from "../../../hooks/useV2Colors";
 
 interface MuscleGroup {
     id: string;
@@ -45,8 +46,28 @@ const DIFFICULTY_OPTIONS = [
 ];
 
 export function ExerciseFormModal({ visible, exercise, muscleGroups, onClose, onSave, isSaving, onCreateMuscleGroup, initialName }: Props) {
+    const colors = useV2Colors();
     const insets = useSafeAreaInsets();
     const isEditing = !!exercise;
+
+    const labelStyle = {
+        fontSize: 12,
+        fontWeight: "600" as const,
+        color: colors.text.tertiary,
+        textTransform: "uppercase" as const,
+        letterSpacing: 1,
+        marginBottom: 8,
+        marginTop: 16,
+    };
+    const inputStyle = {
+        backgroundColor: colors.surface.card,
+        borderRadius: 12,
+        padding: 14,
+        fontSize: 14,
+        color: colors.text.primary,
+        borderWidth: 1,
+        borderColor: colors.border.subtle,
+    };
 
     const [name, setName] = useState("");
     const [selectedMuscleGroups, setSelectedMuscleGroups] = useState<string[]>([]);
@@ -98,7 +119,7 @@ export function ExerciseFormModal({ visible, exercise, muscleGroups, onClose, on
         <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
             <KeyboardAvoidingView
                 behavior={Platform.OS === "ios" ? "padding" : undefined}
-                style={{ flex: 1, backgroundColor: "#F2F2F7" }}
+                style={{ flex: 1, backgroundColor: colors.surface.canvas }}
             >
                 {/* Header */}
                 <View
@@ -110,8 +131,8 @@ export function ExerciseFormModal({ visible, exercise, muscleGroups, onClose, on
                         alignItems: "center",
                         justifyContent: "space-between",
                         borderBottomWidth: 0.5,
-                        borderBottomColor: "rgba(0,0,0,0.08)",
-                        backgroundColor: "#ffffff",
+                        borderBottomColor: colors.border.default,
+                        backgroundColor: colors.surface.card,
                     }}
                 >
                     <TouchableOpacity
@@ -120,9 +141,9 @@ export function ExerciseFormModal({ visible, exercise, muscleGroups, onClose, on
                         accessibilityLabel="Fechar"
                         accessibilityRole="button"
                     >
-                        <X size={24} color="#64748b" />
+                        <X size={24} color={colors.text.tertiary} />
                     </TouchableOpacity>
-                    <Text style={{ fontSize: 17, fontWeight: "700", color: "#1a1a2e" }}>
+                    <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text.primary }}>
                         {isEditing ? "Editar exercício" : "Novo exercício"}
                     </Text>
                     <View style={{ width: 24 }} />
@@ -135,18 +156,18 @@ export function ExerciseFormModal({ visible, exercise, muscleGroups, onClose, on
                     showsVerticalScrollIndicator={false}
                 >
                     {/* Nome */}
-                    <Text style={styles.label}>Nome *</Text>
+                    <Text style={labelStyle}>Nome *</Text>
                     <TextInput
                         value={name}
                         onChangeText={setName}
                         placeholder="Ex: Supino reto com barra"
-                        placeholderTextColor="#94a3b8"
-                        style={styles.input}
+                        placeholderTextColor={colors.text.quaternary}
+                        style={inputStyle}
                         accessibilityLabel="Nome do exercício"
                     />
 
                     {/* Muscle Groups */}
-                    <Text style={styles.label}>Grupos musculares *</Text>
+                    <Text style={labelStyle}>Grupos musculares *</Text>
                     <MuscleGroupPicker
                         muscleGroups={muscleGroups}
                         selectedIds={selectedMuscleGroups}
@@ -155,18 +176,18 @@ export function ExerciseFormModal({ visible, exercise, muscleGroups, onClose, on
                     />
 
                     {/* Equipment */}
-                    <Text style={[styles.label, { marginTop: 20 }]}>Equipamento</Text>
+                    <Text style={[labelStyle, { marginTop: 20 }]}>Equipamento</Text>
                     <TextInput
                         value={equipment}
                         onChangeText={setEquipment}
                         placeholder="Ex: Barra, Halteres, Máquina"
-                        placeholderTextColor="#94a3b8"
-                        style={styles.input}
+                        placeholderTextColor={colors.text.quaternary}
+                        style={inputStyle}
                         accessibilityLabel="Equipamento"
                     />
 
                     {/* Difficulty */}
-                    <Text style={styles.label}>Dificuldade</Text>
+                    <Text style={labelStyle}>Dificuldade</Text>
                     <View style={{ flexDirection: "row", gap: 8 }}>
                         {DIFFICULTY_OPTIONS.map((opt) => (
                             <TouchableOpacity
@@ -179,9 +200,9 @@ export function ExerciseFormModal({ visible, exercise, muscleGroups, onClose, on
                                     paddingHorizontal: 14,
                                     paddingVertical: 8,
                                     borderRadius: 20,
-                                    backgroundColor: difficulty === opt.key ? "#7c3aed" : "#ffffff",
+                                    backgroundColor: difficulty === opt.key ? "#7c3aed" : colors.surface.card,
                                     borderWidth: 1,
-                                    borderColor: difficulty === opt.key ? "#7c3aed" : "rgba(0,0,0,0.08)",
+                                    borderColor: difficulty === opt.key ? "#7c3aed" : colors.border.default,
                                 }}
                                 accessibilityLabel={opt.label}
                                 accessibilityRole="button"
@@ -190,7 +211,7 @@ export function ExerciseFormModal({ visible, exercise, muscleGroups, onClose, on
                                     style={{
                                         fontSize: 13,
                                         fontWeight: "600",
-                                        color: difficulty === opt.key ? "#ffffff" : "#64748b",
+                                        color: difficulty === opt.key ? "#ffffff" : colors.text.tertiary,
                                     }}
                                 >
                                     {opt.label}
@@ -200,19 +221,19 @@ export function ExerciseFormModal({ visible, exercise, muscleGroups, onClose, on
                     </View>
 
                     {/* Instructions */}
-                    <Text style={[styles.label, { marginTop: 20 }]}>Instruções</Text>
+                    <Text style={[labelStyle, { marginTop: 20 }]}>Instruções</Text>
                     <TextInput
                         value={instructions}
                         onChangeText={setInstructions}
                         placeholder="Descreva como executar o exercício..."
-                        placeholderTextColor="#94a3b8"
+                        placeholderTextColor={colors.text.quaternary}
                         multiline
-                        style={[styles.input, { minHeight: 80, textAlignVertical: "top" }]}
+                        style={[inputStyle, { minHeight: 80, textAlignVertical: "top" }]}
                         accessibilityLabel="Instruções do exercício"
                     />
 
                     {/* Video */}
-                    <Text style={styles.label}>Vídeo demonstrativo</Text>
+                    <Text style={labelStyle}>Vídeo demonstrativo</Text>
                     <VideoUploadField
                         videoFile={videoFile}
                         currentVideoUrl={videoUrl}
@@ -227,9 +248,9 @@ export function ExerciseFormModal({ visible, exercise, muscleGroups, onClose, on
                         paddingHorizontal: 20,
                         paddingVertical: 12,
                         paddingBottom: insets.bottom + 12,
-                        backgroundColor: "#ffffff",
+                        backgroundColor: colors.surface.card,
                         borderTopWidth: 0.5,
-                        borderTopColor: "rgba(0,0,0,0.08)",
+                        borderTopColor: colors.border.default,
                     }}
                 >
                     <TouchableOpacity
@@ -239,7 +260,7 @@ export function ExerciseFormModal({ visible, exercise, muscleGroups, onClose, on
                         accessibilityLabel={isEditing ? "Salvar alterações" : "Criar exercício"}
                         accessibilityRole="button"
                         style={{
-                            backgroundColor: canSave ? "#7c3aed" : "#d1d5db",
+                            backgroundColor: canSave ? "#7c3aed" : colors.surface.card2,
                             borderRadius: 14,
                             paddingVertical: 16,
                             alignItems: "center",
@@ -259,23 +280,3 @@ export function ExerciseFormModal({ visible, exercise, muscleGroups, onClose, on
     );
 }
 
-const styles = {
-    label: {
-        fontSize: 12,
-        fontWeight: "600" as const,
-        color: "#64748b",
-        textTransform: "uppercase" as const,
-        letterSpacing: 1,
-        marginBottom: 8,
-        marginTop: 16,
-    },
-    input: {
-        backgroundColor: "#ffffff",
-        borderRadius: 12,
-        padding: 14,
-        fontSize: 14,
-        color: "#1a1a2e",
-        borderWidth: 1,
-        borderColor: "rgba(0,0,0,0.04)",
-    },
-};

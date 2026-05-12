@@ -14,6 +14,7 @@ import * as Haptics from "expo-haptics";
 import { colors } from "@/theme";
 import { useMuscleGroupCrud, type MuscleGroupFull } from "@/hooks/useMuscleGroupCrud";
 import { useAuth } from "@/contexts/AuthContext";
+import { useV2Colors } from "../../../hooks/useV2Colors";
 
 interface MuscleGroupManagerModalProps {
     visible: boolean;
@@ -21,6 +22,7 @@ interface MuscleGroupManagerModalProps {
 }
 
 export function MuscleGroupManagerModal({ visible, onClose }: MuscleGroupManagerModalProps) {
+    const v2c = useV2Colors();
     const bottomSheetRef = useRef<BottomSheet>(null);
     const snapPoints = useMemo(() => ["70%", "90%"], []);
     const { user } = useAuth();
@@ -134,9 +136,9 @@ export function MuscleGroupManagerModal({ visible, onClose }: MuscleGroupManager
                     paddingHorizontal: 16,
                     marginBottom: 6,
                     borderRadius: 12,
-                    backgroundColor: "#ffffff",
+                    backgroundColor: v2c.surface.card,
                     borderWidth: 1,
-                    borderColor: isEditing ? colors.brand.primary : "rgba(0,0,0,0.05)",
+                    borderColor: isEditing ? colors.brand.primary : v2c.border.default,
                 }}
             >
                 {isEditing ? (
@@ -150,10 +152,10 @@ export function MuscleGroupManagerModal({ visible, onClose }: MuscleGroupManager
                             style={{
                                 flex: 1,
                                 fontSize: 14,
-                                color: "#0f172a",
+                                color: v2c.text.primary,
                                 paddingVertical: 4,
                                 paddingHorizontal: 8,
-                                backgroundColor: "#f8fafc",
+                                backgroundColor: v2c.surface.card2,
                                 borderRadius: 8,
                                 borderWidth: 1,
                                 borderColor: colors.brand.primary,
@@ -164,7 +166,7 @@ export function MuscleGroupManagerModal({ visible, onClose }: MuscleGroupManager
                             hitSlop={8}
                             style={{
                                 width: 32, height: 32, borderRadius: 8,
-                                backgroundColor: "#f0fdf4",
+                                backgroundColor: "rgba(34,197,94,0.12)",
                                 alignItems: "center", justifyContent: "center",
                             }}
                         >
@@ -175,33 +177,33 @@ export function MuscleGroupManagerModal({ visible, onClose }: MuscleGroupManager
                             hitSlop={8}
                             style={{
                                 width: 32, height: 32, borderRadius: 8,
-                                backgroundColor: "#f1f5f9",
+                                backgroundColor: v2c.surface.card2,
                                 alignItems: "center", justifyContent: "center",
                             }}
                         >
-                            <X size={16} color="#64748b" />
+                            <X size={16} color={v2c.text.tertiary} />
                         </TouchableOpacity>
                     </View>
                 ) : (
                     <>
                         <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 8 }}>
-                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#0f172a" }}>
+                            <Text style={{ fontSize: 14, fontWeight: "500", color: v2c.text.primary }}>
                                 {item.name}
                             </Text>
                             {isSystem && (
                                 <View style={{
-                                    backgroundColor: "#f1f5f9",
+                                    backgroundColor: v2c.surface.card2,
                                     paddingHorizontal: 6, paddingVertical: 2,
                                     borderRadius: 6,
                                 }}>
-                                    <Text style={{ fontSize: 9, fontWeight: "700", color: "#94a3b8", letterSpacing: 0.5 }}>
+                                    <Text style={{ fontSize: 9, fontWeight: "700", color: v2c.text.quaternary, letterSpacing: 0.5 }}>
                                         SISTEMA
                                     </Text>
                                 </View>
                             )}
                             {isEditable && (
                                 <View style={{
-                                    backgroundColor: "#f5f3ff",
+                                    backgroundColor: "rgba(124,58,237,0.12)",
                                     paddingHorizontal: 6, paddingVertical: 2,
                                     borderRadius: 6,
                                 }}>
@@ -220,11 +222,11 @@ export function MuscleGroupManagerModal({ visible, onClose }: MuscleGroupManager
                                     accessibilityLabel={`Editar ${item.name}`}
                                     style={{
                                         width: 32, height: 32, borderRadius: 8,
-                                        backgroundColor: "#f8fafc",
+                                        backgroundColor: v2c.surface.card2,
                                         alignItems: "center", justifyContent: "center",
                                     }}
                                 >
-                                    <Edit2 size={14} color="#64748b" />
+                                    <Edit2 size={14} color={v2c.text.tertiary} />
                                 </TouchableOpacity>
                                 <TouchableOpacity
                                     onPress={() => handleDelete(item)}
@@ -232,7 +234,7 @@ export function MuscleGroupManagerModal({ visible, onClose }: MuscleGroupManager
                                     accessibilityLabel={`Excluir ${item.name}`}
                                     style={{
                                         width: 32, height: 32, borderRadius: 8,
-                                        backgroundColor: "#fef2f2",
+                                        backgroundColor: "rgba(239,68,68,0.12)",
                                         alignItems: "center", justifyContent: "center",
                                     }}
                                 >
@@ -244,14 +246,14 @@ export function MuscleGroupManagerModal({ visible, onClose }: MuscleGroupManager
                                 width: 32, height: 32,
                                 alignItems: "center", justifyContent: "center",
                             }}>
-                                <Lock size={14} color="#d1d5db" />
+                                <Lock size={14} color={v2c.text.quaternary} />
                             </View>
                         )}
                     </>
                 )}
             </View>
         );
-    }, [editingId, editName, user?.id, handleUpdate, startEdit, handleDelete]);
+    }, [editingId, editName, user?.id, handleUpdate, startEdit, handleDelete, v2c]);
 
     if (!visible) return null;
 
@@ -263,8 +265,8 @@ export function MuscleGroupManagerModal({ visible, onClose }: MuscleGroupManager
             onClose={onClose}
             enablePanDownToClose
             backdropComponent={renderBackdrop}
-            handleIndicatorStyle={{ backgroundColor: colors.text.quaternary }}
-            backgroundStyle={{ backgroundColor: "#F2F2F7" }}
+            handleIndicatorStyle={{ backgroundColor: v2c.text.quaternary }}
+            backgroundStyle={{ backgroundColor: v2c.surface.canvas }}
             keyboardBehavior="interactive"
             keyboardBlurBehavior="restore"
         >
@@ -278,10 +280,10 @@ export function MuscleGroupManagerModal({ visible, onClose }: MuscleGroupManager
                     paddingBottom: 12,
                 }}>
                     <View>
-                        <Text style={{ fontSize: 18, fontWeight: "700", color: "#0f172a" }}>
+                        <Text style={{ fontSize: 18, fontWeight: "700", color: v2c.text.primary }}>
                             Grupos musculares
                         </Text>
-                        <Text style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>
+                        <Text style={{ fontSize: 12, color: v2c.text.quaternary, marginTop: 2 }}>
                             Adicione ou gerencie seus grupos
                         </Text>
                     </View>
@@ -291,7 +293,7 @@ export function MuscleGroupManagerModal({ visible, onClose }: MuscleGroupManager
                         accessibilityLabel="Fechar"
                         style={{ padding: 4 }}
                     >
-                        <X size={22} color="#94a3b8" />
+                        <X size={22} color={v2c.text.quaternary} />
                     </TouchableOpacity>
                 </View>
 
@@ -307,24 +309,24 @@ export function MuscleGroupManagerModal({ visible, onClose }: MuscleGroupManager
                         flex: 1,
                         flexDirection: "row",
                         alignItems: "center",
-                        backgroundColor: "#ffffff",
+                        backgroundColor: v2c.surface.card,
                         borderRadius: 12,
                         paddingHorizontal: 14,
                         borderWidth: 1,
-                        borderColor: "rgba(0,0,0,0.05)",
+                        borderColor: v2c.border.default,
                     }}>
                         <TextInput
                             value={newName}
                             onChangeText={setNewName}
                             placeholder="Novo grupo (ex: Potência)"
-                            placeholderTextColor="#94a3b8"
+                            placeholderTextColor={v2c.text.quaternary}
                             onSubmitEditing={handleCreate}
                             returnKeyType="done"
                             style={{
                                 flex: 1,
                                 paddingVertical: 12,
                                 fontSize: 14,
-                                color: "#0f172a",
+                                color: v2c.text.primary,
                             }}
                         />
                     </View>
@@ -336,7 +338,7 @@ export function MuscleGroupManagerModal({ visible, onClose }: MuscleGroupManager
                             height: 44,
                             paddingHorizontal: 16,
                             borderRadius: 12,
-                            backgroundColor: newName.trim() ? "#7c3aed" : "#e2e8f0",
+                            backgroundColor: newName.trim() ? "#7c3aed" : v2c.surface.card2,
                             flexDirection: "row",
                             alignItems: "center",
                             justifyContent: "center",
@@ -360,26 +362,26 @@ export function MuscleGroupManagerModal({ visible, onClose }: MuscleGroupManager
                 <View style={{
                     flexDirection: "row",
                     alignItems: "center",
-                    backgroundColor: "#ffffff",
+                    backgroundColor: v2c.surface.card,
                     borderRadius: 12,
                     marginHorizontal: 20,
                     paddingHorizontal: 12,
                     marginBottom: 12,
                     borderWidth: 1,
-                    borderColor: "rgba(0,0,0,0.05)",
+                    borderColor: v2c.border.default,
                 }}>
-                    <Search size={16} color="#94a3b8" />
+                    <Search size={16} color={v2c.text.quaternary} />
                     <TextInput
                         value={searchQuery}
                         onChangeText={setSearchQuery}
                         placeholder="Buscar grupo..."
-                        placeholderTextColor="#94a3b8"
+                        placeholderTextColor={v2c.text.quaternary}
                         style={{
                             flex: 1,
                             paddingVertical: 10,
                             paddingHorizontal: 8,
                             fontSize: 14,
-                            color: "#0f172a",
+                            color: v2c.text.primary,
                         }}
                     />
                 </View>
@@ -398,7 +400,7 @@ export function MuscleGroupManagerModal({ visible, onClose }: MuscleGroupManager
                         renderItem={renderItem}
                         ListEmptyComponent={
                             <View style={{ alignItems: "center", paddingVertical: 40 }}>
-                                <Text style={{ fontSize: 14, color: "#94a3b8" }}>
+                                <Text style={{ fontSize: 14, color: v2c.text.quaternary }}>
                                     Nenhum grupo encontrado
                                 </Text>
                             </View>

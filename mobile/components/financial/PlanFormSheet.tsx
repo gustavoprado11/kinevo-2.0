@@ -15,6 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { X } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import type { TrainerPlan } from "../../hooks/useTrainerPlans";
+import { useV2Colors } from "../../hooks/useV2Colors";
 
 const INTERVALS: { key: string; label: string }[] = [
     { key: "month", label: "Mensal" },
@@ -31,6 +32,7 @@ interface PlanFormSheetProps {
 }
 
 export function PlanFormSheet({ visible, onClose, onSubmit, onUpdate, plan }: PlanFormSheetProps) {
+    const colors = useV2Colors();
     const isEditing = !!plan;
 
     const [title, setTitle] = useState("");
@@ -99,7 +101,7 @@ export function PlanFormSheet({ visible, onClose, onSubmit, onUpdate, plan }: Pl
             presentationStyle="pageSheet"
             onRequestClose={onClose}
         >
-            <SafeAreaView style={{ flex: 1, backgroundColor: "#F2F2F7" }} edges={["top"]}>
+            <SafeAreaView style={{ flex: 1, backgroundColor: colors.surface.canvas }} edges={["top"]}>
                 <KeyboardAvoidingView
                     style={{ flex: 1 }}
                     behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -112,12 +114,12 @@ export function PlanFormSheet({ visible, onClose, onSubmit, onUpdate, plan }: Pl
                         paddingHorizontal: 20,
                         paddingVertical: 14,
                         borderBottomWidth: 1,
-                        borderBottomColor: "rgba(0,0,0,0.06)",
+                        borderBottomColor: colors.border.default,
                     }}>
                         <TouchableOpacity onPress={onClose} hitSlop={8}>
-                            <X size={22} color="#64748b" />
+                            <X size={22} color={colors.text.tertiary} />
                         </TouchableOpacity>
-                        <Text style={{ fontSize: 17, fontWeight: "600", color: "#0f172a" }}>
+                        <Text style={{ fontSize: 17, fontWeight: "600", color: colors.text.primary }}>
                             {isEditing ? "Editar Plano" : "Novo Plano"}
                         </Text>
                         <View style={{ width: 22 }} />
@@ -129,56 +131,56 @@ export function PlanFormSheet({ visible, onClose, onSubmit, onUpdate, plan }: Pl
                         keyboardShouldPersistTaps="handled"
                     >
                         {/* Title */}
-                        <Text style={{ fontSize: 13, fontWeight: "600", color: "#64748b", marginBottom: 6 }}>
+                        <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text.tertiary, marginBottom: 6 }}>
                             Nome do plano *
                         </Text>
                         <TextInput
                             value={title}
                             onChangeText={setTitle}
                             placeholder="Ex: Plano Mensal"
-                            placeholderTextColor="#94a3b8"
+                            placeholderTextColor={colors.text.quaternary}
                             style={{
-                                backgroundColor: "#ffffff",
+                                backgroundColor: colors.surface.card,
                                 borderRadius: 12,
                                 padding: 14,
                                 fontSize: 15,
-                                color: "#0f172a",
+                                color: colors.text.primary,
                                 borderWidth: 1,
-                                borderColor: "rgba(0,0,0,0.06)",
+                                borderColor: colors.border.default,
                                 marginBottom: 18,
                             }}
                         />
 
                         {/* Price */}
-                        <Text style={{ fontSize: 13, fontWeight: "600", color: "#64748b", marginBottom: 6 }}>
+                        <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text.tertiary, marginBottom: 6 }}>
                             Valor (R$) *
                         </Text>
                         <TextInput
                             value={price}
                             onChangeText={setPrice}
                             placeholder="150,00"
-                            placeholderTextColor="#94a3b8"
+                            placeholderTextColor={colors.text.quaternary}
                             keyboardType="decimal-pad"
                             editable={!isEditing}
                             style={{
-                                backgroundColor: isEditing ? "#f1f5f9" : "#ffffff",
+                                backgroundColor: isEditing ? colors.surface.card2 : colors.surface.card,
                                 borderRadius: 12,
                                 padding: 14,
                                 fontSize: 15,
-                                color: isEditing ? "#94a3b8" : "#0f172a",
+                                color: isEditing ? colors.text.quaternary : colors.text.primary,
                                 borderWidth: 1,
-                                borderColor: "rgba(0,0,0,0.06)",
+                                borderColor: colors.border.default,
                                 marginBottom: isEditing ? 6 : 18,
                             }}
                         />
                         {isEditing && (
-                            <Text style={{ fontSize: 11, color: "#94a3b8", marginBottom: 18 }}>
+                            <Text style={{ fontSize: 11, color: colors.text.quaternary, marginBottom: 18 }}>
                                 Valor e recorrência não podem ser alterados após a criação
                             </Text>
                         )}
 
                         {/* Interval */}
-                        <Text style={{ fontSize: 13, fontWeight: "600", color: "#64748b", marginBottom: 8 }}>
+                        <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text.tertiary, marginBottom: 8 }}>
                             Recorrência *
                         </Text>
                         <View style={{ flexDirection: "row", gap: 8, marginBottom: 18 }}>
@@ -194,15 +196,15 @@ export function PlanFormSheet({ visible, onClose, onSubmit, onUpdate, plan }: Pl
                                             paddingVertical: 12,
                                             borderRadius: 12,
                                             alignItems: "center",
-                                            backgroundColor: active ? "#7c3aed" : isEditing ? "#f1f5f9" : "#ffffff",
+                                            backgroundColor: active ? "#7c3aed" : isEditing ? colors.surface.card2 : colors.surface.card,
                                             borderWidth: active ? 0 : 1,
-                                            borderColor: "rgba(0,0,0,0.06)",
+                                            borderColor: colors.border.default,
                                         }}
                                     >
                                         <Text style={{
                                             fontSize: 14,
                                             fontWeight: "600",
-                                            color: active ? "#ffffff" : isEditing ? "#94a3b8" : "#475569",
+                                            color: active ? "#ffffff" : isEditing ? colors.text.quaternary : colors.text.secondary,
                                         }}>
                                             {item.label}
                                         </Text>
@@ -212,25 +214,25 @@ export function PlanFormSheet({ visible, onClose, onSubmit, onUpdate, plan }: Pl
                         </View>
 
                         {/* Description */}
-                        <Text style={{ fontSize: 13, fontWeight: "600", color: "#64748b", marginBottom: 6 }}>
+                        <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text.tertiary, marginBottom: 6 }}>
                             Descrição (opcional)
                         </Text>
                         <TextInput
                             value={description}
                             onChangeText={setDescription}
                             placeholder="Descreva o que está incluído..."
-                            placeholderTextColor="#94a3b8"
+                            placeholderTextColor={colors.text.quaternary}
                             multiline
                             numberOfLines={3}
                             textAlignVertical="top"
                             style={{
-                                backgroundColor: "#ffffff",
+                                backgroundColor: colors.surface.card,
                                 borderRadius: 12,
                                 padding: 14,
                                 fontSize: 15,
-                                color: "#0f172a",
+                                color: colors.text.primary,
                                 borderWidth: 1,
-                                borderColor: "rgba(0,0,0,0.06)",
+                                borderColor: colors.border.default,
                                 minHeight: 80,
                                 marginBottom: 28,
                             }}

@@ -2,6 +2,7 @@ import React, { useState, useCallback } from "react";
 import { View, Text, TouchableOpacity, TextInput, ActivityIndicator } from "react-native";
 import { Plus, X } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
+import { useV2Colors } from "../../../hooks/useV2Colors";
 
 interface MuscleGroup {
     id: string;
@@ -16,6 +17,7 @@ interface Props {
 }
 
 export function MuscleGroupPicker({ muscleGroups, selectedIds, onChange, onCreateGroup }: Props) {
+    const colors = useV2Colors();
     const [showInput, setShowInput] = useState(false);
     const [newName, setNewName] = useState("");
     const [isCreating, setIsCreating] = useState(false);
@@ -59,16 +61,16 @@ export function MuscleGroupPicker({ muscleGroups, selectedIds, onChange, onCreat
                                 paddingHorizontal: 14,
                                 paddingVertical: 8,
                                 borderRadius: 20,
-                                backgroundColor: selected ? "#7c3aed" : "#ffffff",
+                                backgroundColor: selected ? "#7c3aed" : colors.surface.card,
                                 borderWidth: 1,
-                                borderColor: selected ? "#7c3aed" : "rgba(0,0,0,0.08)",
+                                borderColor: selected ? "#7c3aed" : colors.border.default,
                             }}
                         >
                             <Text
                                 style={{
                                     fontSize: 13,
                                     fontWeight: "600",
-                                    color: selected ? "#ffffff" : "#64748b",
+                                    color: selected ? "#ffffff" : colors.text.tertiary,
                                 }}
                             >
                                 {mg.name}
@@ -91,9 +93,9 @@ export function MuscleGroupPicker({ muscleGroups, selectedIds, onChange, onCreat
                             paddingHorizontal: 12,
                             paddingVertical: 8,
                             borderRadius: 20,
-                            backgroundColor: "#f5f3ff",
+                            backgroundColor: "rgba(124,58,237,0.12)",
                             borderWidth: 1,
-                            borderColor: "#ede9fe",
+                            borderColor: "rgba(124,58,237,0.30)",
                             borderStyle: "dashed",
                             flexDirection: "row",
                             alignItems: "center",
@@ -119,7 +121,7 @@ export function MuscleGroupPicker({ muscleGroups, selectedIds, onChange, onCreat
                         flex: 1,
                         flexDirection: "row",
                         alignItems: "center",
-                        backgroundColor: "#ffffff",
+                        backgroundColor: colors.surface.card,
                         borderRadius: 10,
                         paddingHorizontal: 12,
                         borderWidth: 1,
@@ -130,14 +132,14 @@ export function MuscleGroupPicker({ muscleGroups, selectedIds, onChange, onCreat
                             value={newName}
                             onChangeText={setNewName}
                             placeholder="Nome do grupo"
-                            placeholderTextColor="#94a3b8"
+                            placeholderTextColor={colors.text.quaternary}
                             returnKeyType="done"
                             onSubmitEditing={handleCreate}
                             style={{
                                 flex: 1,
                                 paddingVertical: 10,
                                 fontSize: 14,
-                                color: "#0f172a",
+                                color: colors.text.primary,
                             }}
                         />
                     </View>
@@ -150,7 +152,7 @@ export function MuscleGroupPicker({ muscleGroups, selectedIds, onChange, onCreat
                                 disabled={!newName.trim()}
                                 style={{
                                     width: 36, height: 36, borderRadius: 10,
-                                    backgroundColor: newName.trim() ? "#7c3aed" : "#e2e8f0",
+                                    backgroundColor: newName.trim() ? "#7c3aed" : colors.surface.card2,
                                     alignItems: "center", justifyContent: "center",
                                 }}
                             >
@@ -160,11 +162,11 @@ export function MuscleGroupPicker({ muscleGroups, selectedIds, onChange, onCreat
                                 onPress={() => { setShowInput(false); setNewName(""); }}
                                 style={{
                                     width: 36, height: 36, borderRadius: 10,
-                                    backgroundColor: "#f1f5f9",
+                                    backgroundColor: colors.surface.card2,
                                     alignItems: "center", justifyContent: "center",
                                 }}
                             >
-                                <X size={16} color="#64748b" />
+                                <X size={16} color={colors.text.tertiary} />
                             </TouchableOpacity>
                         </View>
                     )}

@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text } from "react-native";
 import type { FinancialTransaction } from "../../types/financial";
+import { useV2Colors } from "../../hooks/useV2Colors";
 
 function formatCurrency(value: number): string {
     return `R$ ${value.toFixed(2).replace(".", ",")}`;
@@ -32,7 +33,8 @@ interface Props {
 }
 
 export function TransactionRow({ transaction }: Props) {
-    const dotColor = STATUS_COLORS[transaction.status] || "#94a3b8";
+    const colors = useV2Colors();
+    const dotColor = STATUS_COLORS[transaction.status] || colors.text.quaternary;
 
     return (
         <View
@@ -46,14 +48,14 @@ export function TransactionRow({ transaction }: Props) {
         >
             <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: dotColor }} />
             <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 14, fontWeight: "500", color: "#0f172a" }} numberOfLines={1}>
+                <Text style={{ fontSize: 14, fontWeight: "500", color: colors.text.primary }} numberOfLines={1}>
                     {transaction.student_name || transaction.description || "Transação"}
                 </Text>
-                <Text style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>
+                <Text style={{ fontSize: 11, color: colors.text.quaternary, marginTop: 2 }}>
                     {transaction.description ? transaction.description : transaction.type} · {timeAgo(transaction.created_at)}
                 </Text>
             </View>
-            <Text style={{ fontSize: 14, fontWeight: "600", color: "#0f172a" }}>
+            <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text.primary }}>
                 {formatCurrency(transaction.amount_gross)}
             </Text>
         </View>

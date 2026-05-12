@@ -19,6 +19,7 @@ import {
 } from "../../../hooks/useAppointmentMutations";
 import { useScheduleAppointmentReminder } from "../../../hooks/useScheduleAppointmentReminder";
 import type { AppointmentFrequency } from "@kinevo/shared/types/appointments";
+import { useV2Colors, type V2Palette } from "../../../hooks/useV2Colors";
 
 interface CreateAppointmentSheetProps {
     visible: boolean;
@@ -72,6 +73,7 @@ export function CreateAppointmentSheet({
     onClose,
     onCreated,
 }: CreateAppointmentSheetProps) {
+    const colors = useV2Colors();
     const sheetRef = useRef<BottomSheet>(null);
     const snapPoints = useMemo(() => ["92%"], []);
     const { students: studentsListed, isLoading: studentsLoading } = useTrainerStudentsList();
@@ -215,8 +217,8 @@ export function CreateAppointmentSheet({
             enablePanDownToClose
             onClose={onClose}
             backdropComponent={renderBackdrop}
-            backgroundStyle={{ backgroundColor: "#ffffff" }}
-            handleIndicatorStyle={{ backgroundColor: "#cbd5e1" }}
+            backgroundStyle={{ backgroundColor: colors.surface.card }}
+            handleIndicatorStyle={{ backgroundColor: colors.text.quaternary }}
         >
             <BottomSheetView style={{ flex: 1 }}>
                 {/* Header */}
@@ -228,13 +230,13 @@ export function CreateAppointmentSheet({
                         paddingHorizontal: 20,
                         paddingBottom: 12,
                         borderBottomWidth: 1,
-                        borderBottomColor: "#f1f5f9",
+                        borderBottomColor: colors.border.subtle,
                     }}
                 >
                     <TouchableOpacity onPress={onClose} hitSlop={8}>
-                        <X size={22} color="#64748b" />
+                        <X size={22} color={colors.text.tertiary} />
                     </TouchableOpacity>
-                    <Text style={{ fontSize: 16, fontWeight: "700", color: "#0f172a" }}>
+                    <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text.primary }}>
                         Novo agendamento
                     </Text>
                     <TouchableOpacity onPress={handleSubmit} disabled={submitting} hitSlop={8}>
@@ -254,7 +256,7 @@ export function CreateAppointmentSheet({
                     keyboardShouldPersistTaps="handled"
                 >
                     {/* Aluno picker */}
-                    <SectionLabel>Aluno</SectionLabel>
+                    <SectionLabel colors={colors}>Aluno</SectionLabel>
                     {selectedStudent ? (
                         <Pressable
                             onPress={() => {
@@ -266,7 +268,7 @@ export function CreateAppointmentSheet({
                                 alignItems: "center",
                                 padding: 12,
                                 borderRadius: 12,
-                                backgroundColor: "#f5f3ff",
+                                backgroundColor: colors.purple[100],
                                 borderWidth: 1,
                                 borderColor: "#7c3aed",
                                 opacity: pressed ? 0.85 : 1,
@@ -283,7 +285,7 @@ export function CreateAppointmentSheet({
                                         width: 36,
                                         height: 36,
                                         borderRadius: 12,
-                                        backgroundColor: "#ede9fe",
+                                        backgroundColor: colors.purple[200],
                                         alignItems: "center",
                                         justifyContent: "center",
                                         marginRight: 10,
@@ -294,7 +296,7 @@ export function CreateAppointmentSheet({
                                     </Text>
                                 </View>
                             )}
-                            <Text style={{ flex: 1, fontSize: 14, fontWeight: "600", color: "#0f172a" }}>
+                            <Text style={{ flex: 1, fontSize: 14, fontWeight: "600", color: colors.text.primary }}>
                                 {selectedStudent.name}
                             </Text>
                             <Text style={{ fontSize: 12, color: "#7c3aed", fontWeight: "600" }}>Trocar</Text>
@@ -302,21 +304,21 @@ export function CreateAppointmentSheet({
                     ) : (
                         <View
                             style={{
-                                backgroundColor: "#f8fafc",
+                                backgroundColor: colors.surface.card2,
                                 borderRadius: 12,
                                 padding: 8,
                                 borderWidth: 1,
-                                borderColor: "#e2e8f0",
+                                borderColor: colors.border.default,
                             }}
                         >
                             <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 8, paddingVertical: 4 }}>
-                                <Search size={16} color="#94a3b8" />
+                                <Search size={16} color={colors.text.quaternary} />
                                 <TextInput
                                     placeholder="Buscar aluno..."
-                                    placeholderTextColor="#94a3b8"
+                                    placeholderTextColor={colors.text.quaternary}
                                     value={studentSearch}
                                     onChangeText={setStudentSearch}
-                                    style={{ flex: 1, fontSize: 14, color: "#0f172a", marginLeft: 8, paddingVertical: 6 }}
+                                    style={{ flex: 1, fontSize: 14, color: colors.text.primary, marginLeft: 8, paddingVertical: 6 }}
                                 />
                             </View>
                             {studentsLoading ? (
@@ -324,7 +326,7 @@ export function CreateAppointmentSheet({
                             ) : (
                                 <ScrollView style={{ maxHeight: 160 }} nestedScrollEnabled>
                                     {filteredStudents.length === 0 ? (
-                                        <Text style={{ textAlign: "center", color: "#94a3b8", fontSize: 12, paddingVertical: 16 }}>
+                                        <Text style={{ textAlign: "center", color: colors.text.quaternary, fontSize: 12, paddingVertical: 16 }}>
                                             Nenhum aluno encontrado
                                         </Text>
                                     ) : (
@@ -355,19 +357,19 @@ export function CreateAppointmentSheet({
                                                             width: 28,
                                                             height: 28,
                                                             borderRadius: 9,
-                                                            backgroundColor: "#f1f5f9",
+                                                            backgroundColor: colors.surface.card2,
                                                             alignItems: "center",
                                                             justifyContent: "center",
                                                             marginRight: 10,
                                                         }}
                                                     >
-                                                        <Text style={{ fontSize: 11, fontWeight: "700", color: "#64748b" }}>
+                                                        <Text style={{ fontSize: 11, fontWeight: "700", color: colors.text.tertiary }}>
                                                             {initialsOf(s.name)}
                                                         </Text>
                                                     </View>
                                                 )}
-                                                <Text style={{ fontSize: 13, color: "#0f172a", flex: 1 }}>{s.name}</Text>
-                                                <ChevronRight size={14} color="#cbd5e1" />
+                                                <Text style={{ fontSize: 13, color: colors.text.primary, flex: 1 }}>{s.name}</Text>
+                                                <ChevronRight size={14} color={colors.text.quaternary} />
                                             </Pressable>
                                         ))
                                     )}
@@ -377,7 +379,7 @@ export function CreateAppointmentSheet({
                     )}
 
                     {/* Date picker (horizontal scroll of days) */}
-                    <SectionLabel>Data</SectionLabel>
+                    <SectionLabel colors={colors}>Data</SectionLabel>
                     <ScrollView
                         horizontal
                         showsHorizontalScrollIndicator={false}
@@ -398,9 +400,9 @@ export function CreateAppointmentSheet({
                                         paddingVertical: 10,
                                         alignItems: "center",
                                         borderRadius: 12,
-                                        backgroundColor: selected ? "#7c3aed" : "#f8fafc",
+                                        backgroundColor: selected ? "#7c3aed" : colors.surface.card2,
                                         borderWidth: 1,
-                                        borderColor: selected ? "#7c3aed" : "#e2e8f0",
+                                        borderColor: selected ? "#7c3aed" : colors.border.default,
                                         opacity: pressed ? 0.85 : 1,
                                     })}
                                 >
@@ -408,7 +410,7 @@ export function CreateAppointmentSheet({
                                         style={{
                                             fontSize: 11,
                                             fontWeight: "600",
-                                            color: selected ? "rgba(255,255,255,0.9)" : "#94a3b8",
+                                            color: selected ? "rgba(255,255,255,0.9)" : colors.text.quaternary,
                                             textTransform: "uppercase",
                                         }}
                                     >
@@ -418,7 +420,7 @@ export function CreateAppointmentSheet({
                                         style={{
                                             fontSize: 18,
                                             fontWeight: "700",
-                                            color: selected ? "#ffffff" : "#0f172a",
+                                            color: selected ? "#ffffff" : colors.text.primary,
                                             marginTop: 2,
                                         }}
                                     >
@@ -427,7 +429,7 @@ export function CreateAppointmentSheet({
                                     <Text
                                         style={{
                                             fontSize: 10,
-                                            color: selected ? "rgba(255,255,255,0.85)" : "#64748b",
+                                            color: selected ? "rgba(255,255,255,0.85)" : colors.text.tertiary,
                                             marginTop: 1,
                                         }}
                                     >
@@ -439,7 +441,7 @@ export function CreateAppointmentSheet({
                     </ScrollView>
 
                     {/* Time picker (horizontal slots) */}
-                    <SectionLabel>Horário</SectionLabel>
+                    <SectionLabel colors={colors}>Horário</SectionLabel>
                     <ScrollView
                         horizontal
                         showsHorizontalScrollIndicator={false}
@@ -458,13 +460,13 @@ export function CreateAppointmentSheet({
                                         paddingVertical: 8,
                                         paddingHorizontal: 14,
                                         borderRadius: 100,
-                                        backgroundColor: selected ? "#7c3aed" : "#f8fafc",
+                                        backgroundColor: selected ? "#7c3aed" : colors.surface.card2,
                                         borderWidth: 1,
-                                        borderColor: selected ? "#7c3aed" : "#e2e8f0",
+                                        borderColor: selected ? "#7c3aed" : colors.border.default,
                                         opacity: pressed ? 0.85 : 1,
                                     })}
                                 >
-                                    <Text style={{ fontSize: 13, fontWeight: "600", color: selected ? "#ffffff" : "#0f172a" }}>
+                                    <Text style={{ fontSize: 13, fontWeight: "600", color: selected ? "#ffffff" : colors.text.primary }}>
                                         {t}
                                     </Text>
                                 </Pressable>
@@ -473,7 +475,7 @@ export function CreateAppointmentSheet({
                     </ScrollView>
 
                     {/* Duration */}
-                    <SectionLabel>Duração</SectionLabel>
+                    <SectionLabel colors={colors}>Duração</SectionLabel>
                     <View style={{ flexDirection: "row", gap: 8 }}>
                         {DURATION_OPTIONS.map((d) => {
                             const selected = d === duration;
@@ -489,13 +491,13 @@ export function CreateAppointmentSheet({
                                         paddingVertical: 10,
                                         borderRadius: 10,
                                         alignItems: "center",
-                                        backgroundColor: selected ? "#7c3aed" : "#f8fafc",
+                                        backgroundColor: selected ? "#7c3aed" : colors.surface.card2,
                                         borderWidth: 1,
-                                        borderColor: selected ? "#7c3aed" : "#e2e8f0",
+                                        borderColor: selected ? "#7c3aed" : colors.border.default,
                                         opacity: pressed ? 0.85 : 1,
                                     })}
                                 >
-                                    <Text style={{ fontSize: 13, fontWeight: "600", color: selected ? "#ffffff" : "#0f172a" }}>
+                                    <Text style={{ fontSize: 13, fontWeight: "600", color: selected ? "#ffffff" : colors.text.primary }}>
                                         {d} min
                                     </Text>
                                 </Pressable>
@@ -504,7 +506,7 @@ export function CreateAppointmentSheet({
                     </View>
 
                     {/* Recurrence */}
-                    <SectionLabel>Recorrência</SectionLabel>
+                    <SectionLabel colors={colors}>Recorrência</SectionLabel>
                     <View style={{ gap: 8 }}>
                         {FREQUENCY_OPTIONS.map((opt) => {
                             const selected = frequency === opt.value;
@@ -521,17 +523,17 @@ export function CreateAppointmentSheet({
                                         alignItems: "center",
                                         padding: 12,
                                         borderRadius: 12,
-                                        backgroundColor: selected ? "#f5f3ff" : "#f8fafc",
+                                        backgroundColor: selected ? colors.purple[100] : colors.surface.card2,
                                         borderWidth: 1,
-                                        borderColor: selected ? "#7c3aed" : "#e2e8f0",
+                                        borderColor: selected ? "#7c3aed" : colors.border.default,
                                         opacity: pressed ? 0.85 : 1,
                                     })}
                                 >
                                     <View style={{ flex: 1 }}>
-                                        <Text style={{ fontSize: 14, fontWeight: "600", color: "#0f172a" }}>
+                                        <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text.primary }}>
                                             {opt.label}
                                         </Text>
-                                        <Text style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                                        <Text style={{ fontSize: 12, color: colors.text.tertiary, marginTop: 2 }}>
                                             {opt.hint}
                                         </Text>
                                     </View>
@@ -542,23 +544,23 @@ export function CreateAppointmentSheet({
                     </View>
 
                     {/* Notes */}
-                    <SectionLabel>Notas (opcional)</SectionLabel>
+                    <SectionLabel colors={colors}>Notas (opcional)</SectionLabel>
                     <TextInput
                         value={notes}
                         onChangeText={setNotes}
                         placeholder="Foco do treino, observações..."
-                        placeholderTextColor="#94a3b8"
+                        placeholderTextColor={colors.text.quaternary}
                         multiline
                         maxLength={500}
                         style={{
                             minHeight: 80,
-                            backgroundColor: "#f8fafc",
+                            backgroundColor: colors.surface.card2,
                             borderRadius: 12,
                             borderWidth: 1,
-                            borderColor: "#e2e8f0",
+                            borderColor: colors.border.default,
                             padding: 12,
                             fontSize: 14,
-                            color: "#0f172a",
+                            color: colors.text.primary,
                             textAlignVertical: "top",
                         }}
                     />
@@ -567,14 +569,14 @@ export function CreateAppointmentSheet({
                         <View
                             style={{
                                 marginTop: 14,
-                                backgroundColor: "#fffbeb",
+                                backgroundColor: "rgba(245,158,11,0.12)",
                                 borderRadius: 10,
                                 padding: 12,
                                 borderWidth: 1,
-                                borderColor: "#fde68a",
+                                borderColor: "rgba(245,158,11,0.30)",
                             }}
                         >
-                            <Text style={{ fontSize: 12, color: "#92400e", lineHeight: 18 }}>
+                            <Text style={{ fontSize: 12, color: "#f59e0b", lineHeight: 18 }}>
                                 Ative notificações em Configurações pra receber lembretes de agendamento.
                             </Text>
                         </View>
@@ -584,14 +586,14 @@ export function CreateAppointmentSheet({
                         <View
                             style={{
                                 marginTop: 14,
-                                backgroundColor: "#fef2f2",
+                                backgroundColor: "rgba(239,68,68,0.10)",
                                 borderRadius: 10,
                                 padding: 12,
                                 borderWidth: 1,
-                                borderColor: "#fecaca",
+                                borderColor: "rgba(239,68,68,0.30)",
                             }}
                         >
-                            <Text style={{ fontSize: 12, color: "#b91c1c" }}>{error}</Text>
+                            <Text style={{ fontSize: 12, color: "#ef4444" }}>{error}</Text>
                         </View>
                     ) : null}
                 </ScrollView>
@@ -600,13 +602,13 @@ export function CreateAppointmentSheet({
     );
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
+function SectionLabel({ children, colors }: { children: React.ReactNode; colors: V2Palette }) {
     return (
         <Text
             style={{
                 fontSize: 11,
                 fontWeight: "700",
-                color: "#94a3b8",
+                color: colors.text.quaternary,
                 textTransform: "uppercase",
                 letterSpacing: 1.2,
                 marginTop: 18,

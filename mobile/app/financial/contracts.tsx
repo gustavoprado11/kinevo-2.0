@@ -105,7 +105,7 @@ export default function ContractsScreen() {
                             borderRadius: 12,
                             paddingHorizontal: 12,
                             borderWidth: 1,
-                            borderColor: "rgba(0,0,0,0.06)",
+                            borderColor: colors.border.default,
                         }}
                     >
                         <Search size={16} color={colors.text.tertiary} />
@@ -113,7 +113,7 @@ export default function ContractsScreen() {
                             value={search}
                             onChangeText={setSearch}
                             placeholder="Buscar por nome..."
-                            placeholderTextColor="#94a3b8"
+                            placeholderTextColor={colors.text.tertiary}
                             style={{
                                 flex: 1,
                                 paddingVertical: 10,
@@ -146,16 +146,16 @@ export default function ContractsScreen() {
                                         paddingHorizontal: 14,
                                         paddingVertical: 8,
                                         borderRadius: 100,
-                                        backgroundColor: active ? "#7c3aed" : "#ffffff",
+                                        backgroundColor: active ? "#7c3aed" : colors.surface.card,
                                         borderWidth: active ? 0 : 1,
-                                        borderColor: "rgba(0,0,0,0.08)",
+                                        borderColor: colors.border.default,
                                     }}
                                 >
                                     <Text
                                         style={{
                                             fontSize: 13,
                                             fontWeight: "600",
-                                            color: active ? "#ffffff" : "#475569",
+                                            color: active ? "#ffffff" : colors.text.secondary,
                                         }}
                                     >
                                         {f.label} {count > 0 ? `(${count})` : ""}
@@ -183,7 +183,7 @@ export default function ContractsScreen() {
                         }
                         ListEmptyComponent={
                             <EmptyState
-                                icon={<FileText size={40} color="#cbd5e1" />}
+                                icon={<FileText size={40} color={colors.text.quaternary} />}
                                 title={search ? "Nenhum contrato encontrado" : "Nenhum contrato"}
                                 description={search ? "Tente ajustar o termo de busca" : "Contratos aparecerão aqui quando criados"}
                             />

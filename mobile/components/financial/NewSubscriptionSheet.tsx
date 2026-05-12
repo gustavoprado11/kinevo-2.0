@@ -16,6 +16,7 @@ import * as Haptics from "expo-haptics";
 import { supabase } from "../../lib/supabase";
 import { useRoleMode } from "../../contexts/RoleModeContext";
 import type { TrainerPlan } from "../../hooks/useTrainerPlans";
+import { useV2Colors, type V2Palette } from "../../hooks/useV2Colors";
 
 const API_URL = process.env.EXPO_PUBLIC_WEB_URL || "https://app.kinevo.com.br";
 
@@ -55,6 +56,7 @@ const INTERVAL_LABELS: Record<string, string> = {
 };
 
 export function NewSubscriptionSheet({ visible, onClose, onSuccess, plans, hasStripeConnect, preSelectedStudent }: NewSubscriptionSheetProps) {
+    const colors = useV2Colors();
     const { trainerId } = useRoleMode();
 
     const [step, setStep] = useState<Step>("student");
@@ -218,7 +220,7 @@ export function NewSubscriptionSheet({ visible, onClose, onSuccess, plans, hasSt
             presentationStyle="pageSheet"
             onRequestClose={onClose}
         >
-            <SafeAreaView style={{ flex: 1, backgroundColor: "#F2F2F7" }} edges={["top"]}>
+            <SafeAreaView style={{ flex: 1, backgroundColor: colors.surface.canvas }} edges={["top"]}>
                 {/* Header */}
                 <View style={{
                     flexDirection: "row",
@@ -227,7 +229,7 @@ export function NewSubscriptionSheet({ visible, onClose, onSuccess, plans, hasSt
                     paddingHorizontal: 20,
                     paddingVertical: 14,
                     borderBottomWidth: 1,
-                    borderBottomColor: "rgba(0,0,0,0.06)",
+                    borderBottomColor: colors.border.default,
                 }}>
                     {step !== "student" ? (
                         <TouchableOpacity onPress={handleBack} hitSlop={8}>
@@ -235,10 +237,10 @@ export function NewSubscriptionSheet({ visible, onClose, onSuccess, plans, hasSt
                         </TouchableOpacity>
                     ) : (
                         <TouchableOpacity onPress={onClose} hitSlop={8}>
-                            <X size={22} color="#64748b" />
+                            <X size={22} color={colors.text.tertiary} />
                         </TouchableOpacity>
                     )}
-                    <Text style={{ fontSize: 17, fontWeight: "600", color: "#0f172a" }}>
+                    <Text style={{ fontSize: 17, fontWeight: "600", color: colors.text.primary }}>
                         {getStepTitle()}
                     </Text>
                     <View style={{ width: 40 }} />
@@ -257,13 +259,13 @@ export function NewSubscriptionSheet({ visible, onClose, onSuccess, plans, hasSt
                             </View>
                         ) : students.length === 0 ? (
                             <View style={{ paddingTop: 40, alignItems: "center" }}>
-                                <Users size={40} color="#cbd5e1" />
-                                <Text style={{ fontSize: 16, fontWeight: "600", color: "#94a3b8", marginTop: 12 }}>
+                                <Users size={40} color={colors.text.quaternary} />
+                                <Text style={{ fontSize: 16, fontWeight: "600", color: colors.text.tertiary, marginTop: 12 }}>
                                     Nenhum aluno encontrado
                                 </Text>
                             </View>
                         ) : (
-                            <View style={{ backgroundColor: "#ffffff", borderRadius: 16, overflow: "hidden", borderWidth: 1, borderColor: "rgba(0,0,0,0.04)" }}>
+                            <View style={{ backgroundColor: colors.surface.card, borderRadius: 16, overflow: "hidden", borderWidth: 1, borderColor: colors.border.subtle }}>
                                 {students.map((s, idx) => {
                                     const initials = s.name?.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase() || "?";
                                     return (
@@ -276,27 +278,27 @@ export function NewSubscriptionSheet({ visible, onClose, onSuccess, plans, hasSt
                                                 alignItems: "center",
                                                 padding: 14,
                                                 borderBottomWidth: idx < students.length - 1 ? 1 : 0,
-                                                borderBottomColor: "#f1f5f9",
+                                                borderBottomColor: colors.border.subtle,
                                             }}
                                         >
                                             {s.avatar_url ? (
                                                 <Image
                                                     source={{ uri: s.avatar_url }}
-                                                    style={{ width: 40, height: 40, borderRadius: 12, marginRight: 12, backgroundColor: "#f1f5f9" }}
+                                                    style={{ width: 40, height: 40, borderRadius: 12, marginRight: 12, backgroundColor: colors.surface.card2 }}
                                                 />
                                             ) : (
                                                 <View style={{
                                                     width: 40, height: 40, borderRadius: 12,
-                                                    backgroundColor: "#f5f3ff", alignItems: "center",
+                                                    backgroundColor: colors.purple[100], alignItems: "center",
                                                     justifyContent: "center", marginRight: 12,
                                                 }}>
                                                     <Text style={{ fontSize: 14, fontWeight: "700", color: "#7c3aed" }}>{initials}</Text>
                                                 </View>
                                             )}
-                                            <Text style={{ flex: 1, fontSize: 15, fontWeight: "500", color: "#0f172a" }}>
+                                            <Text style={{ flex: 1, fontSize: 15, fontWeight: "500", color: colors.text.primary }}>
                                                 {s.name}
                                             </Text>
-                                            <ChevronRight size={16} color="#cbd5e1" />
+                                            <ChevronRight size={16} color={colors.text.quaternary} />
                                         </TouchableOpacity>
                                     );
                                 })}
@@ -316,31 +318,31 @@ export function NewSubscriptionSheet({ visible, onClose, onSuccess, plans, hasSt
                                         onPress={() => handleSelectBilling(opt.key)}
                                         activeOpacity={0.6}
                                         style={{
-                                            backgroundColor: "#ffffff",
+                                            backgroundColor: colors.surface.card,
                                             borderRadius: 14,
                                             padding: 16,
                                             flexDirection: "row",
                                             alignItems: "center",
                                             borderWidth: 1,
-                                            borderColor: "rgba(0,0,0,0.04)",
+                                            borderColor: colors.border.subtle,
                                         }}
                                     >
                                         <View style={{
                                             width: 40, height: 40, borderRadius: 12,
-                                            backgroundColor: "#f5f3ff", alignItems: "center",
+                                            backgroundColor: colors.purple[100], alignItems: "center",
                                             justifyContent: "center", marginRight: 14,
                                         }}>
                                             <Icon size={18} color="#7c3aed" />
                                         </View>
                                         <View style={{ flex: 1 }}>
-                                            <Text style={{ fontSize: 15, fontWeight: "600", color: "#0f172a" }}>
+                                            <Text style={{ fontSize: 15, fontWeight: "600", color: colors.text.primary }}>
                                                 {opt.label}
                                             </Text>
-                                            <Text style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                                            <Text style={{ fontSize: 12, color: colors.text.tertiary, marginTop: 2 }}>
                                                 {opt.desc}
                                             </Text>
                                         </View>
-                                        <ChevronRight size={16} color="#cbd5e1" />
+                                        <ChevronRight size={16} color={colors.text.quaternary} />
                                     </TouchableOpacity>
                                 );
                             })}
@@ -351,11 +353,11 @@ export function NewSubscriptionSheet({ visible, onClose, onSuccess, plans, hasSt
                     {step === "plan" && (
                         plans.length === 0 ? (
                             <View style={{ paddingTop: 40, alignItems: "center" }}>
-                                <DollarSign size={40} color="#cbd5e1" />
-                                <Text style={{ fontSize: 16, fontWeight: "600", color: "#94a3b8", marginTop: 12 }}>
+                                <DollarSign size={40} color={colors.text.quaternary} />
+                                <Text style={{ fontSize: 16, fontWeight: "600", color: colors.text.tertiary, marginTop: 12 }}>
                                     Nenhum plano ativo
                                 </Text>
-                                <Text style={{ fontSize: 13, color: "#cbd5e1", marginTop: 4, textAlign: "center" }}>
+                                <Text style={{ fontSize: 13, color: colors.text.quaternary, marginTop: 4, textAlign: "center" }}>
                                     Crie um plano na tela Meus Planos primeiro
                                 </Text>
                             </View>
@@ -372,20 +374,20 @@ export function NewSubscriptionSheet({ visible, onClose, onSuccess, plans, hasSt
                                             onPress={() => !disabled && handleSelectPlan(plan)}
                                             activeOpacity={disabled ? 1 : 0.6}
                                             style={{
-                                                backgroundColor: disabled ? "#f8fafc" : "#ffffff",
+                                                backgroundColor: disabled ? colors.surface.card2 : colors.surface.card,
                                                 borderRadius: 14,
                                                 padding: 16,
                                                 borderWidth: 1,
-                                                borderColor: "rgba(0,0,0,0.04)",
+                                                borderColor: colors.border.subtle,
                                                 opacity: disabled ? 0.5 : 1,
                                             }}
                                         >
                                             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
                                                 <View style={{ flex: 1 }}>
-                                                    <Text style={{ fontSize: 16, fontWeight: "700", color: "#0f172a" }}>
+                                                    <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text.primary }}>
                                                         {plan.title}
                                                     </Text>
-                                                    <Text style={{ fontSize: 13, color: "#64748b", marginTop: 2 }}>
+                                                    <Text style={{ fontSize: 13, color: colors.text.tertiary, marginTop: 2 }}>
                                                         {formatCurrency(plan.price)} / {(INTERVAL_LABELS[plan.interval] || "mês").toLowerCase()}
                                                     </Text>
                                                     {disabled && (
@@ -394,7 +396,7 @@ export function NewSubscriptionSheet({ visible, onClose, onSuccess, plans, hasSt
                                                         </Text>
                                                     )}
                                                 </View>
-                                                <ChevronRight size={16} color="#cbd5e1" />
+                                                <ChevronRight size={16} color={colors.text.quaternary} />
                                             </View>
                                         </TouchableOpacity>
                                     );
@@ -408,19 +410,20 @@ export function NewSubscriptionSheet({ visible, onClose, onSuccess, plans, hasSt
                         <View>
                             {/* Summary card */}
                             <View style={{
-                                backgroundColor: "#ffffff",
+                                backgroundColor: colors.surface.card,
                                 borderRadius: 16,
                                 padding: 20,
                                 borderWidth: 1,
-                                borderColor: "rgba(0,0,0,0.04)",
+                                borderColor: colors.border.subtle,
                                 marginBottom: 20,
                             }}>
-                                <Text style={{ fontSize: 11, fontWeight: "600", color: "#94a3b8", letterSpacing: 1, marginBottom: 14 }}>
+                                <Text style={{ fontSize: 11, fontWeight: "600", color: colors.text.quaternary, letterSpacing: 1, marginBottom: 14 }}>
                                     RESUMO
                                 </Text>
 
-                                <SummaryRow label="Aluno" value={selectedStudent?.name || "—"} />
+                                <SummaryRow colors={colors} label="Aluno" value={selectedStudent?.name || "—"} />
                                 <SummaryRow
+                                    colors={colors}
                                     label="Cobrança"
                                     value={
                                         selectedBilling === "stripe_auto" ? "Cobrança automática (Stripe)" :
@@ -430,19 +433,19 @@ export function NewSubscriptionSheet({ visible, onClose, onSuccess, plans, hasSt
                                 />
                                 {selectedPlan && (
                                     <>
-                                        <SummaryRow label="Plano" value={selectedPlan.title} />
-                                        <SummaryRow label="Valor" value={formatCurrency(selectedPlan.price)} />
-                                        <SummaryRow label="Recorrência" value={INTERVAL_LABELS[selectedPlan.interval] || selectedPlan.interval} />
+                                        <SummaryRow colors={colors} label="Plano" value={selectedPlan.title} />
+                                        <SummaryRow colors={colors} label="Valor" value={formatCurrency(selectedPlan.price)} />
+                                        <SummaryRow colors={colors} label="Recorrência" value={INTERVAL_LABELS[selectedPlan.interval] || selectedPlan.interval} />
                                     </>
                                 )}
                                 {selectedBilling === "courtesy" && (
-                                    <SummaryRow label="Valor" value="Gratuito" />
+                                    <SummaryRow colors={colors} label="Valor" value="Gratuito" />
                                 )}
                             </View>
 
                             {/* Info text */}
                             {selectedBilling === "stripe_auto" && (
-                                <View style={{ backgroundColor: "#f5f3ff", borderRadius: 12, padding: 14, marginBottom: 20 }}>
+                                <View style={{ backgroundColor: "rgba(124,58,237,0.12)", borderRadius: 12, padding: 14, marginBottom: 20 }}>
                                     <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                                         <LinkIcon size={14} color="#7c3aed" />
                                         <Text style={{ fontSize: 13, color: "#7c3aed", fontWeight: "500", flex: 1 }}>
@@ -482,11 +485,11 @@ export function NewSubscriptionSheet({ visible, onClose, onSuccess, plans, hasSt
     );
 }
 
-function SummaryRow({ label, value }: { label: string; value: string }) {
+function SummaryRow({ label, value, colors }: { label: string; value: string; colors: V2Palette }) {
     return (
         <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 10 }}>
-            <Text style={{ fontSize: 14, color: "#64748b" }}>{label}</Text>
-            <Text style={{ fontSize: 14, fontWeight: "600", color: "#0f172a" }}>{value}</Text>
+            <Text style={{ fontSize: 14, color: colors.text.tertiary }}>{label}</Text>
+            <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text.primary }}>{value}</Text>
         </View>
     );
 }

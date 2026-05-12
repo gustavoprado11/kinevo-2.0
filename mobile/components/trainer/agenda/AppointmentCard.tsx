@@ -3,6 +3,7 @@ import { View, Text, Image, Pressable } from "react-native";
 import * as Haptics from "expo-haptics";
 import { Repeat } from "lucide-react-native";
 import type { AgendaOccurrence } from "../../../hooks/useAgendaOccurrences";
+import { useV2Colors } from "../../../hooks/useV2Colors";
 
 interface AppointmentCardProps {
     occurrence: AgendaOccurrence;
@@ -27,6 +28,7 @@ function initials(name: string): string {
 }
 
 export function AppointmentCard({ occurrence, onPress }: AppointmentCardProps) {
+    const colors = useV2Colors();
     const studentName = occurrence.student?.name ?? "Aluno removido";
     const avatar = occurrence.student?.avatar_url ?? null;
     const start = occurrence.startTime;
@@ -50,7 +52,7 @@ export function AppointmentCard({ occurrence, onPress }: AppointmentCardProps) {
         <Pressable
             onPress={handlePress}
             style={({ pressed }) => ({
-                backgroundColor: "#ffffff",
+                backgroundColor: colors.surface.card,
                 borderRadius: 16,
                 marginBottom: 10,
                 overflow: "hidden",
@@ -62,7 +64,7 @@ export function AppointmentCard({ occurrence, onPress }: AppointmentCardProps) {
                 shadowRadius: 6,
                 elevation: 1,
                 borderWidth: 1,
-                borderColor: "rgba(0,0,0,0.04)",
+                borderColor: colors.border.subtle,
             })}
         >
             {/* Accent strip */}
@@ -71,15 +73,15 @@ export function AppointmentCard({ occurrence, onPress }: AppointmentCardProps) {
             <View style={{ flex: 1, flexDirection: "row", alignItems: "center", padding: 14 }}>
                 {/* Time block */}
                 <View style={{ width: 64, marginRight: 12 }}>
-                    <Text style={{ fontSize: 17, fontWeight: "700", color: "#0f172a" }}>{start}</Text>
-                    <Text style={{ fontSize: 11, fontWeight: "500", color: "#94a3b8", marginTop: 2 }}>{end}</Text>
+                    <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text.primary }}>{start}</Text>
+                    <Text style={{ fontSize: 11, fontWeight: "500", color: colors.text.quaternary, marginTop: 2 }}>{end}</Text>
                 </View>
 
                 {/* Avatar */}
                 {avatar ? (
                     <Image
                         source={{ uri: avatar }}
-                        style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: "#f1f5f9", marginRight: 12 }}
+                        style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: colors.surface.card2, marginRight: 12 }}
                     />
                 ) : (
                     <View
@@ -87,7 +89,7 @@ export function AppointmentCard({ occurrence, onPress }: AppointmentCardProps) {
                             width: 40,
                             height: 40,
                             borderRadius: 12,
-                            backgroundColor: "#f5f3ff",
+                            backgroundColor: colors.purple[100],
                             alignItems: "center",
                             justifyContent: "center",
                             marginRight: 12,
@@ -103,17 +105,17 @@ export function AppointmentCard({ occurrence, onPress }: AppointmentCardProps) {
                 <View style={{ flex: 1 }}>
                     <Text
                         numberOfLines={1}
-                        style={{ fontSize: 15, fontWeight: "600", color: "#0f172a" }}
+                        style={{ fontSize: 15, fontWeight: "600", color: colors.text.primary }}
                     >
                         {studentName}
                     </Text>
                     <View style={{ flexDirection: "row", alignItems: "center", marginTop: 4, gap: 6 }}>
-                        <Text style={{ fontSize: 12, color: "#64748b" }}>
+                        <Text style={{ fontSize: 12, color: colors.text.tertiary }}>
                             {occurrence.durationMinutes} min
                         </Text>
                         {occurrence.recurringAppointmentId && occurrence.hasException && isRescheduled && (
                             <>
-                                <Text style={{ fontSize: 11, color: "#cbd5e1" }}>·</Text>
+                                <Text style={{ fontSize: 11, color: colors.text.quaternary }}>·</Text>
                                 <Text style={{ fontSize: 11, color: "#f59e0b", fontWeight: "600" }}>
                                     Remarcado
                                 </Text>
@@ -121,7 +123,7 @@ export function AppointmentCard({ occurrence, onPress }: AppointmentCardProps) {
                         )}
                         {isCompleted && (
                             <>
-                                <Text style={{ fontSize: 11, color: "#cbd5e1" }}>·</Text>
+                                <Text style={{ fontSize: 11, color: colors.text.quaternary }}>·</Text>
                                 <Text style={{ fontSize: 11, color: "#16a34a", fontWeight: "600" }}>
                                     Concluído
                                 </Text>
@@ -129,7 +131,7 @@ export function AppointmentCard({ occurrence, onPress }: AppointmentCardProps) {
                         )}
                         {isNoShow && (
                             <>
-                                <Text style={{ fontSize: 11, color: "#cbd5e1" }}>·</Text>
+                                <Text style={{ fontSize: 11, color: colors.text.quaternary }}>·</Text>
                                 <Text style={{ fontSize: 11, color: "#ef4444", fontWeight: "600" }}>
                                     Faltou
                                 </Text>
@@ -139,7 +141,7 @@ export function AppointmentCard({ occurrence, onPress }: AppointmentCardProps) {
                     {occurrence.notes ? (
                         <Text
                             numberOfLines={1}
-                            style={{ fontSize: 12, color: "#94a3b8", marginTop: 4 }}
+                            style={{ fontSize: 12, color: colors.text.quaternary, marginTop: 4 }}
                         >
                             {occurrence.notes}
                         </Text>
@@ -148,7 +150,7 @@ export function AppointmentCard({ occurrence, onPress }: AppointmentCardProps) {
 
                 {/* Recurring icon */}
                 <View style={{ marginLeft: 8 }}>
-                    <Repeat size={14} color="#cbd5e1" />
+                    <Repeat size={14} color={colors.text.quaternary} />
                 </View>
             </View>
         </Pressable>

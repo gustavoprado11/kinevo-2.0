@@ -9,9 +9,10 @@ import {
     Alert,
 } from "react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
 import YoutubePlayer from "react-native-youtube-iframe";
 import * as Haptics from "expo-haptics";
-import { Pencil, Trash2, Shield } from "lucide-react-native";
+import { ChevronLeft, Pencil, Trash2, Shield } from "lucide-react-native";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../contexts/AuthContext";
 import { useExerciseCrud } from "../../hooks/useExerciseCrud";
@@ -143,13 +144,42 @@ export default function ExerciseDetailScreen() {
     const isDirect = exercise ? isDirectVideoUrl(exercise.video_url) : false;
     const difficulty = exercise?.difficulty_level ? getDifficultyConfig(colors)[exercise.difficulty_level] : null;
 
+    const renderHeader = (title: string) => (
+        <View style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            paddingHorizontal: 16,
+            paddingVertical: 12,
+        }}>
+            <TouchableOpacity
+                onPress={() => router.back()}
+                accessibilityRole="button"
+                accessibilityLabel="Voltar"
+                hitSlop={12}
+            >
+                <ChevronLeft size={24} color={colors.text.primary} />
+            </TouchableOpacity>
+            <Text
+                style={{ fontSize: 18, fontWeight: "700", color: colors.text.primary, flex: 1, marginHorizontal: 12, textAlign: "center" }}
+                numberOfLines={1}
+            >
+                {title}
+            </Text>
+            <View style={{ width: 24 }} />
+        </View>
+    );
+
     if (isLoading) {
         return (
             <>
-                <Stack.Screen options={{ title: "Exercício", headerStyle: { backgroundColor: colors.surface.canvas }, headerTintColor: "#0f172a" }} />
-                <View style={{ flex: 1, backgroundColor: colors.surface.canvas, justifyContent: "center", alignItems: "center" }}>
-                    <ActivityIndicator size="large" color={colors.purple[600]} />
-                </View>
+                <Stack.Screen options={{ headerShown: false }} />
+                <SafeAreaView style={{ flex: 1, backgroundColor: colors.surface.canvas }} edges={["top"]}>
+                    {renderHeader("Exercício")}
+                    <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+                        <ActivityIndicator size="large" color={colors.purple[600]} />
+                    </View>
+                </SafeAreaView>
             </>
         );
     }
@@ -157,21 +187,26 @@ export default function ExerciseDetailScreen() {
     if (!exercise) {
         return (
             <>
-                <Stack.Screen options={{ title: "Exercício", headerStyle: { backgroundColor: colors.surface.canvas }, headerTintColor: "#0f172a" }} />
-                <View style={{ flex: 1, backgroundColor: colors.surface.canvas, justifyContent: "center", alignItems: "center" }}>
-                    <Text style={{ fontSize: 16, color: colors.text.secondary }}>Exercício não encontrado</Text>
-                </View>
+                <Stack.Screen options={{ headerShown: false }} />
+                <SafeAreaView style={{ flex: 1, backgroundColor: colors.surface.canvas }} edges={["top"]}>
+                    {renderHeader("Exercício")}
+                    <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+                        <Text style={{ fontSize: 16, color: colors.text.secondary }}>Exercício não encontrado</Text>
+                    </View>
+                </SafeAreaView>
             </>
         );
     }
 
     return (
         <>
-            <Stack.Screen options={{ title: exercise.name, headerStyle: { backgroundColor: colors.surface.canvas }, headerTintColor: "#0f172a" }} />
-            <ScrollView
-                style={{ flex: 1, backgroundColor: colors.surface.canvas }}
-                contentContainerStyle={{ paddingBottom: 60 }}
-            >
+            <Stack.Screen options={{ headerShown: false }} />
+            <SafeAreaView style={{ flex: 1, backgroundColor: colors.surface.canvas }} edges={["top"]}>
+                {renderHeader(exercise.name)}
+                <ScrollView
+                    style={{ flex: 1 }}
+                    contentContainerStyle={{ paddingBottom: 60 }}
+                >
                 {/* Video */}
                 {videoId ? (
                     <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
@@ -326,7 +361,8 @@ export default function ExerciseDetailScreen() {
                         </View>
                     </View>
                 )}
-            </ScrollView>
+                </ScrollView>
+            </SafeAreaView>
 
             {/* Edit Modal */}
             <ExerciseFormModal

@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, Modal, Pressable } from "react-native";
 import * as Haptics from "expo-haptics";
+import { useV2Colors, type V2Palette } from "../../../hooks/useV2Colors";
 
 export type EditScope = "only_this" | "this_and_future" | "whole_series";
 
@@ -21,6 +22,7 @@ export function EditScopeDialog({
     onSelect,
     onClose,
 }: EditScopeDialogProps) {
+    const colors = useV2Colors();
     const handlePick = (scope: EditScope) => {
         Haptics.selectionAsync();
         onSelect(scope);
@@ -43,29 +45,32 @@ export function EditScopeDialog({
                     style={{
                         width: "100%",
                         maxWidth: 360,
-                        backgroundColor: "#ffffff",
+                        backgroundColor: colors.surface.card,
                         borderRadius: 18,
                         padding: 18,
                     }}
                 >
-                    <Text style={{ fontSize: 16, fontWeight: "700", color: "#0f172a", textAlign: "center" }}>
+                    <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text.primary, textAlign: "center" }}>
                         {title}
                     </Text>
 
                     <View style={{ marginTop: 16, gap: 8 }}>
                         <ScopeOption
+                            colors={colors}
                             label="Apenas esta ocorrência"
                             description="Mantém as demais como estão"
                             onPress={() => handlePick("only_this")}
                         />
                         {!excludeThisAndFuture && (
                             <ScopeOption
+                                colors={colors}
                                 label="Esta e futuras"
                                 description="Encerra a série atual e cria uma nova"
                                 onPress={() => handlePick("this_and_future")}
                             />
                         )}
                         <ScopeOption
+                            colors={colors}
                             label="Toda a série"
                             description="Aplica a todas as ocorrências"
                             onPress={() => handlePick("whole_series")}
@@ -82,7 +87,7 @@ export function EditScopeDialog({
                             opacity: pressed ? 0.6 : 1,
                         })}
                     >
-                        <Text style={{ fontSize: 14, fontWeight: "600", color: "#64748b" }}>Cancelar</Text>
+                        <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text.tertiary }}>Cancelar</Text>
                     </Pressable>
                 </Pressable>
             </Pressable>
@@ -94,10 +99,12 @@ function ScopeOption({
     label,
     description,
     onPress,
+    colors,
 }: {
     label: string;
     description: string;
     onPress: () => void;
+    colors: V2Palette;
 }) {
     return (
         <Pressable
@@ -106,14 +113,14 @@ function ScopeOption({
                 paddingVertical: 12,
                 paddingHorizontal: 14,
                 borderRadius: 12,
-                backgroundColor: "#f8fafc",
+                backgroundColor: colors.surface.card2,
                 borderWidth: 1,
-                borderColor: "#e2e8f0",
+                borderColor: colors.border.default,
                 opacity: pressed ? 0.7 : 1,
             })}
         >
-            <Text style={{ fontSize: 14, fontWeight: "600", color: "#0f172a" }}>{label}</Text>
-            <Text style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{description}</Text>
+            <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text.primary }}>{label}</Text>
+            <Text style={{ fontSize: 12, color: colors.text.tertiary, marginTop: 2 }}>{description}</Text>
         </Pressable>
     );
 }

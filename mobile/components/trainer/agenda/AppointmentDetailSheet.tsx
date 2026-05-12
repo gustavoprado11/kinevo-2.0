@@ -29,6 +29,7 @@ import type {
     AgendaOccurrence,
 } from "../../../hooks/useAgendaOccurrences";
 import type { AppointmentFrequency } from "@kinevo/shared/types/appointments";
+import { useV2Colors, type V2Palette } from "../../../hooks/useV2Colors";
 
 interface AppointmentDetailSheetProps {
     occurrence: AgendaOccurrence | null;
@@ -117,6 +118,7 @@ export function AppointmentDetailSheet({
     onClose,
     onChanged,
 }: AppointmentDetailSheetProps) {
+    const colors = useV2Colors();
     const sheetRef = useRef<BottomSheet>(null);
     const snapPoints = useMemo(() => ["75%", "92%"], []);
     const { cancelOccurrence, cancelSeries, rescheduleOccurrence, updateRecurring } =
@@ -389,8 +391,8 @@ export function AppointmentDetailSheet({
                 enablePanDownToClose
                 onClose={onClose}
                 backdropComponent={renderBackdrop}
-                backgroundStyle={{ backgroundColor: "#ffffff" }}
-                handleIndicatorStyle={{ backgroundColor: "#cbd5e1" }}
+                backgroundStyle={{ backgroundColor: colors.surface.card }}
+                handleIndicatorStyle={{ backgroundColor: colors.text.quaternary }}
             >
                 <BottomSheetView style={{ flex: 1 }}>
                     {/* Header */}
@@ -402,13 +404,13 @@ export function AppointmentDetailSheet({
                             paddingHorizontal: 20,
                             paddingBottom: 12,
                             borderBottomWidth: 1,
-                            borderBottomColor: "#f1f5f9",
+                            borderBottomColor: colors.border.subtle,
                         }}
                     >
                         <Pressable onPress={onClose} hitSlop={8}>
-                            <X size={22} color="#64748b" />
+                            <X size={22} color={colors.text.tertiary} />
                         </Pressable>
-                        <Text style={{ fontSize: 16, fontWeight: "700", color: "#0f172a" }}>
+                        <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text.primary }}>
                             {mode === "view"
                                 ? "Agendamento"
                                 : mode === "reschedule"
@@ -450,7 +452,7 @@ export function AppointmentDetailSheet({
                             {avatar ? (
                                 <Image
                                     source={{ uri: avatar }}
-                                    style={{ width: 52, height: 52, borderRadius: 16, marginRight: 12, backgroundColor: "#f1f5f9" }}
+                                    style={{ width: 52, height: 52, borderRadius: 16, marginRight: 12, backgroundColor: colors.surface.card2 }}
                                 />
                             ) : (
                                 <View
@@ -458,7 +460,7 @@ export function AppointmentDetailSheet({
                                         width: 52,
                                         height: 52,
                                         borderRadius: 16,
-                                        backgroundColor: "#f5f3ff",
+                                        backgroundColor: colors.purple[100],
                                         alignItems: "center",
                                         justifyContent: "center",
                                         marginRight: 12,
@@ -470,10 +472,10 @@ export function AppointmentDetailSheet({
                                 </View>
                             )}
                             <View style={{ flex: 1 }}>
-                                <Text style={{ fontSize: 17, fontWeight: "700", color: "#0f172a" }} numberOfLines={1}>
+                                <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text.primary }} numberOfLines={1}>
                                     {studentName}
                                 </Text>
-                                <Text style={{ fontSize: 13, color: "#64748b", marginTop: 2 }}>
+                                <Text style={{ fontSize: 13, color: colors.text.tertiary, marginTop: 2 }}>
                                     {startEnd} · {occurrence.durationMinutes} min
                                 </Text>
                             </View>
@@ -483,17 +485,20 @@ export function AppointmentDetailSheet({
                             <>
                                 {/* Info rows */}
                                 <InfoRow
+                                    colors={colors}
                                     icon={<CalendarClock size={16} color="#7c3aed" />}
                                     label="Quando"
                                     value={`${DAY_LABELS_SHORT[parseInt(occurrence.date.slice(8, 10), 10) % 7]} ${occurrence.date.slice(8, 10)}/${occurrence.date.slice(5, 7)}/${occurrence.date.slice(0, 4)}`}
                                 />
                                 <InfoRow
+                                    colors={colors}
                                     icon={<Repeat size={16} color="#7c3aed" />}
                                     label="Recorrência"
                                     value={frequencyLabel(frequencyHint ?? null)}
                                 />
                                 {occurrence.notes ? (
                                     <InfoRow
+                                        colors={colors}
                                         icon={<StickyNote size={16} color="#7c3aed" />}
                                         label="Notas"
                                         value={occurrence.notes}
@@ -503,16 +508,19 @@ export function AppointmentDetailSheet({
                                 {/* Actions */}
                                 <View style={{ marginTop: 24, gap: 10 }}>
                                     <ActionButton
-                                        icon={<CalendarClock size={18} color="#0f172a" />}
+                                        colors={colors}
+                                        icon={<CalendarClock size={18} color={colors.text.primary} />}
                                         label="Remarcar"
                                         onPress={handleReschedulePress}
                                     />
                                     <ActionButton
-                                        icon={<PencilLine size={18} color="#0f172a" />}
+                                        colors={colors}
+                                        icon={<PencilLine size={18} color={colors.text.primary} />}
                                         label="Editar notas"
                                         onPress={handleEditNotesPress}
                                     />
                                     <ActionButton
+                                        colors={colors}
                                         icon={<Trash2 size={18} color="#ef4444" />}
                                         label="Cancelar"
                                         labelColor="#ef4444"
@@ -524,7 +532,7 @@ export function AppointmentDetailSheet({
 
                         {mode === "reschedule" && (
                             <View>
-                                <SectionLabel>Nova data</SectionLabel>
+                                <SectionLabel colors={colors}>Nova data</SectionLabel>
                                 <ScrollView
                                     horizontal
                                     showsHorizontalScrollIndicator={false}
@@ -545,9 +553,9 @@ export function AppointmentDetailSheet({
                                                     paddingVertical: 10,
                                                     alignItems: "center",
                                                     borderRadius: 12,
-                                                    backgroundColor: selected ? "#7c3aed" : "#f8fafc",
+                                                    backgroundColor: selected ? "#7c3aed" : colors.surface.card2,
                                                     borderWidth: 1,
-                                                    borderColor: selected ? "#7c3aed" : "#e2e8f0",
+                                                    borderColor: selected ? "#7c3aed" : colors.border.default,
                                                     opacity: pressed ? 0.85 : 1,
                                                 })}
                                             >
@@ -555,7 +563,7 @@ export function AppointmentDetailSheet({
                                                     style={{
                                                         fontSize: 11,
                                                         fontWeight: "600",
-                                                        color: selected ? "rgba(255,255,255,0.9)" : "#94a3b8",
+                                                        color: selected ? "rgba(255,255,255,0.9)" : colors.text.quaternary,
                                                         textTransform: "uppercase",
                                                     }}
                                                 >
@@ -565,7 +573,7 @@ export function AppointmentDetailSheet({
                                                     style={{
                                                         fontSize: 18,
                                                         fontWeight: "700",
-                                                        color: selected ? "#ffffff" : "#0f172a",
+                                                        color: selected ? "#ffffff" : colors.text.primary,
                                                         marginTop: 2,
                                                     }}
                                                 >
@@ -574,7 +582,7 @@ export function AppointmentDetailSheet({
                                                 <Text
                                                     style={{
                                                         fontSize: 10,
-                                                        color: selected ? "rgba(255,255,255,0.85)" : "#64748b",
+                                                        color: selected ? "rgba(255,255,255,0.85)" : colors.text.tertiary,
                                                         marginTop: 1,
                                                     }}
                                                 >
@@ -585,7 +593,7 @@ export function AppointmentDetailSheet({
                                     })}
                                 </ScrollView>
 
-                                <SectionLabel>Novo horário</SectionLabel>
+                                <SectionLabel colors={colors}>Novo horário</SectionLabel>
                                 <ScrollView
                                     horizontal
                                     showsHorizontalScrollIndicator={false}
@@ -604,13 +612,13 @@ export function AppointmentDetailSheet({
                                                     paddingVertical: 8,
                                                     paddingHorizontal: 14,
                                                     borderRadius: 100,
-                                                    backgroundColor: selected ? "#7c3aed" : "#f8fafc",
+                                                    backgroundColor: selected ? "#7c3aed" : colors.surface.card2,
                                                     borderWidth: 1,
-                                                    borderColor: selected ? "#7c3aed" : "#e2e8f0",
+                                                    borderColor: selected ? "#7c3aed" : colors.border.default,
                                                     opacity: pressed ? 0.85 : 1,
                                                 })}
                                             >
-                                                <Text style={{ fontSize: 13, fontWeight: "600", color: selected ? "#ffffff" : "#0f172a" }}>
+                                                <Text style={{ fontSize: 13, fontWeight: "600", color: selected ? "#ffffff" : colors.text.primary }}>
                                                     {t}
                                                 </Text>
                                             </Pressable>
@@ -627,7 +635,7 @@ export function AppointmentDetailSheet({
                                         opacity: pressed ? 0.6 : 1,
                                     })}
                                 >
-                                    <Text style={{ fontSize: 13, fontWeight: "600", color: "#64748b" }}>
+                                    <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text.tertiary }}>
                                         Voltar
                                     </Text>
                                 </Pressable>
@@ -636,27 +644,27 @@ export function AppointmentDetailSheet({
 
                         {mode === "edit_notes" && (
                             <View>
-                                <SectionLabel>Notas (opcional)</SectionLabel>
+                                <SectionLabel colors={colors}>Notas (opcional)</SectionLabel>
                                 <TextInput
                                     value={notesDraft}
                                     onChangeText={setNotesDraft}
                                     placeholder="Foco do treino, observações..."
-                                    placeholderTextColor="#94a3b8"
+                                    placeholderTextColor={colors.text.quaternary}
                                     multiline
                                     maxLength={500}
                                     style={{
                                         minHeight: 120,
-                                        backgroundColor: "#f8fafc",
+                                        backgroundColor: colors.surface.card2,
                                         borderRadius: 12,
                                         borderWidth: 1,
-                                        borderColor: "#e2e8f0",
+                                        borderColor: colors.border.default,
                                         padding: 12,
                                         fontSize: 14,
-                                        color: "#0f172a",
+                                        color: colors.text.primary,
                                         textAlignVertical: "top",
                                     }}
                                 />
-                                <Text style={{ fontSize: 11, color: "#94a3b8", marginTop: 6 }}>
+                                <Text style={{ fontSize: 11, color: colors.text.quaternary, marginTop: 6 }}>
                                     Notas são compartilhadas em toda a série.
                                 </Text>
                                 <Pressable
@@ -668,7 +676,7 @@ export function AppointmentDetailSheet({
                                         opacity: pressed ? 0.6 : 1,
                                     })}
                                 >
-                                    <Text style={{ fontSize: 13, fontWeight: "600", color: "#64748b" }}>
+                                    <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text.tertiary }}>
                                         Voltar
                                     </Text>
                                 </Pressable>
@@ -679,11 +687,11 @@ export function AppointmentDetailSheet({
                             <View
                                 style={{
                                     marginTop: 16,
-                                    backgroundColor: "#fef2f2",
+                                    backgroundColor: "rgba(239,68,68,0.10)",
                                     borderRadius: 10,
                                     padding: 12,
                                     borderWidth: 1,
-                                    borderColor: "#fecaca",
+                                    borderColor: "rgba(239,68,68,0.30)",
                                 }}
                             >
                                 <Text style={{ fontSize: 12, color: "#b91c1c" }}>{error}</Text>
@@ -710,13 +718,13 @@ export function AppointmentDetailSheet({
     );
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
+function SectionLabel({ children, colors }: { children: React.ReactNode; colors: V2Palette }) {
     return (
         <Text
             style={{
                 fontSize: 11,
                 fontWeight: "700",
-                color: "#94a3b8",
+                color: colors.text.quaternary,
                 textTransform: "uppercase",
                 letterSpacing: 1.2,
                 marginTop: 18,
@@ -732,10 +740,12 @@ function InfoRow({
     icon,
     label,
     value,
+    colors,
 }: {
     icon: React.ReactNode;
     label: string;
     value: string;
+    colors: V2Palette;
 }) {
     return (
         <View
@@ -744,7 +754,7 @@ function InfoRow({
                 alignItems: "flex-start",
                 paddingVertical: 10,
                 borderBottomWidth: 1,
-                borderBottomColor: "#f1f5f9",
+                borderBottomColor: colors.border.subtle,
             }}
         >
             <View
@@ -752,7 +762,7 @@ function InfoRow({
                     width: 32,
                     height: 32,
                     borderRadius: 10,
-                    backgroundColor: "#f5f3ff",
+                    backgroundColor: colors.purple[100],
                     alignItems: "center",
                     justifyContent: "center",
                     marginRight: 10,
@@ -761,10 +771,10 @@ function InfoRow({
                 {icon}
             </View>
             <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 11, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1, fontWeight: "700" }}>
+                <Text style={{ fontSize: 11, color: colors.text.quaternary, textTransform: "uppercase", letterSpacing: 1, fontWeight: "700" }}>
                     {label}
                 </Text>
-                <Text style={{ fontSize: 14, color: "#0f172a", marginTop: 2, lineHeight: 20 }}>{value}</Text>
+                <Text style={{ fontSize: 14, color: colors.text.primary, marginTop: 2, lineHeight: 20 }}>{value}</Text>
             </View>
         </View>
     );
@@ -773,13 +783,15 @@ function InfoRow({
 function ActionButton({
     icon,
     label,
-    labelColor = "#0f172a",
+    labelColor,
     onPress,
+    colors,
 }: {
     icon: React.ReactNode;
     label: string;
     labelColor?: string;
     onPress: () => void;
+    colors: V2Palette;
 }) {
     return (
         <Pressable
@@ -790,14 +802,14 @@ function ActionButton({
                 paddingVertical: 14,
                 paddingHorizontal: 16,
                 borderRadius: 14,
-                backgroundColor: "#f8fafc",
+                backgroundColor: colors.surface.card2,
                 borderWidth: 1,
-                borderColor: "#e2e8f0",
+                borderColor: colors.border.default,
                 opacity: pressed ? 0.7 : 1,
             })}
         >
             <View style={{ width: 24, alignItems: "center" }}>{icon}</View>
-            <Text style={{ marginLeft: 10, fontSize: 14, fontWeight: "600", color: labelColor }}>
+            <Text style={{ marginLeft: 10, fontSize: 14, fontWeight: "600", color: labelColor ?? colors.text.primary }}>
                 {label}
             </Text>
         </Pressable>
