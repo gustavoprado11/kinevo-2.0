@@ -8,21 +8,25 @@ import {
     KeyboardAvoidingView,
     Platform,
     ActivityIndicator,
-    Image,
     TouchableWithoutFeedback,
-    Keyboard
+    Keyboard,
+    StyleSheet,
+    Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
+import { Mail, Lock, Eye, EyeOff } from "lucide-react-native";
 import { useAuth } from "../../contexts/AuthContext";
 import { useResponsive } from "../../hooks/useResponsive";
-import { MaterialIcons, Feather } from "@expo/vector-icons";
+import { WelcomeRoleSheet } from "../../components/auth/WelcomeRoleSheet";
 
 export default function LoginScreen() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
+    const [showWelcomeSheet, setShowWelcomeSheet] = useState(false);
 
     // UI States for Focus interaction
     const [isEmailFocused, setIsEmailFocused] = useState(false);
@@ -51,149 +55,296 @@ export default function LoginScreen() {
     };
 
     const handleCreateAccount = () => {
-        Alert.alert(
-            "Como acessar?",
-            "O Kinevo é uma plataforma exclusiva para alunos de treinadores parceiros. Se você contratou um plano, verifique seu e-mail em busca do convite de acesso ou fale com seu treinador."
-        );
+        setShowWelcomeSheet(true);
     };
 
     return (
-        <SafeAreaView className="flex-1 bg-gray-950">
+        <SafeAreaView style={styles.safe}>
+            {/* Background glow blobs */}
+            <View style={styles.bgGlowTop} pointerEvents="none" />
+            <View style={styles.bgGlowBottom} pointerEvents="none" />
+
             <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
                 <KeyboardAvoidingView
                     behavior={Platform.OS === "ios" ? "padding" : "height"}
-                    style={[
-                        { flex: 1, justifyContent: 'center', paddingHorizontal: 32 },
-                        isTablet && { maxWidth: 440, alignSelf: 'center', width: '100%' },
-                    ]}
+                    style={[styles.container, isTablet && styles.containerTablet]}
                 >
-                    {/* 1. TOPO (Header) */}
-                    <View className="items-center mb-12">
-                        <View className="shadow-lg shadow-purple-900/20">
-                            {/* Placeholder para logo - usando bg-gray-800 caso imagem falhe, mas tentando carregar */}
+                    {/* Logo + Hero */}
+                    <View style={styles.logoBlock}>
+                        <View style={styles.logoTile}>
                             <Image
-                                source={require('../../assets/images/logo-icon.jpg')}
-                                style={{ width: 80, height: 80, borderRadius: 20 }}
-                                className="mb-6 rounded-2xl"
-                                resizeMode="contain"
+                                source={require("../../assets/images/logo-icon.jpg")}
+                                style={styles.logoImage}
+                                resizeMode="cover"
                             />
                         </View>
 
-                        <Text className="text-3xl font-bold text-white tracking-tight mb-2">
-                            Bem-vindo ao Kinevo
+                        <Text style={styles.heroTitle}>
+                            Treine com seu personal,{"\n"}do seu jeito.
                         </Text>
-                        <Text className="text-gray-400 text-base font-medium tracking-wide">
-                            Sua evolução, guiada.
+                        <Text style={styles.heroSub}>
+                            Acompanhe sua evolução. Em qualquer lugar.
                         </Text>
                     </View>
 
-                    {/* 2. MEIO (Formulário) */}
-                    <View className="space-y-5 gap-5">
-                        {/* Input E-mail */}
-                        <View>
-                            <View
-                                className={`flex-row items-center bg-gray-900 rounded-xl border ${isEmailFocused ? "border-purple-500" : "border-transparent"
-                                    } px-4 py-1 transition-all duration-200`}
-                            >
-                                <Feather
-                                    name="mail"
-                                    size={20}
-                                    color={isEmailFocused ? "#a855f7" : "#9ca3af"}
-                                    style={{ marginRight: 12 }}
-                                />
-                                <TextInput
-                                    className="flex-1 text-white text-base py-4 font-medium"
-                                    placeholder="E-mail"
-                                    placeholderTextColor="#6b7280"
-                                    autoCapitalize="none"
-                                    keyboardType="email-address"
-                                    value={email}
-                                    onChangeText={setEmail}
-                                    onFocus={() => setIsEmailFocused(true)}
-                                    onBlur={() => setIsEmailFocused(false)}
-                                />
-                            </View>
-                        </View>
-
-                        {/* Input Senha */}
-                        <View>
-                            <View
-                                className={`flex-row items-center bg-gray-900 rounded-xl border ${isPasswordFocused ? "border-purple-500" : "border-transparent"
-                                    } px-4 py-1 transition-all duration-200`}
-                            >
-                                <Feather
-                                    name="lock"
-                                    size={20}
-                                    color={isPasswordFocused ? "#a855f7" : "#9ca3af"}
-                                    style={{ marginRight: 12 }}
-                                />
-                                <TextInput
-                                    className="flex-1 text-white text-base py-4 font-medium"
-                                    placeholder="Senha"
-                                    placeholderTextColor="#6b7280"
-                                    secureTextEntry={!showPassword}
-                                    value={password}
-                                    onChangeText={setPassword}
-                                    onFocus={() => setIsPasswordFocused(true)}
-                                    onBlur={() => setIsPasswordFocused(false)}
-                                />
-                                <TouchableOpacity
-                                    onPress={() => setShowPassword(!showPassword)}
-                                    className="p-2"
-                                >
-                                    <Feather
-                                        name={showPassword ? "eye" : "eye-off"}
-                                        size={20}
-                                        color="#6b7280"
-                                    />
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-
-                        {/* Botão Esqueci a senha (Opcional, apenas visual por enquanto) */}
-                        <TouchableOpacity className="items-end">
-                            <Text className="text-purple-400 text-sm font-medium">
-                                Esqueceu a senha?
-                            </Text>
-                        </TouchableOpacity>
+                    {/* Email input */}
+                    <View style={[styles.field, isEmailFocused && styles.fieldFocused]}>
+                        <Mail size={18} color={isEmailFocused ? "#A78BFA" : "#71717A"} />
+                        <TextInput
+                            style={styles.input}
+                            placeholder="E-mail"
+                            placeholderTextColor="#71717A"
+                            autoCapitalize="none"
+                            keyboardType="email-address"
+                            value={email}
+                            onChangeText={setEmail}
+                            onFocus={() => setIsEmailFocused(true)}
+                            onBlur={() => setIsEmailFocused(false)}
+                        />
                     </View>
 
-                    {/* 3. RODAPÉ (Ações) */}
-                    <View className="mt-10">
-                        <TouchableOpacity
-                            className={`bg-purple-600 rounded-xl py-4 items-center shadow-lg shadow-purple-900/30 ${loading ? "opacity-70" : "active:bg-purple-700"
-                                }`}
-                            onPress={handleSignIn}
-                            disabled={loading}
-                        >
-                            {loading ? (
-                                <ActivityIndicator color="white" />
+                    {/* Password input */}
+                    <View style={[styles.field, isPasswordFocused && styles.fieldFocused, { marginTop: 12 }]}>
+                        <Lock size={18} color={isPasswordFocused ? "#A78BFA" : "#71717A"} />
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Senha"
+                            placeholderTextColor="#71717A"
+                            secureTextEntry={!showPassword}
+                            value={password}
+                            onChangeText={setPassword}
+                            onFocus={() => setIsPasswordFocused(true)}
+                            onBlur={() => setIsPasswordFocused(false)}
+                        />
+                        <TouchableOpacity onPress={() => setShowPassword((v) => !v)} hitSlop={8}>
+                            {showPassword ? (
+                                <EyeOff size={18} color="#71717A" />
                             ) : (
-                                <Text className="text-white font-bold text-lg tracking-wide">
-                                    Entrar
-                                </Text>
+                                <Eye size={18} color="#71717A" />
                             )}
                         </TouchableOpacity>
-
-                        <TouchableOpacity
-                            onPress={handleCreateAccount}
-                            className="mt-6 py-4 items-center flex-row justify-center"
-                        >
-                            <Text className="text-gray-400 text-sm mr-1">
-                                Ainda não tem acesso?
-                            </Text>
-                            <Text className="text-purple-400 font-bold text-sm">
-                                Saiba como funciona.
-                            </Text>
-                        </TouchableOpacity>
                     </View>
 
-                    {/* Footer Pequeno */}
-                    <View className="absolute bottom-10 left-0 right-0 items-center opacity-30">
-                        {/* Espaço reservado se precisar de algo fixo no rodapé */}
+                    {/* Esqueceu a senha */}
+                    <TouchableOpacity
+                        style={styles.forgotWrap}
+                        onPress={() => router.push("/(auth)/forgot-password")}
+                        accessibilityRole="button"
+                        accessibilityLabel="Esqueceu a senha"
+                    >
+                        <Text style={styles.forgot}>Esqueceu a senha?</Text>
+                    </TouchableOpacity>
+
+                    {/* CTA Entrar */}
+                    <TouchableOpacity onPress={handleSignIn} disabled={loading} activeOpacity={0.85}>
+                        <LinearGradient
+                            colors={["#7C3AED", "#A78BFA"]}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={[styles.ctaPrimary, loading && styles.ctaPrimaryLoading]}
+                        >
+                            {loading ? (
+                                <ActivityIndicator color="#fff" />
+                            ) : (
+                                <Text style={styles.ctaPrimaryText}>Entrar</Text>
+                            )}
+                        </LinearGradient>
+                    </TouchableOpacity>
+
+                    {/* Divider OU */}
+                    <View style={styles.dividerRow}>
+                        <View style={styles.dividerLine} />
+                        <Text style={styles.dividerText}>OU</Text>
+                        <View style={styles.dividerLine} />
+                    </View>
+
+                    {/* CTA Cadastre-se */}
+                    <TouchableOpacity onPress={handleCreateAccount} style={styles.ctaSecondary} activeOpacity={0.8}>
+                        <Text style={styles.ctaSecondaryText}>Cadastre-se</Text>
+                    </TouchableOpacity>
+
+                    {/* Footer */}
+                    <View style={styles.footer} pointerEvents="none">
+                        <Text style={styles.footerText}>Kinevo · Sua evolução, guiada.</Text>
                     </View>
                 </KeyboardAvoidingView>
             </TouchableWithoutFeedback>
+
+            <WelcomeRoleSheet
+                visible={showWelcomeSheet}
+                onClose={() => setShowWelcomeSheet(false)}
+            />
         </SafeAreaView>
     );
 }
+
+const styles = StyleSheet.create({
+    safe: {
+        flex: 1,
+        backgroundColor: "#09090B",
+    },
+    bgGlowTop: {
+        position: "absolute",
+        top: -200,
+        left: -100,
+        right: -100,
+        height: 500,
+        backgroundColor: "rgba(124,58,237,0.18)",
+        borderRadius: 9999,
+        opacity: 0.6,
+    },
+    bgGlowBottom: {
+        position: "absolute",
+        bottom: -150,
+        right: -100,
+        width: 360,
+        height: 360,
+        backgroundColor: "rgba(244,114,182,0.10)",
+        borderRadius: 9999,
+    },
+    container: {
+        flex: 1,
+        justifyContent: "center",
+        paddingHorizontal: 32,
+    },
+    containerTablet: {
+        maxWidth: 440,
+        alignSelf: "center",
+        width: "100%",
+    },
+    logoBlock: {
+        alignItems: "center",
+        marginBottom: 32,
+    },
+    logoTile: {
+        width: 76,
+        height: 76,
+        borderRadius: 20,
+        overflow: "hidden",
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: "#3F1B91",
+        shadowColor: "#7C3AED",
+        shadowOffset: { width: 0, height: 20 },
+        shadowOpacity: 0.5,
+        shadowRadius: 40,
+        elevation: 20,
+        marginBottom: 24,
+    },
+    logoImage: {
+        width: "100%",
+        height: "100%",
+    },
+    heroTitle: {
+        fontSize: 26,
+        fontWeight: "900",
+        color: "#FAFAFA",
+        textAlign: "center",
+        letterSpacing: -0.78,
+        lineHeight: 28.6,
+        marginBottom: 6,
+    },
+    heroSub: {
+        fontSize: 14,
+        fontWeight: "500",
+        color: "#A1A1AA",
+        textAlign: "center",
+    },
+    field: {
+        flexDirection: "row",
+        alignItems: "center",
+        backgroundColor: "rgba(255,255,255,0.04)",
+        borderWidth: 1,
+        borderColor: "rgba(255,255,255,0.08)",
+        borderRadius: 14,
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        gap: 10,
+    },
+    fieldFocused: {
+        borderColor: "rgba(124,58,237,0.4)",
+        backgroundColor: "rgba(124,58,237,0.05)",
+    },
+    input: {
+        flex: 1,
+        fontSize: 14,
+        fontWeight: "500",
+        color: "#FAFAFA",
+        padding: 0,
+    },
+    forgotWrap: {
+        alignSelf: "flex-end",
+        paddingTop: 8,
+        paddingHorizontal: 4,
+    },
+    forgot: {
+        fontSize: 12,
+        fontWeight: "600",
+        color: "#C4B5FD",
+    },
+    ctaPrimary: {
+        marginTop: 20,
+        paddingVertical: 16,
+        borderRadius: 16,
+        alignItems: "center",
+        justifyContent: "center",
+        shadowColor: "#7C3AED",
+        shadowOffset: { width: 0, height: 12 },
+        shadowOpacity: 0.5,
+        shadowRadius: 32,
+        elevation: 12,
+    },
+    ctaPrimaryLoading: {
+        opacity: 0.85,
+    },
+    ctaPrimaryText: {
+        fontSize: 15,
+        fontWeight: "700",
+        color: "#fff",
+        letterSpacing: 0.15,
+    },
+    dividerRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 12,
+        marginVertical: 16,
+        paddingHorizontal: 4,
+    },
+    dividerLine: {
+        flex: 1,
+        height: 1,
+        backgroundColor: "rgba(255,255,255,0.08)",
+    },
+    dividerText: {
+        fontSize: 10,
+        fontWeight: "700",
+        letterSpacing: 2,
+        color: "#71717A",
+    },
+    ctaSecondary: {
+        backgroundColor: "rgba(255,255,255,0.04)",
+        borderWidth: 1,
+        borderColor: "rgba(255,255,255,0.08)",
+        borderRadius: 16,
+        paddingVertical: 15,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    ctaSecondaryText: {
+        fontSize: 14,
+        fontWeight: "700",
+        color: "#FAFAFA",
+    },
+    footer: {
+        position: "absolute",
+        bottom: 20,
+        left: 0,
+        right: 0,
+        alignItems: "center",
+    },
+    footerText: {
+        fontSize: 12,
+        fontWeight: "500",
+        color: "#52525B",
+    },
+});
