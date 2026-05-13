@@ -1,10 +1,15 @@
 import React, { useState } from 'react';
-import { View, Text, Modal, Pressable, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, Modal, Pressable, StyleSheet, ScrollView, ActivityIndicator, Platform, Alert, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Heart, Moon, Footprints, Zap, X } from 'lucide-react-native';
 import { useHealthKitSync } from '../../hooks/useHealthKitSync';
+import { useHealthConnectSync } from '../../hooks/useHealthConnectSync';
 import { markHealthOnboardingSeen } from '../../lib/healthOnboardingFlag';
+
+const PLAY_STORE_HEALTH_CONNECT = 'https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata';
+const isIOS = Platform.OS === 'ios';
+const SOURCE_NAME = isIOS ? 'Apple Saúde' : 'Google Health Connect';
 
 export interface HealthOnboardingSheetProps {
   visible: boolean;
@@ -20,18 +25,48 @@ const BULLETS = [
 ];
 
 export function HealthOnboardingSheet({ visible, onClose }: HealthOnboardingSheetProps) {
-  const { requestAuthorization, syncHistorical } = useHealthKitSync();
+  const hk = useHealthKitSync();
+  const hc = useHealthConnectSync();
   const [isConnecting, setIsConnecting] = useState(false);
 
   const handleConnect = async () => {
     setIsConnecting(true);
     try {
-      const ok = await requestAuthorization();
-      markHealthOnboardingSeen();
-      if (ok) {
-        // Primeira sync 30 dias em background — não bloqueia UI
-        void syncHistorical(30);
+      if (isIOS) {
+        const ok = await hk.requestAuthorization();
+        markHealthOnboardingSeen();
+        if (ok) void hk.syncHistorical(30);
+        onClose();
+        return;
       }
+
+      // Android: checar SDK antes de pedir permissão
+      const status = await hc.refreshSdkStatus();
+      if (status === 'unavailable') {
+        Alert.alert(
+          'Health Connect não encontrado',
+          'Pra ver seus dados de saúde, instale o app Health Connect do Google. Você pode conectar depois pelos Ajustes.',
+          [
+            { text: 'Mais tarde', style: 'cancel', onPress: () => { markHealthOnboardingSeen(); onClose(); } },
+            { text: 'Abrir Play Store', onPress: () => { markHealthOnboardingSeen(); Linking.openURL(PLAY_STORE_HEALTH_CONNECT); onClose(); } },
+          ],
+        );
+        return;
+      }
+      if (status === 'update_required') {
+        Alert.alert(
+          'Atualize o Health Connect',
+          'Pra continuar, atualize o app Health Connect na Play Store. Você pode conectar depois pelos Ajustes.',
+          [
+            { text: 'Mais tarde', style: 'cancel', onPress: () => { markHealthOnboardingSeen(); onClose(); } },
+            { text: 'Abrir Play Store', onPress: () => { markHealthOnboardingSeen(); Linking.openURL(PLAY_STORE_HEALTH_CONNECT); onClose(); } },
+          ],
+        );
+        return;
+      }
+      const ok = await hc.requestAuthorization();
+      markHealthOnboardingSeen();
+      if (ok) void hc.syncHistorical(30);
       onClose();
     } finally {
       setIsConnecting(false);
@@ -62,7 +97,7 @@ export function HealthOnboardingSheet({ visible, onClose }: HealthOnboardingShee
           <Text style={styles.title}>Veja sua saúde no Kinevo</Text>
 
           <Text style={styles.body}>
-            O Kinevo pode ler dados do seu Apple Saúde pra mostrar sua recuperação, sono e atividade — e te ajudar a treinar melhor.
+            O Kinevo pode ler dados do seu {SOURCE_NAME} pra mostrar sua recuperação, sono e atividade — e te ajudar a treinar melhor.
           </Text>
 
           <Text style={styles.sectionLabel}>VAMOS IMPORTAR</Text>

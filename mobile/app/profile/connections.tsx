@@ -1,10 +1,17 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, ScrollView, Switch, Pressable, StyleSheet, Alert, ActivityIndicator, Linking } from 'react-native';
+// Fase 14b — Settings cross-platform.
+// iOS: Apple Saúde ativável, Google Health Connect "disponível só no Android".
+// Android: Apple Saúde "disponível só no iOS", Google Health Connect ativável (com 3 SDK states).
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { View, Text, ScrollView, Switch, Pressable, StyleSheet, Alert, ActivityIndicator, Linking, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack } from 'expo-router';
-import { Apple, Smartphone, RefreshCw, Lock } from 'lucide-react-native';
-import { useHealthKitSync, HealthCategory } from '../../hooks/useHealthKitSync';
+import { Apple, Smartphone, RefreshCw, Lock, ExternalLink } from 'lucide-react-native';
+import { useHealthKitSync } from '../../hooks/useHealthKitSync';
+import { useHealthConnectSync } from '../../hooks/useHealthConnectSync';
+import type { HealthCategory } from '../../lib/healthSync/shared';
 import { supabase } from '../../lib/supabase';
+
+const PLAY_STORE_HEALTH_CONNECT = 'https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata';
 
 function relativeTime(iso: string | null | undefined): string {
   if (!iso) return 'nunca';
@@ -27,20 +34,28 @@ const CATEGORY_LABELS: Record<HealthCategory, string> = {
 
 const ALL_CATEGORIES: HealthCategory[] = ['sleep', 'hr_resting', 'steps', 'hrv'];
 
+const isIOS = Platform.OS === 'ios';
+const isAndroid = Platform.OS === 'android';
+
+const PRIMARY_SOURCE: 'healthkit' | 'health_connect' = isIOS ? 'healthkit' : 'health_connect';
+
 export default function ConnectionsScreen() {
-  const { requestAuthorization, syncHistorical, syncIncremental, isLoading } = useHealthKitSync();
+  const hk = useHealthKitSync();
+  const hc = useHealthConnectSync();
+
+  const requestAuthorization = isIOS ? hk.requestAuthorization : hc.requestAuthorization;
+  const syncHistorical = isIOS ? hk.syncHistorical : hc.syncHistorical;
+  const syncIncremental = isIOS ? hk.syncIncremental : hc.syncIncremental;
+  const isLoading = isIOS ? hk.isLoading : hc.isLoading;
+  const sdkStatus = hc.sdkStatus;
+
   const [connection, setConnection] = useState<{
     status: string;
     granted_categories: string[];
     last_sync_at: string | null;
   } | null>(null);
-  // Local opt-out: aluno pode desligar uma categoria mesmo que HealthKit autorize.
-  // Persistido em wearable_connections.granted_categories (re-aplicado a cada sync).
   const [localToggles, setLocalToggles] = useState<Record<HealthCategory, boolean>>({
-    sleep: true,
-    hr_resting: true,
-    steps: true,
-    hrv: true,
+    sleep: true, hr_resting: true, steps: true, hrv: true,
   });
   const [loadingConn, setLoadingConn] = useState(true);
 
@@ -57,7 +72,7 @@ export default function ConnectionsScreen() {
         .from('wearable_connections' as any)
         .select('status, granted_categories, last_sync_at')
         .eq('student_id', studentId)
-        .eq('source', 'healthkit')
+        .eq('source', PRIMARY_SOURCE)
         .maybeSingle();
       if (conn) {
         const c = conn as any;
@@ -66,7 +81,6 @@ export default function ConnectionsScreen() {
           granted_categories: c.granted_categories ?? [],
           last_sync_at: c.last_sync_at,
         });
-        // Reflete granted_categories nos toggles
         const granted = new Set<string>(c.granted_categories ?? []);
         setLocalToggles({
           sleep: granted.has('sleep'),
@@ -82,15 +96,46 @@ export default function ConnectionsScreen() {
 
   useEffect(() => { void loadConnection(); }, [loadConnection]);
 
-  const handleConnect = useCallback(async () => {
+  const handleConnectPrimary = useCallback(async () => {
+    // Android: tratar SDK_UNAVAILABLE / UPDATE_REQUIRED ANTES de abrir intent
+    if (isAndroid) {
+      const currentStatus = await hc.refreshSdkStatus();
+      if (currentStatus === 'unavailable') {
+        Alert.alert(
+          'Health Connect não encontrado',
+          'Pra ver seus dados de saúde, instale o app Health Connect do Google na Play Store.',
+          [
+            { text: 'Mais tarde', style: 'cancel' },
+            { text: 'Abrir Play Store', onPress: () => Linking.openURL(PLAY_STORE_HEALTH_CONNECT) },
+          ],
+        );
+        return;
+      }
+      if (currentStatus === 'update_required') {
+        Alert.alert(
+          'Atualize o Health Connect',
+          'Pra continuar, atualize o app Health Connect na Play Store.',
+          [
+            { text: 'Mais tarde', style: 'cancel' },
+            { text: 'Abrir Play Store', onPress: () => Linking.openURL(PLAY_STORE_HEALTH_CONNECT) },
+          ],
+        );
+        return;
+      }
+    }
     const ok = await requestAuthorization();
     if (!ok) {
-      Alert.alert('Não foi possível conectar', 'Verifique as permissões em Ajustes do iPhone → Saúde → Kinevo.');
+      Alert.alert(
+        'Não foi possível conectar',
+        isIOS
+          ? 'Verifique as permissões em Ajustes do iPhone → Saúde → Kinevo.'
+          : 'Verifique as permissões no app Health Connect.',
+      );
       return;
     }
     await syncHistorical(30);
     await loadConnection();
-  }, [requestAuthorization, syncHistorical, loadConnection]);
+  }, [requestAuthorization, syncHistorical, loadConnection, hc]);
 
   const handleSyncNow = useCallback(async () => {
     await syncIncremental();
@@ -99,9 +144,6 @@ export default function ConnectionsScreen() {
 
   const toggleCategory = useCallback(async (cat: HealthCategory, next: boolean) => {
     setLocalToggles((prev) => ({ ...prev, [cat]: next }));
-    // Atualiza granted_categories no Supabase. Próxima sync respeitará — quando
-    // o aluno re-conectar uma categoria, o re-sync popula. Quando desliga, a
-    // categoria fica vazia no dashboard até religar.
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -111,59 +153,97 @@ export default function ConnectionsScreen() {
       if (!studentId) return;
       const updated = ALL_CATEGORIES.filter((c) => (c === cat ? next : localToggles[c]));
       await supabase.from('wearable_connections' as any).upsert(
-        { student_id: studentId, source: 'healthkit', granted_categories: updated },
+        { student_id: studentId, source: PRIMARY_SOURCE, granted_categories: updated },
         { onConflict: 'student_id,source' }
       );
-    } catch (e) {
-      // Reverter local em caso de erro
+    } catch {
       setLocalToggles((prev) => ({ ...prev, [cat]: !next }));
     }
   }, [localToggles]);
 
   const isConnected = connection?.status === 'active';
 
+  const healthConnectUnavailableMsg = useMemo(() => {
+    if (!isAndroid) return 'Disponível só no Android';
+    if (sdkStatus === 'unavailable') return 'Instale o Health Connect na Play Store';
+    if (sdkStatus === 'update_required') return 'Atualize o Health Connect na Play Store';
+    return undefined;
+  }, [sdkStatus]);
+
   return (
     <>
       <Stack.Screen options={{ title: 'Conexões' }} />
       <SafeAreaView style={styles.container} edges={['bottom']}>
         <ScrollView contentContainerStyle={styles.scroll}>
-          {/* ─── Fontes nativas ─── */}
           <Text style={styles.sectionLabel}>FONTES NATIVAS</Text>
 
-          <View style={styles.row}>
+          {/* Apple Saúde — ativável só em iOS */}
+          <View style={[styles.row, !isIOS && styles.rowDisabled]}>
             <View style={styles.rowLeft}>
-              <Apple size={22} color="#F1F5F9" strokeWidth={2} />
+              <Apple size={22} color={isIOS ? '#F1F5F9' : 'rgba(255,255,255,0.35)'} strokeWidth={2} />
               <View style={styles.rowText}>
-                <Text style={styles.rowTitle}>Apple Saúde</Text>
+                <Text style={[styles.rowTitle, !isIOS && styles.rowTitleDisabled]}>Apple Saúde</Text>
                 <Text style={styles.rowSub}>
-                  {isConnected
-                    ? `Conectado · ${connection?.granted_categories.length ?? 0} categorias`
-                    : 'Não conectado'}
+                  {!isIOS
+                    ? 'Disponível só no iOS'
+                    : isConnected
+                      ? `Conectado · ${connection?.granted_categories.length ?? 0} categorias`
+                      : 'Não conectado'}
                 </Text>
               </View>
             </View>
-            {isConnected ? (
-              <View style={styles.connectedPill}>
-                <Text style={styles.connectedPillText}>Ativo</Text>
-              </View>
-            ) : (
-              <Pressable onPress={handleConnect} style={styles.connectBtn} disabled={isLoading}>
-                {isLoading ? <ActivityIndicator color="#FFF" size="small" /> : <Text style={styles.connectBtnText}>Conectar</Text>}
-              </Pressable>
+            {isIOS && (
+              isConnected ? (
+                <View style={styles.connectedPill}>
+                  <Text style={styles.connectedPillText}>Ativo</Text>
+                </View>
+              ) : (
+                <Pressable onPress={handleConnectPrimary} style={styles.connectBtn} disabled={isLoading}>
+                  {isLoading ? <ActivityIndicator color="#FFF" size="small" /> : <Text style={styles.connectBtnText}>Conectar</Text>}
+                </Pressable>
+              )
             )}
           </View>
 
-          <View style={[styles.row, styles.rowDisabled]}>
+          {/* Google Health Connect — ativável só em Android com SDK_AVAILABLE */}
+          <View style={[styles.row, !isAndroid && styles.rowDisabled]}>
             <View style={styles.rowLeft}>
-              <Smartphone size={22} color="rgba(255,255,255,0.35)" strokeWidth={2} />
+              <Smartphone size={22} color={isAndroid ? '#F1F5F9' : 'rgba(255,255,255,0.35)'} strokeWidth={2} />
               <View style={styles.rowText}>
-                <Text style={[styles.rowTitle, styles.rowTitleDisabled]}>Google Health Connect</Text>
-                <Text style={styles.rowSub}>Disponível em breve no Android</Text>
+                <Text style={[styles.rowTitle, !isAndroid && styles.rowTitleDisabled]}>Google Health Connect</Text>
+                <Text style={styles.rowSub}>
+                  {!isAndroid
+                    ? 'Disponível só no Android'
+                    : sdkStatus !== 'available'
+                      ? healthConnectUnavailableMsg
+                      : isConnected
+                        ? `Conectado · ${connection?.granted_categories.length ?? 0} categorias`
+                        : 'Não conectado'}
+                </Text>
               </View>
             </View>
+            {isAndroid && (
+              sdkStatus !== 'available' ? (
+                <Pressable
+                  onPress={() => Linking.openURL(PLAY_STORE_HEALTH_CONNECT)}
+                  style={styles.connectBtn}
+                >
+                  <ExternalLink size={14} color="#FFF" strokeWidth={2.5} />
+                  <Text style={styles.connectBtnText}>Play Store</Text>
+                </Pressable>
+              ) : isConnected ? (
+                <View style={styles.connectedPill}>
+                  <Text style={styles.connectedPillText}>Ativo</Text>
+                </View>
+              ) : (
+                <Pressable onPress={handleConnectPrimary} style={styles.connectBtn} disabled={isLoading}>
+                  {isLoading ? <ActivityIndicator color="#FFF" size="small" /> : <Text style={styles.connectBtnText}>Conectar</Text>}
+                </Pressable>
+              )
+            )}
           </View>
 
-          {/* ─── O que importar ─── */}
+          {/* ─── O que importar (granular) ─── */}
           <Text style={[styles.sectionLabel, { marginTop: 24 }]}>O QUE IMPORTAR</Text>
 
           {ALL_CATEGORIES.map((cat) => (
@@ -220,23 +300,12 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0D0D17' },
   scroll: { paddingHorizontal: 16, paddingBottom: 40 },
   sectionLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 2,
-    color: 'rgba(255,255,255,0.45)',
-    marginTop: 16,
-    marginBottom: 8,
-    paddingHorizontal: 4,
+    fontSize: 11, fontWeight: '700', letterSpacing: 2,
+    color: 'rgba(255,255,255,0.45)', marginTop: 16, marginBottom: 8, paddingHorizontal: 4,
   },
   row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#1A1A2E',
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    marginBottom: 8,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: '#1A1A2E', borderRadius: 14, paddingHorizontal: 14, paddingVertical: 14, marginBottom: 8,
   },
   rowDisabled: { opacity: 0.6 },
   rowLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
@@ -245,50 +314,25 @@ const styles = StyleSheet.create({
   rowTitleDisabled: { color: 'rgba(255,255,255,0.55)' },
   rowSub: { fontSize: 12, color: 'rgba(255,255,255,0.55)', marginTop: 2 },
   connectBtn: {
-    backgroundColor: '#7c3aed',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 10,
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: '#7c3aed', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 10,
   },
   connectBtnText: { color: '#FFF', fontWeight: '700', fontSize: 13 },
   connectedPill: {
-    backgroundColor: 'rgba(34,197,94,0.15)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
+    backgroundColor: 'rgba(34,197,94,0.15)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8,
   },
   connectedPillText: { color: '#22C55E', fontWeight: '700', fontSize: 11 },
   syncBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#1A1A2E',
-    paddingVertical: 14,
-    borderRadius: 14,
-    marginTop: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(167,139,250,0.3)',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: '#1A1A2E', paddingVertical: 14, borderRadius: 14, marginTop: 12,
+    borderWidth: 1, borderColor: 'rgba(167,139,250,0.3)',
   },
   syncBtnText: { color: '#A78BFA', fontWeight: '700', fontSize: 14 },
   privacyCard: {
-    flexDirection: 'row',
-    gap: 12,
-    backgroundColor: '#1A1A2E',
-    borderRadius: 14,
-    padding: 14,
+    flexDirection: 'row', gap: 12, backgroundColor: '#1A1A2E', borderRadius: 14, padding: 14,
   },
-  privacyText: {
-    flex: 1,
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.75)',
-    lineHeight: 18,
-  },
+  privacyText: { flex: 1, fontSize: 13, color: 'rgba(255,255,255,0.75)', lineHeight: 18 },
   privacyLink: {
-    fontSize: 13,
-    color: '#A78BFA',
-    fontWeight: '600',
-    marginTop: 10,
-    paddingHorizontal: 4,
+    fontSize: 13, color: '#A78BFA', fontWeight: '600', marginTop: 10, paddingHorizontal: 4,
   },
 });

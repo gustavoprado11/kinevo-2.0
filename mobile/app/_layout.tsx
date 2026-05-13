@@ -294,18 +294,6 @@ function WatchBridge() {
         return () => { if (__DEV__) console.log('[WatchBridge] UNMOUNTED'); };
     }, []);
 
-    // Fase 14a — Registrar background task de health sync (iOS).
-    // Idempotente: TaskManager dedup por nome.
-    React.useEffect(() => {
-        (async () => {
-            try {
-                const { registerHealthSyncTask } = require('../lib/healthSyncTask');
-                await registerHealthSyncTask();
-            } catch (e: any) {
-                if (__DEV__) console.warn(`[WatchBridge] Health sync task register failed: ${e?.message}`);
-            }
-        })();
-    }, []);
 
     // Cleanup stale in_progress sessions (>24h old → abandoned)
     React.useEffect(() => {
@@ -403,11 +391,26 @@ function PushNotificationBridge() {
 function GlobalOverlays() {
     const insets = useSafeAreaInsets();
     const { isConnected, wasDisconnected } = useNetworkStatus();
+
+    // Fase 14b — Registrar background task de health sync (iOS + Android).
+    // Roda fora do WatchBridge porque o WatchBridge é iOS-only e Android
+    // também precisa do background fetch.
+    React.useEffect(() => {
+        (async () => {
+            try {
+                const { registerHealthSyncTask } = require('../lib/healthSyncTask');
+                await registerHealthSyncTask();
+            } catch (e: any) {
+                if (__DEV__) console.warn(`[GlobalOverlays] Health sync task register failed: ${e?.message}`);
+            }
+        })();
+    }, []);
+
     return (
         <>
             <ConnectionBanner isConnected={isConnected} wasDisconnected={wasDisconnected} />
             <Toast config={toastConfig} topOffset={insets.top + 8} />
-            {Platform.OS === 'ios' && <HealthOnboardingTrigger />}
+            <HealthOnboardingTrigger />
         </>
     );
 }
