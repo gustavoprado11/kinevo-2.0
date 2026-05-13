@@ -1,6 +1,8 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
+import { ChevronRight } from 'lucide-react-native';
+import * as Haptics from 'expo-haptics';
 import { useV2Colors, type V2Palette } from '../../hooks/useV2Colors';
 
 export interface HealthMetricCardProps {
@@ -11,14 +13,25 @@ export interface HealthMetricCardProps {
   sub?: string | null;
   color: string;
   trend?: 'up' | 'down' | 'flat' | null;
+  /** Fase 14d — quando definido, card vira Pressable e mostra chevron. */
+  onPress?: () => void;
 }
 
-export function HealthMetricCard({ icon: Icon, label, value, unit, sub, color, trend }: HealthMetricCardProps) {
+export function HealthMetricCard({
+  icon: Icon,
+  label,
+  value,
+  unit,
+  sub,
+  color,
+  trend,
+  onPress,
+}: HealthMetricCardProps) {
   const colors = useV2Colors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const hasValue = value != null && value !== '';
 
-  return (
+  const inner = (
     <View style={styles.card}>
       <View style={[styles.colorStrip, { backgroundColor: color }]} />
       <View style={styles.body}>
@@ -42,8 +55,27 @@ export function HealthMetricCard({ icon: Icon, label, value, unit, sub, color, t
             </Text>
           </View>
         )}
+        {onPress && (
+          <View style={styles.chevron}>
+            <ChevronRight size={16} color={colors.text.tertiary} strokeWidth={2.5} />
+          </View>
+        )}
       </View>
     </View>
+  );
+
+  if (!onPress) return inner;
+
+  return (
+    <Pressable
+      onPress={() => {
+        Haptics.selectionAsync().catch(() => {});
+        onPress();
+      }}
+      style={({ pressed }) => [{ flex: 1 }, pressed && styles.pressed]}
+    >
+      {inner}
+    </Pressable>
   );
 }
 
@@ -57,6 +89,7 @@ function createStyles(c: V2Palette) {
       overflow: 'hidden',
       minHeight: 120,
     },
+    pressed: { opacity: 0.85 },
     colorStrip: { width: 3 },
     body: { flex: 1, padding: 14 },
     header: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
@@ -78,5 +111,10 @@ function createStyles(c: V2Palette) {
     trendDown: { backgroundColor: 'rgba(239,68,68,0.15)' },
     trendFlat: { backgroundColor: c.border.subtle },
     trendText: { fontSize: 11, fontWeight: '700', color: c.text.primary },
+    chevron: {
+      position: 'absolute',
+      bottom: 10,
+      right: 10,
+    },
   });
 }

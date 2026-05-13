@@ -7,10 +7,12 @@ import { SleepWeekChart } from '../../components/health/SleepWeekChart';
 import { useHealthDashboard } from '../../hooks/useHealthDashboard';
 import { useHealthKitSync } from '../../hooks/useHealthKitSync';
 import { useHealthConnectSync } from '../../hooks/useHealthConnectSync';
+import { useHealthInsights } from '../../hooks/useHealthInsights';
 import { useRouter } from 'expo-router';
 import { Platform } from 'react-native';
 import { toast } from '../../lib/toast';
 import { useV2Colors, type V2Palette } from '../../hooks/useV2Colors';
+import { InsightsCard } from '../../components/health/InsightsCard';
 
 function formatDurationHM(min: number | null | undefined): string | null {
   if (min == null) return null;
@@ -30,6 +32,7 @@ export default function HealthScreen() {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const purpleAccent = colors.purple[400];
   const { data, isLoading, refresh } = useHealthDashboard();
+  const { insights, refresh: refreshInsights } = useHealthInsights();
   const hk = useHealthKitSync();
   const hc = useHealthConnectSync();
   const syncIncremental = Platform.OS === 'ios' ? hk.syncIncremental : hc.syncIncremental;
@@ -43,13 +46,13 @@ export default function HealthScreen() {
       if (!res.ok) {
         toast.error('Não foi possível atualizar agora', 'Tente novamente em alguns instantes.');
       }
-      await refresh();
+      await Promise.all([refresh(), refreshInsights()]);
     } catch {
       toast.error('Não foi possível atualizar agora', 'Tente novamente em alguns instantes.');
     } finally {
       setRefreshing(false);
     }
-  }, [syncIncremental, refresh]);
+  }, [syncIncremental, refresh, refreshInsights]);
 
   const hasAnyConnection = (data?.connections.length ?? 0) > 0;
   const hasAnyData =
@@ -153,6 +156,9 @@ export default function HealthScreen() {
           <Text style={styles.headerTitle}>Sua saúde</Text>
         </View>
 
+        {/* Fase 14d — Insights heurísticos no topo (até 3 por sessão) */}
+        <InsightsCard insights={insights} />
+
         <View style={styles.grid}>
           <View style={styles.gridRow}>
             <HealthMetricCard
@@ -161,6 +167,7 @@ export default function HealthScreen() {
               value={formatDurationHM(sleepDur ?? null) ?? null}
               sub={sleepEff != null ? `${sleepEff}% eficiência` : null}
               color="#6366F1"
+              onPress={() => router.push('/health/sleep')}
             />
             <HealthMetricCard
               icon={Heart}
@@ -170,6 +177,7 @@ export default function HealthScreen() {
               sub={hrBaseline != null ? `Média 30d: ${hrBaseline}` : null}
               color="#EF4444"
               trend={hrTrend}
+              onPress={() => router.push('/health/hr_resting')}
             />
           </View>
           <View style={styles.gridRow}>
@@ -179,6 +187,7 @@ export default function HealthScreen() {
               value={steps != null ? steps.toLocaleString('pt-BR') : null}
               sub={stepsProgress != null ? `${stepsProgress}% da meta 8k` : null}
               color="#22C55E"
+              onPress={() => router.push('/health/steps')}
             />
             <HealthMetricCard
               icon={Zap}
@@ -187,6 +196,7 @@ export default function HealthScreen() {
               unit="ms"
               sub={hrvBase != null ? `Baseline: ${hrvBase}` : 'Sem Apple Watch'}
               color="#06B6D4"
+              onPress={() => router.push('/health/hrv')}
             />
           </View>
         </View>
