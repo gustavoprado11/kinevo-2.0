@@ -16,6 +16,8 @@ import { UnifiedCalendar } from "../../components/home/UnifiedCalendar";
 import { ActionCard } from "../../components/home/ActionCard";
 import { WorkoutList } from "../../components/home/WorkoutList";
 import { ReportReadyCard } from "../../components/home/ReportReadyCard";
+import { ExtraActivitiesBlock } from "../../components/strava/ExtraActivitiesBlock";
+import { useStravaDays } from "../../hooks/useStravaActivities";
 import { ShareWorkoutModal } from "../../components/workout/ShareWorkoutModal";
 import { useLatestUnreadReport } from "../../hooks/useLatestUnreadReport";
 import { KRing, KStreakBadge } from "../../components/v2/student";
@@ -42,6 +44,7 @@ export default function HomeScreen() {
     const { profile, refreshProfile } = useStudentProfile();
     const { allowed, reason, isLoading: accessLoading, refresh: refreshAccess } = useStudentAccess();
     const { item: unreadReport, markOpened: markReportOpened } = useLatestUnreadReport();
+    const { days: stravaDays } = useStravaDays(35);
 
     const {
         programName,
@@ -385,6 +388,7 @@ export default function HomeScreen() {
                         onDayPress={(date) => setSelectedDate(date)}
                         onWeekChange={() => { }}
                         fetchRange={fetchRange}
+                        extraActivityDays={stravaDays}
                     />
                 </Animated.View>
 
@@ -478,6 +482,13 @@ export default function HomeScreen() {
                                 />
                             </Animated.View>
                         )}
+
+                        {/* ── Fase 16 · Atividades extras Strava (FIM da Home) ── */}
+                        <Animated.View
+                            entering={FadeInUp.delay(300).duration(ENTER.duration).easing(ENTER.easing)}
+                        >
+                            <ExtraActivitiesBlock />
+                        </Animated.View>
                     </>
                 )}
             </ScrollView>

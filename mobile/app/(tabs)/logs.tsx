@@ -16,8 +16,14 @@ import Animated, {
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { ANIM } from '../../lib/animations';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useWorkoutHistory, HistorySession, HistoryStats, HistoryWorkoutItem } from '../../hooks/useWorkoutHistory';
+import { useStravaActivities } from '../../hooks/useStravaActivities';
+import { StravaActivityRow } from '../../components/strava/StravaActivityRow';
+import type { Database } from '@kinevo/shared';
+
+type ExternalActivityRow = Database['public']['Tables']['external_activities']['Row'];
+type HistoryFilter = 'all' | 'kinevo' | 'strava' | 'this_week';
 import { useStudentProfile } from '../../hooks/useStudentProfile';
 import { supabase } from '../../lib/supabase';
 import { WARMUP_TYPE_LABELS, CARDIO_EQUIPMENT_LABELS, type WarmupType, type CardioEquipment, type CardioConfig } from '@kinevo/shared/types/workout-items';
@@ -167,8 +173,22 @@ function AnimatedSegmentedControl({
 // ── Main Screen ──
 export default function LogsScreen() {
     const colors = useV2Colors();
+    const params = useLocalSearchParams<{ filter?: string }>();
     const [activeTab, setActiveTab] = useState<'history' | 'performance'>('history');
+    const [filter, setFilter] = useState<HistoryFilter>(
+        params.filter === 'strava' ? 'strava' : 'all',
+    );
     const { history, stats, isLoading } = useWorkoutHistory();
+    const { activities: stravaActivities } = useStravaActivities(120);
+
+    // Se ExtraActivitiesBlock / ActivityWeekCard navegam com ?filter=strava
+    // após mount, sincronizar.
+    useEffect(() => {
+        if (params.filter === 'strava' && filter !== 'strava') {
+            setFilter('strava');
+            setActiveTab('history');
+        }
+    }, [params.filter]);
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: colors.surface.canvas }} edges={['top']}>
@@ -184,6 +204,10 @@ export default function LogsScreen() {
 
             <AnimatedSegmentedControl activeTab={activeTab} onTabChange={setActiveTab} />
 
+            {activeTab === 'history' && stravaActivities.length > 0 && (
+                <FilterPills filter={filter} onChange={setFilter} />
+            )}
+
             <ScrollView
                 style={{ flex: 1, paddingHorizontal: 20 }}
                 contentContainerStyle={{ paddingBottom: 120 }}
@@ -194,7 +218,11 @@ export default function LogsScreen() {
                         Carregando histórico...
                     </Text>
                 ) : activeTab === 'history' ? (
-                    <HistoryList history={history} />
+                    <HistoryList
+                        history={history}
+                        stravaActivities={stravaActivities}
+                        filter={filter}
+                    />
                 ) : (
                     <PerformanceView stats={stats} />
                 )}
@@ -203,11 +231,110 @@ export default function LogsScreen() {
     );
 }
 
+// ── Filter pills ──
+function FilterPills({
+    filter,
+    onChange,
+}: {
+    filter: HistoryFilter;
+    onChange: (next: HistoryFilter) => void;
+}) {
+    const colors = useV2Colors();
+    const options: { value: HistoryFilter; label: string }[] = [
+        { value: 'all', label: 'Tudo' },
+        { value: 'kinevo', label: 'Treinos Kinevo' },
+        { value: 'strava', label: 'Strava' },
+        { value: 'this_week', label: 'Esta semana' },
+    ];
+    return (
+        <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 10, gap: 8 }}
+        >
+            {options.map((opt) => {
+                const active = filter === opt.value;
+                return (
+                    <Pressable
+                        key={opt.value}
+                        onPress={() => {
+                            Haptics.selectionAsync();
+                            onChange(opt.value);
+                        }}
+                        style={{
+                            paddingHorizontal: 14,
+                            paddingVertical: 7,
+                            borderRadius: 999,
+                            backgroundColor: active ? colors.text.primary : colors.surface.card,
+                            borderWidth: 1,
+                            borderColor: active ? colors.text.primary : colors.border.subtle,
+                        }}
+                    >
+                        <Text
+                            style={{
+                                fontSize: 12,
+                                fontWeight: '700',
+                                color: active ? colors.surface.canvas : colors.text.secondary,
+                            }}
+                        >
+                            {opt.label}
+                        </Text>
+                    </Pressable>
+                );
+            })}
+        </ScrollView>
+    );
+}
+
 /* ─── History Tab ─── */
 
-function HistoryList({ history }: { history: HistorySession[] }) {
+type TimelineItem =
+    | { kind: 'kinevo'; session: HistorySession; date: number }
+    | { kind: 'strava'; activity: ExternalActivityRow; date: number };
+
+function startOfThisWeek(): number {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() - d.getDay());
+    return d.getTime();
+}
+
+function buildTimeline(
+    history: HistorySession[],
+    stravaActivities: ExternalActivityRow[],
+    filter: HistoryFilter,
+): TimelineItem[] {
+    const items: TimelineItem[] = [];
+    const weekStart = filter === 'this_week' ? startOfThisWeek() : -Infinity;
+
+    if (filter !== 'strava') {
+        for (const s of history) {
+            const t = new Date(s.completed_at).getTime();
+            if (t >= weekStart) items.push({ kind: 'kinevo', session: s, date: t });
+        }
+    }
+    if (filter !== 'kinevo') {
+        for (const a of stravaActivities) {
+            const t = new Date(a.started_at).getTime();
+            if (t >= weekStart) items.push({ kind: 'strava', activity: a, date: t });
+        }
+    }
+    return items.sort((x, y) => y.date - x.date);
+}
+
+function HistoryList({
+    history,
+    stravaActivities,
+    filter,
+}: {
+    history: HistorySession[];
+    stravaActivities: ExternalActivityRow[];
+    filter: HistoryFilter;
+}) {
     const colors = useV2Colors();
-    if (!history.length) {
+    const timeline = buildTimeline(history, stravaActivities, filter);
+
+    if (!timeline.length) {
         return (
             <Animated.View
                 entering={FadeInUp.delay(100).duration(ANIM.enter.duration).easing(ANIM.enter.easing)}
@@ -222,7 +349,7 @@ function HistoryList({ history }: { history: HistorySession[] }) {
                     <Calendar size={28} color={colors.text.quaternary} />
                 </View>
                 <Text style={{ color: colors.text.tertiary, textAlign: 'center', fontSize: 14 }}>
-                    Nenhum treino registrado ainda.
+                    Nenhuma atividade registrada ainda.
                 </Text>
             </Animated.View>
         );
@@ -230,7 +357,9 @@ function HistoryList({ history }: { history: HistorySession[] }) {
 
     return (
         <View>
-            <HistorySummaryCard history={history} />
+            {filter !== 'strava' && history.length > 0 && (
+                <HistorySummaryCard history={history} />
+            )}
 
             <Text
                 style={{
@@ -241,14 +370,22 @@ function HistoryList({ history }: { history: HistorySession[] }) {
             >
                 Últimas Atividades
             </Text>
-            {history.map((session, index) => (
-                <Animated.View
-                    key={session.id}
-                    entering={FadeInUp.delay(index * ANIM.enter.stagger).duration(ANIM.enter.duration).easing(ANIM.enter.easing)}
-                >
-                    <HistoryCard session={session} />
-                </Animated.View>
-            ))}
+            {timeline.map((item, index) => {
+                const key =
+                    item.kind === 'kinevo' ? `k-${item.session.id}` : `s-${item.activity.id}`;
+                return (
+                    <Animated.View
+                        key={key}
+                        entering={FadeInUp.delay(index * ANIM.enter.stagger).duration(ANIM.enter.duration).easing(ANIM.enter.easing)}
+                    >
+                        {item.kind === 'kinevo' ? (
+                            <HistoryCard session={item.session} />
+                        ) : (
+                            <StravaActivityRow activity={item.activity} />
+                        )}
+                    </Animated.View>
+                );
+            })}
         </View>
     );
 }

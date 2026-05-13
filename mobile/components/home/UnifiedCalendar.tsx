@@ -78,7 +78,11 @@ interface UnifiedCalendarProps {
     onDayPress: (date: Date) => void;
     onWeekChange?: (weekStart: Date) => void;
     fetchRange?: (start: Date, end: Date) => void;
+    // Fase 16 · Strava: dias com atividade externa pra renderizar dot extra laranja.
+    extraActivityDays?: Set<string>;
 }
+
+const STRAVA_DOT_COLOR = "#FC5200";
 
 // ── Week Row (reused from WeekCalendar) ──
 function WeekRow({
@@ -86,11 +90,13 @@ function WeekRow({
     selectedDate,
     onDayPress,
     calendarWidth,
+    extraActivityDays,
 }: {
     days: CalendarDay[];
     selectedDate: Date;
     onDayPress: (date: Date) => void;
     calendarWidth: number;
+    extraActivityDays?: Set<string>;
 }) {
     const colors = useV2Colors();
     const selectedKey = toDateKey(selectedDate);
@@ -151,15 +157,26 @@ function WeekRow({
                                     <Check size={8} color={colors.text.quaternary}strokeWidth={3} />
                                 </View>
                             ) : (
-                                <View
-                                    style={{
-                                        marginTop: 6,
-                                        height: 5,
-                                        width: 5,
-                                        borderRadius: 3,
-                                        backgroundColor: STATUS_COLORS[day.status] || "transparent",
-                                    }}
-                                />
+                                <View style={{ marginTop: 6, height: 5, flexDirection: "row", alignItems: "center", gap: 3 }}>
+                                    <View
+                                        style={{
+                                            height: 5,
+                                            width: 5,
+                                            borderRadius: 3,
+                                            backgroundColor: STATUS_COLORS[day.status] || "transparent",
+                                        }}
+                                    />
+                                    {extraActivityDays?.has(day.dateKey) ? (
+                                        <View
+                                            style={{
+                                                height: 5,
+                                                width: 5,
+                                                borderRadius: 3,
+                                                backgroundColor: STRAVA_DOT_COLOR,
+                                            }}
+                                        />
+                                    ) : null}
+                                </View>
                             )}
                         </View>
                     </TouchableOpacity>
@@ -180,6 +197,7 @@ export function UnifiedCalendar({
     onDayPress,
     onWeekChange,
     fetchRange,
+    extraActivityDays,
 }: UnifiedCalendarProps) {
     const colors = useV2Colors();
     const { width: screenWidth } = useWindowDimensions();
@@ -448,6 +466,7 @@ export function UnifiedCalendar({
                             selectedDate={selectedDate}
                             onDayPress={onDayPress}
                             calendarWidth={CALENDAR_WIDTH}
+                            extraActivityDays={extraActivityDays}
                         />
                     )}
                     initialScrollIndex={1}
@@ -532,17 +551,37 @@ export function UnifiedCalendar({
                                     <View style={{ position: "absolute", bottom: 1, alignItems: 'center', justifyContent: 'center' }}>
                                         <Check size={7} color={colors.text.quaternary}strokeWidth={3} />
                                     </View>
-                                ) : dotColor && isCurrentMonth ? (
+                                ) : isCurrentMonth && (dotColor || extraActivityDays?.has(day.dateKey)) ? (
                                     <View
                                         style={{
                                             position: "absolute",
                                             bottom: 2,
-                                            width: 4,
-                                            height: 4,
-                                            borderRadius: 2,
-                                            backgroundColor: dotColor,
+                                            flexDirection: "row",
+                                            alignItems: "center",
+                                            gap: 2,
                                         }}
-                                    />
+                                    >
+                                        {dotColor ? (
+                                            <View
+                                                style={{
+                                                    width: 4,
+                                                    height: 4,
+                                                    borderRadius: 2,
+                                                    backgroundColor: dotColor,
+                                                }}
+                                            />
+                                        ) : null}
+                                        {extraActivityDays?.has(day.dateKey) ? (
+                                            <View
+                                                style={{
+                                                    width: 4,
+                                                    height: 4,
+                                                    borderRadius: 2,
+                                                    backgroundColor: STRAVA_DOT_COLOR,
+                                                }}
+                                            />
+                                        ) : null}
+                                    </View>
                                 ) : null}
                             </TouchableOpacity>
                         );

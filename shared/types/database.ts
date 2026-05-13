@@ -1226,6 +1226,68 @@ export type Database = {
           },
         ]
       }
+      external_activities: {
+        Row: {
+          activity_type: string
+          avg_heart_rate: number | null
+          calories: number | null
+          distance_meters: number | null
+          duration_seconds: number
+          elevation_gain_meters: number | null
+          external_id: string
+          id: string
+          max_heart_rate: number | null
+          name: string
+          raw: Json | null
+          source: string
+          started_at: string
+          student_id: string
+          synced_at: string
+        }
+        Insert: {
+          activity_type: string
+          avg_heart_rate?: number | null
+          calories?: number | null
+          distance_meters?: number | null
+          duration_seconds: number
+          elevation_gain_meters?: number | null
+          external_id: string
+          id?: string
+          max_heart_rate?: number | null
+          name: string
+          raw?: Json | null
+          source: string
+          started_at: string
+          student_id: string
+          synced_at?: string
+        }
+        Update: {
+          activity_type?: string
+          avg_heart_rate?: number | null
+          calories?: number | null
+          distance_meters?: number | null
+          duration_seconds?: number
+          elevation_gain_meters?: number | null
+          external_id?: string
+          id?: string
+          max_heart_rate?: number | null
+          name?: string
+          raw?: Json | null
+          source?: string
+          started_at?: string
+          student_id?: string
+          synced_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "external_activities_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       feedback: {
         Row: {
           coach_id: string | null
@@ -3206,6 +3268,7 @@ export type Database = {
       wearable_connections: {
         Row: {
           connected_at: string
+          external_user_id: string | null
           granted_categories: string[]
           id: string
           last_error: string | null
@@ -3217,6 +3280,7 @@ export type Database = {
         }
         Insert: {
           connected_at?: string
+          external_user_id?: string | null
           granted_categories?: string[]
           id?: string
           last_error?: string | null
@@ -3228,6 +3292,7 @@ export type Database = {
         }
         Update: {
           connected_at?: string
+          external_user_id?: string | null
           granted_categories?: string[]
           id?: string
           last_error?: string | null

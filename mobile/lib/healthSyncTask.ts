@@ -9,6 +9,7 @@ import { Platform } from 'react-native';
 import { supabase } from './supabase';
 import { syncHealthKit } from './healthSync/healthKitSync';
 import { syncHealthConnect } from './healthSync/healthConnectSync';
+import { isStravaConnected, syncStravaIncremental } from './healthSync/stravaSync';
 
 export const HEALTH_SYNC_TASK_NAME = 'health-data-daily-sync';
 
@@ -72,6 +73,17 @@ async function runIncrementalSync(): Promise<{ ok: boolean; skipped?: boolean }>
       const res = await syncHealthConnect(supabase, { days: 7, recomputeReadinessDays: 7 });
       ok = res.ok;
       if (__DEV__) console.log(`[healthSyncTask] Android ok=${ok}`, res.counts, 'sdk=', res.sdkStatus);
+    }
+
+    // Strava sync (cross-platform). Não afeta retry/backoff do HealthKit/Health Connect:
+    // falha de Strava é silenciosa pra não bloquear o sync principal.
+    try {
+      if (await isStravaConnected(supabase)) {
+        const res = await syncStravaIncremental(supabase, 7);
+        if (__DEV__) console.log(`[healthSyncTask] Strava ok=${res.ok} synced=${res.synced}`);
+      }
+    } catch (stravaErr: any) {
+      if (__DEV__) console.warn('[healthSyncTask] Strava branch error:', stravaErr?.message);
     }
 
     if (ok) {

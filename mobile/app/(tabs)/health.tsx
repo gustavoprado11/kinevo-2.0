@@ -13,6 +13,7 @@ import { Platform } from 'react-native';
 import { toast } from '../../lib/toast';
 import { useV2Colors, type V2Palette } from '../../hooks/useV2Colors';
 import { InsightsCard } from '../../components/health/InsightsCard';
+import { ActivityWeekCard } from '../../components/strava/ActivityWeekCard';
 
 function formatDurationHM(min: number | null | undefined): string | null {
   if (min == null) return null;
@@ -200,6 +201,9 @@ export default function HealthScreen() {
             />
           </View>
         </View>
+
+        {/* Fase 16 · Strava Activity Week (renderiza só se conectado + atividade na semana) */}
+        <ActivityWeekCard />
 
         <SleepWeekChart data={data?.sleepWeek ?? []} />
 

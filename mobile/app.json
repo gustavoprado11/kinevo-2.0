@@ -2,7 +2,7 @@
   "expo": {
     "name": "Kinevo",
     "slug": "kinevo",
-    "version": "1.5.0",
+    "version": "1.6.0",
     "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.kinevo.mobile",
-      "buildNumber": "32",
+      "buildNumber": "33",
       "appleTeamId": "3D5M22J52M",
       "entitlements": {
         "com.apple.developer.healthkit": true,
@@ -118,6 +118,9 @@
           }
         },
         "projectId": "3bfbd791-f08d-4df0-96db-eed6cde4275a"
+      },
+      "strava": {
+        "clientId": "244932"
       }
     },
     "owner": "gustavocprado"

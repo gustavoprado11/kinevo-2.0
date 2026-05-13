@@ -11,6 +11,7 @@ import { useHealthKitSync } from '../../hooks/useHealthKitSync';
 import { useHealthConnectSync } from '../../hooks/useHealthConnectSync';
 import type { HealthCategory } from '../../lib/healthSync/shared';
 import { supabase } from '../../lib/supabase';
+import { ConnectionRowStrava } from '../../components/strava/ConnectionRowStrava';
 
 const PLAY_STORE_HEALTH_CONNECT = 'https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata';
 
@@ -257,6 +258,10 @@ export default function ConnectionsScreen() {
               )
             )}
           </View>
+
+          {/* ─── Apps de atividade (Strava) ─── */}
+          <Text style={[styles.sectionLabel, { marginTop: 24 }]}>APPS DE ATIVIDADE</Text>
+          <ConnectionRowStrava />
 
           {/* ─── O que importar (granular) ─── */}
           <Text style={[styles.sectionLabel, { marginTop: 24 }]}>O QUE IMPORTAR</Text>
