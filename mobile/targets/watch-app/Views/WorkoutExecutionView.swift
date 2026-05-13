@@ -336,6 +336,14 @@ struct WorkoutExecutionView: View {
           exercises: exercisesPayload,
           cardio: cardioPayload
         )
+
+        // Fase 13 — Exporta agregados de HR/calorias coletados durante o treino.
+        // Snapshot ANTES de endWorkout() pra capturar valores estáveis; a função
+        // só retorna não-nil quando houve >= 1 sample de HR coletado.
+        if let healthSamples = hk.exportHealthSamples() {
+          sm.sendHealthSamples(workoutId: state.workoutId, samples: healthSamples)
+        }
+
         hk.endWorkout()
         hasFinishedWorkout = true
         WKInterfaceDevice.current().play(.success)

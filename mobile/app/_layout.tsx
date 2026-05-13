@@ -47,6 +47,7 @@ function WatchBridge() {
     }
 
     const { useWatchConnectivity } = require("../hooks/useWatchConnectivity");
+    const { useWorkoutHealthUpload } = require("../hooks/useWorkoutHealthUpload");
     const { finishWorkoutFromWatch, watchFinishState, processPendingWatchWorkouts } = require("../lib/finishWorkoutFromWatch");
     const { sendAckToWatch, syncProgramToWatch, sendMessage } = require("../modules/watch-connectivity");
     const { appEvents, WORKOUT_COMPLETED, WATCH_WORKOUT_FINISHED } = require("../lib/events");
@@ -271,7 +272,21 @@ function WatchBridge() {
         [router]
     );
 
-    useWatchConnectivity({ onWatchStartWorkout, onWatchFinishWorkout, onWatchDiscardWorkout });
+    const { uploadHealthSamples } = useWorkoutHealthUpload();
+
+    const onWatchHealthSamples = React.useCallback(
+        async (event: any) => {
+            if (__DEV__) console.log(`[Layout] Watch sent WORKOUT_HEALTH_SAMPLES for ${event.workoutId}`);
+            try {
+                await uploadHealthSamples(event);
+            } catch (err: any) {
+                if (__DEV__) console.warn('[Layout] uploadHealthSamples threw:', err?.message);
+            }
+        },
+        [uploadHealthSamples]
+    );
+
+    useWatchConnectivity({ onWatchStartWorkout, onWatchFinishWorkout, onWatchDiscardWorkout, onWatchHealthSamples });
 
     // Lifecycle log for debugging Watch → iPhone data flow
     React.useEffect(() => {

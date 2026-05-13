@@ -234,6 +234,28 @@ class WatchSessionManager: NSObject, ObservableObject {
     sendReliable(message, label: "FINISH_WORKOUT")
   }
 
+  /// Fase 13 — Envia agregados de HR + calorias do Apple Watch ao iPhone via
+  /// transferUserInfo (queued/guaranteed delivery). Chamado pós-FINISH_WORKOUT.
+  /// `samples` é o payload retornado por HealthKitManager.exportHealthSamples().
+  func sendHealthSamples(workoutId: String, samples: [String: Any]) {
+    var payload = samples
+    payload["workoutId"] = workoutId
+
+    let message: [String: Any] = [
+      "type": "WORKOUT_HEALTH_SAMPLES",
+      "payload": payload
+    ]
+
+    guard let session = wcSession, session.activationState == .activated else {
+      print("[WatchSessionManager] ❌ Session not activated for WORKOUT_HEALTH_SAMPLES")
+      return
+    }
+
+    // Sempre transferUserInfo: tolera iPhone offline, entrega quando reconecta.
+    session.transferUserInfo(message)
+    print("[WatchSessionManager] 📤 WORKOUT_HEALTH_SAMPLES queued via transferUserInfo for \(workoutId)")
+  }
+
   /// Notify iPhone that a cardio item was completed on the Watch.
   func sendCardioCompletion(workoutId: String, itemId: String, elapsedSeconds: Int) {
     let message: [String: Any] = [

@@ -23,15 +23,26 @@ interface UseWatchConnectivityProps {
   }) => void;
   onWatchDiscardWorkout?: (event: { workoutId: string }) => void;
   onWatchCardioComplete?: (event: { workoutId: string; itemId: string; elapsedSeconds: number }) => void;
+  onWatchHealthSamples?: (event: WatchHealthSamplesEvent) => void;
 }
 
-export function useWatchConnectivity({ onWatchSetComplete, onWatchStartWorkout, onWatchFinishWorkout, onWatchDiscardWorkout, onWatchCardioComplete }: UseWatchConnectivityProps = {}) {
+export interface WatchHealthSamplesEvent {
+  workoutId: string;
+  avgHeartRate: number | null;
+  maxHeartRate: number | null;
+  minHeartRate: number | null;
+  caloriesActive: number | null;
+  heartRateSeries: Array<{ ts: number; bpm: number }> | null;
+}
+
+export function useWatchConnectivity({ onWatchSetComplete, onWatchStartWorkout, onWatchFinishWorkout, onWatchDiscardWorkout, onWatchCardioComplete, onWatchHealthSamples }: UseWatchConnectivityProps = {}) {
   // Stable refs — callbacks change every render but the listener stays subscribed once.
   const setCompleteRef = useRef(onWatchSetComplete);
   const startWorkoutRef = useRef(onWatchStartWorkout);
   const finishWorkoutRef = useRef(onWatchFinishWorkout);
   const discardWorkoutRef = useRef(onWatchDiscardWorkout);
   const cardioCompleteRef = useRef(onWatchCardioComplete);
+  const healthSamplesRef = useRef(onWatchHealthSamples);
 
   useEffect(() => {
     setCompleteRef.current = onWatchSetComplete;
@@ -39,6 +50,7 @@ export function useWatchConnectivity({ onWatchSetComplete, onWatchStartWorkout, 
     finishWorkoutRef.current = onWatchFinishWorkout;
     discardWorkoutRef.current = onWatchDiscardWorkout;
     cardioCompleteRef.current = onWatchCardioComplete;
+    healthSamplesRef.current = onWatchHealthSamples;
   });
 
   // Initialize module by checking if watch is reachable (forces module load)
@@ -135,6 +147,28 @@ export function useWatchConnectivity({ onWatchSetComplete, onWatchStartWorkout, 
 
         if (__DEV__) console.log(`[useWatchConnectivity] Watch completed cardio ${itemId} — ${elapsedSeconds}s`);
         cardioCompleteRef.current?.({ workoutId, itemId, elapsedSeconds });
+      }
+
+      if (event.type === 'WORKOUT_HEALTH_SAMPLES' && event.payload) {
+        const p = event.payload as Record<string, unknown>;
+        const workoutId = typeof p.workoutId === 'string' ? p.workoutId : null;
+        if (!workoutId) {
+          if (__DEV__) console.warn('[useWatchConnectivity] Ignoring invalid WORKOUT_HEALTH_SAMPLES payload:', event.payload);
+          return;
+        }
+        const parsed: WatchHealthSamplesEvent = {
+          workoutId,
+          avgHeartRate: typeof p.avgHeartRate === 'number' ? p.avgHeartRate : null,
+          maxHeartRate: typeof p.maxHeartRate === 'number' ? p.maxHeartRate : null,
+          minHeartRate: typeof p.minHeartRate === 'number' ? p.minHeartRate : null,
+          caloriesActive: typeof p.caloriesActive === 'number' ? p.caloriesActive : null,
+          heartRateSeries: Array.isArray(p.heartRateSeries)
+            ? (p.heartRateSeries as Array<{ ts: number; bpm: number }>)
+            : null,
+        };
+        if (__DEV__) console.log(`[useWatchConnectivity] WORKOUT_HEALTH_SAMPLES for ${workoutId} — avg ${parsed.avgHeartRate}, max ${parsed.maxHeartRate}, kcal ${parsed.caloriesActive}, series ${parsed.heartRateSeries?.length ?? 0}`);
+        healthSamplesRef.current?.(parsed);
+        return;
       }
 
       if (event.type === 'DISCARD_WORKOUT' && event.payload) {

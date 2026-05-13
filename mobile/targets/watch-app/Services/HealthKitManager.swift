@@ -16,6 +16,16 @@ class HealthKitManager: NSObject, ObservableObject {
     @Published var activeCalories: Double = 0.0
     @Published var isWorkoutActive: Bool = false
 
+    // Fase 13 — buffer pra exportar HR/calorias agregados ao iPhone.
+    // Atualizado em workoutBuilder(_:didCollectDataOf:) e resetado em startWorkout().
+    private var heartRateSeriesBuffer: [(timestamp: Date, bpm: Double)] = []
+    private var lastSeriesSampleAt: Date?
+    private var minHeartRate: Double = .infinity
+    private var maxHeartRate: Double = 0
+    private var heartRateSampleCount: Int = 0
+    private var heartRateSum: Double = 0
+    private let seriesIntervalSeconds: TimeInterval = 60
+
     override init() {
         super.init()
         recoverActiveWorkoutSession()
@@ -115,6 +125,8 @@ class HealthKitManager: NSObject, ObservableObject {
                 workoutConfiguration: configuration
             )
 
+            resetHealthBuffers()
+
             let startDate = Date()
             workoutSession?.startActivity(with: startDate)
             builder?.beginCollection(withStart: startDate) { success, error in
@@ -212,6 +224,48 @@ class HealthKitManager: NSObject, ObservableObject {
         workoutSession = nil
         self.builder = nil
     }
+
+    // MARK: - Health Samples Export (Fase 13)
+
+    /// Returns aggregated health metrics for the just-finished workout.
+    /// Call AFTER `endWorkout()` (or as part of the finish flow). Returns nil
+    /// if no HR samples were collected — caller skips sending in that case.
+    func exportHealthSamples() -> [String: Any]? {
+        guard heartRateSampleCount > 0 else { return nil }
+
+        let avgHR = heartRateSum / Double(heartRateSampleCount)
+        let avgRounded = (avgHR * 10).rounded() / 10
+        let kcalRounded = (activeCalories * 100).rounded() / 100
+
+        let hrSeries: [[String: Any]] = heartRateSeriesBuffer.map { sample in
+            return [
+                "ts": Int(sample.timestamp.timeIntervalSince1970),
+                "bpm": Int(sample.bpm.rounded())
+            ]
+        }
+
+        var payload: [String: Any] = [
+            "avgHeartRate": avgRounded,
+            "maxHeartRate": Int(maxHeartRate.rounded()),
+            "caloriesActive": kcalRounded
+        ]
+        if minHeartRate != .infinity {
+            payload["minHeartRate"] = Int(minHeartRate.rounded())
+        }
+        if !hrSeries.isEmpty {
+            payload["heartRateSeries"] = hrSeries
+        }
+        return payload
+    }
+
+    private func resetHealthBuffers() {
+        heartRateSeriesBuffer = []
+        lastSeriesSampleAt = nil
+        minHeartRate = .infinity
+        maxHeartRate = 0
+        heartRateSampleCount = 0
+        heartRateSum = 0
+    }
 }
 
 // MARK: - HKWorkoutSessionDelegate
@@ -251,6 +305,19 @@ extension HealthKitManager: HKLiveWorkoutBuilderDelegate {
                 if let statistics = workoutBuilder.statistics(for: quantityType) {
                     let heartRateUnit = HKUnit.count().unitDivided(by: .minute())
                     let value = statistics.mostRecentQuantity()?.doubleValue(for: heartRateUnit) ?? 0
+
+                    if value > 0 {
+                        heartRateSum += value
+                        heartRateSampleCount += 1
+                        minHeartRate = min(minHeartRate, value)
+                        maxHeartRate = max(maxHeartRate, value)
+
+                        let now = Date()
+                        if lastSeriesSampleAt == nil || now.timeIntervalSince(lastSeriesSampleAt!) >= seriesIntervalSeconds {
+                            heartRateSeriesBuffer.append((timestamp: now, bpm: value))
+                            lastSeriesSampleAt = now
+                        }
+                    }
 
                     DispatchQueue.main.async {
                         self.heartRate = value

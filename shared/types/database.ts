@@ -14,6 +14,163 @@ export type Database = {
   }
   public: {
     Tables: {
+      ambassador_events: {
+        Row: {
+          ambassador_id: string
+          commission_id: string | null
+          created_at: string
+          event_type: string
+          id: string
+          payload: Json
+          payout_id: string | null
+          referral_id: string | null
+        }
+        Insert: {
+          ambassador_id: string
+          commission_id?: string | null
+          created_at?: string
+          event_type: string
+          id?: string
+          payload?: Json
+          payout_id?: string | null
+          referral_id?: string | null
+        }
+        Update: {
+          ambassador_id?: string
+          commission_id?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          payload?: Json
+          payout_id?: string | null
+          referral_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ambassador_events_ambassador_id_fkey"
+            columns: ["ambassador_id"]
+            isOneToOne: false
+            referencedRelation: "ambassadors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ambassador_events_commission_id_fkey"
+            columns: ["commission_id"]
+            isOneToOne: false
+            referencedRelation: "commissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ambassador_events_payout_id_fkey"
+            columns: ["payout_id"]
+            isOneToOne: false
+            referencedRelation: "ambassador_payouts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ambassador_events_referral_id_fkey"
+            columns: ["referral_id"]
+            isOneToOne: false
+            referencedRelation: "referrals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ambassador_payouts: {
+        Row: {
+          ambassador_id: string
+          amount_cents: number
+          created_at: string
+          failure_reason: string | null
+          id: string
+          paid_at: string | null
+          status: string
+          stripe_transfer_id: string | null
+        }
+        Insert: {
+          ambassador_id: string
+          amount_cents: number
+          created_at?: string
+          failure_reason?: string | null
+          id?: string
+          paid_at?: string | null
+          status?: string
+          stripe_transfer_id?: string | null
+        }
+        Update: {
+          ambassador_id?: string
+          amount_cents?: number
+          created_at?: string
+          failure_reason?: string | null
+          id?: string
+          paid_at?: string | null
+          status?: string
+          stripe_transfer_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ambassador_payouts_ambassador_id_fkey"
+            columns: ["ambassador_id"]
+            isOneToOne: false
+            referencedRelation: "ambassadors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ambassadors: {
+        Row: {
+          commission_rate: number
+          created_at: string
+          display_name: string
+          email_normalized: string
+          id: string
+          instagram_handle: string | null
+          promotion_code: string
+          status: string
+          stripe_connect_account_id: string | null
+          stripe_coupon_id: string
+          stripe_promotion_code_id: string
+          terminated_at: string | null
+          termination_reason: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          commission_rate?: number
+          created_at?: string
+          display_name: string
+          email_normalized: string
+          id?: string
+          instagram_handle?: string | null
+          promotion_code: string
+          status?: string
+          stripe_connect_account_id?: string | null
+          stripe_coupon_id: string
+          stripe_promotion_code_id: string
+          terminated_at?: string | null
+          termination_reason?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          commission_rate?: number
+          created_at?: string
+          display_name?: string
+          email_normalized?: string
+          id?: string
+          instagram_handle?: string | null
+          promotion_code?: string
+          status?: string
+          stripe_connect_account_id?: string | null
+          stripe_coupon_id?: string
+          stripe_promotion_code_id?: string
+          terminated_at?: string | null
+          termination_reason?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       android_tester_queue: {
         Row: {
           added_at: string | null
@@ -85,6 +242,142 @@ export type Database = {
           },
           {
             foreignKeyName: "appointment_exceptions_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assessment_measurements: {
+        Row: {
+          attempt_number: number | null
+          id: string
+          is_selected: boolean | null
+          measured_at: string
+          metric_key: string
+          raw_input: Json | null
+          session_id: string
+          side: string | null
+          value_numeric: number | null
+          value_text: string | null
+          value_unit: string | null
+        }
+        Insert: {
+          attempt_number?: number | null
+          id?: string
+          is_selected?: boolean | null
+          measured_at?: string
+          metric_key: string
+          raw_input?: Json | null
+          session_id: string
+          side?: string | null
+          value_numeric?: number | null
+          value_text?: string | null
+          value_unit?: string | null
+        }
+        Update: {
+          attempt_number?: number | null
+          id?: string
+          is_selected?: boolean | null
+          measured_at?: string
+          metric_key?: string
+          raw_input?: Json | null
+          session_id?: string
+          side?: string | null
+          value_numeric?: number | null
+          value_text?: string | null
+          value_unit?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessment_measurements_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assessment_sessions: {
+        Row: {
+          cancelled_at: string | null
+          completed_at: string | null
+          computed_metrics: Json | null
+          created_at: string
+          id: string
+          inbox_item_id: string | null
+          notes: string | null
+          scheduled_at: string | null
+          started_at: string | null
+          status: string
+          student_id: string
+          template_id: string | null
+          template_snapshot: Json | null
+          template_version: number | null
+          trainer_id: string
+          updated_at: string
+        }
+        Insert: {
+          cancelled_at?: string | null
+          completed_at?: string | null
+          computed_metrics?: Json | null
+          created_at?: string
+          id?: string
+          inbox_item_id?: string | null
+          notes?: string | null
+          scheduled_at?: string | null
+          started_at?: string | null
+          status?: string
+          student_id: string
+          template_id?: string | null
+          template_snapshot?: Json | null
+          template_version?: number | null
+          trainer_id: string
+          updated_at?: string
+        }
+        Update: {
+          cancelled_at?: string | null
+          completed_at?: string | null
+          computed_metrics?: Json | null
+          created_at?: string
+          id?: string
+          inbox_item_id?: string | null
+          notes?: string | null
+          scheduled_at?: string | null
+          started_at?: string | null
+          status?: string
+          student_id?: string
+          template_id?: string | null
+          template_snapshot?: Json | null
+          template_version?: number | null
+          trainer_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessment_sessions_inbox_item_id_fkey"
+            columns: ["inbox_item_id"]
+            isOneToOne: false
+            referencedRelation: "student_inbox_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessment_sessions_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessment_sessions_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "form_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessment_sessions_trainer_id_fkey"
             columns: ["trainer_id"]
             isOneToOne: false
             referencedRelation: "trainers"
@@ -184,6 +477,65 @@ export type Database = {
           },
         ]
       }
+      assigned_workout_item_sets: {
+        Row: {
+          assigned_workout_item_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          reps: string
+          rest_seconds: number
+          rir: number | null
+          round_number: number | null
+          set_number: number
+          set_type: string
+          tempo: string | null
+          updated_at: string
+          weight_target_kg: number | null
+          weight_target_pct1rm: number | null
+        }
+        Insert: {
+          assigned_workout_item_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          reps: string
+          rest_seconds?: number
+          rir?: number | null
+          round_number?: number | null
+          set_number: number
+          set_type: string
+          tempo?: string | null
+          updated_at?: string
+          weight_target_kg?: number | null
+          weight_target_pct1rm?: number | null
+        }
+        Update: {
+          assigned_workout_item_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          reps?: string
+          rest_seconds?: number
+          rir?: number | null
+          round_number?: number | null
+          set_number?: number
+          set_type?: string
+          tempo?: string | null
+          updated_at?: string
+          weight_target_kg?: number | null
+          weight_target_pct1rm?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assigned_workout_item_sets_assigned_workout_item_id_fkey"
+            columns: ["assigned_workout_item_id"]
+            isOneToOne: false
+            referencedRelation: "assigned_workout_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assigned_workout_items: {
         Row: {
           assigned_workout_id: string
@@ -196,11 +548,13 @@ export type Database = {
           id: string
           item_config: Json
           item_type: string
+          method_key: string | null
           notes: string | null
           order_index: number
           parent_item_id: string | null
           reps: string | null
           rest_seconds: number | null
+          rounds: number
           sets: number | null
           source_template_id: string | null
           substitute_exercise_ids: string[]
@@ -217,11 +571,13 @@ export type Database = {
           id?: string
           item_config?: Json
           item_type: string
+          method_key?: string | null
           notes?: string | null
           order_index: number
           parent_item_id?: string | null
           reps?: string | null
           rest_seconds?: number | null
+          rounds?: number
           sets?: number | null
           source_template_id?: string | null
           substitute_exercise_ids?: string[]
@@ -238,11 +594,13 @@ export type Database = {
           id?: string
           item_config?: Json
           item_type?: string
+          method_key?: string | null
           notes?: string | null
           order_index?: number
           parent_item_id?: string | null
           reps?: string | null
           rest_seconds?: number | null
+          rounds?: number
           sets?: number | null
           source_template_id?: string | null
           substitute_exercise_ids?: string[]
@@ -392,6 +750,97 @@ export type Database = {
             columns: ["trainer_id"]
             isOneToOne: false
             referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      blocked_email_domains: {
+        Row: {
+          blocked_at: string
+          domain: string
+          reason: string
+        }
+        Insert: {
+          blocked_at?: string
+          domain: string
+          reason?: string
+        }
+        Update: {
+          blocked_at?: string
+          domain?: string
+          reason?: string
+        }
+        Relationships: []
+      }
+      commissions: {
+        Row: {
+          ambassador_id: string
+          available_at: string
+          commission_amount_cents: number
+          created_at: string
+          gross_amount_cents: number
+          id: string
+          invoice_paid_at: string
+          paid_at: string | null
+          payout_id: string | null
+          referral_id: string
+          reversed_reason: string | null
+          status: string
+          stripe_invoice_id: string
+          stripe_transfer_id: string | null
+        }
+        Insert: {
+          ambassador_id: string
+          available_at: string
+          commission_amount_cents: number
+          created_at?: string
+          gross_amount_cents: number
+          id?: string
+          invoice_paid_at: string
+          paid_at?: string | null
+          payout_id?: string | null
+          referral_id: string
+          reversed_reason?: string | null
+          status?: string
+          stripe_invoice_id: string
+          stripe_transfer_id?: string | null
+        }
+        Update: {
+          ambassador_id?: string
+          available_at?: string
+          commission_amount_cents?: number
+          created_at?: string
+          gross_amount_cents?: number
+          id?: string
+          invoice_paid_at?: string
+          paid_at?: string | null
+          payout_id?: string | null
+          referral_id?: string
+          reversed_reason?: string | null
+          status?: string
+          stripe_invoice_id?: string
+          stripe_transfer_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commissions_ambassador_id_fkey"
+            columns: ["ambassador_id"]
+            isOneToOne: false
+            referencedRelation: "ambassadors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commissions_payout_id_fkey"
+            columns: ["payout_id"]
+            isOneToOne: false
+            referencedRelation: "ambassador_payouts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commissions_referral_id_fkey"
+            columns: ["referral_id"]
+            isOneToOne: false
+            referencedRelation: "referrals"
             referencedColumns: ["id"]
           },
         ]
@@ -916,6 +1365,7 @@ export type Database = {
           category: string
           created_at: string
           created_source: string
+          delivery_mode: string
           description: string | null
           id: string
           is_active: boolean
@@ -934,6 +1384,7 @@ export type Database = {
           category: string
           created_at?: string
           created_source?: string
+          delivery_mode?: string
           description?: string | null
           id?: string
           is_active?: boolean
@@ -952,6 +1403,7 @@ export type Database = {
           category?: string
           created_at?: string
           created_source?: string
+          delivery_mode?: string
           description?: string | null
           id?: string
           is_active?: boolean
@@ -1446,6 +1898,50 @@ export type Database = {
           },
         ]
       }
+      push_errors: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          error_type: string | null
+          id: string
+          notification_id: string | null
+          push_token_id: string | null
+          raw_ticket: Json | null
+          role: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          error_type?: string | null
+          id?: string
+          notification_id?: string | null
+          push_token_id?: string | null
+          raw_ticket?: Json | null
+          role: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          error_type?: string | null
+          id?: string
+          notification_id?: string | null
+          push_token_id?: string | null
+          raw_ticket?: Json | null
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_errors_push_token_id_fkey"
+            columns: ["push_token_id"]
+            isOneToOne: false
+            referencedRelation: "push_tokens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       push_tickets: {
         Row: {
           checked_at: string | null
@@ -1611,6 +2107,62 @@ export type Database = {
             columns: ["trainer_id"]
             isOneToOne: false
             referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      referrals: {
+        Row: {
+          ambassador_id: string
+          created_at: string
+          first_paid_at: string | null
+          flagged_reason: string | null
+          id: string
+          last_invoice_paid_at: string | null
+          promotion_code_used: string
+          referred_user_id: string
+          status: string
+          stripe_customer_id: string
+          stripe_subscription_id: string
+          subscription_canceled_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          ambassador_id: string
+          created_at?: string
+          first_paid_at?: string | null
+          flagged_reason?: string | null
+          id?: string
+          last_invoice_paid_at?: string | null
+          promotion_code_used: string
+          referred_user_id: string
+          status?: string
+          stripe_customer_id: string
+          stripe_subscription_id: string
+          subscription_canceled_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ambassador_id?: string
+          created_at?: string
+          first_paid_at?: string | null
+          flagged_reason?: string | null
+          id?: string
+          last_invoice_paid_at?: string | null
+          promotion_code_used?: string
+          referred_user_id?: string
+          status?: string
+          stripe_customer_id?: string
+          stripe_subscription_id?: string
+          subscription_canceled_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referrals_ambassador_id_fkey"
+            columns: ["ambassador_id"]
+            isOneToOne: false
+            referencedRelation: "ambassadors"
             referencedColumns: ["id"]
           },
         ]
@@ -1943,6 +2495,7 @@ export type Database = {
       student_prescription_profiles: {
         Row: {
           adherence_rate: number | null
+          agent_answers: Json
           ai_mode: string
           available_days: number[]
           available_equipment: string[]
@@ -1960,9 +2513,11 @@ export type Database = {
           trainer_id: string
           training_level: string
           updated_at: string
+          volume_overrides: Json
         }
         Insert: {
           adherence_rate?: number | null
+          agent_answers?: Json
           ai_mode?: string
           available_days?: number[]
           available_equipment?: string[]
@@ -1980,9 +2535,11 @@ export type Database = {
           trainer_id: string
           training_level?: string
           updated_at?: string
+          volume_overrides?: Json
         }
         Update: {
           adherence_rate?: number | null
+          agent_answers?: Json
           ai_mode?: string
           available_days?: number[]
           available_equipment?: string[]
@@ -2000,6 +2557,7 @@ export type Database = {
           trainer_id?: string
           training_level?: string
           updated_at?: string
+          volume_overrides?: Json
         }
         Relationships: [
           {
@@ -2195,6 +2753,7 @@ export type Database = {
           data: Json | null
           id: string
           is_read: boolean | null
+          push_sent_at: string | null
           title: string
           trainer_id: string
           type: string
@@ -2206,6 +2765,7 @@ export type Database = {
           data?: Json | null
           id?: string
           is_read?: boolean | null
+          push_sent_at?: string | null
           title: string
           trainer_id: string
           type?: string
@@ -2217,6 +2777,7 @@ export type Database = {
           data?: Json | null
           id?: string
           is_read?: boolean | null
+          push_sent_at?: string | null
           title?: string
           trainer_id?: string
           type?: string
@@ -2350,6 +2911,7 @@ export type Database = {
           notification_preferences: Json | null
           onboarding_state: Json | null
           prescription_patterns: Json | null
+          prescription_preferences: Json | null
           smart_v2_enabled: boolean
           theme: string
           updated_at: string
@@ -2367,6 +2929,7 @@ export type Database = {
           notification_preferences?: Json | null
           onboarding_state?: Json | null
           prescription_patterns?: Json | null
+          prescription_preferences?: Json | null
           smart_v2_enabled?: boolean
           theme?: string
           updated_at?: string
@@ -2384,11 +2947,53 @@ export type Database = {
           notification_preferences?: Json | null
           onboarding_state?: Json | null
           prescription_patterns?: Json | null
+          prescription_preferences?: Json | null
           smart_v2_enabled?: boolean
           theme?: string
           updated_at?: string
         }
         Relationships: []
+      }
+      training_method_presets: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          key: string
+          name: string
+          sets_config: Json
+          trainer_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          key: string
+          name: string
+          sets_config: Json
+          trainer_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          key?: string
+          name?: string
+          sets_config?: Json
+          trainer_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_method_presets_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       webhook_events: {
         Row: {
@@ -2414,6 +3019,109 @@ export type Database = {
         }
         Relationships: []
       }
+      workout_health_samples: {
+        Row: {
+          avg_heart_rate: number | null
+          calories_active: number | null
+          created_at: string
+          heart_rate_series: Json | null
+          id: string
+          max_heart_rate: number | null
+          min_heart_rate: number | null
+          source: string
+          workout_session_id: string
+        }
+        Insert: {
+          avg_heart_rate?: number | null
+          calories_active?: number | null
+          created_at?: string
+          heart_rate_series?: Json | null
+          id?: string
+          max_heart_rate?: number | null
+          min_heart_rate?: number | null
+          source?: string
+          workout_session_id: string
+        }
+        Update: {
+          avg_heart_rate?: number | null
+          calories_active?: number | null
+          created_at?: string
+          heart_rate_series?: Json | null
+          id?: string
+          max_heart_rate?: number | null
+          min_heart_rate?: number | null
+          source?: string
+          workout_session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workout_health_samples_workout_session_id_fkey"
+            columns: ["workout_session_id"]
+            isOneToOne: true
+            referencedRelation: "workout_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workout_item_set_templates: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          reps: string
+          rest_seconds: number
+          rir: number | null
+          round_number: number | null
+          set_number: number
+          set_type: string
+          tempo: string | null
+          updated_at: string
+          weight_target_kg: number | null
+          weight_target_pct1rm: number | null
+          workout_item_template_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          reps: string
+          rest_seconds?: number
+          rir?: number | null
+          round_number?: number | null
+          set_number: number
+          set_type: string
+          tempo?: string | null
+          updated_at?: string
+          weight_target_kg?: number | null
+          weight_target_pct1rm?: number | null
+          workout_item_template_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          reps?: string
+          rest_seconds?: number
+          rir?: number | null
+          round_number?: number | null
+          set_number?: number
+          set_type?: string
+          tempo?: string | null
+          updated_at?: string
+          weight_target_kg?: number | null
+          weight_target_pct1rm?: number | null
+          workout_item_template_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workout_item_set_templates_workout_item_template_id_fkey"
+            columns: ["workout_item_template_id"]
+            isOneToOne: false
+            referencedRelation: "workout_item_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workout_item_templates: {
         Row: {
           created_at: string
@@ -2422,11 +3130,13 @@ export type Database = {
           id: string
           item_config: Json
           item_type: string
+          method_key: string | null
           notes: string | null
           order_index: number
           parent_item_id: string | null
           reps: string | null
           rest_seconds: number | null
+          rounds: number
           sets: number | null
           substitute_exercise_ids: string[]
           updated_at: string
@@ -2439,11 +3149,13 @@ export type Database = {
           id?: string
           item_config?: Json
           item_type: string
+          method_key?: string | null
           notes?: string | null
           order_index: number
           parent_item_id?: string | null
           reps?: string | null
           rest_seconds?: number | null
+          rounds?: number
           sets?: number | null
           substitute_exercise_ids?: string[]
           updated_at?: string
@@ -2456,11 +3168,13 @@ export type Database = {
           id?: string
           item_config?: Json
           item_type?: string
+          method_key?: string | null
           notes?: string | null
           order_index?: number
           parent_item_id?: string | null
           reps?: string | null
           rest_seconds?: number | null
+          rounds?: number
           sets?: number | null
           substitute_exercise_ids?: string[]
           updated_at?: string
@@ -2664,6 +3378,15 @@ export type Database = {
       }
       check_student_access: { Args: { p_student_id: string }; Returns: Json }
       cleanup_stale_sessions: { Args: never; Returns: number }
+      create_assessment_session: {
+        Args: {
+          p_notes?: string
+          p_scheduled_at?: string
+          p_student_id: string
+          p_template_id: string
+        }
+        Returns: string
+      }
       current_student_coach_id: { Args: never; Returns: string }
       current_student_id: { Args: never; Returns: string }
       current_trainer_id: { Args: never; Returns: string }
@@ -2677,8 +3400,21 @@ export type Database = {
           student_name: string
         }[]
       }
+      finalize_assessment_session: {
+        Args: {
+          p_computed_metrics: Json
+          p_notes?: string
+          p_session_id: string
+        }
+        Returns: Json
+      }
       get_active_workout_triggers: {
         Args: { p_assigned_program_id: string }
+        Returns: Json
+      }
+      get_assessment_session: { Args: { p_session_id: string }; Returns: Json }
+      get_assessment_sessions: {
+        Args: { p_limit?: number; p_status?: string; p_student_id?: string }
         Returns: Json
       }
       get_contract_events: { Args: { p_contract_id: string }; Returns: Json }
@@ -2769,6 +3505,10 @@ export type Database = {
       mark_notification_read: {
         Args: { p_notification_id: string }
         Returns: undefined
+      }
+      save_assessment_measurements: {
+        Args: { p_measurements: Json; p_session_id: string }
+        Returns: number
       }
       send_submission_feedback: {
         Args: { p_feedback: Json; p_submission_id: string }

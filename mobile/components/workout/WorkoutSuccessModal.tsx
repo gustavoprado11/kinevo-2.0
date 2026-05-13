@@ -24,6 +24,8 @@ import { ShareWorkoutModal } from './ShareWorkoutModal';
 import { MaxLoadsTemplate } from './sharing/MaxLoadsTemplate';
 import { FullWorkoutTemplate } from './sharing/FullWorkoutTemplate';
 import { ShareableCardProps } from './sharing/types';
+import { WorkoutHealthCard } from './WorkoutHealthCard';
+import { useWorkoutHealthSummary } from '../../hooks/useWorkoutHealthSummary';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -55,6 +57,12 @@ function formatDurationShort(duration: string): string {
         return m > 0 ? `${h}h${m}m` : `${h}h`;
     }
     return duration;
+}
+
+function HealthCardSlot({ sessionId }: { sessionId: string }) {
+    const { data } = useWorkoutHealthSummary(sessionId);
+    if (!data) return null;
+    return <WorkoutHealthCard summary={data} />;
 }
 
 function formatVolumeShort(kg: number): string {
@@ -386,6 +394,9 @@ export function WorkoutSuccessModal({ visible, onClose, data }: WorkoutSuccessMo
                             <Text style={styles.statLabel}>PRS</Text>
                         </View>
                     </Animated.View>
+
+                    {/* Fase 13 — Health card (Apple Watch). Esconde silenciosamente sem dados. */}
+                    {data.sessionId && <HealthCardSlot sessionId={data.sessionId} />}
                 </View>
 
                 {/* CTAs */}

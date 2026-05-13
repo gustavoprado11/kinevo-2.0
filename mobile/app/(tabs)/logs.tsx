@@ -26,6 +26,8 @@ import { KRing, KPRCard } from '../../components/v2/student';
 import { useV2Colors } from '../../hooks/useV2Colors';
 import { v2 } from '@kinevo/shared/tokens';
 import { LinearGradient } from 'expo-linear-gradient';
+import { WorkoutHealthCard } from '../../components/workout/WorkoutHealthCard';
+import { useWorkoutHealthSummary } from '../../hooks/useWorkoutHealthSummary';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -472,6 +474,7 @@ function HistoryCard({ session }: { session: HistorySession }) {
                     entering={FadeInUp.duration(200)}
                     style={{ paddingHorizontal: 20, paddingBottom: 20 }}
                 >
+                    <HealthCardSlot sessionId={session.id} />
                     {session.workoutItems.length > 0 ? (
                         session.workoutItems.map((item, idx) => (
                             <HistoryItemRenderer key={item.id} item={item} isFirst={idx === 0} />
@@ -495,6 +498,14 @@ function HistoryCard({ session }: { session: HistorySession }) {
             )}
         </PressableScale>
     );
+}
+
+/* ─── Health Card Slot (Fase 13) ─── */
+
+function HealthCardSlot({ sessionId }: { sessionId: string }) {
+    const { data } = useWorkoutHealthSummary(sessionId);
+    if (!data) return null;
+    return <WorkoutHealthCard summary={data} compact />;
 }
 
 /* ─── Workout Item Renderers ─── */
