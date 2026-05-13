@@ -294,6 +294,19 @@ function WatchBridge() {
         return () => { if (__DEV__) console.log('[WatchBridge] UNMOUNTED'); };
     }, []);
 
+    // Fase 14a — Registrar background task de health sync (iOS).
+    // Idempotente: TaskManager dedup por nome.
+    React.useEffect(() => {
+        (async () => {
+            try {
+                const { registerHealthSyncTask } = require('../lib/healthSyncTask');
+                await registerHealthSyncTask();
+            } catch (e: any) {
+                if (__DEV__) console.warn(`[WatchBridge] Health sync task register failed: ${e?.message}`);
+            }
+        })();
+    }, []);
+
     // Cleanup stale in_progress sessions (>24h old → abandoned)
     React.useEffect(() => {
         async function cleanupStaleSessions() {
@@ -394,8 +407,32 @@ function GlobalOverlays() {
         <>
             <ConnectionBanner isConnected={isConnected} wasDisconnected={wasDisconnected} />
             <Toast config={toastConfig} topOffset={insets.top + 8} />
+            {Platform.OS === 'ios' && <HealthOnboardingTrigger />}
         </>
     );
+}
+
+// Fase 14a — Mostra HealthOnboardingSheet uma única vez por usuário.
+// Flag persiste em MMKV (hasSeenHealthOnboarding).
+function HealthOnboardingTrigger() {
+    const [visible, setVisible] = React.useState(false);
+    const HealthOnboardingSheet = require('../components/onboarding/HealthOnboardingSheet').HealthOnboardingSheet;
+
+    React.useEffect(() => {
+        try {
+            const { hasSeenHealthOnboarding } = require('../lib/healthOnboardingFlag');
+            // Pequeno delay pra deixar app renderizar antes do modal
+            const t = setTimeout(() => {
+                if (!hasSeenHealthOnboarding()) setVisible(true);
+            }, 1500);
+            return () => clearTimeout(t);
+        } catch {
+            // ignore (Expo Go sem MMKV)
+        }
+    }, []);
+
+    if (!visible) return null;
+    return <HealthOnboardingSheet visible={visible} onClose={() => setVisible(false)} />;
 }
 
 export default function RootLayout() {

@@ -897,6 +897,100 @@ export type Database = {
           },
         ]
       }
+      daily_activity_samples: {
+        Row: {
+          calories_active: number | null
+          distance_meters: number | null
+          id: string
+          sample_date: string
+          source: string
+          steps: number | null
+          student_id: string
+          synced_at: string
+        }
+        Insert: {
+          calories_active?: number | null
+          distance_meters?: number | null
+          id?: string
+          sample_date: string
+          source?: string
+          steps?: number | null
+          student_id: string
+          synced_at?: string
+        }
+        Update: {
+          calories_active?: number | null
+          distance_meters?: number | null
+          id?: string
+          sample_date?: string
+          source?: string
+          steps?: number | null
+          student_id?: string
+          synced_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_activity_samples_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      daily_sleep_samples: {
+        Row: {
+          awake_minutes: number | null
+          deep_minutes: number | null
+          duration_minutes: number | null
+          efficiency_pct: number | null
+          id: string
+          light_minutes: number | null
+          raw: Json | null
+          rem_minutes: number | null
+          sample_date: string
+          source: string
+          student_id: string
+          synced_at: string
+        }
+        Insert: {
+          awake_minutes?: number | null
+          deep_minutes?: number | null
+          duration_minutes?: number | null
+          efficiency_pct?: number | null
+          id?: string
+          light_minutes?: number | null
+          raw?: Json | null
+          rem_minutes?: number | null
+          sample_date: string
+          source?: string
+          student_id: string
+          synced_at?: string
+        }
+        Update: {
+          awake_minutes?: number | null
+          deep_minutes?: number | null
+          duration_minutes?: number | null
+          efficiency_pct?: number | null
+          id?: string
+          light_minutes?: number | null
+          raw?: Json | null
+          rem_minutes?: number | null
+          sample_date?: string
+          source?: string
+          student_id?: string
+          synced_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_sleep_samples_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exercise_condition_constraints: {
         Row: {
           condition_id: string
@@ -1487,6 +1581,76 @@ export type Database = {
           },
         ]
       }
+      hr_resting_samples: {
+        Row: {
+          bpm: number
+          id: string
+          sample_date: string
+          source: string
+          student_id: string
+          synced_at: string
+        }
+        Insert: {
+          bpm: number
+          id?: string
+          sample_date: string
+          source?: string
+          student_id: string
+          synced_at?: string
+        }
+        Update: {
+          bpm?: number
+          id?: string
+          sample_date?: string
+          source?: string
+          student_id?: string
+          synced_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_resting_samples_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hrv_samples: {
+        Row: {
+          id: string
+          sample_date: string
+          source: string
+          student_id: string
+          synced_at: string
+          value_ms: number
+        }
+        Insert: {
+          id?: string
+          sample_date: string
+          source?: string
+          student_id: string
+          synced_at?: string
+          value_ms: number
+        }
+        Update: {
+          id?: string
+          sample_date?: string
+          source?: string
+          student_id?: string
+          synced_at?: string
+          value_ms?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hrv_samples_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           content: string | null
@@ -2035,6 +2199,50 @@ export type Database = {
             columns: ["trainer_id"]
             isOneToOne: false
             referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      readiness_scores: {
+        Row: {
+          computed_at: string
+          hr_baseline_30d: number | null
+          hr_component: number | null
+          id: string
+          score: number
+          score_date: string
+          sleep_component: number | null
+          sleep_minutes: number | null
+          student_id: string
+        }
+        Insert: {
+          computed_at?: string
+          hr_baseline_30d?: number | null
+          hr_component?: number | null
+          id?: string
+          score: number
+          score_date: string
+          sleep_component?: number | null
+          sleep_minutes?: number | null
+          student_id: string
+        }
+        Update: {
+          computed_at?: string
+          hr_baseline_30d?: number | null
+          hr_component?: number | null
+          id?: string
+          score?: number
+          score_date?: string
+          sleep_component?: number | null
+          sleep_minutes?: number | null
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "readiness_scores_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
             referencedColumns: ["id"]
           },
         ]
@@ -2991,6 +3199,50 @@ export type Database = {
             columns: ["trainer_id"]
             isOneToOne: false
             referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wearable_connections: {
+        Row: {
+          connected_at: string
+          granted_categories: string[]
+          id: string
+          last_error: string | null
+          last_sync_at: string | null
+          revoked_at: string | null
+          source: string
+          status: string
+          student_id: string
+        }
+        Insert: {
+          connected_at?: string
+          granted_categories?: string[]
+          id?: string
+          last_error?: string | null
+          last_sync_at?: string | null
+          revoked_at?: string | null
+          source: string
+          status?: string
+          student_id: string
+        }
+        Update: {
+          connected_at?: string
+          granted_categories?: string[]
+          id?: string
+          last_error?: string | null
+          last_sync_at?: string | null
+          revoked_at?: string | null
+          source?: string
+          status?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wearable_connections_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
             referencedColumns: ["id"]
           },
         ]

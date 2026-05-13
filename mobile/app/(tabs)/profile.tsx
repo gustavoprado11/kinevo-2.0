@@ -10,7 +10,7 @@ import { useRouter } from "expo-router";
 import Animated, { FadeInUp, FadeIn, Easing } from "react-native-reanimated";
 import {
     LogOut, Settings, HelpCircle, Shield, ChevronRight, CreditCard, Users,
-    Sun, Moon, Monitor, Check,
+    Sun, Moon, Monitor, Check, Heart,
 } from "lucide-react-native";
 import { PressableScale } from "../../components/shared/PressableScale";
 import { useV2Colors } from "../../hooks/useV2Colors";
@@ -72,6 +72,14 @@ export default function ProfileScreen() {
             iconColor: '#2563eb',
             iconBg: 'rgba(37, 99, 235, 0.14)',
             route: '/profile/subscription',
+        },
+        {
+            id: 'connections',
+            label: 'Conexões de Saúde',
+            Icon: Heart,
+            iconColor: '#EF4444',
+            iconBg: 'rgba(239, 68, 68, 0.12)',
+            route: '/profile/connections',
         },
         {
             id: 'support',

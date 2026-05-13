@@ -23,6 +23,10 @@ import { useV2Colors } from "../../hooks/useV2Colors";
 import { v2 } from "@kinevo/shared/tokens";
 import { LinearGradient } from "expo-linear-gradient";
 import { Trophy } from "lucide-react-native";
+import { ReadinessCard } from "../../components/health/ReadinessCard";
+import { useReadinessToday } from "../../hooks/useReadinessToday";
+import { getReadinessRecommendation } from "../../lib/readiness";
+import { useHealthDashboard } from "../../hooks/useHealthDashboard";
 
 // ─── Entering animation shorthand ───
 const ENTER = ANIM.enter;
@@ -379,6 +383,9 @@ export default function HomeScreen() {
                         fetchRange={fetchRange}
                     />
                 </Animated.View>
+
+                {/* Fase 14a — Readiness Card (escondido silenciosamente sem dados/conexão) */}
+                <ReadinessCardSlot />
 
                 {isLoading && !programName ? (
                     <View className="py-20 items-center">
@@ -762,5 +769,23 @@ function WeeklySummaryCard({ completed, target }: { completed: number; target: n
                 <Text style={{ fontStyle: 'italic', color: '#7C3AED' }}>Continue assim 💪</Text>
             </Text>
         </View>
+    );
+}
+
+// Fase 14a — Slot do ReadinessCard. Esconde silenciosamente sem dados.
+// (Card promotional "Conecte sua saúde" pra alunos sem conexão fica pra 14c.)
+function ReadinessCardSlot() {
+    const router = useRouter();
+    const { data: readiness } = useReadinessToday();
+    const { data: dashboard } = useHealthDashboard();
+    if (!readiness) return null;
+    return (
+        <ReadinessCard
+            result={readiness}
+            recommendation={getReadinessRecommendation(readiness)}
+            hrToday={dashboard?.hrRestingToday}
+            hrv={dashboard?.hrvToday}
+            onPress={() => router.push('/(tabs)/health' as never)}
+        />
     );
 }

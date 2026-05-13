@@ -1,6 +1,6 @@
 import React, { useCallback } from "react";
 import { Tabs, usePathname, useRouter } from "expo-router";
-import { Home, MessageCircle, Clock, User } from "lucide-react-native";
+import { Home, MessageCircle, Clock, User, Heart } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { View } from "react-native";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
@@ -22,6 +22,7 @@ export default function TabsLayout() {
     const STUDENT_TABS: TabConfig[] = [
         { key: "home", label: "Início", icon: Home },
         { key: "inbox", label: "Mensagens", icon: MessageCircle, badge: unreadCount },
+        { key: "health", label: "Saúde", icon: Heart },
         { key: "logs", label: "Histórico", icon: Clock },
         { key: "profile", label: "Perfil", icon: User },
     ];
@@ -99,6 +100,7 @@ export default function TabsLayout() {
         >
             <Tabs.Screen name="home" options={{ title: "Início" }} />
             <Tabs.Screen name="inbox" options={{ title: "Mensagens" }} />
+            <Tabs.Screen name="health" options={{ title: "Saúde" }} />
             <Tabs.Screen name="logs" options={{ title: "Histórico" }} />
             <Tabs.Screen name="profile" options={{ title: "Perfil" }} />
         </Tabs>
