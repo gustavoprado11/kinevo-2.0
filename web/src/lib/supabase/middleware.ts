@@ -46,6 +46,7 @@ export async function updateSession(request: NextRequest) {
         !request.nextUrl.pathname.startsWith('/terms') &&
         !request.nextUrl.pathname.startsWith('/auth') &&
         !request.nextUrl.pathname.startsWith('/android') &&
+        !request.nextUrl.pathname.startsWith('/strava-callback') &&
         !request.nextUrl.pathname.startsWith('/sitemap') &&
         !request.nextUrl.pathname.startsWith('/robots') &&
         !request.nextUrl.pathname.startsWith('/api/webhooks') &&
