@@ -26,6 +26,17 @@ const nextConfig: NextConfig = {
     // 5–7 dias após deploy.
     optimizePackageImports: ["lucide-react", "framer-motion"],
   },
+  async rewrites() {
+    // Fase 16 (pre-impl) — Strava OAuth callback page servida sem .html.
+    // URL canônica registrada no Strava Dashboard:
+    // https://www.kinevoapp.com/strava-callback
+    return [
+      {
+        source: "/strava-callback",
+        destination: "/strava-callback.html",
+      },
+    ];
+  },
   async redirects() {
     // M8/D1 — rotas antigas de Avaliações Presenciais redirecionam pra
     // /avaliacoes. HTTP 301 preserva bookmarks e SEO. Query params extras
