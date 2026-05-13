@@ -162,6 +162,8 @@ export default function ConnectionsScreen() {
   }, [localToggles]);
 
   const isConnected = connection?.status === 'active';
+  const isRevoked = connection?.status === 'revoked';
+  const hasError = connection?.status === 'error';
 
   const healthConnectUnavailableMsg = useMemo(() => {
     if (!isAndroid) return 'Disponível só no Android';
@@ -183,12 +185,16 @@ export default function ConnectionsScreen() {
               <Apple size={22} color={isIOS ? '#F1F5F9' : 'rgba(255,255,255,0.35)'} strokeWidth={2} />
               <View style={styles.rowText}>
                 <Text style={[styles.rowTitle, !isIOS && styles.rowTitleDisabled]}>Apple Saúde</Text>
-                <Text style={styles.rowSub}>
+                <Text style={[styles.rowSub, isIOS && isRevoked && styles.rowSubError]}>
                   {!isIOS
                     ? 'Disponível só no iOS'
-                    : isConnected
-                      ? `Conectado · ${connection?.granted_categories.length ?? 0} categorias`
-                      : 'Não conectado'}
+                    : isRevoked
+                      ? 'Revogado pelo sistema · Reconectar'
+                      : hasError
+                        ? 'Erro na última sync · Tentar novamente'
+                        : isConnected
+                          ? `Conectado · ${connection?.granted_categories.length ?? 0} categorias`
+                          : 'Não conectado'}
                 </Text>
               </View>
             </View>
@@ -211,14 +217,18 @@ export default function ConnectionsScreen() {
               <Smartphone size={22} color={isAndroid ? '#F1F5F9' : 'rgba(255,255,255,0.35)'} strokeWidth={2} />
               <View style={styles.rowText}>
                 <Text style={[styles.rowTitle, !isAndroid && styles.rowTitleDisabled]}>Google Health Connect</Text>
-                <Text style={styles.rowSub}>
+                <Text style={[styles.rowSub, isAndroid && isRevoked && styles.rowSubError]}>
                   {!isAndroid
                     ? 'Disponível só no Android'
                     : sdkStatus !== 'available'
                       ? healthConnectUnavailableMsg
-                      : isConnected
-                        ? `Conectado · ${connection?.granted_categories.length ?? 0} categorias`
-                        : 'Não conectado'}
+                      : isRevoked
+                        ? 'Revogado pelo sistema · Reconectar'
+                        : hasError
+                          ? 'Erro na última sync · Tentar novamente'
+                          : isConnected
+                            ? `Conectado · ${connection?.granted_categories.length ?? 0} categorias`
+                            : 'Não conectado'}
                 </Text>
               </View>
             </View>
@@ -313,6 +323,7 @@ const styles = StyleSheet.create({
   rowTitle: { fontSize: 14, fontWeight: '600', color: '#F1F5F9' },
   rowTitleDisabled: { color: 'rgba(255,255,255,0.55)' },
   rowSub: { fontSize: 12, color: 'rgba(255,255,255,0.55)', marginTop: 2 },
+  rowSubError: { color: '#EF4444', fontWeight: '600' },
   connectBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     backgroundColor: '#7c3aed', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 10,

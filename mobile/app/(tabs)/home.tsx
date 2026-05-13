@@ -27,6 +27,10 @@ import { ReadinessCard } from "../../components/health/ReadinessCard";
 import { useReadinessToday } from "../../hooks/useReadinessToday";
 import { getReadinessRecommendation } from "../../lib/readiness";
 import { useHealthDashboard } from "../../hooks/useHealthDashboard";
+import { HealthPromotionalCard } from "../../components/health/HealthPromotionalCard";
+import { ReadinessCardSkeleton } from "../../components/health/ReadinessCardSkeleton";
+import { useWearableConnections } from "../../hooks/useWearableConnections";
+import { HealthOnboardingSheet } from "../../components/onboarding/HealthOnboardingSheet";
 
 // ─── Entering animation shorthand ───
 const ENTER = ANIM.enter;
@@ -772,20 +776,47 @@ function WeeklySummaryCard({ completed, target }: { completed: number; target: n
     );
 }
 
-// Fase 14a — Slot do ReadinessCard. Esconde silenciosamente sem dados.
-// (Card promotional "Conecte sua saúde" pra alunos sem conexão fica pra 14c.)
+// Fase 14a → 14c — Slot do ReadinessCard com 3 branches:
+//   1. Tem readiness → ReadinessCard
+//   2. Sem readiness mas tem conexão ativa → Skeleton (sync rodando)
+//   3. Sem conexão ativa → HealthPromotionalCard (CTA reabre onboarding)
 function ReadinessCardSlot() {
     const router = useRouter();
-    const { data: readiness } = useReadinessToday();
+    const { data: readiness, isLoading: readinessLoading } = useReadinessToday();
     const { data: dashboard } = useHealthDashboard();
-    if (!readiness) return null;
-    return (
-        <ReadinessCard
-            result={readiness}
-            recommendation={getReadinessRecommendation(readiness)}
-            hrToday={dashboard?.hrRestingToday}
-            hrv={dashboard?.hrvToday}
-            onPress={() => router.push('/(tabs)/health' as never)}
-        />
-    );
+    const { hasActive, isLoading: connLoading } = useWearableConnections();
+    const [showOnboarding, setShowOnboarding] = React.useState(false);
+
+    if (readiness) {
+        return (
+            <ReadinessCard
+                result={readiness}
+                recommendation={getReadinessRecommendation(readiness)}
+                hrToday={dashboard?.hrRestingToday}
+                hrv={dashboard?.hrvToday}
+                onPress={() => router.push('/(tabs)/health' as never)}
+            />
+        );
+    }
+
+    // Carregando: mostra skeleton só se há conexão ativa (senão fica vazio)
+    if ((readinessLoading || connLoading) && hasActive) {
+        return <ReadinessCardSkeleton />;
+    }
+
+    if (!hasActive) {
+        return (
+            <>
+                <HealthPromotionalCard onConnect={() => setShowOnboarding(true)} />
+                {showOnboarding && (
+                    <HealthOnboardingSheet
+                        visible={showOnboarding}
+                        onClose={() => setShowOnboarding(false)}
+                    />
+                )}
+            </>
+        );
+    }
+
+    return null;
 }

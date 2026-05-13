@@ -36,6 +36,9 @@ import { ShareableCardProps } from '../../components/workout/sharing/types';
 import { watchFinishState } from '../../lib/finishWorkoutFromWatch';
 import { appEvents, WATCH_WORKOUT_FINISHED } from '../../lib/events';
 import { useV2Colors } from '../../hooks/useV2Colors';
+import { usePreWorkoutDecision } from '../../hooks/usePreWorkoutDecision';
+import { useHealthDashboard } from '../../hooks/useHealthDashboard';
+import { PreWorkoutReadinessSheet } from '../../components/health/PreWorkoutReadinessSheet';
 
 export default function WorkoutPlayerScreen() {
     const colors = useV2Colors();
@@ -137,10 +140,44 @@ export default function WorkoutPlayerScreen() {
     // Stash feedback data while post-checkin is showing
     const pendingFeedbackRef = React.useRef<{ rpe: number; feedback: string } | null>(null);
 
-    // Auto-show pre-checkin or create session when triggers are resolved
+    // Fase 14c — Pré-treino Readiness Sheet. Mostra ANTES da criação de
+    // workout_session se há readinessData. "Reagendar" volta sem criar
+    // nenhum row. "Treinar mesmo assim" libera o fluxo normal.
+    const { shouldShowSheet: shouldShowReadinessSheet, readinessData, isLoading: readinessLoading } =
+        usePreWorkoutDecision(id as string);
+    const { data: healthDashboard } = useHealthDashboard();
+    const [readinessDecided, setReadinessDecided] = React.useState(false);
+    const [readinessSheetVisible, setReadinessSheetVisible] = React.useState(false);
+
+    React.useEffect(() => {
+        if (readinessLoading || readinessDecided) return;
+        if (shouldShowReadinessSheet) {
+            setReadinessSheetVisible(true);
+        } else {
+            // Sem readiness data → segue direto sem sheet
+            setReadinessDecided(true);
+        }
+    }, [readinessLoading, readinessDecided, shouldShowReadinessSheet]);
+
+    const handleReadinessProceed = React.useCallback(() => {
+        if (__DEV__) console.log('[PreWorkoutReadiness] proceed tapped');
+        setReadinessSheetVisible(false);
+        setReadinessDecided(true);
+    }, []);
+
+    const handleReadinessReschedule = React.useCallback(() => {
+        if (__DEV__) console.log('[PreWorkoutReadiness] reschedule tapped');
+        setReadinessSheetVisible(false);
+        // NÃO criar workout_session — apenas volta pra Home
+        router.back();
+    }, [router]);
+
+    // Auto-show pre-checkin or create session when triggers are resolved.
+    // Gate adicional: NÃO criar session enquanto Pré-treino Sheet pendente.
     const sessionCreatedRef = React.useRef(false);
     React.useEffect(() => {
         if (isLoading || triggersLoading || sessionCreatedRef.current) return;
+        if (!readinessDecided) return; // Espera decisão da readiness sheet
 
         if (preWorkoutTrigger && preCheckinState === 'pending') {
             setPreCheckinState('showing');
@@ -149,7 +186,7 @@ export default function WorkoutPlayerScreen() {
             sessionCreatedRef.current = true;
             createSession();
         }
-    }, [isLoading, triggersLoading, preWorkoutTrigger, preCheckinState]);
+    }, [isLoading, triggersLoading, preWorkoutTrigger, preCheckinState, readinessDecided]);
 
     // Keep a ref to exercises for the onSetComplete callback
     const exercisesRef = useRef(exercises);
@@ -954,6 +991,18 @@ export default function WorkoutPlayerScreen() {
                     })(),
                 }}
             />
+            {/* Fase 14c — Pré-treino Readiness Sheet (antes da workout_session) */}
+            {readinessData && (
+                <PreWorkoutReadinessSheet
+                    visible={readinessSheetVisible}
+                    readiness={readinessData}
+                    hrToday={healthDashboard?.hrRestingToday}
+                    hrv={healthDashboard?.hrvToday}
+                    onProceed={handleReadinessProceed}
+                    onReschedule={handleReadinessReschedule}
+                    onDismiss={handleReadinessProceed}
+                />
+            )}
             {/* Success Modal */}
             <WorkoutSuccessModal
                 visible={showSuccessModal}

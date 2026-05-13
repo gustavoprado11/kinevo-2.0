@@ -6,7 +6,10 @@ import { HealthMetricCard } from '../../components/health/HealthMetricCard';
 import { SleepWeekChart } from '../../components/health/SleepWeekChart';
 import { useHealthDashboard } from '../../hooks/useHealthDashboard';
 import { useHealthKitSync } from '../../hooks/useHealthKitSync';
+import { useHealthConnectSync } from '../../hooks/useHealthConnectSync';
 import { useRouter } from 'expo-router';
+import { Platform } from 'react-native';
+import { toast } from '../../lib/toast';
 
 function formatDurationHM(min: number | null | undefined): string | null {
   if (min == null) return null;
@@ -23,14 +26,22 @@ function formatToday(): string {
 export default function HealthScreen() {
   const router = useRouter();
   const { data, isLoading, refresh } = useHealthDashboard();
-  const { syncIncremental, isLoading: isSyncing } = useHealthKitSync();
+  const hk = useHealthKitSync();
+  const hc = useHealthConnectSync();
+  const syncIncremental = Platform.OS === 'ios' ? hk.syncIncremental : hc.syncIncremental;
+  const isSyncing = Platform.OS === 'ios' ? hk.isLoading : hc.isLoading;
   const [refreshing, setRefreshing] = useState(false);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await syncIncremental();
+      const res = await syncIncremental();
+      if (!res.ok) {
+        toast.error('Não foi possível atualizar agora', 'Tente novamente em alguns instantes.');
+      }
       await refresh();
+    } catch {
+      toast.error('Não foi possível atualizar agora', 'Tente novamente em alguns instantes.');
     } finally {
       setRefreshing(false);
     }
