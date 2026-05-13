@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
+import { useV2Colors, type V2Palette } from '../../hooks/useV2Colors';
 
 export interface HealthMetricCardProps {
   icon: LucideIcon;
@@ -13,6 +14,8 @@ export interface HealthMetricCardProps {
 }
 
 export function HealthMetricCard({ icon: Icon, label, value, unit, sub, color, trend }: HealthMetricCardProps) {
+  const colors = useV2Colors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const hasValue = value != null && value !== '';
 
   return (
@@ -44,74 +47,36 @@ export function HealthMetricCard({ icon: Icon, label, value, unit, sub, color, t
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    flex: 1,
-    flexDirection: 'row',
-    backgroundColor: '#1A1A2E',
-    borderRadius: 16,
-    overflow: 'hidden',
-    minHeight: 120,
-  },
-  colorStrip: {
-    width: 3,
-  },
-  body: {
-    flex: 1,
-    padding: 14,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 10,
-  },
-  label: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 1.2,
-    color: 'rgba(255,255,255,0.55)',
-  },
-  valueRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 4,
-  },
-  value: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: '#F1F5F9',
-    letterSpacing: -0.6,
-  },
-  unit: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.55)',
-  },
-  empty: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: 'rgba(255,255,255,0.25)',
-    letterSpacing: -0.6,
-  },
-  sub: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.55)',
-    marginTop: 6,
-  },
-  trendPill: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  trendUp: { backgroundColor: 'rgba(34,197,94,0.15)' },
-  trendDown: { backgroundColor: 'rgba(239,68,68,0.15)' },
-  trendFlat: { backgroundColor: 'rgba(255,255,255,0.06)' },
-  trendText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#F1F5F9',
-  },
-});
+function createStyles(c: V2Palette) {
+  return StyleSheet.create({
+    card: {
+      flex: 1,
+      flexDirection: 'row',
+      backgroundColor: c.surface.card,
+      borderRadius: 16,
+      overflow: 'hidden',
+      minHeight: 120,
+    },
+    colorStrip: { width: 3 },
+    body: { flex: 1, padding: 14 },
+    header: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
+    label: { fontSize: 10, fontWeight: '700', letterSpacing: 1.2, color: c.text.tertiary },
+    valueRow: { flexDirection: 'row', alignItems: 'baseline', gap: 4 },
+    value: { fontSize: 26, fontWeight: '800', color: c.text.primary, letterSpacing: -0.6 },
+    unit: { fontSize: 12, color: c.text.tertiary },
+    empty: { fontSize: 26, fontWeight: '800', color: c.text.quaternary, letterSpacing: -0.6 },
+    sub: { fontSize: 11, color: c.text.tertiary, marginTop: 6 },
+    trendPill: {
+      position: 'absolute',
+      top: 12,
+      right: 12,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 6,
+    },
+    trendUp: { backgroundColor: 'rgba(34,197,94,0.15)' },
+    trendDown: { backgroundColor: 'rgba(239,68,68,0.15)' },
+    trendFlat: { backgroundColor: c.border.subtle },
+    trendText: { fontSize: 11, fontWeight: '700', color: c.text.primary },
+  });
+}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, Modal, Pressable, StyleSheet, ScrollView, ActivityIndicator, Platform, Alert, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -6,6 +6,7 @@ import { Heart, Moon, Footprints, Zap, X } from 'lucide-react-native';
 import { useHealthKitSync } from '../../hooks/useHealthKitSync';
 import { useHealthConnectSync } from '../../hooks/useHealthConnectSync';
 import { markHealthOnboardingSeen } from '../../lib/healthOnboardingFlag';
+import { useV2Colors, type V2Palette } from '../../hooks/useV2Colors';
 
 const PLAY_STORE_HEALTH_CONNECT = 'https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata';
 const isIOS = Platform.OS === 'ios';
@@ -25,6 +26,8 @@ const BULLETS = [
 ];
 
 export function HealthOnboardingSheet({ visible, onClose }: HealthOnboardingSheetProps) {
+  const colors = useV2Colors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const hk = useHealthKitSync();
   const hc = useHealthConnectSync();
   const [isConnecting, setIsConnecting] = useState(false);
@@ -83,7 +86,7 @@ export function HealthOnboardingSheet({ visible, onClose }: HealthOnboardingShee
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
           <Pressable onPress={handleLater} hitSlop={12}>
-            <X size={22} color="rgba(255,255,255,0.55)" strokeWidth={2.5} />
+            <X size={22} color={colors.text.tertiary} strokeWidth={2.5} />
           </Pressable>
         </View>
 
@@ -103,7 +106,7 @@ export function HealthOnboardingSheet({ visible, onClose }: HealthOnboardingShee
           <Text style={styles.sectionLabel}>VAMOS IMPORTAR</Text>
           {BULLETS.map(({ icon: Icon, label }) => (
             <View key={label} style={styles.bulletRow}>
-              <Icon size={18} color="#A78BFA" strokeWidth={2.5} />
+              <Icon size={18} color={colors.purple[400]} strokeWidth={2.5} />
               <Text style={styles.bulletText}>{label}</Text>
             </View>
           ))}
@@ -142,8 +145,9 @@ export function HealthOnboardingSheet({ visible, onClose }: HealthOnboardingShee
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0D0D17' },
+function createStyles(c: V2Palette) {
+  return StyleSheet.create({
+  container: { flex: 1, backgroundColor: c.surface.canvas },
   header: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
@@ -163,14 +167,14 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#F1F5F9',
+    color: c.text.primary,
     letterSpacing: -0.6,
     textAlign: 'center',
     marginBottom: 14,
   },
   body: {
     fontSize: 15,
-    color: 'rgba(255,255,255,0.75)',
+    color: c.text.secondary,
     lineHeight: 22,
     textAlign: 'center',
     marginBottom: 28,
@@ -179,7 +183,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 1.6,
-    color: 'rgba(255,255,255,0.55)',
+    color: c.text.tertiary,
     marginTop: 20,
     marginBottom: 10,
   },
@@ -189,17 +193,17 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingVertical: 6,
   },
-  bulletText: { fontSize: 14, color: '#F1F5F9', fontWeight: '500' },
+  bulletText: { fontSize: 14, color: c.text.primary, fontWeight: '500' },
   subText: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.7)',
+    color: c.text.secondary,
     lineHeight: 22,
   },
   actions: {
     padding: 20,
     gap: 12,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.06)',
+    borderTopColor: c.border.subtle,
   },
   ctaPrimary: {
     paddingVertical: 16,
@@ -212,8 +216,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   ctaSecondaryText: {
-    color: 'rgba(255,255,255,0.65)',
+    color: c.text.tertiary,
     fontWeight: '600',
     fontSize: 14,
   },
-});
+  });
+}

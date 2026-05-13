@@ -1,10 +1,14 @@
-// Fase 14b — Função pura de sync HealthKit (iOS).
-// Extraída do useHealthKitSync da 14a pra rodar fora do React (TaskManager).
+// Fase 14a (refatorado na 14b → reescrito na 14c migração Kingstinct).
+// Função pura de sync HealthKit pra iOS via @kingstinct/react-native-healthkit.
+// Sem hooks — pode rodar dentro de TaskManager (background, sem React).
 import { Platform } from 'react-native';
-import AppleHealthKit, {
-  HealthInputOptions,
-  HealthValue,
-} from 'react-native-health';
+import {
+  queryCategorySamples,
+  queryQuantitySamples,
+  CategoryValueSleepAnalysis,
+  type CategorySampleTyped,
+  type QuantitySampleTyped,
+} from '@kingstinct/react-native-healthkit';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   emptyCounts,
@@ -15,7 +19,24 @@ import {
   upsertConnectionStatus,
 } from './shared';
 
-type SleepBlock = HealthValue & { value: string | number };
+// Identifiers de leitura — exportado pra reuso no hook (requestAuthorization).
+export const READ_IDENTIFIERS = [
+  'HKCategoryTypeIdentifierSleepAnalysis',
+  'HKQuantityTypeIdentifierStepCount',
+  'HKQuantityTypeIdentifierRestingHeartRate',
+  'HKQuantityTypeIdentifierHeartRateVariabilitySDNN',
+  'HKQuantityTypeIdentifierActiveEnergyBurned',
+  'HKQuantityTypeIdentifierDistanceWalkingRunning',
+] as const;
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Sleep aggregation (Kingstinct)
+// queryCategorySamples('SleepAnalysis') retorna blocos com value enum:
+//   inBed=0, asleepUnspecified=1, awake=2, asleepCore=3, asleepDeep=4, asleepREM=5
+// Eficiência = (asleep total) / (in bed total).
+// ──────────────────────────────────────────────────────────────────────────────
+
+type SleepSample = CategorySampleTyped<'HKCategoryTypeIdentifierSleepAnalysis'>;
 
 interface SleepDailyAgg {
   duration_minutes: number;
@@ -24,17 +45,17 @@ interface SleepDailyAgg {
   rem_minutes: number;
   light_minutes: number;
   awake_minutes: number;
-  raw: Array<{ start: string; end: string; stage: string }>;
+  raw: Array<{ start: string; end: string; stage: number }>;
 }
 
-function aggregateSleep(blocks: SleepBlock[]): Map<string, SleepDailyAgg> {
+function aggregateSleep(samples: readonly SleepSample[]): Map<string, SleepDailyAgg> {
   const byDate = new Map<string, SleepDailyAgg>();
-  for (const block of blocks) {
-    const stage = String(block.value ?? '').toUpperCase();
-    const start = new Date(block.startDate);
-    const end = new Date(block.endDate);
+  for (const sample of samples) {
+    const start = sample.startDate;
+    const end = sample.endDate;
     const durMin = Math.max(0, (end.getTime() - start.getTime()) / 60000);
     if (durMin <= 0) continue;
+    const value = Number(sample.value);
 
     const sampleDate = toDateOnlyISO(end);
     let agg = byDate.get(sampleDate);
@@ -51,18 +72,29 @@ function aggregateSleep(blocks: SleepBlock[]): Map<string, SleepDailyAgg> {
       byDate.set(sampleDate, agg);
     }
 
-    agg.raw.push({ start: block.startDate, end: block.endDate, stage });
+    agg.raw.push({ start: start.toISOString(), end: end.toISOString(), stage: value });
 
-    if (stage === 'DEEP') { agg.deep_minutes += durMin; agg.duration_minutes += durMin; }
-    else if (stage === 'REM') { agg.rem_minutes += durMin; agg.duration_minutes += durMin; }
-    else if (stage === 'CORE' || stage === 'LIGHT') { agg.light_minutes += durMin; agg.duration_minutes += durMin; }
-    else if (stage === 'AWAKE') { agg.awake_minutes += durMin; }
-    else if (stage === 'ASLEEP') { agg.duration_minutes += durMin; }
+    if (value === CategoryValueSleepAnalysis.asleepDeep) {
+      agg.deep_minutes += durMin;
+      agg.duration_minutes += durMin;
+    } else if (value === CategoryValueSleepAnalysis.asleepREM) {
+      agg.rem_minutes += durMin;
+      agg.duration_minutes += durMin;
+    } else if (value === CategoryValueSleepAnalysis.asleepCore) {
+      agg.light_minutes += durMin;
+      agg.duration_minutes += durMin;
+    } else if (value === CategoryValueSleepAnalysis.awake) {
+      agg.awake_minutes += durMin;
+    } else if (value === CategoryValueSleepAnalysis.asleep || value === CategoryValueSleepAnalysis.asleepUnspecified) {
+      // Legacy single-stage: conta como duração mas sem detalhamento
+      agg.duration_minutes += durMin;
+    }
+    // inBed (0) é ignorado — só usado pra cálculo de eficiência abaixo
   }
 
   for (const [, agg] of byDate) {
     const inBedMin = agg.raw
-      .filter((r) => r.stage === 'INBED')
+      .filter((r) => r.stage === CategoryValueSleepAnalysis.inBed)
       .reduce((acc, r) => acc + (new Date(r.end).getTime() - new Date(r.start).getTime()) / 60000, 0);
     if (inBedMin > 0) {
       agg.efficiency_pct = Math.min(100, Math.round((agg.duration_minutes / inBedMin) * 1000) / 10);
@@ -76,43 +108,29 @@ function aggregateSleep(blocks: SleepBlock[]): Map<string, SleepDailyAgg> {
   return byDate;
 }
 
-function aggregateSamplesByDay(samples: HealthValue[]): Map<string, number> {
+function aggregateQuantitySamplesByDay(samples: readonly QuantitySampleTyped<any>[]): Map<string, number> {
   const byDate = new Map<string, number>();
   for (const s of samples) {
-    const day = toDateOnlyISO(new Date(s.endDate ?? s.startDate));
-    byDate.set(day, (byDate.get(day) ?? 0) + Number(s.value ?? 0));
+    const day = toDateOnlyISO(s.endDate ?? s.startDate);
+    byDate.set(day, (byDate.get(day) ?? 0) + Number(s.quantity ?? 0));
   }
   return byDate;
 }
 
-function pickDailyHrValue(samples: HealthValue[]): Map<string, number> {
-  const byDate = new Map<string, { sum: number; count: number }>();
+function averageQuantityByDay(samples: readonly QuantitySampleTyped<any>[]): Map<string, number> {
+  const acc = new Map<string, { sum: number; count: number }>();
   for (const s of samples) {
-    const day = toDateOnlyISO(new Date(s.endDate ?? s.startDate));
-    const v = Number(s.value ?? 0);
+    const day = toDateOnlyISO(s.endDate ?? s.startDate);
+    const v = Number(s.quantity ?? 0);
     if (!Number.isFinite(v) || v <= 0) continue;
-    const cur = byDate.get(day) ?? { sum: 0, count: 0 };
+    const cur = acc.get(day) ?? { sum: 0, count: 0 };
     cur.sum += v;
     cur.count += 1;
-    byDate.set(day, cur);
+    acc.set(day, cur);
   }
   const result = new Map<string, number>();
-  for (const [day, { sum, count }] of byDate) {
-    result.set(day, sum / count);
-  }
+  for (const [day, { sum, count }] of acc) result.set(day, sum / count);
   return result;
-}
-
-function call<T>(
-  fn: (opts: HealthInputOptions, cb: (err: string, results: T) => void) => void,
-  opts: HealthInputOptions,
-): Promise<T> {
-  return new Promise((resolve, reject) => {
-    fn(opts, (err, results) => {
-      if (err) reject(new Error(err));
-      else resolve(results);
-    });
-  });
 }
 
 export interface SyncHealthKitResult {
@@ -126,10 +144,6 @@ export interface SyncHealthKitOptions {
   recomputeReadinessDays?: number;
 }
 
-/**
- * Sync HealthKit pra os últimos `days` dias do aluno autenticado.
- * Função pura — pode ser chamada de hook (foreground) ou TaskManager (background).
- */
 export async function syncHealthKit(
   supabase: SupabaseClient<any>,
   options: SyncHealthKitOptions,
@@ -146,19 +160,21 @@ export async function syncHealthKit(
 
   const endDate = new Date();
   const startDate = new Date(endDate.getTime() - options.days * 24 * 60 * 60 * 1000);
-  const opts: HealthInputOptions = {
-    startDate: startDate.toISOString(),
-    endDate: endDate.toISOString(),
-  };
-
-  const granted: string[] = [];
+  const dateFilter = { date: { startDate, endDate } };
   let lastError: string | undefined;
+  // Fix BUG 2 — não derivar granted_categories do conteúdo retornado pelas
+  // queries (Apple Saúde vazio ≠ permissão negada). granted_categories é
+  // populado em useHealthKitSync.requestAuthorization após autorização e
+  // editado granularmente via toggles em Settings.
 
-  // Sleep
+  // ── Sleep ──
   try {
-    const samples = await call<SleepBlock[]>(AppleHealthKit.getSleepSamples.bind(AppleHealthKit), opts);
+    const samples = await queryCategorySamples('HKCategoryTypeIdentifierSleepAnalysis', {
+      filter: dateFilter,
+      limit: 0,
+      ascending: true,
+    });
     const byDate = aggregateSleep(samples ?? []);
-    if (byDate.size > 0) granted.push('sleep');
     for (const [sample_date, agg] of byDate) {
       await supabase.from('daily_sleep_samples' as any).upsert(
         {
@@ -183,18 +199,17 @@ export async function syncHealthKit(
     lastError = e?.message;
   }
 
-  // Activity (steps + calories + distance)
+  // ── Activity (steps + active energy + distance) ──
   try {
-    const [steps, kcal, dist] = await Promise.all([
-      call<HealthValue[]>(AppleHealthKit.getDailyStepCountSamples.bind(AppleHealthKit), opts).catch(() => []),
-      call<HealthValue[]>(AppleHealthKit.getActiveEnergyBurned.bind(AppleHealthKit), opts).catch(() => []),
-      call<HealthValue[]>(AppleHealthKit.getDailyDistanceWalkingRunningSamples.bind(AppleHealthKit), opts).catch(() => []),
+    const [stepsSamples, kcalSamples, distSamples] = await Promise.all([
+      queryQuantitySamples('HKQuantityTypeIdentifierStepCount', { filter: dateFilter, limit: 0, ascending: true } as any).catch(() => []),
+      queryQuantitySamples('HKQuantityTypeIdentifierActiveEnergyBurned', { filter: dateFilter, limit: 0, ascending: true } as any).catch(() => []),
+      queryQuantitySamples('HKQuantityTypeIdentifierDistanceWalkingRunning', { filter: dateFilter, limit: 0, ascending: true } as any).catch(() => []),
     ]);
-    const stepsByDay = aggregateSamplesByDay(steps);
-    const kcalByDay = aggregateSamplesByDay(kcal);
-    const distByDay = aggregateSamplesByDay(dist);
+    const stepsByDay = aggregateQuantitySamplesByDay(stepsSamples as readonly QuantitySampleTyped<any>[]);
+    const kcalByDay = aggregateQuantitySamplesByDay(kcalSamples as readonly QuantitySampleTyped<any>[]);
+    const distByDay = aggregateQuantitySamplesByDay(distSamples as readonly QuantitySampleTyped<any>[]);
     const allDays = new Set<string>([...stepsByDay.keys(), ...kcalByDay.keys(), ...distByDay.keys()]);
-    if (allDays.size > 0) granted.push('steps');
     for (const day of allDays) {
       await supabase.from('daily_activity_samples' as any).upsert(
         {
@@ -215,11 +230,14 @@ export async function syncHealthKit(
     lastError = e?.message;
   }
 
-  // HR repouso
+  // ── HR repouso ──
   try {
-    const samples = await call<HealthValue[]>(AppleHealthKit.getRestingHeartRateSamples.bind(AppleHealthKit), opts);
-    const byDay = pickDailyHrValue(samples ?? []);
-    if (byDay.size > 0) granted.push('hr_resting');
+    const samples = await queryQuantitySamples('HKQuantityTypeIdentifierRestingHeartRate', {
+      filter: dateFilter,
+      limit: 0,
+      ascending: true,
+    } as any);
+    const byDay = averageQuantityByDay(samples as readonly QuantitySampleTyped<any>[]);
     for (const [day, bpm] of byDay) {
       await supabase.from('hr_resting_samples' as any).upsert(
         {
@@ -238,21 +256,21 @@ export async function syncHealthKit(
     lastError = e?.message;
   }
 
-  // HRV (SDNN) — pode falhar sem Apple Watch (vazio, não-erro)
+  // ── HRV (SDNN em ms) — pode falhar sem Apple Watch (vazio, não-erro) ──
   try {
-    const samples = await call<HealthValue[]>(
-      AppleHealthKit.getHeartRateVariabilitySamples.bind(AppleHealthKit),
-      opts,
-    );
-    const byDay = pickDailyHrValue(samples ?? []);
-    if (byDay.size > 0) granted.push('hrv');
+    const samples = await queryQuantitySamples('HKQuantityTypeIdentifierHeartRateVariabilitySDNN', {
+      filter: dateFilter,
+      limit: 0,
+      ascending: true,
+    } as any);
+    const byDay = averageQuantityByDay(samples as readonly QuantitySampleTyped<any>[]);
     for (const [day, valueMs] of byDay) {
-      const ms = valueMs < 1 ? valueMs * 1000 : valueMs;
+      // Kingstinct retorna em ms diretamente quando unit é 'ms' (default pra HRV SDNN)
       await supabase.from('hrv_samples' as any).upsert(
         {
           student_id: studentId,
           sample_date: day,
-          value_ms: Math.round(ms * 100) / 100,
+          value_ms: Math.round(valueMs * 100) / 100,
           source: 'healthkit',
           synced_at: new Date().toISOString(),
         },
@@ -264,9 +282,11 @@ export async function syncHealthKit(
     if (__DEV__) console.warn('[syncHealthKit] hrv failed:', e?.message);
   }
 
+  // Não passa granted_categories aqui — preserva valor anterior persistido
+  // pela requestAuthorization (que populou com as 4 categorias autorizadas)
+  // ou pelos toggles granulares em Settings.
   await upsertConnectionStatus(supabase, studentId, 'healthkit', {
     status: lastError ? 'error' : 'active',
-    granted_categories: granted,
     last_error: lastError ?? null,
   });
 

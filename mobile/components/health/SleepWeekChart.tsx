@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { useV2Colors, type V2Palette } from '../../hooks/useV2Colors';
 
 export interface SleepWeekChartProps {
   // 7 datapoints, em ordem cronológica (índice 0 = 6 dias atrás, 6 = hoje).
@@ -10,6 +11,8 @@ const BAR_TARGET_MIN = 480; // 8h
 const BAR_MIN_HEIGHT = 4;
 
 export function SleepWeekChart({ data }: SleepWeekChartProps) {
+  const colors = useV2Colors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const max = Math.max(BAR_TARGET_MIN, ...data.map((d) => d.minutes ?? 0));
   return (
     <View style={styles.card}>
@@ -46,52 +49,54 @@ function dayShortLabel(iso: string): string {
   return dias[d.getDay()];
 }
 
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: '#1A1A2E',
-    borderRadius: 16,
-    padding: 16,
-    marginTop: 16,
-  },
-  label: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 1.2,
-    color: 'rgba(255,255,255,0.55)',
-    marginBottom: 14,
-  },
-  chart: {
-    flexDirection: 'row',
-    height: 100,
-    alignItems: 'flex-end',
-    gap: 8,
-  },
-  barCol: {
-    flex: 1,
-    alignItems: 'center',
-    height: '100%',
-    justifyContent: 'flex-end',
-  },
-  barTrack: {
-    width: '70%',
-    height: 80,
-    justifyContent: 'flex-end',
-  },
-  barFill: {
-    width: '100%',
-    backgroundColor: '#6366F1',
-    borderRadius: 4,
-  },
-  barLast: {
-    backgroundColor: '#A78BFA',
-  },
-  dayLabel: {
-    fontSize: 10,
-    color: 'rgba(255,255,255,0.45)',
-    marginTop: 6,
-    fontWeight: '600',
-  },
-  dayLabelActive: {
-    color: '#F1F5F9',
-  },
-});
+function createStyles(c: V2Palette) {
+  return StyleSheet.create({
+    card: {
+      backgroundColor: c.surface.card,
+      borderRadius: 16,
+      padding: 16,
+      marginTop: 16,
+    },
+    label: {
+      fontSize: 10,
+      fontWeight: '700',
+      letterSpacing: 1.2,
+      color: c.text.tertiary,
+      marginBottom: 14,
+    },
+    chart: {
+      flexDirection: 'row',
+      height: 100,
+      alignItems: 'flex-end',
+      gap: 8,
+    },
+    barCol: {
+      flex: 1,
+      alignItems: 'center',
+      height: '100%',
+      justifyContent: 'flex-end',
+    },
+    barTrack: {
+      width: '70%',
+      height: 80,
+      justifyContent: 'flex-end',
+    },
+    barFill: {
+      width: '100%',
+      backgroundColor: '#6366F1', // sleep indigo (semantic — mantém)
+      borderRadius: 4,
+    },
+    barLast: {
+      backgroundColor: c.purple[400],
+    },
+    dayLabel: {
+      fontSize: 10,
+      color: c.text.tertiary,
+      marginTop: 6,
+      fontWeight: '600',
+    },
+    dayLabelActive: {
+      color: c.text.primary,
+    },
+  });
+}

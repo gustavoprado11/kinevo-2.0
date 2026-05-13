@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.kinevo.mobile",
-      "buildNumber": "30",
+      "buildNumber": "31",
       "appleTeamId": "3D5M22J52M",
       "entitlements": {
         "com.apple.developer.healthkit": true,
@@ -80,7 +80,14 @@
       ],
       "@bacons/apple-targets",
       "./plugins/with-watch-app",
-      "./plugins/with-healthkit",
+      [
+        "@kingstinct/react-native-healthkit",
+        {
+          "NSHealthShareUsageDescription": "O Kinevo le seus dados de saude (sono, passos, frequencia cardiaca, HRV) pra mostrar suas tendencias de saude e personalizar seu coaching. Voce controla quais categorias compartilhar nos Ajustes do Kinevo.",
+          "NSHealthUpdateUsageDescription": "O Kinevo salva seus treinos no Apple Saude como exercicio de forca.",
+          "background": true
+        }
+      ],
       "react-native-health-connect",
       [
         "expo-build-properties",

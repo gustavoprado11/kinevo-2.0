@@ -57,6 +57,45 @@ export function useHealthConnectSync(): UseHealthConnectSyncResult {
       const ok = granted.length > 0;
       setIsAuthorized(ok);
       if (!ok) setError('Nenhuma categoria autorizada');
+
+      // Fix BUG 2 (Android) — popular wearable_connections imediatamente
+      // após autorização. No Android temos lista real de record types
+      // autorizados (diferente do iOS, que oculta read permissions).
+      if (ok) {
+        try {
+          const recordTypeToCategory = (rt: string): string | null => {
+            if (rt === 'SleepSession') return 'sleep';
+            if (rt === 'Steps') return 'steps';
+            if (rt === 'RestingHeartRate') return 'hr_resting';
+            if (rt === 'HeartRateVariabilityRmssd') return 'hrv';
+            return null;
+          };
+          const grantedCategories = Array.from(
+            new Set(granted.map(recordTypeToCategory).filter((c): c is string => c !== null)),
+          );
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const { data: student } = await supabase
+              .from('students' as any).select('id').eq('auth_user_id', user.id).maybeSingle();
+            const studentId = (student as any)?.id;
+            if (studentId) {
+              await supabase.from('wearable_connections' as any).upsert(
+                {
+                  student_id: studentId,
+                  source: 'health_connect',
+                  status: 'active',
+                  granted_categories: grantedCategories,
+                  connected_at: new Date().toISOString(),
+                },
+                { onConflict: 'student_id,source' }
+              );
+            }
+          }
+        } catch (upsertErr: any) {
+          if (__DEV__) console.warn('[useHealthConnectSync] connection upsert failed:', upsertErr?.message);
+        }
+      }
+
       return ok;
     } catch (e: any) {
       const msg = e?.message ?? 'request_permission_failed';

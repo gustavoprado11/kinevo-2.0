@@ -2,6 +2,7 @@
 // iOS: Apple Saúde ativável, Google Health Connect "disponível só no Android".
 // Android: Apple Saúde "disponível só no iOS", Google Health Connect ativável (com 3 SDK states).
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useV2Colors, type V2Palette } from '../../hooks/useV2Colors';
 import { View, Text, ScrollView, Switch, Pressable, StyleSheet, Alert, ActivityIndicator, Linking, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack } from 'expo-router';
@@ -40,6 +41,8 @@ const isAndroid = Platform.OS === 'android';
 const PRIMARY_SOURCE: 'healthkit' | 'health_connect' = isIOS ? 'healthkit' : 'health_connect';
 
 export default function ConnectionsScreen() {
+  const colors = useV2Colors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const hk = useHealthKitSync();
   const hc = useHealthConnectSync();
 
@@ -164,6 +167,8 @@ export default function ConnectionsScreen() {
   const isConnected = connection?.status === 'active';
   const isRevoked = connection?.status === 'revoked';
   const hasError = connection?.status === 'error';
+  // Quantidade dinâmica de categorias ON (reflete toggles em tempo real).
+  const activeCategoriesCount = ALL_CATEGORIES.filter((c) => localToggles[c]).length;
 
   const healthConnectUnavailableMsg = useMemo(() => {
     if (!isAndroid) return 'Disponível só no Android';
@@ -182,7 +187,7 @@ export default function ConnectionsScreen() {
           {/* Apple Saúde — ativável só em iOS */}
           <View style={[styles.row, !isIOS && styles.rowDisabled]}>
             <View style={styles.rowLeft}>
-              <Apple size={22} color={isIOS ? '#F1F5F9' : 'rgba(255,255,255,0.35)'} strokeWidth={2} />
+              <Apple size={22} color={isIOS ? colors.text.primary : colors.text.quaternary} strokeWidth={2} />
               <View style={styles.rowText}>
                 <Text style={[styles.rowTitle, !isIOS && styles.rowTitleDisabled]}>Apple Saúde</Text>
                 <Text style={[styles.rowSub, isIOS && isRevoked && styles.rowSubError]}>
@@ -193,7 +198,7 @@ export default function ConnectionsScreen() {
                       : hasError
                         ? 'Erro na última sync · Tentar novamente'
                         : isConnected
-                          ? `Conectado · ${connection?.granted_categories.length ?? 0} categorias`
+                          ? `Conectado · ${activeCategoriesCount} categoria${activeCategoriesCount === 1 ? '' : 's'}`
                           : 'Não conectado'}
                 </Text>
               </View>
@@ -214,7 +219,7 @@ export default function ConnectionsScreen() {
           {/* Google Health Connect — ativável só em Android com SDK_AVAILABLE */}
           <View style={[styles.row, !isAndroid && styles.rowDisabled]}>
             <View style={styles.rowLeft}>
-              <Smartphone size={22} color={isAndroid ? '#F1F5F9' : 'rgba(255,255,255,0.35)'} strokeWidth={2} />
+              <Smartphone size={22} color={isAndroid ? colors.text.primary : colors.text.quaternary} strokeWidth={2} />
               <View style={styles.rowText}>
                 <Text style={[styles.rowTitle, !isAndroid && styles.rowTitleDisabled]}>Google Health Connect</Text>
                 <Text style={[styles.rowSub, isAndroid && isRevoked && styles.rowSubError]}>
@@ -227,7 +232,7 @@ export default function ConnectionsScreen() {
                         : hasError
                           ? 'Erro na última sync · Tentar novamente'
                           : isConnected
-                            ? `Conectado · ${connection?.granted_categories.length ?? 0} categorias`
+                            ? `Conectado · ${activeCategoriesCount} categoria${activeCategoriesCount === 1 ? '' : 's'}`
                             : 'Não conectado'}
                 </Text>
               </View>
@@ -262,9 +267,11 @@ export default function ConnectionsScreen() {
                 <View style={styles.rowText}>
                   <Text style={styles.rowTitle}>{CATEGORY_LABELS[cat]}</Text>
                   <Text style={styles.rowSub}>
-                    {connection?.granted_categories.includes(cat)
-                      ? `Última sync: ${relativeTime(connection.last_sync_at)}`
-                      : 'Não autorizado'}
+                    {localToggles[cat]
+                      ? connection?.last_sync_at
+                        ? `Sincronizando · última ${relativeTime(connection.last_sync_at)}`
+                        : 'Sincronizando'
+                      : 'Inativo'}
                   </Text>
                 </View>
               </View>
@@ -272,9 +279,9 @@ export default function ConnectionsScreen() {
                 value={localToggles[cat]}
                 onValueChange={(next) => toggleCategory(cat, next)}
                 disabled={!isConnected}
-                trackColor={{ false: '#3F3F46', true: '#7c3aed' }}
+                trackColor={{ false: colors.neutral[700], true: colors.purple[600] }}
                 thumbColor="#FFFFFF"
-                ios_backgroundColor="#3F3F46"
+                ios_backgroundColor={colors.neutral[700]}
               />
             </View>
           ))}
@@ -282,7 +289,7 @@ export default function ConnectionsScreen() {
           {/* ─── Sync manual ─── */}
           {isConnected && (
             <Pressable onPress={handleSyncNow} style={styles.syncBtn} disabled={isLoading}>
-              <RefreshCw size={16} color="#A78BFA" strokeWidth={2.5} />
+              <RefreshCw size={16} color={colors.purple[400]} strokeWidth={2.5} />
               <Text style={styles.syncBtnText}>Sync agora</Text>
             </Pressable>
           )}
@@ -290,7 +297,7 @@ export default function ConnectionsScreen() {
           {/* ─── Privacidade ─── */}
           <Text style={[styles.sectionLabel, { marginTop: 24 }]}>PRIVACIDADE</Text>
           <View style={styles.privacyCard}>
-            <Lock size={18} color="#A78BFA" strokeWidth={2.5} />
+            <Lock size={18} color={colors.purple[400]} strokeWidth={2.5} />
             <Text style={styles.privacyText}>
               Seus dados são privados. Seu coach NÃO vê seus dados de saúde sem você ativar o compartilhamento (em breve).
             </Text>
@@ -299,34 +306,35 @@ export default function ConnectionsScreen() {
             <Text style={styles.privacyLink}>Ver Política de Privacidade →</Text>
           </Pressable>
 
-          {loadingConn && <ActivityIndicator color="#A78BFA" style={{ marginTop: 24 }} />}
+          {loadingConn && <ActivityIndicator color={colors.purple[400]} style={{ marginTop: 24 }} />}
         </ScrollView>
       </SafeAreaView>
     </>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0D0D17' },
+function createStyles(c: V2Palette) {
+  return StyleSheet.create({
+  container: { flex: 1, backgroundColor: c.surface.canvas },
   scroll: { paddingHorizontal: 16, paddingBottom: 40 },
   sectionLabel: {
     fontSize: 11, fontWeight: '700', letterSpacing: 2,
-    color: 'rgba(255,255,255,0.45)', marginTop: 16, marginBottom: 8, paddingHorizontal: 4,
+    color: c.text.tertiary, marginTop: 16, marginBottom: 8, paddingHorizontal: 4,
   },
   row: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: '#1A1A2E', borderRadius: 14, paddingHorizontal: 14, paddingVertical: 14, marginBottom: 8,
+    backgroundColor: c.surface.card, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 14, marginBottom: 8,
   },
   rowDisabled: { opacity: 0.6 },
   rowLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
   rowText: { flex: 1 },
-  rowTitle: { fontSize: 14, fontWeight: '600', color: '#F1F5F9' },
-  rowTitleDisabled: { color: 'rgba(255,255,255,0.55)' },
-  rowSub: { fontSize: 12, color: 'rgba(255,255,255,0.55)', marginTop: 2 },
+  rowTitle: { fontSize: 14, fontWeight: '600', color: c.text.primary },
+  rowTitleDisabled: { color: c.text.tertiary },
+  rowSub: { fontSize: 12, color: c.text.tertiary, marginTop: 2 },
   rowSubError: { color: '#EF4444', fontWeight: '600' },
   connectBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: '#7c3aed', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 10,
+    backgroundColor: c.purple[600], paddingHorizontal: 16, paddingVertical: 8, borderRadius: 10,
   },
   connectBtnText: { color: '#FFF', fontWeight: '700', fontSize: 13 },
   connectedPill: {
@@ -335,15 +343,16 @@ const styles = StyleSheet.create({
   connectedPillText: { color: '#22C55E', fontWeight: '700', fontSize: 11 },
   syncBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    backgroundColor: '#1A1A2E', paddingVertical: 14, borderRadius: 14, marginTop: 12,
+    backgroundColor: c.surface.card, paddingVertical: 14, borderRadius: 14, marginTop: 12,
     borderWidth: 1, borderColor: 'rgba(167,139,250,0.3)',
   },
-  syncBtnText: { color: '#A78BFA', fontWeight: '700', fontSize: 14 },
+  syncBtnText: { color: c.purple[400], fontWeight: '700', fontSize: 14 },
   privacyCard: {
-    flexDirection: 'row', gap: 12, backgroundColor: '#1A1A2E', borderRadius: 14, padding: 14,
+    flexDirection: 'row', gap: 12, backgroundColor: c.surface.card, borderRadius: 14, padding: 14,
   },
-  privacyText: { flex: 1, fontSize: 13, color: 'rgba(255,255,255,0.75)', lineHeight: 18 },
+  privacyText: { flex: 1, fontSize: 13, color: c.text.secondary, lineHeight: 18 },
   privacyLink: {
-    fontSize: 13, color: '#A78BFA', fontWeight: '600', marginTop: 10, paddingHorizontal: 4,
+    fontSize: 13, color: c.purple[400], fontWeight: '600', marginTop: 10, paddingHorizontal: 4,
   },
-});
+  });
+}

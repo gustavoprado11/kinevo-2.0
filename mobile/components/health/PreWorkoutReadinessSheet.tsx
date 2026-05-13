@@ -1,13 +1,14 @@
 // Fase 14c — Pré-treino Readiness Sheet.
 // Sobe quando aluno tap "Iniciar treino" SE há readinessData.
 // 4 variações de categoria (otimo/bom/regular/reduzido) com gradient + recommendation.
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, Modal, Pressable, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ArrowRight, Moon, Heart, Zap } from 'lucide-react-native';
 import type { ReadinessResult, ReadinessCategory } from '../../lib/readiness';
 import { getReadinessRecommendation } from '../../lib/readiness';
+import { useV2Colors, type V2Palette } from '../../hooks/useV2Colors';
 
 export interface PreWorkoutReadinessSheetProps {
   visible: boolean;
@@ -56,6 +57,8 @@ export function PreWorkoutReadinessSheet({
   onReschedule,
   onDismiss,
 }: PreWorkoutReadinessSheetProps) {
+  const colors = useV2Colors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const categoryColor = CATEGORY_COLOR[readiness.category];
   const gradient = CATEGORY_GRADIENT[readiness.category];
   const recommendation = getReadinessRecommendation(readiness);
@@ -94,9 +97,21 @@ export function PreWorkoutReadinessSheet({
               </View>
 
               <View style={styles.statsRow}>
-                <StatPill icon={Moon} value={formatSleep(readiness.sleepMinutesUsed)} label="SONO" />
-                <StatPill icon={Heart} value={hrToday != null ? `${hrToday}` : '–'} label="HR" />
-                <StatPill icon={Zap} value={hrv != null ? `${Math.round(hrv)}` : '–'} label="HRV" />
+                <View style={styles.statItem}>
+                  <Moon size={14} color={colors.text.tertiary} strokeWidth={2.5} />
+                  <Text style={styles.statValue}>{formatSleep(readiness.sleepMinutesUsed)}</Text>
+                  <Text style={styles.statLabel}>SONO</Text>
+                </View>
+                <View style={styles.statItem}>
+                  <Heart size={14} color={colors.text.tertiary} strokeWidth={2.5} />
+                  <Text style={styles.statValue}>{hrToday != null ? `${hrToday}` : '–'}</Text>
+                  <Text style={styles.statLabel}>HR</Text>
+                </View>
+                <View style={styles.statItem}>
+                  <Zap size={14} color={colors.text.tertiary} strokeWidth={2.5} />
+                  <Text style={styles.statValue}>{hrv != null ? `${Math.round(hrv)}` : '–'}</Text>
+                  <Text style={styles.statLabel}>HRV</Text>
+                </View>
               </View>
 
               <View style={styles.recommendationCard}>
@@ -128,24 +143,15 @@ export function PreWorkoutReadinessSheet({
   );
 }
 
-function StatPill({ icon: Icon, value, label }: { icon: any; value: string; label: string }) {
-  return (
-    <View style={styles.statItem}>
-      <Icon size={14} color="rgba(255,255,255,0.6)" strokeWidth={2.5} />
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
+function createStyles(c: V2Palette) {
+  return StyleSheet.create({
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'flex-end',
   },
   sheet: {
-    backgroundColor: '#0D0D17',
+    backgroundColor: c.surface.canvas,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     maxHeight: '85%',
@@ -154,7 +160,7 @@ const styles = StyleSheet.create({
   handle: {
     width: 36,
     height: 4,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: c.text.quaternary,
     borderRadius: 2,
     alignSelf: 'center',
     marginTop: 10,
@@ -168,14 +174,14 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 2,
-    color: 'rgba(255,255,255,0.55)',
+    color: c.text.tertiary,
     textAlign: 'center',
     marginTop: 8,
   },
   title: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#F1F5F9',
+    color: c.text.primary,
     letterSpacing: -0.6,
     textAlign: 'center',
     marginTop: 8,
@@ -216,7 +222,7 @@ const styles = StyleSheet.create({
   statItem: {
     flex: 1,
     alignItems: 'center',
-    backgroundColor: '#1A1A2E',
+    backgroundColor: c.surface.card,
     borderRadius: 14,
     paddingVertical: 14,
     gap: 4,
@@ -224,7 +230,7 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#F1F5F9',
+    color: c.text.primary,
     letterSpacing: -0.3,
     marginTop: 2,
   },
@@ -232,10 +238,10 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 1.2,
-    color: 'rgba(255,255,255,0.55)',
+    color: c.text.tertiary,
   },
   recommendationCard: {
-    backgroundColor: '#1A1A2E',
+    backgroundColor: c.surface.card,
     borderRadius: 14,
     padding: 16,
     marginBottom: 8,
@@ -244,19 +250,19 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 1.6,
-    color: 'rgba(255,255,255,0.55)',
+    color: c.text.tertiary,
     marginBottom: 8,
   },
   recommendationText: {
     fontSize: 14,
-    color: '#F1F5F9',
+    color: c.text.primary,
     lineHeight: 20,
   },
   actions: {
     padding: 20,
     gap: 10,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.06)',
+    borderTopColor: c.border.subtle,
   },
   ctaPrimary: {
     flexDirection: 'row',
@@ -272,8 +278,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   ctaSecondaryText: {
-    color: 'rgba(255,255,255,0.65)',
+    color: c.text.secondary,
     fontWeight: '600',
     fontSize: 14,
   },
-});
+  });
+}

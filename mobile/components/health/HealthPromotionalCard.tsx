@@ -1,76 +1,96 @@
-// Fase 14c — Card promotional pra Home quando aluno sem conexão de saúde ativa.
-// Tap → reabre HealthOnboardingSheet.
-import React from 'react';
+// Fase 14c (refinado v2) — Card promotional pra Home quando aluno sem conexão.
+// Pattern V2 horizontal (espelha WorkoutHealthCard da Fase 13): color strip
+// lateral 3pt roxo + body flex 1 + CTA pill compacto à direita.
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { Heart, ArrowRight } from 'lucide-react-native';
+import { Heart } from 'lucide-react-native';
+import { useV2Colors, type V2Palette } from '../../hooks/useV2Colors';
 
 export interface HealthPromotionalCardProps {
   onConnect: () => void;
 }
 
 export function HealthPromotionalCard({ onConnect }: HealthPromotionalCardProps) {
+  const colors = useV2Colors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   return (
     <Pressable onPress={onConnect} style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}>
-      <View style={styles.iconWrap}>
-        <Heart size={20} color="#EF4444" strokeWidth={2.5} fill="#EF4444" />
-      </View>
+      <View style={styles.colorStrip} />
       <View style={styles.body}>
-        <Text style={styles.title}>Conecte sua saúde</Text>
-        <Text style={styles.sub}>Veja sono, FC e recuperação no Kinevo</Text>
-      </View>
-      <View style={styles.cta}>
-        <Text style={styles.ctaText}>Conectar</Text>
-        <ArrowRight size={14} color="#A78BFA" strokeWidth={2.5} />
+        <View style={styles.iconWrap}>
+          <Heart size={22} color={colors.purple[500]} strokeWidth={2.5} />
+        </View>
+        <View style={styles.text}>
+          <Text style={styles.label}>CONECTE SUA SAÚDE</Text>
+          <Text style={styles.sub}>Sono, FC e recuperação</Text>
+        </View>
+        <View style={styles.cta}>
+          <Text style={styles.ctaText}>Conectar</Text>
+        </View>
       </View>
     </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: '#1A1A2E',
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(167,139,250,0.18)',
-  },
-  cardPressed: { opacity: 0.85 },
-  iconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(239,68,68,0.12)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  body: { flex: 1 },
-  title: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#F1F5F9',
-    letterSpacing: -0.2,
-  },
-  sub: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.6)',
-    marginTop: 2,
-  },
-  cta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
-    backgroundColor: 'rgba(167,139,250,0.12)',
-  },
-  ctaText: {
-    fontSize: 12,
-    color: '#A78BFA',
-    fontWeight: '700',
-  },
-});
+function createStyles(c: V2Palette) {
+  return StyleSheet.create({
+    card: {
+      flexDirection: 'row',
+      backgroundColor: c.surface.card,
+      borderRadius: 16,
+      marginBottom: 16,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: c.border.default,
+    },
+    cardPressed: { opacity: 0.92 },
+    colorStrip: {
+      width: 3,
+      backgroundColor: c.purple[500],
+    },
+    body: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      paddingVertical: 16,
+      paddingHorizontal: 16,
+    },
+    iconWrap: {
+      width: 44,
+      height: 44,
+      borderRadius: 12,
+      backgroundColor: 'rgba(124,58,237,0.18)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    text: {
+      flex: 1,
+      justifyContent: 'center',
+    },
+    label: {
+      fontSize: 10,
+      fontWeight: '800',
+      letterSpacing: 1.5,
+      color: c.purple[600],
+    },
+    sub: {
+      fontSize: 13,
+      fontWeight: '500',
+      color: c.text.secondary,
+      marginTop: 3,
+    },
+    cta: {
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderRadius: 100,
+      backgroundColor: c.purple[600],
+    },
+    ctaText: {
+      fontSize: 13,
+      color: '#FFFFFF',
+      fontWeight: '700',
+    },
+  });
+}

@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { View, Text, ScrollView, RefreshControl, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Moon, Heart, Footprints, Activity, Zap } from 'lucide-react-native';
@@ -10,6 +10,7 @@ import { useHealthConnectSync } from '../../hooks/useHealthConnectSync';
 import { useRouter } from 'expo-router';
 import { Platform } from 'react-native';
 import { toast } from '../../lib/toast';
+import { useV2Colors, type V2Palette } from '../../hooks/useV2Colors';
 
 function formatDurationHM(min: number | null | undefined): string | null {
   if (min == null) return null;
@@ -25,6 +26,9 @@ function formatToday(): string {
 
 export default function HealthScreen() {
   const router = useRouter();
+  const colors = useV2Colors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const purpleAccent = colors.purple[400];
   const { data, isLoading, refresh } = useHealthDashboard();
   const hk = useHealthKitSync();
   const hc = useHealthConnectSync();
@@ -53,6 +57,17 @@ export default function HealthScreen() {
     data?.hrRestingToday != null ||
     data?.stepsToday != null ||
     data?.hrvToday != null;
+  // Fix BUG 1 — max(last_sync_at) entre as conexões ativas. Quando existe,
+  // significa que primeira sync já completou (mesmo que vazia). Caso
+  // contrário, ainda estamos esperando o primeiro upload chegar.
+  const lastSyncAt: string | null = (() => {
+    const syncs = (data?.connections ?? [])
+      .map((c) => c.last_sync_at)
+      .filter((s): s is string => !!s);
+    if (syncs.length === 0) return null;
+    return syncs.sort((a, b) => (a < b ? 1 : -1))[0];
+  })();
+  const isFirstSyncPending = hasAnyConnection && !hasAnyData && !lastSyncAt;
 
   // Estado vazio: zero conexões
   if (!isLoading && !hasAnyConnection) {
@@ -63,7 +78,7 @@ export default function HealthScreen() {
           <Text style={styles.headerTitle}>Sua saúde</Text>
         </View>
         <View style={styles.emptyCard}>
-          <Heart size={32} color="#A78BFA" strokeWidth={2.5} />
+          <Heart size={32} color={purpleAccent} strokeWidth={2.5} />
           <Text style={styles.emptyTitle}>Conecte sua fonte de saúde</Text>
           <Text style={styles.emptyBody}>
             Veja sono, frequência cardíaca, passos e recuperação direto no Kinevo.
@@ -84,24 +99,27 @@ export default function HealthScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingWrap}>
-          <ActivityIndicator size="small" color="#A78BFA" />
+          <ActivityIndicator size="small" color={purpleAccent} />
           <Text style={styles.loadingText}>Carregando sua saúde...</Text>
         </View>
       </SafeAreaView>
     );
   }
 
-  // Loading da primeira sync (conectado mas sem dados ainda)
-  if (hasAnyConnection && !hasAnyData) {
+  // Loading da primeira sync (conectado mas sem dados E sem nenhuma sync feita)
+  if (isFirstSyncPending) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingWrap}>
-          <ActivityIndicator size="small" color="#A78BFA" />
+          <ActivityIndicator size="small" color={purpleAccent} />
           <Text style={styles.loadingText}>Importando últimos 30 dias...</Text>
         </View>
       </SafeAreaView>
     );
   }
+  // Quando sync já rodou mas Apple Saúde está vazio (comum em simulator ou
+  // alunos sem histórico): cai pro dashboard normal abaixo — HealthMetricCard
+  // renderiza "–" graciosamente quando value é null.
 
   // Estado normal
   const sleepDur = data?.sleepYesterday?.duration_minutes;
@@ -128,7 +146,7 @@ export default function HealthScreen() {
     <SafeAreaView style={styles.container}>
       <ScrollView
         contentContainerStyle={styles.scroll}
-        refreshControl={<RefreshControl refreshing={refreshing || isSyncing} onRefresh={onRefresh} tintColor="#A78BFA" />}
+        refreshControl={<RefreshControl refreshing={refreshing || isSyncing} onRefresh={onRefresh} tintColor={purpleAccent} />}
       >
         <View style={styles.header}>
           <Text style={styles.headerDate}>{formatToday()}</Text>
@@ -180,7 +198,7 @@ export default function HealthScreen() {
           <View style={styles.chips}>
             {(data?.connections ?? []).map((c) => (
               <View key={c.source} style={[styles.chip, c.status === 'active' ? styles.chipActive : styles.chipInactive]}>
-                <Activity size={11} color={c.status === 'active' ? '#22C55E' : 'rgba(255,255,255,0.45)'} strokeWidth={2.5} />
+                <Activity size={11} color={c.status === 'active' ? '#22C55E' : colors.text.tertiary} strokeWidth={2.5} />
                 <Text style={styles.chipText}>
                   {c.source === 'healthkit' ? 'Apple Saúde' : 'Google Health Connect'}
                 </Text>
@@ -193,10 +211,11 @@ export default function HealthScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(c: V2Palette) {
+  return StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0D0D17',
+    backgroundColor: c.surface.canvas,
   },
   scroll: {
     paddingHorizontal: 16,
@@ -208,13 +227,13 @@ const styles = StyleSheet.create({
   },
   headerDate: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.55)',
+    color: c.text.tertiary,
     textTransform: 'capitalize',
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#F1F5F9',
+    color: c.text.primary,
     letterSpacing: -0.6,
     marginTop: 2,
   },
@@ -226,7 +245,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   sourcesCard: {
-    backgroundColor: '#1A1A2E',
+    backgroundColor: c.surface.card,
     borderRadius: 16,
     padding: 16,
     marginTop: 16,
@@ -235,7 +254,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 1.2,
-    color: 'rgba(255,255,255,0.55)',
+    color: c.text.tertiary,
     marginBottom: 10,
   },
   chips: {
@@ -255,16 +274,16 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(34,197,94,0.12)',
   },
   chipInactive: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: c.border.subtle,
   },
   chipText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#F1F5F9',
+    color: c.text.primary,
   },
   emptyCard: {
     margin: 16,
-    backgroundColor: '#1A1A2E',
+    backgroundColor: c.surface.card,
     borderRadius: 20,
     padding: 24,
     alignItems: 'center',
@@ -273,19 +292,19 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#F1F5F9',
+    color: c.text.primary,
     letterSpacing: -0.4,
     textAlign: 'center',
   },
   emptyBody: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.65)',
+    color: c.text.secondary,
     textAlign: 'center',
     lineHeight: 20,
   },
   emptyCta: {
     marginTop: 8,
-    backgroundColor: '#7c3aed',
+    backgroundColor: c.purple[600],
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 12,
@@ -303,6 +322,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.55)',
+    color: c.text.tertiary,
   },
-});
+  });
+}
