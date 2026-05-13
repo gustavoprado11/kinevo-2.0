@@ -1,8 +1,12 @@
 /**
  * WarmupItemRow — render row for a 'warmup' block in the program builder.
  *
- * Visual mirror do NoteItemRow, mas accent orange e label "AQUECIMENTO".
- * Preview lê `item_config.description`; fallback "Aquecimento livre".
+ * Pattern V2: color strip lateral 3pt laranja, borderRadius 16, shadow sutil,
+ * tipografia escalonada (label 10pt + preview 14pt 600). Ícone squircle 10pt.
+ *
+ * Drag: long-press em qualquer área do card via PressableScale (delay 150ms).
+ * Pattern coerente com NoteItemRow e CardioItemRow e bem mais fácil de pegar
+ * do que o GripVertical do WorkoutItemRow (decisão UX do Gustavo).
  */
 import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
@@ -14,6 +18,7 @@ import { useV2Colors } from "@/hooks/useV2Colors";
 import type { WorkoutItem } from "@/stores/program-builder-store";
 
 const ACCENT = "#F97316";
+const ACCENT_TINT = "rgba(249,115,22,0.10)";
 
 export interface WarmupItemRowProps {
     item: WorkoutItem;
@@ -55,22 +60,31 @@ export function WarmupItemRow({ item, onEdit, onDelete, drag }: WarmupItemRowPro
                 <View
                     style={{
                         flexDirection: "row",
-                        alignItems: "flex-start",
+                        alignItems: "center",
                         gap: 12,
                         backgroundColor: colors.surface.card,
-                        borderRadius: 14,
+                        borderRadius: 16,
                         borderWidth: 1,
-                        borderColor: colors.border.subtle,
+                        borderColor: colors.border.default,
+                        borderLeftWidth: 3,
+                        borderLeftColor: ACCENT,
                         paddingHorizontal: 14,
                         paddingVertical: 14,
+                        overflow: "hidden",
+                        shadowColor: "#000",
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: 0.03,
+                        shadowRadius: 4,
+                        elevation: 1,
                     }}
                 >
+                    {/* Ícone squircle tinted (V2) — substitui o círculo legacy. */}
                     <View
                         style={{
                             width: 36,
                             height: 36,
-                            borderRadius: 18,
-                            backgroundColor: "rgba(249,115,22,0.10)",
+                            borderRadius: 10,
+                            backgroundColor: ACCENT_TINT,
                             alignItems: "center",
                             justifyContent: "center",
                         }}
@@ -81,12 +95,12 @@ export function WarmupItemRow({ item, onEdit, onDelete, drag }: WarmupItemRowPro
                     <View style={{ flex: 1, minWidth: 0 }}>
                         <Text
                             style={{
-                                fontSize: 9,
+                                fontSize: 10,
                                 fontWeight: "800",
                                 color: ACCENT,
                                 letterSpacing: 1.5,
                                 textTransform: "uppercase",
-                                marginBottom: 4,
+                                marginBottom: 3,
                             }}
                         >
                             Aquecimento
@@ -95,17 +109,18 @@ export function WarmupItemRow({ item, onEdit, onDelete, drag }: WarmupItemRowPro
                             numberOfLines={2}
                             ellipsizeMode="tail"
                             style={{
-                                fontSize: 13,
-                                fontWeight: "500",
+                                fontSize: 14,
+                                fontWeight: "600",
                                 color: hasDesc ? colors.text.primary : colors.text.tertiary,
                                 lineHeight: 18,
+                                letterSpacing: -0.1,
                             }}
                         >
                             {preview}
                         </Text>
                     </View>
 
-                    <View style={{ flexDirection: "row", gap: 4 }}>
+                    <View style={{ flexDirection: "row", gap: 2 }}>
                         <TouchableOpacity
                             onPress={() => {
                                 Haptics.selectionAsync().catch(() => { });
@@ -122,7 +137,7 @@ export function WarmupItemRow({ item, onEdit, onDelete, drag }: WarmupItemRowPro
                                 justifyContent: "center",
                             }}
                         >
-                            <Pencil size={16} color={colors.text.secondary} strokeWidth={2} />
+                            <Pencil size={15} color={colors.text.tertiary} strokeWidth={2} />
                         </TouchableOpacity>
                         <TouchableOpacity
                             onPress={() => {
@@ -141,7 +156,7 @@ export function WarmupItemRow({ item, onEdit, onDelete, drag }: WarmupItemRowPro
                             }}
                         >
                             <Trash2
-                                size={16}
+                                size={15}
                                 color={colors.semantic.danger.default}
                                 strokeWidth={2}
                             />

@@ -1,12 +1,10 @@
 import React, { useMemo, useRef } from "react";
 import { View, Text, TouchableOpacity, Pressable, Alert } from "react-native";
-import { GripVertical, Trash2, Sliders, Edit3, Copy } from "lucide-react-native";
+import { GripVertical, Trash2, Sliders, Edit3, Copy, MoreHorizontal } from "lucide-react-native";
 import { Swipeable } from "react-native-gesture-handler";
 import Animated, { FadeInRight } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { useV2Colors } from "@/hooks/useV2Colors";
-import { useResponsive } from "@/hooks/useResponsive";
-import { SetRepsInput } from "./SetRepsInput";
 import { NoteItemRow } from "./NoteItemRow";
 import { WarmupItemRow } from "./WarmupItemRow";
 import { CardioItemRow } from "./CardioItemRow";
@@ -33,8 +31,15 @@ interface WorkoutItemRowProps {
     onEditWarmup?: () => void;
     /** Trigger pra abrir o EditCardioSheet quando item.item_type === 'cardio'. */
     onEditCardio?: () => void;
+    /** Trigger pra abrir o ExerciseActionsSheet (menu 3 dots). Disponível só
+     *  em items do tipo 'exercise' fora de superset. */
+    onOpenActions?: () => void;
     drag?: () => void;
     isActive?: boolean;
+}
+
+function withAlpha(hex: string, alpha = '1F'): string {
+    return hex.length === 7 ? `${hex}${alpha}` : hex;
 }
 
 const methodChipLabel = (key: MethodKey | null): string | null => {
@@ -55,25 +60,6 @@ function pickGroupColor(groups: string[], colors: ReturnType<typeof useV2Colors>
     if (/(braç|braco|arm|biceps|bíceps|triceps|tríceps|forearm|antebra)/.test(lower)) return colors.purple[500];
     if (/(core|abdom|abs|oblíquo|obliquo|lombar)/.test(lower)) return '#EAB308';
     return colors.text.tertiary;
-}
-
-interface SetChip {
-    label: string;
-    count: number;
-}
-
-// Computa os chips de séries: se todas iguais "Nx reps", retorna 1 chip
-// agregado; senão, retorna 1 chip por série (ou por fase quando advanced).
-function computeSetChips(item: WorkoutItem): SetChip[] {
-    if (item.set_scheme && item.set_scheme.length > 0) {
-        const scheme = item.set_scheme;
-        const allSameReps = scheme.every(s => s.reps === scheme[0].reps);
-        if (allSameReps) {
-            return [{ label: `${scheme.length}× ${scheme[0].reps}`, count: 1 }];
-        }
-        return scheme.map(s => ({ label: s.reps, count: 1 }));
-    }
-    return [{ label: `${item.sets}× ${item.reps}`, count: 1 }];
 }
 
 // Estimativa: cada série ≈ 45s execução + descanso (fallback 90s).
@@ -120,6 +106,7 @@ export function WorkoutItemRow({
     onEditNote,
     onEditWarmup,
     onEditCardio,
+    onOpenActions,
     drag,
     isActive,
 }: WorkoutItemRowProps) {
@@ -157,8 +144,6 @@ export function WorkoutItemRow({
     }
 
     const colors = useV2Colors();
-    const { isTablet } = useResponsive();
-    const padding = isTablet ? 14 : 10;
     const inSuperset = item.parent_item_id !== null;
     const methodChip = methodChipLabel(item.method_key ?? null);
     const advancedActive = !!(item.set_scheme && item.set_scheme.length > 0);
@@ -171,7 +156,6 @@ export function WorkoutItemRow({
         () => pickGroupColor(item.exercise_muscle_groups, colors),
         [item.exercise_muscle_groups, colors],
     );
-    const setChips = useMemo(() => computeSetChips(item), [item]);
     const totalReps = useMemo(() => estimateTotalReps(item), [item]);
     const minutes = useMemo(() => estimateMinutes(item), [item]);
 
@@ -270,162 +254,253 @@ export function WorkoutItemRow({
         <Animated.View
             entering={FadeInRight.delay(index * 30).duration(200)}
             style={{
-                backgroundColor: isActive ? colors.purple[100] : colors.surface.card,
-                borderRadius: 14,
-                marginBottom: 6,
+                backgroundColor: colors.surface.card,
+                borderRadius: 16,
+                marginBottom: 8,
                 borderWidth: 1,
-                borderColor: isActive ? colors.purple[600] : colors.border.default,
-                shadowColor: "#000",
+                borderColor: colors.border.default,
+                borderLeftWidth: 3,
+                borderLeftColor: advancedActive ? colors.semantic.warning.default : groupColor,
+                shadowColor: '#000',
                 shadowOffset: { width: 0, height: 1 },
-                shadowOpacity: isActive ? 0.08 : 0.03,
-                shadowRadius: isActive ? 8 : 4,
-                elevation: isActive ? 4 : 1,
+                shadowOpacity: 0.03,
+                shadowRadius: 4,
+                elevation: 1,
                 overflow: 'hidden',
-                flexDirection: 'row',
             }}
         >
-            {/* Color strip lateral (4px) por grupo muscular */}
-            <View style={{
-                width: 4,
-                backgroundColor: groupColor,
-            }} />
-
             <Pressable
                 onPress={handleCardPress}
-                disabled={!advancedActive || inSuperset}
-                accessibilityRole={advancedActive ? "button" : undefined}
-                accessibilityLabel={advancedActive ? "Editar séries do exercício" : undefined}
+                onLongPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => { });
+                    drag?.();
+                }}
+                delayLongPress={150}
+                accessibilityRole={advancedActive ? 'button' : undefined}
+                accessibilityLabel={advancedActive ? 'Editar séries do exercício' : undefined}
+                accessibilityHint="Mantenha pressionado pra reordenar"
                 style={({ pressed }) => ({
-                    flex: 1,
-                    padding,
+                    padding: 14,
                     opacity: pressed && advancedActive ? 0.85 : 1,
                 })}
             >
-                {/* Row 1: drag + name + sets/reps + delete */}
-                <View style={{ flexDirection: "row", alignItems: "center" }}>
-                    {/* Drag handle ≡ sempre visível à esquerda */}
-                    <TouchableOpacity
-                        onLongPress={() => {
-                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                            drag?.();
-                        }}
-                        delayLongPress={150}
-                        accessibilityLabel="Arrastar para reordenar"
-                        style={{ padding: 3, marginRight: 6 }}
-                    >
-                        <GripVertical size={16} color={colors.text.quaternary} />
-                    </TouchableOpacity>
+                {/* Row 1: drag affordance (decorativo) + nome + muscle tag + menu 3 dots.
+                 *  O drag agora dispara via onLongPress do Pressable externo
+                 *  (qualquer área do card), coerente com o pattern dos cards
+                 *  Note/Warmup/Cardio que o Gustavo prefere. Mantemos o
+                 *  GripVertical só como sinal visual. */}
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <View style={{ padding: 2, marginRight: 8 }}>
+                        <GripVertical size={14} color={colors.text.quaternary} />
+                    </View>
 
-                    {/* Exercise name (flex) */}
-                    <Text
-                        style={{ fontSize: 13, fontWeight: "600", color: colors.text.primary, flex: 1 }}
-                        numberOfLines={1}
-                    >
-                        {item.exercise_name}
-                    </Text>
-
-                    {/* Sets × Reps · Rest (inline) — escondido em modo avançado */}
-                    {!advancedActive && (
-                        <View style={{ marginLeft: 8 }}>
-                            <SetRepsInput
-                                sets={item.sets}
-                                reps={item.reps}
-                                restSeconds={item.rest_seconds}
-                                onUpdate={(updates) => onUpdate(updates)}
-                                compact
-                            />
-                        </View>
-                    )}
-                    {advancedActive && (
+                    <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                         <Text
-                            style={{ marginLeft: 8, fontSize: 11, fontWeight: "600", color: colors.text.secondary }}
+                            style={{
+                                fontSize: 15,
+                                fontWeight: '800',
+                                letterSpacing: -0.15,
+                                color: colors.text.primary,
+                                lineHeight: 18,
+                                flexShrink: 1,
+                            }}
                             numberOfLines={1}
                         >
-                            {item.sets} × {item.reps} · {item.rest_seconds}s
+                            {item.exercise_name}
                         </Text>
-                    )}
-
-                    {/* Delete (mantém atalho rápido — swipe é o flow primário) */}
-                    <TouchableOpacity
-                        onPress={() => {
-                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                            onDelete();
-                        }}
-                        accessibilityRole="button"
-                        accessibilityLabel="Remover exercício"
-                        style={{ padding: 6, marginLeft: 4 }}
-                    >
-                        <Trash2 size={14} color={colors.semantic.danger.default} />
-                    </TouchableOpacity>
-                </View>
-
-                {/* Row 2: muscle groups */}
-                {item.exercise_muscle_groups.length > 0 && (
-                    <Text
-                        style={{
-                            fontSize: 10,
-                            color: colors.text.tertiary,
-                            marginTop: 3,
-                            marginLeft: 26,
-                        }}
-                        numberOfLines={1}
-                    >
-                        {item.exercise_muscle_groups.join(", ")}
-                    </Text>
-                )}
-
-                {/* Row 3: strip horizontal de chips de séries */}
-                {setChips.length > 0 && (
-                    <View style={{
-                        flexDirection: 'row',
-                        flexWrap: 'wrap',
-                        gap: 4,
-                        marginTop: 8,
-                        marginLeft: 26,
-                    }}>
-                        {setChips.map((chip, i) => (
+                        {item.exercise_muscle_groups.length > 0 && (
                             <View
-                                key={`${chip.label}-${i}`}
                                 style={{
-                                    paddingHorizontal: 8,
-                                    paddingVertical: 3,
-                                    borderRadius: 6,
-                                    backgroundColor: colors.surface.card2,
-                                    borderWidth: 1,
-                                    borderColor: colors.border.subtle,
+                                    backgroundColor: withAlpha(groupColor),
+                                    paddingHorizontal: 7,
+                                    paddingVertical: 2,
+                                    borderRadius: 100,
+                                    flexShrink: 0,
                                 }}
                             >
-                                <Text style={{
-                                    fontSize: 10,
-                                    fontWeight: '600',
-                                    color: colors.text.secondary,
-                                    letterSpacing: 0.2,
-                                }}>
-                                    {chip.label}
+                                <Text
+                                    style={{
+                                        fontSize: 10,
+                                        fontWeight: '700',
+                                        color: groupColor,
+                                        letterSpacing: 0.3,
+                                    }}
+                                    numberOfLines={1}
+                                >
+                                    {item.exercise_muscle_groups.join(' · ')}
+                                </Text>
+                            </View>
+                        )}
+                    </View>
+
+                    {!inSuperset && onOpenActions && (
+                        <TouchableOpacity
+                            onPress={onOpenActions}
+                            accessibilityRole="button"
+                            accessibilityLabel="Opções do exercício"
+                            hitSlop={6}
+                            style={{
+                                width: 32,
+                                height: 32,
+                                borderRadius: 10,
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                backgroundColor: 'rgba(255,255,255,0.04)',
+                                marginLeft: 8,
+                            }}
+                        >
+                            <MoreHorizontal size={16} color={colors.text.tertiary} />
+                        </TouchableOpacity>
+                    )}
+                </View>
+
+                {/* Row 2: Hero Stats (modo simples) OR Pirâmide Strip (avançado) */}
+                {!advancedActive ? (
+                    <View
+                        style={{
+                            flexDirection: 'row',
+                            alignItems: 'stretch',
+                            gap: 12,
+                            backgroundColor: 'rgba(124,58,237,0.06)',
+                            borderWidth: 1,
+                            borderColor: 'rgba(124,58,237,0.14)',
+                            borderRadius: 12,
+                            paddingVertical: 12,
+                            paddingHorizontal: 16,
+                            marginTop: 10,
+                        }}
+                    >
+                        <View style={{ flex: 1 }}>
+                            <Text
+                                style={{
+                                    fontSize: 22,
+                                    fontWeight: '900',
+                                    letterSpacing: -0.88,
+                                    color: colors.purple[400],
+                                    lineHeight: 22,
+                                }}
+                            >
+                                {item.sets} × {item.reps}
+                            </Text>
+                            <Text
+                                style={{
+                                    fontSize: 9,
+                                    fontWeight: '800',
+                                    letterSpacing: 1.35,
+                                    color: colors.text.tertiary,
+                                    textTransform: 'uppercase',
+                                    marginTop: 4,
+                                }}
+                            >
+                                SÉRIES × REPS
+                            </Text>
+                        </View>
+                        <View style={{ width: 1, backgroundColor: 'rgba(124,58,237,0.18)' }} />
+                        <View style={{ alignItems: 'flex-end', justifyContent: 'center', gap: 2 }}>
+                            <Text
+                                style={{
+                                    fontSize: 16,
+                                    fontWeight: '800',
+                                    letterSpacing: -0.32,
+                                    color: colors.text.primary,
+                                    lineHeight: 16,
+                                }}
+                            >
+                                {item.rest_seconds}s
+                            </Text>
+                            <Text
+                                style={{
+                                    fontSize: 9,
+                                    fontWeight: '700',
+                                    letterSpacing: 1.08,
+                                    color: colors.text.tertiary,
+                                    textTransform: 'uppercase',
+                                    marginTop: 3,
+                                }}
+                            >
+                                DESCANSO
+                            </Text>
+                        </View>
+                    </View>
+                ) : (
+                    <View style={{ flexDirection: 'row', gap: 4, marginTop: 10 }}>
+                        {item.set_scheme!.map((set, i) => (
+                            <View
+                                key={i}
+                                style={{
+                                    flex: 1,
+                                    padding: 6,
+                                    alignItems: 'center',
+                                    backgroundColor: 'rgba(244,196,78,0.08)',
+                                    borderWidth: 1,
+                                    borderColor: 'rgba(244,196,78,0.18)',
+                                    borderRadius: 6,
+                                }}
+                            >
+                                <Text
+                                    style={{
+                                        fontSize: 14,
+                                        fontWeight: '800',
+                                        letterSpacing: -0.28,
+                                        color: colors.semantic.warning.default,
+                                    }}
+                                >
+                                    {set.reps}
+                                </Text>
+                                <Text
+                                    style={{
+                                        fontSize: 8,
+                                        fontWeight: '700',
+                                        letterSpacing: 0.4,
+                                        color: colors.text.quaternary,
+                                        marginTop: 1,
+                                    }}
+                                >
+                                    REP
                                 </Text>
                             </View>
                         ))}
                     </View>
                 )}
 
-                {/* Row 4: chip do método + Editar séries (modo avançado).
-                 *  flexWrap garante que em telas estreitas (iPhone SE) ou com
-                 *  chips longos ("Cluster (rest-pause)" + "3 rodadas × 3 fases"
-                 *  + "Modo simples") os badges quebrem pra linha de baixo em
-                 *  vez de estourar a margem direita do card. */}
-                {item.item_type === "exercise" && onEditSets && (
-                    <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", rowGap: 6, marginTop: 6, marginLeft: 26 }}>
+                {/* Row 3 (footer): método tag + rounds + meta + edit link */}
+                <View
+                    style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        marginTop: 10,
+                        gap: 8,
+                    }}
+                >
+                    <View
+                        style={{
+                            flexShrink: 1,
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            gap: 6,
+                            flexWrap: 'wrap',
+                            rowGap: 4,
+                        }}
+                    >
                         {methodChip && (
                             <View
                                 style={{
-                                    paddingHorizontal: 8,
+                                    backgroundColor: 'rgba(244,196,78,0.14)',
+                                    paddingHorizontal: 7,
                                     paddingVertical: 2,
-                                    borderRadius: 999,
-                                    backgroundColor: colors.purple[100],
-                                    marginRight: 8,
+                                    borderRadius: 100,
                                 }}
                             >
-                                <Text style={{ fontSize: 10, fontWeight: "700", color: colors.purple[600] }}>
+                                <Text
+                                    style={{
+                                        fontSize: 9,
+                                        fontWeight: '800',
+                                        letterSpacing: 0.5,
+                                        color: colors.semantic.warning.default,
+                                        textTransform: 'uppercase',
+                                    }}
+                                >
                                     {methodChip}
                                 </Text>
                             </View>
@@ -433,30 +508,43 @@ export function WorkoutItemRow({
                         {showRoundsBadge && (
                             <View
                                 style={{
-                                    paddingHorizontal: 8,
+                                    backgroundColor: 'rgba(124,58,237,0.10)',
+                                    paddingHorizontal: 7,
                                     paddingVertical: 2,
-                                    borderRadius: 999,
-                                    backgroundColor: "rgba(124, 58, 237, 0.06)",
-                                    marginRight: 8,
+                                    borderRadius: 100,
                                 }}
                             >
-                                <Text style={{ fontSize: 10, fontWeight: "700", color: colors.purple[600] }}>
-                                    {rounds} rodadas × {phasesPerRound} fases
+                                <Text
+                                    style={{
+                                        fontSize: 9,
+                                        fontWeight: '800',
+                                        color: colors.purple[600],
+                                        textTransform: 'uppercase',
+                                    }}
+                                >
+                                    {rounds}×{phasesPerRound} fases
                                 </Text>
                             </View>
                         )}
+                        {totalReps > 0 && (
+                            <Text style={{ fontSize: 11, color: colors.text.tertiary, fontWeight: '500' }}>
+                                {totalReps} reps · ~{minutes} min
+                            </Text>
+                        )}
+                    </View>
+                    {item.item_type === 'exercise' && onEditSets && (
                         <TouchableOpacity
                             onPress={() => {
                                 if (inSuperset) return;
                                 if (advancedActive && onExitAdvanced) {
                                     Alert.alert(
-                                        "Voltar para modo simples",
-                                        "Você perderá as configurações específicas de cada série. Continuar?",
+                                        'Voltar para modo simples',
+                                        'Você perderá as configurações específicas de cada série. Continuar?',
                                         [
-                                            { text: "Cancelar", style: "cancel" },
+                                            { text: 'Cancelar', style: 'cancel' },
                                             {
-                                                text: "Voltar",
-                                                style: "destructive",
+                                                text: 'Voltar',
+                                                style: 'destructive',
                                                 onPress: () => {
                                                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                                                     onExitAdvanced();
@@ -471,55 +559,22 @@ export function WorkoutItemRow({
                             }}
                             disabled={inSuperset}
                             accessibilityRole="button"
-                            accessibilityLabel={
-                                inSuperset
-                                    ? "Não suportado dentro de superset"
-                                    : advancedActive
-                                    ? "Voltar para modo simples"
-                                    : "Editar séries"
-                            }
-                            accessibilityState={{ disabled: inSuperset }}
-                            style={{ flexDirection: "row", alignItems: "center", opacity: inSuperset ? 0.4 : 1 }}
+                            accessibilityLabel={advancedActive ? 'Voltar para modo simples' : 'Editar séries'}
+                            style={{ paddingVertical: 4, paddingHorizontal: 6, opacity: inSuperset ? 0.4 : 1 }}
                         >
-                            <Sliders
-                                size={11}
-                                color={advancedActive ? colors.purple[600] : colors.text.tertiary}
-                                style={{ marginRight: 4 }}
-                            />
                             <Text
                                 style={{
                                     fontSize: 10,
-                                    fontWeight: "700",
-                                    color: advancedActive ? colors.purple[600] : colors.text.tertiary,
-                                    textTransform: "uppercase",
+                                    fontWeight: '800',
+                                    color: colors.purple[400],
+                                    textTransform: 'uppercase',
                                     letterSpacing: 0.5,
                                 }}
                             >
-                                {advancedActive ? "Modo simples" : "Editar séries"}
+                                {advancedActive ? 'Modo simples' : 'Editar séries'}
                             </Text>
                         </TouchableOpacity>
-                    </View>
-                )}
-
-                {/* Row 5: footer com métricas estimadas */}
-                <View style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 10,
-                    marginTop: 8,
-                    marginLeft: 26,
-                }}>
-                    {totalReps > 0 && (
-                        <Text style={{ fontSize: 12, color: colors.text.tertiary, fontWeight: '500' }}>
-                            {totalReps} reps
-                        </Text>
                     )}
-                    {totalReps > 0 && (
-                        <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: colors.text.quaternary }} />
-                    )}
-                    <Text style={{ fontSize: 12, color: colors.text.tertiary, fontWeight: '500' }}>
-                        ~{minutes} min
-                    </Text>
                 </View>
             </Pressable>
         </Animated.View>

@@ -1,9 +1,13 @@
 /**
  * CardioItemRow — render row for a 'cardio' block in the program builder.
  *
- * Visual mirror do WarmupItemRow, mas accent green e label "CARDIO".
- * Preview: "Esteira · 20min" quando `modality + target + objective` populados;
+ * Pattern V2: color strip lateral 3pt verde, borderRadius 16, shadow sutil,
+ * tipografia escalonada (label 10pt + preview 14pt 600). Ícone squircle 10pt.
+ *
+ * Preview: "Esteira · 20min" quando modality + target + objective populados;
  * "Bike · 5km" quando objective === 'distance'; fallback "Cardio livre".
+ *
+ * Drag: long-press em qualquer área do card via PressableScale (delay 150ms).
  */
 import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
@@ -15,6 +19,7 @@ import { useV2Colors } from "@/hooks/useV2Colors";
 import type { WorkoutItem } from "@/stores/program-builder-store";
 
 const ACCENT = "#22C55E";
+const ACCENT_TINT = "rgba(34,197,94,0.10)";
 
 export interface CardioItemRowProps {
     item: WorkoutItem;
@@ -69,22 +74,30 @@ export function CardioItemRow({ item, onEdit, onDelete, drag }: CardioItemRowPro
                 <View
                     style={{
                         flexDirection: "row",
-                        alignItems: "flex-start",
+                        alignItems: "center",
                         gap: 12,
                         backgroundColor: colors.surface.card,
-                        borderRadius: 14,
+                        borderRadius: 16,
                         borderWidth: 1,
-                        borderColor: colors.border.subtle,
+                        borderColor: colors.border.default,
+                        borderLeftWidth: 3,
+                        borderLeftColor: ACCENT,
                         paddingHorizontal: 14,
                         paddingVertical: 14,
+                        overflow: "hidden",
+                        shadowColor: "#000",
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: 0.03,
+                        shadowRadius: 4,
+                        elevation: 1,
                     }}
                 >
                     <View
                         style={{
                             width: 36,
                             height: 36,
-                            borderRadius: 18,
-                            backgroundColor: "rgba(34,197,94,0.10)",
+                            borderRadius: 10,
+                            backgroundColor: ACCENT_TINT,
                             alignItems: "center",
                             justifyContent: "center",
                         }}
@@ -95,12 +108,12 @@ export function CardioItemRow({ item, onEdit, onDelete, drag }: CardioItemRowPro
                     <View style={{ flex: 1, minWidth: 0 }}>
                         <Text
                             style={{
-                                fontSize: 9,
+                                fontSize: 10,
                                 fontWeight: "800",
                                 color: ACCENT,
                                 letterSpacing: 1.5,
                                 textTransform: "uppercase",
-                                marginBottom: 4,
+                                marginBottom: 3,
                             }}
                         >
                             Cardio
@@ -109,17 +122,18 @@ export function CardioItemRow({ item, onEdit, onDelete, drag }: CardioItemRowPro
                             numberOfLines={2}
                             ellipsizeMode="tail"
                             style={{
-                                fontSize: 13,
-                                fontWeight: "500",
+                                fontSize: 14,
+                                fontWeight: "600",
                                 color: isFree ? colors.text.tertiary : colors.text.primary,
                                 lineHeight: 18,
+                                letterSpacing: -0.1,
                             }}
                         >
                             {preview}
                         </Text>
                     </View>
 
-                    <View style={{ flexDirection: "row", gap: 4 }}>
+                    <View style={{ flexDirection: "row", gap: 2 }}>
                         <TouchableOpacity
                             onPress={() => {
                                 Haptics.selectionAsync().catch(() => { });
@@ -136,7 +150,7 @@ export function CardioItemRow({ item, onEdit, onDelete, drag }: CardioItemRowPro
                                 justifyContent: "center",
                             }}
                         >
-                            <Pencil size={16} color={colors.text.secondary} strokeWidth={2} />
+                            <Pencil size={15} color={colors.text.tertiary} strokeWidth={2} />
                         </TouchableOpacity>
                         <TouchableOpacity
                             onPress={() => {
@@ -155,7 +169,7 @@ export function CardioItemRow({ item, onEdit, onDelete, drag }: CardioItemRowPro
                             }}
                         >
                             <Trash2
-                                size={16}
+                                size={15}
                                 color={colors.semantic.danger.default}
                                 strokeWidth={2}
                             />

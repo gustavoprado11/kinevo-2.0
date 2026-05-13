@@ -1,8 +1,11 @@
 /**
  * NoteItemRow — render row for a 'note' block in the program builder.
  *
- * Visual: card horizontal com ícone StickyNote azul, label "NOTA TÉCNICA" e
- * preview do texto. Edit/Delete à direita. Tap no card inteiro dispara onEdit.
+ * Pattern V2: color strip lateral 3pt azul, borderRadius 16, shadow sutil,
+ * tipografia escalonada (label 10pt + preview 14pt 600). Ícone squircle 10pt.
+ *
+ * Tap no card inteiro dispara onEdit; long-press em qualquer área inicia o
+ * drag (delay 150ms). Pattern coerente com Warmup/Cardio.
  */
 import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
@@ -14,6 +17,7 @@ import { useV2Colors } from "@/hooks/useV2Colors";
 import type { WorkoutItem } from "@/stores/program-builder-store";
 
 const ACCENT = "#3B82F6";
+const ACCENT_TINT = "rgba(59,130,246,0.10)";
 
 export interface NoteItemRowProps {
     item: WorkoutItem;
@@ -48,22 +52,30 @@ export function NoteItemRow({ item, onEdit, onDelete, drag }: NoteItemRowProps) 
                 <View
                     style={{
                         flexDirection: "row",
-                        alignItems: "flex-start",
+                        alignItems: "center",
                         gap: 12,
                         backgroundColor: colors.surface.card,
-                        borderRadius: 14,
+                        borderRadius: 16,
                         borderWidth: 1,
-                        borderColor: colors.border.subtle,
+                        borderColor: colors.border.default,
+                        borderLeftWidth: 3,
+                        borderLeftColor: ACCENT,
                         paddingHorizontal: 14,
                         paddingVertical: 14,
+                        overflow: "hidden",
+                        shadowColor: "#000",
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: 0.03,
+                        shadowRadius: 4,
+                        elevation: 1,
                     }}
                 >
                     <View
                         style={{
                             width: 36,
                             height: 36,
-                            borderRadius: 18,
-                            backgroundColor: "rgba(59,130,246,0.10)",
+                            borderRadius: 10,
+                            backgroundColor: ACCENT_TINT,
                             alignItems: "center",
                             justifyContent: "center",
                         }}
@@ -74,12 +86,12 @@ export function NoteItemRow({ item, onEdit, onDelete, drag }: NoteItemRowProps) 
                     <View style={{ flex: 1, minWidth: 0 }}>
                         <Text
                             style={{
-                                fontSize: 9,
+                                fontSize: 10,
                                 fontWeight: "800",
                                 color: ACCENT,
                                 letterSpacing: 1.5,
                                 textTransform: "uppercase",
-                                marginBottom: 4,
+                                marginBottom: 3,
                             }}
                         >
                             Nota técnica
@@ -88,17 +100,18 @@ export function NoteItemRow({ item, onEdit, onDelete, drag }: NoteItemRowProps) 
                             numberOfLines={2}
                             ellipsizeMode="tail"
                             style={{
-                                fontSize: 13,
-                                fontWeight: "500",
+                                fontSize: 14,
+                                fontWeight: "600",
                                 color: hasText ? colors.text.primary : colors.text.tertiary,
                                 lineHeight: 18,
+                                letterSpacing: -0.1,
                             }}
                         >
                             {text}
                         </Text>
                     </View>
 
-                    <View style={{ flexDirection: "row", gap: 4 }}>
+                    <View style={{ flexDirection: "row", gap: 2 }}>
                         <TouchableOpacity
                             onPress={() => {
                                 Haptics.selectionAsync().catch(() => { });
@@ -115,7 +128,7 @@ export function NoteItemRow({ item, onEdit, onDelete, drag }: NoteItemRowProps) 
                                 justifyContent: "center",
                             }}
                         >
-                            <Pencil size={16} color={colors.text.secondary} strokeWidth={2} />
+                            <Pencil size={15} color={colors.text.tertiary} strokeWidth={2} />
                         </TouchableOpacity>
                         <TouchableOpacity
                             onPress={() => {
@@ -134,7 +147,7 @@ export function NoteItemRow({ item, onEdit, onDelete, drag }: NoteItemRowProps) 
                             }}
                         >
                             <Trash2
-                                size={16}
+                                size={15}
                                 color={colors.semantic.danger.default}
                                 strokeWidth={2}
                             />
