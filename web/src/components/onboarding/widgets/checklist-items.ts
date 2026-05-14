@@ -1,4 +1,7 @@
-import type { OnboardingMilestones } from '@kinevo/shared/types/onboarding'
+import type {
+  OnboardingMilestones,
+  TrainerModalityFocus,
+} from '@kinevo/shared/types/onboarding'
 import {
   UserPlus,
   Calendar,
@@ -7,6 +10,8 @@ import {
   FileText,
   Wallet,
   Share2,
+  Smartphone,
+  Activity,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -16,9 +21,19 @@ export interface ChecklistItem {
   description: string
   href: string
   icon: LucideIcon
+  /** Fase 17b — undefined = sempre visível. */
+  visibleFor?: TrainerModalityFocus[]
 }
 
-export const CHECKLIST_ITEMS: ChecklistItem[] = [
+/**
+ * Fase 17b — ordem reflete a sequência sugerida do onboarding.
+ *
+ * Counts resolvidos por `getChecklistItemsForModality`:
+ * - presencial: 7 (universais 6 + training_room)
+ * - online: 8 (universais 6 + form + financial)
+ * - ambos/null: 9 (todos)
+ */
+export const ALL_CHECKLIST_ITEMS: ChecklistItem[] = [
   {
     key: 'first_student_created',
     label: 'Cadastrar primeiro aluno',
@@ -34,11 +49,34 @@ export const CHECKLIST_ITEMS: ChecklistItem[] = [
     icon: Calendar,
   },
   {
-    key: 'first_program_assigned',
-    label: 'Atribuir programa a um aluno',
-    description: 'Publique um programa para alguém',
-    href: '/students',
-    icon: Send,
+    key: 'first_form_sent',
+    label: 'Enviar formulário',
+    description: 'Envie anamnese ou check-in',
+    href: '/forms/templates/new',
+    icon: FileText,
+    visibleFor: ['online', 'ambos'],
+  },
+  {
+    key: 'app_link_shared',
+    label: 'Compartilhar link do App',
+    description: 'Envie o App para um aluno',
+    href: '/dashboard',
+    icon: Share2,
+  },
+  {
+    key: 'mobile_logged_in',
+    label: 'Entre no App Mobile',
+    description: 'Baixe e faça login com o mesmo email do web',
+    href: '/dashboard',
+    icon: Smartphone,
+  },
+  {
+    key: 'first_training_room_session',
+    label: '1ª sessão na Sala de Treino',
+    description: 'Treine presencialmente com um aluno',
+    href: '/training-room',
+    icon: Activity,
+    visibleFor: ['presencial', 'ambos'],
   },
   {
     key: 'first_exercise_added',
@@ -48,24 +86,32 @@ export const CHECKLIST_ITEMS: ChecklistItem[] = [
     icon: Dumbbell,
   },
   {
-    key: 'first_form_sent',
-    label: 'Enviar formulário',
-    description: 'Envie anamnese ou check-in',
-    href: '/forms/templates/new',
-    icon: FileText,
-  },
-  {
     key: 'financial_setup',
     label: 'Configurar financeiro',
     description: 'Conecte Stripe ou crie planos',
     href: '/financial',
     icon: Wallet,
+    visibleFor: ['online', 'ambos'],
   },
   {
-    key: 'app_link_shared',
-    label: 'Compartilhar link do App',
-    description: 'Envie o App para um aluno',
-    href: '/dashboard',
-    icon: Share2,
+    key: 'first_program_assigned',
+    label: 'Atribuir programa a um aluno',
+    description: 'Publique um programa para alguém',
+    href: '/students',
+    icon: Send,
   },
 ]
+
+/** Fase 17b — null tratado como 'ambos' (mostra tudo). */
+export function getChecklistItemsForModality(
+  focus: TrainerModalityFocus,
+): ChecklistItem[] {
+  const resolved: Exclude<TrainerModalityFocus, null> = focus ?? 'ambos'
+  return ALL_CHECKLIST_ITEMS.filter(
+    (item) => !item.visibleFor || item.visibleFor.includes(resolved),
+  )
+}
+
+/** Legacy export — mantido pra retro-compat de código fora deste arquivo
+ *  ainda referenciando `CHECKLIST_ITEMS`. Equivale a items pra 'ambos'. */
+export const CHECKLIST_ITEMS = ALL_CHECKLIST_ITEMS
