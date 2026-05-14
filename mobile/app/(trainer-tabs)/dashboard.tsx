@@ -306,7 +306,7 @@ export default function DashboardScreen() {
                                 </KPICol>
                                 <KPICol>
                                     <KPICard
-                                        label="MRR"
+                                        label="Receita Mensal"
                                         value={formatCurrency(stats.mrr)}
                                         icon={<DollarSign size={14} color={colors.semantic.info.default} strokeWidth={2.5} />}
                                         accent="info"
