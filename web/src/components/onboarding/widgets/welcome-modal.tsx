@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useTransition } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Users,
@@ -36,7 +36,7 @@ const CAPABILITY_CARDS = [
     iconBg: 'bg-violet-500/10',
     iconColor: 'text-violet-400',
     title: 'Programas',
-    desc: 'Manual, templates ou com IA',
+    desc: 'Manual, templates ou IA',
   },
   {
     icon: Sparkles,
@@ -102,7 +102,7 @@ export function WelcomeModal({ trainerName }: WelcomeModalProps) {
 
   const [isOpen, setIsOpen] = useState(false)
   const [step, setStep] = useState<Step>('capabilities')
-  const [isPending, startTransition] = useTransition()
+  const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
     if (isHydrated && !welcomeCompleted) {
@@ -117,28 +117,47 @@ export function WelcomeModal({ trainerName }: WelcomeModalProps) {
   const handleContinue = () => setStep('modality')
 
   // "Lembrar depois" — snooze 7 dias, NÃO marca welcome como completo.
-  const handleRemindLater = () => {
+  const handleRemindLater = useCallback(() => {
     snoozeChecklist(7)
     setIsOpen(false)
-  }
+  }, [snoozeChecklist])
 
   // "Pular para sempre" — marca completo, fecha.
-  const handleSkipForever = () => {
+  const handleSkipForever = useCallback(() => {
     completeWelcomeTour()
     setIsOpen(false)
-  }
+  }, [completeWelcomeTour])
 
-  // Step 2 — chosen modality
-  const handleSelectModality = (focus: TrainerModalityFocus) => {
-    setModalityFocus(focus)
-    startTransition(async () => {
+  // Step 2 — chosen modality. Fecha o modal e inicia o tour após exit animation.
+  const handleSelectModality = useCallback(
+    (focus: TrainerModalityFocus) => {
+      if (isSaving) return
+      setIsSaving(true)
+      setModalityFocus(focus)
+      // Fire-and-forget — não bloqueamos a UX no roundtrip.
       void updateTrainerModality(focus).catch(() => {})
-    })
-    completeWelcomeTour()
-    setIsOpen(false)
-    // delay pequeno pra o modal sair antes do tour mostrar spotlight
-    setTimeout(() => startTour('welcome'), 200)
-  }
+      completeWelcomeTour()
+      setIsOpen(false)
+      // Espera o exit animation do modal (300ms) antes de mostrar o spotlight.
+      setTimeout(() => startTour('welcome'), 350)
+    },
+    [completeWelcomeTour, isSaving, setModalityFocus, startTour],
+  )
+
+  // BUG 2 — Escape key: step 1 fecha o modal (skipForever), step 2 volta pra step 1.
+  useEffect(() => {
+    if (!isOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      if (step === 'modality') {
+        setStep('capabilities')
+      } else {
+        handleSkipForever()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [isOpen, step, handleSkipForever])
 
   return (
     <AnimatePresence>
@@ -149,7 +168,9 @@ export function WelcomeModal({ trainerName }: WelcomeModalProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            onClick={handleSkipForever}
+            className="absolute inset-0 bg-black/80 backdrop-blur-sm cursor-pointer"
+            aria-hidden="true"
           />
 
           <motion.div
@@ -163,8 +184,9 @@ export function WelcomeModal({ trainerName }: WelcomeModalProps) {
             <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-blue-500/8 blur-3xl rounded-full pointer-events-none" />
 
             <button
+              type="button"
               onClick={handleSkipForever}
-              className="absolute top-4 right-4 p-1.5 text-muted-foreground/40 hover:text-foreground rounded-lg transition-colors"
+              className="absolute top-4 right-4 z-10 p-1.5 text-muted-foreground/40 hover:text-foreground rounded-lg transition-colors"
               aria-label="Fechar"
             >
               <X size={18} />
@@ -241,7 +263,7 @@ export function WelcomeModal({ trainerName }: WelcomeModalProps) {
                 <button
                   onClick={() => setStep('capabilities')}
                   className="absolute top-4 left-4 p-1.5 text-muted-foreground/40 hover:text-foreground rounded-lg transition-colors flex items-center gap-1 text-xs"
-                  disabled={isPending}
+                  disabled={isSaving}
                   aria-label="Voltar"
                 >
                   <ChevronLeft size={14} /> Voltar
@@ -259,7 +281,7 @@ export function WelcomeModal({ trainerName }: WelcomeModalProps) {
                     <button
                       key={opt.value}
                       onClick={() => handleSelectModality(opt.value)}
-                      disabled={isPending}
+                      disabled={isSaving}
                       className="text-left w-full p-4 rounded-xl bg-glass-bg border border-k-border-subtle hover:border-violet-500/40 hover:bg-violet-500/5 transition-all active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <h3 className="text-sm font-bold text-foreground">{opt.title}</h3>
@@ -273,7 +295,7 @@ export function WelcomeModal({ trainerName }: WelcomeModalProps) {
                 <div className="mt-5 flex justify-center">
                   <button
                     onClick={() => handleSelectModality(null)}
-                    disabled={isPending}
+                    disabled={isSaving}
                     className="text-xs text-muted-foreground/60 hover:text-muted-foreground underline underline-offset-4 transition-colors disabled:opacity-50"
                   >
                     Não responder agora
