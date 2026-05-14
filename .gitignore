@@ -78,3 +78,14 @@ docs/prd/PROMPT_claude_code_preferencias.md
 # do `expo run:ios` da raiz em vez de `cd mobile`)
 /.expo/
 /ios/
+
+# Orchestrator scratchpad — gitignored
+/_planning/specs/
+/_planning/mocks/
+# Note: /_planning/analysis/ é versionado (docs estratégicos)
+
+# macOS lixo (.DS_Store da raiz já listado acima; cobertura recursiva)
+**/.DS_Store
+
+# Word/Pages lockfiles
+~$*
