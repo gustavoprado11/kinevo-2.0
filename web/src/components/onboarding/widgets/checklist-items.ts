@@ -15,6 +15,9 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 
+/** Fase 17b · fix BUG 3+4 — alguns itens não navegam, só abrem um dialog inline. */
+export type ChecklistAction = 'navigate' | 'open_app_links_dialog'
+
 export interface ChecklistItem {
   key: keyof OnboardingMilestones
   label: string
@@ -23,6 +26,9 @@ export interface ChecklistItem {
   icon: LucideIcon
   /** Fase 17b — undefined = sempre visível. */
   visibleFor?: TrainerModalityFocus[]
+  /** Fase 17b · fix — default 'navigate' (usa href). 'open_app_links_dialog'
+   *  abre o modal com QR codes do app sem sair da página. */
+  action?: ChecklistAction
 }
 
 /**
@@ -60,15 +66,17 @@ export const ALL_CHECKLIST_ITEMS: ChecklistItem[] = [
     key: 'app_link_shared',
     label: 'Compartilhar link do App',
     description: 'Envie o App para um aluno',
-    href: '/dashboard',
+    href: '#',
     icon: Share2,
+    action: 'open_app_links_dialog',
   },
   {
     key: 'mobile_logged_in',
     label: 'Entre no App Mobile',
     description: 'Baixe e faça login com o mesmo email do web',
-    href: '/dashboard',
+    href: '#',
     icon: Smartphone,
+    action: 'open_app_links_dialog',
   },
   {
     key: 'first_training_room_session',

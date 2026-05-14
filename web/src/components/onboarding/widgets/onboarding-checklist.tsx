@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X, ChevronUp, Check, Clock } from 'lucide-react'
 import { useOnboardingStore } from '@/stores/onboarding-store'
 import { getChecklistItemsForModality, type ChecklistItem } from './checklist-items'
+import { AppLinksDialog } from './app-links-dialog'
 
 // ---------------------------------------------------------------------------
 // Progress Circle SVG
@@ -164,6 +165,7 @@ export function OnboardingChecklist() {
 
   // Track which milestone just completed for bounce animation
   const [justCompleted, setJustCompleted] = useState<string | null>(null)
+  const [appLinksDialogOpen, setAppLinksDialogOpen] = useState(false)
   const prevMilestonesRef = useRef(milestones)
 
   // Detect newly completed milestones
@@ -191,9 +193,13 @@ export function OnboardingChecklist() {
   if (allComplete) return null
   if (activeTourId) return null
 
-  const handleItemClick = (href: string) => {
-    router.push(href)
-    // Collapse after navigation
+  const handleItemClick = (item: ChecklistItem) => {
+    if (item.action === 'open_app_links_dialog') {
+      setAppLinksDialogOpen(true)
+      // Mantém o checklist aberto pra o trainer poder voltar pros itens.
+      return
+    }
+    router.push(item.href)
     if (isChecklistOpen) {
       toggleChecklist()
     }
@@ -262,7 +268,7 @@ export function OnboardingChecklist() {
                   item={item}
                   isCompleted={milestones[item.key]}
                   justCompleted={justCompleted === item.key}
-                  onClick={() => handleItemClick(item.href)}
+                  onClick={() => handleItemClick(item)}
                 />
               ))}
             </div>
@@ -315,6 +321,10 @@ export function OnboardingChecklist() {
           </motion.button>
         )}
       </AnimatePresence>
+      <AppLinksDialog
+        isOpen={appLinksDialogOpen}
+        onClose={() => setAppLinksDialogOpen(false)}
+      />
     </div>
   )
 }
