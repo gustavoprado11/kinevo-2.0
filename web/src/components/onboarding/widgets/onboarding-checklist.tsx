@@ -1,12 +1,11 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, ChevronUp, Check, Sparkles } from 'lucide-react'
+import { X, ChevronUp, Check, Clock } from 'lucide-react'
 import { useOnboardingStore } from '@/stores/onboarding-store'
-import { CHECKLIST_ITEMS } from './checklist-items'
-import { TOTAL_MILESTONES } from '@kinevo/shared/types/onboarding'
+import { getChecklistItemsForModality, type ChecklistItem } from './checklist-items'
 
 // ---------------------------------------------------------------------------
 // Progress Circle SVG
@@ -70,7 +69,7 @@ function ChecklistItemRow({
   justCompleted,
   onClick,
 }: {
-  item: (typeof CHECKLIST_ITEMS)[number]
+  item: ChecklistItem
   isCompleted: boolean
   justCompleted: boolean
   onClick: () => void
@@ -154,6 +153,14 @@ export function OnboardingChecklist() {
   const activeTourId = useOnboardingStore((s) => s.activeTourId)
   const toggleChecklist = useOnboardingStore((s) => s.toggleChecklist)
   const dismissChecklist = useOnboardingStore((s) => s.dismissChecklist)
+  const snoozeChecklist = useOnboardingStore((s) => s.snoozeChecklist)
+  const isChecklistSnoozed = useOnboardingStore((s) => s.isChecklistSnoozed())
+  const modalityFocus = useOnboardingStore((s) => s.modalityFocus)
+
+  const items = useMemo(
+    () => getChecklistItemsForModality(modalityFocus),
+    [modalityFocus],
+  )
 
   // Track which milestone just completed for bounce animation
   const [justCompleted, setJustCompleted] = useState<string | null>(null)
@@ -172,12 +179,15 @@ export function OnboardingChecklist() {
     prevMilestonesRef.current = milestones
   }, [milestones])
 
-  const completedCount = Object.values(milestones).filter(Boolean).length
-  const allComplete = completedCount === TOTAL_MILESTONES
+  // Count + total resolvidos pelos itens visíveis pra essa modalidade.
+  const visibleTotal = items.length
+  const completedCount = items.filter((it) => milestones[it.key]).length
+  const allComplete = completedCount === visibleTotal && visibleTotal > 0
 
-  // Don't render if not hydrated, dismissed, all complete, or tour active
+  // Don't render if not hydrated, dismissed, snoozed, all complete, or tour active
   if (!isHydrated) return null
   if (checklistDismissed) return null
+  if (isChecklistSnoozed) return null
   if (allComplete) return null
   if (activeTourId) return null
 
@@ -210,14 +220,14 @@ export function OnboardingChecklist() {
               <div className="flex items-center gap-3">
                 <ProgressCircle
                   completed={completedCount}
-                  total={TOTAL_MILESTONES}
+                  total={visibleTotal}
                 />
                 <div>
                   <h3 className="text-sm font-bold text-foreground">
                     Primeiros Passos
                   </h3>
                   <p className="text-[11px] text-muted-foreground">
-                    {completedCount} de {TOTAL_MILESTONES} concluídos
+                    {completedCount} de {visibleTotal} concluídos
                   </p>
                 </div>
               </div>
@@ -237,7 +247,7 @@ export function OnboardingChecklist() {
                   className="h-full bg-violet-600 rounded-full"
                   initial={{ width: 0 }}
                   animate={{
-                    width: `${(completedCount / TOTAL_MILESTONES) * 100}%`,
+                    width: `${(completedCount / visibleTotal) * 100}%`,
                   }}
                   transition={{ duration: 0.5, ease: 'easeOut' }}
                 />
@@ -246,7 +256,7 @@ export function OnboardingChecklist() {
 
             {/* Items List */}
             <div className="p-2 max-h-[360px] overflow-y-auto">
-              {CHECKLIST_ITEMS.map((item) => (
+              {items.map((item) => (
                 <ChecklistItemRow
                   key={item.key}
                   item={item}
@@ -258,12 +268,18 @@ export function OnboardingChecklist() {
             </div>
 
             {/* Footer */}
-            <div className="px-4 pb-3 pt-1 border-t border-k-border-subtle">
+            <div className="flex items-center justify-between px-4 pb-3 pt-2 border-t border-k-border-subtle">
+              <button
+                onClick={() => snoozeChecklist(7)}
+                className="flex items-center gap-1 text-[11px] text-muted-foreground/50 hover:text-muted-foreground underline underline-offset-4 transition-colors"
+              >
+                <Clock size={11} /> Lembrar em 7 dias
+              </button>
               <button
                 onClick={dismissChecklist}
                 className="text-[11px] text-muted-foreground/50 hover:text-muted-foreground underline underline-offset-4 transition-colors"
               >
-                Dispensar checklist
+                Dispensar
               </button>
             </div>
           </motion.div>
@@ -282,14 +298,14 @@ export function OnboardingChecklist() {
           >
             <ProgressCircle
               completed={completedCount}
-              total={TOTAL_MILESTONES}
+              total={visibleTotal}
             />
             <div className="text-left">
               <p className="text-xs font-bold text-foreground">
                 Primeiros Passos
               </p>
               <p className="text-[10px] text-muted-foreground">
-                {completedCount} de {TOTAL_MILESTONES}
+                {completedCount} de {visibleTotal}
               </p>
             </div>
             <ChevronUp

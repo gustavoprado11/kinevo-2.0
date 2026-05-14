@@ -2,19 +2,25 @@
 
 import { useEffect } from 'react'
 import { useOnboardingStore } from '@/stores/onboarding-store'
-import type { OnboardingState } from '@kinevo/shared/types/onboarding'
+import type {
+  OnboardingState,
+  TrainerModalityFocus,
+} from '@kinevo/shared/types/onboarding'
 import { DEFAULT_ONBOARDING_STATE } from '@kinevo/shared/types/onboarding'
 
 interface OnboardingProviderProps {
   initialState: OnboardingState | null
+  trainerModalityFocus?: TrainerModalityFocus
   children: React.ReactNode
 }
 
 export function OnboardingProvider({
   initialState,
+  trainerModalityFocus = null,
   children,
 }: OnboardingProviderProps) {
   const hydrate = useOnboardingStore((s) => s.hydrate)
+  const setModalityFocus = useOnboardingStore((s) => s.setModalityFocus)
 
   useEffect(() => {
     // With skipHydration: true, localStorage is NOT auto-restored.
@@ -35,7 +41,8 @@ export function OnboardingProvider({
         }
       : DEFAULT_ONBOARDING_STATE
     hydrate(normalized)
-  }, [initialState, hydrate])
+    setModalityFocus(trainerModalityFocus)
+  }, [initialState, trainerModalityFocus, hydrate, setModalityFocus])
 
   return <>{children}</>
 }

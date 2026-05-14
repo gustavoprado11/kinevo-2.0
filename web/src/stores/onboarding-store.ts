@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware'
 import type {
   OnboardingState,
   OnboardingMilestones,
+  TrainerModalityFocus,
 } from '@kinevo/shared/types/onboarding'
 import { DEFAULT_ONBOARDING_STATE } from '@kinevo/shared/types/onboarding'
 
@@ -17,6 +18,17 @@ export interface TourStep {
   description: string
   placement: 'top' | 'bottom' | 'left' | 'right'
   spotlightPadding?: number
+  /** Fase 17b — omitir step para certas modalidades. Undefined = sempre visível. */
+  visibleFor?: TrainerModalityFocus[]
+  /** Fase 17b — copy alternativo por modalidade. */
+  byModality?: Partial<
+    Record<
+      Exclude<TrainerModalityFocus, null> | 'null',
+      { title?: string; description?: string }
+    >
+  >
+  /** Fase 17b — id que faz o TourRunner renderizar conteúdo customizado no tooltip. */
+  customContentId?: string
 }
 
 // ---------------------------------------------------------------------------
@@ -32,6 +44,12 @@ interface OnboardingStore {
   activeTourId: string | null
   currentStepIndex: number
   isChecklistOpen: boolean
+
+  // Trainer.modality_focus cached in-memory (NOT persisted — single source of
+  // truth is the DB. Set by OnboardingProvider on hydrate and by widgets
+  // that mutate the trainer record).
+  modalityFocus: TrainerModalityFocus
+  setModalityFocus: (focus: TrainerModalityFocus) => void
 
   // Hydration — called once by OnboardingProvider with server data
   hydrate: (serverState: OnboardingState) => void
@@ -54,6 +72,8 @@ interface OnboardingStore {
   // Checklist
   toggleChecklist: () => void
   dismissChecklist: () => void
+  snoozeChecklist: (days: number) => void
+  isChecklistSnoozed: () => boolean
 
   // Welcome
   completeWelcomeTour: () => void
@@ -96,6 +116,11 @@ export const useOnboardingStore = create<OnboardingStore>()(
       activeTourId: null,
       currentStepIndex: 0,
       isChecklistOpen: false,
+      modalityFocus: null,
+
+      setModalityFocus(focus) {
+        set({ modalityFocus: focus })
+      },
 
       // ----- Hydration -----
       hydrate(serverState) {
@@ -215,6 +240,22 @@ export const useOnboardingStore = create<OnboardingStore>()(
           isChecklistOpen: false,
         }))
         get()._syncToServer()
+      },
+
+      snoozeChecklist(days) {
+        const until = new Date()
+        until.setDate(until.getDate() + days)
+        set((s) => ({
+          state: { ...s.state, checklist_snoozed_until: until.toISOString() },
+          isChecklistOpen: false,
+        }))
+        get()._syncToServer()
+      },
+
+      isChecklistSnoozed() {
+        const until = get().state.checklist_snoozed_until
+        if (!until) return false
+        return new Date(until) > new Date()
       },
 
       // ----- Welcome -----
