@@ -18,6 +18,7 @@ import { WarmupCardioCard } from '@/components/training-room/warmup-cardio-card'
 import { WorkoutFormInline } from '@/components/training-room/workout-form-inline'
 import { finishTrainingRoomWorkout } from '@/actions/training-room/finish-training-room-workout'
 import type { SubstituteOption } from '@/actions/training-room/get-substitute-exercises'
+import { useOnboardingStore } from '@/stores/onboarding-store'
 
 interface TrainingRoomClientProps {
     trainerId: string
@@ -113,6 +114,8 @@ export function TrainingRoomClient({ trainerId }: TrainingRoomClientProps) {
 
         setIsFeedbackOpen(false)
         finishSession(activeStudentId)
+        // Fase 17b — marca milestone do checklist. Idempotente no store.
+        useOnboardingStore.getState().completeMilestone('first_training_room_session')
     }
 
     const handleCancelFeedback = () => {
