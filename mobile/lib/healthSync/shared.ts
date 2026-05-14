@@ -14,7 +14,14 @@ export function emptyCounts(): SyncCounts {
 }
 
 export function toDateOnlyISO(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  // Fix BUG 2 (1.6.0/33): usa local time do device, não UTC.
+  // toISOString() converte pra UTC, causando bucket cruzado: samples
+  // de 21:00 SP (= 00:00 UTC dia seguinte) eram contadas no dia errado,
+  // inflando "passos hoje" com passos da noite anterior.
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 /**

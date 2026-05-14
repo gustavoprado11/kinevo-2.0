@@ -77,7 +77,11 @@ function isValidMetric(m: string | undefined): m is MetricKind {
 }
 
 function toDateOnly(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  // Fix BUG 2 (1.6.0/33): local time, não UTC — evita off-by-one no detalhe.
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 function avg(arr: number[]): number {

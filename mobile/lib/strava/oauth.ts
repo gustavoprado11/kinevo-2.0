@@ -22,7 +22,10 @@ const STRAVA_DEAUTHORIZE_URL = "https://www.strava.com/oauth/deauthorize";
 const STRAVA_SCOPE = "read,activity:read_all";
 
 // Web callback page deep-links back to mobile scheme.
-const REDIRECT_URI = "https://kinevo.app/strava-callback.html";
+// Strava exige HTTPS dentro do Authorization Callback Domain registrado
+// (www.kinevoapp.com) — custom schemes (kinevo://) são rejeitados com
+// {field: "redirect_uri", code: "invalid"}.
+const REDIRECT_URI = "https://www.kinevoapp.com/strava-callback";
 const MOBILE_CALLBACK_SCHEME = "kinevo://strava-callback";
 
 // SecureStore keys.

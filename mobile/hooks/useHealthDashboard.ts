@@ -2,7 +2,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 
 function toDateOnlyISO(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  // Fix BUG 2 (1.6.0/33): usa local time do device, não UTC. Evita
+  // que "hoje" no dashboard caia no dia errado pra usuários em UTC-3+.
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 async function getCurrentStudentId(): Promise<string | null> {

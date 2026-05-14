@@ -81,8 +81,11 @@ export function HealthMetricCard({
 
 function createStyles(c: V2Palette) {
   return StyleSheet.create({
+    // BUG 1 fix (1.6.0/33): trocado flex:1 por width:'100%' pra evitar
+    // iOS Pressable measure-pass colapsar o conteúdo. Pressable parent
+    // já tem flex:1 no row, garantindo fatia 50% da largura.
     card: {
-      flex: 1,
+      width: '100%',
       flexDirection: 'row',
       backgroundColor: c.surface.card,
       borderRadius: 16,
