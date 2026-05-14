@@ -93,9 +93,14 @@ function aggregateSleep(samples: readonly SleepSample[]): Map<string, SleepDaily
   }
 
   for (const [, agg] of byDate) {
-    const inBedMin = agg.raw
+    const explicitInBed = agg.raw
       .filter((r) => r.stage === CategoryValueSleepAnalysis.inBed)
       .reduce((acc, r) => acc + (new Date(r.end).getTime() - new Date(r.start).getTime()) / 60000, 0);
+    // Fallback robustness: se Apple emitir samples só por fase de sono
+    // (sem inBed explícito), usa asleep+awake como proxy de tempo na cama.
+    // Apple Watch padrão sempre emite inBed; iPhone-only ou apps third-party
+    // podem omitir. Sem este fallback, efficiency_pct viraria null.
+    const inBedMin = Math.max(explicitInBed, agg.duration_minutes + agg.awake_minutes);
     if (inBedMin > 0) {
       agg.efficiency_pct = Math.min(100, Math.round((agg.duration_minutes / inBedMin) * 1000) / 10);
     }

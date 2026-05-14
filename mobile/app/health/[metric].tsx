@@ -1,7 +1,8 @@
 // Fase 14d — Tela detalhe de uma métrica de saúde.
 // `/health/sleep | hr_resting | steps | hrv` — variação 4-way.
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, Pressable, Alert } from 'react-native';
+import { Info } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
@@ -43,6 +44,15 @@ const METRIC_EYEBROW: Record<MetricKind, string> = {
   steps: 'Passos · hoje',
   hrv: 'HRV · hoje',
 };
+
+function showEfficiencyInfo() {
+  Alert.alert(
+    'Eficiência do sono',
+    'Métrica clínica padrão: tempo dormindo / tempo na cama.\n\n' +
+      'Pode diferir do score "Qualidade do Sono" do Apple Saúde, que é uma métrica proprietária composta (duração + hora de dormir + interrupções).',
+    [{ text: 'Entendi' }],
+  );
+}
 
 interface DataPoint {
   date: Date;
@@ -350,7 +360,14 @@ export default function HealthMetricDetailScreen() {
           extra={
             metric === 'sleep' && series?.todayEfficiency != null ? (
               <View style={styles.sleepExtraRow}>
-                <Text style={styles.sleepExtraLabel}>Eficiência</Text>
+                <Pressable
+                  onPress={showEfficiencyInfo}
+                  hitSlop={8}
+                  style={styles.sleepExtraLabelWrap}
+                >
+                  <Text style={styles.sleepExtraLabel}>Eficiência do sono</Text>
+                  <Info size={11} color="rgba(255,255,255,0.55)" />
+                </Pressable>
                 <Text style={styles.sleepExtraValue}>{Math.round(series.todayEfficiency)}%</Text>
               </View>
             ) : null
@@ -496,6 +513,11 @@ function createStyles(c: V2Palette) {
       paddingHorizontal: 12,
       paddingVertical: 8,
       borderRadius: 10,
+    },
+    sleepExtraLabelWrap: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
     },
     sleepExtraLabel: {
       fontSize: 12,
