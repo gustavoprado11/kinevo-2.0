@@ -14,7 +14,6 @@ import { WidgetGrid } from '@/components/dashboard/widget-grid'
 import { WidgetPicker } from '@/components/dashboard/widget-picker'
 import { WelcomeModal } from '@/components/onboarding/widgets/welcome-modal'
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
-import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
 
 // ── Lazy-loaded heavy widgets (code-split) ──
 const AssistantActionCards = lazy(() => import('@/components/dashboard/assistant-action-cards').then(m => ({ default: m.AssistantActionCards })))
@@ -25,7 +24,11 @@ const StudentRankingWidget = lazy(() => import('@/components/dashboard/student-r
 import { CalendarOff, FolderArchive, Loader2 } from 'lucide-react'
 import { markAsPaid } from '@/actions/financial/mark-as-paid'
 import { archiveStudent } from '@/actions/financial/archive-student'
-import type { OnboardingState } from '@kinevo/shared/types/onboarding'
+import type {
+    OnboardingState,
+    TrainerModalityFocus,
+} from '@kinevo/shared/types/onboarding'
+import { ModalityInferenceToast } from '@/components/onboarding/widgets/modality-inference-toast'
 import type { DashboardData } from '@/lib/dashboard/get-dashboard-data'
 import type { WidgetId } from '@/stores/dashboard-layout-store'
 
@@ -36,6 +39,7 @@ interface Trainer {
     avatar_url?: string | null
     theme?: 'light' | 'dark' | 'system' | null
     onboarding_state?: OnboardingState | null
+    modality_focus?: TrainerModalityFocus
 }
 
 interface Student {
@@ -206,8 +210,13 @@ export function DashboardClient({ trainer, data, initialStudents, selfStudentId,
             trainerAvatarUrl={trainer.avatar_url}
             trainerTheme={trainer.theme ?? undefined}
             onboardingState={trainer.onboarding_state}
+            trainerModalityFocus={trainer.modality_focus ?? null}
             students={students.map(s => ({ id: s.id, name: s.name, status: s.status }))}
         >
+            {/* Modality Inference Toast (Fase 17b) — só renderiza se modalityFocus=null
+                + 3+ alunos com modality dominante >= 80% + tip não dispensada */}
+            <ModalityInferenceToast studentsCount={students.length} />
+
             {/* Trainer Profile Banner (conditional, dismissible) */}
             <TrainerProfileBanner selfStudentId={selfStudentId} />
 
@@ -238,7 +247,8 @@ export function DashboardClient({ trainer, data, initialStudents, selfStudentId,
             />
 
             <WelcomeModal trainerName={trainer.name} />
-            <TourRunner tourId="welcome" steps={TOUR_STEPS.welcome} />
+            {/* Fase 17b — sem `steps`; TourRunner resolve por modalityFocus do store. */}
+            <TourRunner tourId="welcome" />
 
             {/* Archive Confirmation Modal */}
             {archiveConfirm && (
