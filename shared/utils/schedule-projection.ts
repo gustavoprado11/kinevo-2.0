@@ -484,6 +484,20 @@ export function getWeekRange(date: Date, timeZone?: string): DateRange {
   return { start, end }
 }
 
+/** Get the ISO 8601 week range (Monday–Sunday) containing `date`. Optionally
+ *  timezone-aware. Used pelo dashboard trainer pra alinhar com mobile
+ *  (RPC get_trainer_stats / Postgres date_trunc('week'), migração 105).
+ *  Outras telas do web continuam usando getWeekRange (domingo-sábado). */
+export function getISOWeekRange(date: Date, timeZone?: string): DateRange {
+  const d = timeZone ? startOfDayTz(date, timeZone) : startOfDay(date)
+  // getDay(): 0=Sun..6=Sat. ISO weekday: 1=Mon..7=Sun → offset pra segunda anterior.
+  const isoOffset = (d.getDay() + 6) % 7 // dom=6, seg=0, ter=1, ..., sáb=5
+  const start = addDays(d, -isoOffset) // Monday 00:00
+  const end = addDays(start, 6) // Sunday 00:00
+  end.setHours(23, 59, 59, 999) // Sunday 23:59:59.999
+  return { start, end }
+}
+
 /** Get the 1st–last day range for the month containing `date`. */
 export function getMonthRange(date: Date): DateRange {
   const start = new Date(date.getFullYear(), date.getMonth(), 1)

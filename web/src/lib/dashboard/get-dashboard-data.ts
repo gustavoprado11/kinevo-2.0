@@ -1,7 +1,7 @@
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { createClient } from '@/lib/supabase/server'
 import { mapPendingForms as mapPendingFormsHelper } from './map-pending-forms'
-import { getWeekRange, getProgramEndDate, getProgramWeek, getScheduledWorkoutsForDate } from '@kinevo/shared/utils/schedule-projection'
+import { getISOWeekRange, getProgramEndDate, getProgramWeek, getScheduledWorkoutsForDate } from '@kinevo/shared/utils/schedule-projection'
 import { getNextOccurrences } from '@kinevo/shared/utils/appointments-projection'
 import type {
     AppointmentException,
@@ -178,7 +178,10 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
     const TZ = 'America/Sao_Paulo'
     const brDateStr = today.toLocaleDateString('en-CA', { timeZone: TZ }) // YYYY-MM-DD
     const todayStart = startOfDayInTZ(brDateStr, TZ)
-    const weekRange = getWeekRange(today, TZ)
+    // ISO week (segunda→domingo SP) pra alinhar com mobile RPC
+    // get_trainer_stats (Postgres date_trunc('week'), migração 105).
+    // Outras telas do web continuam com janela domingo-sábado via getWeekRange.
+    const weekRange = getISOWeekRange(today, TZ)
 
     // Previous week range for trend comparison
     const prevWeekStart = new Date(weekRange.start.getTime() - 7 * 24 * 60 * 60 * 1000)
@@ -372,28 +375,16 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
     // MRR
     const mrr = (activeContractsResult.data ?? []).reduce((sum, c) => sum + (c.amount || 0), 0)
 
-    // Adherence: students with active program who trained in last 5 days
-    const fiveDaysAgo = new Date(today.getTime() - 5 * 24 * 60 * 60 * 1000)
-    const studentsWithProgram = new Set(activePrograms.map(p => p.student_id))
-    const lastSessionByStudent = new Map<string, Date>()
-    for (const s of allSessions) {
-        if (!lastSessionByStudent.has(s.student_id)) {
-            lastSessionByStudent.set(s.student_id, new Date(s.completed_at))
-        }
-    }
-
-    const totalWithProgram = [...studentsWithProgram].filter(id =>
-        activeStudents.some(s => s.id === id)
-    ).length
-
-    const onTrack = [...studentsWithProgram].filter(id => {
-        if (!activeStudents.some(s => s.id === id)) return false
-        const lastDate = lastSessionByStudent.get(id)
-        return lastDate && lastDate >= fiveDaysAgo
-    }).length
-
-    const adherencePercent = totalWithProgram > 0 ? Math.round((onTrack / totalWithProgram) * 100) : 0
-    const hasActivePrograms = totalWithProgram > 0
+    // Aderência = % de sessões executadas vs planejadas na semana atual.
+    // Fórmula canônica alinhada com mobile (RPC get_trainer_stats,
+    // migração 105). Mede execução do plano, não engajamento.
+    // weekSessions e expectedSessionsThisWeek já calculados acima.
+    const hasActivePrograms = activePrograms.some(p =>
+        activeStudents.some(s => s.id === p.student_id)
+    )
+    const adherencePercent = expectedSessionsThisWeek > 0
+        ? Math.min(100, Math.round((sessionsThisWeek / expectedSessionsThisWeek) * 100))
+        : 0
 
     // ── Trends (previous week comparison) ──
     const sessionsLastWeek = prevWeekSessionsResult.data?.length ?? null
