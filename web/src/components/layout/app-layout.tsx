@@ -18,7 +18,10 @@ const CommandPaletteWrapper = dynamic(
 )
 import { useSidebarStore } from '@/stores/sidebar-store'
 import { useAssistantChatStore } from '@/stores/assistant-chat-store'
-import type { OnboardingState } from '@kinevo/shared/types/onboarding'
+import type {
+    OnboardingState,
+    TrainerModalityFocus,
+} from '@kinevo/shared/types/onboarding'
 
 type ThemePreference = 'light' | 'dark' | 'system'
 
@@ -35,10 +38,11 @@ interface AppLayoutProps {
     trainerAvatarUrl?: string | null
     trainerTheme?: ThemePreference | null
     onboardingState?: OnboardingState | null
+    trainerModalityFocus?: TrainerModalityFocus
     students?: Student[]
 }
 
-export function AppLayout({ children, trainerName, trainerEmail, trainerAvatarUrl, trainerTheme, onboardingState, students }: AppLayoutProps) {
+export function AppLayout({ children, trainerName, trainerEmail, trainerAvatarUrl, trainerTheme, onboardingState, trainerModalityFocus, students }: AppLayoutProps) {
     const isCollapsed = useSidebarStore(state => state.isCollapsed)
     const isChatOpen = useAssistantChatStore(state => state.isOpen)
 
@@ -60,7 +64,7 @@ export function AppLayout({ children, trainerName, trainerEmail, trainerAvatarUr
             <div suppressHydrationWarning className={`bg-surface-primary min-h-screen transition-all duration-300 ease-in-out ${isCollapsed ? 'pl-[68px]' : 'pl-64'} ${isChatOpen ? 'xl:pr-[420px]' : ''}`}>
                 {/* Page content */}
                 <main className="p-8">
-                    <OnboardingProvider initialState={onboardingState ?? null}>
+                    <OnboardingProvider initialState={onboardingState ?? null} trainerModalityFocus={trainerModalityFocus}>
                         <MigrationBanner />
                         {children}
                     </OnboardingProvider>
