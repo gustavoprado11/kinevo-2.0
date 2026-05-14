@@ -1,14 +1,20 @@
 'use client'
 
-import { useEffect, useCallback, useState } from 'react'
+import { useEffect, useCallback, useMemo, useState } from 'react'
 import { useOnboardingStore, type TourStep } from '@/stores/onboarding-store'
 import { useSpotlightPosition } from '@/hooks/use-spotlight-position'
 import { OnboardingSpotlight } from '../primitives/onboarding-spotlight'
 import { OnboardingTooltip } from '../primitives/onboarding-tooltip'
+import { resolveSteps } from './tour-definitions'
+import { WelcomeMobileStep } from '../widgets/welcome-mobile-step'
 
 interface TourRunnerProps {
   tourId: string
-  steps: TourStep[]
+  /**
+   * Steps explícitos. Quando omitido, o runner resolve via `resolveSteps(tourId, modalityFocus)`
+   * — usado pelo welcome tour v2 pra filtrar por modalidade.
+   */
+  steps?: TourStep[]
   delay?: number
   autoStart?: boolean
 }
@@ -23,7 +29,7 @@ const MOBILE_BREAKPOINT = 768
  * 2. Click Blocking: Spotlight overlay blocks all app interaction.
  * 3. Mobile: If viewport < 768px, tour is skipped entirely (marks as completed).
  */
-export function TourRunner({ tourId, steps, delay = 500, autoStart = false }: TourRunnerProps) {
+export function TourRunner({ tourId, steps: stepsProp, delay = 500, autoStart = false }: TourRunnerProps) {
   const activeTourId = useOnboardingStore((s) => s.activeTourId)
   const currentStepIndex = useOnboardingStore((s) => s.currentStepIndex)
   const isTourCompleted = useOnboardingStore((s) => s.isTourCompleted)
@@ -32,8 +38,14 @@ export function TourRunner({ tourId, steps, delay = 500, autoStart = false }: To
   const prevStep = useOnboardingStore((s) => s.prevStep)
   const skipTour = useOnboardingStore((s) => s.skipTour)
   const completeTour = useOnboardingStore((s) => s.completeTour)
+  const modalityFocus = useOnboardingStore((s) => s.modalityFocus)
 
   const [ready, setReady] = useState(false)
+
+  const steps = useMemo<TourStep[]>(
+    () => stepsProp ?? resolveSteps(tourId, modalityFocus),
+    [stepsProp, tourId, modalityFocus],
+  )
 
   const isActive = activeTourId === tourId
   const currentStep = isActive ? steps[currentStepIndex] : null
@@ -142,6 +154,11 @@ export function TourRunner({ tourId, steps, delay = 500, autoStart = false }: To
           onSkip={handleSkip}
           isLastStep={isLastStep}
           isFirstStep={isFirstStep}
+          customContent={
+            currentStep.customContentId === 'welcome-mobile-step'
+              ? <WelcomeMobileStep />
+              : undefined
+          }
         />
       )}
     </OnboardingSpotlight>

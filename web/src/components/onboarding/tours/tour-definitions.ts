@@ -1,73 +1,99 @@
 import type { TourStep } from '@/stores/onboarding-store'
+import type { TrainerModalityFocus } from '@kinevo/shared/types/onboarding'
+
+/** Fase 17b — id usado pelo TourRunner pra renderizar o WelcomeMobileStep custom. */
+export const WELCOME_MOBILE_STEP_ID = 'welcome-mobile-qr'
 
 export const TOUR_STEPS: Record<string, TourStep[]> = {
   // =============================================
-  // WELCOME TOUR — played from dashboard after Welcome Modal
+  // WELCOME TOUR v2 (Fase 17b) — 6 steps, adapta por modalityFocus
   // =============================================
   welcome: [
+    // 1. Alunos
     {
       id: 'welcome-1',
       targetSelector: '[data-onboarding="sidebar-students"]',
       title: 'Seus Alunos',
       description:
-        'Cadastre e gerencie todos os seus alunos. Cada aluno tem perfil completo, programa ativo e histórico de sessões.',
+        'Cadastre e gerencie todos os seus alunos. Perfil completo, programa ativo e histórico de sessões em um só lugar.',
       placement: 'right',
     },
+    // 2. Formulários
     {
       id: 'welcome-2',
-      targetSelector: '[data-onboarding="sidebar-exercises"]',
-      title: 'Biblioteca de Exercícios',
+      targetSelector: '[data-onboarding="sidebar-forms"]',
+      title: 'Formulários',
       description:
-        'Mais de 400 exercícios do sistema com vídeo demonstrativo. Crie exercícios personalizados quando precisar.',
+        'Envie anamneses e formulários personalizados. Receba respostas e dê feedback direto pela plataforma.',
       placement: 'right',
+      byModality: {
+        presencial: {
+          description:
+            'Anamnese pra novos alunos. Você também pode usar pra check-ins quando quiser.',
+        },
+        online: {
+          description:
+            'Anamnese, check-in semanal e qualquer formulário recorrente. Receba respostas e dê feedback pela plataforma.',
+        },
+      },
     },
+    // 3. Bibliotecas (Programas + Exercícios consolidados)
     {
       id: 'welcome-3',
       targetSelector: '[data-onboarding="sidebar-programs"]',
-      title: 'Templates de Programa',
+      title: 'Programas e Exercícios',
       description:
-        'Monte programas de treino reutilizáveis. Crie uma vez e atribua para vários alunos com um clique.',
+        'Monte programas reutilizáveis e use a biblioteca com 400+ exercícios. Crie exercícios próprios quando precisar.',
       placement: 'right',
     },
+    // 4. Financeiro
     {
       id: 'welcome-4',
-      targetSelector: '[data-onboarding="sidebar-forms"]',
-      title: 'Avaliações e Formulários',
-      description:
-        'Envie anamneses, check-ins semanais e formulários personalizados. Receba respostas e dê feedback direto pela plataforma.',
-      placement: 'right',
-    },
-    {
-      id: 'welcome-5',
       targetSelector: '[data-onboarding="sidebar-financial"]',
       title: 'Financeiro',
       description:
-        'Crie planos de consultoria, conecte com Stripe para cobrar automaticamente ou controle pagamentos manuais.',
+        'Cobrança recorrente via Stripe ou controle manual de pagamentos e relatórios — escolha o que faz sentido pro seu negócio.',
       placement: 'right',
+      byModality: {
+        presencial: {
+          description:
+            'Controle manual de pagamentos e relatórios. Stripe é opcional aqui.',
+        },
+        online: {
+          description:
+            'Stripe pra cobrança recorrente automática. Crie planos e venda no checkout.',
+        },
+      },
     },
+    // 5. Sala de Treino — oculto pra 'online'
     {
-      id: 'welcome-6',
-      targetSelector: '[data-onboarding="sidebar-settings"]',
-      title: 'Configurações',
-      description:
-        'Personalize seu perfil, escolha tema claro ou escuro e gerencie sua assinatura.',
-      placement: 'right',
-    },
-    {
-      id: 'welcome-7',
-      targetSelector: '[data-onboarding="dashboard-new-student"]',
-      title: 'Primeiro Passo: Cadastre um Aluno',
-      description:
-        'Comece cadastrando seu primeiro aluno. Você também pode usar o perfil "Meu Perfil" para testar os treinos no App Mobile.',
-      placement: 'bottom',
-    },
-    {
-      id: 'welcome-8',
+      id: 'welcome-5',
       targetSelector: '[data-onboarding="dashboard-training-room"]',
       title: 'Sala de Treino',
       description:
-        'Quando treinar presencialmente com seus alunos, use a Sala de Treino para registrar cargas e séries em tempo real.',
+        'Pra treinos presenciais: registre carga, reps e RPE em tempo real ao lado do aluno. Histórico e PRs ficam salvos automaticamente.',
       placement: 'bottom',
+      visibleFor: ['presencial', 'ambos'],
+    },
+    // 6. App Mobile (sempre presente — copy adapta; conteúdo custom QR)
+    {
+      id: WELCOME_MOBILE_STEP_ID,
+      targetSelector: '[data-onboarding="dashboard-share-app"]',
+      title: 'App Mobile',
+      description:
+        'Sala de Treino, formulários e notificações também acontecem no app. O login é o mesmo do web.',
+      placement: 'left',
+      customContentId: 'welcome-mobile-step',
+      byModality: {
+        presencial: {
+          description:
+            'Sala de Treino e captura de avaliação acontecem aqui. O login é o mesmo do web.',
+        },
+        online: {
+          description:
+            'Mensagens, notificações e acompanhamento dos alunos. O login é o mesmo do web.',
+        },
+      },
     },
   ],
 
@@ -353,4 +379,27 @@ export const TOUR_STEPS: Record<string, TourStep[]> = {
       placement: 'bottom',
     },
   ],
+}
+
+/**
+ * Fase 17b — Filtra/ajusta steps de um tour pela modalidade do trainer.
+ *
+ * - `visibleFor`: undefined = step sempre visível. Caso contrário, só inclui
+ *   se a modalidade resolvida (null → 'ambos') estiver no array.
+ * - `byModality`: copy override por modalidade. Mescla title/description.
+ */
+export function resolveSteps(
+  tourId: string,
+  modality: TrainerModalityFocus,
+): TourStep[] {
+  const steps = TOUR_STEPS[tourId] ?? []
+  const resolved: Exclude<TrainerModalityFocus, null> = modality ?? 'ambos'
+
+  return steps
+    .filter((s) => !s.visibleFor || s.visibleFor.includes(resolved))
+    .map((s) => {
+      const override = s.byModality?.[resolved]
+      if (!override) return s
+      return { ...s, ...override }
+    })
 }

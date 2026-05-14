@@ -19,6 +19,8 @@ interface OnboardingTooltipProps {
   onSkip: () => void
   isLastStep: boolean
   isFirstStep: boolean
+  /** Fase 17b — conteúdo extra renderizado abaixo da descrição (ex: QR codes do welcome step 6). */
+  customContent?: React.ReactNode
 }
 
 const TOOLTIP_GAP = 16
@@ -150,6 +152,7 @@ export function OnboardingTooltip({
   onSkip,
   isLastStep,
   isFirstStep,
+  customContent,
 }: OnboardingTooltipProps) {
   const tooltipRef = useRef<HTMLDivElement>(null)
   const [position, setPosition] = useState<{
@@ -173,7 +176,7 @@ export function OnboardingTooltip({
       animate={{ opacity: 1, x: 0, y: 0 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.2, ease: 'easeOut' }}
-      className="absolute bg-surface-card/95 backdrop-blur-xl border border-k-border-primary rounded-2xl p-5 shadow-[0_20px_50px_rgba(0,0,0,0.4)] max-w-sm w-80"
+      className={`absolute bg-surface-card/95 backdrop-blur-xl border border-k-border-primary rounded-2xl p-5 shadow-[0_20px_50px_rgba(0,0,0,0.4)] ${customContent ? 'max-w-md w-[360px]' : 'max-w-sm w-80'}`}
       style={{
         top: position?.top ?? -9999,
         left: position?.left ?? -9999,
@@ -202,6 +205,8 @@ export function OnboardingTooltip({
       <p className="text-xs text-muted-foreground leading-relaxed mt-1">
         {description}
       </p>
+
+      {customContent}
 
       {/* Footer */}
       <div className="flex items-center justify-between mt-4">

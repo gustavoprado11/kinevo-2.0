@@ -18,6 +18,17 @@ export interface TourStep {
   description: string
   placement: 'top' | 'bottom' | 'left' | 'right'
   spotlightPadding?: number
+  /** Fase 17b — omitir step para certas modalidades. Undefined = sempre visível. */
+  visibleFor?: TrainerModalityFocus[]
+  /** Fase 17b — copy alternativo por modalidade. */
+  byModality?: Partial<
+    Record<
+      Exclude<TrainerModalityFocus, null> | 'null',
+      { title?: string; description?: string }
+    >
+  >
+  /** Fase 17b — id que faz o TourRunner renderizar conteúdo customizado no tooltip. */
+  customContentId?: string
 }
 
 // ---------------------------------------------------------------------------
