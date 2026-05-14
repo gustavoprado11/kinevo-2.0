@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useMemo, useEffect, useRef } from 'react'
+import { useState, useMemo, useEffect, useRef, Suspense } from 'react'
 import Script from 'next/script'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { AuthLayout } from '@/components/auth/auth-layout'
 import { signupTrainer } from '@/actions/auth/signup-trainer'
 
@@ -44,6 +45,16 @@ const strengthColors = ['', 'bg-red-500', 'bg-amber-500', 'bg-emerald-500', 'bg-
 const strengthTextColors = ['', 'text-red-600', 'text-amber-600', 'text-emerald-600', 'text-emerald-700']
 
 export default function SignupPage() {
+    return (
+        <Suspense fallback={null}>
+            <SignupPageInner />
+        </Suspense>
+    )
+}
+
+function SignupPageInner() {
+    const searchParams = useSearchParams()
+    const isFromMobile = searchParams?.get('ref') === 'mobile'
     const [name, setName] = useState('')
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
@@ -130,7 +141,10 @@ export default function SignupPage() {
         // session cookie back to the browser, so this fetch is now
         // authenticated and the API route will find the trainer.
         try {
-            const res = await fetch('/api/stripe/checkout', { method: 'POST' })
+            const checkoutUrl = isFromMobile
+                ? '/api/stripe/checkout?source=mobile'
+                : '/api/stripe/checkout'
+            const res = await fetch(checkoutUrl, { method: 'POST' })
             const json = await res.json()
 
             if (!res.ok || !json.url) {

@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { stripe } from '@/lib/stripe'
 
 export async function POST(request: NextRequest) {
+    const isMobile = request.nextUrl.searchParams.get('source') === 'mobile'
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
@@ -57,8 +58,12 @@ export async function POST(request: NextRequest) {
                 trainer_id: trainer.id,
             },
         },
-        success_url: `${request.nextUrl.origin}/dashboard?checkout=success`,
-        cancel_url: `${request.nextUrl.origin}/subscription/blocked?checkout=canceled`,
+        success_url: isMobile
+            ? `${request.nextUrl.origin}/checkout-bridge?result=success`
+            : `${request.nextUrl.origin}/dashboard?checkout=success`,
+        cancel_url: isMobile
+            ? `${request.nextUrl.origin}/checkout-bridge?result=canceled`
+            : `${request.nextUrl.origin}/subscription/blocked?checkout=canceled`,
         metadata: {
             trainer_id: trainer.id,
         },
