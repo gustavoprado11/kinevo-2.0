@@ -3177,6 +3177,7 @@ export type Database = {
           email: string
           financial_attention_seen_at: string | null
           id: string
+          modality_focus: string | null
           name: string
           notification_preferences: Json | null
           onboarding_state: Json | null
@@ -3195,6 +3196,7 @@ export type Database = {
           email: string
           financial_attention_seen_at?: string | null
           id?: string
+          modality_focus?: string | null
           name: string
           notification_preferences?: Json | null
           onboarding_state?: Json | null
@@ -3213,6 +3215,7 @@ export type Database = {
           email?: string
           financial_attention_seen_at?: string | null
           id?: string
+          modality_focus?: string | null
           name?: string
           notification_preferences?: Json | null
           onboarding_state?: Json | null

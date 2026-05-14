@@ -106,6 +106,8 @@ export const useOnboardingStore = create<OnboardingStore>()(
         const merged: OnboardingState = {
           welcome_tour_completed: serverState.welcome_tour_completed,
           checklist_dismissed: serverState.checklist_dismissed,
+          // Server-wins pra snooze: usuário pode ter feito snooze em outro device.
+          checklist_snoozed_until: serverState.checklist_snoozed_until ?? null,
           tours_completed: Array.from(
             new Set([
               ...serverState.tours_completed,

@@ -19,7 +19,22 @@ export function OnboardingProvider({
   useEffect(() => {
     // With skipHydration: true, localStorage is NOT auto-restored.
     // Server state is the single source of truth for boolean flags.
-    hydrate(initialState ?? DEFAULT_ONBOARDING_STATE)
+    //
+    // Trainers existentes podem ter onboarding_state em DB sem os campos novos
+    // adicionados em Fase 17a (checklist_snoozed_until, milestones.mobile_logged_in,
+    // milestones.first_training_room_session). Mesclar contra DEFAULT_ONBOARDING_STATE
+    // pra garantir shape completo antes do hydrate.
+    const normalized: OnboardingState = initialState
+      ? {
+          ...DEFAULT_ONBOARDING_STATE,
+          ...initialState,
+          milestones: {
+            ...DEFAULT_ONBOARDING_STATE.milestones,
+            ...(initialState.milestones ?? {}),
+          },
+        }
+      : DEFAULT_ONBOARDING_STATE
+    hydrate(normalized)
   }, [initialState, hydrate])
 
   return <>{children}</>
