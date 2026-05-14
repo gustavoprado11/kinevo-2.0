@@ -3,9 +3,10 @@
 import { useState } from 'react'
 import { Smartphone, Copy, Check, ExternalLink } from 'lucide-react'
 import { useOnboardingStore } from '@/stores/onboarding-store'
+import { IOS_APP_URL, ANDROID_APP_URL } from '@/lib/constants/app-links'
 
-const IOS_LINK = 'https://apps.apple.com/br/app/kinevo/id6759053587'
-const ANDROID_LINK = 'https://play.google.com/store/apps/details?id=com.kinevo.mobile'
+const IOS_LINK = IOS_APP_URL
+const ANDROID_LINK = ANDROID_APP_URL
 
 export function AppDownloadCard() {
     const [copied, setCopied] = useState<'ios' | 'android' | null>(null)
