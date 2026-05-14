@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 import { DEFAULT_ONBOARDING_STATE } from '@kinevo/shared/types/onboarding'
-import type { OnboardingState } from '@kinevo/shared/types/onboarding'
+import type { OnboardingState, TrainerModalityFocus } from '@kinevo/shared/types/onboarding'
 
 interface TrainerRecord {
     id: string
@@ -12,6 +12,7 @@ interface TrainerRecord {
     theme: 'light' | 'dark' | 'system' | null
     ai_prescriptions_enabled?: boolean
     onboarding_state: OnboardingState | null
+    modality_focus: TrainerModalityFocus
     [key: string]: any
 }
 
@@ -46,7 +47,7 @@ export async function getTrainerWithSubscription(userId?: string) {
     const { data: t1, error: e1 } = await supabase
         .from('trainers')
         .select(
-            'id, name, email, avatar_url, theme, ai_prescriptions_enabled, onboarding_state, ' +
+            'id, name, email, avatar_url, theme, ai_prescriptions_enabled, onboarding_state, modality_focus, ' +
             'subscriptions(status, current_period_end, cancel_at_period_end, stripe_customer_id, created_at)'
         )
         .eq('auth_user_id', authUserId)
@@ -56,7 +57,8 @@ export async function getTrainerWithSubscription(userId?: string) {
         const { subscriptions: subs, ...rest } = t1 as any
         trainer = rest as TrainerRecord
         subscription = pickActiveSubscription(subs)
-    } else if (e1 && e1.message?.includes('onboarding_state')) {
+    } else if (e1 && (e1.message?.includes('onboarding_state') || e1.message?.includes('modality_focus'))) {
+        // Legacy DB sem onboarding_state e/ou modality_focus (pré Fase 17a).
         const { data: t2 } = await supabase
             .from('trainers')
             .select(
@@ -67,7 +69,11 @@ export async function getTrainerWithSubscription(userId?: string) {
             .single()
         if (t2) {
             const { subscriptions: subs, ...rest } = t2 as any
-            trainer = { ...rest, onboarding_state: DEFAULT_ONBOARDING_STATE } as TrainerRecord
+            trainer = {
+                ...rest,
+                onboarding_state: DEFAULT_ONBOARDING_STATE,
+                modality_focus: null,
+            } as TrainerRecord
             subscription = pickActiveSubscription(subs)
         }
     }

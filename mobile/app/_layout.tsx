@@ -1,6 +1,6 @@
 import React from "react";
 import { Stack, usePathname, useRouter } from "expo-router";
-import { Alert, Platform } from "react-native";
+import { Alert, Linking, Platform } from "react-native";
 import * as ScreenOrientation from 'expo-screen-orientation';
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -382,6 +382,38 @@ function WatchBridge() {
 }
 
 /** Activates push notifications for both trainer and student modes. */
+// Handles checkout-bridge deep links from /checkout-bridge web page.
+// After Stripe Checkout, web redirects to kinevo://dashboard?checkout=success
+// or kinevo://subscription-blocked?checkout=canceled — we refresh role state
+// so the subscription status updates immediately on next render.
+function CheckoutDeepLinkBridge() {
+    const { refreshRoleMode } = useRoleMode();
+    const router = useRouter();
+
+    React.useEffect(() => {
+        const handleUrl = ({ url }: { url: string }) => {
+            // Custom scheme parse — RN's URL polyfill mangles kinevo:// hosts.
+            const match = url.match(/^kinevo:\/\/([^/?#]+)/i);
+            if (!match) return;
+            const host = match[1].toLowerCase();
+
+            if (host === "dashboard" && url.includes("checkout=success")) {
+                refreshRoleMode().catch(() => {});
+            } else if (host === "subscription-blocked") {
+                refreshRoleMode().catch(() => {});
+                router.replace("/trainer-subscription-blocked");
+            }
+        };
+
+        const sub = Linking.addEventListener("url", handleUrl);
+        Linking.getInitialURL().then((url) => { if (url) handleUrl({ url }); }).catch(() => {});
+
+        return () => sub.remove();
+    }, [refreshRoleMode, router]);
+
+    return null;
+}
+
 function PushNotificationBridge() {
     const { role } = useRoleMode();
     usePushNotifications(role);
@@ -474,6 +506,7 @@ export default function RootLayout() {
             {Platform.OS === 'ios' && <WatchBridge />}
             <AuthProvider>
                 <RoleModeProvider>
+                    <CheckoutDeepLinkBridge />
                     <PushNotificationBridge />
                     <SafeAreaProvider>
                         <Stack

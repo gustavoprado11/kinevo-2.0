@@ -18,6 +18,22 @@ function sanitizeIds(arr: unknown): string[] {
     .filter((x): x is string => typeof x === 'string' && x.length > 0 && x.length <= MAX_STRING_LEN)
 }
 
+// Snooze do checklist: aceita ISO 8601 válido ou null. Rejeita garbage e datas
+// >1 ano no passado (sinal de bug de cliente). Fase 17a.
+const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000
+function sanitizeSnoozedUntil(value: unknown): string | null {
+  if (value === null || value === undefined) return null
+  if (typeof value !== 'string') return null
+  const ts = Date.parse(value)
+  if (Number.isNaN(ts)) return null
+  if (ts < Date.now() - ONE_YEAR_MS) return null
+  return new Date(ts).toISOString()
+}
+
+function sanitizeBool(value: unknown): boolean {
+  return value === true
+}
+
 export async function updateOnboardingState(
   newState: OnboardingState,
 ): Promise<{ success?: boolean; error?: string }> {
@@ -56,11 +72,24 @@ export async function updateOnboardingState(
     const incomingTours = sanitizeIds(newState.tours_completed)
     const incomingTips = sanitizeIds(newState.tips_dismissed)
 
+    // Milestones do cliente legado podem vir sem os campos novos (mobile_logged_in,
+    // first_training_room_session). Defesa via ?? false. Mesma defesa pro current
+    // — DB de trainers antigos não tem esses campos no JSON.
+    const incomingMilestones = newState.milestones ?? ({} as Partial<OnboardingState['milestones']>)
+    const currentMilestones = current.milestones ?? ({} as Partial<OnboardingState['milestones']>)
+
+    // checklist_snoozed_until: server-wins se existir e ainda for futuro; senão usa
+    // o sanitizado do cliente. Não é union/OR — é "último valor válido vence".
+    const incomingSnooze = sanitizeSnoozedUntil(newState.checklist_snoozed_until)
+    const currentSnooze = sanitizeSnoozedUntil(current.checklist_snoozed_until)
+    const mergedSnoozedUntil = incomingSnooze ?? currentSnooze
+
     const merged: OnboardingState = {
       welcome_tour_completed:
-        newState.welcome_tour_completed || current.welcome_tour_completed,
+        sanitizeBool(newState.welcome_tour_completed) || sanitizeBool(current.welcome_tour_completed),
       checklist_dismissed:
-        newState.checklist_dismissed || current.checklist_dismissed,
+        sanitizeBool(newState.checklist_dismissed) || sanitizeBool(current.checklist_dismissed),
+      checklist_snoozed_until: mergedSnoozedUntil,
       tours_completed: Array.from(
         new Set([...current.tours_completed, ...incomingTours]),
       ).slice(0, MAX_TOUR_ENTRIES),
@@ -69,26 +98,32 @@ export async function updateOnboardingState(
       ).slice(0, MAX_TIP_ENTRIES),
       milestones: {
         first_student_created:
-          newState.milestones.first_student_created ||
-          current.milestones.first_student_created,
+          sanitizeBool(incomingMilestones.first_student_created) ||
+          sanitizeBool(currentMilestones.first_student_created),
         first_program_created:
-          newState.milestones.first_program_created ||
-          current.milestones.first_program_created,
+          sanitizeBool(incomingMilestones.first_program_created) ||
+          sanitizeBool(currentMilestones.first_program_created),
         first_program_assigned:
-          newState.milestones.first_program_assigned ||
-          current.milestones.first_program_assigned,
+          sanitizeBool(incomingMilestones.first_program_assigned) ||
+          sanitizeBool(currentMilestones.first_program_assigned),
         first_exercise_added:
-          newState.milestones.first_exercise_added ||
-          current.milestones.first_exercise_added,
+          sanitizeBool(incomingMilestones.first_exercise_added) ||
+          sanitizeBool(currentMilestones.first_exercise_added),
         first_form_sent:
-          newState.milestones.first_form_sent ||
-          current.milestones.first_form_sent,
+          sanitizeBool(incomingMilestones.first_form_sent) ||
+          sanitizeBool(currentMilestones.first_form_sent),
         financial_setup:
-          newState.milestones.financial_setup ||
-          current.milestones.financial_setup,
+          sanitizeBool(incomingMilestones.financial_setup) ||
+          sanitizeBool(currentMilestones.financial_setup),
         app_link_shared:
-          newState.milestones.app_link_shared ||
-          current.milestones.app_link_shared,
+          sanitizeBool(incomingMilestones.app_link_shared) ||
+          sanitizeBool(currentMilestones.app_link_shared),
+        mobile_logged_in:
+          sanitizeBool(incomingMilestones.mobile_logged_in) ||
+          sanitizeBool(currentMilestones.mobile_logged_in),
+        first_training_room_session:
+          sanitizeBool(incomingMilestones.first_training_room_session) ||
+          sanitizeBool(currentMilestones.first_training_room_session),
       },
     }
 
