@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { View, Text, ScrollView, RefreshControl, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, RefreshControl, StyleSheet, Pressable, ActivityIndicator, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Moon, Heart, Footprints, Activity, Zap } from 'lucide-react-native';
 import { HealthMetricCard } from '../../components/health/HealthMetricCard';
@@ -27,11 +27,21 @@ function formatToday(): string {
   return d.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
 }
 
+// Padding lateral do ScrollView (scroll.paddingHorizontal) e gap entre os
+// dois cards da gridRow. Calculados aqui pra derivar a largura do card.
+const SCROLL_PADDING_H = 16;
+const GRID_GAP = 12;
+
 export default function HealthScreen() {
   const router = useRouter();
   const colors = useV2Colors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const purpleAccent = colors.purple[400];
+  // Largura fixa em dp pra cada card da grid 2x2. Calculada via
+  // useWindowDimensions (deterministic, sem depender de measure-pass do
+  // Pressable iOS que vinha colapsando os cards).
+  const { width: screenW } = useWindowDimensions();
+  const cardWidth = Math.floor((screenW - SCROLL_PADDING_H * 2 - GRID_GAP) / 2);
   const { data, isLoading, refresh } = useHealthDashboard();
   const { insights, refresh: refreshInsights } = useHealthInsights();
   const hk = useHealthKitSync();
@@ -168,6 +178,7 @@ export default function HealthScreen() {
               value={formatDurationHM(sleepDur ?? null) ?? null}
               sub={sleepEff != null ? `${sleepEff}% eficiência` : null}
               color="#6366F1"
+              cardWidth={cardWidth}
               onPress={() => router.push('/health/sleep')}
             />
             <HealthMetricCard
@@ -178,6 +189,7 @@ export default function HealthScreen() {
               sub={hrBaseline != null ? `Média 30d: ${hrBaseline}` : null}
               color="#EF4444"
               trend={hrTrend}
+              cardWidth={cardWidth}
               onPress={() => router.push('/health/hr_resting')}
             />
           </View>
@@ -188,6 +200,7 @@ export default function HealthScreen() {
               value={steps != null ? steps.toLocaleString('pt-BR') : null}
               sub={stepsProgress != null ? `${stepsProgress}% da meta 8k` : null}
               color="#22C55E"
+              cardWidth={cardWidth}
               onPress={() => router.push('/health/steps')}
             />
             <HealthMetricCard
@@ -197,6 +210,7 @@ export default function HealthScreen() {
               unit="ms"
               sub={hrvBase != null ? `Baseline: ${hrvBase}` : 'Sem Apple Watch'}
               color="#06B6D4"
+              cardWidth={cardWidth}
               onPress={() => router.push('/health/hrv')}
             />
           </View>
