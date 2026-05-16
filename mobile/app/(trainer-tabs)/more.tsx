@@ -9,12 +9,14 @@ import {
     ChevronRight,
     Crown,
     ExternalLink,
+    Instagram,
     LogOut,
     MessageCircle,
     Sun,
     Moon,
     Monitor,
     Check,
+    UserCog,
 } from "lucide-react-native";
 import Animated, { FadeIn, FadeInUp, Easing } from "react-native-reanimated";
 import Constants from "expo-constants";
@@ -401,6 +403,42 @@ export default function MoreScreen() {
                     entering={FadeInUp.delay(200).duration(300).easing(Easing.out(Easing.cubic))}
                 >
                     <KCard style={{ padding: 0 }}>
+                        <MenuRow
+                            icon={
+                                <IconBox bg={colors.purple[100]}>
+                                    <UserCog size={16} color={colors.purple[700]} strokeWidth={2.2} />
+                                </IconBox>
+                            }
+                            label="Editar perfil"
+                            sub={
+                                trainerProfile?.instagram_handle ? (
+                                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                                        <Instagram size={11} color={colors.text.tertiary} strokeWidth={2.2} />
+                                        <Text
+                                            style={{
+                                                fontFamily: "PlusJakartaSans_500Medium",
+                                                fontSize: 12,
+                                                color: colors.text.tertiary,
+                                            }}
+                                        >
+                                            @{trainerProfile.instagram_handle}
+                                        </Text>
+                                    </View>
+                                ) : (
+                                    <Text
+                                        style={{
+                                            fontFamily: "PlusJakartaSans_500Medium",
+                                            fontSize: 12,
+                                            color: colors.text.tertiary,
+                                        }}
+                                    >
+                                        Adicione seu Instagram pros cards de share
+                                    </Text>
+                                )
+                            }
+                            onPress={() => router.push("/trainer-profile" as never)}
+                        />
+                        <Divider />
                         <MenuRow
                             icon={
                                 <IconBox bg={colors.semantic.warning.bg}>

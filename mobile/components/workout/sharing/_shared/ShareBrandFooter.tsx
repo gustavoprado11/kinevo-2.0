@@ -4,7 +4,12 @@ import { View, Text, StyleSheet, Image } from 'react-native';
 export type ShareBrandTint = 'gold' | 'purple' | 'green' | 'pink';
 
 interface ShareBrandFooterProps {
-    coach: { name: string; avatar_url: string | null } | null;
+    coach: {
+        name: string;
+        avatar_url: string | null;
+        /** Handle real do Instagram (sem @). Quando null/vazio, a linha do @ é omitida. */
+        instagram_handle?: string | null;
+    } | null;
     tint?: ShareBrandTint;
 }
 
@@ -15,17 +20,18 @@ const TINTS: Record<ShareBrandTint, { border: string; accent: string }> = {
     pink: { border: 'rgba(244, 114, 182, 0.45)', accent: '#F472B6' },
 };
 
-function shortenHandle(fullName: string): string {
-    const parts = fullName.trim().split(/\s+/);
-    if (parts.length === 1) return `@${parts[0].toLowerCase()}`;
-    const first = parts[0].toLowerCase();
-    const lastInitial = parts[parts.length - 1].charAt(0).toLowerCase();
-    return `@${first}.${lastInitial}`;
-}
-
+/**
+ * Footer dos cards de share. Mostra avatar+nome+@instagram do trainer.
+ *
+ * Antes (1.6.0/33-) gerávamos um @ falso derivando do nome (ex.: "Gustavo
+ * Prado" → "@gustavo.p"), o que confundia alunos e gerava tags inválidas
+ * no Instagram. Agora usamos `coach.instagram_handle` real cadastrado
+ * pelo trainer no perfil. Se vazio, a linha some inteira — preferimos
+ * omitir a mostrar algo falso.
+ */
 export const ShareBrandFooter = ({ coach, tint = 'purple' }: ShareBrandFooterProps) => {
     const t = TINTS[tint];
-    const handle = coach ? shortenHandle(coach.name) : '@kinevo';
+    const handle = coach?.instagram_handle?.trim() || null;
 
     return (
         <View style={styles.footer}>
@@ -55,12 +61,14 @@ export const ShareBrandFooter = ({ coach, tint = 'purple' }: ShareBrandFooterPro
                     <Text style={styles.coachRole} numberOfLines={1}>
                         Personal Trainer
                     </Text>
-                    <Text
-                        style={[styles.coachHandle, { color: t.accent }]}
-                        numberOfLines={1}
-                    >
-                        {handle}
-                    </Text>
+                    {handle && (
+                        <Text
+                            style={[styles.coachHandle, { color: t.accent }]}
+                            numberOfLines={1}
+                        >
+                            @{handle}
+                        </Text>
+                    )}
                 </View>
             </View>
 

@@ -13,6 +13,8 @@ export interface StudentProfile {
     coach?: {
         name: string;
         avatar_url: string | null;
+        /** Handle do Instagram do trainer (sem @). Null = não cadastrado. */
+        instagram_handle: string | null;
     } | null;
 }
 
@@ -28,7 +30,7 @@ export function useStudentProfile() {
         try {
             const { data, error }: { data: any; error: any } = await supabase
                 .from("students" as any)
-                .select("id, name, email, phone, avatar_url, status, coach_id, trainers:coach_id (name, avatar_url)")
+                .select("id, name, email, phone, avatar_url, status, coach_id, trainers:coach_id (name, avatar_url, instagram_handle)")
                 .eq("auth_user_id", user.id)
                 .maybeSingle();
 
@@ -45,7 +47,8 @@ export function useStudentProfile() {
                     coach_id: data.coach_id || null,
                     coach: data.trainers ? {
                         name: data.trainers.name,
-                        avatar_url: data.trainers.avatar_url
+                        avatar_url: data.trainers.avatar_url,
+                        instagram_handle: data.trainers.instagram_handle ?? null,
                     } : null
                 });
             }

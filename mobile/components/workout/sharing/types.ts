@@ -5,7 +5,12 @@ export interface ShareableCardProps {
     volume: number;
     date: string;
     studentName: string;
-    coach: { name: string; avatar_url: string | null } | null;
+    coach: {
+        name: string;
+        avatar_url: string | null;
+        /** Handle real do Instagram do trainer (sem @). Null/undefined = esconde linha do @ no footer. */
+        instagram_handle?: string | null;
+    } | null;
     completedSets?: number;
     totalSets?: number;
     rpe?: number;

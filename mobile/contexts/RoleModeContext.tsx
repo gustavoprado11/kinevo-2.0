@@ -23,6 +23,8 @@ interface TrainerProfile {
     name: string;
     email: string;
     avatar_url: string | null;
+    /** Handle do Instagram (sem @). Null = trainer ainda não cadastrou. */
+    instagram_handle: string | null;
 }
 
 interface RoleModeContextType {
@@ -85,7 +87,7 @@ export function RoleModeProvider({ children }: { children: ReactNode }) {
             if (userIsTrainer) {
                 const { data: trainer }: { data: any } = await supabase
                     .from("trainers" as any)
-                    .select("id, name, email, avatar_url")
+                    .select("id, name, email, avatar_url, instagram_handle")
                     .eq("auth_user_id", currentUser.id)
                     .single();
 
@@ -97,6 +99,7 @@ export function RoleModeProvider({ children }: { children: ReactNode }) {
                         name: trainer.name,
                         email: trainer.email,
                         avatar_url: trainer.avatar_url,
+                        instagram_handle: trainer.instagram_handle ?? null,
                     });
 
                     const { data: sub }: { data: any } = await supabase
