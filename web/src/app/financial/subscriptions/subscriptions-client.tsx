@@ -8,6 +8,8 @@ import { AppLayout } from '@/components/layout'
 import { EmptyState } from '@/components/financial/empty-state'
 import { BillingTypeBadge } from '@/components/financial/billing-type-badge'
 import { ConfigureBillingModal } from '@/components/financial/configure-billing-modal'
+import { CobrarCarteiraModal } from '@/components/financial/cobrar-carteira-modal'
+import type { KinevoWalletStatus } from '@/lib/asaas'
 import { StudentFinancialModal } from '@/components/financial/student-financial-modal'
 import { FinancialOnboardingModal } from '@/components/financial/financial-onboarding-modal'
 import { markAsPaid } from '@/actions/financial/mark-as-paid'
@@ -41,6 +43,9 @@ interface Plan {
     price: number
     interval: string
     stripe_price_id: string | null
+    allow_pix?: boolean
+    allow_credit_card?: boolean
+    allow_boleto?: boolean
 }
 
 interface SubscriptionsClientProps {
@@ -49,6 +54,7 @@ interface SubscriptionsClientProps {
     students: Student[]
     plans: Plan[]
     hasStripeConnect: boolean
+    walletStatus: KinevoWalletStatus
     sellToStudentId?: string
 }
 
@@ -131,6 +137,7 @@ export function SubscriptionsClient({
     students,
     plans,
     hasStripeConnect,
+    walletStatus,
     sellToStudentId,
 }: SubscriptionsClientProps) {
     const router = useRouter()
@@ -142,6 +149,10 @@ export function SubscriptionsClient({
         mode: 'new' | 'migrate'
         student: FinancialStudent | null
     }>({ isOpen: false, mode: 'new', student: null })
+    const [cobrarCarteiraState, setCobrarCarteiraState] = useState<{
+        isOpen: boolean
+        student: FinancialStudent | null
+    }>({ isOpen: false, student: null })
     const [detailModalOpen, setDetailModalOpen] = useState(false)
     const [selectedStudent, setSelectedStudent] = useState<FinancialStudent | null>(null)
     const [actionLoading, setActionLoading] = useState<string | null>(null)
@@ -262,6 +273,14 @@ export function SubscriptionsClient({
     }
 
     const handleOpenConfigModal = (mode: 'new' | 'migrate', targetStudent?: FinancialStudent | null) => {
+        // Asaas-first: pra cobranças novas (não migração) e quando a Carteira está ativa,
+        // abre o modal simplificado da Carteira. Migração continua no modal legado
+        // porque envolve cancelar Stripe + recriar — fluxo mais delicado.
+        const useWalletFlow = mode === 'new' && walletStatus === 'approved'
+        if (useWalletFlow) {
+            setCobrarCarteiraState({ isOpen: true, student: targetStudent ?? null })
+            return
+        }
         setConfigModalState({
             isOpen: true,
             mode,
@@ -795,7 +814,7 @@ export function SubscriptionsClient({
                 </div>
             </div>
 
-            {/* Configure Billing Modal */}
+            {/* Configure Billing Modal (legacy — Stripe + manual + cortesia) */}
             <ConfigureBillingModal
                 isOpen={configModalState.isOpen}
                 onClose={() => setConfigModalState({ isOpen: false, mode: 'new', student: null })}
@@ -805,6 +824,24 @@ export function SubscriptionsClient({
                 plans={modalPlans}
                 hasStripeConnect={hasStripeConnect}
                 mode={configModalState.mode}
+            />
+
+            {/* Cobrar via Carteira (Asaas — fluxo principal) */}
+            <CobrarCarteiraModal
+                isOpen={cobrarCarteiraState.isOpen}
+                onClose={() => setCobrarCarteiraState({ isOpen: false, student: null })}
+                onSuccess={handleSuccess}
+                initialStudent={
+                    cobrarCarteiraState.student
+                        ? {
+                            id: cobrarCarteiraState.student.student_id,
+                            name: cobrarCarteiraState.student.student_name ?? 'Aluno',
+                        }
+                        : null
+                }
+                students={modalStudents}
+                plans={modalPlans}
+                walletStatus={walletStatus}
             />
 
             {/* Financial Onboarding Modal (first visit) */}

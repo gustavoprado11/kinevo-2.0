@@ -2,6 +2,9 @@ import { getTrainerWithSubscription } from '@/lib/auth/get-trainer'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { syncManualOverdue } from '@/actions/financial/sync-manual-overdue'
+import { AsaasApiError, getBalance } from '@/lib/asaas'
+import { decryptApiKey } from '@/lib/asaas/encryption'
+import { getWalletRow, summarizeWallet } from '@/lib/asaas/wallet-service'
 import { FinancialDashboardClient } from './financial-client'
 import type { FinancialStudent } from '@/types/financial'
 
@@ -77,7 +80,7 @@ export default async function FinancialPage() {
 
     // Enrich transactions with student names
     const studentIds = [...new Set((recentTransactions ?? []).map(t => t.student_id).filter(Boolean))]
-    let studentNameMap: Record<string, string> = {}
+    const studentNameMap: Record<string, string> = {}
     if (studentIds.length > 0) {
         const { data: txStudents } = await supabaseAdmin
             .from('students')
@@ -96,6 +99,35 @@ export default async function FinancialPage() {
         detailsSubmitted: paymentSettings?.details_submitted ?? false,
         payoutsEnabled: paymentSettings?.payouts_enabled ?? false,
     }
+
+    // Carteira Kinevo (Asaas) — status + saldo
+    const walletRow = await getWalletRow(trainer.id)
+    const walletSummary = summarizeWallet(walletRow)
+    let walletBalance: number | null = null
+    if (walletRow && walletSummary.status === 'approved' && walletRow.asaas_api_key_encrypted) {
+        try {
+            const blob = Buffer.isBuffer(walletRow.asaas_api_key_encrypted)
+                ? (walletRow.asaas_api_key_encrypted as Buffer)
+                : Buffer.from(String(walletRow.asaas_api_key_encrypted).replace(/^\\x/, ''), 'hex')
+            const apiKey = decryptApiKey(blob)
+            const b = await getBalance(apiKey)
+            walletBalance = b.balance
+        } catch (err) {
+            if (!(err instanceof AsaasApiError)) {
+                console.error('[financial] balance fetch failed', err)
+            }
+        }
+    }
+
+    // Tem contratos Stripe ativos? Define se mostramos o "Modo avançado: Stripe"
+    const { data: legacyStripeContracts } = await supabaseAdmin
+        .from('student_contracts')
+        .select('id')
+        .eq('trainer_id', trainer.id)
+        .in('status', ['active', 'past_due'])
+        .or('billing_type.eq.stripe_auto,stripe_subscription_id.not.is.null')
+        .limit(1)
+    const hasStripeLegacyContracts = (legacyStripeContracts?.length ?? 0) > 0
 
     const showOnboarding = !paymentSettings && (!plans || plans.length === 0)
 
@@ -131,6 +163,11 @@ export default async function FinancialPage() {
             students={(students ?? []).map(s => ({ id: s.id, name: s.name, email: s.email }))}
             activePlans={(activePlans ?? []).map(p => ({ id: p.id, title: p.title, price: p.price, interval: p.interval, stripe_price_id: p.stripe_price_id }))}
             hasStripeConnect={connectStatus.connected && connectStatus.chargesEnabled}
+            walletStatus={walletSummary.status}
+            walletMode={walletSummary.mode}
+            walletBalance={walletBalance}
+            walletRejectionReason={walletSummary.rejectionReason ?? null}
+            hasStripeLegacyContracts={hasStripeLegacyContracts}
         />
     )
 }

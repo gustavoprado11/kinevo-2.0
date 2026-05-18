@@ -11,12 +11,14 @@ import { useOnboardingStore } from '@/stores/onboarding-store'
 import Link from 'next/link'
 import { AppLayout } from '@/components/layout'
 import { ConnectStatusCard } from '@/components/financial/connect-status-card'
+import { WalletStatusCard } from '@/components/financial/wallet-status-card'
 import { FinancialOnboarding } from '@/components/financial/financial-onboarding'
 import { FinancialOnboardingModal } from '@/components/financial/financial-onboarding-modal'
 import { EmptyState } from '@/components/financial/empty-state'
 import { NewSubscriptionModal } from '@/components/financial/new-subscription-modal'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import type { FinancialStudent, DisplayStatus } from '@/types/financial'
+import type { KinevoWalletStatus, KinevoWalletMode } from '@/lib/asaas'
 
 interface Trainer {
     id: string
@@ -71,6 +73,11 @@ interface FinancialDashboardClientProps {
     students: ModalStudent[]
     activePlans: ModalPlan[]
     hasStripeConnect: boolean
+    walletStatus: KinevoWalletStatus
+    walletMode: KinevoWalletMode
+    walletBalance: number | null
+    walletRejectionReason: string | null
+    hasStripeLegacyContracts: boolean
 }
 
 const statusLabels: Record<DisplayStatus, string> = {
@@ -108,6 +115,11 @@ export function FinancialDashboardClient({
     students,
     activePlans,
     hasStripeConnect,
+    walletStatus,
+    walletMode,
+    walletBalance,
+    walletRejectionReason,
+    hasStripeLegacyContracts,
 }: FinancialDashboardClientProps) {
     const router = useRouter()
     const searchParams = useSearchParams()
@@ -230,18 +242,37 @@ export function FinancialDashboardClient({
                 </button>
             </div>
 
-            {/* Connect Status */}
-            <div className="mb-8">
-                <ConnectStatusCard
-                    connected={connectStatus.connected}
-                    chargesEnabled={connectStatus.chargesEnabled}
-                    detailsSubmitted={connectStatus.detailsSubmitted}
-                    payoutsEnabled={connectStatus.payoutsEnabled}
+            {/* Carteira Kinevo — banner principal */}
+            <div className="mb-6">
+                <WalletStatusCard
+                    status={walletStatus}
+                    mode={walletMode}
+                    balance={walletBalance}
+                    rejectionReason={walletRejectionReason}
                 />
-                {connectSyncing && (
-                    <p className="text-xs text-k-text-secondary mt-2">Sincronizando status...</p>
-                )}
             </div>
+
+            {/* Stripe legacy — só aparece pra trainers que ainda têm contratos Stripe ativos */}
+            {hasStripeLegacyContracts && (
+                <details className="mb-6 group">
+                    <summary className="cursor-pointer text-xs text-k-text-quaternary hover:text-k-text-tertiary transition-colors inline-flex items-center gap-1 select-none">
+                        <span>Modo avançado: Stripe Connect</span>
+                        <span className="text-[10px] opacity-60 group-open:hidden">▼</span>
+                        <span className="text-[10px] opacity-60 hidden group-open:inline">▲</span>
+                    </summary>
+                    <div className="mt-3">
+                        <ConnectStatusCard
+                            connected={connectStatus.connected}
+                            chargesEnabled={connectStatus.chargesEnabled}
+                            detailsSubmitted={connectStatus.detailsSubmitted}
+                            payoutsEnabled={connectStatus.payoutsEnabled}
+                        />
+                        {connectSyncing && (
+                            <p className="text-xs text-k-text-secondary mt-2">Sincronizando status...</p>
+                        )}
+                    </div>
+                </details>
+            )}
 
             {/* Attention section */}
             {attentionStudents.length > 0 ? (

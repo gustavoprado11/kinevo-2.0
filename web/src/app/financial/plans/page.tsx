@@ -10,7 +10,7 @@ export default async function PlansPage() {
     // Fetch trainer plans
     const { data: plans } = await supabase
         .from('trainer_plans')
-        .select('id, title, description, price, interval, interval_count, is_active, visibility, stripe_product_id, stripe_price_id, created_at')
+        .select('id, title, description, price, interval, interval_count, is_active, visibility, stripe_product_id, stripe_price_id, allow_pix, allow_credit_card, allow_boleto, created_at')
         .eq('trainer_id', trainer.id)
         .order('created_at', { ascending: false })
 

@@ -1,6 +1,7 @@
 import { getTrainerWithSubscription } from '@/lib/auth/get-trainer'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { syncManualOverdue } from '@/actions/financial/sync-manual-overdue'
+import { getWalletRow, summarizeWallet } from '@/lib/asaas/wallet-service'
 import { SubscriptionsClient } from './subscriptions-client'
 import type { FinancialStudent } from '@/types/financial'
 
@@ -32,7 +33,7 @@ export default async function SubscriptionsPage({
     // Fetch active plans for modals
     const { data: plans } = await supabaseAdmin
         .from('trainer_plans')
-        .select('id, title, price, interval, stripe_price_id')
+        .select('id, title, price, interval, stripe_price_id, allow_pix, allow_credit_card, allow_boleto')
         .eq('trainer_id', trainer.id)
         .eq('is_active', true)
         .order('title')
@@ -54,6 +55,10 @@ export default async function SubscriptionsPage({
 
     const hasStripeConnect = !!(paymentSettings?.stripe_connect_id && paymentSettings.charges_enabled)
 
+    // Estado da Carteira Asaas pra decidir qual modal usar no fluxo de venda
+    const walletRow = await getWalletRow(trainer.id)
+    const walletStatus = summarizeWallet(walletRow).status
+
     return (
         <SubscriptionsClient
             trainer={trainer}
@@ -61,6 +66,7 @@ export default async function SubscriptionsPage({
             students={students ?? []}
             plans={plans ?? []}
             hasStripeConnect={hasStripeConnect}
+            walletStatus={walletStatus}
             sellToStudentId={sellToStudentId}
         />
     )

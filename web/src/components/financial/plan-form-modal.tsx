@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import { X, FileText, Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react'
 import { createPlan } from '@/actions/financial/create-plan'
 import { updatePlan } from '@/actions/financial/update-plan'
+import { FeesSimulationCard } from './fees-simulation-card'
+import type { PaymentMethod } from '@/lib/asaas/fees'
 
 interface Plan {
     id: string
@@ -15,6 +17,9 @@ interface Plan {
     is_active: boolean
     stripe_product_id: string | null
     stripe_price_id: string | null
+    allow_pix?: boolean
+    allow_credit_card?: boolean
+    allow_boleto?: boolean
 }
 
 interface PlanFormModalProps {
@@ -37,12 +42,24 @@ export function PlanFormModal({
     const [interval, setInterval] = useState('month')
     const [description, setDescription] = useState('')
     const [visibility, setVisibility] = useState('public')
+    const [allowPix, setAllowPix] = useState(true)
+    const [allowCreditCard, setAllowCreditCard] = useState(true)
+    const [allowDebitCard, setAllowDebitCard] = useState(false)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
 
+    const acceptedMethods: PaymentMethod[] = [
+        allowPix ? 'PIX' : null,
+        allowCreditCard ? 'CREDIT_CARD' : null,
+        allowDebitCard ? 'DEBIT_CARD' : null,
+    ].filter(Boolean) as PaymentMethod[]
+
     const isEdit = !!plan
 
-    // Reset form when modal opens/closes or plan changes
+    // Reset form when modal opens/closes or plan changes.
+    // Padrão idiomático pré-React-19 — cascading render é intencional aqui
+    // (carrega valores ao abrir). Refatorar com `key` num pass futuro.
+    /* eslint-disable react-hooks/set-state-in-effect */
     useEffect(() => {
         if (isOpen) {
             if (plan) {
@@ -51,16 +68,23 @@ export function PlanFormModal({
                 setInterval(plan.interval)
                 setDescription(plan.description || '')
                 setVisibility(plan.visibility || 'public')
+                setAllowPix(plan.allow_pix ?? true)
+                setAllowCreditCard(plan.allow_credit_card ?? true)
+                setAllowDebitCard(false)
             } else {
                 setTitle('')
                 setPrice('')
                 setInterval('month')
                 setDescription('')
                 setVisibility('public')
+                setAllowPix(true)
+                setAllowCreditCard(true)
+                setAllowDebitCard(false)
             }
             setError('')
         }
     }, [isOpen, plan])
+    /* eslint-enable react-hooks/set-state-in-effect */
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -82,6 +106,11 @@ export function PlanFormModal({
             return
         }
 
+        if (acceptedMethods.length === 0) {
+            setError('Selecione ao menos um método de pagamento aceito.')
+            return
+        }
+
         setLoading(true)
 
         try {
@@ -93,6 +122,9 @@ export function PlanFormModal({
                     interval,
                     description: description.trim(),
                     visibility,
+                    allowPix,
+                    allowCreditCard,
+                    allowDebitCard,
                 })
 
                 if (result.error) {
@@ -108,6 +140,9 @@ export function PlanFormModal({
                     description: description.trim(),
                     visibility,
                     hasStripeConnect,
+                    allowPix,
+                    allowCreditCard,
+                    allowDebitCard,
                 })
 
                 if (result.error) {
@@ -247,6 +282,42 @@ export function PlanFormModal({
                                 className="w-full rounded-xl border border-k-border-subtle bg-glass-bg px-4 py-3 text-k-text-primary placeholder:text-k-text-quaternary focus:outline-none focus:border-violet-500/50 focus:ring-4 focus:ring-violet-500/20 transition-all text-sm resize-none"
                             />
                         </div>
+
+                        {/* Métodos de pagamento aceitos */}
+                        <div>
+                            <label className="mb-2 block text-xs font-medium text-k-text-tertiary">
+                                Métodos de pagamento aceitos
+                            </label>
+                            <div className="grid grid-cols-3 gap-2">
+                                {[
+                                    { value: 'pix', label: 'PIX', state: allowPix, set: setAllowPix },
+                                    { value: 'credit', label: 'Cartão crédito', state: allowCreditCard, set: setAllowCreditCard },
+                                    { value: 'debit', label: 'Cartão débito', state: allowDebitCard, set: setAllowDebitCard },
+                                ].map((opt) => (
+                                    <button
+                                        key={opt.value}
+                                        type="button"
+                                        onClick={() => opt.set(!opt.state)}
+                                        className={`rounded-lg border px-2 py-2 text-xs font-medium transition-all ${
+                                            opt.state
+                                                ? 'border-violet-500/50 bg-violet-500/10 text-violet-700 dark:text-violet-300'
+                                                : 'border-k-border-subtle bg-glass-bg text-k-text-tertiary hover:text-k-text-secondary'
+                                        }`}
+                                    >
+                                        {opt.label}
+                                    </button>
+                                ))}
+                            </div>
+                            <p className="mt-1.5 text-[11px] text-k-text-quaternary">
+                                O aluno escolhe entre os métodos que você aceitar.
+                            </p>
+                        </div>
+
+                        {/* Simulação de taxas */}
+                        <FeesSimulationCard
+                            value={price}
+                            methods={acceptedMethods.length > 0 ? acceptedMethods : ['PIX', 'CREDIT_CARD']}
+                        />
 
                         {/* Visibility */}
                         <div>

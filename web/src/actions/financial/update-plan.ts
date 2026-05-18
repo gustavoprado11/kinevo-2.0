@@ -12,6 +12,9 @@ interface UpdatePlanInput {
     interval: string
     description: string
     visibility: string
+    allowPix?: boolean
+    allowCreditCard?: boolean
+    allowDebitCard?: boolean
 }
 
 export async function updatePlan(input: UpdatePlanInput) {
@@ -123,6 +126,8 @@ export async function updatePlan(input: UpdatePlanInput) {
                         interval_count: intervalCountMap[input.interval] || 1,
                         visibility: input.visibility || 'public',
                         stripe_price_id: newPrice.id,
+                        allow_pix: input.allowPix ?? true,
+                        allow_credit_card: input.allowCreditCard ?? true,
                     })
                     .eq('id', input.planId)
 
@@ -142,6 +147,8 @@ export async function updatePlan(input: UpdatePlanInput) {
                 interval: input.interval,
                 interval_count: intervalCountMap[input.interval] || 1,
                 visibility: input.visibility || 'public',
+                allow_pix: input.allowPix ?? true,
+                allow_credit_card: input.allowCreditCard ?? true,
             })
             .eq('id', input.planId)
 
