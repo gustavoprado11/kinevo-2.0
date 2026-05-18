@@ -1,21 +1,22 @@
 'use client'
 
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
 import {
     Users, TrendingUp, Receipt, ArrowRight, Wallet, AlertTriangle,
-    Heart, Plus, Check, DollarSign
+    Heart, Plus, Check, DollarSign, ArrowDownToLine, ChevronDown,
+    Send, Repeat, Sparkles, KeyRound, Settings as SettingsIcon, Link2,
 } from 'lucide-react'
 import { useOnboardingStore } from '@/stores/onboarding-store'
-import Link from 'next/link'
 import { AppLayout } from '@/components/layout'
 import { ConnectStatusCard } from '@/components/financial/connect-status-card'
 import { WalletStatusCard } from '@/components/financial/wallet-status-card'
 import { FinancialOnboarding } from '@/components/financial/financial-onboarding'
 import { FinancialOnboardingModal } from '@/components/financial/financial-onboarding-modal'
 import { EmptyState } from '@/components/financial/empty-state'
-import { NewSubscriptionModal } from '@/components/financial/new-subscription-modal'
+import { CobrarCarteiraModal } from '@/components/financial/cobrar-carteira-modal'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import type { FinancialStudent, DisplayStatus } from '@/types/financial'
 import type { KinevoWalletStatus, KinevoWalletMode } from '@/lib/asaas'
@@ -53,6 +54,9 @@ interface ModalPlan {
     price: number
     interval: string
     stripe_price_id: string | null
+    allow_pix?: boolean
+    allow_credit_card?: boolean
+    allow_boleto?: boolean
 }
 
 interface FinancialDashboardClientProps {
@@ -102,6 +106,56 @@ const statusColors: Record<DisplayStatus, string> = {
     expired: 'text-red-600 dark:text-red-400',
 }
 
+const formatCurrency = (value: number) =>
+    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
+
+const formatDate = (dateStr: string | null) => {
+    if (!dateStr) return '—'
+    return new Date(dateStr).toLocaleDateString('pt-BR')
+}
+
+const timeAgo = (dateStr: string) => {
+    const now = new Date()
+    const date = new Date(dateStr)
+    const diffMs = now.getTime() - date.getTime()
+    const diffMin = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMs / 3600000)
+    const diffDays = Math.floor(diffMs / 86400000)
+    if (diffMin < 1) return 'Agora'
+    if (diffMin < 60) return `há ${diffMin}min`
+    if (diffHours < 24) return `há ${diffHours}h`
+    if (diffDays === 1) return 'Ontem'
+    if (diffDays < 7) return `há ${diffDays} dias`
+    return new Date(dateStr).toLocaleDateString('pt-BR')
+}
+
+function daysOverdue(dateStr: string | null): number {
+    if (!dateStr) return 0
+    const diff = Date.now() - new Date(dateStr).getTime()
+    return Math.max(0, Math.floor(diff / 86400000))
+}
+
+function cleanDescription(tx: Transaction): string {
+    if (tx.studentName) {
+        const match = tx.description?.match(/× (.+?) \(/)
+        const planName = match ? match[1] : null
+        return planName ? `${tx.studentName} — ${planName}` : tx.studentName
+    }
+    if (tx.description) {
+        const match = tx.description.match(/× (.+?) \(/)
+        if (match) return `Plano ${match[1]}`
+        return tx.description.replace(/\s*\(at R\$.*?\)/, '').replace(/1 × /, '')
+    }
+    const typeMap: Record<string, string> = {
+        charge: 'Pagamento recebido',
+        payment: 'Pagamento recebido',
+        payout: 'Saque para sua conta',
+        refund: 'Reembolso',
+        adjustment: 'Ajuste',
+    }
+    return typeMap[tx.type] || tx.type
+}
+
 export function FinancialDashboardClient({
     trainer,
     connectStatus,
@@ -114,7 +168,6 @@ export function FinancialDashboardClient({
     plansCount,
     students,
     activePlans,
-    hasStripeConnect,
     walletStatus,
     walletMode,
     walletBalance,
@@ -125,29 +178,38 @@ export function FinancialDashboardClient({
     const searchParams = useSearchParams()
     const [showOnboarding, setShowOnboarding] = useState(initialShowOnboarding)
     const [connectSyncing, setConnectSyncing] = useState(false)
-    const [modalOpen, setModalOpen] = useState(false)
+    const [chargeOpen, setChargeOpen] = useState(false)
+    const [chargeDropdownOpen, setChargeDropdownOpen] = useState(false)
+    const chargeBtnRef = useRef<HTMLDivElement>(null)
 
-    // Sync connect status on return from Stripe
+    // Sync connect status on return from Stripe (legacy)
     useEffect(() => {
         const connectParam = searchParams.get('connect')
         if (connectParam === 'success' || connectParam === 'refresh') {
             setConnectSyncing(true)
             fetch('/api/stripe/connect/status')
-                .then(() => {
-                    router.refresh()
-                })
-                .finally(() => {
-                    setConnectSyncing(false)
-                })
+                .then(() => router.refresh())
+                .finally(() => setConnectSyncing(false))
         }
     }, [searchParams, router])
 
-    // Mark financial_setup milestone when Stripe is connected and charges enabled
+    // Mark milestone when Stripe configured (legacy)
     useEffect(() => {
         if (connectStatus.connected && connectStatus.chargesEnabled) {
             useOnboardingStore.getState().completeMilestone('financial_setup')
         }
     }, [connectStatus])
+
+    // Close dropdown on outside click
+    useEffect(() => {
+        function onClick(e: MouseEvent) {
+            if (chargeBtnRef.current && !chargeBtnRef.current.contains(e.target as Node)) {
+                setChargeDropdownOpen(false)
+            }
+        }
+        if (chargeDropdownOpen) document.addEventListener('mousedown', onClick)
+        return () => document.removeEventListener('mousedown', onClick)
+    }, [chargeDropdownOpen])
 
     if (showOnboarding) {
         return (
@@ -167,59 +229,11 @@ export function FinancialDashboardClient({
         )
     }
 
-    const formatCurrency = (value: number) => {
-        return new Intl.NumberFormat('pt-BR', {
-            style: 'currency',
-            currency: 'BRL',
-        }).format(value)
-    }
+    const walletApproved = walletStatus === 'approved'
 
-    const formatDate = (dateStr: string | null) => {
-        if (!dateStr) return '—'
-        return new Date(dateStr).toLocaleDateString('pt-BR')
-    }
-
-    const timeAgo = (dateStr: string) => {
-        const now = new Date()
-        const date = new Date(dateStr)
-        const diffMs = now.getTime() - date.getTime()
-        const diffMin = Math.floor(diffMs / 60000)
-        const diffHours = Math.floor(diffMs / 3600000)
-        const diffDays = Math.floor(diffMs / 86400000)
-
-        if (diffMin < 1) return 'Agora'
-        if (diffMin < 60) return `há ${diffMin}min`
-        if (diffHours < 24) return `há ${diffHours}h`
-        if (diffDays === 1) return 'Ontem'
-        if (diffDays < 7) return `há ${diffDays} dias`
-        return new Date(dateStr).toLocaleDateString('pt-BR')
-    }
-
-    const cleanDescription = (tx: Transaction): string => {
-        if (tx.studentName) {
-            const match = tx.description?.match(/× (.+?) \(/)
-            const planName = match ? match[1] : null
-            return planName ? `${tx.studentName} — ${planName}` : tx.studentName
-        }
-        if (tx.description) {
-            const match = tx.description.match(/× (.+?) \(/)
-            if (match) return `Plano ${match[1]}`
-            return tx.description.replace(/\s*\(at R\$.*?\)/, '').replace(/1 × /, '')
-        }
-        const typeMap: Record<string, string> = {
-            charge: 'Pagamento recebido',
-            payment: 'Pagamento recebido',
-            payout: 'Transferência para conta',
-            refund: 'Reembolso',
-            adjustment: 'Ajuste',
-        }
-        return typeMap[tx.type] || tx.type
-    }
-
-    function daysOverdue(dateStr: string | null): number {
-        if (!dateStr) return 0
-        const diff = Date.now() - new Date(dateStr).getTime()
-        return Math.max(0, Math.floor(diff / 86400000))
+    function openChargeNew() {
+        setChargeDropdownOpen(false)
+        setChargeOpen(true)
     }
 
     return (
@@ -229,308 +243,423 @@ export function FinancialDashboardClient({
             trainerAvatarUrl={trainer.avatar_url}
             trainerTheme={trainer.theme as 'light' | 'dark' | 'system' | null}
         >
-        <div>
-            {/* Header */}
-            <div className="flex items-center justify-between mb-8">
-                <h1 className="text-2xl font-bold text-[#1D1D1F] dark:text-k-text-primary">Financeiro</h1>
-                <button
-                    onClick={() => setModalOpen(true)}
-                    className="bg-[#007AFF] hover:bg-[#0056B3] dark:bg-violet-600 dark:hover:bg-violet-500 text-white rounded-full px-4 py-2 text-sm font-medium transition-all active:scale-95 flex items-center gap-1.5"
-                >
-                    <Plus size={16} />
-                    Nova Cobrança
-                </button>
-            </div>
+            <div>
+                {/* Page header */}
+                <div className="mb-6">
+                    <h1 className="text-2xl font-bold text-[#1D1D1F] dark:text-k-text-primary">Financeiro</h1>
+                    <p className="text-sm text-[#86868B] dark:text-k-text-tertiary mt-1">
+                        Receba, cobre e controle tudo num lugar só.
+                    </p>
+                </div>
 
-            {/* Carteira Kinevo — banner principal */}
-            <div className="mb-6">
-                <WalletStatusCard
-                    status={walletStatus}
-                    mode={walletMode}
-                    balance={walletBalance}
-                    rejectionReason={walletRejectionReason}
-                />
-            </div>
-
-            {/* Stripe legacy — só aparece pra trainers que ainda têm contratos Stripe ativos */}
-            {hasStripeLegacyContracts && (
-                <details className="mb-6 group">
-                    <summary className="cursor-pointer text-xs text-k-text-quaternary hover:text-k-text-tertiary transition-colors inline-flex items-center gap-1 select-none">
-                        <span>Modo avançado: Stripe Connect</span>
-                        <span className="text-[10px] opacity-60 group-open:hidden">▼</span>
-                        <span className="text-[10px] opacity-60 hidden group-open:inline">▲</span>
-                    </summary>
-                    <div className="mt-3">
-                        <ConnectStatusCard
-                            connected={connectStatus.connected}
-                            chargesEnabled={connectStatus.chargesEnabled}
-                            detailsSubmitted={connectStatus.detailsSubmitted}
-                            payoutsEnabled={connectStatus.payoutsEnabled}
-                        />
-                        {connectSyncing && (
-                            <p className="text-xs text-k-text-secondary mt-2">Sincronizando status...</p>
-                        )}
-                    </div>
-                </details>
-            )}
-
-            {/* Attention section */}
-            {attentionStudents.length > 0 ? (
-                <div className="mb-8">
-                    <div className="flex items-center gap-2 mb-3">
-                        <div className="w-2 h-2 bg-[#FF3B30] dark:bg-red-400 rounded-full animate-pulse" />
-                        <span className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary">Atenção necessária</span>
-                        <InfoTooltip content="Alunos que precisam da sua ação. Resolva marcando como pago, contatando o aluno ou verificando os detalhes." />
-                        <span className="text-[10px] text-[#8E8E93] dark:text-k-text-quaternary bg-[#F5F5F7] dark:bg-glass-bg px-1.5 py-0.5 rounded">
-                            {attentionStudents.length}
-                        </span>
-                    </div>
-                    <div className="space-y-2">
-                        {attentionStudents.map(s => (
-                            <Link
-                                key={s.student_id}
-                                href="/financial/subscriptions"
-                                className={`flex items-center justify-between px-4 py-3 rounded-xl border transition-colors ${
-                                    s.display_status === 'overdue' || s.display_status === 'expired'
-                                        ? 'bg-[#FF3B30]/5 dark:bg-red-500/5 border-[#FF3B30]/15 dark:border-red-500/15 hover:border-[#FF3B30]/30 dark:hover:border-red-500/30'
-                                        : s.display_status === 'grace_period'
-                                        ? 'bg-[#FF9500]/5 dark:bg-orange-500/5 border-[#FF9500]/15 dark:border-orange-500/15 hover:border-[#FF9500]/30 dark:hover:border-orange-500/30'
-                                        : 'bg-[#FF9500]/5 dark:bg-amber-500/5 border-[#FF9500]/15 dark:border-amber-500/15 hover:border-[#FF9500]/30 dark:hover:border-amber-500/30'
-                                }`}
-                            >
-                                <div className="flex items-center gap-3">
-                                    <div className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E8E8ED] dark:border-k-border-primary bg-[#F5F5F7] dark:bg-glass-bg overflow-hidden flex-shrink-0">
-                                        {s.avatar_url ? (
-                                            <Image
-                                                src={s.avatar_url}
-                                                alt={s.student_name}
-                                                width={32}
-                                                height={32}
-                                                className="h-8 w-8 rounded-full object-cover"
-                                                unoptimized
-                                            />
-                                        ) : (
-                                            <span className="text-xs font-semibold text-[#1D1D1F] dark:text-k-text-primary">
-                                                {s.student_name?.charAt(0).toUpperCase() || '?'}
-                                            </span>
-                                        )}
-                                    </div>
-                                    <div>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-sm font-medium text-[#1D1D1F] dark:text-k-text-primary">{s.student_name}</span>
-                                            <span className={`text-[10px] font-semibold ${statusColors[s.display_status]}`}>
-                                                {s.display_status === 'canceling' && s.current_period_end
-                                                    ? `Cancela em ${formatDate(s.current_period_end)}`
-                                                    : s.display_status === 'expired' && s.current_period_end
-                                                    ? `Expirou em ${formatDate(s.current_period_end)}`
-                                                    : statusLabels[s.display_status]}
-                                            </span>
-                                        </div>
-                                        <span className="text-xs text-[#8E8E93] dark:text-k-text-quaternary">
-                                            {s.amount ? formatCurrency(s.amount) : ''}
-                                            {s.display_status === 'overdue' && s.current_period_end
-                                                ? ` · Vencido há ${daysOverdue(s.current_period_end)} dia${daysOverdue(s.current_period_end) !== 1 ? 's' : ''}`
-                                                : s.display_status === 'expired'
-                                                ? ' · Plano expirado'
-                                                : s.billing_type === 'stripe_auto' ? ' · Stripe' : ''}
+                {/* ─── HERO: Carteira ───────────────────────────────────────── */}
+                {walletApproved ? (
+                    <section className="relative rounded-2xl border border-violet-500/15 bg-gradient-to-br from-violet-50 to-blue-50 dark:from-violet-500/[0.05] dark:to-blue-500/[0.04] dark:border-violet-500/15 p-6 sm:p-7 mb-6 overflow-hidden">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
+                            <div className="min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <span className="text-xs font-medium text-[#6E6E73] dark:text-k-text-secondary">
+                                        Saldo disponível
+                                    </span>
+                                    {walletMode === 'linked' && (
+                                        <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-slate-200/70 dark:bg-slate-500/15 text-slate-700 dark:text-slate-300">
+                                            <Link2 size={9} />
+                                            Conta vinculada
                                         </span>
-                                    </div>
+                                    )}
+                                    {walletMode === 'subaccount' && (
+                                        <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400">
+                                            <Check size={9} strokeWidth={3} />
+                                            Carteira ativa
+                                        </span>
+                                    )}
                                 </div>
-                                <span className="text-xs text-[#86868B] dark:text-k-text-tertiary flex items-center gap-1">
-                                    Ver detalhes
-                                    <ArrowRight size={12} />
-                                </span>
-                            </Link>
-                        ))}
-                    </div>
-                </div>
-            ) : payingCount > 0 || courtesyCount > 0 ? (
-                <div className="flex items-center gap-2 px-3 py-2 bg-[#34C759]/5 dark:bg-emerald-500/5 border border-[#34C759]/10 dark:border-emerald-500/10 rounded-xl mb-8 w-fit">
-                    <Check size={14} className="text-[#34C759] dark:text-emerald-400" />
-                    <span className="text-xs text-[#34C759] dark:text-emerald-400">Tudo em dia</span>
-                </div>
-            ) : null}
+                                <p className="text-3xl sm:text-4xl font-semibold text-[#1D1D1F] dark:text-k-text-primary tabular-nums tracking-tight">
+                                    {walletBalance !== null ? formatCurrency(walletBalance) : '—'}
+                                </p>
+                                <Link
+                                    href="/financial/wallet"
+                                    className="mt-2 inline-flex items-center gap-1 text-xs text-[#86868B] dark:text-k-text-tertiary hover:text-[#1D1D1F] dark:hover:text-k-text-primary"
+                                >
+                                    Ver detalhes da Carteira
+                                    <ArrowRight size={11} />
+                                </Link>
+                            </div>
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                <div className="rounded-2xl border border-[#E8E8ED] dark:border-k-border-primary bg-white dark:bg-surface-card p-5 shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:shadow-none">
-                    <div className="flex items-center gap-3 mb-3">
-                        <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-[#34C759]/10 dark:bg-emerald-500/10">
-                            <DollarSign size={18} className="text-[#34C759] dark:text-emerald-400" />
+                            <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+                                {/* Cobrar aluno — dropdown */}
+                                <div ref={chargeBtnRef} className="relative">
+                                    <button
+                                        onClick={() => setChargeDropdownOpen(o => !o)}
+                                        className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#007AFF] hover:bg-[#0056B3] dark:bg-violet-600 dark:hover:bg-violet-500 text-white text-sm font-medium transition-colors active:scale-[0.98] shadow-[0_4px_10px_-2px_rgba(0,122,255,0.35)] dark:shadow-[0_4px_10px_-2px_rgba(124,58,237,0.35)]"
+                                    >
+                                        <Send size={15} />
+                                        Cobrar aluno
+                                        <ChevronDown size={14} className={`transition-transform ${chargeDropdownOpen ? 'rotate-180' : ''}`} />
+                                    </button>
+
+                                    {chargeDropdownOpen && (
+                                        <div className="absolute right-0 top-full mt-2 w-64 rounded-xl border border-[#E8E8ED] dark:border-k-border-primary bg-white dark:bg-surface-card shadow-lg z-20 overflow-hidden">
+                                            <button
+                                                onClick={openChargeNew}
+                                                className="w-full flex items-start gap-3 px-4 py-3 hover:bg-[#F5F5F7] dark:hover:bg-glass-bg transition-colors text-left"
+                                            >
+                                                <div className="rounded-lg bg-[#007AFF]/10 dark:bg-violet-500/10 p-2 shrink-0">
+                                                    <Receipt size={15} className="text-[#007AFF] dark:text-violet-400" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-medium text-[#1D1D1F] dark:text-k-text-primary">Cobrança avulsa</p>
+                                                    <p className="text-[11px] text-[#86868B] dark:text-k-text-tertiary mt-0.5">Pagamento único via PIX ou cartão</p>
+                                                </div>
+                                            </button>
+                                            <button
+                                                onClick={openChargeNew}
+                                                className="w-full flex items-start gap-3 px-4 py-3 hover:bg-[#F5F5F7] dark:hover:bg-glass-bg transition-colors text-left border-t border-[#E8E8ED] dark:border-k-border-subtle"
+                                            >
+                                                <div className="rounded-lg bg-[#5856D6]/10 dark:bg-blue-500/10 p-2 shrink-0">
+                                                    <Repeat size={15} className="text-[#5856D6] dark:text-blue-400" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-medium text-[#1D1D1F] dark:text-k-text-primary">Nova assinatura</p>
+                                                    <p className="text-[11px] text-[#86868B] dark:text-k-text-tertiary mt-0.5">Cobrança recorrente (mensal/anual)</p>
+                                                </div>
+                                            </button>
+                                            <Link
+                                                href="/financial/plans"
+                                                onClick={() => setChargeDropdownOpen(false)}
+                                                className="w-full flex items-start gap-3 px-4 py-3 hover:bg-[#F5F5F7] dark:hover:bg-glass-bg transition-colors text-left border-t border-[#E8E8ED] dark:border-k-border-subtle"
+                                            >
+                                                <div className="rounded-lg bg-[#34C759]/10 dark:bg-emerald-500/10 p-2 shrink-0">
+                                                    <Sparkles size={15} className="text-[#34C759] dark:text-emerald-400" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-medium text-[#1D1D1F] dark:text-k-text-primary">Criar novo plano</p>
+                                                    <p className="text-[11px] text-[#86868B] dark:text-k-text-tertiary mt-0.5">Antes de cobrar, defina o pacote</p>
+                                                </div>
+                                            </Link>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <Link
+                                    href="/financial/wallet"
+                                    className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-colors active:scale-[0.98] ${
+                                        (walletBalance ?? 0) > 0
+                                            ? 'bg-white dark:bg-surface-card border border-[#E8E8ED] dark:border-k-border-primary text-[#1D1D1F] dark:text-k-text-primary hover:bg-[#F5F5F7] dark:hover:bg-glass-bg'
+                                            : 'bg-white/50 dark:bg-surface-card/50 border border-[#E8E8ED] dark:border-k-border-primary text-[#8E8E93] dark:text-k-text-quaternary cursor-not-allowed pointer-events-none'
+                                    }`}
+                                >
+                                    <ArrowDownToLine size={15} />
+                                    Sacar via PIX
+                                </Link>
+                            </div>
                         </div>
-                        <span className="text-xs font-medium text-[#6E6E73] dark:text-k-text-secondary">
-                            Receita do mês
-                            <InfoTooltip content="Soma dos pagamentos recebidos neste mês (Stripe + manuais marcados como pago)." />
-                        </span>
-                    </div>
-                    <p className="text-2xl font-bold text-[#1D1D1F] dark:text-k-text-primary">{formatCurrency(monthlyRevenue)}</p>
-                </div>
-
-                <div className="rounded-2xl border border-[#E8E8ED] dark:border-k-border-primary bg-white dark:bg-surface-card p-5 shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:shadow-none">
-                    <div className="flex items-center gap-3 mb-3">
-                        <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-[#007AFF]/10 dark:bg-violet-500/10">
-                            <Users size={18} className="text-[#007AFF] dark:text-violet-400" />
-                        </div>
-                        <span className="text-xs font-medium text-[#6E6E73] dark:text-k-text-secondary">
-                            Alunos pagantes
-                            <InfoTooltip content="Alunos com cobrança ativa via Stripe ou controle manual. Não inclui cortesia." />
-                        </span>
-                    </div>
-                    <p className="text-2xl font-bold text-[#1D1D1F] dark:text-k-text-primary">{payingCount}</p>
-                </div>
-
-                <div className="rounded-2xl border border-[#E8E8ED] dark:border-k-border-primary bg-white dark:bg-surface-card p-5 shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:shadow-none">
-                    <div className="flex items-center gap-3 mb-3">
-                        <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-[#007AFF]/10 dark:bg-blue-500/10">
-                            <Heart size={18} className="text-[#007AFF] dark:text-blue-400" />
-                        </div>
-                        <span className="text-xs font-medium text-[#6E6E73] dark:text-k-text-secondary">
-                            Em cortesia
-                            <InfoTooltip content="Alunos com acesso gratuito — sem cobrança configurada. Você pode configurar cobrança a qualquer momento." />
-                        </span>
-                    </div>
-                    <p className="text-2xl font-bold text-[#1D1D1F] dark:text-k-text-primary">{courtesyCount}</p>
-                </div>
-
-                <Link
-                    href="/financial/subscriptions"
-                    className={`rounded-2xl border p-5 transition-colors group shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:shadow-none ${
-                        attentionStudents.length > 0
-                            ? 'border-[#FF3B30]/20 dark:border-red-500/20 bg-white dark:bg-surface-card hover:border-[#FF3B30]/30 dark:hover:border-red-500/30'
-                            : 'border-[#E8E8ED] dark:border-k-border-primary bg-white dark:bg-surface-card hover:border-[#34C759]/30 dark:hover:border-emerald-500/30'
-                    }`}
-                >
-                    <div className="flex items-center gap-3 mb-3">
-                        <div className={`flex items-center justify-center w-9 h-9 rounded-xl ${
-                            attentionStudents.length > 0 ? 'bg-[#FF3B30]/10 dark:bg-red-500/10' : 'bg-[#34C759]/10 dark:bg-emerald-500/10'
-                        }`}>
-                            <AlertTriangle size={18} className={
-                                attentionStudents.length > 0 ? 'text-[#FF3B30] dark:text-red-400' : 'text-[#34C759] dark:text-emerald-400'
-                            } />
-                        </div>
-                        <span className="text-xs font-medium text-[#6E6E73] dark:text-k-text-secondary">
-                            Atenção
-                            <InfoTooltip content="Alunos com pagamento atrasado, vencido ou cancelamento em andamento. Clique em 'Ver detalhes' para resolver." />
-                        </span>
-                    </div>
-                    <p className="text-2xl font-bold text-[#1D1D1F] dark:text-k-text-primary">{attentionStudents.length}</p>
-                </Link>
-            </div>
-
-            {/* Quick Actions */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-                <div className="rounded-2xl border border-[#E8E8ED] dark:border-k-border-primary bg-white dark:bg-surface-card p-5 shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:shadow-none">
-                    <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                            <Wallet size={16} className="text-[#86868B] dark:text-k-text-tertiary" />
-                            <h3 className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary">Planos</h3>
-                            <InfoTooltip content="Planos de cobrança que você criou. Cada plano define valor e recorrência. Você vincula planos aos alunos na página de Assinaturas." />
-                        </div>
-                        <Link
-                            href="/financial/plans"
-                            className="text-xs text-[#86868B] dark:text-k-text-tertiary hover:text-[#007AFF] dark:hover:text-violet-400 transition-colors flex items-center gap-1"
-                        >
-                            Ver todos
-                            <ArrowRight size={12} />
-                        </Link>
-                    </div>
-                    <p className="text-xs text-[#6E6E73] dark:text-k-text-secondary mb-3">
-                        {plansCount === 0 ? 'Nenhum plano criado' : `${plansCount} plano${plansCount > 1 ? 's' : ''} criado${plansCount > 1 ? 's' : ''}`}
-                    </p>
-                    <Link
-                        href="/financial/plans"
-                        className="inline-flex items-center gap-1.5 text-xs font-medium text-[#007AFF] hover:text-[#0056B3] dark:text-violet-400 dark:hover:text-violet-300 transition-colors"
-                    >
-                        Gerenciar planos
-                        <ArrowRight size={12} />
-                    </Link>
-                </div>
-
-                <div className="rounded-2xl border border-[#E8E8ED] dark:border-k-border-primary bg-white dark:bg-surface-card p-5 shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:shadow-none">
-                    <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                            <Users size={16} className="text-[#86868B] dark:text-k-text-tertiary" />
-                            <h3 className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary">Assinaturas</h3>
-                            <InfoTooltip content="Resumo dos alunos com cobrança configurada. Clique em 'Gerenciar assinaturas' para ver a lista completa." />
-                        </div>
-                        <Link
-                            href="/financial/subscriptions"
-                            className="text-xs text-[#86868B] dark:text-k-text-tertiary hover:text-[#007AFF] dark:hover:text-violet-400 transition-colors flex items-center gap-1"
-                        >
-                            Ver todas
-                            <ArrowRight size={12} />
-                        </Link>
-                    </div>
-                    <p className="text-xs text-[#6E6E73] dark:text-k-text-secondary mb-3">
-                        {payingCount === 0 ? 'Nenhum aluno pagante' : `${payingCount} aluno${payingCount > 1 ? 's' : ''} pagante${payingCount > 1 ? 's' : ''}`}
-                    </p>
-                    <Link
-                        href="/financial/subscriptions"
-                        className="inline-flex items-center gap-1.5 text-xs font-medium text-[#007AFF] hover:text-[#0056B3] dark:text-violet-400 dark:hover:text-violet-300 transition-colors"
-                    >
-                        Gerenciar assinaturas
-                        <ArrowRight size={12} />
-                    </Link>
-                </div>
-            </div>
-
-            {/* Recent Transactions */}
-            <div className="rounded-2xl border border-[#E8E8ED] dark:border-k-border-primary bg-white dark:bg-surface-card shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:shadow-none">
-                <div className="px-6 py-4 border-b border-[#E8E8ED] dark:border-k-border-subtle">
-                    <h2 className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary">
-                        Últimas transações
-                        <InfoTooltip content="Pagamentos recentes dos seus alunos (Stripe automático e manuais marcados como pago)." />
-                    </h2>
-                </div>
-                {recentTransactions.length === 0 ? (
-                    <EmptyState
-                        icon={Receipt}
-                        title="Nenhuma transação"
-                        description="As transações dos seus alunos aparecerão aqui."
-                    />
+                    </section>
                 ) : (
-                    <div className="divide-y divide-[#E8E8ED] dark:divide-k-border-subtle">
-                        {recentTransactions.map((tx) => (
-                            <div key={tx.id} className="px-6 py-3 flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                                        tx.status === 'succeeded' ? 'bg-[#34C759] dark:bg-emerald-400' :
-                                        tx.status === 'pending' ? 'bg-[#FF9500] dark:bg-amber-400' :
-                                        tx.status === 'failed' ? 'bg-[#FF3B30] dark:bg-red-400' : 'bg-[#8E8E93] dark:bg-gray-400'
-                                    }`} />
-                                    <div>
-                                        <p className="text-sm text-[#1D1D1F] dark:text-k-text-primary">
-                                            {cleanDescription(tx)}
-                                        </p>
-                                        <p className="text-xs text-[#8E8E93] dark:text-k-text-quaternary mt-0.5">
-                                            {timeAgo(tx.created_at)}
-                                        </p>
-                                    </div>
-                                </div>
-                                <span className={`text-sm font-semibold ${
-                                    tx.status === 'succeeded' ? 'text-[#34C759] dark:text-emerald-400' : 'text-[#1D1D1F] dark:text-k-text-primary'
-                                }`}>
-                                    {tx.type === 'payout' ? '−' : '+'}{formatCurrency(tx.amount_gross)}
+                    <div className="mb-6">
+                        <WalletStatusCard
+                            status={walletStatus}
+                            mode={walletMode}
+                            balance={walletBalance}
+                            rejectionReason={walletRejectionReason}
+                        />
+                    </div>
+                )}
+
+                {/* Stripe legado (escondido por padrão) */}
+                {hasStripeLegacyContracts && (
+                    <details className="mb-6 group">
+                        <summary className="cursor-pointer text-xs text-k-text-quaternary hover:text-k-text-tertiary transition-colors inline-flex items-center gap-1 select-none">
+                            <span>Modo avançado: Stripe Connect (legado)</span>
+                            <span className="text-[10px] opacity-60 group-open:hidden">▼</span>
+                            <span className="text-[10px] opacity-60 hidden group-open:inline">▲</span>
+                        </summary>
+                        <div className="mt-3">
+                            <ConnectStatusCard
+                                connected={connectStatus.connected}
+                                chargesEnabled={connectStatus.chargesEnabled}
+                                detailsSubmitted={connectStatus.detailsSubmitted}
+                                payoutsEnabled={connectStatus.payoutsEnabled}
+                            />
+                            {connectSyncing && (
+                                <p className="text-xs text-k-text-secondary mt-2">Sincronizando status...</p>
+                            )}
+                        </div>
+                    </details>
+                )}
+
+                {/* ─── Stats Grid ──────────────────────────────────────────── */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+                    <StatCard
+                        icon={<DollarSign size={18} className="text-[#34C759] dark:text-emerald-400" />}
+                        iconBg="bg-[#34C759]/10 dark:bg-emerald-500/10"
+                        label="Receita do mês"
+                        tooltip="Soma dos pagamentos recebidos neste mês."
+                        value={formatCurrency(monthlyRevenue)}
+                    />
+                    <StatCard
+                        icon={<Users size={18} className="text-[#007AFF] dark:text-violet-400" />}
+                        iconBg="bg-[#007AFF]/10 dark:bg-violet-500/10"
+                        label="Alunos pagantes"
+                        tooltip="Alunos com cobrança ativa. Não inclui cortesia."
+                        value={payingCount.toString()}
+                    />
+                    <StatCard
+                        icon={<Heart size={18} className="text-[#5AC8FA] dark:text-blue-400" />}
+                        iconBg="bg-[#5AC8FA]/10 dark:bg-blue-500/10"
+                        label="Cortesias"
+                        tooltip="Alunos com acesso gratuito — sem cobrança configurada."
+                        value={courtesyCount.toString()}
+                    />
+                    <Link
+                        href={attentionStudents.length > 0 ? '/financial/subscriptions' : '#'}
+                        className={`rounded-2xl border p-4 sm:p-5 transition-colors shadow-[0_1px_3px_rgba(0,0,0,0.06)] dark:shadow-none ${
+                            attentionStudents.length > 0
+                                ? 'border-[#FF3B30]/20 dark:border-red-500/20 bg-white dark:bg-surface-card hover:border-[#FF3B30]/40 dark:hover:border-red-500/40'
+                                : 'border-[#E8E8ED] dark:border-k-border-primary bg-white dark:bg-surface-card pointer-events-none'
+                        }`}
+                    >
+                        <div className="flex items-center gap-2.5 mb-2.5">
+                            <div className={`flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-xl ${
+                                attentionStudents.length > 0 ? 'bg-[#FF3B30]/10 dark:bg-red-500/10' : 'bg-[#34C759]/10 dark:bg-emerald-500/10'
+                            }`}>
+                                <AlertTriangle size={17} className={
+                                    attentionStudents.length > 0 ? 'text-[#FF3B30] dark:text-red-400' : 'text-[#34C759] dark:text-emerald-400'
+                                } />
+                            </div>
+                            <span className="text-[11px] sm:text-xs font-medium text-[#6E6E73] dark:text-k-text-secondary">
+                                Precisam de atenção
+                            </span>
+                        </div>
+                        <p className="text-xl sm:text-2xl font-bold text-[#1D1D1F] dark:text-k-text-primary tabular-nums">
+                            {attentionStudents.length}
+                        </p>
+                    </Link>
+                </div>
+
+                {/* ─── Body em duas colunas ─────────────────────────────────── */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+
+                    {/* Esquerda: Atividade recente */}
+                    <div className="lg:col-span-2">
+                        <div className="rounded-2xl border border-[#E8E8ED] dark:border-k-border-primary bg-white dark:bg-surface-card shadow-[0_1px_3px_rgba(0,0,0,0.06)] dark:shadow-none">
+                            <div className="px-5 sm:px-6 py-4 border-b border-[#E8E8ED] dark:border-k-border-subtle flex items-center justify-between">
+                                <h2 className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary">
+                                    Atividade recente
+                                </h2>
+                                <span className="text-[11px] text-[#86868B] dark:text-k-text-tertiary">
+                                    últimos pagamentos e saques
                                 </span>
                             </div>
-                        ))}
+                            {recentTransactions.length === 0 ? (
+                                <EmptyState
+                                    icon={Receipt}
+                                    title="Nenhuma transação ainda"
+                                    description="Conforme seus alunos pagarem, os recebimentos aparecem aqui."
+                                />
+                            ) : (
+                                <div className="divide-y divide-[#E8E8ED] dark:divide-k-border-subtle">
+                                    {recentTransactions.map((tx) => (
+                                        <div key={tx.id} className="px-5 sm:px-6 py-3 flex items-center justify-between">
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                                                    tx.status === 'succeeded' ? 'bg-[#34C759] dark:bg-emerald-400' :
+                                                    tx.status === 'pending' ? 'bg-[#FF9500] dark:bg-amber-400' :
+                                                    tx.status === 'failed' ? 'bg-[#FF3B30] dark:bg-red-400' :
+                                                    'bg-[#8E8E93] dark:bg-gray-400'
+                                                }`} />
+                                                <div className="min-w-0">
+                                                    <p className="text-sm text-[#1D1D1F] dark:text-k-text-primary truncate">
+                                                        {cleanDescription(tx)}
+                                                    </p>
+                                                    <p className="text-xs text-[#8E8E93] dark:text-k-text-quaternary mt-0.5">
+                                                        {timeAgo(tx.created_at)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <span className={`text-sm font-semibold tabular-nums whitespace-nowrap ml-3 ${
+                                                tx.type === 'payout' ? 'text-[#FF3B30] dark:text-red-400' :
+                                                tx.status === 'succeeded' ? 'text-[#34C759] dark:text-emerald-400' :
+                                                'text-[#1D1D1F] dark:text-k-text-primary'
+                                            }`}>
+                                                {tx.type === 'payout' ? '−' : '+'}{formatCurrency(tx.amount_gross)}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Direita: Atenção + Atalhos */}
+                    <div className="space-y-4 sm:space-y-6">
+
+                        {/* Atenção */}
+                        {attentionStudents.length > 0 && (
+                            <div className="rounded-2xl border border-[#E8E8ED] dark:border-k-border-primary bg-white dark:bg-surface-card shadow-[0_1px_3px_rgba(0,0,0,0.06)] dark:shadow-none overflow-hidden">
+                                <div className="px-5 py-4 border-b border-[#E8E8ED] dark:border-k-border-subtle flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-2 h-2 bg-[#FF3B30] dark:bg-red-400 rounded-full animate-pulse" />
+                                        <h2 className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary">
+                                            Precisam de atenção
+                                        </h2>
+                                    </div>
+                                    <span className="text-[11px] font-medium text-[#FF3B30] dark:text-red-400">
+                                        {attentionStudents.length} {attentionStudents.length === 1 ? 'item' : 'itens'}
+                                    </span>
+                                </div>
+                                <div className="divide-y divide-[#E8E8ED] dark:divide-k-border-subtle">
+                                    {attentionStudents.slice(0, 4).map(s => (
+                                        <Link
+                                            key={s.student_id}
+                                            href="/financial/subscriptions"
+                                            className="px-5 py-3 flex items-center gap-3 hover:bg-[#F5F5F7] dark:hover:bg-glass-bg transition-colors"
+                                        >
+                                            <div className={`flex h-8 w-8 items-center justify-center rounded-full overflow-hidden flex-shrink-0 border border-[#E8E8ED] dark:border-k-border-primary ${
+                                                s.display_status === 'overdue' || s.display_status === 'expired'
+                                                    ? 'bg-[#FF3B30]/10 dark:bg-red-500/10'
+                                                    : 'bg-[#FF9500]/10 dark:bg-amber-500/10'
+                                            }`}>
+                                                {s.avatar_url ? (
+                                                    <Image src={s.avatar_url} alt={s.student_name} width={32} height={32} className="h-8 w-8 rounded-full object-cover" unoptimized />
+                                                ) : (
+                                                    <span className={`text-xs font-semibold ${
+                                                        s.display_status === 'overdue' || s.display_status === 'expired'
+                                                            ? 'text-[#FF3B30] dark:text-red-400'
+                                                            : 'text-[#FF9500] dark:text-amber-400'
+                                                    }`}>
+                                                        {s.student_name?.charAt(0).toUpperCase() || '?'}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-sm font-medium text-[#1D1D1F] dark:text-k-text-primary truncate">
+                                                    {s.student_name}
+                                                </p>
+                                                <p className={`text-[11px] ${statusColors[s.display_status]}`}>
+                                                    {s.display_status === 'overdue' && s.current_period_end
+                                                        ? `Atrasado há ${daysOverdue(s.current_period_end)}d`
+                                                        : s.display_status === 'canceling' && s.current_period_end
+                                                        ? `Cancela em ${formatDate(s.current_period_end)}`
+                                                        : statusLabels[s.display_status]}
+                                                    {s.amount && ` · ${formatCurrency(s.amount)}`}
+                                                </p>
+                                            </div>
+                                            <ArrowRight size={13} className="text-[#86868B] dark:text-k-text-tertiary flex-shrink-0" />
+                                        </Link>
+                                    ))}
+                                </div>
+                                {attentionStudents.length > 4 && (
+                                    <Link
+                                        href="/financial/subscriptions"
+                                        className="block px-5 py-3 text-xs text-center text-[#007AFF] dark:text-violet-400 hover:bg-[#F5F5F7] dark:hover:bg-glass-bg border-t border-[#E8E8ED] dark:border-k-border-subtle"
+                                    >
+                                        Ver todos ({attentionStudents.length})
+                                    </Link>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Atalhos */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <QuickLink
+                                href="/financial/plans"
+                                icon={<Wallet size={16} />}
+                                title="Planos"
+                                detail={plansCount === 0 ? 'Nenhum criado' : `${plansCount} ${plansCount === 1 ? 'plano' : 'planos'}`}
+                            />
+                            <QuickLink
+                                href="/financial/subscriptions"
+                                icon={<Repeat size={16} />}
+                                title="Assinaturas"
+                                detail={payingCount === 0 ? 'Nenhuma ativa' : `${payingCount} ${payingCount === 1 ? 'ativa' : 'ativas'}`}
+                            />
+                            <QuickLink
+                                href="/financial/pix-keys"
+                                icon={<KeyRound size={16} />}
+                                title="Chaves PIX"
+                                detail="Pra sacar"
+                            />
+                            <QuickLink
+                                href="/financial/settings"
+                                icon={<SettingsIcon size={16} />}
+                                title="Configurações"
+                                detail="Carteira, taxas…"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                {/* "Tudo em dia" indicador (quando não há atenção e tem ativos) */}
+                {attentionStudents.length === 0 && (payingCount > 0 || courtesyCount > 0) && (
+                    <div className="mt-6 flex items-center gap-2 px-3 py-2 bg-[#34C759]/5 dark:bg-emerald-500/5 border border-[#34C759]/15 dark:border-emerald-500/15 rounded-xl w-fit">
+                        <Check size={14} className="text-[#34C759] dark:text-emerald-400" />
+                        <span className="text-xs text-[#34C759] dark:text-emerald-400 font-medium">Tudo em dia</span>
                     </div>
                 )}
             </div>
-        </div>
 
-        {/* Financial Onboarding Modal (first visit) */}
-        <FinancialOnboardingModal />
-
-        {/* New Subscription Modal */}
-        <NewSubscriptionModal
-            isOpen={modalOpen}
-            onClose={() => setModalOpen(false)}
-            onSuccess={() => { router.refresh(); setModalOpen(false) }}
-            students={students}
-            plans={activePlans}
-            hasStripeConnect={hasStripeConnect}
-        />
+            {/* Modais */}
+            <FinancialOnboardingModal />
+            <CobrarCarteiraModal
+                isOpen={chargeOpen}
+                onClose={() => setChargeOpen(false)}
+                onSuccess={() => { router.refresh(); setChargeOpen(false) }}
+                students={students}
+                plans={activePlans}
+                walletStatus={walletStatus}
+            />
         </AppLayout>
+    )
+}
+
+// ─── Componentes auxiliares ────────────────────────────────────────────────
+
+function StatCard({
+    icon, iconBg, label, tooltip, value,
+}: {
+    icon: React.ReactNode
+    iconBg: string
+    label: string
+    tooltip: string
+    value: string
+}) {
+    return (
+        <div className="rounded-2xl border border-[#E8E8ED] dark:border-k-border-primary bg-white dark:bg-surface-card p-4 sm:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.06)] dark:shadow-none">
+            <div className="flex items-center gap-2.5 mb-2.5">
+                <div className={`flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-xl ${iconBg}`}>
+                    {icon}
+                </div>
+                <span className="text-[11px] sm:text-xs font-medium text-[#6E6E73] dark:text-k-text-secondary flex items-center gap-1">
+                    {label}
+                    <InfoTooltip content={tooltip} />
+                </span>
+            </div>
+            <p className="text-xl sm:text-2xl font-bold text-[#1D1D1F] dark:text-k-text-primary tabular-nums">
+                {value}
+            </p>
+        </div>
+    )
+}
+
+function QuickLink({
+    href, icon, title, detail,
+}: {
+    href: string
+    icon: React.ReactNode
+    title: string
+    detail: string
+}) {
+    return (
+        <Link
+            href={href}
+            className="rounded-2xl border border-[#E8E8ED] dark:border-k-border-primary bg-white dark:bg-surface-card p-4 transition-all hover:border-[#86868B] dark:hover:border-k-text-tertiary hover:-translate-y-0.5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] dark:shadow-none"
+        >
+            <div className="rounded-lg bg-[#F5F5F7] dark:bg-glass-bg p-2 w-fit text-[#1D1D1F] dark:text-k-text-primary mb-2.5">
+                {icon}
+            </div>
+            <p className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary">{title}</p>
+            <p className="text-[11px] text-[#86868B] dark:text-k-text-tertiary mt-0.5">{detail}</p>
+        </Link>
     )
 }

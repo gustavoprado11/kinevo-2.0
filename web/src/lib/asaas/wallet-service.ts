@@ -384,9 +384,11 @@ export async function linkExistingAccount(
         info = await getMyAccountInfo(apiKey)
     } catch (err) {
         console.error('[wallet/link] Asaas validation failed:', {
+            asaasEnv: process.env.ASAAS_ENV ?? '(unset → defaults to sandbox)',
+            keyPrefix: apiKey.slice(0, 12),
             status: err instanceof AsaasApiError ? err.status : 'n/a',
             message: err instanceof Error ? err.message : String(err),
-            body: err instanceof AsaasApiError ? err.body : undefined,
+            body: err instanceof AsaasApiError ? JSON.stringify(err.body) : undefined,
         })
         if (err instanceof AsaasApiError) {
             if (err.status === 401 || err.status === 403) {

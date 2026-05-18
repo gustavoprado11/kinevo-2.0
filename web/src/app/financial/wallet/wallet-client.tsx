@@ -153,6 +153,14 @@ export function WalletClient({ summary, balance, balanceError, pendingDocuments,
             trainerTheme={trainer.theme}
         >
             <div className="container mx-auto max-w-5xl px-4 py-6 md:py-10">
+                {/* Voltar pro Financeiro */}
+                <a
+                    href="/financial"
+                    className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-900 transition-colors mb-4"
+                >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><polyline points="15 18 9 12 15 6"/></svg>
+                    Voltar pro Financeiro
+                </a>
                 <header className="mb-8">
                     <div className="flex items-center gap-3 mb-2">
                         <div className="rounded-xl bg-primary/10 p-2.5">
@@ -347,11 +355,13 @@ function LinkExistingScreen(props: {
     const [apiKey, setApiKey] = useState('')
     const [walletId, setWalletId] = useState('')
 
-    const canSubmit = apiKey.trim().startsWith('$aact_') && walletId.trim().length >= 16 && !props.busy
+    const trimmedKey = apiKey.trim()
+    const isSandboxKey = trimmedKey.startsWith('$aact_hmlg_') || trimmedKey.startsWith('$aact_sandbox_')
+    const canSubmit = trimmedKey.startsWith('$aact_') && !isSandboxKey && walletId.trim().length >= 16 && !props.busy
 
     async function handleSubmit() {
         try {
-            await props.onSubmit(apiKey.trim(), walletId.trim())
+            await props.onSubmit(trimmedKey, walletId.trim())
         } catch {
             // erro já é mostrado via props.error
         }
@@ -443,6 +453,17 @@ function LinkExistingScreen(props: {
                             spellCheck={false}
                         />
                     </Field>
+                    {isSandboxKey && (
+                        <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-xs text-red-800">
+                            <p className="font-semibold mb-1">Essa chave é de sandbox/homologação</p>
+                            <p>
+                                Você está logado em <code className="bg-red-100 px-1 rounded">sandbox.asaas.com</code>{' '}
+                                (ambiente de testes). Pra usar com o Kinevo, gere uma chave em{' '}
+                                <code className="bg-red-100 px-1 rounded">www.asaas.com</code> (produção).
+                                A chave de produção começa com <code className="bg-red-100 px-1 rounded">$aact_prod_</code>.
+                            </p>
+                        </div>
+                    )}
                 </div>
             </div>
 
