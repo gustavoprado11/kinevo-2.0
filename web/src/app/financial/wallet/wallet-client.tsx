@@ -379,12 +379,12 @@ function LinkExistingScreen(props: {
             <div className="mb-6 rounded-xl border border-slate-200 overflow-hidden">
                 <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex items-center gap-2">
                     <span className="inline-flex items-center justify-center size-6 rounded-full bg-primary text-white text-xs font-bold">1</span>
-                    <p className="font-semibold text-slate-900 text-sm">Pegar a Chave de API</p>
+                    <p className="font-semibold text-slate-900 text-sm">Gerar a Chave de API</p>
                 </div>
                 <div className="p-4 space-y-3">
-                    <ol className="text-sm text-slate-700 space-y-2 list-decimal list-inside marker:text-slate-400 marker:font-medium">
+                    <ol className="text-sm text-slate-700 space-y-2.5 list-decimal list-inside marker:text-slate-400 marker:font-medium">
                         <li>
-                            Abra o painel da Asaas em outra aba:{' '}
+                            Em outra aba, faça login na Asaas:{' '}
                             <a
                                 href="https://www.asaas.com/login"
                                 target="_blank"
@@ -395,18 +395,41 @@ function LinkExistingScreen(props: {
                                 <ExternalLink className="size-3" />
                             </a>
                         </li>
-                        <li>Faça login com seu email e senha da Asaas.</li>
                         <li>
-                            No menu, clique em <b>&ldquo;Integrações&rdquo;</b> e depois em{' '}
-                            <b>&ldquo;Integração via API&rdquo;</b>.
+                            No <b>canto superior direito</b> da tela da Asaas, clique no{' '}
+                            <b>ícone de aplicativos</b> — parece um quadradinho com 4 quadrados
+                            pequenos, fica ao lado do sino de notificações.
                         </li>
                         <li>
-                            Clique em <b>&ldquo;Gerar nova chave&rdquo;</b>. Coloque o nome
-                            <b> &ldquo;Kinevo&rdquo;</b> pra você identificar depois.
+                            No painel que abrir, clique em <b>&ldquo;Integrações&rdquo;</b>.
                         </li>
                         <li>
-                            Copie a chave inteira que aparecer (começa com <code className="bg-slate-100 px-1 rounded text-xs">$aact_</code>)
-                            — a Asaas só mostra ela uma vez!
+                            Você vai ver várias abas no topo (Início, Chaves de API, Segurança…).
+                            Clique na aba <b>&ldquo;Chaves de API&rdquo;</b>.
+                        </li>
+                        <li>
+                            Clique no botão azul <b>&ldquo;Gerar chave de API&rdquo;</b>
+                            (canto superior direito).
+                        </li>
+                        <li>
+                            No formulário:
+                            <ul className="mt-1.5 ml-5 space-y-1 list-disc list-outside marker:text-slate-400">
+                                <li>
+                                    Em <b>&ldquo;Nome da chave&rdquo;</b>, digite{' '}
+                                    <code className="bg-slate-100 px-1 rounded text-xs">Kinevo</code>
+                                </li>
+                                <li>Deixe Data e Hora de expiração em branco</li>
+                                <li className="text-amber-900">
+                                    ✅ <b>Marque a opção &ldquo;Permitir que esta chave execute
+                                    operações de saque via API&rdquo;</b> — sem isso, você não
+                                    consegue sacar pelo Kinevo
+                                </li>
+                            </ul>
+                        </li>
+                        <li>
+                            Clique em <b>&ldquo;Avançar&rdquo;</b> e confirme com sua senha. A
+                            chave vai aparecer <b>uma única vez</b> — copie ela inteira (começa
+                            com <code className="bg-slate-100 px-1 rounded text-xs">$aact_prod_</code>).
                         </li>
                     </ol>
                     <Field label="Cole a chave aqui">
@@ -427,25 +450,27 @@ function LinkExistingScreen(props: {
             <div className="mb-6 rounded-xl border border-slate-200 overflow-hidden">
                 <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex items-center gap-2">
                     <span className="inline-flex items-center justify-center size-6 rounded-full bg-primary text-white text-xs font-bold">2</span>
-                    <p className="font-semibold text-slate-900 text-sm">Pegar o ID da Carteira (Wallet ID)</p>
+                    <p className="font-semibold text-slate-900 text-sm">Copiar o Wallet ID (ID da carteira)</p>
                 </div>
                 <div className="p-4 space-y-3">
-                    <ol className="text-sm text-slate-700 space-y-2 list-decimal list-inside marker:text-slate-400 marker:font-medium">
+                    <ol className="text-sm text-slate-700 space-y-2.5 list-decimal list-inside marker:text-slate-400 marker:font-medium">
                         <li>
-                            Ainda no painel da Asaas, clique no seu nome no canto superior direito
-                            e depois em <b>&ldquo;Minha Conta&rdquo;</b>.
+                            Ainda no painel da Asaas, clique no{' '}
+                            <b>ícone do seu perfil</b> no canto superior direito (último ícone da
+                            barra de cima, parece uma pessoinha).
                         </li>
                         <li>
-                            No menu lateral, clique em <b>&ldquo;Configurações&rdquo;</b> e depois em{' '}
-                            <b>&ldquo;Suas Carteiras&rdquo;</b> (ou &ldquo;Wallets&rdquo;).
+                            No menu que abrir, clique em <b>&ldquo;Minha Conta&rdquo;</b>.
                         </li>
                         <li>
-                            Você verá o <b>ID da carteira principal</b> — um código no formato{' '}
+                            Procure pela aba ou seção <b>&ldquo;Integrações&rdquo;</b> ou{' '}
+                            <b>&ldquo;Dados da conta&rdquo;</b>. O Wallet ID aparece como um
+                            código em formato{' '}
                             <code className="bg-slate-100 px-1 rounded text-xs">xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</code>.
                         </li>
-                        <li>Clique em &ldquo;Copiar&rdquo; e cole aqui embaixo.</li>
+                        <li>Clique no botão de copiar ao lado do código e cole aqui embaixo.</li>
                     </ol>
-                    <Field label="Cole o ID da carteira aqui">
+                    <Field label="Cole o Wallet ID aqui">
                         <input
                             className={inputCls}
                             value={walletId}
@@ -459,11 +484,18 @@ function LinkExistingScreen(props: {
             </div>
 
             <div className="mb-4 rounded-lg bg-amber-50 border border-amber-200 p-3 text-xs text-amber-900">
-                <p>
-                    <b>Não achou alguma das opções?</b> A interface da Asaas pode mudar. Se tiver
-                    dúvida, abra o chat da Asaas pelo próprio painel ou nos chame no suporte da
-                    Kinevo — a gente te ajuda a achar.
+                <p className="mb-1.5">
+                    <b>Não encontrou o Wallet ID?</b> A Asaas reorganiza o painel de tempos em
+                    tempos. Tente isso:
                 </p>
+                <ul className="ml-4 list-disc list-outside space-y-1">
+                    <li>
+                        Abra o chat de suporte da Asaas (botão <b>&ldquo;Posso ajudar?&rdquo;</b>{' '}
+                        no canto inferior direito da tela deles) e pergunte: <i>&ldquo;onde encontro
+                        o Wallet ID da minha conta?&rdquo;</i>
+                    </li>
+                    <li>Ou nos chame no suporte da Kinevo que ajudamos você a achar.</li>
+                </ul>
             </div>
 
             {props.error && (

@@ -1,7 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { CreditCard, HandCoins, Heart, ExternalLink, Loader2, ArrowRight, ChevronLeft } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import {
+    Wallet, Heart, Repeat, ArrowRight, ChevronLeft, Loader2, Sparkles, Check,
+} from 'lucide-react'
 
 interface FinancialOnboardingProps {
     onComplete: () => void
@@ -9,20 +12,6 @@ interface FinancialOnboardingProps {
 
 export function FinancialOnboarding({ onComplete }: FinancialOnboardingProps) {
     const [step, setStep] = useState(1)
-    const [connectLoading, setConnectLoading] = useState(false)
-
-    const handleConnectStripe = async () => {
-        setConnectLoading(true)
-        try {
-            const res = await fetch('/api/stripe/connect/onboard', { method: 'POST' })
-            const data = await res.json()
-            if (data.url) {
-                window.location.href = data.url
-            }
-        } catch {
-            setConnectLoading(false)
-        }
-    }
 
     return (
         <div className="max-w-2xl mx-auto">
@@ -44,11 +33,9 @@ export function FinancialOnboarding({ onComplete }: FinancialOnboardingProps) {
 
             {step === 1 && <StepWelcome onNext={() => setStep(2)} />}
             {step === 2 && (
-                <StepConnect
-                    onConnect={handleConnectStripe}
+                <StepActivateWallet
                     onSkip={() => setStep(3)}
                     onBack={() => setStep(1)}
-                    loading={connectLoading}
                 />
             )}
             {step === 3 && (
@@ -65,31 +52,31 @@ function StepWelcome({ onNext }: { onNext: () => void }) {
     return (
         <div className="text-center">
             <h2 className="text-2xl font-bold text-k-text-primary mb-3">
-                Gerencie seus planos e cobranças
+                Receba seus alunos direto no app
             </h2>
             <p className="text-k-text-secondary mb-10 max-w-lg mx-auto">
-                Crie planos de consultoria, cobre seus alunos automaticamente via Stripe
-                ou controle pagamentos manuais. Tudo em um só lugar.
+                Cobre via PIX e Cartão, libere acessos como Cortesia e crie planos
+                recorrentes — tudo num lugar só, sem precisar de outra ferramenta.
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
                 <div className="rounded-2xl bg-surface-card border border-k-border-primary p-5 text-left">
                     <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-violet-500/10 mb-3">
-                        <CreditCard size={20} className="text-violet-600 dark:text-violet-400" />
+                        <Wallet size={20} className="text-violet-600 dark:text-violet-400" />
                     </div>
-                    <h3 className="text-sm font-semibold text-k-text-primary mb-1">Stripe</h3>
+                    <h3 className="text-sm font-semibold text-k-text-primary mb-1">Carteira Kinevo</h3>
                     <p className="text-xs text-k-text-secondary leading-relaxed">
-                        Pagamento automático via cartão ou Pix. O aluno recebe um link e paga online.
+                        Receba via PIX e Cartão, em parceria com a Asaas. Saque sem taxa, quando quiser.
                     </p>
                 </div>
 
                 <div className="rounded-2xl bg-surface-card border border-k-border-primary p-5 text-left">
                     <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-500/10 mb-3">
-                        <HandCoins size={20} className="text-blue-600 dark:text-blue-400" />
+                        <Repeat size={20} className="text-blue-600 dark:text-blue-400" />
                     </div>
-                    <h3 className="text-sm font-semibold text-k-text-primary mb-1">Manual</h3>
+                    <h3 className="text-sm font-semibold text-k-text-primary mb-1">Planos recorrentes</h3>
                     <p className="text-xs text-k-text-secondary leading-relaxed">
-                        Controle pagamentos feitos por dinheiro, Pix direto ou transferência.
+                        Mensal, trimestral ou anual. A cobrança roda sozinha — você não precisa lembrar.
                     </p>
                 </div>
 
@@ -99,7 +86,7 @@ function StepWelcome({ onNext }: { onNext: () => void }) {
                     </div>
                     <h3 className="text-sm font-semibold text-k-text-primary mb-1">Cortesia</h3>
                     <p className="text-xs text-k-text-secondary leading-relaxed">
-                        Dê acesso gratuito para familiares, amigos ou parceiros.
+                        Libere acesso gratuito pra família, amigos ou parcerias — sem cobrar nada.
                     </p>
                 </div>
             </div>
@@ -115,49 +102,61 @@ function StepWelcome({ onNext }: { onNext: () => void }) {
     )
 }
 
-function StepConnect({
-    onConnect,
+function StepActivateWallet({
     onSkip,
     onBack,
-    loading,
 }: {
-    onConnect: () => void
     onSkip: () => void
     onBack: () => void
-    loading: boolean
 }) {
+    const router = useRouter()
+    const [navigating, setNavigating] = useState(false)
+
+    function goToWallet() {
+        setNavigating(true)
+        router.push('/financial/wallet')
+    }
+
     return (
         <div className="text-center">
             <h2 className="text-2xl font-bold text-k-text-primary mb-3">
-                Conectar com Stripe
+                Ative sua Carteira Kinevo
             </h2>
             <p className="text-k-text-secondary mb-8 max-w-lg mx-auto">
-                Conecte sua conta Stripe para cobrar seus alunos automaticamente.
-                Você pode pular essa etapa e usar apenas cobranças manuais.
+                Pra cobrar seus alunos via PIX ou Cartão direto no app. Sem mensalidade,
+                sem taxa de saque. Você pode pular essa etapa e ativar depois.
             </p>
 
             <div className="rounded-2xl bg-surface-card border border-k-border-primary p-8 mb-8 max-w-md mx-auto">
                 <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-violet-500/10 mx-auto mb-4">
-                    <ExternalLink size={24} className="text-violet-600 dark:text-violet-400" />
+                    <Sparkles size={24} className="text-violet-600 dark:text-violet-400" />
                 </div>
                 <h3 className="text-base font-semibold text-k-text-primary mb-2">
-                    Pagamentos automáticos
+                    Em parceria com a Asaas
                 </h3>
                 <p className="text-sm text-k-text-secondary mb-5">
-                    Com o Stripe, seus alunos podem pagar por cartão de crédito ou Pix.
-                    O dinheiro vai direto para sua conta.
+                    Empresa brasileira regulada pelo Banco Central. A gente cuida da
+                    configuração — você só preenche seus dados e em pouco tempo já tá
+                    recebendo.
                 </p>
+
+                <ul className="text-xs text-k-text-secondary text-left space-y-2 mb-6">
+                    <li className="flex gap-2"><Check size={14} className="text-emerald-600 shrink-0 mt-0.5" /> Recebe PIX e Cartão</li>
+                    <li className="flex gap-2"><Check size={14} className="text-emerald-600 shrink-0 mt-0.5" /> Saque PIX sem taxa, na hora</li>
+                    <li className="flex gap-2"><Check size={14} className="text-emerald-600 shrink-0 mt-0.5" /> Já tem conta Asaas? Vincula em 2 minutos</li>
+                </ul>
+
                 <button
-                    onClick={onConnect}
-                    disabled={loading}
+                    onClick={goToWallet}
+                    disabled={navigating}
                     className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 text-sm font-medium rounded-xl bg-violet-600 hover:bg-violet-500 text-white transition-colors disabled:opacity-50"
                 >
-                    {loading ? (
+                    {navigating ? (
                         <Loader2 size={16} className="animate-spin" />
                     ) : (
-                        <ExternalLink size={16} />
+                        <Wallet size={16} />
                     )}
-                    Conectar com Stripe
+                    Ativar Carteira
                 </button>
             </div>
 
@@ -173,12 +172,12 @@ function StepConnect({
                     onClick={onSkip}
                     className="text-sm text-k-text-secondary hover:text-k-text-primary transition-colors underline underline-offset-4"
                 >
-                    Pular por agora
+                    Configurar depois
                 </button>
             </div>
 
             <p className="text-xs text-k-text-secondary/60 mt-6">
-                Você pode conectar o Stripe a qualquer momento nas configurações financeiras.
+                Você pode ativar a Carteira a qualquer momento na aba Financeiro.
             </p>
         </div>
     )
@@ -213,10 +212,6 @@ function StepCreatePlan({
         setError('')
 
         try {
-            const res = await fetch('/api/stripe/connect/status')
-            const connectStatus = await res.json()
-
-            // Import dynamically to avoid issues
             const { createPlan } = await import('@/actions/financial/create-plan')
             const result = await createPlan({
                 title: title.trim(),
@@ -224,7 +219,10 @@ function StepCreatePlan({
                 interval,
                 description: '',
                 visibility: 'public',
-                hasStripeConnect: connectStatus.connected && connectStatus.charges_enabled,
+                // Carteira Kinevo é a forma padrão — Stripe legacy não é mais oferecido
+                // a novos treinadores no onboarding. O plano fica salvo e fica disponível
+                // pra cobrança assim que a Carteira for ativada.
+                hasStripeConnect: false,
             })
 
             if (result.error) {
@@ -246,7 +244,8 @@ function StepCreatePlan({
                 Criar seu primeiro plano
             </h2>
             <p className="text-k-text-secondary mb-8 max-w-lg mx-auto">
-                Configure um plano de consultoria para seus alunos.
+                Defina o valor que você cobra. Você pode ajustar tudo depois — taxas,
+                métodos de pagamento (PIX/Cartão), descrição e mais.
             </p>
 
             <div className="rounded-2xl bg-surface-card border border-k-border-primary p-6 max-w-md mx-auto text-left">
@@ -285,7 +284,7 @@ function StepCreatePlan({
 
                     <div>
                         <label className="block text-xs font-medium text-k-text-secondary mb-1.5">
-                            Intervalo
+                            Recorrência
                         </label>
                         <select
                             value={interval}
