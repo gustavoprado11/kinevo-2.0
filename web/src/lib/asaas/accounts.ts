@@ -9,7 +9,7 @@ import type {
     AsaasAccountStatus,
     CreateAsaasAccountInput,
 } from '@kinevo/shared/types/asaas'
-import { asaasRequest, getKinevoMainApiKey } from './client'
+import { asaasRequest, AsaasApiError, getKinevoMainApiKey } from './client'
 
 interface AsaasAccountResponseRaw {
     id: string
@@ -79,18 +79,23 @@ export async function getSubaccount(asaasAccountId: string): Promise<AsaasAccoun
 }
 
 /**
- * Validate a trainer-supplied apiKey by fetching info of "my own account".
+ * Validate a trainer-supplied apiKey by fetching their own account info.
  * Used in the "linked account" flow — Kinevo doesn't own the account, the
- * trainer does, and pasted credentials need to be confirmed.
+ * trainer does, and the pasted credentials need to be confirmed.
  *
  * Returns name + cpfCnpj + email + status, normalized. Throws AsaasApiError
  * if the key is invalid (401/403) or the account is rejected/blocked.
  *
- * Implementation note: Asaas exposes /v3/myAccount/info as the canonical
- * "who am I?" endpoint. If that 404s on the Asaas side for any reason
- * (future API changes), we fall back to /v3/finance/balance, which only
- * confirms the key works without giving us name — that's still enough for
- * a basic "verified" state.
+ * Implementation note: the canonical "who am I?" endpoint on Asaas is
+ *   GET /v3/myAccount/commercialInfo   (returns name, cpfCnpj, email)
+ *
+ * Old `/myAccount/info` does NOT exist on Asaas — it 404s. If for any reason
+ * commercialInfo fails (older account shapes, permission scoping), we fall
+ * back to `/v3/finance/balance`: if THAT works, the key is at least valid
+ * and we mark the account as APPROVED with no display name.
+ *
+ * On any non-2xx, the original AsaasApiError is re-thrown so the caller can
+ * surface a useful message (e.g. "401 → key inválida", "403 → sem permissão").
  */
 export async function getMyAccountInfo(apiKey: string): Promise<{
     id?: string
@@ -100,9 +105,10 @@ export async function getMyAccountInfo(apiKey: string): Promise<{
     status?: AsaasAccountStatus
 }> {
     try {
+        // Returns trainer's commercial info: name, email, cpfCnpj, etc.
         const raw = await asaasRequest<AsaasAccountResponseRaw>({
             apiKey,
-            path: '/myAccount/info',
+            path: '/myAccount/commercialInfo',
         })
         return {
             id: raw.id,
@@ -112,9 +118,13 @@ export async function getMyAccountInfo(apiKey: string): Promise<{
             status: raw.accountStatus ?? raw.status,
         }
     } catch (err) {
-        // Fallback: confirm the key is at least valid by reading balance
+        // Re-throw auth/permission errors so caller can surface them directly.
+        if (err instanceof AsaasApiError && (err.status === 401 || err.status === 403)) {
+            throw err
+        }
+        // 404 or odd 4xx/5xx → try balance as a key-validity probe.
+        // If THIS throws, propagate the error (caller will see actual reason).
         await asaasRequest({ apiKey, path: '/finance/balance' })
-        // Key works, but we don't have name. Caller shows generic "verified".
         return { status: 'APPROVED' }
     }
 }

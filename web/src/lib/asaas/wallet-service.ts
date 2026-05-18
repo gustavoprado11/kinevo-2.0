@@ -18,6 +18,7 @@ import {
     getMyAccountInfo,
     encryptApiKey,
     decryptApiKey,
+    AsaasApiError,
 } from '@/lib/asaas'
 import type {
     CreateAsaasAccountInput,
@@ -374,13 +375,39 @@ export async function linkExistingAccount(
         )
     }
 
-    // Valida a chave chamando /myAccount/info (ou /finance/balance como fallback)
+    // Valida a chave chamando /myAccount/commercialInfo (ou /finance/balance
+    // como fallback). Erros são logados server-side e bubblados pro usuário
+    // com o motivo real — assim ele consegue distinguir "chave errada" de
+    // "ambiente errado" ou "Asaas fora do ar".
     let info: Awaited<ReturnType<typeof getMyAccountInfo>>
     try {
         info = await getMyAccountInfo(apiKey)
-    } catch {
+    } catch (err) {
+        console.error('[wallet/link] Asaas validation failed:', {
+            status: err instanceof AsaasApiError ? err.status : 'n/a',
+            message: err instanceof Error ? err.message : String(err),
+            body: err instanceof AsaasApiError ? err.body : undefined,
+        })
+        if (err instanceof AsaasApiError) {
+            if (err.status === 401 || err.status === 403) {
+                throw new WalletAuthError(
+                    'A Asaas rejeitou a chave (não autorizada). Confira no painel da Asaas se a chave está ativa, se é de produção (não sandbox) e se tem permissão pra leitura de conta.',
+                    400
+                )
+            }
+            if (err.status === 404) {
+                throw new WalletAuthError(
+                    'A Asaas não encontrou os endpoints esperados com essa chave. Pode ser ambiente errado (sandbox vs produção) ou um tipo de conta que não suporta vinculação direta. Fala com a gente que te ajudamos.',
+                    400
+                )
+            }
+            throw new WalletAuthError(
+                `A Asaas retornou erro ${err.status}: ${err.message}. Tente novamente em alguns minutos.`,
+                400
+            )
+        }
         throw new WalletAuthError(
-            'Não conseguimos validar essa chave na Asaas. Confira se copiou ela inteira e se ela tem permissão pra criar cobranças.',
+            'Não conseguimos conectar na Asaas pra validar a chave. Confira sua conexão e tente novamente.',
             400
         )
     }
