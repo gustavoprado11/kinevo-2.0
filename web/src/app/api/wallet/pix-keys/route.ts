@@ -7,7 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { AsaasApiError, isPixKeyFormatValid, validatePixKey } from '@/lib/asaas'
+import { AsaasApiError, isPixKeyFormatValid, normalizePixKey, validatePixKey } from '@/lib/asaas'
 import type { PixKeyType } from '@/lib/asaas'
 import { getDecryptedApiKey, requireTrainer, WalletAuthError } from '@/lib/asaas/wallet-service'
 
@@ -16,6 +16,23 @@ interface AddPixKeyBody {
     pixKey?: string
     keyType?: PixKeyType
     isDefault?: boolean
+}
+
+function pixFormatHint(keyType: PixKeyType): string {
+    switch (keyType) {
+        case 'CPF':
+            return 'CPF inválido. Use 11 dígitos (com ou sem pontuação).'
+        case 'CNPJ':
+            return 'CNPJ inválido. Use 14 dígitos (com ou sem pontuação).'
+        case 'EMAIL':
+            return 'Email inválido. Confira se digitou corretamente.'
+        case 'PHONE':
+            return 'Telefone inválido. Use DDD + número (ex: 11999998888).'
+        case 'EVP':
+            return 'Chave aleatória inválida. Deve estar no formato UUID (ex: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx).'
+        default:
+            return 'Formato da chave PIX inválido.'
+    }
 }
 
 export async function GET(request: NextRequest) {
@@ -49,16 +66,25 @@ export async function POST(request: NextRequest) {
     if (!body.pixKey?.trim()) return NextResponse.json({ error: 'pixKey é obrigatório' }, { status: 400 })
     if (!body.keyType) return NextResponse.json({ error: 'keyType é obrigatório' }, { status: 400 })
     if (!isPixKeyFormatValid(body.pixKey, body.keyType)) {
-        return NextResponse.json({ error: 'Formato da chave PIX inválido' }, { status: 400 })
+        return NextResponse.json({
+            error: pixFormatHint(body.keyType),
+        }, { status: 400 })
     }
+
+    // Normaliza ANTES de validar/persistir: CPF/CNPJ vira só dígitos, PHONE vira
+    // E.164 (+55…), EMAIL/EVP viram lowercase. Garante consistência entre o que
+    // a Asaas valida e o que persistimos no banco.
+    const normalizedKey = normalizePixKey(body.pixKey, body.keyType)
 
     try {
         const trainer = await requireTrainer(request)
         const apiKey = await getDecryptedApiKey(trainer.id)
 
-        const validation = await validatePixKey(apiKey, body.pixKey, body.keyType)
+        const validation = await validatePixKey(apiKey, normalizedKey, body.keyType)
         if (!validation.valid) {
-            return NextResponse.json({ error: 'Chave PIX não encontrada no BACEN' }, { status: 422 })
+            return NextResponse.json({
+                error: 'Chave PIX não encontrada no Banco Central. Confira se a chave está cadastrada no seu banco.',
+            }, { status: 422 })
         }
 
         // If this key is being marked default, clear other defaults first
@@ -74,7 +100,7 @@ export async function POST(request: NextRequest) {
             .insert({
                 trainer_id: trainer.id,
                 alias: body.alias.trim(),
-                pix_key: body.pixKey.trim(),
+                pix_key: normalizedKey,
                 key_type: body.keyType,
                 owner_name: validation.ownerName ?? null,
                 bank_name: validation.bankName ?? null,

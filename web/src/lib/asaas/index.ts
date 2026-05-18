@@ -6,7 +6,7 @@ export { createSubaccount, getSubaccount, listSubaccounts, getMyAccountInfo } fr
 export { createCustomer, findCustomerByExternalRef, findOrCreateCustomer } from './customers'
 export { createPayment, getPayment, getPaymentPixQrCode, refundPayment, describeChargeForStudent } from './payments'
 export { createTransfer, getTransfer } from './transfers'
-export { validatePixKey, isPixKeyFormatValid } from './pix'
+export { validatePixKey, isPixKeyFormatValid, normalizePixKey } from './pix'
 export { getBalance } from './balance'
 export { verifyWebhookSecret, parseWebhookEvent, ASAAS_WEBHOOK_TOKEN_HEADER } from './webhook'
 export { encryptApiKey, decryptApiKey } from './encryption'

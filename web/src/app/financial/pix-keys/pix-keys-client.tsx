@@ -267,6 +267,53 @@ export function PixKeysClient({ trainer, pixKeys }: Props) {
 
 // ─── Form pra adicionar chave ────────────────────────────────────────────
 
+const keyTypeMeta: Record<PixKeyType, {
+    placeholder: string
+    helper: string
+    inputMode: 'text' | 'numeric' | 'email' | 'tel'
+}> = {
+    CPF: {
+        placeholder: '000.000.000-00',
+        helper: '11 dígitos. Pode digitar com ou sem pontuação — a gente padroniza.',
+        inputMode: 'numeric',
+    },
+    CNPJ: {
+        placeholder: '00.000.000/0000-00',
+        helper: '14 dígitos. Pode digitar com ou sem pontuação.',
+        inputMode: 'numeric',
+    },
+    EMAIL: {
+        placeholder: 'voce@email.com',
+        helper: 'Email que você cadastrou como chave PIX no seu banco.',
+        inputMode: 'email',
+    },
+    PHONE: {
+        placeholder: '(11) 99999-9999',
+        helper: 'Com DDD. Você pode incluir +55 ou só DDD — a gente formata.',
+        inputMode: 'tel',
+    },
+    EVP: {
+        placeholder: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
+        helper: 'Chave aleatória que o seu banco gera (formato UUID). Tem 36 caracteres com traços.',
+        inputMode: 'text',
+    },
+}
+
+// Validação local idêntica ao backend — duplicada aqui só pra feedback visual
+// ao vivo. O backend continua sendo a fonte da verdade.
+function isFormatValidLocal(key: string, type: PixKeyType): boolean {
+    const trimmed = key.trim()
+    if (!trimmed) return false
+    switch (type) {
+        case 'CPF':   return /^\d{11}$/.test(trimmed.replace(/\D/g, ''))
+        case 'CNPJ':  return /^\d{14}$/.test(trimmed.replace(/\D/g, ''))
+        case 'EMAIL': return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)
+        case 'PHONE': return /^(55)?\d{10,11}$/.test(trimmed.replace(/\D/g, ''))
+        case 'EVP':   return /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(trimmed)
+        default: return false
+    }
+}
+
 function AddKeyForm({
     onCancel, onSuccess, isFirstKey,
 }: {
@@ -280,7 +327,12 @@ function AddKeyForm({
     const [busy, setBusy] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
+    const meta = keyTypeMeta[keyType]
+    const formatOk = isFormatValidLocal(pixKey, keyType)
+    const formatTouched = pixKey.trim().length > 0
+
     async function submit() {
+        if (!formatOk) return
         setBusy(true)
         setError(null)
         try {
@@ -306,7 +358,7 @@ function AddKeyForm({
         }
     }
 
-    const canSubmit = alias.trim().length >= 2 && pixKey.trim().length >= 4 && !busy
+    const canSubmit = alias.trim().length >= 2 && formatOk && !busy
 
     return (
         <div className="rounded-2xl border border-[#007AFF]/20 dark:border-violet-500/20 bg-[#007AFF]/[0.03] dark:bg-violet-500/[0.04] p-5 mb-4">
@@ -327,7 +379,10 @@ function AddKeyForm({
                     <select
                         className={inputCls}
                         value={keyType}
-                        onChange={e => setKeyType(e.target.value as PixKeyType)}
+                        onChange={e => {
+                            setKeyType(e.target.value as PixKeyType)
+                            setPixKey('') // limpa input ao trocar tipo
+                        }}
                     >
                         <option value="CPF">CPF</option>
                         <option value="CNPJ">CNPJ</option>
@@ -339,18 +394,43 @@ function AddKeyForm({
             </div>
 
             <Field label="Chave PIX">
-                <input
-                    className={inputCls}
-                    value={pixKey}
-                    onChange={e => setPixKey(e.target.value)}
-                    placeholder={
-                        keyType === 'CPF' ? '000.000.000-00' :
-                        keyType === 'CNPJ' ? '00.000.000/0000-00' :
-                        keyType === 'EMAIL' ? 'voce@email.com' :
-                        keyType === 'PHONE' ? '+5511999998888' :
-                        'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'
-                    }
-                />
+                <div className="relative">
+                    <input
+                        className={`${inputCls} ${
+                            formatTouched && !formatOk
+                                ? 'border-red-300 dark:border-red-500/40 focus:ring-red-500/30 focus:border-red-500'
+                                : formatTouched && formatOk
+                                ? 'border-emerald-300 dark:border-emerald-500/40 focus:ring-emerald-500/30 focus:border-emerald-500'
+                                : ''
+                        } pr-8`}
+                        value={pixKey}
+                        onChange={e => setPixKey(e.target.value)}
+                        placeholder={meta.placeholder}
+                        inputMode={meta.inputMode}
+                        autoComplete="off"
+                        spellCheck={false}
+                    />
+                    {formatTouched && formatOk && (
+                        <Check
+                            size={16}
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-emerald-600 dark:text-emerald-400"
+                            strokeWidth={3}
+                        />
+                    )}
+                    {formatTouched && !formatOk && (
+                        <X
+                            size={16}
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-red-500 dark:text-red-400"
+                        />
+                    )}
+                </div>
+                <p className={`text-[11px] mt-1.5 ${
+                    formatTouched && !formatOk
+                        ? 'text-red-600 dark:text-red-400'
+                        : 'text-[#86868B] dark:text-k-text-tertiary'
+                }`}>
+                    {meta.helper}
+                </p>
             </Field>
 
             {error && (
