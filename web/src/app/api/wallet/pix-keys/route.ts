@@ -1,0 +1,99 @@
+// ============================================================================
+// GET, POST /api/wallet/pix-keys
+// ============================================================================
+// GET: lists the trainer's saved PIX keys.
+// POST: adds a PIX key (after validating with Asaas + format check).
+// ============================================================================
+
+import { NextRequest, NextResponse } from 'next/server'
+import { supabaseAdmin } from '@/lib/supabase-admin'
+import { AsaasApiError, isPixKeyFormatValid, validatePixKey } from '@/lib/asaas'
+import type { PixKeyType } from '@/lib/asaas'
+import { getDecryptedApiKey, requireTrainer, WalletAuthError } from '@/lib/asaas/wallet-service'
+
+interface AddPixKeyBody {
+    alias?: string
+    pixKey?: string
+    keyType?: PixKeyType
+    isDefault?: boolean
+}
+
+export async function GET(request: NextRequest) {
+    try {
+        const trainer = await requireTrainer(request)
+        const { data, error } = await supabaseAdmin
+            .from('pix_keys')
+            .select('id, alias, pix_key, key_type, owner_name, bank_name, is_default, validated_at, created_at')
+            .eq('trainer_id', trainer.id)
+            .order('is_default', { ascending: false })
+            .order('created_at', { ascending: false })
+        if (error) throw error
+        return NextResponse.json({ data: data ?? [] })
+    } catch (err) {
+        if (err instanceof WalletAuthError) {
+            return NextResponse.json({ error: err.message }, { status: err.status })
+        }
+        console.error('[wallet/pix-keys GET] Error:', err)
+        return NextResponse.json({ error: 'Erro ao listar chaves PIX' }, { status: 500 })
+    }
+}
+
+export async function POST(request: NextRequest) {
+    let body: AddPixKeyBody
+    try {
+        body = await request.json()
+    } catch {
+        return NextResponse.json({ error: 'JSON inválido' }, { status: 400 })
+    }
+    if (!body.alias?.trim()) return NextResponse.json({ error: 'alias é obrigatório' }, { status: 400 })
+    if (!body.pixKey?.trim()) return NextResponse.json({ error: 'pixKey é obrigatório' }, { status: 400 })
+    if (!body.keyType) return NextResponse.json({ error: 'keyType é obrigatório' }, { status: 400 })
+    if (!isPixKeyFormatValid(body.pixKey, body.keyType)) {
+        return NextResponse.json({ error: 'Formato da chave PIX inválido' }, { status: 400 })
+    }
+
+    try {
+        const trainer = await requireTrainer(request)
+        const apiKey = await getDecryptedApiKey(trainer.id)
+
+        const validation = await validatePixKey(apiKey, body.pixKey, body.keyType)
+        if (!validation.valid) {
+            return NextResponse.json({ error: 'Chave PIX não encontrada no BACEN' }, { status: 422 })
+        }
+
+        // If this key is being marked default, clear other defaults first
+        if (body.isDefault) {
+            await supabaseAdmin
+                .from('pix_keys')
+                .update({ is_default: false })
+                .eq('trainer_id', trainer.id)
+        }
+
+        const { data, error } = await supabaseAdmin
+            .from('pix_keys')
+            .insert({
+                trainer_id: trainer.id,
+                alias: body.alias.trim(),
+                pix_key: body.pixKey.trim(),
+                key_type: body.keyType,
+                owner_name: validation.ownerName ?? null,
+                bank_name: validation.bankName ?? null,
+                is_default: body.isDefault ?? false,
+                validated_at: new Date().toISOString(),
+            })
+            .select('id, alias, pix_key, key_type, owner_name, bank_name, is_default, validated_at')
+            .single()
+        if (error) throw error
+
+        return NextResponse.json(data, { status: 201 })
+    } catch (err) {
+        if (err instanceof WalletAuthError) {
+            return NextResponse.json({ error: err.message }, { status: err.status })
+        }
+        if (err instanceof AsaasApiError) {
+            return NextResponse.json({ error: err.message }, { status: 502 })
+        }
+        console.error('[wallet/pix-keys POST] Error:', err)
+        return NextResponse.json({ error: 'Erro ao adicionar chave PIX' }, { status: 500 })
+    }
+}
