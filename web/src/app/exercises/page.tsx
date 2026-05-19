@@ -33,6 +33,15 @@ export default async function ExercisesPage() {
         .eq('is_archived', false)
         .order('name', { ascending: true })
 
+    // Fetch all muscle groups so the client can expand parent filters to
+    // include children (hierarchy via parent_id).
+    const { data: allMuscleGroupsRaw } = await supabase
+        .from('muscle_groups')
+        .select('id, name, parent_id')
+        .order('name', { ascending: true })
+
+    const allMuscleGroups = (allMuscleGroupsRaw || []) as Array<{ id: string; name: string; parent_id: string | null }>
+
     // Fetch trainer's custom videos (single query, build map)
     const { data: trainerVideos } = await supabase
         .from('trainer_exercise_videos')
@@ -48,8 +57,8 @@ export default async function ExercisesPage() {
     const mappedExercises: ExerciseWithDetails[] = (exercises || []).map(e => ({
         id: e.id,
         name: e.name,
-        // Flatten junction
-        muscle_groups: e.exercise_muscle_groups?.map((emg: any) => emg.muscle_groups) || [],
+        // Flatten junction; drop nulls from rows where RLS filtered out the linked muscle_group
+        muscle_groups: e.exercise_muscle_groups?.map((emg: any) => emg.muscle_groups).filter((mg: any) => mg != null) || [],
         equipment: e.equipment,
         owner_id: e.owner_id,
         image_url: e.image_url || null,
@@ -71,6 +80,7 @@ export default async function ExercisesPage() {
             trainerAvatarUrl={trainer.avatar_url}
             trainerTheme={trainer.theme ?? undefined}
             initialTrainerVideosMap={trainerVideosMap}
+            muscleGroupTree={allMuscleGroups}
         />
     )
 }

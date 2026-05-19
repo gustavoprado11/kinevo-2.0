@@ -381,8 +381,8 @@ export function ExerciseFormModal({ isOpen, onClose, onSuccess, exercise, traine
                             availableGroups={availableMuscleGroups}
                             selectedGroups={selectedMuscleGroups}
                             onChange={setSelectedMuscleGroups}
-                            onCreate={async (name) => {
-                                const newGroup = await createMuscleGroup(name)
+                            onCreate={async (name, parentId) => {
+                                const newGroup = await createMuscleGroup(name, parentId)
                                 return newGroup
                             }}
                             isLoading={loadingMuscles}
@@ -588,7 +588,7 @@ interface CreatableMultiSelectProps {
     availableGroups: MuscleGroup[]
     selectedGroups: MuscleGroup[]
     onChange: (groups: MuscleGroup[]) => void
-    onCreate: (name: string) => Promise<MuscleGroup | null>
+    onCreate: (name: string, parentId?: string | null) => Promise<MuscleGroup | null>
     isLoading: boolean
 }
 
@@ -596,6 +596,7 @@ function CreatableMultiSelect({ availableGroups, selectedGroups, onChange, onCre
     const [inputValue, setInputValue] = useState('')
     const [isOpen, setIsOpen] = useState(false)
     const [isCreating, setIsCreating] = useState(false)
+    const [parentForNewGroup, setParentForNewGroup] = useState<string | null>(null)
     const containerRef = useRef<HTMLDivElement>(null)
 
     // Filter available groups excluding already selected
@@ -606,6 +607,12 @@ function CreatableMultiSelect({ availableGroups, selectedGroups, onChange, onCre
 
     const showCreateOption = inputValue.trim().length > 0 &&
         !availableGroups.some(g => g.name.toLowerCase() === inputValue.trim().toLowerCase())
+
+    // Groups eligible to be parents: only top-level (parent_id null) so we keep
+    // a single hierarchy depth and avoid grandchildren.
+    const parentCandidates = availableGroups
+        .filter(g => !g.parent_id)
+        .sort((a, b) => a.name.localeCompare(b.name))
 
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
@@ -630,10 +637,11 @@ function CreatableMultiSelect({ availableGroups, selectedGroups, onChange, onCre
     const handleCreate = async () => {
         if (!inputValue.trim()) return
         setIsCreating(true)
-        const newGroup = await onCreate(inputValue.trim())
+        const newGroup = await onCreate(inputValue.trim(), parentForNewGroup)
         if (newGroup) {
             onChange([...selectedGroups, newGroup])
             setInputValue('')
+            setParentForNewGroup(null)
         }
         setIsCreating(false)
     }
@@ -705,8 +713,16 @@ function CreatableMultiSelect({ availableGroups, selectedGroups, onChange, onCre
                                     onClick={() => handleSelect(group)}
                                     className="w-full px-4 py-2.5 text-left text-sm text-[#1D1D1F] dark:text-k-text-secondary hover:bg-[#F5F5F7] dark:hover:bg-glass-bg dark:hover:text-k-text-primary flex items-center justify-between group transition-colors"
                                 >
-                                    <span>{group.name}</span>
+                                    {/* Indent children visually so hierarchy is obvious in the picker */}
+                                    <span className={group.parent_id ? 'pl-4 border-l-2 border-[#E8E8ED] dark:border-k-border-subtle' : ''}>
+                                        {group.name}
+                                    </span>
                                     <div className="flex items-center gap-2">
+                                        {group.parent_id && (
+                                            <span className="text-[10px] font-bold text-[#6E6E73] dark:text-k-text-tertiary bg-[#F5F5F7] dark:bg-k-surface-tertiary px-1.5 py-0.5 rounded border border-[#E8E8ED] dark:border-k-border-subtle">
+                                                SUBGRUPO
+                                            </span>
+                                        )}
                                         {group.owner_id && (
                                             <span className="text-[10px] font-bold text-[#6E6E73] dark:text-violet-400 bg-[#F5F5F7] dark:bg-violet-500/10 px-1.5 py-0.5 rounded border border-[#E8E8ED] dark:border-violet-500/20">
                                                 CUSTOM
@@ -719,18 +735,49 @@ function CreatableMultiSelect({ availableGroups, selectedGroups, onChange, onCre
                             ))}
 
                             {showCreateOption && (
-                                <button
-                                    onClick={handleCreate}
-                                    disabled={isCreating}
-                                    className="w-full px-4 py-3 text-left text-sm text-[#007AFF] dark:text-violet-300 hover:bg-[#007AFF]/5 dark:hover:bg-violet-500/10 flex items-center gap-2 border-t border-[#E8E8ED] dark:border-k-border-subtle transition-colors"
-                                >
-                                    {isCreating ? (
-                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                    ) : (
-                                        <Plus className="w-4 h-4" />
-                                    )}
-                                    <span className="font-semibold">Criar &quot;{inputValue}&quot;</span>
-                                </button>
+                                <div className="border-t border-[#E8E8ED] dark:border-k-border-subtle">
+                                    {/* Parent selector — optional, single hierarchy depth */}
+                                    <div className="px-4 pt-3 pb-1">
+                                        <label className="block text-[10px] font-semibold uppercase tracking-wide text-[#86868B] dark:text-k-text-quaternary mb-1.5">
+                                            Subgrupo de (opcional)
+                                        </label>
+                                        <select
+                                            value={parentForNewGroup ?? ''}
+                                            onChange={e => setParentForNewGroup(e.target.value || null)}
+                                            className="w-full px-2.5 py-1.5 text-sm bg-white dark:bg-glass-bg border border-[#D2D2D7] dark:border-k-border-subtle rounded-md text-[#1D1D1F] dark:text-k-text-primary focus:outline-none focus:ring-1 focus:ring-[#007AFF]/20 dark:focus:ring-violet-500/20 focus:border-[#007AFF] dark:focus:border-violet-500/50"
+                                        >
+                                            <option value="">Nenhum — grupo principal</option>
+                                            {parentCandidates.map(p => (
+                                                <option key={p.id} value={p.id}>{p.name}</option>
+                                            ))}
+                                        </select>
+                                        <p className="text-[10px] text-[#AEAEB2] dark:text-k-text-quaternary mt-1">
+                                            Quando alguém filtrar pelo grupo principal, o subgrupo também aparece.
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={handleCreate}
+                                        disabled={isCreating}
+                                        className="w-full px-4 py-3 text-left text-sm text-[#007AFF] dark:text-violet-300 hover:bg-[#007AFF]/5 dark:hover:bg-violet-500/10 flex items-center gap-2 transition-colors"
+                                    >
+                                        {isCreating ? (
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                        ) : (
+                                            <Plus className="w-4 h-4" />
+                                        )}
+                                        <span className="font-semibold">
+                                            Criar &quot;{inputValue}&quot;
+                                            {parentForNewGroup && (
+                                                <span className="text-[#86868B] dark:text-k-text-tertiary font-normal">
+                                                    {' '}como subgrupo de{' '}
+                                                    <span className="text-[#1D1D1F] dark:text-k-text-primary font-medium">
+                                                        {parentCandidates.find(p => p.id === parentForNewGroup)?.name}
+                                                    </span>
+                                                </span>
+                                            )}
+                                        </span>
+                                    </button>
+                                </div>
                             )}
 
                             {filteredGroups.length === 0 && !showCreateOption && !isLoading && (

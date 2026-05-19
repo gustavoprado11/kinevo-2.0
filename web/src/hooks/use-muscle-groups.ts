@@ -31,7 +31,10 @@ export function useMuscleGroups(trainerId?: string) {
         fetchMuscleGroups()
     }, [fetchMuscleGroups])
 
-    const createMuscleGroup = async (name: string): Promise<MuscleGroup | null> => {
+    const createMuscleGroup = async (
+        name: string,
+        parentId?: string | null,
+    ): Promise<MuscleGroup | null> => {
         if (!trainerId) {
             console.error('Trainer ID required to create muscle group')
             return null
@@ -47,7 +50,8 @@ export function useMuscleGroups(trainerId?: string) {
             .from('muscle_groups')
             .insert({
                 name,
-                owner_id: trainerId
+                owner_id: trainerId,
+                parent_id: parentId ?? null,
             })
             .select()
             .single()

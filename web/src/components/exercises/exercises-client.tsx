@@ -114,6 +114,8 @@ interface ExercisesClientProps {
     trainerAvatarUrl?: string | null
     trainerTheme?: 'light' | 'dark' | 'system'
     initialTrainerVideosMap?: Record<string, TrainerVideoData>
+    /** All muscle groups (with parent_id) so the filter can expand parents to include descendants. */
+    muscleGroupTree?: Array<{ id: string; name: string; parent_id: string | null }>
 }
 
 export function ExercisesClient({
@@ -124,11 +126,27 @@ export function ExercisesClient({
     trainerAvatarUrl,
     trainerTheme,
     initialTrainerVideosMap = {},
+    muscleGroupTree = [],
 }: ExercisesClientProps) {
     const router = useRouter()
     const [exercises, setExercises] = useState(initialExercises)
     const [searchQuery, setSearchQuery] = useState('')
     const [selectedMuscleGroups, setSelectedMuscleGroups] = useState<string[]>([])
+
+    // Mapa parent -> children names (e.g. "Mobilidade" -> ["Mobilidade Quadril", "Mobilidade Ombro", ...])
+    const childrenByParentName = useMemo(() => {
+        const byId = new Map(muscleGroupTree.map(g => [g.id, g]))
+        const map = new Map<string, string[]>()
+        for (const g of muscleGroupTree) {
+            if (!g.parent_id) continue
+            const parent = byId.get(g.parent_id)
+            if (!parent) continue
+            const arr = map.get(parent.name) || []
+            arr.push(g.name)
+            map.set(parent.name, arr)
+        }
+        return map
+    }, [muscleGroupTree])
     const [viewMode, setViewMode] = useState<ViewMode>('grid')
 
     // Modal states
@@ -171,17 +189,38 @@ export function ExercisesClient({
         })
     }, [exercises, currentTrainerId])
 
-    // Dynamic count per muscle group
+    // Dynamic count per muscle group. Counts both direct matches and
+    // descendants — so "Mobilidade" shows the sum of its children too.
     const muscleGroupCounts = useMemo(() => {
         const counts: Record<string, number> = {}
         for (const exercise of deduplicatedExercises) {
-            const muscles = exercise.muscle_groups?.map(g => g.name) || []
+            const muscles = exercise.muscle_groups?.filter(g => g != null).map(g => g.name) || []
+            const namesForCount = new Set<string>(muscles)
+            // For each muscle name on the exercise, also bump its ancestors' counts.
+            // We invert the children map: child -> parent_name.
             for (const m of muscles) {
+                for (const [parentName, children] of childrenByParentName.entries()) {
+                    if (children.includes(m)) namesForCount.add(parentName)
+                }
+            }
+            for (const m of namesForCount) {
                 counts[m] = (counts[m] || 0) + 1
             }
         }
         return counts
-    }, [deduplicatedExercises])
+    }, [deduplicatedExercises, childrenByParentName])
+
+    // Expand each selected group to include its hierarchy descendants.
+    // e.g. selecting "Mobilidade" also matches "Mobilidade Quadril", "Mobilidade Ombro", etc.
+    const expandedSelection = useMemo(() => {
+        const set = new Set<string>()
+        for (const name of selectedMuscleGroups) {
+            set.add(name)
+            const children = childrenByParentName.get(name) || []
+            for (const child of children) set.add(child)
+        }
+        return set
+    }, [selectedMuscleGroups, childrenByParentName])
 
     // Filter exercises (Search + Muscle Group)
     const filteredExercises = useMemo(() => {
@@ -189,14 +228,14 @@ export function ExercisesClient({
             const matchesSearch = exercise.name.toLowerCase().includes(searchQuery.toLowerCase())
 
             let matchesMuscle = true
-            if (selectedMuscleGroups.length > 0) {
-                const muscles = exercise.muscle_groups?.map(g => g.name) || []
-                matchesMuscle = selectedMuscleGroups.some(group => muscles.includes(group))
+            if (expandedSelection.size > 0) {
+                const muscles = exercise.muscle_groups?.filter(g => g != null).map(g => g.name) || []
+                matchesMuscle = muscles.some(m => expandedSelection.has(m))
             }
 
             return matchesSearch && matchesMuscle
         })
-    }, [deduplicatedExercises, searchQuery, selectedMuscleGroups])
+    }, [deduplicatedExercises, searchQuery, expandedSelection])
 
     const toggleMuscleGroup = (group: string) => {
         setSelectedMuscleGroups(prev =>

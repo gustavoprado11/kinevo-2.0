@@ -7,6 +7,7 @@ import {
     FlatList,
     Alert,
     ActivityIndicator,
+    ScrollView,
 } from "react-native";
 import BottomSheet, { BottomSheetBackdrop, BottomSheetView } from "@gorhom/bottom-sheet";
 import { Search, X, Plus, Edit2, Trash2, Lock, Check } from "lucide-react-native";
@@ -43,10 +44,18 @@ export function MuscleGroupManagerModal({ visible, onClose }: MuscleGroupManager
     // Create
     const [newName, setNewName] = useState("");
     const [isCreating, setIsCreating] = useState(false);
+    const [parentForNewGroup, setParentForNewGroup] = useState<string | null>(null);
 
     // Edit
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editName, setEditName] = useState("");
+
+    // Groups eligible to be parents: only top-level (no parent themselves).
+    // Single hierarchy depth keeps things simple and matches the web app.
+    const parentCandidates = useMemo(
+        () => muscleGroups.filter((g) => !g.parent_id).sort((a, b) => a.name.localeCompare(b.name)),
+        [muscleGroups]
+    );
 
     // Filtered list
     const filteredGroups = useMemo(() => {
@@ -59,13 +68,14 @@ export function MuscleGroupManagerModal({ visible, onClose }: MuscleGroupManager
         if (!newName.trim() || isCreating) return;
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         setIsCreating(true);
-        const result = await createMuscleGroup(newName.trim());
+        const result = await createMuscleGroup(newName.trim(), parentForNewGroup);
         if (result) {
             setNewName("");
+            setParentForNewGroup(null);
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         }
         setIsCreating(false);
-    }, [newName, isCreating, createMuscleGroup]);
+    }, [newName, isCreating, createMuscleGroup, parentForNewGroup]);
 
     const startEdit = useCallback((group: MuscleGroupFull) => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -187,9 +197,30 @@ export function MuscleGroupManagerModal({ visible, onClose }: MuscleGroupManager
                 ) : (
                     <>
                         <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 8 }}>
+                            {/* Indent visual quando é subgrupo */}
+                            {item.parent_id ? (
+                                <View style={{
+                                    width: 3,
+                                    height: 14,
+                                    backgroundColor: v2c.border.default,
+                                    borderRadius: 1.5,
+                                    marginRight: 4,
+                                }} />
+                            ) : null}
                             <Text style={{ fontSize: 14, fontWeight: "500", color: v2c.text.primary }}>
                                 {item.name}
                             </Text>
+                            {item.parent_id && (
+                                <View style={{
+                                    backgroundColor: v2c.surface.card2,
+                                    paddingHorizontal: 6, paddingVertical: 2,
+                                    borderRadius: 6,
+                                }}>
+                                    <Text style={{ fontSize: 9, fontWeight: "700", color: v2c.text.tertiary, letterSpacing: 0.5 }}>
+                                        SUBGRUPO
+                                    </Text>
+                                </View>
+                            )}
                             {isSystem && (
                                 <View style={{
                                     backgroundColor: v2c.surface.card2,
@@ -357,6 +388,74 @@ export function MuscleGroupManagerModal({ visible, onClose }: MuscleGroupManager
                         )}
                     </TouchableOpacity>
                 </View>
+
+                {/* Parent selector — only shown when user is typing a new group */}
+                {newName.trim().length > 0 && parentCandidates.length > 0 && (
+                    <View style={{ paddingHorizontal: 20, paddingBottom: 10 }}>
+                        <Text style={{
+                            fontSize: 10,
+                            fontWeight: "700",
+                            color: v2c.text.quaternary,
+                            letterSpacing: 0.5,
+                            marginBottom: 6,
+                            textTransform: "uppercase",
+                        }}>
+                            Subgrupo de (opcional)
+                        </Text>
+                        <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={{ gap: 6, paddingRight: 8 }}
+                        >
+                            <TouchableOpacity
+                                onPress={() => setParentForNewGroup(null)}
+                                activeOpacity={0.7}
+                                style={{
+                                    paddingHorizontal: 12,
+                                    paddingVertical: 6,
+                                    borderRadius: 16,
+                                    backgroundColor: parentForNewGroup === null ? "#7c3aed" : v2c.surface.card,
+                                    borderWidth: 1,
+                                    borderColor: parentForNewGroup === null ? "#7c3aed" : v2c.border.default,
+                                }}
+                            >
+                                <Text style={{
+                                    fontSize: 12,
+                                    fontWeight: "600",
+                                    color: parentForNewGroup === null ? "#ffffff" : v2c.text.tertiary,
+                                }}>
+                                    Nenhum
+                                </Text>
+                            </TouchableOpacity>
+                            {parentCandidates.map((p) => {
+                                const selected = parentForNewGroup === p.id;
+                                return (
+                                    <TouchableOpacity
+                                        key={p.id}
+                                        onPress={() => setParentForNewGroup(p.id)}
+                                        activeOpacity={0.7}
+                                        style={{
+                                            paddingHorizontal: 12,
+                                            paddingVertical: 6,
+                                            borderRadius: 16,
+                                            backgroundColor: selected ? "#7c3aed" : v2c.surface.card,
+                                            borderWidth: 1,
+                                            borderColor: selected ? "#7c3aed" : v2c.border.default,
+                                        }}
+                                    >
+                                        <Text style={{
+                                            fontSize: 12,
+                                            fontWeight: "600",
+                                            color: selected ? "#ffffff" : v2c.text.primary,
+                                        }}>
+                                            {p.name}
+                                        </Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </ScrollView>
+                    </View>
+                )}
 
                 {/* Search */}
                 <View style={{

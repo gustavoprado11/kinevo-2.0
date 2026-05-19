@@ -2,6 +2,8 @@ export interface MuscleGroup {
     id: string
     name: string
     owner_id: string | null
+    /** Optional parent group — when set, this is a sub-category (e.g. "Mobilidade Quadril" under "Mobilidade"). */
+    parent_id?: string | null
     created_at: string
 }
 

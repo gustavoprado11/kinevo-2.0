@@ -8,6 +8,8 @@ export interface MuscleGroupFull {
     id: string;
     name: string;
     owner_id: string | null;
+    /** Optional parent group — when set, this is a sub-category. */
+    parent_id?: string | null;
     created_at: string;
 }
 
@@ -20,7 +22,7 @@ export function useMuscleGroupCrud() {
     const fetchMuscleGroups = useCallback(async () => {
         const { data, error } = await (supabase as any)
             .from("muscle_groups")
-            .select("id, name, owner_id, created_at")
+            .select("id, name, owner_id, parent_id, created_at")
             .order("name");
 
         if (!error && data) {
@@ -33,7 +35,10 @@ export function useMuscleGroupCrud() {
         fetchMuscleGroups();
     }, [fetchMuscleGroups]);
 
-    const createMuscleGroup = useCallback(async (name: string): Promise<MuscleGroupFull | null> => {
+    const createMuscleGroup = useCallback(async (
+        name: string,
+        parentId?: string | null,
+    ): Promise<MuscleGroupFull | null> => {
         if (!user) return null;
 
         // Check duplicates (case-insensitive)
@@ -46,8 +51,8 @@ export function useMuscleGroupCrud() {
         try {
             const { data, error } = await (supabase as any)
                 .from("muscle_groups")
-                .insert({ name: name.trim(), owner_id: user.id })
-                .select("id, name, owner_id, created_at")
+                .insert({ name: name.trim(), owner_id: user.id, parent_id: parentId ?? null })
+                .select("id, name, owner_id, parent_id, created_at")
                 .single();
 
             if (error) throw error;
