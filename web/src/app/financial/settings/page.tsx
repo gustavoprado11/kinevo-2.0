@@ -9,24 +9,28 @@
 import { getTrainerWithSubscription } from '@/lib/auth/get-trainer'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getWalletRow, summarizeWallet } from '@/lib/asaas/wallet-service'
+import { getFinancialSettings } from '@/lib/financial/settings'
 import { FinancialSettingsClient } from './settings-client'
 import type { KinevoWalletSummary } from '@/lib/asaas'
 
 export default async function FinancialSettingsPage() {
     const { trainer } = await getTrainerWithSubscription()
 
-    const walletRow = await getWalletRow(trainer.id)
-    const walletSummary: KinevoWalletSummary = summarizeWallet(walletRow)
+    // Server fetches em paralelo
+    const [walletRow, settings, legacyStripeContractsResp] = await Promise.all([
+        getWalletRow(trainer.id),
+        getFinancialSettings(trainer.id),
+        supabaseAdmin
+            .from('student_contracts')
+            .select('id')
+            .eq('trainer_id', trainer.id)
+            .in('status', ['active', 'past_due'])
+            .or('billing_type.eq.stripe_auto,stripe_subscription_id.not.is.null')
+            .limit(1),
+    ])
 
-    // Tem contratos Stripe ativos? Mostra a toggle "Avançado" de legado.
-    const { data: legacyStripeContracts } = await supabaseAdmin
-        .from('student_contracts')
-        .select('id')
-        .eq('trainer_id', trainer.id)
-        .in('status', ['active', 'past_due'])
-        .or('billing_type.eq.stripe_auto,stripe_subscription_id.not.is.null')
-        .limit(1)
-    const hasStripeLegacyContracts = (legacyStripeContracts?.length ?? 0) > 0
+    const walletSummary: KinevoWalletSummary = summarizeWallet(walletRow)
+    const hasStripeLegacyContracts = (legacyStripeContractsResp.data?.length ?? 0) > 0
 
     return (
         <FinancialSettingsClient
@@ -38,6 +42,7 @@ export default async function FinancialSettingsPage() {
             }}
             wallet={walletSummary}
             hasStripeLegacyContracts={hasStripeLegacyContracts}
+            initialSettings={settings}
         />
     )
 }

@@ -1,16 +1,17 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import {
     ChevronLeft, Wallet, CreditCard, Percent, ShieldAlert,
     BellRing, Settings as SettingsIcon, Check, Link2, MessageCircle,
-    RefreshCw, Loader2, ExternalLink, KeyRound,
+    RefreshCw, Loader2, ExternalLink, KeyRound, AlertCircle,
 } from 'lucide-react'
 import { AppLayout } from '@/components/layout'
 import { ASAAS_FEES, formatPercent, formatBRL } from '@/lib/asaas/fees'
 import type { KinevoWalletSummary } from '@/lib/asaas'
+import type { FinancialSettings } from '@/lib/financial/settings'
 
 interface Props {
     trainer: {
@@ -21,6 +22,7 @@ interface Props {
     }
     wallet: KinevoWalletSummary
     hasStripeLegacyContracts: boolean
+    initialSettings: FinancialSettings
 }
 
 const statusLabels = {
@@ -41,21 +43,84 @@ const statusColors = {
     blocked: 'bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-400',
 } as const
 
-export function FinancialSettingsClient({ trainer, wallet, hasStripeLegacyContracts }: Props) {
+export function FinancialSettingsClient({
+    trainer, wallet, hasStripeLegacyContracts, initialSettings,
+}: Props) {
     const router = useRouter()
 
-    // Configs locais (auto-save no toggle — placeholder até a gente adicionar tabela)
-    const [pixDefault, setPixDefault] = useState(true)
-    const [creditDefault, setCreditDefault] = useState(true)
-    const [boletoDefault, setBoletoDefault] = useState(false)
-    const [blockOnOverdue, setBlockOnOverdue] = useState(true)
-    const [graceDays, setGraceDays] = useState(3)
-    const [notifyOnPaid, setNotifyOnPaid] = useState(true)
-    const [notifyOnCancel, setNotifyOnCancel] = useState(true)
-    const [notifyOnPayout, setNotifyOnPayout] = useState(true)
-    const [notifyOnKyc, setNotifyOnKyc] = useState(true)
-    const [showStripeLegacy, setShowStripeLegacy] = useState(hasStripeLegacyContracts)
+    // Estado centralizado das configurações (persistidas no banco)
+    const [settings, setSettings] = useState<FinancialSettings>(initialSettings)
+    const [savingFor, setSavingFor] = useState<keyof FinancialSettings | null>(null)
+    const [saveError, setSaveError] = useState<string | null>(null)
+    const [savedFor, setSavedFor] = useState<keyof FinancialSettings | null>(null)
+    const savedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
     const [syncing, setSyncing] = useState(false)
+
+    // Debounce timer pro slider (graceDays — só salva quando o usuário para de arrastar)
+    const graceDaysDebounce = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+    useEffect(() => {
+        return () => {
+            if (savedTimeoutRef.current) clearTimeout(savedTimeoutRef.current)
+            if (graceDaysDebounce.current) clearTimeout(graceDaysDebounce.current)
+        }
+    }, [])
+
+    /**
+     * Atualiza estado local imediatamente (optimistic) e dispara PATCH no
+     * servidor. Se falhar, reverte. Aceita patch parcial — sempre passa
+     * apenas os campos que mudaram.
+     */
+    async function save<K extends keyof FinancialSettings>(
+        key: K,
+        value: FinancialSettings[K]
+    ) {
+        const previous = settings
+        setSettings(s => ({ ...s, [key]: value }))
+        setSavingFor(key)
+        setSaveError(null)
+
+        try {
+            const res = await fetch('/api/financial/settings', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ [key]: value }),
+            })
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({}))
+                throw new Error(body.error || `Falha ao salvar (${res.status})`)
+            }
+            const updated = await res.json() as FinancialSettings
+            setSettings(updated)
+            setSavedFor(key)
+            if (savedTimeoutRef.current) clearTimeout(savedTimeoutRef.current)
+            savedTimeoutRef.current = setTimeout(() => setSavedFor(null), 1500)
+        } catch (err) {
+            // Reverte
+            setSettings(previous)
+            setSaveError(err instanceof Error ? err.message : 'Erro ao salvar')
+        } finally {
+            setSavingFor(null)
+        }
+    }
+
+    /** Toggle imediato — usado pra todos os booleanos. */
+    function toggleBool<K extends keyof FinancialSettings>(
+        key: K,
+        currentValue: FinancialSettings[K]
+    ) {
+        return () => void save(key, (!currentValue) as FinancialSettings[K])
+    }
+
+    /** Slider com debounce de 400ms — evita PATCH a cada arrastar. */
+    function setGraceDays(value: number) {
+        setSettings(s => ({ ...s, overdueGraceDays: value }))
+        if (graceDaysDebounce.current) clearTimeout(graceDaysDebounce.current)
+        graceDaysDebounce.current = setTimeout(() => {
+            void save('overdueGraceDays', value)
+        }, 400)
+    }
 
     async function syncWallet() {
         setSyncing(true)
@@ -85,12 +150,29 @@ export function FinancialSettingsClient({ trainer, wallet, hasStripeLegacyContra
                 </Link>
 
                 {/* Header */}
-                <div className="mb-8">
+                <div className="mb-6">
                     <h1 className="text-2xl font-bold text-[#1D1D1F] dark:text-k-text-primary">Configurações</h1>
                     <p className="text-sm text-[#86868B] dark:text-k-text-tertiary mt-1">
                         Ajustes da sua Carteira, métodos padrão, notificações e regras de inadimplência.
                     </p>
                 </div>
+
+                {/* Banner global de erro de save */}
+                {saveError && (
+                    <div className="rounded-xl bg-red-50 dark:bg-red-500/[0.08] border border-red-200 dark:border-red-500/20 p-3 mb-4 flex items-start gap-2.5">
+                        <AlertCircle size={16} className="text-red-700 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                            <p className="text-sm font-medium text-red-900 dark:text-red-200">Não foi possível salvar</p>
+                            <p className="text-xs text-red-800 dark:text-red-300 mt-0.5">{saveError}</p>
+                        </div>
+                        <button
+                            onClick={() => setSaveError(null)}
+                            className="text-xs text-red-700 dark:text-red-300 hover:underline"
+                        >
+                            Fechar
+                        </button>
+                    </div>
+                )}
 
                 {/* ─── Carteira ──────────────────────────────────────────── */}
                 <Section
@@ -182,20 +264,26 @@ export function FinancialSettingsClient({ trainer, wallet, hasStripeLegacyContra
                     <Toggle
                         label="PIX"
                         help={`Taxa ${formatPercent(ASAAS_FEES.PIX.percent)} por recebimento. Liberação em até 1 dia útil.`}
-                        on={pixDefault}
-                        onChange={setPixDefault}
+                        on={settings.defaultAllowPix}
+                        onChange={v => save('defaultAllowPix', v)}
+                        saving={savingFor === 'defaultAllowPix'}
+                        saved={savedFor === 'defaultAllowPix'}
                     />
                     <Toggle
                         label="Cartão de Crédito"
                         help={`Taxa ${formatPercent(ASAAS_FEES.CREDIT_CARD.percent)} + ${formatBRL(ASAAS_FEES.CREDIT_CARD.fixed)} por cobrança. Liberação em 30 dias.`}
-                        on={creditDefault}
-                        onChange={setCreditDefault}
+                        on={settings.defaultAllowCreditCard}
+                        onChange={v => save('defaultAllowCreditCard', v)}
+                        saving={savingFor === 'defaultAllowCreditCard'}
+                        saved={savedFor === 'defaultAllowCreditCard'}
                     />
                     <Toggle
                         label="Boleto bancário"
                         help={`Taxa ${formatBRL(ASAAS_FEES.BOLETO.fixed)} por boleto pago. Liberação em 3 dias úteis.`}
-                        on={boletoDefault}
-                        onChange={setBoletoDefault}
+                        on={settings.defaultAllowBoleto}
+                        onChange={v => save('defaultAllowBoleto', v)}
+                        saving={savingFor === 'defaultAllowBoleto'}
+                        saved={savedFor === 'defaultAllowBoleto'}
                     />
                 </Section>
 
@@ -245,10 +333,12 @@ export function FinancialSettingsClient({ trainer, wallet, hasStripeLegacyContra
                     <Toggle
                         label="Bloquear acesso ao app após inadimplência"
                         help="Se ativado, o aluno perde acesso aos treinos no app dele até regularizar."
-                        on={blockOnOverdue}
-                        onChange={setBlockOnOverdue}
+                        on={settings.blockOnOverdue}
+                        onChange={v => save('blockOnOverdue', v)}
+                        saving={savingFor === 'blockOnOverdue'}
+                        saved={savedFor === 'blockOnOverdue'}
                     />
-                    {blockOnOverdue && (
+                    {settings.blockOnOverdue && (
                         <Row
                             label="Período de tolerância"
                             help="Quantos dias de atraso antes de bloquear. 3 dias é o padrão recomendado."
@@ -258,13 +348,19 @@ export function FinancialSettingsClient({ trainer, wallet, hasStripeLegacyContra
                                     type="range"
                                     min={1}
                                     max={15}
-                                    value={graceDays}
+                                    value={settings.overdueGraceDays}
                                     onChange={e => setGraceDays(Number(e.target.value))}
                                     className="w-32 accent-[#007AFF] dark:accent-violet-500"
                                 />
                                 <span className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary min-w-[60px] text-center px-2.5 py-1 bg-[#F5F5F7] dark:bg-glass-bg rounded-md">
-                                    {graceDays} {graceDays === 1 ? 'dia' : 'dias'}
+                                    {settings.overdueGraceDays} {settings.overdueGraceDays === 1 ? 'dia' : 'dias'}
                                 </span>
+                                {savingFor === 'overdueGraceDays' && (
+                                    <Loader2 size={12} className="animate-spin text-[#86868B]" />
+                                )}
+                                {savedFor === 'overdueGraceDays' && (
+                                    <Check size={12} className="text-emerald-600 dark:text-emerald-400" strokeWidth={3} />
+                                )}
                             </div>
                         </Row>
                     )}
@@ -279,26 +375,34 @@ export function FinancialSettingsClient({ trainer, wallet, hasStripeLegacyContra
                     <Toggle
                         label="Quando um aluno pagar"
                         help="Push assim que a cobrança for confirmada."
-                        on={notifyOnPaid}
-                        onChange={setNotifyOnPaid}
+                        on={settings.notifyOnPaymentReceived}
+                        onChange={v => save('notifyOnPaymentReceived', v)}
+                        saving={savingFor === 'notifyOnPaymentReceived'}
+                        saved={savedFor === 'notifyOnPaymentReceived'}
                     />
                     <Toggle
                         label="Quando um aluno cancelar a assinatura"
                         help="Push assim que o aluno cancelar pelo app dele."
-                        on={notifyOnCancel}
-                        onChange={setNotifyOnCancel}
+                        on={settings.notifyOnSubscriptionCanceled}
+                        onChange={v => save('notifyOnSubscriptionCanceled', v)}
+                        saving={savingFor === 'notifyOnSubscriptionCanceled'}
+                        saved={savedFor === 'notifyOnSubscriptionCanceled'}
                     />
                     <Toggle
                         label="Quando um saque cair na conta"
                         help="Push quando o PIX cair na sua chave bancária."
-                        on={notifyOnPayout}
-                        onChange={setNotifyOnPayout}
+                        on={settings.notifyOnPayoutCompleted}
+                        onChange={v => save('notifyOnPayoutCompleted', v)}
+                        saving={savingFor === 'notifyOnPayoutCompleted'}
+                        saved={savedFor === 'notifyOnPayoutCompleted'}
                     />
                     <Toggle
                         label="Alertas de documentação"
                         help="Push se algum documento precisar ser reenviado ou houver problema na conta."
-                        on={notifyOnKyc}
-                        onChange={setNotifyOnKyc}
+                        on={settings.notifyOnKycAlert}
+                        onChange={v => save('notifyOnKycAlert', v)}
+                        saving={savingFor === 'notifyOnKycAlert'}
+                        saved={savedFor === 'notifyOnKycAlert'}
                     />
                 </Section>
 
@@ -335,8 +439,10 @@ export function FinancialSettingsClient({ trainer, wallet, hasStripeLegacyContra
                         <Toggle
                             label="Mostrar contratos Stripe legados"
                             help="Você tem contratos antigos via Stripe. Mantém eles visíveis pra continuar gerenciando — novos planos sempre usam a Carteira Kinevo."
-                            on={showStripeLegacy}
-                            onChange={setShowStripeLegacy}
+                            on={settings.showStripeLegacy}
+                            onChange={v => save('showStripeLegacy', v)}
+                            saving={savingFor === 'showStripeLegacy'}
+                            saved={savedFor === 'showStripeLegacy'}
                         />
                     )}
                     <Row
@@ -408,26 +514,39 @@ function Row({
 }
 
 function Toggle({
-    label, help, on, onChange,
+    label, help, on, onChange, saving, saved,
 }: {
     label: string
     help?: string
     on: boolean
     onChange: (v: boolean) => void
+    saving?: boolean
+    saved?: boolean
 }) {
     return (
         <Row label={label} help={help}>
-            <button
-                onClick={() => onChange(!on)}
-                className={`w-10 h-6 rounded-full relative transition-colors ${
-                    on ? 'bg-[#007AFF] dark:bg-violet-600' : 'bg-[#E8E8ED] dark:bg-k-border-primary'
-                }`}
-            >
-                <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
-                    on ? 'translate-x-4' : 'translate-x-0'
-                }`} />
-            </button>
+            <div className="flex items-center gap-2">
+                {saving && <Loader2 size={12} className="animate-spin text-[#86868B] dark:text-k-text-tertiary" />}
+                {saved && !saving && <Check size={13} className="text-emerald-600 dark:text-emerald-400" strokeWidth={3} />}
+                <ToggleSwitch on={on} onChange={onChange} disabled={saving} />
+            </div>
         </Row>
+    )
+}
+
+function ToggleSwitch({ on, onChange, disabled }: { on: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
+    return (
+        <button
+            disabled={disabled}
+            onClick={() => onChange(!on)}
+            className={`w-10 h-6 rounded-full relative transition-colors ${
+                on ? 'bg-[#007AFF] dark:bg-violet-600' : 'bg-[#E8E8ED] dark:bg-k-border-primary'
+            } ${disabled ? 'opacity-60 cursor-wait' : ''}`}
+        >
+            <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                on ? 'translate-x-4' : 'translate-x-0'
+            }`} />
+        </button>
     )
 }
 
