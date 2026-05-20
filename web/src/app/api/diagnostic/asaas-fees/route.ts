@@ -130,12 +130,36 @@ export async function GET(request: NextRequest) {
             agg.maxFee = Math.round(agg.maxFee * 100) / 100
         }
 
+        // Lista transfers recentes — útil pra ver status de saques que o
+        // webhook não notificou
+        let transfers: Array<{
+            id: string
+            value: number
+            netValue?: number
+            status: string
+            endToEndIdentifier?: string | null
+            failReason?: string | null
+            effectiveDate?: string | null
+            scheduleDate?: string | null
+        }> = []
+        try {
+            const r = await asaasRequest<{ data: typeof transfers }>({
+                apiKey,
+                path: '/transfers',
+                query: { limit: 10 },
+            })
+            transfers = r.data ?? []
+        } catch (err) {
+            console.error('[diagnostic/asaas-fees] transfers list failed', err)
+        }
+
         return NextResponse.json({
             trainerId: trainer.id,
             asaasEnv: process.env.ASAAS_ENV ?? '(default sandbox)',
             probes,
             observedFees: Object.values(byMethod),
             recentPaymentCount: payments.length,
+            recentTransfers: transfers,
         }, { status: 200 })
     } catch (err) {
         if (err instanceof WalletAuthError) {
