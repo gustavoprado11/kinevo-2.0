@@ -56,15 +56,16 @@ export async function POST(
                 { status: 409 },
             )
         }
-        if (contract.status === 'active') {
-            return NextResponse.json({ synced: true, alreadySynced: true, status: 'active' })
-        }
         if (contract.status === 'canceled') {
             return NextResponse.json(
                 { error: 'Essa cobrança foi cancelada — não dá pra sincronizar' },
                 { status: 409 },
             )
         }
+        // NOTA: a gente NÃO short-circuita quando status='active'. O usuário
+        // pode ter ficado num estado parcial (contrato active mas linha em
+        // financial_transactions faltando — bug histórico de UNIQUE constraint
+        // ausente). Deixando rodar, o upsert idempotente reconcilia.
 
         // 2. Polla a Asaas
         const apiKey = await getDecryptedApiKey(trainer.id)
@@ -74,12 +75,13 @@ export async function POST(
         if (!paid) {
             return NextResponse.json({
                 synced: false,
-                status: 'pending_payment',
+                status: contract.status,
                 message: 'Ainda não recebemos confirmação de pagamento. Tente de novo em alguns minutos.',
             })
         }
 
         // 3. Marca contrato como active + backfilla payment/customer ids
+        //    (no-op se já estiver active)
         const { error: updErr } = await supabaseAdmin
             .from('student_contracts')
             .update({
@@ -88,7 +90,7 @@ export async function POST(
                 asaas_customer_id: paid.customer,
             })
             .eq('id', contract.id)
-            .in('status', ['pending_payment', 'past_due'])
+            .in('status', ['pending_payment', 'past_due', 'active'])
         if (updErr) {
             console.error('[wallet/charges/sync] contract update failed', updErr)
             return NextResponse.json({ error: 'Falha ao atualizar contrato' }, { status: 500 })
