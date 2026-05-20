@@ -17,6 +17,15 @@ import {
     ASAAS_WEBHOOK_TOKEN_HEADER,
     type AsaasWebhookEvent,
 } from '@/lib/asaas'
+import {
+    notifyFinancial,
+    resolveTrainerByAsaasAccount,
+    resolveTrainerByAsaasPayment,
+    resolveTrainerByAsaasTransfer,
+} from '@/lib/financial/notify'
+
+const formatBRL = (n: number) =>
+    n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
 export async function POST(request: NextRequest) {
     // 1. Verify shared-secret header
@@ -115,38 +124,138 @@ async function handlePaymentReceived(event: AsaasWebhookEvent) {
     const payment = event.payment
     if (!payment) return
 
-    // Update existing financial_transactions row (created when charge was made)
-    const { error: updErr } = await supabaseAdmin
-        .from('financial_transactions')
-        .update({
-            status: 'completed',
-            amount_net: payment.netValue,
-            processed_at: new Date().toISOString(),
-        })
-        .eq('asaas_payment_id', payment.id)
-    if (updErr) {
-        console.error('[asaas-webhook] update transaction failed:', updErr)
+    // Resolve qual contrato esse pagamento está fechando. Três estratégias,
+    // tentadas em ordem:
+    //   1) asaas_payment_id (fluxo antigo /v3/payments direto)
+    //   2) asaas_payment_link_id (fluxo Payment Link novo)
+    //   3) externalReference (fluxo subscription com contract_id no campo)
+    const studentIdsToUnblock = new Set<string>()
+    const matchedContracts = new Set<string>()
+
+    // --- Estratégia 1: asaas_payment_id ---
+    {
+        const { data: rows } = await supabaseAdmin
+            .from('student_contracts')
+            .update({ status: 'active' })
+            .eq('asaas_payment_id', payment.id)
+            .in('status', ['pending_payment', 'past_due'])
+            .select('id, student_id')
+        if (rows) for (const r of rows) {
+            matchedContracts.add(r.id as string)
+            if (r.student_id) studentIdsToUnblock.add(r.student_id as string)
+        }
     }
 
-    // Marca contrato como active (pode ser one-off ligado por asaas_payment_id
-    // ou recorrente ligado por asaas_subscription_id via externalReference do
-    // payment, que carrega o contract_id quando criado via subscription).
-    // Estratégia: tenta primeiro por asaas_payment_id; se não bater, por externalReference.
-    const { error: updByPay } = await supabaseAdmin
-        .from('student_contracts')
-        .update({ status: 'active' })
-        .eq('asaas_payment_id', payment.id)
-        .in('status', ['pending_payment', 'past_due'])
-    if (updByPay) {
-        console.error('[asaas-webhook] update contract by paymentId failed:', updByPay)
+    // --- Estratégia 2: asaas_payment_link_id ---
+    if (payment.paymentLink && matchedContracts.size === 0) {
+        const { data: rows } = await supabaseAdmin
+            .from('student_contracts')
+            .update({
+                status: 'active',
+                // Backfill: cola o payment.id no contrato pra próximos eventos
+                // (OVERDUE, REFUND) baterem direto pela estratégia 1.
+                asaas_payment_id: payment.id,
+                asaas_customer_id: payment.customer,
+            })
+            .eq('asaas_payment_link_id', payment.paymentLink)
+            .in('status', ['pending_payment', 'past_due'])
+            .select('id, student_id')
+        if (rows) for (const r of rows) {
+            matchedContracts.add(r.id as string)
+            if (r.student_id) studentIdsToUnblock.add(r.student_id as string)
+        }
     }
-    // No fluxo de subscription, o externalReference do payment é o contract.id
-    if (payment.externalReference) {
-        await supabaseAdmin
+
+    // --- Estratégia 3: externalReference (assinaturas Asaas) ---
+    if (payment.externalReference && matchedContracts.size === 0) {
+        const { data: rows } = await supabaseAdmin
             .from('student_contracts')
             .update({ status: 'active' })
             .eq('id', payment.externalReference)
             .in('status', ['pending_payment', 'past_due'])
+            .select('id, student_id')
+        if (rows) for (const r of rows) {
+            matchedContracts.add(r.id as string)
+            if (r.student_id) studentIdsToUnblock.add(r.student_id as string)
+        }
+    }
+
+    // Persiste a transação. UPSERT pra cobrir tanto o caso onde
+    // /api/wallet/charges já inseriu uma linha pending (fluxo antigo) quanto
+    // o caso novo (Payment Link — nenhuma linha existe ainda).
+    if (matchedContracts.size > 0) {
+        const contractId = Array.from(matchedContracts)[0]
+        const { data: contract } = await supabaseAdmin
+            .from('student_contracts')
+            .select('trainer_id, student_id')
+            .eq('id', contractId)
+            .maybeSingle()
+        if (contract) {
+            const { error: upsertErr } = await supabaseAdmin
+                .from('financial_transactions')
+                .upsert({
+                    coach_id: contract.trainer_id,
+                    student_id: contract.student_id,
+                    provider: 'asaas',
+                    asaas_payment_id: payment.id,
+                    amount_gross: payment.value,
+                    amount_net: payment.netValue,
+                    currency: 'brl',
+                    type: 'charge',
+                    status: 'completed',
+                    processed_at: new Date().toISOString(),
+                    description: payment.billingType,
+                }, { onConflict: 'asaas_payment_id' })
+            if (upsertErr) {
+                console.error('[asaas-webhook] upsert transaction failed:', upsertErr)
+            }
+        }
+    } else {
+        // Fallback: tenta só atualizar pelo asaas_payment_id (caso a linha
+        // tenha sido inserida pelo /charges antigo)
+        await supabaseAdmin
+            .from('financial_transactions')
+            .update({
+                status: 'completed',
+                amount_net: payment.netValue,
+                processed_at: new Date().toISOString(),
+            })
+            .eq('asaas_payment_id', payment.id)
+    }
+
+    // Desbloqueia acesso ao app pra quem estava bloqueado por inadimplência.
+    // A função SQL é idempotente — se o aluno já estava livre, retorna false
+    // e não faz nada.
+    for (const studentId of studentIdsToUnblock) {
+        const { error: unblockErr } = await supabaseAdmin.rpc('unblock_student_access', {
+            p_student_id: studentId,
+        })
+        if (unblockErr) {
+            console.error('[asaas-webhook] unblock failed for student', studentId, unblockErr)
+        }
+    }
+
+    // Notifica o trainer que recebeu o pagamento (respeitando toggle)
+    const trainerId = await resolveTrainerByAsaasPayment(payment.id, payment.paymentLink)
+    if (trainerId) {
+        // Tenta pegar o nome do aluno pra mensagem ficar mais útil
+        let studentName = 'um aluno'
+        if (studentIdsToUnblock.size > 0) {
+            const firstStudentId = Array.from(studentIdsToUnblock)[0]
+            const { data: st } = await supabaseAdmin
+                .from('students')
+                .select('name')
+                .eq('id', firstStudentId)
+                .maybeSingle()
+            if (st?.name) studentName = st.name as string
+        }
+        await notifyFinancial({
+            trainerId,
+            event: 'payment_received',
+            title: 'Pagamento recebido',
+            body: `${studentName} pagou ${formatBRL(payment.netValue ?? payment.value)}.`,
+            data: { paymentId: payment.id, route: '/financial' },
+        })
     }
 }
 
@@ -157,10 +266,19 @@ async function handlePaymentOverdue(event: AsaasWebhookEvent) {
         .from('financial_transactions')
         .update({ status: 'overdue' })
         .eq('asaas_payment_id', payment.id)
-    await supabaseAdmin
+    // Tenta atualizar contrato por asaas_payment_id (Payment Link já tinha
+    // sido backfilled em PAYMENT_RECEIVED) OU diretamente pelo paymentLink id
+    const { data: byPay } = await supabaseAdmin
         .from('student_contracts')
         .update({ status: 'past_due' })
         .eq('asaas_payment_id', payment.id)
+        .select('id')
+    if ((byPay?.length ?? 0) === 0 && payment.paymentLink) {
+        await supabaseAdmin
+            .from('student_contracts')
+            .update({ status: 'past_due', asaas_payment_id: payment.id })
+            .eq('asaas_payment_link_id', payment.paymentLink)
+    }
 }
 
 async function handlePaymentRefunded(event: AsaasWebhookEvent) {
@@ -183,6 +301,18 @@ async function handleTransferDone(event: AsaasWebhookEvent) {
             completed_at: new Date().toISOString(),
         })
         .eq('asaas_transfer_id', transfer.id)
+
+    // Notifica o trainer que o saque caiu na conta
+    const trainerId = await resolveTrainerByAsaasTransfer(transfer.id)
+    if (trainerId) {
+        await notifyFinancial({
+            trainerId,
+            event: 'payout_completed',
+            title: 'Saque caiu na conta',
+            body: `${formatBRL(transfer.netValue ?? transfer.value)} disponíveis na sua chave PIX.`,
+            data: { transferId: transfer.id, route: '/financial/wallet' },
+        })
+    }
 }
 
 async function handleTransferFailed(event: AsaasWebhookEvent) {
@@ -222,6 +352,24 @@ async function handleAccountStatusUpdated(event: AsaasWebhookEvent) {
         .from('trainer_payment_accounts')
         .update(updates)
         .eq('asaas_account_id', account.id)
+
+    // Notifica o trainer de mudanças significativas no KYC. Aprovação é
+    // notícia boa, rejeição/bloqueio é crítico.
+    if (localStatus === 'approved' || localStatus === 'rejected' || localStatus === 'blocked') {
+        const trainerId = await resolveTrainerByAsaasAccount(account.id)
+        if (trainerId) {
+            const isGood = localStatus === 'approved'
+            await notifyFinancial({
+                trainerId,
+                event: 'kyc_alert',
+                title: isGood ? 'Sua Carteira foi liberada' : `Carteira ${localStatus === 'rejected' ? 'reprovada' : 'bloqueada'}`,
+                body: isGood
+                    ? 'Já pode cobrar seus alunos e sacar via PIX.'
+                    : (account.rejectReason ?? 'Confira os detalhes no app pra entender o motivo.'),
+                data: { route: '/financial/wallet', status: localStatus },
+            })
+        }
+    }
 }
 
 function mapAsaasStatusToLocal(asaasStatus: string): 'pending' | 'awaiting' | 'approved' | 'rejected' | 'blocked' {

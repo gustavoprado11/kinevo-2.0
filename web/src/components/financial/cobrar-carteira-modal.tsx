@@ -35,6 +35,8 @@ interface Student {
     email: string
 }
 
+type ChargeMode = 'one_off' | 'recurring'
+
 interface CobrarCarteiraModalProps {
     isOpen: boolean
     onClose: () => void
@@ -44,9 +46,9 @@ interface CobrarCarteiraModalProps {
     plans: Plan[]
     /** Se a Carteira do trainer ainda não está aprovada, dispara CTA pra ativar */
     walletStatus: 'not_started' | 'pending' | 'awaiting' | 'approved' | 'rejected' | 'blocked'
+    /** Pré-seleciona o tipo de cobrança quando abre. Default: 'one_off'. */
+    initialMode?: ChargeMode
 }
-
-type ChargeMode = 'one_off' | 'recurring'
 
 const intervalLabel = (interval: string): string => {
     switch (interval) {
@@ -68,10 +70,11 @@ export function CobrarCarteiraModal({
     students,
     plans,
     walletStatus,
+    initialMode = 'one_off',
 }: CobrarCarteiraModalProps) {
     const [studentId, setStudentId] = useState('')
     const [planId, setPlanId] = useState('')
-    const [mode, setMode] = useState<ChargeMode>('one_off')
+    const [mode, setMode] = useState<ChargeMode>(initialMode)
     const [dueDate, setDueDate] = useState('')
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
@@ -82,7 +85,9 @@ export function CobrarCarteiraModal({
         if (isOpen) {
             setStudentId(initialStudent?.id ?? '')
             setPlanId('')
-            setMode('one_off')
+            // Respeita o modo que o caller pediu (ex: dropdown "Nova assinatura"
+            // já abre o modal em recurring).
+            setMode(initialMode)
             // dueDate padrão: hoje + 3 dias
             const d = new Date()
             d.setDate(d.getDate() + 3)
@@ -93,7 +98,7 @@ export function CobrarCarteiraModal({
             setCopied(false)
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isOpen])
+    }, [isOpen, initialMode])
 
     const selectedPlan = useMemo(
         () => plans.find(p => p.id === planId) ?? null,
@@ -159,48 +164,33 @@ export function CobrarCarteiraModal({
 
         setLoading(true)
         try {
-            if (mode === 'recurring') {
-                const res = await fetch('/api/wallet/subscriptions', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        studentId,
-                        planId,
-                        nextDueDate: dueDate,
-                        billingType: 'UNDEFINED',
-                    }),
-                })
-                if (!res.ok) {
-                    const body = await res.json().catch(() => ({}))
-                    throw new Error(body.error || `Falha (${res.status})`)
-                }
-                // Assinatura recorrente: a primeira fatura ainda não veio.
-                // Pedimos pra UI fechar e atualizar lista; o aluno paga via cobrança automática
-                // ou via app quando notificado.
-                onSuccess()
-                onClose()
-                return
-            }
-
-            // mode === 'one_off'
-            const res = await fetch('/api/wallet/charges', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
+            // Avulsa e recorrente agora compartilham UX: ambas retornam um
+            // Payment Link URL que o trainer manda pro aluno. A diferença é só
+            // o chargeType no backend.
+            const endpoint = mode === 'recurring' ? '/api/wallet/subscriptions' : '/api/wallet/charges'
+            const requestBody = mode === 'recurring'
+                ? { studentId, planId, nextDueDate: dueDate }
+                : {
                     studentId,
                     planId,
                     value: selectedPlan.price,
                     dueDate,
-                    billingType: 'UNDEFINED',
                     description: selectedPlan.title,
-                }),
+                }
+
+            const res = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody),
             })
             if (!res.ok) {
                 const body = await res.json().catch(() => ({}))
                 throw new Error(body.error || `Falha (${res.status})`)
             }
-            const body = await res.json() as { invoiceUrl: string }
-            setInvoiceUrl(body.invoiceUrl)
+            const body = await res.json() as { url?: string; invoiceUrl?: string }
+            const link = body.url ?? body.invoiceUrl
+            if (!link) throw new Error('Resposta do servidor não trouxe link de pagamento.')
+            setInvoiceUrl(link)
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Erro inesperado')
         } finally {
@@ -223,7 +213,7 @@ export function CobrarCarteiraModal({
                         Compartilhe esse link com seu aluno
                     </p>
                     <p className="text-xs text-k-text-quaternary mb-4">
-                        Ele pode pagar via PIX ou cartão — o status atualiza automaticamente aqui quando confirmar.
+                        Ele preenche o CPF na hora do pagamento e o status atualiza aqui automaticamente.
                     </p>
                     <div className="rounded-lg border border-k-border-subtle bg-surface-inset p-3 text-xs text-k-text-secondary break-all mb-4 text-left max-h-20 overflow-auto">
                         {invoiceUrl}
@@ -312,15 +302,18 @@ export function CobrarCarteiraModal({
                         <button
                             type="button"
                             onClick={() => setMode('one_off')}
-                            className={`rounded-lg border px-3 py-2.5 text-left transition-all ${
+                            className={`relative rounded-lg border-2 px-3 py-2.5 pr-7 text-left transition-all ${
                                 mode === 'one_off'
-                                    ? 'border-violet-500/50 bg-violet-500/10'
-                                    : 'border-k-border-subtle bg-glass-bg hover:border-violet-500/30'
+                                    ? 'border-violet-500 bg-violet-500/10 ring-2 ring-violet-500/20'
+                                    : 'border-k-border-subtle bg-glass-bg hover:border-violet-500/40'
                             }`}
                         >
+                            {mode === 'one_off' && (
+                                <Check className="absolute top-1.5 right-1.5 w-3.5 h-3.5 text-violet-600 dark:text-violet-400" strokeWidth={3} />
+                            )}
                             <div className="flex items-center gap-1.5 mb-0.5">
-                                <Receipt className="w-3.5 h-3.5 text-violet-500" />
-                                <span className="text-xs font-semibold text-k-text-primary">Avulsa</span>
+                                <Receipt className={`w-3.5 h-3.5 ${mode === 'one_off' ? 'text-violet-600 dark:text-violet-400' : 'text-k-text-tertiary'}`} />
+                                <span className={`text-xs font-semibold ${mode === 'one_off' ? 'text-violet-700 dark:text-violet-300' : 'text-k-text-primary'}`}>Avulsa</span>
                             </div>
                             <p className="text-[11px] text-k-text-tertiary leading-tight">
                                 Uma cobrança única
@@ -329,15 +322,18 @@ export function CobrarCarteiraModal({
                         <button
                             type="button"
                             onClick={() => setMode('recurring')}
-                            className={`rounded-lg border px-3 py-2.5 text-left transition-all ${
+                            className={`relative rounded-lg border-2 px-3 py-2.5 pr-7 text-left transition-all ${
                                 mode === 'recurring'
-                                    ? 'border-violet-500/50 bg-violet-500/10'
-                                    : 'border-k-border-subtle bg-glass-bg hover:border-violet-500/30'
+                                    ? 'border-violet-500 bg-violet-500/10 ring-2 ring-violet-500/20'
+                                    : 'border-k-border-subtle bg-glass-bg hover:border-violet-500/40'
                             }`}
                         >
+                            {mode === 'recurring' && (
+                                <Check className="absolute top-1.5 right-1.5 w-3.5 h-3.5 text-violet-600 dark:text-violet-400" strokeWidth={3} />
+                            )}
                             <div className="flex items-center gap-1.5 mb-0.5">
-                                <CalendarClock className="w-3.5 h-3.5 text-violet-500" />
-                                <span className="text-xs font-semibold text-k-text-primary">Recorrente</span>
+                                <CalendarClock className={`w-3.5 h-3.5 ${mode === 'recurring' ? 'text-violet-600 dark:text-violet-400' : 'text-k-text-tertiary'}`} />
+                                <span className={`text-xs font-semibold ${mode === 'recurring' ? 'text-violet-700 dark:text-violet-300' : 'text-k-text-primary'}`}>Recorrente</span>
                             </div>
                             <p className="text-[11px] text-k-text-tertiary leading-tight">
                                 Cobra automático {selectedPlan ? `(${intervalLabel(selectedPlan.interval)})` : ''}
@@ -408,24 +404,41 @@ function ModalShell({ title, onClose, children }: {
     onClose: () => void
     children: React.ReactNode
 }) {
+    // Body scroll lock enquanto o modal está aberto — evita que tentar
+    // rolar o modal acabe rolando a página de fundo em telas baixas.
+    useEffect(() => {
+        const previous = document.body.style.overflow
+        document.body.style.overflow = 'hidden'
+        return () => {
+            document.body.style.overflow = previous
+        }
+    }, [])
+
     return (
-        <div className="fixed inset-0 z-modal flex items-center justify-center p-4">
+        // Wrapper externo permite rolar o modal todo quando ele não cabe
+        // na viewport (mobile / telas baixas). overscroll-contain evita que
+        // o overscroll volte a rolar a página.
+        <div className="fixed inset-0 z-modal overflow-y-auto overscroll-contain">
             <div
-                className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300"
+                className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300"
                 onClick={onClose}
             />
-            <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-transparent bg-surface-card backdrop-blur-xl shadow-2xl ring-1 ring-k-border-primary animate-in fade-in zoom-in-95 duration-200">
-                <div className="flex items-center justify-between border-b border-k-border-subtle bg-surface-inset px-6 py-4">
-                    <h2 className="text-base font-bold text-k-text-primary tracking-tight">{title}</h2>
-                    <button
-                        onClick={onClose}
-                        className="h-7 w-7 flex items-center justify-center text-muted-foreground/50 hover:text-k-text-primary hover:bg-glass-bg rounded-full transition-colors"
-                    >
-                        <X className="w-4 h-4" strokeWidth={1.5} />
-                    </button>
-                </div>
-                <div className="p-6">
-                    {children}
+            <div className="relative flex min-h-full items-start sm:items-center justify-center p-4">
+                <div className="relative w-full max-w-md flex flex-col max-h-[calc(100dvh-2rem)] rounded-3xl border border-transparent bg-surface-card backdrop-blur-xl shadow-2xl ring-1 ring-k-border-primary animate-in fade-in zoom-in-95 duration-200">
+                    {/* Header fixo */}
+                    <div className="flex-shrink-0 flex items-center justify-between border-b border-k-border-subtle bg-surface-inset px-6 py-4 rounded-t-3xl">
+                        <h2 className="text-base font-bold text-k-text-primary tracking-tight">{title}</h2>
+                        <button
+                            onClick={onClose}
+                            className="h-7 w-7 flex items-center justify-center text-muted-foreground/50 hover:text-k-text-primary hover:bg-glass-bg rounded-full transition-colors"
+                        >
+                            <X className="w-4 h-4" strokeWidth={1.5} />
+                        </button>
+                    </div>
+                    {/* Body com scroll interno */}
+                    <div className="flex-1 overflow-y-auto p-6">
+                        {children}
+                    </div>
                 </div>
             </div>
         </div>

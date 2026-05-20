@@ -44,14 +44,14 @@ export function PlanFormModal({
     const [visibility, setVisibility] = useState('public')
     const [allowPix, setAllowPix] = useState(true)
     const [allowCreditCard, setAllowCreditCard] = useState(true)
-    const [allowDebitCard, setAllowDebitCard] = useState(false)
+    const [allowBoleto, setAllowBoleto] = useState(false)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
 
     const acceptedMethods: PaymentMethod[] = [
         allowPix ? 'PIX' : null,
         allowCreditCard ? 'CREDIT_CARD' : null,
-        allowDebitCard ? 'DEBIT_CARD' : null,
+        allowBoleto ? 'BOLETO' : null,
     ].filter(Boolean) as PaymentMethod[]
 
     const isEdit = !!plan
@@ -59,18 +59,31 @@ export function PlanFormModal({
     // Reset form when modal opens/closes or plan changes.
     // Padrão idiomático pré-React-19 — cascading render é intencional aqui
     // (carrega valores ao abrir). Refatorar com `key` num pass futuro.
+    /* Body scroll lock: enquanto o modal está aberto, prevenir scroll do
+     * background. Sem isso, em telas menores o usuário tentando rolar o
+     * modal acaba rolando a página atrás. Restaura overflow ao fechar. */
+    useEffect(() => {
+        if (!isOpen) return
+        const previousOverflow = document.body.style.overflow
+        document.body.style.overflow = 'hidden'
+        return () => {
+            document.body.style.overflow = previousOverflow
+        }
+    }, [isOpen])
+
     /* eslint-disable react-hooks/set-state-in-effect */
     useEffect(() => {
         if (isOpen) {
             if (plan) {
                 setTitle(plan.title)
-                setPrice(String(plan.price))
+                // Formato BR: 149.9 → "149,90"
+                setPrice(plan.price.toFixed(2).replace('.', ','))
                 setInterval(plan.interval)
                 setDescription(plan.description || '')
                 setVisibility(plan.visibility || 'public')
                 setAllowPix(plan.allow_pix ?? true)
                 setAllowCreditCard(plan.allow_credit_card ?? true)
-                setAllowDebitCard(false)
+                setAllowBoleto(plan.allow_boleto ?? false)
             } else {
                 setTitle('')
                 setPrice('')
@@ -79,7 +92,7 @@ export function PlanFormModal({
                 setVisibility('public')
                 setAllowPix(true)
                 setAllowCreditCard(true)
-                setAllowDebitCard(false)
+                setAllowBoleto(false)
             }
             setError('')
         }
@@ -124,7 +137,7 @@ export function PlanFormModal({
                     visibility,
                     allowPix,
                     allowCreditCard,
-                    allowDebitCard,
+                    allowBoleto,
                 })
 
                 if (result.error) {
@@ -142,7 +155,7 @@ export function PlanFormModal({
                     hasStripeConnect,
                     allowPix,
                     allowCreditCard,
-                    allowDebitCard,
+                    allowBoleto,
                 })
 
                 if (result.error) {
@@ -164,35 +177,44 @@ export function PlanFormModal({
     if (!isOpen) return null
 
     return (
-        <div className="fixed inset-0 z-modal flex items-center justify-center p-4">
-            {/* Backdrop */}
+        // Wrapper externo com scroll vertical — em telas baixas o modal todo
+        // (modal + padding em volta) pode rolar. Combina com max-h no modal
+        // interno pra suportar tanto desktop quanto mobile pequeno.
+        <div className="fixed inset-0 z-modal overflow-y-auto overscroll-contain">
+            {/* Backdrop fixo cobrindo tudo, atrás do conteúdo */}
             <div
-                className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300"
+                className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300"
                 onClick={onClose}
             />
 
-            {/* Modal Content */}
-            <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-transparent bg-surface-card backdrop-blur-xl shadow-2xl ring-1 ring-k-border-primary animate-in fade-in zoom-in-95 duration-200">
-                {/* Header */}
-                <div className="flex items-center justify-between border-b border-k-border-subtle bg-surface-inset px-8 py-6">
-                    <div>
-                        <h2 className="text-xl font-bold text-k-text-primary tracking-tight">
-                            {isEdit ? 'Editar Plano' : 'Novo Plano'}
-                        </h2>
-                        <p className="text-xs text-k-text-secondary mt-1">
-                            {isEdit ? 'Atualize as informações' : 'Crie um plano de consultoria'}
-                        </p>
-                    </div>
-                    <button
-                        onClick={onClose}
-                        className="h-8 w-8 flex items-center justify-center text-muted-foreground/50 hover:text-k-text-primary hover:bg-glass-bg rounded-full transition-colors"
-                    >
-                        <X className="w-5 h-5" strokeWidth={1.5} />
-                    </button>
-                </div>
+            {/* Container que centraliza no eixo Y quando o modal cabe;
+                em viewports baixas, o flex permite que o modal "encoste"
+                no topo (com padding) e o scroll do wrapper resolva o resto. */}
+            <div className="relative flex min-h-full items-start sm:items-center justify-center p-4">
 
-                {/* Form */}
-                <form onSubmit={handleSubmit} className="p-8 space-y-6">
+                {/* Modal Content — flex-col com max-h e body scrollable */}
+                <div className="relative w-full max-w-md flex flex-col max-h-[calc(100dvh-2rem)] rounded-3xl border border-transparent bg-surface-card backdrop-blur-xl shadow-2xl ring-1 ring-k-border-primary animate-in fade-in zoom-in-95 duration-200">
+                    {/* Header sticky (sempre visível mesmo quando rola o body) */}
+                    <div className="flex-shrink-0 flex items-center justify-between border-b border-k-border-subtle bg-surface-inset px-6 sm:px-8 py-5 sm:py-6 rounded-t-3xl">
+                        <div>
+                            <h2 className="text-xl font-bold text-k-text-primary tracking-tight">
+                                {isEdit ? 'Editar Plano' : 'Novo Plano'}
+                            </h2>
+                            <p className="text-xs text-k-text-secondary mt-1">
+                                {isEdit ? 'Atualize as informações' : 'Crie um plano de consultoria'}
+                            </p>
+                        </div>
+                        <button
+                            onClick={onClose}
+                            className="h-8 w-8 flex items-center justify-center text-muted-foreground/50 hover:text-k-text-primary hover:bg-glass-bg rounded-full transition-colors"
+                            type="button"
+                        >
+                            <X className="w-5 h-5" strokeWidth={1.5} />
+                        </button>
+                    </div>
+
+                    {/* Form com scroll interno */}
+                    <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-6">
                     {error && (
                         <div className="bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl text-sm flex items-start gap-3">
                             <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
@@ -292,7 +314,7 @@ export function PlanFormModal({
                                 {[
                                     { value: 'pix', label: 'PIX', state: allowPix, set: setAllowPix },
                                     { value: 'credit', label: 'Cartão crédito', state: allowCreditCard, set: setAllowCreditCard },
-                                    { value: 'debit', label: 'Cartão débito', state: allowDebitCard, set: setAllowDebitCard },
+                                    { value: 'boleto', label: 'Boleto', state: allowBoleto, set: setAllowBoleto },
                                 ].map((opt) => (
                                     <button
                                         key={opt.value}
@@ -392,6 +414,7 @@ export function PlanFormModal({
                         </button>
                     </div>
                 </form>
+                </div>
             </div>
         </div>
     )

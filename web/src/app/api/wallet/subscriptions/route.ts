@@ -1,27 +1,25 @@
 // ============================================================================
 // POST /api/wallet/subscriptions
 // ============================================================================
-// Cria uma assinatura recorrente Asaas pro aluno e persiste como
-// student_contracts(provider='asaas', billing_type='asaas_auto_recurring',
-// status='pending_payment').
+// Cria uma assinatura recorrente via Asaas Payment Link (chargeType=RECURRENT).
+// O aluno abre o link, preenche CPF + cartão (ou PIX por cobrança), e a
+// Asaas gera a subscription internamente. Webhook PAYMENT_RECEIVED ativa o
+// contrato.
 //
-// Body esperado:
+// Body:
 // {
-//   "studentId": "<uuid>",
-//   "planId":    "<uuid>",          // obrigatório (define valor + ciclo + descrição)
-//   "billingType": "UNDEFINED" | "PIX" | "CREDIT_CARD" | "BOLETO" (default: UNDEFINED)
-//   "nextDueDate": "2026-06-01"      // optional; default: hoje + 3 dias
+//   "studentId":   "<uuid>",
+//   "planId":      "<uuid>",
+//   "billingType": "UNDEFINED" | "PIX" | "CREDIT_CARD" | "BOLETO"  // opcional
+//   "nextDueDate": "2026-06-01"        // opcional — vira dueDateLimitDays
 // }
-//
-// O ciclo vem do plano (campo `interval` em trainer_plans).
 // ============================================================================
 
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import {
     AsaasApiError,
-    createSubscription,
-    findOrCreateCustomer,
+    createPaymentLink,
     getKinevoWalletId,
     type AsaasBillingType,
     type AsaasSplit,
@@ -37,13 +35,34 @@ interface SubBody {
 }
 
 function planIntervalToCycle(interval: string | null | undefined, count?: number | null): AsaasSubscriptionCycle {
-    // trainer_plans.interval atual: 'month' | 'quarter' | 'year' (+ count opcional)
     const i = (interval ?? 'month').toLowerCase()
     if (i.startsWith('quart')) return 'QUARTERLY'
     if (i.startsWith('year') || i === 'annual') return 'YEARLY'
     if (i.startsWith('semi') || (i === 'month' && count === 6)) return 'SEMIANNUALLY'
-    if (i.startsWith('bi') || (i === 'month' && count === 2)) return 'BIWEEKLY' // raro
+    if (i.startsWith('bi') || (i === 'month' && count === 2)) return 'BIWEEKLY'
     return 'MONTHLY'
+}
+
+interface PlanCols {
+    allow_pix?: boolean | null
+    allow_credit_card?: boolean | null
+    allow_boleto?: boolean | null
+}
+
+function deriveBillingType(plan: PlanCols): AsaasBillingType {
+    const allowed: AsaasBillingType[] = []
+    if (plan.allow_pix ?? true) allowed.push('PIX')
+    if (plan.allow_credit_card ?? true) allowed.push('CREDIT_CARD')
+    if (plan.allow_boleto ?? false) allowed.push('BOLETO')
+    return allowed.length === 1 ? allowed[0] : 'UNDEFINED'
+}
+
+function dueDateToLimitDays(dueDate: string): number {
+    const today = new Date()
+    today.setUTCHours(0, 0, 0, 0)
+    const target = new Date(`${dueDate}T00:00:00Z`)
+    const diff = Math.round((target.getTime() - today.getTime()) / 86_400_000)
+    return Math.min(60, Math.max(1, diff))
 }
 
 export async function POST(request: NextRequest) {
@@ -62,7 +81,7 @@ export async function POST(request: NextRequest) {
         // 1. Aluno pertence ao trainer?
         const { data: student } = await supabaseAdmin
             .from('students')
-            .select('id, name, email, cpf, mobile_phone, coach_id')
+            .select('id, name, coach_id')
             .eq('id', body.studentId)
             .single()
         if (!student) return NextResponse.json({ error: 'Aluno não encontrado' }, { status: 404 })
@@ -73,7 +92,7 @@ export async function POST(request: NextRequest) {
         // 2. Plano existe e pertence ao trainer?
         const { data: plan } = await supabaseAdmin
             .from('trainer_plans')
-            .select('id, title, description, price, interval, interval_count')
+            .select('id, title, description, price, interval, interval_count, allow_pix, allow_credit_card, allow_boleto')
             .eq('id', body.planId)
             .eq('trainer_id', trainer.id)
             .maybeSingle()
@@ -81,20 +100,13 @@ export async function POST(request: NextRequest) {
 
         const cycle = planIntervalToCycle(plan.interval, plan.interval_count)
         const nextDueDate = body.nextDueDate ?? new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10)
+        const dueDateLimitDays = dueDateToLimitDays(nextDueDate)
+        const billingType = body.billingType ?? deriveBillingType(plan)
 
         // 3. apiKey da subconta
         const apiKey = await getDecryptedApiKey(trainer.id)
 
-        // 4. Garante o customer no Asaas
-        const customer = await findOrCreateCustomer(apiKey, {
-            name: student.name ?? 'Aluno',
-            email: student.email ?? undefined,
-            cpfCnpj: student.cpf ?? undefined,
-            mobilePhone: student.mobile_phone ?? undefined,
-            externalReference: student.id,
-        })
-
-        // 5. Split (take rate Kinevo, se configurado)
+        // 4. Split (take rate Kinevo)
         const kinevoWalletId = getKinevoWalletId()
         const takeRatePct = Number(process.env.KINEVO_TAKE_RATE_PCT ?? '0')
         const split: AsaasSplit[] | undefined =
@@ -102,7 +114,7 @@ export async function POST(request: NextRequest) {
                 ? [{ walletId: kinevoWalletId, percentualValue: takeRatePct }]
                 : undefined
 
-        // 6. Cria contrato local primeiro (com status=pending_payment) pra ter ID
+        // 5. Cria contrato local (status=pending_payment)
         const { data: contract, error: contractErr } = await supabaseAdmin
             .from('student_contracts')
             .insert({
@@ -114,7 +126,6 @@ export async function POST(request: NextRequest) {
                 billing_type: 'asaas_auto_recurring',
                 status: 'pending_payment',
                 start_date: nextDueDate,
-                asaas_customer_id: customer.id,
             })
             .select('id')
             .single()
@@ -123,37 +134,45 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Falha ao criar contrato local' }, { status: 500 })
         }
 
-        // 7. Cria assinatura no Asaas
+        // 6. Cria Payment Link recorrente
+        let link
         try {
-            const sub = await createSubscription(apiKey, {
-                customer: customer.id,
-                billingType: body.billingType ?? 'UNDEFINED',
-                value: Number(plan.price),
-                nextDueDate,
-                cycle,
-                description: `${plan.title} — ${student.name ?? 'Aluno'}`,
-                externalReference: contract.id,
-                split,
-            })
-
-            // 8. Vincula subscription_id ao contrato
-            await supabaseAdmin
-                .from('student_contracts')
-                .update({ asaas_subscription_id: sub.id })
-                .eq('id', contract.id)
-
-            return NextResponse.json({
-                contractId: contract.id,
-                subscriptionId: sub.id,
-                nextDueDate: sub.nextDueDate,
-                cycle: sub.cycle,
-                value: sub.value,
-            }, { status: 201 })
+            link = await createPaymentLink(
+                apiKey,
+                {
+                    name: `${plan.title} — ${student.name ?? 'Aluno'}`,
+                    description: `${plan.title} (${cycle.toLowerCase()})`,
+                    value: Number(plan.price),
+                    billingType,
+                    chargeType: 'RECURRENT',
+                    subscriptionCycle: cycle,
+                    dueDateLimitDays,
+                    notificationEnabled: false,
+                    split,
+                },
+                contract.id,
+            )
         } catch (err) {
             // Rollback contrato local se Asaas falhar
             await supabaseAdmin.from('student_contracts').delete().eq('id', contract.id)
             throw err
         }
+
+        // 7. Atualiza contrato com o link
+        await supabaseAdmin
+            .from('student_contracts')
+            .update({ asaas_payment_link_id: link.id })
+            .eq('id', contract.id)
+
+        return NextResponse.json({
+            contractId: contract.id,
+            paymentLinkId: link.id,
+            url: link.url,
+            invoiceUrl: link.url,        // alias pra UI antiga
+            cycle,
+            value: link.value,
+            billingType: link.billingType,
+        }, { status: 201 })
     } catch (err) {
         if (err instanceof WalletAuthError) {
             return NextResponse.json({ error: err.message }, { status: err.status })

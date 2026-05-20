@@ -51,6 +51,14 @@ export function NewSubscriptionModal({
     const [copied, setCopied] = useState(false)
 
     // Reset when modal opens/closes
+    /* Body scroll lock: previne página de fundo rolar em mobile / telas baixas */
+    useEffect(() => {
+        if (!isOpen) return
+        const previous = document.body.style.overflow
+        document.body.style.overflow = 'hidden'
+        return () => { document.body.style.overflow = previous }
+    }, [isOpen])
+
     useEffect(() => {
         if (isOpen) {
             setStep('type')
@@ -163,17 +171,15 @@ export function NewSubscriptionModal({
     }
 
     return (
-        <div className="fixed inset-0 z-modal flex items-center justify-center p-4">
-            {/* Backdrop */}
+        <div className="fixed inset-0 z-modal overflow-y-auto overscroll-contain">
             <div
-                className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300"
+                className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300"
                 onClick={onClose}
             />
-
-            {/* Modal Content */}
-            <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-transparent bg-surface-card backdrop-blur-xl shadow-2xl ring-1 ring-k-border-primary animate-in fade-in zoom-in-95 duration-200">
+            <div className="relative flex min-h-full items-start sm:items-center justify-center p-4">
+                <div className="relative w-full max-w-md flex flex-col max-h-[calc(100dvh-2rem)] rounded-3xl border border-transparent bg-surface-card backdrop-blur-xl shadow-2xl ring-1 ring-k-border-primary animate-in fade-in zoom-in-95 duration-200">
                 {/* Header */}
-                <div className="flex items-center justify-between border-b border-k-border-subtle bg-surface-inset px-8 py-6">
+                <div className="flex-shrink-0 flex items-center justify-between border-b border-k-border-subtle bg-surface-inset px-6 sm:px-8 py-5 sm:py-6 rounded-t-3xl">
                     <div>
                         <h2 className="text-xl font-bold text-k-text-primary tracking-tight">
                             {step === 'type' ? 'Nova Assinatura' : typeTitle[billingType!]}
@@ -190,6 +196,8 @@ export function NewSubscriptionModal({
                     </button>
                 </div>
 
+                {/* Body scrollable */}
+                <div className="flex-1 overflow-y-auto">
                 {/* Step 1: Choose billing type */}
                 {step === 'type' && (
                     <div className="p-8 space-y-3">
@@ -465,6 +473,8 @@ export function NewSubscriptionModal({
                         </button>
                     </div>
                 )}
+                </div>
+                </div>
             </div>
         </div>
     )

@@ -16,6 +16,10 @@ export interface FinancialStudent {
     plan_title: string | null
     plan_interval: string | null
     display_status: DisplayStatus
+    /** Quando o acesso ao app foi bloqueado por inadimplência. NULL = livre. */
+    access_blocked_at: string | null
+    /** Motivo do bloqueio em PT-BR. */
+    access_blocked_reason: string | null
 }
 
 export type DisplayStatus =

@@ -15,7 +15,7 @@ interface CreatePlanInput {
     /** Métodos de pagamento aceitos (Asaas). Defaults: PIX + Cartão crédito. */
     allowPix?: boolean
     allowCreditCard?: boolean
-    allowDebitCard?: boolean
+    allowBoleto?: boolean
 }
 
 export async function createPlan(input: CreatePlanInput) {
@@ -109,9 +109,7 @@ export async function createPlan(input: CreatePlanInput) {
         stripe_price_id: stripePriceId,
         allow_pix: input.allowPix ?? true,
         allow_credit_card: input.allowCreditCard ?? true,
-        // allow_boleto fica no default (false). allow_debit_card não existe no schema —
-        // débito é submodalidade do cartão; aceitamos toggle no UI mas sem persistir.
-        // Se quisermos persistir débito separado, adicionar migration depois.
+        allow_boleto: input.allowBoleto ?? false,
     })
 
     if (insertError) {

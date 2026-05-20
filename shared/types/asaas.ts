@@ -124,6 +124,63 @@ export interface AsaasPayment {
     transactionReceiptUrl?: string | null
     pixQrCodeId?: string | null
     externalReference?: string | null
+    /** Se a cobrança veio de um Payment Link, vem o id aqui (ex: "pll_abc"). */
+    paymentLink?: string | null
+    /** Se veio de uma assinatura Asaas, vem o id da subscription. */
+    subscription?: string | null
+}
+
+// ---------------------------------------------------------------------------
+// Payment Link (checkout self-service do Asaas)
+// ---------------------------------------------------------------------------
+// Diferença pra `createPayment`: aqui o trainer NÃO precisa ter customer
+// (CPF, email, telefone do aluno). Ele gera um link, manda pro aluno, e o
+// aluno preenche os próprios dados no checkout hospedado.
+//
+// Asaas cria o customer + payment internamente quando o aluno paga, e
+// dispara PAYMENT_CREATED/RECEIVED — a gente cruza pelo `payment.paymentLink`.
+
+export type AsaasChargeType =
+    | 'DETACHED'      // cobrança avulsa (one-off)
+    | 'RECURRENT'     // assinatura (precisa subscriptionCycle)
+    | 'INSTALLMENT'   // parcelado
+
+export interface CreateAsaasPaymentLinkInput {
+    name: string                        // título exibido no checkout (ex: "Consultoria Maio — João")
+    description?: string                // descrição extra (opcional)
+    value: number                       // BRL — obrigatório pra DETACHED/RECURRENT
+    billingType: AsaasBillingType
+    chargeType: AsaasChargeType
+    /** Obrigatório quando chargeType=RECURRENT. */
+    subscriptionCycle?: AsaasSubscriptionCycle
+    /** Dias entre criação do link e vencimento da cobrança gerada. Default Asaas: 10. */
+    dueDateLimitDays?: number
+    /** Take rate Kinevo via split. */
+    split?: AsaasSplit[]
+    /** Notifica aluno por email/SMS (default true na Asaas — a gente desliga porque controla notificação). */
+    notificationEnabled?: boolean
+    /** Quantidade max de parcelas (só pra INSTALLMENT). */
+    maxInstallmentCount?: number
+    /** Data fim opcional. */
+    endDate?: string
+    /** Callback opcional quando o aluno paga. */
+    callback?: { successUrl: string; autoRedirect?: boolean }
+}
+
+export interface AsaasPaymentLink {
+    id: string                          // ex: "pll_abc123"
+    name: string
+    description?: string | null
+    url: string                         // https://www.asaas.com/c/{id}
+    active: boolean
+    value: number
+    billingType: AsaasBillingType
+    chargeType: AsaasChargeType
+    subscriptionCycle?: AsaasSubscriptionCycle | null
+    endDate?: string | null
+    notificationEnabled: boolean
+    dueDateLimitDays?: number | null
+    deleted?: boolean
 }
 
 // ---------------------------------------------------------------------------

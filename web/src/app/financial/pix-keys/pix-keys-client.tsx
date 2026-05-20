@@ -8,6 +8,9 @@ import {
     Smartphone, Mail, IdCard, Building2, Hash, Info,
 } from 'lucide-react'
 import { AppLayout } from '@/components/layout'
+// Importa direto do submódulo (não do barrel) pra evitar que o webpack puxe
+// `encryption.ts` (que usa `node:crypto`, exclusivo do server) no bundle client.
+import { isPixKeyFormatValid as isFormatValidLocal } from '@/lib/asaas/pix'
 import type { PixKeyType } from '@/lib/asaas'
 
 interface PixKeyRow {
@@ -299,20 +302,9 @@ const keyTypeMeta: Record<PixKeyType, {
     },
 }
 
-// Validação local idêntica ao backend — duplicada aqui só pra feedback visual
-// ao vivo. O backend continua sendo a fonte da verdade.
-function isFormatValidLocal(key: string, type: PixKeyType): boolean {
-    const trimmed = key.trim()
-    if (!trimmed) return false
-    switch (type) {
-        case 'CPF':   return /^\d{11}$/.test(trimmed.replace(/\D/g, ''))
-        case 'CNPJ':  return /^\d{14}$/.test(trimmed.replace(/\D/g, ''))
-        case 'EMAIL': return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)
-        case 'PHONE': return /^(55)?\d{10,11}$/.test(trimmed.replace(/\D/g, ''))
-        case 'EVP':   return /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(trimmed)
-        default: return false
-    }
-}
+// Validação local agora usa `isPixKeyFormatValid` importada de @/lib/asaas
+// no topo do arquivo — garante paridade exata com o backend (inclui
+// validação de checksum CPF/CNPJ, não só formato).
 
 function AddKeyForm({
     onCancel, onSuccess, isFirstKey,
@@ -359,6 +351,20 @@ function AddKeyForm({
     }
 
     const canSubmit = alias.trim().length >= 2 && formatOk && !busy
+
+    /**
+     * Mensagem indicando o que falta pra habilitar o submit. Quando o botão
+     * fica cinza sem explicação, o usuário não sabe o que fazer.
+     */
+    const missingFieldHint = (() => {
+        if (busy) return null
+        const aliasMissing = alias.trim().length < 2
+        const keyMissing = !formatOk
+        if (aliasMissing && keyMissing) return 'Preencha o apelido e a chave PIX.'
+        if (aliasMissing) return 'Falta preencher o apelido.'
+        if (keyMissing) return 'Verifique o formato da chave acima.'
+        return null
+    })()
 
     return (
         <div className="rounded-2xl border border-[#007AFF]/20 dark:border-violet-500/20 bg-[#007AFF]/[0.03] dark:bg-violet-500/[0.04] p-5 mb-4">
@@ -437,7 +443,12 @@ function AddKeyForm({
                 <p className="text-xs text-red-600 dark:text-red-400 mt-3">{error}</p>
             )}
 
-            <div className="flex justify-end gap-2 mt-4">
+            <div className="flex items-center justify-end gap-3 mt-4">
+                {missingFieldHint && (
+                    <span className="text-[11px] text-[#86868B] dark:text-k-text-tertiary flex-1 text-left">
+                        {missingFieldHint}
+                    </span>
+                )}
                 <button
                     onClick={onCancel}
                     disabled={busy}
@@ -448,7 +459,8 @@ function AddKeyForm({
                 <button
                     onClick={submit}
                     disabled={!canSubmit}
-                    className="inline-flex items-center gap-2 text-sm px-4 py-2 rounded-xl bg-[#007AFF] dark:bg-violet-600 hover:bg-[#0056B3] dark:hover:bg-violet-500 text-white font-medium disabled:opacity-50"
+                    title={missingFieldHint ?? undefined}
+                    className="inline-flex items-center gap-2 text-sm px-4 py-2 rounded-xl bg-[#007AFF] dark:bg-violet-600 hover:bg-[#0056B3] dark:hover:bg-violet-500 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     {busy && <Loader2 size={14} className="animate-spin" />}
                     Validar e salvar

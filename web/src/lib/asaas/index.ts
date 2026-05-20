@@ -5,6 +5,7 @@ export type { AsaasEnvironment, AsaasRequestOptions } from './client'
 export { createSubaccount, getSubaccount, listSubaccounts, getMyAccountInfo } from './accounts'
 export { createCustomer, findCustomerByExternalRef, findOrCreateCustomer } from './customers'
 export { createPayment, getPayment, getPaymentPixQrCode, refundPayment, describeChargeForStudent } from './payments'
+export { createPaymentLink, getPaymentLink, deactivatePaymentLink } from './payment-links'
 export { createTransfer, getTransfer } from './transfers'
 export { validatePixKey, isPixKeyFormatValid, normalizePixKey } from './pix'
 export { getBalance } from './balance'
@@ -54,4 +55,7 @@ export type {
     AsaasSubscriptionCycle,
     AsaasSubscriptionStatus,
     CreateAsaasSubscriptionInput,
+    AsaasPaymentLink,
+    AsaasChargeType,
+    CreateAsaasPaymentLinkInput,
 } from '@kinevo/shared/types/asaas'

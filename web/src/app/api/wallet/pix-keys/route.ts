@@ -7,7 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { AsaasApiError, isPixKeyFormatValid, normalizePixKey, validatePixKey } from '@/lib/asaas'
+import { AsaasApiError, isPixKeyFormatValid, normalizePixKey } from '@/lib/asaas'
 import type { PixKeyType } from '@/lib/asaas'
 import { getDecryptedApiKey, requireTrainer, WalletAuthError } from '@/lib/asaas/wallet-service'
 
@@ -78,14 +78,25 @@ export async function POST(request: NextRequest) {
 
     try {
         const trainer = await requireTrainer(request)
-        const apiKey = await getDecryptedApiKey(trainer.id)
 
-        const validation = await validatePixKey(apiKey, normalizedKey, body.keyType)
-        if (!validation.valid) {
-            return NextResponse.json({
-                error: 'Chave PIX não encontrada no Banco Central. Confira se a chave está cadastrada no seu banco.',
-            }, { status: 422 })
-        }
+        // NOTA: pulamos a validação prévia via Asaas `/pix/addressKeys/validate`
+        // pelos seguintes motivos:
+        //  - O endpoint não aceita tipo CPF/CNPJ (Asaas retorna "tipo não
+        //    suportada" — restrição BACEN por privacidade).
+        //  - Pra EMAIL/PHONE/EVP funciona mas dá comportamento inconsistente.
+        //  - A validação real do BACEN acontece automaticamente no momento
+        //    do saque via `/v3/transfers`. Se a chave for inválida, a
+        //    transferência falha com mensagem específica que o trainer vê.
+        //
+        // Confiamos na validação local de formato + checksum (CPF/CNPJ) e
+        // salvamos a chave com `validated_at=null`. Quem chamar essa chave
+        // pra saque deve tratar o erro de transferência.
+        //
+        // Mantemos a regra de "mesmo CPF/CNPJ do titular" via aviso UI —
+        // a Asaas bloqueia transferências pra terceiros sozinha.
+
+        // Confirma que o trainer tem carteira ativa antes de salvar
+        await getDecryptedApiKey(trainer.id)
 
         // If this key is being marked default, clear other defaults first
         if (body.isDefault) {
@@ -102,10 +113,14 @@ export async function POST(request: NextRequest) {
                 alias: body.alias.trim(),
                 pix_key: normalizedKey,
                 key_type: body.keyType,
-                owner_name: validation.ownerName ?? null,
-                bank_name: validation.bankName ?? null,
+                // owner_name e bank_name ficam null — vão ser populados na
+                // primeira transferência bem-sucedida (response do Asaas).
+                owner_name: null,
+                bank_name: null,
                 is_default: body.isDefault ?? false,
-                validated_at: new Date().toISOString(),
+                // validated_at=null sinaliza "ainda não validada via BACEN".
+                // UI pode mostrar isso pra avisar o trainer.
+                validated_at: null,
             })
             .select('id, alias, pix_key, key_type, owner_name, bank_name, is_default, validated_at')
             .single()
@@ -120,6 +135,9 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: err.message }, { status: 502 })
         }
         console.error('[wallet/pix-keys POST] Error:', err)
-        return NextResponse.json({ error: 'Erro ao adicionar chave PIX' }, { status: 500 })
+        // Propaga mensagem real pra facilitar diagnóstico — em prod sem
+        // segredos sensíveis (Asaas/Supabase já tratam).
+        const message = err instanceof Error ? err.message : 'Erro ao adicionar chave PIX'
+        return NextResponse.json({ error: message }, { status: 500 })
     }
 }

@@ -14,7 +14,7 @@ interface UpdatePlanInput {
     visibility: string
     allowPix?: boolean
     allowCreditCard?: boolean
-    allowDebitCard?: boolean
+    allowBoleto?: boolean
 }
 
 export async function updatePlan(input: UpdatePlanInput) {
@@ -128,6 +128,7 @@ export async function updatePlan(input: UpdatePlanInput) {
                         stripe_price_id: newPrice.id,
                         allow_pix: input.allowPix ?? true,
                         allow_credit_card: input.allowCreditCard ?? true,
+                        allow_boleto: input.allowBoleto ?? false,
                     })
                     .eq('id', input.planId)
 
@@ -149,6 +150,7 @@ export async function updatePlan(input: UpdatePlanInput) {
                 visibility: input.visibility || 'public',
                 allow_pix: input.allowPix ?? true,
                 allow_credit_card: input.allowCreditCard ?? true,
+                allow_boleto: input.allowBoleto ?? false,
             })
             .eq('id', input.planId)
 

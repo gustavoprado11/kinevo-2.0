@@ -6,7 +6,7 @@
 // ============================================================================
 
 import type { PixKeyType, PixKeyValidation } from '@kinevo/shared/types/asaas'
-import { asaasRequest } from './client'
+import { asaasRequest, AsaasApiError } from './client'
 
 interface PixValidationRaw {
     ownerName?: string
@@ -16,29 +16,34 @@ interface PixValidationRaw {
     accountNumber?: string
 }
 
+/** Resultado estendido — inclui motivo real quando inválido. */
+export interface PixKeyValidationExt extends PixKeyValidation {
+    /** Mensagem literal da Asaas quando valid=false. Use pra dar feedback útil. */
+    invalidReason?: string
+    /** HTTP status retornado pela Asaas (200 quando ok). */
+    asaasStatus?: number
+}
+
 /**
- * Validate a PIX key. Throws AsaasApiError when Asaas rejects the lookup
- * (chave inexistente). Returns owner info on success.
+ * Validate a PIX key. Returns valid=true + owner info on success, or
+ * valid=false + invalidReason (mensagem real da Asaas) on failure.
  *
- * Asaas charges a tiny fee per lookup, so cache the validated value for
- * 7 days client-side if you re-validate.
- *
- * NOTE: o valor recebido é normalizado antes de bater na Asaas (E.164 pra
- * telefone, apenas dígitos pra CPF/CNPJ). Isso evita 400s comuns por causa
- * de formatação que o usuário deixou.
+ * Asaas charges a tiny fee per lookup. NOTE: o valor recebido é normalizado
+ * antes de bater na Asaas (E.164 pra telefone, apenas dígitos pra CPF/CNPJ).
  */
 export async function validatePixKey(
     subaccountApiKey: string,
     pixKey: string,
     keyType: PixKeyType
-): Promise<PixKeyValidation> {
+): Promise<PixKeyValidationExt> {
+    const normalized = normalizePixKey(pixKey, keyType)
     try {
         const raw = await asaasRequest<PixValidationRaw>({
             apiKey: subaccountApiKey,
             method: 'POST',
             path: '/pix/addressKeys/validate',
             body: {
-                pixAddressKey: normalizePixKey(pixKey, keyType),
+                pixAddressKey: normalized,
                 pixAddressKeyType: keyType,
             },
         })
@@ -47,9 +52,29 @@ export async function validatePixKey(
             ownerName: raw.ownerName,
             ownerType: raw.ownerType === 'LEGAL' ? 'PJ' : raw.ownerType === 'NATURAL' ? 'PF' : undefined,
             bankName: raw.bank?.name,
+            asaasStatus: 200,
         }
-    } catch {
-        return { valid: false }
+    } catch (err) {
+        // Log server-side com detalhes pra diagnóstico (status + body)
+        if (err instanceof AsaasApiError) {
+            console.error('[validatePixKey] Asaas rejected:', {
+                status: err.status,
+                message: err.message,
+                body: typeof err.body === 'object' ? JSON.stringify(err.body) : err.body,
+                keyType,
+                keyPrefix: normalized.slice(0, 4),
+            })
+            return {
+                valid: false,
+                invalidReason: err.message,
+                asaasStatus: err.status,
+            }
+        }
+        console.error('[validatePixKey] Unexpected error:', err)
+        return {
+            valid: false,
+            invalidReason: err instanceof Error ? err.message : 'Erro desconhecido',
+        }
     }
 }
 
@@ -66,9 +91,9 @@ export function isPixKeyFormatValid(key: string, type: PixKeyType): boolean {
     if (!trimmed) return false
     switch (type) {
         case 'CPF':
-            return /^\d{11}$/.test(trimmed.replace(/\D/g, ''))
+            return isValidCpf(trimmed.replace(/\D/g, ''))
         case 'CNPJ':
-            return /^\d{14}$/.test(trimmed.replace(/\D/g, ''))
+            return isValidCnpj(trimmed.replace(/\D/g, ''))
         case 'EMAIL':
             return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)
         case 'PHONE': {
@@ -116,4 +141,63 @@ export function normalizePixKey(key: string, type: PixKeyType): string {
         default:
             return trimmed
     }
+}
+
+// ---------------------------------------------------------------------------
+// Validação de checksum CPF/CNPJ (algoritmo brasileiro padrão)
+// ---------------------------------------------------------------------------
+// Rejeita CPFs/CNPJs com formato OK (11/14 dígitos) mas que falham na
+// verificação. Sem isso, o frontend aprova "12672411603" como CPF válido,
+// manda pra Asaas, BACEN retorna 422 "chave não cadastrada" — confunde o
+// usuário porque a mensagem sugere que a chave existe mas não está no banco.
+
+/** Valida um CPF (11 dígitos, só números). Rejeita também sequências
+ *  uniformes tipo "11111111111". */
+export function isValidCpf(digits: string): boolean {
+    if (digits.length !== 11) return false
+    if (/^(\d)\1{10}$/.test(digits)) return false
+
+    // Primeiro dígito verificador
+    let sum = 0
+    for (let i = 0; i < 9; i++) {
+        sum += parseInt(digits[i], 10) * (10 - i)
+    }
+    let check = sum % 11
+    check = check < 2 ? 0 : 11 - check
+    if (check !== parseInt(digits[9], 10)) return false
+
+    // Segundo dígito verificador
+    sum = 0
+    for (let i = 0; i < 10; i++) {
+        sum += parseInt(digits[i], 10) * (11 - i)
+    }
+    check = sum % 11
+    check = check < 2 ? 0 : 11 - check
+    return check === parseInt(digits[10], 10)
+}
+
+/** Valida um CNPJ (14 dígitos, só números). */
+export function isValidCnpj(digits: string): boolean {
+    if (digits.length !== 14) return false
+    if (/^(\d)\1{13}$/.test(digits)) return false
+
+    // Primeiro dígito verificador (pesos 5,4,3,2,9,8,7,6,5,4,3,2)
+    const w1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
+    let sum = 0
+    for (let i = 0; i < 12; i++) {
+        sum += parseInt(digits[i], 10) * w1[i]
+    }
+    let check = sum % 11
+    check = check < 2 ? 0 : 11 - check
+    if (check !== parseInt(digits[12], 10)) return false
+
+    // Segundo dígito verificador (pesos 6,5,4,3,2,9,8,7,6,5,4,3,2)
+    const w2 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
+    sum = 0
+    for (let i = 0; i < 13; i++) {
+        sum += parseInt(digits[i], 10) * w2[i]
+    }
+    check = sum % 11
+    check = check < 2 ? 0 : 11 - check
+    return check === parseInt(digits[13], 10)
 }
