@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Shield, Bot, Loader2 } from 'lucide-react'
+import { Shield, Bot, Loader2, CheckCircle2 } from 'lucide-react'
 import { approveOAuthConsent } from '@/actions/api-keys/approve-oauth-consent'
 
 interface OAuthConsentFormProps {
@@ -28,6 +28,7 @@ export function OAuthConsentForm({
   scope,
 }: OAuthConsentFormProps) {
   const [loading, setLoading] = useState(false)
+  const [done, setDone] = useState(false)
 
   async function handleApprove() {
     setLoading(true)
@@ -42,6 +43,7 @@ export function OAuthConsentForm({
     })
 
     if (result.redirect) {
+      setDone(true)
       window.location.href = result.redirect
     }
   }
@@ -51,6 +53,22 @@ export function OAuthConsentForm({
     url.searchParams.set('error', 'access_denied')
     if (state) url.searchParams.set('state', state)
     window.location.href = url.toString()
+  }
+
+  if (done) {
+    return (
+      <div className="max-w-md mx-4 w-full rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-8 shadow-lg text-center">
+        <div className="flex items-center justify-center mb-4">
+          <CheckCircle2 size={48} className="text-emerald-500" />
+        </div>
+        <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+          Autorizado!
+        </h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          Voce pode fechar esta janela e voltar ao Claude.
+        </p>
+      </div>
+    )
   }
 
   return (
