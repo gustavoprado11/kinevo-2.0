@@ -1,4 +1,3 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js'
 import { authenticateRequest, McpAuthError } from '@/lib/mcp/auth'
 import { createMcpServer } from '@/lib/mcp/server'
@@ -20,8 +19,13 @@ export async function GET() {
   })
 }
 
-// Methods that don't require authentication (MCP handshake/discovery)
-const PUBLIC_METHODS = new Set(['initialize', 'notifications/initialized'])
+// Methods that work without authentication (discovery + tool catalog)
+// Tool names/descriptions are not sensitive — only tools/call accesses real data
+const PUBLIC_METHODS = new Set([
+  'initialize',
+  'notifications/initialized',
+  'tools/list',
+])
 
 export async function POST(request: Request) {
   // Pre-parse body to determine method
@@ -31,11 +35,11 @@ export async function POST(request: Request) {
       ? (body as { method: string }).method
       : null
 
-  // Allow initialize/notifications without auth (MCP discovery handshake)
-  // Claude.ai needs this to discover the server before sending auth
+  // Public methods: discovery handshake + tool catalog
+  // Use a placeholder trainerId — tools register their schemas (static),
+  // no data is accessed until tools/call which requires auth
   if (method && PUBLIC_METHODS.has(method)) {
-    // Create a minimal server without tools for the handshake
-    const server = new McpServer({ name: 'kinevo', version: '1.0.0' })
+    const server = createMcpServer('__discovery__')
 
     const transport = new WebStandardStreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
@@ -46,7 +50,7 @@ export async function POST(request: Request) {
     return transport.handleRequest(request, { parsedBody: body })
   }
 
-  // All other methods require authentication
+  // All other methods (tools/call, etc.) require authentication
   let context: { trainerId: string; keyId: string } | null = null
 
   try {
