@@ -8,6 +8,7 @@ import {
     Wallet, CircleDollarSign, Send, Plus, ArrowDownToLine, KeyRound,
     Check, Loader2, AlertTriangle, RefreshCw, ChevronRight, Copy,
     FileText, ExternalLink, FileCheck2, FileX2, Link2, Sparkles,
+    AlertCircle,
 } from 'lucide-react'
 import type { KinevoWalletSummary, PixKeyType, AsaasDocumentGroup } from '@/lib/asaas'
 
@@ -923,6 +924,8 @@ function PayoutModal(props: {
         )
     }
 
+    const [payoutResult, setPayoutResult] = useState<{ status: string; payoutId: string } | null>(null)
+
     async function submit() {
         setBusy(true); setError(null)
         try {
@@ -935,6 +938,8 @@ function PayoutModal(props: {
                 const body = await res.json().catch(() => ({}))
                 throw new Error(body.error || `Falha (${res.status})`)
             }
+            const body = await res.json() as { id: string; status: string }
+            setPayoutResult({ status: body.status, payoutId: body.id })
             setDone(true)
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Erro inesperado')
@@ -944,18 +949,78 @@ function PayoutModal(props: {
     }
 
     if (done) {
+        const isAwaitingMfa = payoutResult?.status === 'awaiting_authorization'
         return (
-            <ModalShell title="Saque solicitado" onClose={() => { props.onClose(); props.onSuccess() }}>
-                <div className="text-center py-4">
-                    <div className="size-14 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-3">
-                        <Check className="size-7 text-emerald-700" />
+            <ModalShell title={isAwaitingMfa ? 'Saque aguardando confirmação' : 'Saque solicitado'} onClose={() => { props.onClose(); props.onSuccess() }}>
+                {isAwaitingMfa ? (
+                    // Asaas pediu MFA — trainer precisa abrir o painel e confirmar
+                    // por SMS. Sem isso, dinheiro nunca cai. Banner laranja explica
+                    // exatamente o que tem que fazer.
+                    <div className="py-2">
+                        <div className="size-14 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-3">
+                            <AlertCircle className="size-7 text-amber-700" />
+                        </div>
+                        <p className="text-center text-slate-900 font-medium mb-1">Falta uma confirmação</p>
+                        <p className="text-center text-sm text-slate-600 mb-4">
+                            Por segurança, a Asaas mandou um código por SMS pro seu celular cadastrado.
+                            Confirme no painel pra liberar o PIX.
+                        </p>
+                        <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 mb-4">
+                            <p className="font-medium mb-1">Como confirmar:</p>
+                            <ol className="list-decimal pl-4 space-y-0.5">
+                                <li>Abra o painel da Asaas (botão abaixo)</li>
+                                <li>No banner amarelo no topo, clique <b>&ldquo;Enviar código&rdquo;</b></li>
+                                <li>Receba o SMS no celular cadastrado na Asaas</li>
+                                <li>Digite o código e clique <b>Autorizar</b></li>
+                                <li>Volta aqui e clica em <b>Já confirmei</b></li>
+                            </ol>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                            <Button
+                                onClick={() => window.open('https://www.asaas.com/home', '_blank')}
+                                className="w-full"
+                            >
+                                Abrir painel da Asaas
+                            </Button>
+                            <Button
+                                variant="outline"
+                                onClick={async () => {
+                                    try {
+                                        const r = await fetch(`/api/wallet/payouts/${payoutResult.payoutId}/sync`, { method: 'POST' })
+                                        const b = await r.json()
+                                        if (b.statusLocal === 'completed') {
+                                            alert('Pagamento confirmado! Atualizando...')
+                                        } else if (b.statusLocal === 'awaiting_authorization') {
+                                            alert('Ainda aguardando autorização. Confirme no painel da Asaas e tente de novo.')
+                                        } else {
+                                            alert(`Status atual: ${b.statusLocal}`)
+                                        }
+                                        props.onSuccess()
+                                    } catch {
+                                        alert('Erro ao sincronizar')
+                                    }
+                                }}
+                                className="w-full"
+                            >
+                                Já confirmei na Asaas
+                            </Button>
+                            <Button variant="ghost" onClick={() => { props.onClose(); props.onSuccess() }} className="w-full">
+                                Fechar
+                            </Button>
+                        </div>
                     </div>
-                    <p className="text-slate-700 mb-1">Pedido enviado pra sua conta</p>
-                    <p className="text-sm text-slate-500 mb-6">
-                        O dinheiro entra em segundos. Vamos te avisar quando confirmar.
-                    </p>
-                    <Button onClick={() => { props.onClose(); props.onSuccess() }}>Fechar</Button>
-                </div>
+                ) : (
+                    <div className="text-center py-4">
+                        <div className="size-14 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-3">
+                            <Check className="size-7 text-emerald-700" />
+                        </div>
+                        <p className="text-slate-700 mb-1">Pedido enviado pra sua conta</p>
+                        <p className="text-sm text-slate-500 mb-6">
+                            O dinheiro entra em segundos. Vamos te avisar quando confirmar.
+                        </p>
+                        <Button onClick={() => { props.onClose(); props.onSuccess() }}>Fechar</Button>
+                    </div>
+                )}
             </ModalShell>
         )
     }

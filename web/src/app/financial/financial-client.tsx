@@ -9,6 +9,7 @@ import {
     Heart, Plus, Check, DollarSign, ArrowDownToLine, ChevronDown,
     Send, Repeat, Sparkles, KeyRound, Settings as SettingsIcon, Link2,
     Lock, Unlock, Loader2, Copy, MessageCircle, Clock, X, RefreshCw,
+    AlertCircle,
 } from 'lucide-react'
 import { useOnboardingStore } from '@/stores/onboarding-store'
 import { AppLayout } from '@/components/layout'
@@ -88,6 +89,13 @@ interface FinancialDashboardClientProps {
     walletBalance: number | null
     walletRejectionReason: string | null
     hasStripeLegacyContracts: boolean
+    awaitingAuthPayouts: Array<{
+        id: string
+        amount: number
+        requestedAt: string | null
+        pixKey: string | null
+        pixKeyType: string | null
+    }>
 }
 
 const statusLabels: Record<DisplayStatus, string> = {
@@ -179,6 +187,7 @@ export function FinancialDashboardClient({
     walletBalance,
     walletRejectionReason,
     hasStripeLegacyContracts,
+    awaitingAuthPayouts,
 }: FinancialDashboardClientProps) {
     const router = useRouter()
     const searchParams = useSearchParams()
@@ -489,6 +498,69 @@ export function FinancialDashboardClient({
                             )}
                         </div>
                     </details>
+                )}
+
+                {/* ─── Banner crítico: saques aguardando confirmação SMS ─── */}
+                {awaitingAuthPayouts.length > 0 && (
+                    <div className="mb-6 rounded-2xl border-2 border-amber-300 dark:border-amber-500/40 bg-amber-50 dark:bg-amber-500/10 p-4 sm:p-5">
+                        <div className="flex items-start gap-3">
+                            <div className="rounded-full bg-amber-200 dark:bg-amber-500/20 p-2 flex-shrink-0">
+                                <AlertCircle className="w-5 h-5 text-amber-700 dark:text-amber-400" strokeWidth={2.2} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <h3 className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+                                    {awaitingAuthPayouts.length === 1 ? '1 saque aguardando' : `${awaitingAuthPayouts.length} saques aguardando`} confirmação na Asaas
+                                </h3>
+                                <p className="text-xs text-amber-800 dark:text-amber-300/90 mt-0.5 leading-relaxed">
+                                    Por segurança, a Asaas pediu confirmação por SMS pra liberar o PIX. Sem isso o dinheiro não cai na sua conta.
+                                </p>
+                                <div className="mt-3 space-y-1.5">
+                                    {awaitingAuthPayouts.map(p => (
+                                        <div key={p.id} className="flex items-center justify-between gap-3 text-xs bg-white dark:bg-amber-500/5 rounded-lg px-3 py-2 border border-amber-200 dark:border-amber-500/20">
+                                            <div className="min-w-0">
+                                                <span className="font-medium text-[#1D1D1F] dark:text-k-text-primary">
+                                                    {formatCurrency(p.amount)}
+                                                </span>
+                                                <span className="text-[#86868B] dark:text-k-text-tertiary ml-2">
+                                                    PIX → {p.pixKeyType ?? 'chave'} • {timeAgo(p.requestedAt ?? new Date().toISOString())}
+                                                </span>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={async () => {
+                                                    try {
+                                                        const r = await fetch(`/api/wallet/payouts/${p.id}/sync`, { method: 'POST' })
+                                                        const b = await r.json()
+                                                        if (b.statusLocal === 'completed') {
+                                                            router.refresh()
+                                                        } else if (b.statusLocal === 'awaiting_authorization') {
+                                                            alert('Ainda aguardando. Confirme no painel da Asaas e tente de novo.')
+                                                        } else {
+                                                            router.refresh()
+                                                        }
+                                                    } catch {
+                                                        alert('Erro ao sincronizar')
+                                                    }
+                                                }}
+                                                className="text-[11px] font-medium text-amber-700 dark:text-amber-300 hover:underline whitespace-nowrap"
+                                            >
+                                                Já confirmei
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                                <a
+                                    href="https://www.asaas.com/home"
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 text-xs font-medium rounded-md bg-amber-600 dark:bg-amber-500 text-white hover:bg-amber-700 dark:hover:bg-amber-600 transition-colors"
+                                >
+                                    <Link2 size={12} />
+                                    Abrir painel da Asaas
+                                </a>
+                            </div>
+                        </div>
+                    </div>
                 )}
 
                 {/* ─── Stats Grid ──────────────────────────────────────────── */}

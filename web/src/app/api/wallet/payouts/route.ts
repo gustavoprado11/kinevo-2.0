@@ -9,6 +9,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { AsaasApiError, createTransfer } from '@/lib/asaas'
 import { getDecryptedApiKey, requireTrainer, WalletAuthError } from '@/lib/asaas/wallet-service'
+import { insertTrainerNotification } from '@/lib/trainer-notifications'
+import { sendTrainerPush } from '@/lib/push-notifications'
 
 interface CreatePayoutBody {
     pixKeyId?: string
@@ -120,6 +122,32 @@ export async function POST(request: NextRequest) {
             })
             .eq('id', payoutRow.id)
 
+        // Notificação CRÍTICA: Asaas pediu MFA. Sem confirmação por SMS no
+        // painel, o PIX nunca sai. Trainer precisa ser avisado imediatamente
+        // mesmo se tiver desligado outras notificações financeiras.
+        if (status === 'awaiting_authorization') {
+            try {
+                const notifId = await insertTrainerNotification({
+                    trainerId: trainer.id,
+                    type: 'payout_authorization_required',
+                    title: 'Saque aguardando confirmação',
+                    message: 'A Asaas mandou um código por SMS pra liberar o PIX. Confirme no painel da Asaas pra o dinheiro cair na sua conta.',
+                    category: 'payments',
+                    metadata: { route: '/financial/wallet', payoutId: payoutRow.id },
+                })
+                await sendTrainerPush({
+                    trainerId: trainer.id,
+                    type: 'payout_authorization_required',
+                    title: 'Saque aguardando confirmação',
+                    body: 'A Asaas pediu confirmação por SMS pra liberar seu PIX.',
+                    data: { route: '/financial/wallet', payoutId: payoutRow.id },
+                    notificationId: notifId ?? undefined,
+                })
+            } catch (notifyErr) {
+                console.error('[wallet/payouts] notify awaiting_authorization failed', notifyErr)
+            }
+        }
+
         return NextResponse.json({
             id: payoutRow.id,
             asaasTransferId: transferId,
@@ -138,11 +166,23 @@ export async function POST(request: NextRequest) {
     }
 }
 
-function mapTransferStatus(asaasStatus: string): 'requested' | 'processing' | 'completed' | 'failed' | 'cancelled' {
+type PayoutLocalStatus = 'requested' | 'processing' | 'completed' | 'failed' | 'cancelled' | 'awaiting_authorization'
+
+/**
+ * Mapeia o status da Asaas pro nosso enum local.
+ *
+ * PENDING na Asaas = transfer criada mas esperando MFA (SMS) que a Asaas
+ * manda pro celular cadastrado da subconta. Sem confirmação o PIX não sai.
+ * Tratamos como 'awaiting_authorization' pra UI conseguir surfacizar e
+ * orientar o trainer a abrir o painel.
+ *
+ * BANK_PROCESSING = já autorizado, em rota pro banco do destinatário.
+ */
+function mapTransferStatus(asaasStatus: string): PayoutLocalStatus {
     switch (asaasStatus) {
         case 'DONE': return 'completed'
-        case 'BANK_PROCESSING':
-        case 'PENDING': return 'processing'
+        case 'BANK_PROCESSING': return 'processing'
+        case 'PENDING': return 'awaiting_authorization'
         case 'FAILED': return 'failed'
         case 'CANCELLED': return 'cancelled'
         default: return 'requested'

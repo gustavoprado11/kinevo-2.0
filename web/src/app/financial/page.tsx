@@ -92,6 +92,24 @@ export default async function FinancialPage() {
         .order('created_at', { ascending: false })
         .limit(20)
 
+    // Saques aguardando confirmação SMS no painel da Asaas. Estado crítico
+    // — sem ação do trainer o PIX nunca sai. Banner persistente no topo
+    // do dashboard.
+    const { data: awaitingPayouts } = await supabaseAdmin
+        .from('payouts')
+        .select('id, amount_cents, requested_at, pix_key_snapshot, pix_key_type_snapshot')
+        .eq('trainer_id', trainer.id)
+        .eq('status', 'awaiting_authorization')
+        .order('requested_at', { ascending: false })
+        .limit(5)
+    const awaitingAuthPayouts = (awaitingPayouts ?? []).map(p => ({
+        id: p.id,
+        amount: Number(p.amount_cents ?? 0) / 100,
+        requestedAt: p.requested_at,
+        pixKey: p.pix_key_snapshot,
+        pixKeyType: p.pix_key_type_snapshot,
+    }))
+
     // Lookups de nomes (alunos e planos) — pra mostrar "Maria — Consultoria"
     const studentIdSet = new Set<string>()
     for (const t of recentTransactions ?? []) if (t.student_id) studentIdSet.add(t.student_id)
@@ -245,6 +263,7 @@ export default async function FinancialPage() {
             walletBalance={walletBalance}
             walletRejectionReason={walletSummary.rejectionReason ?? null}
             hasStripeLegacyContracts={hasStripeLegacyContracts}
+            awaitingAuthPayouts={awaitingAuthPayouts}
         />
     )
 }

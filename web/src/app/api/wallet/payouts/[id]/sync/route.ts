@@ -25,7 +25,7 @@ import { getDecryptedApiKey, requireTrainer, WalletAuthError } from '@/lib/asaas
 
 /** Mapeia o status da Asaas pro status local que usamos em payouts. */
 function mapStatus(asaasStatus: string): {
-    local: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled'
+    local: 'requested' | 'processing' | 'completed' | 'failed' | 'cancelled' | 'awaiting_authorization'
     isFinal: boolean
 } {
     const s = asaasStatus.toUpperCase()
@@ -39,8 +39,11 @@ function mapStatus(asaasStatus: string): {
         case 'BANK_PROCESSING':
             return { local: 'processing', isFinal: false }
         case 'PENDING':
+            // Asaas mandou SMS pro celular cadastrado — trainer precisa
+            // confirmar no painel pra liberar a transferência.
+            return { local: 'awaiting_authorization', isFinal: false }
         default:
-            return { local: 'pending', isFinal: false }
+            return { local: 'requested', isFinal: false }
     }
 }
 
