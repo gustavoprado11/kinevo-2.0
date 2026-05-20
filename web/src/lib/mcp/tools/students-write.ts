@@ -20,7 +20,7 @@ export function registerStudentWriteTools(server: McpServer, trainerId: string) 
         .optional()
         .describe('Medical conditions or restrictions (e.g., knee injury, herniated disc)'),
     },
-    { readOnlyHint: false, destructiveHint: false },
+    { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     async ({ name, email, phone, objective, modality, training_level, medical_restrictions }) => {
       const supabaseAdmin = createAdminClient()
 
@@ -91,7 +91,7 @@ export function registerStudentWriteTools(server: McpServer, trainerId: string) 
       trainer_notes: z.string().optional().describe("Trainer's private notes about this student"),
       status: z.enum(['active', 'inactive']).optional().describe('Set student as active or inactive'),
     },
-    { readOnlyHint: false, destructiveHint: false },
+    { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     async ({ student_id, name, phone, objective, modality, trainer_notes, status }) => {
       const supabaseAdmin = createAdminClient()
 

@@ -12,7 +12,7 @@ export function registerProgressReadTools(server: McpServer, trainerId: string) 
       days: z.number().min(1).max(365).default(30).describe('Number of days to look back'),
       exercise_id: z.string().uuid().optional().describe('If provided, returns load progression for this specific exercise'),
     },
-    { readOnlyHint: true, destructiveHint: false },
+    { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     async ({ student_id, days, exercise_id }) => {
       const supabaseAdmin = createAdminClient()
       const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()
@@ -169,7 +169,7 @@ export function registerProgressReadTools(server: McpServer, trainerId: string) 
       trigger_context: z.enum(['manual', 'pre_workout', 'post_workout', 'recurring']).optional().describe('Filter by how the form was triggered'),
       limit: z.number().min(1).max(50).default(20),
     },
-    { readOnlyHint: true, destructiveHint: false },
+    { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     async ({ student_id, category, trigger_context, limit }) => {
       const supabaseAdmin = createAdminClient()
 

@@ -14,7 +14,7 @@ export function registerProgramReadTools(server: McpServer, trainerId: string) {
       limit: z.number().min(1).max(50).default(20),
       offset: z.number().min(0).default(0),
     },
-    { readOnlyHint: true, destructiveHint: false },
+    { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     async ({ student_id, status, type, limit, offset }) => {
       const supabaseAdmin = createAdminClient()
 
@@ -85,7 +85,7 @@ export function registerProgramReadTools(server: McpServer, trainerId: string) {
       program_id: z.string().uuid().describe("The program's UUID"),
       type: z.enum(['template', 'assigned']).default('assigned').describe('Whether this is a template or an assigned program'),
     },
-    { readOnlyHint: true, destructiveHint: false },
+    { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     async ({ program_id, type }) => {
       const supabaseAdmin = createAdminClient()
 

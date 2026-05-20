@@ -7,6 +7,7 @@ export function registerPingTool(server: McpServer, trainerId: string) {
     'kinevo_ping',
     'Test the connection to Kinevo. Returns trainer name and account status.',
     {},
+    { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     async () => {
       const supabaseAdmin = createAdminClient()
 

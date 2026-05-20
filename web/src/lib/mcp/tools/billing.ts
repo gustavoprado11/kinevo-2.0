@@ -11,7 +11,7 @@ export function registerBillingReadTools(server: McpServer, trainerId: string) {
       status: z.string().optional().describe("Filter by contract status (e.g., 'active', 'past_due', 'canceled', 'pending')"),
       limit: z.number().min(1).max(50).default(30),
     },
-    { readOnlyHint: true, destructiveHint: false },
+    { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     async ({ status, limit }) => {
       const supabaseAdmin = createAdminClient()
 
@@ -64,7 +64,7 @@ export function registerBillingReadTools(server: McpServer, trainerId: string) {
     {
       month: z.string().optional().describe('Month in YYYY-MM format. Defaults to current month.'),
     },
-    { readOnlyHint: true, destructiveHint: false },
+    { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     async ({ month }) => {
       const supabaseAdmin = createAdminClient()
 

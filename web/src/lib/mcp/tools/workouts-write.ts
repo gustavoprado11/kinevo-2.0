@@ -13,7 +13,7 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
       name: z.string().describe("Session name (e.g., 'Treino A - Peito e Triceps')"),
       order_index: z.number().min(0).optional().describe('Position in the program. If omitted, appends at the end.'),
     },
-    { readOnlyHint: false, destructiveHint: false },
+    { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     async ({ program_id, program_type, name, order_index }) => {
       const supabaseAdmin = createAdminClient()
 
@@ -83,7 +83,7 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
       order_index: z.number().min(0).optional().describe('Position in the session. If omitted, appends at the end.'),
       method_key: z.string().optional().describe("Training method (e.g., 'drop_set', 'rest_pause', 'cluster')"),
     },
-    { readOnlyHint: false, destructiveHint: false },
+    { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     async ({ workout_id, workout_type, exercise_id, sets, reps, rest_seconds, notes, exercise_function, order_index, method_key }) => {
       const supabaseAdmin = createAdminClient()
 

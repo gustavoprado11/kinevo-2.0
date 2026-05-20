@@ -13,7 +13,7 @@ export function registerMessageWriteTools(server: McpServer, trainerId: string) 
       student_id: z.string().uuid().describe("The student's UUID"),
       content: z.string().min(1).max(2000).describe('Message text content'),
     },
-    { readOnlyHint: false, destructiveHint: false },
+    { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
     async ({ student_id, content }) => {
       const supabaseAdmin = createAdminClient()
 

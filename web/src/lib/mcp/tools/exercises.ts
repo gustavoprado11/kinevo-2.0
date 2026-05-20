@@ -14,7 +14,7 @@ export function registerExerciseReadTools(server: McpServer, trainerId: string) 
       limit: z.number().min(1).max(100).default(30),
       offset: z.number().min(0).default(0),
     },
-    { readOnlyHint: true, destructiveHint: false },
+    { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     async ({ search, muscle_group, equipment, limit, offset }) => {
       const supabaseAdmin = createAdminClient()
 
