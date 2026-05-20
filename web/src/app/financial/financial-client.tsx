@@ -8,6 +8,7 @@ import {
     Users, TrendingUp, Receipt, ArrowRight, Wallet, AlertTriangle,
     Heart, Plus, Check, DollarSign, ArrowDownToLine, ChevronDown,
     Send, Repeat, Sparkles, KeyRound, Settings as SettingsIcon, Link2,
+    Lock, Unlock, Loader2, Copy, MessageCircle, Clock, X,
 } from 'lucide-react'
 import { useOnboardingStore } from '@/stores/onboarding-store'
 import { AppLayout } from '@/components/layout'
@@ -40,6 +41,11 @@ interface Transaction {
     created_at: string
     student_id: string | null
     studentName: string | null
+    /** Quando setado, é uma cobrança Payment Link ainda não paga: trainer
+     *  pode copiar a URL ou compartilhar via WhatsApp. */
+    paymentLinkUrl?: string | null
+    /** contract_id local pra ações tipo cancelar a cobrança pending. */
+    contractId?: string | null
 }
 
 interface ModalStudent {
@@ -179,8 +185,58 @@ export function FinancialDashboardClient({
     const [showOnboarding, setShowOnboarding] = useState(initialShowOnboarding)
     const [connectSyncing, setConnectSyncing] = useState(false)
     const [chargeOpen, setChargeOpen] = useState(false)
+    const [chargeMode, setChargeMode] = useState<'one_off' | 'recurring'>('one_off')
     const [chargeDropdownOpen, setChargeDropdownOpen] = useState(false)
+    // Feedback efêmero pro botão "Copiar link" no feed de atividade
+    const [copiedActivityId, setCopiedActivityId] = useState<string | null>(null)
+    // Cancelamento de cobrança pending — id do contrato em loading + erro
+    const [cancelingContractId, setCancelingContractId] = useState<string | null>(null)
+    const [cancelConfirmId, setCancelConfirmId] = useState<string | null>(null)
+    const [cancelError, setCancelError] = useState<string | null>(null)
+
+    async function cancelPendingCharge(contractId: string) {
+        setCancelingContractId(contractId)
+        setCancelError(null)
+        try {
+            const res = await fetch(`/api/wallet/charges/${contractId}`, { method: 'DELETE' })
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({}))
+                throw new Error(body.error || `Falha (${res.status})`)
+            }
+            router.refresh()
+            setCancelConfirmId(null)
+        } catch (err) {
+            setCancelError(err instanceof Error ? err.message : 'Erro ao cancelar')
+        } finally {
+            setCancelingContractId(null)
+        }
+    }
     const chargeBtnRef = useRef<HTMLDivElement>(null)
+
+    // Estado pra desbloquear acesso manualmente
+    const [unblockingId, setUnblockingId] = useState<string | null>(null)
+    const [unblockError, setUnblockError] = useState<string | null>(null)
+
+    async function unblockStudent(studentId: string) {
+        setUnblockingId(studentId)
+        setUnblockError(null)
+        try {
+            const res = await fetch(`/api/students/${studentId}/access`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ blocked: false }),
+            })
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({}))
+                throw new Error(body.error || `Falha (${res.status})`)
+            }
+            router.refresh()
+        } catch (err) {
+            setUnblockError(err instanceof Error ? err.message : 'Erro ao desbloquear')
+        } finally {
+            setUnblockingId(null)
+        }
+    }
 
     // Sync connect status on return from Stripe (legacy)
     useEffect(() => {
@@ -231,8 +287,9 @@ export function FinancialDashboardClient({
 
     const walletApproved = walletStatus === 'approved'
 
-    function openChargeNew() {
+    function openChargeNew(mode: 'one_off' | 'recurring' = 'one_off') {
         setChargeDropdownOpen(false)
+        setChargeMode(mode)
         setChargeOpen(true)
     }
 
@@ -254,7 +311,7 @@ export function FinancialDashboardClient({
 
                 {/* ─── HERO: Carteira ───────────────────────────────────────── */}
                 {walletApproved ? (
-                    <section className="relative rounded-2xl border border-violet-500/15 bg-gradient-to-br from-violet-50 to-blue-50 dark:from-violet-500/[0.05] dark:to-blue-500/[0.04] dark:border-violet-500/15 p-6 sm:p-7 mb-6 overflow-hidden">
+                    <section className="relative rounded-2xl border border-violet-500/15 bg-gradient-to-br from-violet-50 to-blue-50 dark:from-violet-500/[0.05] dark:to-blue-500/[0.04] dark:border-violet-500/15 p-6 sm:p-7 mb-6">
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
                             <div className="min-w-0">
                                 <div className="flex items-center gap-2 mb-1">
@@ -299,9 +356,9 @@ export function FinancialDashboardClient({
                                     </button>
 
                                     {chargeDropdownOpen && (
-                                        <div className="absolute right-0 top-full mt-2 w-64 rounded-xl border border-[#E8E8ED] dark:border-k-border-primary bg-white dark:bg-surface-card shadow-lg z-20 overflow-hidden">
+                                        <div className="absolute right-0 top-full mt-2 w-64 rounded-xl border border-[#E8E8ED] dark:border-k-border-primary bg-white dark:bg-surface-card shadow-lg z-50 overflow-hidden">
                                             <button
-                                                onClick={openChargeNew}
+                                                onClick={() => openChargeNew('one_off')}
                                                 className="w-full flex items-start gap-3 px-4 py-3 hover:bg-[#F5F5F7] dark:hover:bg-glass-bg transition-colors text-left"
                                             >
                                                 <div className="rounded-lg bg-[#007AFF]/10 dark:bg-violet-500/10 p-2 shrink-0">
@@ -313,7 +370,7 @@ export function FinancialDashboardClient({
                                                 </div>
                                             </button>
                                             <button
-                                                onClick={openChargeNew}
+                                                onClick={() => openChargeNew('recurring')}
                                                 className="w-full flex items-start gap-3 px-4 py-3 hover:bg-[#F5F5F7] dark:hover:bg-glass-bg transition-colors text-left border-t border-[#E8E8ED] dark:border-k-border-subtle"
                                             >
                                                 <div className="rounded-lg bg-[#5856D6]/10 dark:bg-blue-500/10 p-2 shrink-0">
@@ -459,33 +516,120 @@ export function FinancialDashboardClient({
                                 />
                             ) : (
                                 <div className="divide-y divide-[#E8E8ED] dark:divide-k-border-subtle">
-                                    {recentTransactions.map((tx) => (
-                                        <div key={tx.id} className="px-5 sm:px-6 py-3 flex items-center justify-between">
-                                            <div className="flex items-center gap-3 min-w-0">
-                                                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                                                    tx.status === 'succeeded' ? 'bg-[#34C759] dark:bg-emerald-400' :
-                                                    tx.status === 'pending' ? 'bg-[#FF9500] dark:bg-amber-400' :
-                                                    tx.status === 'failed' ? 'bg-[#FF3B30] dark:bg-red-400' :
-                                                    'bg-[#8E8E93] dark:bg-gray-400'
-                                                }`} />
-                                                <div className="min-w-0">
-                                                    <p className="text-sm text-[#1D1D1F] dark:text-k-text-primary truncate">
-                                                        {cleanDescription(tx)}
-                                                    </p>
-                                                    <p className="text-xs text-[#8E8E93] dark:text-k-text-quaternary mt-0.5">
-                                                        {timeAgo(tx.created_at)}
-                                                    </p>
+                                    {recentTransactions.map((tx) => {
+                                        const isPendingLink = tx.status === 'pending' && !!tx.paymentLinkUrl
+                                        const studentLabel = tx.studentName ?? 'seu aluno'
+                                        const message = `Olá ${studentLabel}! Aqui está o link para você pagar: ${tx.paymentLinkUrl}`
+                                        const wpUrl = tx.paymentLinkUrl ? `https://wa.me/?text=${encodeURIComponent(message)}` : null
+                                        return (
+                                        <div key={tx.id} className="px-5 sm:px-6 py-3">
+                                            <div className="flex items-center justify-between gap-3">
+                                                <div className="flex items-center gap-3 min-w-0">
+                                                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                                                        tx.status === 'succeeded' || tx.status === 'completed' ? 'bg-[#34C759] dark:bg-emerald-400' :
+                                                        tx.status === 'pending' ? 'bg-[#FF9500] dark:bg-amber-400' :
+                                                        tx.status === 'failed' || tx.status === 'overdue' ? 'bg-[#FF3B30] dark:bg-red-400' :
+                                                        'bg-[#8E8E93] dark:bg-gray-400'
+                                                    }`} />
+                                                    <div className="min-w-0">
+                                                        <p className="text-sm text-[#1D1D1F] dark:text-k-text-primary truncate">
+                                                            {cleanDescription(tx)}
+                                                        </p>
+                                                        <p className="text-xs text-[#8E8E93] dark:text-k-text-quaternary mt-0.5 flex items-center gap-1.5">
+                                                            {isPendingLink && <Clock size={10} className="text-[#FF9500] dark:text-amber-400" />}
+                                                            {isPendingLink ? (
+                                                                <>
+                                                                    <span className="text-[#FF9500] dark:text-amber-400 font-medium">
+                                                                        Aguardando pagamento
+                                                                    </span>
+                                                                    <span>· {timeAgo(tx.created_at)}</span>
+                                                                </>
+                                                            ) : (
+                                                                timeAgo(tx.created_at)
+                                                            )}
+                                                        </p>
+                                                    </div>
                                                 </div>
+                                                <span className={`text-sm font-semibold tabular-nums whitespace-nowrap ml-3 ${
+                                                    tx.type === 'payout' ? 'text-[#FF3B30] dark:text-red-400' :
+                                                    (tx.status === 'succeeded' || tx.status === 'completed') ? 'text-[#34C759] dark:text-emerald-400' :
+                                                    isPendingLink ? 'text-[#FF9500] dark:text-amber-400' :
+                                                    'text-[#1D1D1F] dark:text-k-text-primary'
+                                                }`}>
+                                                    {tx.type === 'payout' ? '−' : '+'}{formatCurrency(tx.amount_gross)}
+                                                </span>
                                             </div>
-                                            <span className={`text-sm font-semibold tabular-nums whitespace-nowrap ml-3 ${
-                                                tx.type === 'payout' ? 'text-[#FF3B30] dark:text-red-400' :
-                                                tx.status === 'succeeded' ? 'text-[#34C759] dark:text-emerald-400' :
-                                                'text-[#1D1D1F] dark:text-k-text-primary'
-                                            }`}>
-                                                {tx.type === 'payout' ? '−' : '+'}{formatCurrency(tx.amount_gross)}
-                                            </span>
+                                            {isPendingLink && tx.paymentLinkUrl && (
+                                                <div className="mt-2 ml-5 flex items-center gap-2 flex-wrap">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            navigator.clipboard.writeText(tx.paymentLinkUrl!)
+                                                            setCopiedActivityId(tx.id)
+                                                            setTimeout(() => setCopiedActivityId(prev => prev === tx.id ? null : prev), 1500)
+                                                        }}
+                                                        className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded-md border border-[#E8E8ED] dark:border-k-border-subtle text-[#1D1D1F] dark:text-k-text-secondary hover:bg-[#F5F5F7] dark:hover:bg-glass-bg transition-colors"
+                                                    >
+                                                        {copiedActivityId === tx.id ? (
+                                                            <><Check size={11} className="text-[#34C759] dark:text-emerald-400" /> Copiado</>
+                                                        ) : (
+                                                            <><Copy size={11} /> Copiar link</>
+                                                        )}
+                                                    </button>
+                                                    {wpUrl && (
+                                                        <a
+                                                            href={wpUrl}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded-md bg-[#34C759] dark:bg-emerald-500 text-white hover:bg-[#2EB050] dark:hover:bg-emerald-600 transition-colors"
+                                                        >
+                                                            <MessageCircle size={11} /> WhatsApp
+                                                        </a>
+                                                    )}
+                                                    {tx.contractId && (
+                                                        cancelConfirmId === tx.contractId ? (
+                                                            <div className="inline-flex items-center gap-1.5 text-[11px]">
+                                                                <span className="text-[#86868B] dark:text-k-text-tertiary">Cancelar?</span>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => cancelPendingCharge(tx.contractId!)}
+                                                                    disabled={cancelingContractId === tx.contractId}
+                                                                    className="inline-flex items-center gap-1 px-2 py-1 font-medium rounded-md bg-[#FF3B30] dark:bg-red-500 text-white hover:bg-[#E0352B] dark:hover:bg-red-600 transition-colors disabled:opacity-50"
+                                                                >
+                                                                    {cancelingContractId === tx.contractId
+                                                                        ? <Loader2 size={11} className="animate-spin" />
+                                                                        : <Check size={11} strokeWidth={3} />}
+                                                                    Sim
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => { setCancelConfirmId(null); setCancelError(null) }}
+                                                                    disabled={cancelingContractId === tx.contractId}
+                                                                    className="inline-flex items-center px-2 py-1 font-medium rounded-md border border-[#E8E8ED] dark:border-k-border-subtle text-[#1D1D1F] dark:text-k-text-secondary hover:bg-[#F5F5F7] dark:hover:bg-glass-bg transition-colors disabled:opacity-50"
+                                                                >
+                                                                    Não
+                                                                </button>
+                                                            </div>
+                                                        ) : (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => { setCancelConfirmId(tx.contractId!); setCancelError(null) }}
+                                                                className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded-md text-[#86868B] dark:text-k-text-tertiary hover:bg-[#FF3B30]/5 dark:hover:bg-red-500/10 hover:text-[#FF3B30] dark:hover:text-red-400 transition-colors"
+                                                            >
+                                                                <X size={11} /> Cancelar
+                                                            </button>
+                                                        )
+                                                    )}
+                                                    {cancelError && cancelConfirmId === tx.contractId && (
+                                                        <span className="text-[11px] text-[#FF3B30] dark:text-red-400 ml-1">
+                                                            {cancelError}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
-                                    ))}
+                                        )
+                                    })}
                                 </div>
                             )}
                         </div>
@@ -510,31 +654,49 @@ export function FinancialDashboardClient({
                                 </div>
                                 <div className="divide-y divide-[#E8E8ED] dark:divide-k-border-subtle">
                                     {attentionStudents.slice(0, 4).map(s => (
-                                        <Link
+                                        <div
                                             key={s.student_id}
-                                            href="/financial/subscriptions"
                                             className="px-5 py-3 flex items-center gap-3 hover:bg-[#F5F5F7] dark:hover:bg-glass-bg transition-colors"
                                         >
-                                            <div className={`flex h-8 w-8 items-center justify-center rounded-full overflow-hidden flex-shrink-0 border border-[#E8E8ED] dark:border-k-border-primary ${
-                                                s.display_status === 'overdue' || s.display_status === 'expired'
-                                                    ? 'bg-[#FF3B30]/10 dark:bg-red-500/10'
-                                                    : 'bg-[#FF9500]/10 dark:bg-amber-500/10'
+                                            <Link
+                                                href="/financial/subscriptions"
+                                                className="flex items-center gap-3 flex-1 min-w-0"
+                                            >
+                                            <div className={`relative flex h-8 w-8 items-center justify-center rounded-full overflow-hidden flex-shrink-0 border border-[#E8E8ED] dark:border-k-border-primary ${
+                                                s.access_blocked_at
+                                                    ? 'bg-red-100 dark:bg-red-500/15'
+                                                    : s.display_status === 'overdue' || s.display_status === 'expired'
+                                                        ? 'bg-[#FF3B30]/10 dark:bg-red-500/10'
+                                                        : 'bg-[#FF9500]/10 dark:bg-amber-500/10'
                                             }`}>
                                                 {s.avatar_url ? (
                                                     <Image src={s.avatar_url} alt={s.student_name} width={32} height={32} className="h-8 w-8 rounded-full object-cover" unoptimized />
                                                 ) : (
                                                     <span className={`text-xs font-semibold ${
-                                                        s.display_status === 'overdue' || s.display_status === 'expired'
-                                                            ? 'text-[#FF3B30] dark:text-red-400'
-                                                            : 'text-[#FF9500] dark:text-amber-400'
+                                                        s.access_blocked_at
+                                                            ? 'text-red-700 dark:text-red-300'
+                                                            : s.display_status === 'overdue' || s.display_status === 'expired'
+                                                                ? 'text-[#FF3B30] dark:text-red-400'
+                                                                : 'text-[#FF9500] dark:text-amber-400'
                                                     }`}>
                                                         {s.student_name?.charAt(0).toUpperCase() || '?'}
                                                     </span>
                                                 )}
+                                                {s.access_blocked_at && (
+                                                    <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-red-600 dark:bg-red-500 border-2 border-white dark:border-surface-card flex items-center justify-center">
+                                                        <Lock size={7} className="text-white" strokeWidth={3} />
+                                                    </span>
+                                                )}
                                             </div>
                                             <div className="min-w-0 flex-1">
-                                                <p className="text-sm font-medium text-[#1D1D1F] dark:text-k-text-primary truncate">
+                                                <p className="text-sm font-medium text-[#1D1D1F] dark:text-k-text-primary truncate flex items-center gap-1.5">
                                                     {s.student_name}
+                                                    {s.access_blocked_at && (
+                                                        <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-500/15 text-red-700 dark:text-red-400">
+                                                            <Lock size={8} strokeWidth={3} />
+                                                            App bloqueado
+                                                        </span>
+                                                    )}
                                                 </p>
                                                 <p className={`text-[11px] ${statusColors[s.display_status]}`}>
                                                     {s.display_status === 'overdue' && s.current_period_end
@@ -546,9 +708,34 @@ export function FinancialDashboardClient({
                                                 </p>
                                             </div>
                                             <ArrowRight size={13} className="text-[#86868B] dark:text-k-text-tertiary flex-shrink-0" />
-                                        </Link>
+                                            </Link>
+                                            {s.access_blocked_at && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.preventDefault()
+                                                        e.stopPropagation()
+                                                        void unblockStudent(s.student_id)
+                                                    }}
+                                                    disabled={unblockingId === s.student_id}
+                                                    title={s.access_blocked_reason ?? 'Liberar acesso ao app'}
+                                                    className="ml-1 inline-flex items-center gap-1 text-[10px] font-medium px-2 py-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-500/25 disabled:opacity-50 flex-shrink-0"
+                                                >
+                                                    {unblockingId === s.student_id ? (
+                                                        <Loader2 size={10} className="animate-spin" />
+                                                    ) : (
+                                                        <Unlock size={10} strokeWidth={2.5} />
+                                                    )}
+                                                    Liberar
+                                                </button>
+                                            )}
+                                        </div>
                                     ))}
                                 </div>
+                                {unblockError && (
+                                    <div className="px-5 py-2 text-xs text-red-700 dark:text-red-400 border-t border-red-200 dark:border-red-500/20 bg-red-50 dark:bg-red-500/[0.05]">
+                                        {unblockError}
+                                    </div>
+                                )}
                                 {attentionStudents.length > 4 && (
                                     <Link
                                         href="/financial/subscriptions"
@@ -608,6 +795,7 @@ export function FinancialDashboardClient({
                 students={students}
                 plans={activePlans}
                 walletStatus={walletStatus}
+                initialMode={chargeMode}
             />
         </AppLayout>
     )

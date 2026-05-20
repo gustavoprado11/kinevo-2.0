@@ -23,9 +23,9 @@ const STEPS: Step[] = [
     {
         title: 'Liberdade total',
         description:
-            'Todos os seus alunos começam com acesso gratuito. Você decide individualmente quem cobrar e como.',
+            'Todos os seus alunos começam com acesso gratuito (cortesia). Você decide individualmente quem cobrar e quanto.',
         details: [
-            'Todo aluno cadastrado aparece como Cortesia automaticamente',
+            'Todo aluno cadastrado começa como Cortesia automaticamente',
             'Você não precisa cobrar ninguém — o Kinevo funciona sem cobrança',
             'Configure cobrança individual a qualquer momento',
         ],
@@ -34,40 +34,41 @@ const STEPS: Step[] = [
         accentText: 'text-emerald-600 dark:text-emerald-400',
     },
     {
-        title: 'Duas formas de cobrar',
+        title: 'Carteira Kinevo — receba via PIX e Cartão',
         description:
-            'Escolha entre cobrança automática via cartão ou controle manual.',
+            'Em parceria com a Asaas, você recebe direto no app. Sem mensalidade, saque PIX sem taxa.',
         details: [
-            'Stripe: gere um link, envie ao aluno, renovação automática',
-            'Manual: registre pagamentos (Pix, dinheiro) no seu ritmo',
-            'Você pode misturar — alguns alunos no Stripe, outros manual',
+            'Aluno paga via PIX, Cartão ou Boleto sem sair do checkout',
+            'Saque na hora pra sua chave PIX, quando quiser',
+            'Já tem conta Asaas? Pode vincular em vez de criar uma nova',
+            'Taxas: 1,99% + R$ 0,40 no PIX, 2,99% + R$ 0,49 no Cartão',
         ],
         icon: <CreditCard size={24} />,
         accent: 'bg-violet-500/10',
         accentText: 'text-violet-600 dark:text-violet-400',
     },
     {
-        title: 'Links de pagamento',
-        description: 'Gere links em segundos e envie pelo WhatsApp.',
+        title: 'Cobrar aluno em 3 cliques',
+        description: 'Gere um link de cobrança e envie pelo WhatsApp — o aluno paga em segundos.',
         details: [
-            'Clique em "Configurar" no aluno, escolha Stripe e o plano',
-            'Copie o link ou envie direto pelo WhatsApp',
-            'O status atualiza automaticamente quando o aluno pagar',
-            'Links expiram em 24h — gere um novo se precisar',
+            'No botão "Cobrar aluno": escolha entre avulsa ou recorrente',
+            'Pague uma vez (avulsa) ou cobrança automática mensal/anual',
+            'Compartilhe o link via WhatsApp ou copie e cole',
+            'O status atualiza automaticamente quando o pagamento entra',
         ],
         icon: <Link2 size={24} />,
         accent: 'bg-blue-500/10',
         accentText: 'text-blue-600 dark:text-blue-400',
     },
     {
-        title: 'Cancelamento pelo app',
+        title: 'Acompanhamento em tempo real',
         description:
-            'Alunos com Stripe podem cancelar a assinatura pelo próprio app.',
+            'Receba push assim que algo acontecer na sua Carteira — pagamentos, cancelamentos e saques.',
         details: [
-            'Você recebe uma notificação imediata quando isso acontecer',
-            'O acesso do aluno continua até o fim do período pago',
-            'Após o período, o aluno volta para cortesia',
-            'Você pode reconfigurar a cobrança quando quiser',
+            'Push quando um aluno paga (PIX cai em segundos)',
+            'Push quando um saque cai na sua conta bancária',
+            'Aviso quando uma assinatura for cancelada',
+            'Tudo configurável em Configurações → Notificações',
         ],
         icon: <BellRing size={24} />,
         accent: 'bg-amber-500/10',
@@ -76,12 +77,12 @@ const STEPS: Step[] = [
     {
         title: 'Controle de inadimplência',
         description:
-            'Você decide se o aluno perde acesso aos treinos quando atrasar.',
+            'Você decide se o aluno perde acesso aos treinos quando atrasar — e por quantos dias de tolerância.',
         details: [
-            'Padrão: acesso liberado mesmo com atraso (você resolve no seu tempo)',
-            'Opcional: ative "Bloquear se inadimplente" por aluno',
-            'Com bloqueio: após 3 dias de atraso, o aluno perde acesso no app',
-            'Pagamentos manuais têm 3 dias de graça antes de contar como atraso',
+            'Toggle "Bloquear acesso ao app após inadimplência" em Configurações',
+            'Defina o período de tolerância (3 dias é o padrão recomendado)',
+            'O bloqueio é automático após o prazo — e cai sozinho quando o aluno paga',
+            'Você pode desbloquear manualmente a qualquer momento',
         ],
         icon: <ShieldCheck size={24} />,
         accent: 'bg-red-500/10',
@@ -132,14 +133,15 @@ export function FinancialOnboardingModal() {
     return (
         <AnimatePresence>
             {isOpen && (
-                <div className="fixed inset-0 z-onboarding flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
                     {/* Backdrop */}
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.3 }}
-                        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+                    {/* Backdrop sólido sem animação — animação de fade do
+                        framer-motion estava travando em ~30% de opacidade
+                        em alguns navegadores, deixando o conteúdo atrás
+                        do modal visível. Usar classe estática resolve. */}
+                    <div
+                        onClick={handleClose}
+                        className="absolute inset-0 bg-black/80 backdrop-blur-sm cursor-pointer"
                     />
 
                     {/* Modal */}

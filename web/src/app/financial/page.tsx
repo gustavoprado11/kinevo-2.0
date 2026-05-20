@@ -78,20 +78,69 @@ export default async function FinancialPage() {
         .order('created_at', { ascending: false })
         .limit(10)
 
-    // Enrich transactions with student names
-    const studentIds = [...new Set((recentTransactions ?? []).map(t => t.student_id).filter(Boolean))]
+    // Fetch pending Payment Links (cobrança gerada mas ainda não paga). A
+    // gente mostra esses na mesma timeline pra trainer ver "tem 3 cobranças
+    // esperando pagamento, mando o link de novo?"
+    const { data: pendingLinks } = await supabaseAdmin
+        .from('student_contracts')
+        .select('id, amount, billing_type, asaas_payment_link_id, plan_id, student_id, created_at')
+        .eq('trainer_id', trainer.id)
+        .eq('status', 'pending_payment')
+        .not('asaas_payment_link_id', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(20)
+
+    // Lookups de nomes (alunos e planos) — pra mostrar "Maria — Consultoria"
+    const studentIdSet = new Set<string>()
+    for (const t of recentTransactions ?? []) if (t.student_id) studentIdSet.add(t.student_id)
+    for (const c of pendingLinks ?? []) if (c.student_id) studentIdSet.add(c.student_id)
+
     const studentNameMap: Record<string, string> = {}
-    if (studentIds.length > 0) {
+    if (studentIdSet.size > 0) {
         const { data: txStudents } = await supabaseAdmin
             .from('students')
             .select('id, name')
-            .in('id', studentIds)
+            .in('id', Array.from(studentIdSet))
         if (txStudents) {
-            for (const s of txStudents) {
-                studentNameMap[s.id] = s.name
-            }
+            for (const s of txStudents) studentNameMap[s.id] = s.name
         }
     }
+
+    const planIdSet = new Set<string>()
+    for (const c of pendingLinks ?? []) if (c.plan_id) planIdSet.add(c.plan_id)
+    const planTitleMap: Record<string, string> = {}
+    if (planIdSet.size > 0) {
+        const { data: ps } = await supabaseAdmin
+            .from('trainer_plans')
+            .select('id, title')
+            .in('id', Array.from(planIdSet))
+        if (ps) for (const p of ps) planTitleMap[p.id] = p.title
+    }
+
+    // Resolve a base URL do checkout Asaas (depende do env: sandbox vs prod)
+    const asaasCheckoutBase = (process.env.ASAAS_ENV === 'production')
+        ? 'https://www.asaas.com/c/'
+        : 'https://sandbox.asaas.com/c/'
+
+    // Pending charges viram entradas tipo "transaction com status=pending" pro
+    // feed unificado. Inclui URL do link + contractId pra UI mostrar
+    // botões Copiar/WhatsApp/Cancelar.
+    const pendingActivityEntries = (pendingLinks ?? []).map(c => ({
+        id: `pending-${c.id}`,
+        amount_gross: Number(c.amount ?? 0),
+        amount_net: Number(c.amount ?? 0),
+        currency: 'brl',
+        type: c.billing_type === 'asaas_auto_recurring' ? 'subscription' : 'charge',
+        status: 'pending',
+        description: c.plan_id ? planTitleMap[c.plan_id] ?? null : null,
+        created_at: c.created_at ?? new Date().toISOString(),
+        student_id: c.student_id,
+        studentName: c.student_id ? studentNameMap[c.student_id] ?? null : null,
+        paymentLinkUrl: c.asaas_payment_link_id
+            ? `${asaasCheckoutBase}${c.asaas_payment_link_id}`
+            : null,
+        contractId: c.id,
+    }))
 
     const connectStatus = {
         connected: !!paymentSettings?.stripe_connect_id,
@@ -155,10 +204,15 @@ export default async function FinancialPage() {
             payingCount={payingCount}
             courtesyCount={courtesyCount}
             attentionStudents={attentionStudents}
-            recentTransactions={(recentTransactions ?? []).map(tx => ({
-                ...tx,
-                studentName: tx.student_id ? studentNameMap[tx.student_id] || null : null,
-            }))}
+            recentTransactions={[
+                ...(recentTransactions ?? []).map(tx => ({
+                    ...tx,
+                    studentName: tx.student_id ? studentNameMap[tx.student_id] || null : null,
+                    paymentLinkUrl: null as string | null,
+                    contractId: null as string | null,
+                })),
+                ...pendingActivityEntries,
+            ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 15)}
             plansCount={plans?.length ?? 0}
             students={(students ?? []).map(s => ({ id: s.id, name: s.name, email: s.email }))}
             activePlans={(activePlans ?? []).map(p => ({

@@ -263,7 +263,7 @@ export function FinancialSettingsClient({
                 >
                     <Toggle
                         label="PIX"
-                        help={`Taxa ${formatPercent(ASAAS_FEES.PIX.percent)} por recebimento. Liberação em até 1 dia útil.`}
+                        help={`Taxa ${formatPercent(ASAAS_FEES.PIX.percent)} + ${formatBRL(ASAAS_FEES.PIX.fixed)} por recebimento. Liberação em até 1 dia útil.`}
                         on={settings.defaultAllowPix}
                         onChange={v => save('defaultAllowPix', v)}
                         saving={savingFor === 'defaultAllowPix'}
@@ -305,7 +305,7 @@ export function FinancialSettingsClient({
                             <FeeRowDisplay
                                 method="PIX"
                                 detail="Recebimento à vista"
-                                fee={`${formatPercent(ASAAS_FEES.PIX.percent)}`}
+                                fee={`${formatPercent(ASAAS_FEES.PIX.percent)} + ${formatBRL(ASAAS_FEES.PIX.fixed)}`}
                                 release="Até 1 dia útil"
                             />
                             <FeeRowDisplay
@@ -341,7 +341,23 @@ export function FinancialSettingsClient({
                     {settings.blockOnOverdue && (
                         <Row
                             label="Período de tolerância"
-                            help="Quantos dias de atraso antes de bloquear. 3 dias é o padrão recomendado."
+                            help={
+                                <span className="flex items-center gap-2 flex-wrap">
+                                    <span>Quantos dias de atraso antes de bloquear o acesso.</span>
+                                    {settings.overdueGraceDays === 3 ? (
+                                        <span className="text-emerald-700 dark:text-emerald-400 font-medium">
+                                            Padrão recomendado
+                                        </span>
+                                    ) : (
+                                        <button
+                                            onClick={() => void save('overdueGraceDays', 3)}
+                                            className="text-[#007AFF] dark:text-violet-400 font-medium hover:underline"
+                                        >
+                                            Restaurar padrão (3 dias)
+                                        </button>
+                                    )}
+                                </span>
+                            }
                         >
                             <div className="flex items-center gap-3">
                                 <input
@@ -495,7 +511,7 @@ function Row({
     label, help, children,
 }: {
     label: string
-    help?: string
+    help?: React.ReactNode
     children: React.ReactNode
 }) {
     return (
@@ -503,7 +519,7 @@ function Row({
             <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-[#1D1D1F] dark:text-k-text-primary">{label}</p>
                 {help && (
-                    <p className="text-xs text-[#86868B] dark:text-k-text-tertiary mt-0.5">{help}</p>
+                    <div className="text-xs text-[#86868B] dark:text-k-text-tertiary mt-0.5">{help}</div>
                 )}
             </div>
             <div className="flex-shrink-0">
