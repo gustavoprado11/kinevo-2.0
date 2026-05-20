@@ -208,8 +208,20 @@ export function FinancialDashboardClient({
                 return
             }
             if (body.synced) {
-                // Pagamento encontrado — recarrega o feed (a linha vai sair do pending)
-                router.refresh()
+                // Pagamento encontrado — mostra a taxa real cobrada antes do refresh
+                if (typeof body.value === 'number' && typeof body.netValue === 'number') {
+                    const fee = Math.max(0, body.value - body.netValue)
+                    const feeFmt = fee.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+                    const netFmt = body.netValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+                    setSyncMessage({
+                        contractId,
+                        text: `Confirmado. Líquido: ${netFmt} (taxa real ${feeFmt}). Atualizando…`,
+                        kind: 'success',
+                    })
+                    setTimeout(() => router.refresh(), 1500)
+                } else {
+                    router.refresh()
+                }
             } else {
                 setSyncMessage({
                     contractId,
