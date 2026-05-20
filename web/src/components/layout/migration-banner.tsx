@@ -1,11 +1,19 @@
 'use client'
 
 import { useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { Sparkles, X } from 'lucide-react'
 import { useOnboardingStore } from '@/stores/onboarding-store'
 import { updateOnboardingState } from '@/actions/onboarding/update-onboarding-state'
 
 const TIP_ID = 'm15_unification_banner'
+
+/**
+ * Rotas onde o banner do M15 (unificação Formulários/Avaliações) é
+ * intencionalmente escondido — o conteúdo do banner é irrelevante nessas
+ * páginas e distrai do foco principal (ex: Financeiro, configurações).
+ */
+const HIDDEN_PATH_PREFIXES = ['/financial', '/checkout']
 
 // M15 — comunica a re-unificação de Formulários e Avaliações no sidebar
 // (1 item composto + segmented control). Substitui o banner do M8/D1
@@ -22,10 +30,17 @@ export function MigrationBanner() {
     const isDismissed = useOnboardingStore(s => s.state.tips_dismissed.includes(TIP_ID))
     const currentState = useOnboardingStore(s => s.state)
     const dismissTipLocal = useOnboardingStore(s => s.dismissTip)
+    const pathname = usePathname()
     const [closing, setClosing] = useState(false)
     const [busy, setBusy] = useState(false)
 
     if (!isHydrated || isDismissed) return null
+
+    // Não aparece em rotas focadas (Financeiro, etc.) — banner é genérico,
+    // só faz sentido em fluxos onde o trainer tá navegando o sistema todo.
+    if (HIDDEN_PATH_PREFIXES.some(prefix => pathname?.startsWith(prefix))) {
+        return null
+    }
 
     const handleDismiss = async () => {
         if (busy) return

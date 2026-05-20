@@ -19,7 +19,7 @@ import type { FinancialStudent, DisplayStatus } from '@/types/financial'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import {
     Plus, Search, Users, Loader2, CheckCircle, ArrowLeft, Copy,
-    RefreshCw, MessageCircle, Settings2, ChevronDown,
+    RefreshCw, MessageCircle, Settings2,
     Heart, DollarSign, CheckCircle2, FolderArchive, CalendarOff
 } from 'lucide-react'
 
@@ -158,7 +158,6 @@ export function SubscriptionsClient({
     const [actionLoading, setActionLoading] = useState<string | null>(null)
     const [syncing, setSyncing] = useState(false)
     const [blockConfirmId, setBlockConfirmId] = useState<string | null>(null)
-    const [howToOpen, setHowToOpen] = useState(false)
     const [archiveTarget, setArchiveTarget] = useState<FinancialStudent | null>(null)
     const [appointmentPrompt, setAppointmentPrompt] = useState<{
         studentId: string
@@ -377,6 +376,29 @@ export function SubscriptionsClient({
         return statusConfig[s.display_status].label
     }
 
+    // Stats agregados pro topo da página
+    const monthStart = new Date()
+    monthStart.setDate(1)
+    monthStart.setHours(0, 0, 0, 0)
+    const stats = {
+        active: financialStudents.filter(s => s.display_status === 'active').length,
+        overdue: financialStudents.filter(s =>
+            s.display_status === 'overdue' || s.display_status === 'grace_period'
+        ).length,
+        canceledMonth: financialStudents.filter(s =>
+            s.display_status === 'canceled' &&
+            s.canceled_at &&
+            new Date(s.canceled_at) >= monthStart
+        ).length,
+        monthlyRevenue: financialStudents.reduce((sum, s) => {
+            if (s.display_status !== 'active' || !s.amount) return sum
+            const monthly = s.plan_interval === 'year' ? s.amount / 12
+                : s.plan_interval === 'quarter' ? s.amount / 3
+                : s.amount
+            return sum + monthly
+        }, 0),
+    }
+
     const modalStudents = students.map(s => ({
         id: s.id,
         name: s.name,
@@ -398,146 +420,120 @@ export function SubscriptionsClient({
             trainerAvatarUrl={trainer.avatar_url}
             trainerTheme={trainer.theme as 'light' | 'dark' | 'system' | null}
         >
-            <div className="min-h-screen bg-[#F5F5F7] dark:bg-surface-primary p-8 font-sans">
-                <div className="max-w-7xl mx-auto space-y-8">
+            <div className="max-w-5xl mx-auto">
+                {/* Voltar */}
+                <Link
+                    href="/financial"
+                    className="inline-flex items-center gap-1 text-sm text-[#86868B] dark:text-k-text-tertiary hover:text-[#1D1D1F] dark:hover:text-k-text-primary transition-colors mb-4"
+                >
+                    <ArrowLeft size={16} />
+                    Voltar pro Financeiro
+                </Link>
 
-                    {/* Header */}
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                        <div>
-                            <Link
-                                href="/financial"
-                                className="inline-flex items-center gap-1.5 text-xs text-[#6E6E73] dark:text-k-text-secondary hover:text-[#007AFF] dark:hover:text-violet-400 transition-colors mb-3"
-                            >
-                                <ArrowLeft size={14} />
-                                Voltar para Financeiro
-                            </Link>
-                            <h1 className="text-3xl font-bold tracking-tighter text-[#1D1D1F] dark:bg-gradient-to-br dark:from-[var(--gradient-text-from)] dark:to-[var(--gradient-text-to)] dark:bg-clip-text dark:text-transparent">
-                                Assinaturas
-                            </h1>
-                            <p className="mt-1 text-sm text-[#86868B] dark:text-muted-foreground/60">
-                                Gerencie as cobranças dos seus alunos
-                            </p>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            {hasStripeConnect && (
-                                <span className="inline-flex items-center">
-                                    <button
-                                        onClick={handleSyncContracts}
-                                        disabled={syncing}
-                                        title="Sincronizar assinaturas com o Stripe"
-                                        className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-full border border-[#D2D2D7] dark:border-k-border-primary bg-white dark:bg-glass-bg hover:bg-[#007AFF]/10 dark:hover:bg-violet-500/10 text-[#6E6E73] dark:text-k-text-secondary hover:text-[#007AFF] dark:hover:text-violet-400 transition-all disabled:opacity-50"
-                                    >
-                                        <RefreshCw size={16} className={syncing ? 'animate-spin' : ''} />
-                                        {syncing ? 'Sincronizando...' : 'Sincronizar'}
-                                    </button>
-                                    <InfoTooltip content="Atualiza o status dos pagamentos Stripe. Use após enviar um link de pagamento para verificar se o aluno já pagou." />
-                                </span>
-                            )}
+                {/* Header */}
+                <div className="flex items-start justify-between gap-4 mb-6">
+                    <div>
+                        <h1 className="text-2xl font-bold text-[#1D1D1F] dark:text-k-text-primary">Assinaturas</h1>
+                        <p className="text-sm text-[#86868B] dark:text-k-text-tertiary mt-1">
+                            Quem está pagando recorrente — inclui Carteira Kinevo, manual e cortesia.
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                        {hasStripeConnect && (
                             <button
-                                onClick={() => handleOpenConfigModal('new')}
-                                className="bg-[#007AFF] hover:bg-[#0056B3] dark:bg-violet-600 dark:hover:bg-violet-500 text-white rounded-full px-6 py-2.5 text-sm font-semibold transition-all active:scale-95 flex items-center gap-2 w-fit"
+                                onClick={handleSyncContracts}
+                                disabled={syncing}
+                                title="Sincronizar assinaturas com o Stripe legado"
+                                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E8E8ED] dark:border-k-border-primary bg-white dark:bg-surface-card text-[#86868B] dark:text-k-text-tertiary hover:bg-[#F5F5F7] dark:hover:bg-glass-bg text-xs font-medium disabled:opacity-50"
                             >
-                                <Plus size={18} strokeWidth={2} />
-                                Nova Cobrança
+                                <RefreshCw size={13} className={syncing ? 'animate-spin' : ''} />
+                                {syncing ? 'Sincronizando…' : 'Sincronizar Stripe'}
                             </button>
-                        </div>
-                    </div>
-
-                    {/* Tabs + Search */}
-                    <div className="space-y-4" data-student-list>
-                        <div className="flex items-center gap-1 bg-white dark:bg-surface-card border border-[#E8E8ED] dark:border-k-border-subtle rounded-xl p-1">
-                            {tabs.map(tab => {
-                                const count = tabCounts[tab.key]
-                                const isActive = activeTab === tab.key
-                                return (
-                                    <button
-                                        key={tab.key}
-                                        onClick={() => setActiveTab(tab.key)}
-                                        className={`flex-1 px-3 py-2 text-xs font-medium rounded-lg transition-all flex items-center justify-center gap-1.5 ${
-                                            isActive
-                                                ? 'bg-[#F5F5F7] dark:bg-glass-bg-active text-[#1D1D1F] dark:text-k-text-primary shadow-sm'
-                                                : 'text-[#86868B] dark:text-k-text-tertiary hover:text-[#6E6E73] dark:hover:text-k-text-secondary'
-                                        }`}
-                                    >
-                                        {tab.label}
-                                        <span className={`text-[10px] ${
-                                            isActive ? 'text-[#007AFF] dark:text-violet-400' : 'text-[#AEAEB2] dark:text-k-text-quaternary'
-                                        }`}>
-                                            {count}
-                                        </span>
-                                        {tab.badge && count > 0 && (
-                                            <span className="w-1.5 h-1.5 rounded-full bg-[#FF3B30] dark:bg-red-500" />
-                                        )}
-                                    </button>
-                                )
-                            })}
-                        </div>
-
-                        {/* Collapsible "Como funciona" */}
-                        <button
-                            onClick={() => setHowToOpen(!howToOpen)}
-                            className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl border border-[#E8E8ED] dark:border-k-border-subtle bg-white dark:bg-glass-bg text-[#86868B] dark:text-k-text-tertiary hover:text-[#6E6E73] dark:hover:text-k-text-secondary transition-colors"
-                        >
-                            <span className="text-xs font-medium">Como funciona a cobrança</span>
-                            <ChevronDown
-                                size={14}
-                                className={`transition-transform duration-200 ${howToOpen ? 'rotate-180' : ''}`}
-                            />
-                        </button>
-                        {howToOpen && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 px-1">
-                                <div className="rounded-xl border border-[#E8E8ED] dark:border-k-border-subtle bg-white dark:bg-glass-bg p-4">
-                                    <div className="flex items-center gap-2 mb-1.5">
-                                        <Heart size={13} className="text-[#34C759] dark:text-emerald-400" />
-                                        <span className="text-xs font-semibold text-[#1D1D1F] dark:text-k-text-primary">Cortesia por padrão</span>
-                                    </div>
-                                    <p className="text-[11px] text-[#6E6E73] dark:text-k-text-secondary leading-relaxed">
-                                        Todo aluno começa com acesso gratuito. Você decide individualmente quem cobrar.
-                                    </p>
-                                </div>
-                                <div className="rounded-xl border border-[#E8E8ED] dark:border-k-border-subtle bg-white dark:bg-glass-bg p-4">
-                                    <div className="flex items-center gap-2 mb-1.5">
-                                        <DollarSign size={13} className="text-[#007AFF] dark:text-violet-400" />
-                                        <span className="text-xs font-semibold text-[#1D1D1F] dark:text-k-text-primary">Stripe (automático)</span>
-                                    </div>
-                                    <p className="text-[11px] text-[#6E6E73] dark:text-k-text-secondary leading-relaxed">
-                                        Gere um link, envie ao aluno, renovação automática. O aluno pode cancelar pelo app.
-                                    </p>
-                                </div>
-                                <div className="rounded-xl border border-[#E8E8ED] dark:border-k-border-subtle bg-white dark:bg-glass-bg p-4">
-                                    <div className="flex items-center gap-2 mb-1.5">
-                                        <Copy size={13} className="text-[#007AFF] dark:text-blue-400" />
-                                        <span className="text-xs font-semibold text-[#1D1D1F] dark:text-k-text-primary">Manual</span>
-                                    </div>
-                                    <p className="text-[11px] text-[#6E6E73] dark:text-k-text-secondary leading-relaxed">
-                                        Registre pagamentos (Pix, dinheiro) no seu ritmo. O Kinevo avisa 3 dias após o vencimento.
-                                    </p>
-                                </div>
-                                <div className="rounded-xl border border-[#E8E8ED] dark:border-k-border-subtle bg-white dark:bg-glass-bg p-4">
-                                    <div className="flex items-center gap-2 mb-1.5">
-                                        <Settings2 size={13} className="text-[#FF9500] dark:text-amber-400" />
-                                        <span className="text-xs font-semibold text-[#1D1D1F] dark:text-k-text-primary">Bloqueio de acesso</span>
-                                    </div>
-                                    <p className="text-[11px] text-[#6E6E73] dark:text-k-text-secondary leading-relaxed">
-                                        Opcional por aluno. Se ativado, o aluno perde acesso aos treinos após 3 dias de atraso.
-                                    </p>
-                                </div>
-                            </div>
                         )}
-
-                        <div className="relative group">
-                            <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-                                <Search className="w-[18px] h-[18px] text-[#AEAEB2] dark:text-k-text-quaternary group-focus-within:text-[#007AFF] dark:group-focus-within:text-violet-500 transition-colors" strokeWidth={1.5} />
-                            </div>
-                            <input
-                                type="text"
-                                placeholder="Buscar por nome do aluno..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full bg-white dark:bg-glass-bg border border-[#D2D2D7] dark:border-k-border-primary rounded-2xl py-3 pl-11 pr-4 text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:outline-none focus:ring-2 focus:ring-[#007AFF]/10 dark:focus:ring-violet-500/10 focus:border-[#007AFF]/50 dark:focus:border-violet-500/50 transition-all text-sm"
-                            />
-                        </div>
+                        <button
+                            onClick={() => handleOpenConfigModal('new')}
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#007AFF] dark:bg-violet-600 hover:bg-[#0056B3] dark:hover:bg-violet-500 text-white text-sm font-medium transition-colors active:scale-[0.98]"
+                        >
+                            <Plus size={15} />
+                            Nova assinatura
+                        </button>
                     </div>
+                </div>
+
+                {/* Stats no topo */}
+                {financialStudents.length > 0 && (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                        <SubStat
+                            label="Ativas"
+                            value={stats.active.toString()}
+                            tone="emerald"
+                        />
+                        <SubStat
+                            label="Em atraso"
+                            value={stats.overdue.toString()}
+                            tone={stats.overdue > 0 ? 'red' : 'neutral'}
+                            detail={stats.overdue > 0 ? 'Precisam de ação' : 'Nenhuma'}
+                        />
+                        <SubStat
+                            label="Canceladas no mês"
+                            value={stats.canceledMonth.toString()}
+                            tone="neutral"
+                        />
+                        <SubStat
+                            label="Receita mensal"
+                            value={formatCurrency(stats.monthlyRevenue)}
+                            tone="violet"
+                            detail="Soma do que está cobrando hoje"
+                        />
+                    </div>
+                )}
+
+                <div className="space-y-4" data-student-list>
+                    {/* Filtros chip-style */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                        {tabs.map(tab => {
+                            const count = tabCounts[tab.key]
+                            const isActive = activeTab === tab.key
+                            return (
+                                <button
+                                    key={tab.key}
+                                    onClick={() => setActiveTab(tab.key)}
+                                    className={`inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full transition-colors ${
+                                        isActive
+                                            ? 'bg-[#1D1D1F] dark:bg-k-text-primary text-white dark:text-surface-card'
+                                            : 'bg-white dark:bg-surface-card text-[#6E6E73] dark:text-k-text-secondary border border-[#E8E8ED] dark:border-k-border-primary hover:bg-[#F5F5F7] dark:hover:bg-glass-bg'
+                                    }`}
+                                >
+                                    {tab.label}
+                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                                        isActive
+                                            ? 'bg-white/20 dark:bg-surface-card/30'
+                                            : 'bg-[#F5F5F7] dark:bg-glass-bg'
+                                    }`}>
+                                        {count}
+                                    </span>
+                                    {tab.badge && count > 0 && (
+                                        <span className="w-1.5 h-1.5 rounded-full bg-[#FF3B30] dark:bg-red-500" />
+                                    )}
+                                </button>
+                            )
+                        })}
+                    </div>
+
+                    {/* Busca */}
+                    <div className="relative group">
+                        <div className="absolute inset-y-0 left-3.5 flex items-center pointer-events-none">
+                            <Search className="w-4 h-4 text-[#AEAEB2] dark:text-k-text-quaternary group-focus-within:text-[#007AFF] dark:group-focus-within:text-violet-500 transition-colors" strokeWidth={1.5} />
+                        </div>
+                        <input
+                            type="text"
+                            placeholder="Buscar por nome do aluno…"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full bg-white dark:bg-surface-card border border-[#E8E8ED] dark:border-k-border-primary rounded-xl py-2.5 pl-10 pr-4 text-sm text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:outline-none focus:ring-2 focus:ring-[#007AFF]/15 dark:focus:ring-violet-500/15 focus:border-[#007AFF]/50 dark:focus:border-violet-500/50"
+                        />
+                    </div>
+                </div>
 
                     {/* Table */}
                     {filteredStudents.length === 0 ? (
@@ -811,7 +807,6 @@ export function SubscriptionsClient({
                             </div>
                         </div>
                     )}
-                </div>
             </div>
 
             {/* Configure Billing Modal (legacy — Stripe + manual + cortesia) */}
@@ -842,6 +837,7 @@ export function SubscriptionsClient({
                 students={modalStudents}
                 plans={modalPlans}
                 walletStatus={walletStatus}
+                initialMode="recurring"
             />
 
             {/* Financial Onboarding Modal (first visit) */}
@@ -971,5 +967,34 @@ export function SubscriptionsClient({
                 </div>
             )}
         </AppLayout>
+    )
+}
+
+// ─── Helper: card de stat usado no topo ──────────────────────────────────
+
+function SubStat({
+    label, value, tone, detail,
+}: {
+    label: string
+    value: string
+    tone: 'emerald' | 'red' | 'violet' | 'neutral'
+    detail?: string
+}) {
+    const toneClasses = {
+        emerald: 'text-emerald-700 dark:text-emerald-400',
+        red: 'text-red-700 dark:text-red-400',
+        violet: 'text-violet-700 dark:text-violet-400',
+        neutral: 'text-[#1D1D1F] dark:text-k-text-primary',
+    }
+    return (
+        <div className="rounded-2xl border border-[#E8E8ED] dark:border-k-border-primary bg-white dark:bg-surface-card p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] dark:shadow-none">
+            <p className="text-[11px] uppercase tracking-wider font-medium text-[#6E6E73] dark:text-k-text-secondary mb-1">
+                {label}
+            </p>
+            <p className={`text-xl font-bold tabular-nums ${toneClasses[tone]}`}>{value}</p>
+            {detail && (
+                <p className="text-[11px] text-[#86868B] dark:text-k-text-tertiary mt-0.5">{detail}</p>
+            )}
+        </div>
     )
 }
