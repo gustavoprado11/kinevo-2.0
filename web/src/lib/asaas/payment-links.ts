@@ -91,6 +91,52 @@ export async function deactivatePaymentLink(
     })
 }
 
+/**
+ * Lista os pagamentos gerados por um Payment Link específico. Usado quando
+ * o webhook PAYMENT_RECEIVED não chegou (ex: URL configurada errada, prod
+ * fora do ar) e a gente precisa fazer sync manual: trainer clica em
+ * "Sincronizar" → a gente consulta a Asaas pra saber se o link foi pago e
+ * fecha o contrato.
+ *
+ * Retorna até `limit` payments ordenados por dateCreated desc.
+ */
+export async function listPaymentsByLink(
+    subaccountApiKey: string,
+    paymentLinkId: string,
+    limit = 10,
+): Promise<Array<{
+    id: string
+    status: string
+    value: number
+    netValue: number
+    billingType: string
+    customer: string
+    dueDate: string
+    paymentDate?: string | null
+    clientPaymentDate?: string | null
+    externalReference?: string | null
+    paymentLink?: string | null
+}>> {
+    const raw = await asaasRequest<{ data: Array<{
+        id: string
+        status: string
+        value: number
+        netValue: number
+        billingType: string
+        customer: string
+        dueDate: string
+        paymentDate?: string | null
+        clientPaymentDate?: string | null
+        externalReference?: string | null
+        paymentLink?: string | null
+    }>; totalCount: number }>({
+        apiKey: subaccountApiKey,
+        path: '/payments',
+        query: { paymentLink: paymentLinkId, limit },
+    })
+    return raw.data ?? []
+}
+
 function round2(n: number): number {
     return Math.round(n * 100) / 100
 }

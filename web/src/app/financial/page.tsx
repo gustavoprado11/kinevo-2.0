@@ -2,7 +2,7 @@ import { getTrainerWithSubscription } from '@/lib/auth/get-trainer'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { syncManualOverdue } from '@/actions/financial/sync-manual-overdue'
-import { AsaasApiError, getBalance } from '@/lib/asaas'
+import { AsaasApiError, getBalance, tryEnsureSubaccountWebhook } from '@/lib/asaas'
 import { decryptApiKey } from '@/lib/asaas/encryption'
 import { getWalletRow, summarizeWallet } from '@/lib/asaas/wallet-service'
 import { FinancialDashboardClient } from './financial-client'
@@ -161,9 +161,21 @@ export default async function FinancialPage() {
             const apiKey = decryptApiKey(blob)
             const b = await getBalance(apiKey)
             walletBalance = b.balance
+
+            // Auto-cadastro silencioso de webhook (1x por trainer). Necessário
+            // porque cada subconta Asaas tem webhook próprio — trainers que
+            // entraram antes da automação rodam isso na primeira visita pós-deploy.
+            // Marca webhook_configured_at depois pra não bater na Asaas em toda visita.
+            if (!walletRow.webhook_configured_at) {
+                await tryEnsureSubaccountWebhook(apiKey, { trainerId: trainer.id })
+                await supabaseAdmin
+                    .from('trainer_payment_accounts')
+                    .update({ webhook_configured_at: new Date().toISOString() })
+                    .eq('trainer_id', trainer.id)
+            }
         } catch (err) {
             if (!(err instanceof AsaasApiError)) {
-                console.error('[financial] balance fetch failed', err)
+                console.error('[financial] balance/webhook setup failed', err)
             }
         }
     }

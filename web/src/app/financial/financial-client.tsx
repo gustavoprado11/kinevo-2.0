@@ -8,7 +8,7 @@ import {
     Users, TrendingUp, Receipt, ArrowRight, Wallet, AlertTriangle,
     Heart, Plus, Check, DollarSign, ArrowDownToLine, ChevronDown,
     Send, Repeat, Sparkles, KeyRound, Settings as SettingsIcon, Link2,
-    Lock, Unlock, Loader2, Copy, MessageCircle, Clock, X,
+    Lock, Unlock, Loader2, Copy, MessageCircle, Clock, X, RefreshCw,
 } from 'lucide-react'
 import { useOnboardingStore } from '@/stores/onboarding-store'
 import { AppLayout } from '@/components/layout'
@@ -193,6 +193,40 @@ export function FinancialDashboardClient({
     const [cancelingContractId, setCancelingContractId] = useState<string | null>(null)
     const [cancelConfirmId, setCancelConfirmId] = useState<string | null>(null)
     const [cancelError, setCancelError] = useState<string | null>(null)
+    // Sync manual com Asaas (fallback se webhook não chegou)
+    const [syncingContractId, setSyncingContractId] = useState<string | null>(null)
+    const [syncMessage, setSyncMessage] = useState<{ contractId: string; text: string; kind: 'success' | 'info' | 'error' } | null>(null)
+
+    async function syncPendingCharge(contractId: string) {
+        setSyncingContractId(contractId)
+        setSyncMessage(null)
+        try {
+            const res = await fetch(`/api/wallet/charges/${contractId}/sync`, { method: 'POST' })
+            const body = await res.json().catch(() => ({}))
+            if (!res.ok) {
+                setSyncMessage({ contractId, text: body.error || `Falha (${res.status})`, kind: 'error' })
+                return
+            }
+            if (body.synced) {
+                // Pagamento encontrado — recarrega o feed (a linha vai sair do pending)
+                router.refresh()
+            } else {
+                setSyncMessage({
+                    contractId,
+                    text: body.message ?? 'Ainda aguardando pagamento.',
+                    kind: 'info',
+                })
+            }
+        } catch (err) {
+            setSyncMessage({
+                contractId,
+                text: err instanceof Error ? err.message : 'Erro ao sincronizar',
+                kind: 'error',
+            })
+        } finally {
+            setSyncingContractId(null)
+        }
+    }
 
     async function cancelPendingCharge(contractId: string) {
         setCancelingContractId(contractId)
@@ -587,6 +621,18 @@ export function FinancialDashboardClient({
                                                         </a>
                                                     )}
                                                     {tx.contractId && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => syncPendingCharge(tx.contractId!)}
+                                                            disabled={syncingContractId === tx.contractId}
+                                                            title="Verificar na Asaas se já foi pago"
+                                                            className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded-md border border-[#E8E8ED] dark:border-k-border-subtle text-[#1D1D1F] dark:text-k-text-secondary hover:bg-[#F5F5F7] dark:hover:bg-glass-bg transition-colors disabled:opacity-50"
+                                                        >
+                                                            <RefreshCw size={11} className={syncingContractId === tx.contractId ? 'animate-spin' : ''} />
+                                                            Sincronizar
+                                                        </button>
+                                                    )}
+                                                    {tx.contractId && (
                                                         cancelConfirmId === tx.contractId ? (
                                                             <div className="inline-flex items-center gap-1.5 text-[11px]">
                                                                 <span className="text-[#86868B] dark:text-k-text-tertiary">Cancelar?</span>
@@ -623,6 +669,15 @@ export function FinancialDashboardClient({
                                                     {cancelError && cancelConfirmId === tx.contractId && (
                                                         <span className="text-[11px] text-[#FF3B30] dark:text-red-400 ml-1">
                                                             {cancelError}
+                                                        </span>
+                                                    )}
+                                                    {syncMessage && syncMessage.contractId === tx.contractId && (
+                                                        <span className={`text-[11px] ml-1 ${
+                                                            syncMessage.kind === 'error' ? 'text-[#FF3B30] dark:text-red-400' :
+                                                            syncMessage.kind === 'success' ? 'text-[#34C759] dark:text-emerald-400' :
+                                                            'text-[#86868B] dark:text-k-text-tertiary'
+                                                        }`}>
+                                                            {syncMessage.text}
                                                         </span>
                                                     )}
                                                 </div>

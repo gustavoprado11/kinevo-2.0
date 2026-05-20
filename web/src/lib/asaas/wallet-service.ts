@@ -19,6 +19,7 @@ import {
     encryptApiKey,
     decryptApiKey,
     AsaasApiError,
+    tryEnsureSubaccountWebhook,
 } from '@/lib/asaas'
 import type {
     CreateAsaasAccountInput,
@@ -119,6 +120,8 @@ export interface TrainerPaymentAccountRow {
     created_at: string
     updated_at: string
     activated_at: string | null
+    /** Quando o webhook Kinevo foi cadastrado na subconta Asaas. Null = nunca rodou. */
+    webhook_configured_at: string | null
 }
 
 /**
@@ -252,6 +255,10 @@ export async function activateWallet(
             .insert(baseFields)
         if (error) throw error
     }
+
+    // Cadastra o webhook Kinevo na subconta — best-effort, não bloqueia
+    // onboarding se falhar (trainer pode rodar backfill depois).
+    await tryEnsureSubaccountWebhook(account.apiKey, { trainerId })
 
     const fresh = await getWalletRow(trainerId)
     return summarizeWallet(fresh)
@@ -444,6 +451,10 @@ export async function linkExistingAccount(
             .insert(baseFields)
         if (error) throw error
     }
+
+    // Modo linked: trainer trouxe a própria chave — cadastra webhook na
+    // conta dele pra pagamentos chegarem no Kinevo. Best-effort.
+    await tryEnsureSubaccountWebhook(apiKey, { trainerId })
 
     const fresh = await getWalletRow(trainerId)
     return summarizeWallet(fresh)
