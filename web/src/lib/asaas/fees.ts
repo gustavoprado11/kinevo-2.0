@@ -1,11 +1,15 @@
 // ============================================================================
 // Asaas — Tabela de taxas + calculadora "quanto o trainer recebe"
 // ============================================================================
-// Fonte: política pública Asaas (plano padrão sem mensalidade) em 2026-05.
+// Fonte: calibrado via observação real (value vs netValue) em 2026-05.
 // Atualizar quando o Asaas mudar pricing — único lugar a editar.
 //
 // IMPORTANTE: o número exposto na UI é o repasse direto do Asaas + take rate
 // Kinevo (vindo de env KINEVO_TAKE_RATE_PCT, default 0).
+//
+// PIX: confirmado R$ 0,99 fixo (transação R$5 → netValue R$4,01).
+// CREDIT_CARD/BOLETO/DEBIT_CARD: ainda calibrar via diagnostic + observação
+// quando houver dados reais.
 // ============================================================================
 
 export type PaymentMethod = 'PIX' | 'BOLETO' | 'CREDIT_CARD' | 'DEBIT_CARD'
@@ -20,10 +24,17 @@ export interface FeeRule {
 }
 
 /**
- * Taxas Asaas (default 2026). Plano padrão, sem mensalidade. Cartão D+30.
+ * Taxas Asaas (calibrado 2026). Plano padrão, sem mensalidade. Cartão D+30.
+ *
+ * PIX: confirmado R$ 0,99 fixo por transação (observação direta). O valor
+ * é o mesmo independente do valor da cobrança.
+ *
+ * Os outros métodos ainda estão na política pública da Asaas e podem
+ * variar quando observarmos pagamentos reais. Use /api/diagnostic/asaas-fees
+ * pra calibrar.
  */
 export const ASAAS_FEES: Record<PaymentMethod, FeeRule> = {
-    PIX: { percent: 0.0199, fixed: 0.40, settlementLabel: 'Próximo dia útil' },
+    PIX: { percent: 0, fixed: 0.99, settlementLabel: 'Próximo dia útil' },
     BOLETO: { percent: 0, fixed: 1.99, settlementLabel: '1-2 dias úteis após pagamento' },
     CREDIT_CARD: { percent: 0.0299, fixed: 0.49, settlementLabel: '30 dias' },
     DEBIT_CARD: { percent: 0.0199, fixed: 0.49, settlementLabel: '1 dia útil' },

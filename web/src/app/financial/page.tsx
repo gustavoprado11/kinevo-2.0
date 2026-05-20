@@ -43,11 +43,13 @@ export default async function FinancialPage() {
     const startOfNextMonth = new Date(startOfMonth)
     startOfNextMonth.setMonth(startOfNextMonth.getMonth() + 1)
 
+    // status: Stripe legado usa 'succeeded', Asaas (webhook + sync) usa
+    // 'completed'. Conta as duas pra não esconder receita do trainer.
     const { data: monthTransactions } = await supabaseAdmin
         .from('financial_transactions')
         .select('amount_gross')
         .eq('coach_id', trainer.id)
-        .eq('status', 'succeeded')
+        .in('status', ['succeeded', 'completed'])
         .gte('created_at', startOfMonth.toISOString())
         .lt('created_at', startOfNextMonth.toISOString())
 
