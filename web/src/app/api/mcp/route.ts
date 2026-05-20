@@ -1,3 +1,4 @@
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js'
 import { authenticateRequest, McpAuthError } from '@/lib/mcp/auth'
 import { createMcpServer } from '@/lib/mcp/server'
@@ -19,7 +20,33 @@ export async function GET() {
   })
 }
 
+// Methods that don't require authentication (MCP handshake/discovery)
+const PUBLIC_METHODS = new Set(['initialize', 'notifications/initialized'])
+
 export async function POST(request: Request) {
+  // Pre-parse body to determine method
+  const body = await request.json()
+  const method =
+    body && typeof body === 'object' && 'method' in body
+      ? (body as { method: string }).method
+      : null
+
+  // Allow initialize/notifications without auth (MCP discovery handshake)
+  // Claude.ai needs this to discover the server before sending auth
+  if (method && PUBLIC_METHODS.has(method)) {
+    // Create a minimal server without tools for the handshake
+    const server = new McpServer({ name: 'kinevo', version: '1.0.0' })
+
+    const transport = new WebStandardStreamableHTTPServerTransport({
+      sessionIdGenerator: undefined,
+      enableJsonResponse: true,
+    })
+
+    await server.connect(transport)
+    return transport.handleRequest(request, { parsedBody: body })
+  }
+
+  // All other methods require authentication
   let context: { trainerId: string; keyId: string } | null = null
 
   try {
@@ -40,15 +67,10 @@ export async function POST(request: Request) {
 
   await server.connect(transport)
 
-  // Pre-parse body to extract tool name for logging
-  const body = await request.json()
+  // Extract tool name for logging
   let toolName: string | null = null
-
   if (
-    body &&
-    typeof body === 'object' &&
-    'method' in body &&
-    (body as { method: string }).method === 'tools/call' &&
+    method === 'tools/call' &&
     'params' in body &&
     (body as { params: { name?: string } }).params?.name
   ) {
