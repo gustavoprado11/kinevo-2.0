@@ -1,3 +1,4 @@
+import { createHash } from 'crypto'
 import bcrypt from 'bcryptjs'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { checkRateLimit, recordRequest } from '@/lib/rate-limit'
@@ -15,12 +16,17 @@ export class McpAuthError extends Error {
   }
 }
 
-export async function validateApiKey(
-  bearerToken: string
-): Promise<{ trainerId: string; keyId: string } | null> {
-  if (!bearerToken.startsWith('kinevo_trainer_')) return null
+function sha256(input: string): string {
+  return createHash('sha256').update(input).digest('hex')
+}
 
-  const prefix = bearerToken.slice(0, 12)
+// Validate a kinevo_trainer_* API Key (bcrypt hash)
+async function validateApiKey(
+  token: string
+): Promise<{ trainerId: string; keyId: string } | null> {
+  if (!token.startsWith('kinevo_trainer_')) return null
+
+  const prefix = token.slice(0, 12)
   const supabaseAdmin = createAdminClient()
 
   const { data: keys } = await supabaseAdmin
@@ -32,9 +38,8 @@ export async function validateApiKey(
   if (!keys || keys.length === 0) return null
 
   for (const key of keys) {
-    const match = await bcrypt.compare(bearerToken, key.key_hash)
+    const match = await bcrypt.compare(token, key.key_hash)
     if (match) {
-      // Update last_used_at (fire-and-forget)
       supabaseAdmin
         .from('trainer_api_keys')
         .update({ last_used_at: new Date().toISOString() })
@@ -48,6 +53,29 @@ export async function validateApiKey(
   return null
 }
 
+// Validate a kinevo_at_* OAuth access token (sha256 hash)
+async function validateOAuthToken(
+  token: string
+): Promise<{ trainerId: string; keyId: string } | null> {
+  if (!token.startsWith('kinevo_at_')) return null
+
+  const tokenHash = sha256(token)
+  const supabaseAdmin = createAdminClient()
+
+  const { data } = await supabaseAdmin
+    .from('mcp_oauth_tokens')
+    .select('id, trainer_id, expires_at')
+    .eq('access_token_hash', tokenHash)
+    .is('revoked_at', null)
+    .single()
+
+  if (!data) return null
+
+  if (new Date(data.expires_at) < new Date()) return null
+
+  return { trainerId: data.trainer_id, keyId: `oauth:${data.id}` }
+}
+
 export async function authenticateRequest(
   request: Request
 ): Promise<McpContext> {
@@ -55,22 +83,18 @@ export async function authenticateRequest(
 
   if (!authHeader?.startsWith('Bearer ')) {
     throw new McpAuthError(
-      'Authorization header ausente ou inválido. Use: Bearer kinevo_trainer_<key>'
+      'Authorization header ausente ou invalido.'
     )
   }
 
   const token = authHeader.slice(7)
 
-  if (!token.startsWith('kinevo_trainer_')) {
-    throw new McpAuthError(
-      'Formato de API Key inválido. Keys começam com kinevo_trainer_'
-    )
-  }
-
-  const result = await validateApiKey(token)
+  // Try OAuth token first (fast sha256), then API key (slow bcrypt)
+  const result =
+    (await validateOAuthToken(token)) ?? (await validateApiKey(token))
 
   if (!result) {
-    throw new McpAuthError('API Key inválida ou revogada')
+    throw new McpAuthError('Token invalido, expirado ou revogado')
   }
 
   // Check trainer has active subscription
@@ -85,7 +109,7 @@ export async function authenticateRequest(
 
   if (!subscription) {
     throw new McpAuthError(
-      'Sua assinatura Kinevo está inativa. Renove em kinevoapp.com/settings/billing',
+      'Sua assinatura Kinevo esta inativa. Renove em kinevoapp.com/settings/billing',
       403
     )
   }

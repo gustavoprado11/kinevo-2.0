@@ -1,0 +1,108 @@
+'use client'
+
+import { useState } from 'react'
+import { Shield, Bot, Loader2 } from 'lucide-react'
+import { approveOAuthConsent } from '@/actions/api-keys/approve-oauth-consent'
+
+interface OAuthConsentFormProps {
+  trainerName: string
+  trainerEmail: string
+  trainerId: string
+  clientId: string
+  redirectUri: string
+  codeChallenge: string
+  codeChallengeMethod: string
+  state?: string
+  scope?: string
+}
+
+export function OAuthConsentForm({
+  trainerName,
+  trainerEmail,
+  trainerId,
+  clientId,
+  redirectUri,
+  codeChallenge,
+  codeChallengeMethod,
+  state,
+  scope,
+}: OAuthConsentFormProps) {
+  const [loading, setLoading] = useState(false)
+
+  async function handleApprove() {
+    setLoading(true)
+    const result = await approveOAuthConsent({
+      trainerId,
+      clientId,
+      redirectUri,
+      codeChallenge,
+      codeChallengeMethod,
+      state,
+      scope,
+    })
+
+    if (result.redirect) {
+      window.location.href = result.redirect
+    }
+  }
+
+  function handleDeny() {
+    const url = new URL(redirectUri)
+    url.searchParams.set('error', 'access_denied')
+    if (state) url.searchParams.set('state', state)
+    window.location.href = url.toString()
+  }
+
+  return (
+    <div className="max-w-md mx-4 w-full rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-8 shadow-lg">
+      <div className="flex items-center justify-center mb-6">
+        <div className="rounded-2xl bg-violet-500/10 p-4">
+          <Bot size={32} className="text-violet-500" />
+        </div>
+      </div>
+
+      <h1 className="text-xl font-bold text-gray-900 dark:text-white text-center mb-1">
+        Autorizar acesso ao Kinevo
+      </h1>
+      <p className="text-sm text-gray-500 dark:text-gray-400 text-center mb-6">
+        Um aplicativo externo quer acessar sua conta Kinevo.
+      </p>
+
+      <div className="rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 p-4 mb-6">
+        <p className="text-sm font-semibold text-gray-900 dark:text-white">{trainerName}</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400">{trainerEmail}</p>
+      </div>
+
+      <div className="space-y-3 mb-6">
+        <div className="flex items-start gap-3">
+          <Shield size={16} className="mt-0.5 text-violet-500 shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-gray-900 dark:text-white">Permissoes solicitadas</p>
+            <ul className="mt-1 text-xs text-gray-500 dark:text-gray-400 space-y-1">
+              <li>Gerenciar alunos e programas de treino</li>
+              <li>Enviar mensagens para alunos</li>
+              <li>Consultar dados financeiros (somente leitura)</li>
+              <li>Acompanhar progresso e metricas</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex gap-3">
+        <button
+          onClick={handleDeny}
+          className="flex-1 rounded-xl border border-gray-200 dark:border-gray-700 px-4 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
+        >
+          Cancelar
+        </button>
+        <button
+          onClick={handleApprove}
+          disabled={loading}
+          className="flex-1 inline-flex items-center justify-center rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-violet-500 disabled:opacity-60 transition-colors"
+        >
+          {loading ? <Loader2 size={16} className="animate-spin" /> : 'Autorizar'}
+        </button>
+      </div>
+    </div>
+  )
+}
