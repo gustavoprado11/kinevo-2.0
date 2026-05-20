@@ -8,7 +8,8 @@ import { ProfileForm } from '@/components/settings/profile-form'
 import { ThemeSelector } from '@/components/settings/theme-selector'
 import { ReportsPreferencesSection } from '@/components/settings/reports-preferences-section'
 
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, Bot } from 'lucide-react'
+import Link from 'next/link'
 
 export default async function SettingsPage() {
     const supabase = await createClient()
@@ -144,6 +145,19 @@ export default async function SettingsPage() {
                     <ProfileForm trainer={trainer} />
                     <ThemeSelector initialTheme={trainer.theme as 'light' | 'dark' | 'system' | null} />
                     <ReportsPreferencesSection initialAutoPublish={trainer.auto_publish_reports ?? false} />
+                    <Link
+                        href="/settings/api-keys"
+                        className="flex items-center gap-3 rounded-2xl border border-k-border-primary bg-surface-card p-4 shadow-sm hover:border-violet-500/30 transition-colors group"
+                    >
+                        <div className="rounded-xl bg-violet-500/10 p-2.5">
+                            <Bot size={18} className="text-violet-500" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm font-bold text-k-text-primary">Conectar com IA</p>
+                            <p className="text-xs text-k-text-quaternary">Claude.ai e ChatGPT</p>
+                        </div>
+                        <ChevronRight size={16} className="text-k-text-quaternary group-hover:text-violet-500 transition-colors" />
+                    </Link>
                 </div>
                 <div className="lg:col-span-2">
                     <BillingSection
