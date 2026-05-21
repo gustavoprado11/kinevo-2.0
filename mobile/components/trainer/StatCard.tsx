@@ -55,7 +55,12 @@ export function StatCard({ label, value, icon: Icon, iconColor, iconBg, subtitle
             <Text style={{ fontSize: Math.round(24 * fontScale), fontWeight: "800", color: colors.text.primary }}>
                 {value}
             </Text>
-            <Text style={{ fontSize: Math.round(11 * fontScale), fontWeight: "600", color: colors.text.tertiary, marginTop: 4, letterSpacing: 0.5 }}>
+            <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.85}
+                style={{ fontSize: Math.round(11 * fontScale), fontWeight: "600", color: colors.text.tertiary, marginTop: 4, letterSpacing: 0.5 }}
+            >
                 {label}
             </Text>
             {!!subtitle && (

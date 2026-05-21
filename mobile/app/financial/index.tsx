@@ -195,13 +195,19 @@ export default function FinancialDashboardScreen() {
                             </>
                         ) : null}
 
-                        {/* Stats grid */}
+                        {/* Stats grid — células simétricas (flex:1) pra rows alinharem */}
                         <View style={{ flexDirection: "row", gap: 12, marginBottom: 12 }}>
-                            <StatCard label="Receita do mês" value={formatBRL(data?.monthlyRevenue ?? 0)} icon={DollarSign} iconColor="#16a34a" iconBg="#f0fdf4" />
-                            <StatCard label="Alunos pagantes" value={payingCount} icon={Users} iconColor="#7c3aed" iconBg="#f5f3ff" />
+                            <View style={{ flex: 1 }}>
+                                <StatCard label="Receita do mês" value={formatBRL(data?.monthlyRevenue ?? 0)} icon={DollarSign} iconColor="#16a34a" iconBg="#f0fdf4" />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <StatCard label="Alunos pagantes" value={payingCount} icon={Users} iconColor="#7c3aed" iconBg="#f5f3ff" />
+                            </View>
                         </View>
                         <View style={{ flexDirection: "row", gap: 12, marginBottom: 20 }}>
-                            <StatCard label="Cortesias" value={courtesyCount} icon={Heart} iconColor="#3b82f6" iconBg="#eff6ff" />
+                            <View style={{ flex: 1 }}>
+                                <StatCard label="Cortesias" value={courtesyCount} icon={Heart} iconColor="#3b82f6" iconBg="#eff6ff" />
+                            </View>
                             <TouchableOpacity
                                 style={{ flex: 1 }}
                                 activeOpacity={attentionCount > 0 ? 0.7 : 1}
