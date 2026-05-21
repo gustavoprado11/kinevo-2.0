@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Switch, Linking } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Switch, Linking, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, Stack } from "expo-router";
 import * as Haptics from "expo-haptics";
@@ -8,18 +8,15 @@ import {
     Settings as SettingsIcon, Check, Link2, KeyRound, RefreshCw, Minus, Plus, ArrowRight, MessageCircle,
 } from "lucide-react-native";
 import type { KinevoWalletStatus } from "@kinevo/shared/types/asaas";
+import { ASAAS_FEES } from "@kinevo/shared/lib/asaas/fees";
 import { useFinancialSettings, type FinancialSettings } from "../../hooks/useFinancialSettings";
 import { useWallet } from "../../hooks/useWallet";
 import { useHasStripeLegacy } from "../../hooks/useHasStripeLegacy";
 import { walletFetch } from "../../lib/wallet-api";
 import { useV2Colors, type V2Palette } from "../../hooks/useV2Colors";
 
-// Taxas — espelham web/src/lib/asaas/fees.ts (fonte da verdade). Atualizar lá e aqui juntos.
-const FEES = {
-    PIX: { percent: 0, fixed: 0.99 },
-    CREDIT_CARD: { percent: 0.0299, fixed: 0.49 },
-    BOLETO: { percent: 0, fixed: 1.99 },
-};
+// Taxas — fonte ÚNICA em @kinevo/shared/lib/asaas/fees.ts (web + mobile importam de lá).
+const FEES = ASAAS_FEES;
 const pct = (p: number) => (p * 100).toFixed(2).replace(".", ",") + "%";
 const brl = (v: number) => `R$ ${v.toFixed(2).replace(".", ",")}`;
 
@@ -48,7 +45,11 @@ export default function FinancialSettingsScreen() {
         try {
             await walletFetch("/api/wallet/sync", { method: "POST" });
             refreshWallet();
-        } catch { /* silencioso */ }
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+        } catch {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+            Alert.alert("Falha ao sincronizar", "Não foi possível atualizar a carteira. Verifique sua conexão e tente novamente.");
+        }
         finally { setSyncing(false); }
     };
 
