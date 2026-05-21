@@ -229,8 +229,18 @@ Validação: web tsc limpo, mobile tsc sem erros novos.
 
 Obs.: assinaturas PIX/boleto antigas (ex.: contrato de teste R$5 PIX) seguem como estão — a regra vale pras novas.
 
+### Rodada 11 (2026-05-21) — Pagamento in-app do aluno (Fase B)
+- **Novo** `GET /api/student/payment` (Bearer do aluno): retorna a cobrança pendente (`pending_payment`/`past_due` com Payment Link) + `invoiceUrl` viva (via chave do trainer). `middleware.ts` passou a excluir `api/student` (igual `api/wallet`).
+- `mobile/hooks/useStudentPayment.ts` + `mobile/app/payment.tsx`: tela "Pagamento" mostra a cobrança pendente e abre o **checkout Asaas em WebView** (`react-native-webview`) — PIX, cartão ou boleto, com CPF + QR na própria página. Após pagar, "Já paguei? Atualizar".
+- `PaymentBlockedScreen`: botão **"Pagar agora"** → `/payment` quando o bloqueio é `past_due_blocked`.
+
+Decisão de arquitetura: QR PIX **nativo** (copia-e-cola) exigiria coletar CPF do aluno (cobrança direta /v3/payments). Como usamos Payment Link (sem CPF), o pagamento in-app é o checkout Asaas em WebView — cobre todos os métodos. QR nativo fica como evolução futura (requer captura de CPF).
+
+Validação: web tsc limpo, mobile tsc sem erros novos.
+
 ### Pendente (fora do escopo de paridade da tela)
-- Tooltips (?) nos stat cards: omitidos de propósito (padrão de hover do web; no mobile os labels já são autoexplicativos).
-- Upload de documento in-app: o envio de KYC é numa página externa (onboardingUrl), igual ao web.
-- Simulação de taxa no sheet (replicar `fees.ts` no `shared`); valor custom + date picker na avulsa.
-- Fase B (pagamento do aluno) e Fase C (push deep links + biometria).
+- Tooltips (?) nos stat cards: omitidos de propósito (padrão de hover do web).
+- Upload de documento KYC in-app: externo via onboardingUrl, igual ao web.
+- QR PIX nativo (copia-e-cola) no app do aluno: requer captura de CPF (cobrança direta).
+- Simulação de taxa no sheet de cobrança (replicar `fees.ts` no `shared`); valor custom + date picker na avulsa.
+- Fase C: push deep links da Carteira + biometria no saque.

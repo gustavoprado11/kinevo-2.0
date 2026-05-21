@@ -104,6 +104,31 @@ export function PaymentBlockedScreen({ reason }: PaymentBlockedScreenProps) {
                     {msg.description}
                 </Text>
 
+                {/* Pagar agora — só quando o bloqueio é por pagamento */}
+                {reason === "past_due_blocked" && (
+                    <TouchableOpacity
+                        onPress={() => router.push("/payment")}
+                        activeOpacity={0.85}
+                        style={{
+                            backgroundColor: "#7c3aed",
+                            borderRadius: 16,
+                            flexDirection: "row",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            paddingVertical: 16,
+                            paddingHorizontal: 32,
+                            gap: 10,
+                            width: "100%",
+                            marginBottom: 12,
+                        }}
+                    >
+                        <CreditCard size={20} color="#fff" strokeWidth={2} />
+                        <Text style={{ fontSize: 15, fontWeight: "700", color: "#fff" }}>
+                            Pagar agora
+                        </Text>
+                    </TouchableOpacity>
+                )}
+
                 {/* WhatsApp Button */}
                 <TouchableOpacity
                     onPress={handleWhatsApp}
