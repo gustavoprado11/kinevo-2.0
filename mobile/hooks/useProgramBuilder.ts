@@ -207,7 +207,9 @@ export function useProgramBuilder() {
     }, [store]);
 
     const saveAndAssign = useCallback(async (targetStudentId: string): Promise<SaveAndAssignResult> => {
-        const draft = store.draft;
+        // Lê sempre o estado fresco (evita closure obsoleta após mutações no mesmo tick,
+        // ex.: clearSupersets() seguido de retry).
+        const draft = useProgramBuilderStore.getState().draft;
 
         // ── AI path: round-trip the snapshot to /api/programs/assign with isEdited=true ──
         if (draft.originatedFromAi && draft.generationId) {

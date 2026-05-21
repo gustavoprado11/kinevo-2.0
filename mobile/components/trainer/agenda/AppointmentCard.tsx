@@ -51,13 +51,12 @@ export function AppointmentCard({ occurrence, onPress }: AppointmentCardProps) {
     return (
         <Pressable
             onPress={handlePress}
-            style={({ pressed }) => ({
+            style={{
                 backgroundColor: colors.surface.card,
                 borderRadius: 16,
                 marginBottom: 10,
                 overflow: "hidden",
                 flexDirection: "row",
-                opacity: pressed ? 0.92 : 1,
                 shadowColor: "#000",
                 shadowOffset: { width: 0, height: 1 },
                 shadowOpacity: 0.04,
@@ -65,7 +64,7 @@ export function AppointmentCard({ occurrence, onPress }: AppointmentCardProps) {
                 elevation: 1,
                 borderWidth: 1,
                 borderColor: colors.border.subtle,
-            })}
+            }}
         >
             {/* Accent strip */}
             <View style={{ width: 4, backgroundColor: accentColor }} />

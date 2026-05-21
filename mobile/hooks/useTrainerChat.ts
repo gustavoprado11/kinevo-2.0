@@ -1,50 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { File } from 'expo-file-system';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { decrementUnreadMessages } from './useUnreadCount';
-
-// Upload file to Supabase Storage via native XMLHttpRequest (bypasses whatwg-fetch polyfill issues)
-function uploadToSupabaseStorage(
-    bucketName: string,
-    filePath: string,
-    fileUri: string,
-    mimeType: string,
-    supabaseUrl: string,
-    accessToken: string,
-    anonKey: string
-): Promise<{ error: string | null }> {
-    return new Promise((resolve) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', `${supabaseUrl}/storage/v1/object/${bucketName}/${filePath}`);
-        xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`);
-        xhr.setRequestHeader('apikey', anonKey);
-        xhr.setRequestHeader('x-upsert', 'false');
-
-        xhr.onload = () => {
-            if (xhr.status >= 200 && xhr.status < 300) {
-                if (__DEV__) console.log('[Chat] Upload success, status:', xhr.status);
-                resolve({ error: null });
-            } else {
-                if (__DEV__) console.error('[Chat] Upload failed, status:', xhr.status, 'response:', xhr.responseText);
-                resolve({ error: `Upload failed: ${xhr.status}` });
-            }
-        };
-
-        xhr.onerror = () => {
-            if (__DEV__) console.error('[Chat] XHR upload error');
-            resolve({ error: 'XHR network error' });
-        };
-
-        const formData = new FormData();
-        formData.append('file', {
-            uri: fileUri,
-            name: filePath.split('/').pop(),
-            type: mimeType,
-        } as any);
-
-        xhr.send(formData);
-    });
-}
 
 export interface ChatMessage {
     id: string;
@@ -199,24 +157,20 @@ export function useTrainerChat() {
         if (__DEV__) console.log('[Chat] Asset mimeType:', assetMimeType, 'uri:', imageUri);
         if (__DEV__) console.log('[Chat] Computed ext:', ext, 'contentType:', mimeType, 'fileName:', fileName);
 
-        // Get auth token for direct upload
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.access_token) {
-            if (__DEV__) console.error('[useTrainerChat] No auth session for upload');
-            return null;
-        }
-
-        const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
-        const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
-
-        // Upload via native XMLHttpRequest + FormData (bypasses whatwg-fetch polyfill)
-        const { error: uploadError } = await uploadToSupabaseStorage(
-            'messages', fileName, imageUri, mimeType,
-            supabaseUrl, session.access_token, anonKey
-        );
-
-        if (uploadError) {
-            if (__DEV__) console.error('[useTrainerChat] upload error:', uploadError);
+        // Upload: lê os bytes do arquivo (API File do expo-file-system v19) e envia
+        // como Uint8Array via supabase-js. Substitui o FormData/XMLHttpRequest que
+        // tinha bug no RN e mantinha o upload de imagem desabilitado.
+        try {
+            const bytes = await new File(imageUri).bytes();
+            const { error: uploadError } = await supabase.storage
+                .from('messages')
+                .upload(fileName, bytes, { contentType: mimeType, upsert: false });
+            if (uploadError) {
+                if (__DEV__) console.error('[useTrainerChat] upload error:', uploadError);
+                return null;
+            }
+        } catch (err) {
+            if (__DEV__) console.error('[useTrainerChat] upload exception:', err);
             return null;
         }
 
@@ -274,7 +228,7 @@ export function useTrainerChat() {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session?.access_token) return;
 
-            const baseUrl = process.env.EXPO_PUBLIC_WEB_URL || 'https://app.kinevo.com.br';
+            const baseUrl = process.env.EXPO_PUBLIC_WEB_URL || 'https://www.kinevoapp.com';
             await fetch(`${baseUrl}/api/messages/notify-trainer`, {
                 method: 'POST',
                 headers: {

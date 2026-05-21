@@ -116,7 +116,7 @@ export function useTrainerChatRoom(studentId: string): UseTrainerChatRoomReturn 
             const { data: { session } } = await supabase.auth.getSession();
             if (!session?.access_token) return;
 
-            const baseUrl = process.env.EXPO_PUBLIC_WEB_URL || 'https://app.kinevo.com.br';
+            const baseUrl = process.env.EXPO_PUBLIC_WEB_URL || 'https://www.kinevoapp.com';
             await fetch(`${baseUrl}/api/messages/notify-student`, {
                 method: 'POST',
                 headers: {

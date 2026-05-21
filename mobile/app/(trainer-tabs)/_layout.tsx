@@ -1,8 +1,9 @@
-import React, { useCallback } from "react";
-import { Tabs, usePathname, useRouter } from "expo-router";
+import React, { useCallback, useEffect } from "react";
+import { Tabs, usePathname, useRouter, Redirect } from "expo-router";
 import { LayoutDashboard, Users, MessageCircle, ClipboardList, MoreHorizontal } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { View } from "react-native";
+import { View, AppState } from "react-native";
+import { useRoleMode } from "../../contexts/RoleModeContext";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { usePendingSubmissionsCount } from "../../hooks/usePendingSubmissionsCount";
 import { useTrainerConversations } from "../../hooks/useTrainerConversations";
@@ -20,6 +21,16 @@ export default function TrainerTabsLayout() {
     const { isTablet, isLandscape } = useResponsive();
     const router = useRouter();
     const pathname = usePathname();
+    const { subscriptionStatus, isLoadingRole, isTrainer, refreshRoleMode } = useRoleMode();
+
+    // Revalida a assinatura ao voltar pro foreground, tornando o gate reativo
+    // (antes só revalidava reabrindo o app pelo index).
+    useEffect(() => {
+        const sub = AppState.addEventListener("change", (state) => {
+            if (state === "active") refreshRoleMode();
+        });
+        return () => sub.remove();
+    }, [refreshRoleMode]);
 
     const TRAINER_TABS: TabConfig[] = [
         { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -123,6 +134,12 @@ export default function TrainerTabsLayout() {
             />
         </Tabs>
     );
+
+    // Gate reativo de assinatura: se deixou de ser válida, bloqueia na hora
+    // (espelha a checagem do app/index.tsx, mas continua valendo dentro das tabs).
+    if (!isLoadingRole && isTrainer && subscriptionStatus !== "active" && subscriptionStatus !== "trialing") {
+        return <Redirect href="/trainer-subscription-blocked" />;
+    }
 
     if (!isTablet) return tabContent;
 

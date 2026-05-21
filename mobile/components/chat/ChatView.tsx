@@ -424,12 +424,11 @@ export function ChatView({ showBackButton = false }: ChatViewProps) {
                 )}
 
                 <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8 }}>
-                    {/* TODO: Re-enable image upload after fixing RN XMLHttpRequest/FormData issue with Supabase Storage */}
-                    {/*
+                    {/* Upload de imagem reabilitado: upload agora via expo-file-system File().bytes()
+                        + supabase.storage (sem o FormData/XMLHttpRequest que falhava no RN). */}
                     <Pressable onPress={pickImage} hitSlop={8} style={{ paddingBottom: 6 }}>
                         <ImagePlus size={22} color={colors.text.tertiary} strokeWidth={1.5} />
                     </Pressable>
-                    */}
 
                     <TextInput
                         value={text}

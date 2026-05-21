@@ -175,7 +175,7 @@ export default function ReportScreen() {
                 .single();
 
             if (error || !data) {
-                console.error("[report] Fetch failed:", error?.message);
+                if (__DEV__) console.error("[report] Fetch failed:", error?.message);
                 return;
             }
 
@@ -195,7 +195,7 @@ export default function ReportScreen() {
             if (student) setStudentName(student.name);
             if (trainer) setTrainerName(trainer.name);
         } catch (err) {
-            console.error("[report] Unexpected error:", err);
+            if (__DEV__) console.error("[report] Unexpected error:", err);
         } finally {
             setIsLoading(false);
             setIsRefreshing(false);
@@ -222,7 +222,7 @@ export default function ReportScreen() {
                     .from("program_reports")
                     .update({ trainer_notes: text })
                     .eq("id", report.id);
-                if (error) console.error("[report] Failed to save notes:", error.message);
+                if (error && __DEV__) console.error("[report] Failed to save notes:", error.message);
             }, 1500);
         },
         [report]
@@ -247,7 +247,7 @@ export default function ReportScreen() {
 
                         if (error) {
                             Alert.alert("Erro", "Falha ao publicar o relatório.");
-                            console.error("[report] Publish failed:", error.message);
+                            if (__DEV__) console.error("[report] Publish failed:", error.message);
                         } else {
                             setReport((prev) => prev ? { ...prev, status: "published", published_at: new Date().toISOString() } : null);
                         }
@@ -337,7 +337,7 @@ export default function ReportScreen() {
                 dialogTitle: "Compartilhar Relatório",
             });
         } catch (err) {
-            console.error("[report] PDF export failed:", err);
+            if (__DEV__) console.error("[report] PDF export failed:", err);
             Alert.alert("Erro", "Não foi possível exportar o relatório.");
         } finally {
             setIsExporting(false);

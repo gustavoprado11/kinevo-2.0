@@ -336,6 +336,9 @@ interface ProgramBuilderState {
      *  Reaplica order_index sequencial. Mantém set_scheme/method/rounds. */
     duplicateItem: (workoutId: string, itemId: string) => void;
     reorderItems: (workoutId: string, newItems: WorkoutItem[]) => void;
+    /** Desfaz todos os supersets do programa (zera superset_group de todos os itens).
+     *  Usado quando o snapshot de IA não suporta supersets adicionados manualmente. */
+    clearSupersets: () => void;
 
     // Persistence
     setSaving: (saving: boolean) => void;
@@ -1265,6 +1268,31 @@ export const useProgramBuilderStore = create<ProgramBuilderState>()(
                             }
                             : w
                     ),
+                },
+                isDirty: true,
+            })),
+
+            clearSupersets: () => set((state) => ({
+                draft: {
+                    ...state.draft,
+                    workouts: state.draft.workouts.map(w => {
+                        // Descanso de cada superset pai, para os filhos herdarem ao virar standalone.
+                        const parentRest = new Map<string, number>();
+                        w.items.forEach(it => {
+                            if (it.item_type === 'superset') parentRest.set(it.id, it.rest_seconds);
+                        });
+                        const flattened = w.items
+                            .filter(it => it.item_type !== 'superset')
+                            .map(it => {
+                                if (!it.parent_item_id) return it;
+                                const inheritedRest = it.rest_seconds > 0
+                                    ? it.rest_seconds
+                                    : (parentRest.get(it.parent_item_id) ?? 60);
+                                return { ...it, parent_item_id: null, rest_seconds: inheritedRest };
+                            })
+                            .map((it, i) => ({ ...it, order_index: i }));
+                        return { ...w, items: flattened };
+                    }),
                 },
                 isDirty: true,
             })),

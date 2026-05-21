@@ -22,6 +22,8 @@ import { useV2Colors } from '../../hooks/useV2Colors';
 interface StudentPickerModalProps {
     visible: boolean;
     onClose: () => void;
+    /** Quando fornecido, pré-seleciona este aluno ao abrir (vindo do detalhe do aluno). */
+    initialStudentId?: string | null;
 }
 
 interface WorkoutOption {
@@ -44,7 +46,7 @@ interface StudentWithWorkouts {
     todayWorkouts: WorkoutOption[];
 }
 
-export function StudentPickerModal({ visible, onClose }: StudentPickerModalProps) {
+export function StudentPickerModal({ visible, onClose, initialStudentId }: StudentPickerModalProps) {
     const colors = useV2Colors();
     const { students, isLoading, refresh } = useTrainingRoomStudents();
     const { fetchWorkout, isLoading: isAdding } = useFetchStudentWorkout();
@@ -106,6 +108,18 @@ export function StudentPickerModal({ visible, onClose }: StudentPickerModalProps
                 };
             });
     }, [students, sessions]);
+
+    // Pré-seleciona o aluno quando vindo do detalhe (param studentId), assim que a lista carrega.
+    useEffect(() => {
+        if (!visible || !initialStudentId || selectedStudent) return;
+        const match = enrichedStudents.find((s) => s.id === initialStudentId);
+        if (!match) return;
+        setSelectedStudent(match);
+        setError(null);
+        if (match.todayWorkouts.length === 1) {
+            setSelectedWorkoutId(match.todayWorkouts[0].id);
+        }
+    }, [visible, initialStudentId, enrichedStudents, selectedStudent]);
 
     const filtered = useMemo(() => {
         if (!search) return enrichedStudents;

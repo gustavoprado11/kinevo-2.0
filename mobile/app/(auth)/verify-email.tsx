@@ -15,6 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAuth } from "../../contexts/AuthContext";
 import { supabase } from "../../lib/supabase";
+import { translateAuthError } from "../../lib/auth-errors";
 import { Feather } from "@expo/vector-icons";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -82,7 +83,7 @@ export default function VerifyEmailScreen() {
         if (authError) {
             setLoading(false);
             if (__DEV__) console.error("[VerifyEmail] Erro ao atualizar e-mail Auth:", authError.message);
-            Alert.alert("Erro", authError.message);
+            Alert.alert("Erro", translateAuthError(authError.message));
             return;
         }
 
@@ -90,7 +91,7 @@ export default function VerifyEmailScreen() {
         const { error: dbError } = await supabase
             .from("students")
             .update({ email: trimmed })
-            .eq("user_id", user!.id);
+            .eq("auth_user_id", user!.id);
 
         if (dbError) {
             if (__DEV__) console.error("[VerifyEmail] Erro ao atualizar students:", dbError.message);

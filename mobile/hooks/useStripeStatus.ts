@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import type { StripeConnectStatus } from "../types/financial";
 
-const API_URL = process.env.EXPO_PUBLIC_WEB_URL || "https://app.kinevo.com.br";
+const API_URL = process.env.EXPO_PUBLIC_WEB_URL || "https://www.kinevoapp.com";
 
 export function useStripeStatus() {
     const [status, setStatus] = useState<StripeConnectStatus | null>(null);

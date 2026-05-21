@@ -592,7 +592,7 @@ function HistoryCard({ session }: { session: HistorySession }) {
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                         <Dumbbell size={14} color="#64748b" />
                         <Text style={{ fontSize: 14, fontWeight: '500', color: colors.text.tertiary }}>
-                            {(session.volume_load / 1000).toFixed(1)} <Text>ton</Text>
+                            {(session.volume_load / 1000).toFixed(1)} <Text>t</Text>
                         </Text>
                     </View>
                     <View style={{ width: 1, height: 12, backgroundColor: colors.border.default }} />

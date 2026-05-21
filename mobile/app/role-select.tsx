@@ -6,9 +6,12 @@ import { Dumbbell, Users } from "lucide-react-native";
 import Animated, { FadeInUp, FadeIn } from "react-native-reanimated";
 import { useRoleMode } from "../contexts/RoleModeContext";
 import { PressableScale } from "../components/shared/PressableScale";
+import { useV2Colors, useIsDark } from "../hooks/useV2Colors";
 
 export default function RoleSelectScreen() {
     const { switchToStudent, switchToTrainer, subscriptionStatus } = useRoleMode();
+    const colors = useV2Colors();
+    const isDark = useIsDark();
     const router = useRouter();
 
     const handleStudent = useCallback(() => {
@@ -26,15 +29,15 @@ export default function RoleSelectScreen() {
     }, [switchToTrainer, subscriptionStatus, router]);
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: "#F2F2F7" }}>
-            <StatusBar barStyle="dark-content" />
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.surface.canvas }}>
+            <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
             <View style={{ flex: 1, paddingHorizontal: 24, justifyContent: "center" }}>
                 {/* Header */}
                 <Animated.View entering={FadeIn.duration(500)} style={{ marginBottom: 40, alignItems: "center" }}>
-                    <Text style={{ fontSize: 28, fontWeight: "800", color: "#0f172a", textAlign: "center" }}>
+                    <Text style={{ fontSize: 28, fontWeight: "800", color: colors.text.primary, textAlign: "center" }}>
                         Como deseja usar{"\n"}o Kinevo?
                     </Text>
-                    <Text style={{ fontSize: 14, color: "#64748b", marginTop: 8, textAlign: "center" }}>
+                    <Text style={{ fontSize: 14, color: colors.text.tertiary, marginTop: 8, textAlign: "center" }}>
                         Você pode alternar entre os modos a qualquer momento.
                     </Text>
                 </Animated.View>

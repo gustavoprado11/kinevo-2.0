@@ -6,8 +6,9 @@ import { Lock, ExternalLink, ArrowLeft } from "lucide-react-native";
 import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
 import { useRoleMode } from "../contexts/RoleModeContext";
 import { PressableScale } from "../components/shared/PressableScale";
+import { WEB_URL } from "../lib/config";
 
-const SUBSCRIBE_URL = "https://app.kinevo.com.br/subscription";
+const SUBSCRIBE_URL = `${WEB_URL}/subscription`;
 
 export default function TrainerSubscriptionBlockedScreen() {
     const { switchToStudent } = useRoleMode();

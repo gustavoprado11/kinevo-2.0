@@ -9,6 +9,7 @@ import React, {
 import { Platform, View, Text, ActivityIndicator, TouchableOpacity, AppState } from "react-native";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
+import { clearUserScopedState } from "../lib/logout-cleanup";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -109,6 +110,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     const signOut = async () => {
+        // Limpa caches e stores persistidos para não vazar dados entre contas
+        // no mesmo aparelho (dashboard, lista de alunos/PII, drafts, notificações).
+        clearUserScopedState();
+
         // Clear Watch workout state so the old account's workout doesn't persist.
         if (Platform.OS === "ios") {
             try {

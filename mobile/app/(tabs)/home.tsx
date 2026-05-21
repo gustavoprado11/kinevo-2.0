@@ -24,7 +24,7 @@ import { KRing, KStreakBadge } from "../../components/v2/student";
 import { useV2Colors } from "../../hooks/useV2Colors";
 import { v2 } from "@kinevo/shared/tokens";
 import { LinearGradient } from "expo-linear-gradient";
-import { Trophy } from "lucide-react-native";
+import { Trophy, Flame, Dumbbell, Star, type LucideIcon } from "lucide-react-native";
 import { ReadinessCard } from "../../components/health/ReadinessCard";
 import { useReadinessToday } from "../../hooks/useReadinessToday";
 import { getReadinessRecommendation } from "../../lib/readiness";
@@ -670,22 +670,22 @@ function AchievementsGrid({
 
             <View style={{ flexDirection: 'row', gap: 8 }}>
                 <AchievementCard
-                    icon="🔥"
+                    icon={Flame}
                     title={streak >= 2 ? `${streak} semanas` : 'Comece um streak'}
                     subtitle={streak >= 2 ? 'consistente' : 'treine 2 sem.'}
                     locked={streak < 2}
                 />
                 <AchievementCard
-                    icon="💪"
+                    icon={Dumbbell}
                     title={`${totalCompletedThisProgram} treinos`}
                     subtitle="neste programa"
                     locked={totalCompletedThisProgram === 0}
                 />
                 <AchievementCard
-                    icon="⭐"
+                    icon={Star}
                     title={`${totalCompletedThisProgram}/${milestoneTarget}`}
                     subtitle="rumo a marco"
-                    locked
+                    locked={totalCompletedThisProgram < milestoneTarget}
                 />
             </View>
         </View>
@@ -698,12 +698,13 @@ function AchievementCard({
     subtitle,
     locked,
 }: {
-    icon: string;
+    icon: LucideIcon;
     title: string;
     subtitle: string;
     locked?: boolean;
 }) {
     const colors = useV2Colors();
+    const Icon = icon;
     return (
         <View
             style={{
@@ -717,7 +718,7 @@ function AchievementCard({
                 opacity: locked ? 0.6 : 1,
             }}
         >
-            <Text style={{ fontSize: 22 }}>{icon}</Text>
+            <Icon size={22} color={colors.brand.primary} strokeWidth={2} />
             <Text
                 style={{
                     fontFamily: 'PlusJakartaSans_700Bold',
@@ -781,7 +782,7 @@ function WeeklySummaryCard({ completed, target }: { completed: number; target: n
                         .{' '}
                     </>
                 ) : '. '}
-                <Text style={{ fontStyle: 'italic', color: '#7C3AED' }}>Continue assim 💪</Text>
+                <Text style={{ fontStyle: 'italic', color: '#7C3AED' }}>Continue assim</Text>
             </Text>
         </View>
     );

@@ -8,7 +8,7 @@ import {
   RefreshControl,
   Platform,
 } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, Redirect } from 'expo-router';
 
 let getDebugLogs: (() => Promise<string[]>) | undefined;
 let clearDebugLogs: (() => void) | undefined;
@@ -24,6 +24,9 @@ if (Platform.OS === 'ios') {
 }
 
 export default function DebugLogsScreen() {
+  // Rota de diagnóstico — indisponível em produção (evita exposição via deep link).
+  if (!__DEV__) return <Redirect href="/" />;
+
   const [logs, setLogs] = useState<string[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 

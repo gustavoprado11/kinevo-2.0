@@ -16,7 +16,7 @@ import {
 } from "lucide-react-native";
 import { useV2Colors } from "../../hooks/useV2Colors";
 
-const WEB_URL = process.env.EXPO_PUBLIC_WEB_URL || "https://app.kinevo.com.br";
+const WEB_URL = process.env.EXPO_PUBLIC_WEB_URL || "https://www.kinevoapp.com";
 
 const intervalLabels: Record<string, string> = {
     month: "/mês",

@@ -5,6 +5,7 @@ import { Stack, useRouter } from "expo-router";
 import { ChevronLeft, Plus } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { AgendaDayView } from "../../components/trainer/agenda/AgendaDayView";
+import { PressableScale } from "../../components/shared/PressableScale";
 import { useV2Colors } from "../../hooks/useV2Colors";
 import { CreateAppointmentSheet } from "../../components/trainer/agenda/CreateAppointmentSheet";
 import { AppointmentDetailSheet } from "../../components/trainer/agenda/AppointmentDetailSheet";
@@ -119,9 +120,10 @@ export default function AgendaScreen() {
                 ) : null}
 
                 {/* FAB */}
-                <Pressable
+                <PressableScale
                     onPress={handleCreatePress}
-                    style={({ pressed }) => ({
+                    hapticStyle={Haptics.ImpactFeedbackStyle.Medium}
+                    style={{
                         position: "absolute",
                         right: 20,
                         bottom: 32,
@@ -136,12 +138,10 @@ export default function AgendaScreen() {
                         shadowOpacity: 0.35,
                         shadowRadius: 12,
                         elevation: 6,
-                        opacity: pressed ? 0.9 : 1,
-                        transform: [{ scale: pressed ? 0.96 : 1 }],
-                    })}
+                    }}
                 >
                     <Plus size={26} color="#ffffff" strokeWidth={2.5} />
-                </Pressable>
+                </PressableScale>
             </SafeAreaView>
 
             <CreateAppointmentSheet

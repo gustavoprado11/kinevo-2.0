@@ -7,7 +7,7 @@ import Constants from "expo-constants";
 import { supabase } from "../lib/supabase";
 import { useNotificationStore } from "../stores/notification-store";
 
-const API_URL = process.env.EXPO_PUBLIC_WEB_URL || "https://app.kinevo.com.br";
+const API_URL = process.env.EXPO_PUBLIC_WEB_URL || "https://www.kinevoapp.com";
 
 /**
  * Resolve the EAS projectId in the order Expo recommends:
@@ -141,8 +141,22 @@ export function usePushNotifications(role: "trainer" | "student" | null) {
                 const notifData = (content.data ?? {}) as Record<string, string>;
                 const notifType = notifData.type ?? "unknown";
 
+                // trainer_notifications.trainer_id referencia trainers.id (não auth.uid).
+                const authUid = (await supabase.auth.getUser()).data.user?.id;
+                if (!authUid) return;
+                const { data: trainerRow } = await (supabase as any)
+                    .from("trainers")
+                    .select("id")
+                    .eq("auth_user_id", authUid)
+                    .single();
+                const trainerId = trainerRow?.id as string | undefined;
+                if (!trainerId) {
+                    if (__DEV__) console.warn("[push] Sem perfil de treinador para o usuário; notificação não persistida");
+                    return;
+                }
+
                 const { error } = await (supabase as any).from("trainer_notifications").insert({
-                    trainer_id: (await supabase.auth.getUser()).data.user?.id,
+                    trainer_id: trainerId,
                     type: notifType,
                     category: getCategoryFromType(notifType),
                     title: content.title ?? "Notificação",

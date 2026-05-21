@@ -24,6 +24,7 @@ import { useRoleMode } from "../../contexts/RoleModeContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { PressableScale } from "../../components/shared/PressableScale";
 import { supabase } from "../../lib/supabase";
+import { WEB_URL } from "../../lib/config";
 import { v2 } from "@kinevo/shared/tokens";
 import { Avatar, KCard, KStatus, type KStatusType } from "../../components/v2";
 import { useV2Colors } from "../../hooks/useV2Colors";
@@ -37,7 +38,7 @@ import {
 // chamam useV2Colors() para tokens sensíveis a modo.
 const { colors, typography, spacing, radius } = v2;
 
-const WEB_BASE_URL = "https://app.kinevo.com.br";
+const WEB_BASE_URL = WEB_URL;
 const SUPPORT_WHATSAPP_URL =
     "https://wa.me/5531999064997?text=Ol%C3%A1!%20Preciso%20de%20ajuda%20com%20o%20app%20Kinevo.";
 
