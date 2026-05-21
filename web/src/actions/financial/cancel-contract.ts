@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { stripe } from '@/lib/stripe'
 import { logContractEvent } from '@/lib/contract-events'
+import { cancelAsaasRecurring } from '@/lib/asaas/cancel-recurring'
 import { revalidatePath } from 'next/cache'
 
 export async function cancelContract({ contractId, cancelAtPeriodEnd }: { contractId: string; cancelAtPeriodEnd?: boolean }) {
@@ -85,6 +86,20 @@ export async function cancelContract({ contractId, cancelAtPeriodEnd }: { contra
                         { stripeAccount: settings.stripe_connect_id }
                     )
                 }
+            }
+        }
+
+        // Asaas recorrente: cancela a assinatura na Asaas antes do cancelamento local.
+        if (contract.billing_type === 'asaas_auto_recurring') {
+            try {
+                await cancelAsaasRecurring({
+                    trainerId: trainer.id,
+                    billingType: contract.billing_type,
+                    subscriptionId: contract.asaas_subscription_id,
+                })
+            } catch (err) {
+                console.error('[cancel-contract] Asaas cancel failed:', err)
+                return { error: 'Não foi possível cancelar a assinatura na Asaas. Tente novamente.' }
             }
         }
 

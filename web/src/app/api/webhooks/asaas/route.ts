@@ -216,6 +216,15 @@ async function handlePaymentReceived(event: AsaasWebhookEvent) {
             if (upsertErr) {
                 console.error('[asaas-webhook] upsert transaction failed:', upsertErr)
             }
+            // Captura o id da assinatura Asaas (pra cancelar a recorrência depois).
+            // Só seta quando ainda está vazio — não sobrescreve.
+            if (payment.subscription) {
+                await supabaseAdmin
+                    .from('student_contracts')
+                    .update({ asaas_subscription_id: payment.subscription })
+                    .eq('id', contractId)
+                    .is('asaas_subscription_id', null)
+            }
             // Registra no histórico do contrato (timeline do detalhe do aluno)
             if (contract.student_id) {
                 await logContractEvent({

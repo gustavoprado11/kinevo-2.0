@@ -211,8 +211,15 @@ Validação: `tsc` limpo (11 erros mobile pré-existentes em test files não rel
 
 Validação: `tsc` limpo (12 erros pré-existentes não relacionados).
 
+### Rodada 9 (2026-05-21) — Cancelar assinatura Asaas recorrente de verdade
+Antes: cancelar contrato `asaas_auto_recurring` só marcava `canceled` no banco — a Asaas continuava cobrando (cartão = débito automático).
+- Webhook `PAYMENT_RECEIVED` captura `payment.subscription` → grava `student_contracts.asaas_subscription_id` (só se vazio).
+- `web/src/lib/asaas/cancel-recurring.ts` — `cancelAsaasRecurring()` chama `DELETE /v3/subscriptions/{id}` (deleteRelatedPayments) com a chave do trainer.
+- `cancel-contract` (rota mobile-Bearer + action web): para contratos `asaas_auto_recurring`, cancela na Asaas **antes** do cancelamento local; se a Asaas recusar, retorna erro e NÃO marca cancelado (evita "cancelado aqui, cobrando lá"). Contratos antigos sem `asaas_subscription_id` seguem com cancelamento local (legado).
+
+Validação: web tsc limpo, 47/47 testes Asaas. Mobile já roteia o cancelamento de recorrente ativa pra essa rota (sem mudança no app).
+
 ### Pendente (fora do escopo de paridade da tela)
-- **Cancelar assinatura Asaas ativa (recorrente)**: tanto web quanto mobile usam `/api/financial/cancel-contract` genérico (soft-cancel). Melhoria futura: cancelar a recorrência direto na Asaas.
 - Tooltips (?) nos stat cards: omitidos de propósito (padrão de hover do web; no mobile os labels já são autoexplicativos).
 - Upload de documento in-app: o envio de KYC é numa página externa (onboardingUrl), igual ao web.
 - Simulação de taxa no sheet (replicar `fees.ts` no `shared`); valor custom + date picker na avulsa.

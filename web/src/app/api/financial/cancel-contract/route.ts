@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { stripe } from '@/lib/stripe'
 import { logContractEvent } from '@/lib/contract-events'
 import { checkRateLimit, recordRequest } from '@/lib/rate-limit'
+import { cancelAsaasRecurring } from '@/lib/asaas/cancel-recurring'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -110,6 +111,24 @@ export async function POST(request: NextRequest) {
                         { stripeAccount: settings.stripe_connect_id }
                     )
                 }
+            }
+        }
+
+        // Asaas recorrente: cancela a assinatura na Asaas ANTES de marcar local,
+        // pra não deixar "cancelado aqui mas cobrando lá".
+        if (contract.billing_type === 'asaas_auto_recurring') {
+            try {
+                await cancelAsaasRecurring({
+                    trainerId: trainer.id,
+                    billingType: contract.billing_type,
+                    subscriptionId: contract.asaas_subscription_id,
+                })
+            } catch (err) {
+                console.error('[cancel-contract] Asaas cancel failed:', err)
+                return NextResponse.json(
+                    { error: 'Não foi possível cancelar a assinatura na Asaas. Tente novamente em instantes.' },
+                    { status: 502 },
+                )
             }
         }
 
