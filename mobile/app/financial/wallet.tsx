@@ -13,13 +13,14 @@ import {
     XCircle,
     ShieldAlert,
     ExternalLink,
+    FileText,
+    Plus,
 } from "lucide-react-native";
-import type { KinevoWalletStatus } from "@kinevo/shared/types/asaas";
+import type { KinevoWalletStatus, AsaasDocumentGroup } from "@kinevo/shared/types/asaas";
 import { useWallet } from "../../hooks/useWallet";
 import { useWalletBalance } from "../../hooks/useWalletBalance";
-import { useV2Colors } from "../../hooks/useV2Colors";
-
-const WEB_URL = process.env.EXPO_PUBLIC_WEB_URL || "https://www.kinevoapp.com";
+import { useWalletDocuments } from "../../hooks/useWalletDocuments";
+import { useV2Colors, type V2Palette } from "../../hooks/useV2Colors";
 
 function formatBRL(value: number): string {
     const [intPart, decPart] = value.toFixed(2).split(".");
@@ -57,7 +58,7 @@ function statusMeta(status: KinevoWalletStatus, colors: ReturnType<typeof useV2C
         case "rejected":
             return {
                 label: "Reprovada",
-                description: "A análise não foi aprovada. Confira o motivo abaixo e tente novamente pelo site.",
+                description: "A análise não foi aprovada. Confira o motivo abaixo e refaça o cadastro.",
                 bg: colors.semantic.danger.bg,
                 fg: colors.semantic.danger.fg,
                 Icon: XCircle,
@@ -89,16 +90,22 @@ export default function WalletScreen() {
     const isApproved = summary?.status === "approved";
     const balance = useWalletBalance(isApproved);
 
+    const status = summary?.status;
+    const showDocuments = status === "pending" || status === "awaiting" || status === "rejected";
+    const canActivate = status === "not_started" || status === "rejected";
+    const docs = useWalletDocuments(!!showDocuments);
+
     const onRefresh = () => {
         refresh();
         if (isApproved) balance.refresh();
+        if (showDocuments) docs.refresh();
     };
 
     const meta = summary ? statusMeta(summary.status, colors) : null;
 
-    const openWebActivation = () => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        Linking.openURL(`${WEB_URL}/financial/wallet`);
+    const goActivate = () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        router.push("/financial/wallet/activate" as never);
     };
 
     return (
@@ -195,22 +202,27 @@ export default function WalletScreen() {
                                     />
                                 </View>
                             </>
-                        ) : summary && summary.status === "not_started" ? (
+                        ) : null}
+
+                        {/* CTA de ativação nativa (não iniciada / reprovada) */}
+                        {!isApproved && canActivate ? (
                             <TouchableOpacity
-                                onPress={openWebActivation}
+                                onPress={goActivate}
                                 activeOpacity={0.85}
                                 style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: colors.purple[600], borderRadius: 16, paddingVertical: 16 }}
                             >
-                                <ExternalLink size={18} color="#ffffff" />
-                                <Text style={{ fontSize: 15, fontWeight: "700", color: "#ffffff" }}>Ativar pelo site</Text>
+                                <Plus size={18} color="#ffffff" strokeWidth={2.5} />
+                                <Text style={{ fontSize: 15, fontWeight: "700", color: "#ffffff" }}>
+                                    {status === "rejected" ? "Refazer cadastro" : "Ativar Carteira"}
+                                </Text>
                             </TouchableOpacity>
                         ) : null}
 
-                        {!isApproved && summary && summary.status !== "not_started" ? (
-                            <TouchableOpacity onPress={openWebActivation} activeOpacity={0.7} style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, marginTop: 4 }}>
-                                <ExternalLink size={15} color={colors.purple[600]} />
-                                <Text style={{ fontSize: 14, fontWeight: "600", color: colors.purple[600] }}>Abrir carteira no site</Text>
-                            </TouchableOpacity>
+                        {/* Documentos KYC (em análise / reprovada) */}
+                        {showDocuments ? (
+                            <View style={{ marginTop: 16 }}>
+                                <DocumentsPanel colors={colors} documents={docs.documents} isLoading={docs.isLoading} error={docs.error} />
+                            </View>
                         ) : null}
                     </ScrollView>
                 )}
@@ -238,5 +250,85 @@ function ActionCard({ label, hint, Icon, colors, onPress }: {
             <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text.primary }}>{label}</Text>
             <Text style={{ fontSize: 12, color: colors.text.secondary, marginTop: 2 }}>{hint}</Text>
         </TouchableOpacity>
+    );
+}
+
+const DOC_STATUS: Record<string, { label: string; bg: string; fg: string }> = {
+    NOT_SENT: { label: "Pendente", bg: "rgba(245,158,11,0.12)", fg: "#b45309" },
+    PENDING: { label: "Em análise", bg: "rgba(245,158,11,0.12)", fg: "#b45309" },
+    APPROVED: { label: "Aprovado", bg: "rgba(16,185,129,0.15)", fg: "#047857" },
+    REJECTED: { label: "Reenviar", bg: "#fee2e2", fg: "#b91c1c" },
+};
+
+function DocumentsPanel({ colors, documents, isLoading, error }: {
+    colors: V2Palette; documents: AsaasDocumentGroup[]; isLoading: boolean; error: string | null;
+}) {
+    if (isLoading) {
+        return (
+            <View style={{ backgroundColor: colors.surface.card, borderRadius: 16, borderWidth: 1, borderColor: colors.border.default, padding: 20, alignItems: "center" }}>
+                <ActivityIndicator color={colors.purple[600]} />
+            </View>
+        );
+    }
+    if (error) {
+        return (
+            <View style={{ backgroundColor: colors.surface.card, borderRadius: 16, borderWidth: 1, borderColor: colors.border.default, padding: 16 }}>
+                <Text style={{ fontSize: 13, color: colors.text.secondary, lineHeight: 18 }}>
+                    Estamos preparando seus documentos. Volte aqui em alguns instantes — geralmente leva menos de 1 minuto após criar a Carteira.
+                </Text>
+            </View>
+        );
+    }
+    if (!documents.length) return null;
+
+    const allApproved = documents.every((d) => d.status === "APPROVED");
+    if (allApproved) {
+        return (
+            <View style={{ backgroundColor: colors.semantic.success.bg, borderRadius: 16, padding: 16, flexDirection: "row", alignItems: "center", gap: 10 }}>
+                <CheckCircle2 size={18} color={colors.semantic.success.fg} />
+                <Text style={{ flex: 1, fontSize: 13, fontWeight: "600", color: colors.semantic.success.fg }}>Documentos aprovados. Estamos finalizando a liberação da sua Carteira.</Text>
+            </View>
+        );
+    }
+
+    return (
+        <View>
+            <Text style={{ fontSize: 11, fontWeight: "600", color: colors.text.tertiary, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>
+                Documentos pra liberar a Carteira
+            </Text>
+            <Text style={{ fontSize: 12, color: colors.text.tertiary, marginBottom: 12, lineHeight: 17 }}>
+                Último passo. Por segurança, o envio é feito numa página externa com criptografia ponta-a-ponta.
+            </Text>
+            {documents.map((g) => {
+                const st = DOC_STATUS[g.status] ?? DOC_STATUS.NOT_SENT;
+                const needsSend = g.status === "NOT_SENT" || g.status === "REJECTED";
+                return (
+                    <View key={g.id} style={{ backgroundColor: colors.surface.card, borderRadius: 14, borderWidth: 1, borderColor: colors.border.default, padding: 14, marginBottom: 10 }}>
+                        <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
+                            <FileText size={18} color={colors.text.secondary} style={{ marginTop: 1 }} />
+                            <View style={{ flex: 1 }}>
+                                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                                    <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text.primary, flex: 1 }}>{g.title}</Text>
+                                    <View style={{ backgroundColor: st.bg, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 100 }}>
+                                        <Text style={{ fontSize: 10, fontWeight: "700", color: st.fg }}>{st.label}</Text>
+                                    </View>
+                                </View>
+                                {g.description ? <Text style={{ fontSize: 12, color: colors.text.secondary, marginTop: 2, lineHeight: 16 }}>{g.description}</Text> : null}
+                                {needsSend && g.onboardingUrl ? (
+                                    <TouchableOpacity
+                                        onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); Linking.openURL(g.onboardingUrl!); }}
+                                        activeOpacity={0.85}
+                                        style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, backgroundColor: colors.purple[600], borderRadius: 10, paddingVertical: 10, marginTop: 10 }}
+                                    >
+                                        <ExternalLink size={14} color="#ffffff" />
+                                        <Text style={{ fontSize: 13, fontWeight: "700", color: "#ffffff" }}>Enviar documentos</Text>
+                                    </TouchableOpacity>
+                                ) : null}
+                            </View>
+                        </View>
+                    </View>
+                );
+            })}
+        </View>
     );
 }

@@ -204,9 +204,16 @@ Validação: `tsc` limpo (web e mobile) — 12 erros mobile / 11 web pré-existe
 
 Validação: `tsc` limpo (11 erros mobile pré-existentes em test files não relacionados).
 
-### Pendente para paridade total com o web
-- **Wizard de ativação (`activate`) + vinculação (`link`) no app** — maior item restante; hoje estados não-aprovados abrem a tela da Carteira (que orienta a ativar pelo site). Envolve formulário multi-step + KYC/documentos Asaas; requer conta não-aprovada pra testar.
-- **Cancelar assinatura Asaas ativa (recorrente)**: hoje usa `/api/financial/cancel-contract` genérico; precisa de desenho de cancelamento da recorrência na Asaas.
+### Rodada 8 (2026-05-21) — Wizard de ativação/vinculação + documentos KYC
+- `mobile/app/financial/wallet/activate.tsx` — escolher modo (criar nova × vincular) → wizard de 3 passos (dados → endereço com autofill ViaCEP → faturamento) `POST /api/wallet/activate`; ou vinculação (apiKey + walletId, com tutorial condensado + bloqueio de chave sandbox) `POST /api/wallet/link`. Data de nascimento com máscara DD/MM/AAAA, prefill de nome/email via `useRoleMode`.
+- `mobile/hooks/useWalletDocuments.ts` — `GET /api/wallet/documents` (grupos KYC).
+- `mobile/app/financial/wallet.tsx` — estados não-aprovados agora abrem a ativação **nativa** (não mais o site); pending/awaiting/rejected mostram **painel de documentos** (status + "Enviar documentos" via onboardingUrl externo).
+
+Validação: `tsc` limpo (12 erros pré-existentes não relacionados).
+
+### Pendente (fora do escopo de paridade da tela)
+- **Cancelar assinatura Asaas ativa (recorrente)**: tanto web quanto mobile usam `/api/financial/cancel-contract` genérico (soft-cancel). Melhoria futura: cancelar a recorrência direto na Asaas.
 - Tooltips (?) nos stat cards: omitidos de propósito (padrão de hover do web; no mobile os labels já são autoexplicativos).
+- Upload de documento in-app: o envio de KYC é numa página externa (onboardingUrl), igual ao web.
 - Simulação de taxa no sheet (replicar `fees.ts` no `shared`); valor custom + date picker na avulsa.
 - Fase B (pagamento do aluno) e Fase C (push deep links + biometria).
