@@ -18,6 +18,8 @@ import { supabase } from "../lib/supabase";
 type Role = "student" | "trainer" | null;
 type SubscriptionStatus = "active" | "trialing" | "past_due" | "canceled" | "none" | null;
 
+export type TrainerModalityFocus = "presencial" | "online" | "ambos";
+
 interface TrainerProfile {
     id: string;
     name: string;
@@ -25,6 +27,10 @@ interface TrainerProfile {
     avatar_url: string | null;
     /** Handle do Instagram (sem @). Null = trainer ainda não cadastrou. */
     instagram_handle: string | null;
+    /** Foco de atendimento. Null = ainda não definido. */
+    modality_focus: TrainerModalityFocus | null;
+    /** Publica automaticamente os relatórios de treino pros alunos. */
+    auto_publish_reports: boolean;
 }
 
 interface RoleModeContextType {
@@ -87,7 +93,7 @@ export function RoleModeProvider({ children }: { children: ReactNode }) {
             if (userIsTrainer) {
                 const { data: trainer }: { data: any } = await supabase
                     .from("trainers" as any)
-                    .select("id, name, email, avatar_url, instagram_handle")
+                    .select("id, name, email, avatar_url, instagram_handle, modality_focus, auto_publish_reports")
                     .eq("auth_user_id", currentUser.id)
                     .single();
 
@@ -100,6 +106,8 @@ export function RoleModeProvider({ children }: { children: ReactNode }) {
                         email: trainer.email,
                         avatar_url: trainer.avatar_url,
                         instagram_handle: trainer.instagram_handle ?? null,
+                        modality_focus: (trainer.modality_focus as TrainerModalityFocus | null) ?? null,
+                        auto_publish_reports: trainer.auto_publish_reports ?? false,
                     });
 
                     const { data: sub }: { data: any } = await supabase
