@@ -15,7 +15,7 @@ import { ChevronLeft, Search, FileText } from "lucide-react-native";
 import { EmptyState } from "../../components/shared/EmptyState";
 import { useTrainerContracts, ContractFilter } from "../../hooks/useTrainerContracts";
 import { useTrainerPlans } from "../../hooks/useTrainerPlans";
-import { useStripeStatus } from "../../hooks/useStripeStatus";
+import { useWallet } from "../../hooks/useWallet";
 import { ContractCard } from "../../components/financial/ContractCard";
 import { NewSubscriptionSheet } from "../../components/financial/NewSubscriptionSheet";
 import type { FinancialStudent } from "../../types/financial";
@@ -44,11 +44,11 @@ export default function ContractsScreen() {
         refresh,
     } = useTrainerContracts();
     const { activePlans, refresh: refreshPlans } = useTrainerPlans();
-    const { status: stripeStatus } = useStripeStatus();
+    const { summary: wallet } = useWallet();
     const [billingSheetVisible, setBillingSheetVisible] = useState(false);
     const [selectedStudent, setSelectedStudent] = useState<FinancialStudent | null>(null);
 
-    const hasStripeConnect = !!(stripeStatus?.connected && stripeStatus?.charges_enabled);
+    const walletApproved = wallet?.status === "approved";
 
     const handleStudentPress = (item: FinancialStudent) => {
         if (item.contract_id) {
@@ -203,7 +203,7 @@ export default function ContractsScreen() {
                     setSelectedStudent(null);
                 }}
                 plans={activePlans}
-                hasStripeConnect={hasStripeConnect}
+                walletApproved={walletApproved}
                 preSelectedStudent={selectedStudent ? {
                     id: selectedStudent.student_id,
                     name: selectedStudent.student_name,

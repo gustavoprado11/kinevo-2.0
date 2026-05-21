@@ -2,18 +2,29 @@ import { describe, expect, it } from 'vitest'
 import { isPixKeyFormatValid } from '../pix'
 
 describe('isPixKeyFormatValid', () => {
-    it('accepts CPF with 11 digits', () => {
-        expect(isPixKeyFormatValid('000.000.000-00', 'CPF')).toBe(true) // dummy fixture, never a real CPF
-        expect(isPixKeyFormatValid('12345678900', 'CPF')).toBe(true)
+    it('accepts a valid CPF (com e sem pontuação)', () => {
+        // isPixKeyFormatValid valida o dígito verificador, não só o tamanho —
+        // a Asaas rejeitaria CPF inválido de qualquer forma. Fixtures válidos:
+        expect(isPixKeyFormatValid('529.982.247-25', 'CPF')).toBe(true)
+        expect(isPixKeyFormatValid('11144477735', 'CPF')).toBe(true)
     })
 
     it('rejects CPF with wrong length', () => {
         expect(isPixKeyFormatValid('123456', 'CPF')).toBe(false)
     })
 
-    it('accepts CNPJ with 14 digits', () => {
-        expect(isPixKeyFormatValid('00.000.000/0000-00', 'CNPJ')).toBe(true) // dummy fixture, never a real CNPJ
-        expect(isPixKeyFormatValid('12345678000190', 'CNPJ')).toBe(true)
+    it('rejects CPF com dígito verificador inválido', () => {
+        expect(isPixKeyFormatValid('123.456.789-00', 'CPF')).toBe(false)
+        expect(isPixKeyFormatValid('000.000.000-00', 'CPF')).toBe(false)
+    })
+
+    it('accepts a valid CNPJ (com e sem pontuação)', () => {
+        expect(isPixKeyFormatValid('11.222.333/0001-81', 'CNPJ')).toBe(true)
+        expect(isPixKeyFormatValid('04252011000110', 'CNPJ')).toBe(true)
+    })
+
+    it('rejects CNPJ com dígito verificador inválido', () => {
+        expect(isPixKeyFormatValid('11.222.333/0001-00', 'CNPJ')).toBe(false)
     })
 
     it('accepts valid email', () => {

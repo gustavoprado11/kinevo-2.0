@@ -916,13 +916,6 @@ export function FinancialDashboardClient({
                     </div>
                 </div>
 
-                {/* "Tudo em dia" indicador (quando não há atenção e tem ativos) */}
-                {attentionStudents.length === 0 && (payingCount > 0 || courtesyCount > 0) && (
-                    <div className="mt-6 flex items-center gap-2 px-3 py-2 bg-[#34C759]/5 dark:bg-emerald-500/5 border border-[#34C759]/15 dark:border-emerald-500/15 rounded-xl w-fit">
-                        <Check size={14} className="text-[#34C759] dark:text-emerald-400" />
-                        <span className="text-xs text-[#34C759] dark:text-emerald-400 font-medium">Tudo em dia</span>
-                    </div>
-                )}
             </div>
 
             {/* Modais */}

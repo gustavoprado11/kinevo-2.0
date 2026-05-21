@@ -15,8 +15,72 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { AsaasApiError, deactivatePaymentLink } from '@/lib/asaas'
+import { AsaasApiError, deactivatePaymentLink, getPaymentLink } from '@/lib/asaas'
 import { getDecryptedApiKey, requireTrainer, WalletAuthError } from '@/lib/asaas/wallet-service'
+
+// ============================================================================
+// GET /api/wallet/charges/[id]
+// ============================================================================
+// Retorna os dados da cobrança de um contrato + a URL viva do Payment Link
+// (buscada na Asaas), pra UI conseguir re-compartilhar o link com o aluno.
+// Auth: cookie (web) OU Bearer (mobile).
+// ============================================================================
+export async function GET(
+    request: NextRequest,
+    { params }: { params: Promise<{ id: string }> },
+) {
+    const { id: contractId } = await params
+    if (!contractId) {
+        return NextResponse.json({ error: 'contractId é obrigatório' }, { status: 400 })
+    }
+
+    try {
+        const trainer = await requireTrainer(request)
+
+        const { data: contract, error: loadErr } = await supabaseAdmin
+            .from('student_contracts')
+            .select('id, trainer_id, status, billing_type, provider, amount, asaas_payment_link_id')
+            .eq('id', contractId)
+            .maybeSingle()
+        if (loadErr || !contract) {
+            return NextResponse.json({ error: 'Cobrança não encontrada' }, { status: 404 })
+        }
+        if (contract.trainer_id !== trainer.id) {
+            return NextResponse.json({ error: 'Cobrança não pertence a você' }, { status: 403 })
+        }
+
+        // Busca a URL viva do Payment Link na Asaas (best-effort). Se o link foi
+        // desativado/removido, url volta null e a UI cai no fallback.
+        let url: string | null = null
+        if (contract.asaas_payment_link_id) {
+            try {
+                const apiKey = await getDecryptedApiKey(trainer.id)
+                const link = await getPaymentLink(apiKey, contract.asaas_payment_link_id)
+                url = link.url ?? null
+            } catch (err) {
+                if (!(err instanceof AsaasApiError && err.status === 404)) {
+                    console.error('[wallet/charges GET] getPaymentLink failed', err)
+                }
+            }
+        }
+
+        return NextResponse.json({
+            contractId: contract.id,
+            status: contract.status,
+            billingType: contract.billing_type,
+            provider: contract.provider,
+            value: contract.amount,
+            asaasPaymentLinkId: contract.asaas_payment_link_id,
+            url,
+        })
+    } catch (err) {
+        if (err instanceof WalletAuthError) {
+            return NextResponse.json({ error: err.message }, { status: err.status })
+        }
+        console.error('[wallet/charges GET] Error', err)
+        return NextResponse.json({ error: 'Erro ao consultar cobrança' }, { status: 500 })
+    }
+}
 
 export async function DELETE(
     request: NextRequest,

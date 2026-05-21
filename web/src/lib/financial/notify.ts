@@ -5,11 +5,18 @@
 // antes se o trainer tem o toggle correspondente ligado em
 // /financial/settings. Se desligado, simplesmente não faz nada.
 //
-// Eventos cobertos hoje:
+// Eventos com toggle em trainer_financial_settings:
 //   - payment_received      → notify_on_payment_received
 //   - subscription_canceled → notify_on_subscription_canceled
 //   - payout_completed      → notify_on_payout_completed
 //   - kyc_alert             → notify_on_kyc_alert
+//
+// Eventos SEMPRE notificados (críticos de dinheiro ou infrequentes — não há
+// toggle pra silenciar, por design):
+//   - payment_overdue   (aluno atrasou)
+//   - payment_refunded  (reembolso processado)
+//   - payout_failed     (saque falhou/cancelado — crítico)
+//   - chargeback_alert  (chargeback aberto/contestado — crítico)
 //
 // Cada chamada faz 1-2 round trips ao banco. Não usar em hot path —
 // destinada exclusivamente a webhooks/cron de baixa frequência.
@@ -22,11 +29,18 @@ import { getFinancialSettings } from './settings'
 
 export type FinancialEventType =
     | 'payment_received'
+    | 'payment_overdue'
+    | 'payment_refunded'
     | 'subscription_canceled'
     | 'payout_completed'
+    | 'payout_failed'
     | 'kyc_alert'
+    | 'chargeback_alert'
 
-const SETTING_BY_EVENT: Record<FinancialEventType, keyof Awaited<ReturnType<typeof getFinancialSettings>>> = {
+// Mapeia evento → toggle. Eventos ausentes deste mapa sempre notificam.
+const SETTING_BY_EVENT: Partial<
+    Record<FinancialEventType, keyof Awaited<ReturnType<typeof getFinancialSettings>>>
+> = {
     payment_received: 'notifyOnPaymentReceived',
     subscription_canceled: 'notifyOnSubscriptionCanceled',
     payout_completed: 'notifyOnPayoutCompleted',
@@ -51,13 +65,17 @@ export interface NotifyFinancialParams {
  */
 export async function notifyFinancial(params: NotifyFinancialParams): Promise<void> {
     try {
-        const settings = await getFinancialSettings(params.trainerId)
         const settingKey = SETTING_BY_EVENT[params.event]
-        const enabled = settings[settingKey] as boolean
 
-        if (!enabled) {
-            // Trainer desligou esse tipo de notificação — respeita.
-            return
+        // Eventos sem toggle (críticos/infrequentes) sempre notificam.
+        // Eventos com toggle respeitam a preferência do trainer.
+        if (settingKey) {
+            const settings = await getFinancialSettings(params.trainerId)
+            const enabled = settings[settingKey] as boolean
+            if (!enabled) {
+                // Trainer desligou esse tipo de notificação — respeita.
+                return
+            }
         }
 
         const notifId = await insertTrainerNotification({

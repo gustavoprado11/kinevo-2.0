@@ -19,10 +19,10 @@ describe('fees — simulateNet', () => {
         else process.env.KINEVO_TAKE_RATE_PCT = originalTake
     })
 
-    it('PIX em R$ 250: trainer recebe R$ 245,03 (250 - 1,99% - 0,40)', () => {
+    it('PIX em R$ 250: trainer recebe R$ 249,01 (PIX R$ 0,99 fixo)', () => {
         const r = simulateNet(250, 'PIX')
-        expect(r.asaasFee).toBeCloseTo(4.97, 2)
-        expect(r.trainerNet).toBeCloseTo(245.03, 2)
+        expect(r.asaasFee).toBeCloseTo(0.99, 2)
+        expect(r.trainerNet).toBeCloseTo(249.01, 2)
         expect(r.kinevoFee).toBe(0)
         expect(r.method).toBe('PIX')
     })
@@ -48,12 +48,12 @@ describe('fees — simulateNet', () => {
     it('aplica take rate Kinevo quando setado em env', () => {
         process.env.KINEVO_TAKE_RATE_PCT = '1.5'
         const r = simulateNet(200, 'PIX')
-        // Asaas: 200 * 0.0199 + 0.40 = 4.38
+        // Asaas PIX: R$ 0,99 fixo
         // Kinevo: 200 * 0.015 = 3.00
-        // Net: 200 - 4.38 - 3.00 = 192.62
-        expect(r.asaasFee).toBeCloseTo(4.38, 2)
+        // Net: 200 - 0.99 - 3.00 = 196.01
+        expect(r.asaasFee).toBeCloseTo(0.99, 2)
         expect(r.kinevoFee).toBe(3)
-        expect(r.trainerNet).toBeCloseTo(192.62, 2)
+        expect(r.trainerNet).toBeCloseTo(196.01, 2)
     })
 
     it('aceita override de take rate na chamada', () => {

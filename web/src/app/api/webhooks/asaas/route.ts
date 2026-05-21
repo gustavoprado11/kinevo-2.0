@@ -85,6 +85,12 @@ export async function POST(request: NextRequest) {
                 await handlePaymentRefunded(event)
                 break
 
+            case 'PAYMENT_CHARGEBACK_REQUESTED':
+            case 'PAYMENT_CHARGEBACK_DISPUTE':
+            case 'PAYMENT_AWAITING_CHARGEBACK_REVERSAL':
+                await handlePaymentChargeback(event)
+                break
+
             case 'TRANSFER_DONE':
                 await handleTransferDone(event)
                 break
@@ -268,16 +274,40 @@ async function handlePaymentOverdue(event: AsaasWebhookEvent) {
         .eq('asaas_payment_id', payment.id)
     // Tenta atualizar contrato por asaas_payment_id (Payment Link já tinha
     // sido backfilled em PAYMENT_RECEIVED) OU diretamente pelo paymentLink id
+    type ContractRef = { id: string; trainer_id: string; student_id: string }
+    let matchedContract: ContractRef | null = null
     const { data: byPay } = await supabaseAdmin
         .from('student_contracts')
         .update({ status: 'past_due' })
         .eq('asaas_payment_id', payment.id)
-        .select('id')
-    if ((byPay?.length ?? 0) === 0 && payment.paymentLink) {
-        await supabaseAdmin
+        .select('id, trainer_id, student_id')
+    if (byPay && byPay.length > 0) {
+        matchedContract = byPay[0] as ContractRef
+    } else if (payment.paymentLink) {
+        const { data: byLink } = await supabaseAdmin
             .from('student_contracts')
             .update({ status: 'past_due', asaas_payment_id: payment.id })
             .eq('asaas_payment_link_id', payment.paymentLink)
+            .select('id, trainer_id, student_id')
+        if (byLink && byLink.length > 0) {
+            matchedContract = byLink[0] as ContractRef
+        }
+    }
+
+    // Notifica o trainer que o aluno atrasou. O bloqueio de acesso em si fica
+    // a cargo do cron block_overdue_students (respeita grace_days do trainer).
+    const trainerId =
+        matchedContract?.trainer_id ??
+        (await resolveTrainerByAsaasPayment(payment.id, payment.paymentLink))
+    if (trainerId) {
+        const studentName = await studentNameById(matchedContract?.student_id)
+        await notifyFinancial({
+            trainerId,
+            event: 'payment_overdue',
+            title: 'Pagamento atrasado',
+            body: `${studentName} não pagou ${formatBRL(payment.value)} no vencimento.`,
+            data: { paymentId: payment.id, route: '/financial' },
+        })
     }
 }
 
@@ -288,6 +318,43 @@ async function handlePaymentRefunded(event: AsaasWebhookEvent) {
         .from('financial_transactions')
         .update({ status: 'refunded' })
         .eq('asaas_payment_id', payment.id)
+
+    const trainerId = await resolveTrainerByAsaasPayment(payment.id, payment.paymentLink)
+    if (trainerId) {
+        await notifyFinancial({
+            trainerId,
+            event: 'payment_refunded',
+            title: 'Reembolso processado',
+            body: `${formatBRL(payment.value)} foram devolvidos ao aluno.`,
+            data: { paymentId: payment.id, route: '/financial' },
+        })
+    }
+}
+
+// PAYMENT_CHARGEBACK_REQUESTED / DISPUTE / AWAITING_REVERSAL.
+// Crítico: o trainer precisa responder dentro do prazo da operadora via Asaas.
+async function handlePaymentChargeback(event: AsaasWebhookEvent) {
+    const payment = event.payment
+    if (!payment) return
+    // Marca a transação como contestada pra refletir no extrato.
+    await supabaseAdmin
+        .from('financial_transactions')
+        .update({ status: 'disputed' })
+        .eq('asaas_payment_id', payment.id)
+
+    const reversed = event.event === 'PAYMENT_AWAITING_CHARGEBACK_REVERSAL'
+    const trainerId = await resolveTrainerByAsaasPayment(payment.id, payment.paymentLink)
+    if (trainerId) {
+        await notifyFinancial({
+            trainerId,
+            event: 'chargeback_alert',
+            title: reversed ? 'Chargeback contestado' : 'Chargeback aberto',
+            body: reversed
+                ? `A contestação de ${formatBRL(payment.value)} foi enviada à operadora.`
+                : `Um aluno abriu chargeback de ${formatBRL(payment.value)}. Responda pelo painel Asaas o quanto antes.`,
+            data: { paymentId: payment.id, route: '/financial', kind: 'chargeback' },
+        })
+    }
 }
 
 async function handleTransferDone(event: AsaasWebhookEvent) {
@@ -318,13 +385,27 @@ async function handleTransferDone(event: AsaasWebhookEvent) {
 async function handleTransferFailed(event: AsaasWebhookEvent) {
     const transfer = event.transfer
     if (!transfer) return
+    const cancelled = transfer.status === 'CANCELLED'
+    const reason = transfer.failReason ?? 'Transfer failed at Asaas'
     await supabaseAdmin
         .from('payouts')
         .update({
-            status: transfer.status === 'CANCELLED' ? 'cancelled' : 'failed',
-            failure_reason: transfer.failReason ?? 'Transfer failed at Asaas',
+            status: cancelled ? 'cancelled' : 'failed',
+            failure_reason: reason,
         })
         .eq('asaas_transfer_id', transfer.id)
+
+    // Crítico: o trainer tentou sacar e não caiu. Sempre notifica.
+    const trainerId = await resolveTrainerByAsaasTransfer(transfer.id)
+    if (trainerId) {
+        await notifyFinancial({
+            trainerId,
+            event: 'payout_failed',
+            title: cancelled ? 'Saque cancelado' : 'Saque falhou',
+            body: `Seu saque de ${formatBRL(transfer.value)} não foi concluído. Motivo: ${reason}`,
+            data: { transferId: transfer.id, route: '/financial/wallet' },
+        })
+    }
 }
 
 async function handleTransferProcessing(event: AsaasWebhookEvent) {
@@ -370,6 +451,18 @@ async function handleAccountStatusUpdated(event: AsaasWebhookEvent) {
             })
         }
     }
+}
+
+// Busca o nome do aluno pra deixar a notificação mais útil. Tolerante a
+// undefined/erro — retorna fallback genérico.
+async function studentNameById(studentId?: string | null): Promise<string> {
+    if (!studentId) return 'Um aluno'
+    const { data } = await supabaseAdmin
+        .from('students')
+        .select('name')
+        .eq('id', studentId)
+        .maybeSingle()
+    return (data?.name as string) ?? 'Um aluno'
 }
 
 function mapAsaasStatusToLocal(asaasStatus: string): 'pending' | 'awaiting' | 'approved' | 'rejected' | 'blocked' {

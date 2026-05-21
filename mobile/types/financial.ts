@@ -16,6 +16,8 @@ export interface FinancialStudent {
     plan_title: string | null
     plan_interval: string | null
     display_status: DisplayStatus
+    access_blocked_at: string | null
+    access_blocked_reason: string | null
 }
 
 export type DisplayStatus =
@@ -26,6 +28,7 @@ export type DisplayStatus =
     | 'canceling'
     | 'overdue'
     | 'canceled'
+    | 'expired'
 
 export interface ContractEvent {
     id: string

@@ -14,14 +14,17 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { X, ChevronRight, Users, Heart, DollarSign, CreditCard, Link as LinkIcon } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { supabase } from "../../lib/supabase";
+import { walletFetch } from "../../lib/wallet-api";
 import { useRoleMode } from "../../contexts/RoleModeContext";
 import type { TrainerPlan } from "../../hooks/useTrainerPlans";
 import { useV2Colors, type V2Palette } from "../../hooks/useV2Colors";
 
 const API_URL = process.env.EXPO_PUBLIC_WEB_URL || "https://app.kinevo.com.br";
 
-type BillingType = "stripe_auto" | "manual_recurring" | "manual_one_off" | "courtesy";
+type BillingType = "asaas_recurring" | "asaas_one_off" | "manual_recurring" | "manual_one_off" | "courtesy";
 type Step = "student" | "billing" | "plan" | "confirm";
+
+const isAsaas = (b: BillingType | null) => b === "asaas_recurring" || b === "asaas_one_off";
 
 interface Student {
     id: string;
@@ -34,7 +37,8 @@ interface NewSubscriptionSheetProps {
     onClose: () => void;
     onSuccess: () => void;
     plans: TrainerPlan[];
-    hasStripeConnect: boolean;
+    /** Carteira Asaas aprovada → habilita cobrança via PIX/cartão/boleto. */
+    walletApproved: boolean;
     preSelectedStudent?: { id: string; name: string; avatar_url: string | null } | null;
 }
 
@@ -42,8 +46,9 @@ function formatCurrency(value: number): string {
     return `R$ ${value.toFixed(2).replace(".", ",")}`;
 }
 
-const BILLING_OPTIONS: { key: BillingType; label: string; desc: string; icon: any; requiresStripe?: boolean }[] = [
-    { key: "stripe_auto", label: "Cobrança automática (Stripe)", desc: "Cobra automaticamente via cartão a cada ciclo", icon: CreditCard, requiresStripe: true },
+const BILLING_OPTIONS: { key: BillingType; label: string; desc: string; icon: any; requiresWallet?: boolean }[] = [
+    { key: "asaas_recurring", label: "Assinatura via Carteira", desc: "PIX, cartão ou boleto — renova automático. Gera link pra enviar.", icon: CreditCard, requiresWallet: true },
+    { key: "asaas_one_off", label: "Cobrança avulsa via Carteira", desc: "PIX, cartão ou boleto, uma vez. Gera link pra enviar.", icon: DollarSign, requiresWallet: true },
     { key: "manual_recurring", label: "Controle manual (recorrente)", desc: "Você registra os pagamentos feitos por fora (Pix, dinheiro, etc.)", icon: DollarSign },
     { key: "manual_one_off", label: "Pagamento único", desc: "Um pagamento avulso, sem renovação automática", icon: DollarSign },
     { key: "courtesy", label: "Acesso gratuito", desc: "Sem cobrança — o aluno treina normalmente", icon: Heart },
@@ -55,7 +60,7 @@ const INTERVAL_LABELS: Record<string, string> = {
     year: "Anual",
 };
 
-export function NewSubscriptionSheet({ visible, onClose, onSuccess, plans, hasStripeConnect, preSelectedStudent }: NewSubscriptionSheetProps) {
+export function NewSubscriptionSheet({ visible, onClose, onSuccess, plans, walletApproved, preSelectedStudent }: NewSubscriptionSheetProps) {
     const colors = useV2Colors();
     const { trainerId } = useRoleMode();
 
@@ -147,58 +152,63 @@ export function NewSubscriptionSheet({ visible, onClose, onSuccess, plans, hasSt
         setSubmitting(true);
 
         try {
+            if (isAsaas(selectedBilling)) {
+                // Cobrança via Carteira Asaas → gera Payment Link pra compartilhar.
+                if (!selectedPlan) {
+                    Alert.alert("Erro", "Selecione um plano para a cobrança.");
+                    return;
+                }
+                let url: string;
+                if (selectedBilling === "asaas_recurring") {
+                    const r = await walletFetch<{ url: string }>("/api/wallet/subscriptions", {
+                        method: "POST",
+                        body: { studentId: selectedStudent.id, planId: selectedPlan.id },
+                    });
+                    url = r.url;
+                } else {
+                    // dueDate padrão: hoje + 3 dias (YYYY-MM-DD)
+                    const dueDate = new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10);
+                    const r = await walletFetch<{ url: string }>("/api/wallet/charges", {
+                        method: "POST",
+                        body: { studentId: selectedStudent.id, planId: selectedPlan.id, value: selectedPlan.price, dueDate },
+                    });
+                    url = r.url;
+                }
+                onSuccess();
+                onClose();
+                setTimeout(async () => {
+                    await Share.share({ message: `Link de pagamento Kinevo: ${url}`, url });
+                }, 500);
+                return;
+            }
+
+            // Manual / cortesia → cria contrato local (provider-agnóstico).
             const { data: sessionData } = await supabase.auth.getSession();
             const token = sessionData?.session?.access_token;
             if (!token) {
                 Alert.alert("Erro", "Sessão expirada");
                 return;
             }
-
-            if (selectedBilling === "stripe_auto" && selectedPlan?.stripe_price_id) {
-                // Generate checkout link + share
-                const res = await fetch(`${API_URL}/api/financial/checkout-link`, {
-                    method: "POST",
-                    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-                    body: JSON.stringify({ studentId: selectedStudent.id, planId: selectedPlan.id }),
-                });
-                const data = await res.json();
-
-                if (data.success && data.url) {
-                    onSuccess();
-                    onClose();
-                    setTimeout(async () => {
-                        await Share.share({
-                            message: `Link de pagamento Kinevo: ${data.url}`,
-                            url: data.url,
-                        });
-                    }, 500);
-                } else {
-                    Alert.alert("Erro", data.error || "Falha ao gerar link");
-                }
+            const res = await fetch(`${API_URL}/api/financial/create-contract`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    studentId: selectedStudent.id,
+                    planId: selectedPlan?.id || null,
+                    billingType: selectedBilling,
+                    blockOnFail: false,
+                }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                Alert.alert("Sucesso", "Cobrança criada com sucesso!");
+                onSuccess();
+                onClose();
             } else {
-                // Create contract via API
-                const res = await fetch(`${API_URL}/api/financial/create-contract`, {
-                    method: "POST",
-                    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        studentId: selectedStudent.id,
-                        planId: selectedPlan?.id || null,
-                        billingType: selectedBilling,
-                        blockOnFail: false,
-                    }),
-                });
-
-                const data = await res.json();
-                if (data.success) {
-                    Alert.alert("Sucesso", "Cobrança criada com sucesso!");
-                    onSuccess();
-                    onClose();
-                } else {
-                    Alert.alert("Erro", data.error || "Falha ao criar cobrança");
-                }
+                Alert.alert("Erro", data.error || "Falha ao criar cobrança");
             }
         } catch (err) {
-            Alert.alert("Erro", "Falha na conexão");
+            Alert.alert("Erro", err instanceof Error ? err.message : "Falha na conexão");
         } finally {
             setSubmitting(false);
         }
@@ -310,7 +320,7 @@ export function NewSubscriptionSheet({ visible, onClose, onSuccess, plans, hasSt
                     {step === "billing" && (
                         <View style={{ gap: 10 }}>
                             {BILLING_OPTIONS.map((opt) => {
-                                if (opt.requiresStripe && !hasStripeConnect) return null;
+                                if (opt.requiresWallet && !walletApproved) return null;
                                 const Icon = opt.icon;
                                 return (
                                     <TouchableOpacity
@@ -363,44 +373,32 @@ export function NewSubscriptionSheet({ visible, onClose, onSuccess, plans, hasSt
                             </View>
                         ) : (
                             <View style={{ gap: 10 }}>
-                                {plans.filter(p => p.is_active).map((plan) => {
-                                    const canStripe = selectedBilling === "stripe_auto" && !!plan.stripe_price_id;
-                                    const isStripeMode = selectedBilling === "stripe_auto";
-                                    const disabled = isStripeMode && !plan.stripe_price_id;
-
-                                    return (
-                                        <TouchableOpacity
-                                            key={plan.id}
-                                            onPress={() => !disabled && handleSelectPlan(plan)}
-                                            activeOpacity={disabled ? 1 : 0.6}
-                                            style={{
-                                                backgroundColor: disabled ? colors.surface.card2 : colors.surface.card,
-                                                borderRadius: 14,
-                                                padding: 16,
-                                                borderWidth: 1,
-                                                borderColor: colors.border.subtle,
-                                                opacity: disabled ? 0.5 : 1,
-                                            }}
-                                        >
-                                            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                                                <View style={{ flex: 1 }}>
-                                                    <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text.primary }}>
-                                                        {plan.title}
-                                                    </Text>
-                                                    <Text style={{ fontSize: 13, color: colors.text.tertiary, marginTop: 2 }}>
-                                                        {formatCurrency(plan.price)} / {(INTERVAL_LABELS[plan.interval] || "mês").toLowerCase()}
-                                                    </Text>
-                                                    {disabled && (
-                                                        <Text style={{ fontSize: 11, color: "#ef4444", marginTop: 4 }}>
-                                                            Sem integração Stripe
-                                                        </Text>
-                                                    )}
-                                                </View>
-                                                <ChevronRight size={16} color={colors.text.quaternary} />
+                                {plans.filter(p => p.is_active).map((plan) => (
+                                    <TouchableOpacity
+                                        key={plan.id}
+                                        onPress={() => handleSelectPlan(plan)}
+                                        activeOpacity={0.6}
+                                        style={{
+                                            backgroundColor: colors.surface.card,
+                                            borderRadius: 14,
+                                            padding: 16,
+                                            borderWidth: 1,
+                                            borderColor: colors.border.subtle,
+                                        }}
+                                    >
+                                        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text.primary }}>
+                                                    {plan.title}
+                                                </Text>
+                                                <Text style={{ fontSize: 13, color: colors.text.tertiary, marginTop: 2 }}>
+                                                    {formatCurrency(plan.price)} / {(INTERVAL_LABELS[plan.interval] || "mês").toLowerCase()}
+                                                </Text>
                                             </View>
-                                        </TouchableOpacity>
-                                    );
-                                })}
+                                            <ChevronRight size={16} color={colors.text.quaternary} />
+                                        </View>
+                                    </TouchableOpacity>
+                                ))}
                             </View>
                         )
                     )}
@@ -426,7 +424,8 @@ export function NewSubscriptionSheet({ visible, onClose, onSuccess, plans, hasSt
                                     colors={colors}
                                     label="Cobrança"
                                     value={
-                                        selectedBilling === "stripe_auto" ? "Cobrança automática (Stripe)" :
+                                        selectedBilling === "asaas_recurring" ? "Assinatura via Carteira" :
+                                        selectedBilling === "asaas_one_off" ? "Cobrança avulsa via Carteira" :
                                         selectedBilling === "manual_recurring" ? "Controle manual (recorrente)" :
                                         selectedBilling === "manual_one_off" ? "Pagamento único" : "Acesso gratuito"
                                     }
@@ -444,12 +443,12 @@ export function NewSubscriptionSheet({ visible, onClose, onSuccess, plans, hasSt
                             </View>
 
                             {/* Info text */}
-                            {selectedBilling === "stripe_auto" && (
+                            {isAsaas(selectedBilling) && (
                                 <View style={{ backgroundColor: "rgba(124,58,237,0.12)", borderRadius: 12, padding: 14, marginBottom: 20 }}>
                                     <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                                         <LinkIcon size={14} color="#7c3aed" />
                                         <Text style={{ fontSize: 13, color: "#7c3aed", fontWeight: "500", flex: 1 }}>
-                                            Um link de pagamento será gerado para compartilhar com o aluno
+                                            Um link de pagamento (PIX, cartão ou boleto) será gerado para compartilhar com o aluno.
                                         </Text>
                                     </View>
                                 </View>
@@ -473,7 +472,7 @@ export function NewSubscriptionSheet({ visible, onClose, onSuccess, plans, hasSt
                                     <ActivityIndicator color="#ffffff" />
                                 ) : (
                                     <Text style={{ fontSize: 16, fontWeight: "700", color: "#ffffff" }}>
-                                        {selectedBilling === "stripe_auto" ? "Gerar Link de Pagamento" : "Confirmar Cobrança"}
+                                        {isAsaas(selectedBilling) ? "Gerar link de pagamento" : "Confirmar cobrança"}
                                     </Text>
                                 )}
                             </TouchableOpacity>

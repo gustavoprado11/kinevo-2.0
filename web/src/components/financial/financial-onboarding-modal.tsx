@@ -7,8 +7,20 @@ import {
     HandCoins, ChevronRight, ChevronLeft, X
 } from 'lucide-react'
 import { useOnboardingStore } from '@/stores/onboarding-store'
+import { ASAAS_FEES, formatBRL, formatPercent, type FeeRule } from '@/lib/asaas/fees'
 
 const TOUR_ID = 'financial_intro'
+
+// Deriva a descrição de taxa de ASAAS_FEES (fonte única da verdade) pra nunca
+// divergir do que o trainer realmente recebe. Ex.: "R$ 0,99" ou "2,99% + R$ 0,49".
+function describeFee(rule: FeeRule): string {
+    const parts: string[] = []
+    if (rule.percent > 0) parts.push(formatPercent(rule.percent))
+    if (rule.fixed > 0) parts.push(formatBRL(rule.fixed))
+    return parts.join(' + ') || 'sem taxa'
+}
+
+const FEE_DETAIL = `Taxas: ${describeFee(ASAAS_FEES.PIX)} no PIX, ${describeFee(ASAAS_FEES.CREDIT_CARD)} no Cartão`
 
 interface Step {
     title: string
@@ -41,7 +53,7 @@ const STEPS: Step[] = [
             'Aluno paga via PIX, Cartão ou Boleto sem sair do checkout',
             'Saque na hora pra sua chave PIX, quando quiser',
             'Já tem conta Asaas? Pode vincular em vez de criar uma nova',
-            'Taxas: 1,99% + R$ 0,40 no PIX, 2,99% + R$ 0,49 no Cartão',
+            FEE_DETAIL,
         ],
         icon: <CreditCard size={24} />,
         accent: 'bg-violet-500/10',

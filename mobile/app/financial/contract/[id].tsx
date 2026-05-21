@@ -25,9 +25,10 @@ import {
     Info,
 } from "lucide-react-native";
 import { supabase } from "../../../lib/supabase";
+import { walletFetch } from "../../../lib/wallet-api";
 import { useContractDetail } from "../../../hooks/useContractDetail";
 import { useTrainerPlans } from "../../../hooks/useTrainerPlans";
-import { useStripeStatus } from "../../../hooks/useStripeStatus";
+import { useWallet } from "../../../hooks/useWallet";
 import { ContractTimeline } from "../../../components/financial/ContractTimeline";
 import { NewSubscriptionSheet } from "../../../components/financial/NewSubscriptionSheet";
 import type { DisplayStatus } from "../../../types/financial";
@@ -43,9 +44,12 @@ const STATUS_CONFIG: Record<DisplayStatus, { bg: string; text: string; label: st
     canceling: { bg: "#fffbeb", text: "#f59e0b", label: "Cancelando" },
     overdue: { bg: "#fef2f2", text: "#ef4444", label: "Inadimplente" },
     canceled: { bg: "#f1f5f9", text: "#64748b", label: "Encerrado" },
+    expired: { bg: "#fef2f2", text: "#ef4444", label: "Expirado" },
 };
 
 const BILLING_LABELS: Record<string, string> = {
+    asaas_auto: "Carteira (avulsa)",
+    asaas_auto_recurring: "Carteira (assinatura)",
     stripe_auto: "Stripe (automático)",
     manual_recurring: "Manual recorrente",
     manual_one_off: "Avulso",
@@ -70,13 +74,13 @@ export default function ContractDetailScreen() {
     const colors = useV2Colors();
     const router = useRouter();
     const { id } = useLocalSearchParams<{ id: string }>();
-    const { student, events, isLoading, refresh } = useContractDetail(id || null);
+    const { student, contract, events, isLoading, refresh } = useContractDetail(id || null);
     const { activePlans, refresh: refreshPlans } = useTrainerPlans();
-    const { status: stripeStatus } = useStripeStatus();
+    const { summary: wallet } = useWallet();
     const [actionLoading, setActionLoading] = useState<string | null>(null);
     const [billingSheetVisible, setBillingSheetVisible] = useState(false);
 
-    const hasStripeConnect = !!(stripeStatus?.connected && stripeStatus?.charges_enabled);
+    const walletApproved = wallet?.status === "approved";
 
     const getToken = useCallback(async () => {
         const { data } = await supabase.auth.getSession();
@@ -159,8 +163,75 @@ export default function ContractDetailScreen() {
         }
     }, [student, getToken]);
 
+    // Re-compartilha o Payment Link Asaas existente (busca a URL viva no backend).
+    const handleShareAsaasLink = useCallback(async () => {
+        if (!student?.contract_id) return;
+        setActionLoading("share-link");
+        try {
+            const data = await walletFetch<{ url: string | null }>(`/api/wallet/charges/${student.contract_id}`);
+            if (data.url) {
+                await Share.share({ message: `Link de pagamento Kinevo: ${data.url}`, url: data.url });
+            } else {
+                Alert.alert("Link indisponível", "Não encontramos um link ativo. Gere uma nova cobrança para este aluno.");
+            }
+        } catch (err) {
+            Alert.alert("Erro", err instanceof Error ? err.message : "Falha ao buscar o link");
+        } finally {
+            setActionLoading(null);
+        }
+    }, [student]);
+
+    // Verifica na Asaas se a cobrança já foi paga (fallback caso o webhook não chegue).
+    const handleSyncAsaas = useCallback(async () => {
+        if (!student?.contract_id) return;
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        setActionLoading("sync");
+        try {
+            const data = await walletFetch<{ synced: boolean; status: string; message?: string }>(
+                `/api/wallet/charges/${student.contract_id}/sync`,
+                { method: "POST" },
+            );
+            if (data.synced) {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                Alert.alert("Pagamento confirmado", "A cobrança foi marcada como paga.");
+                refresh();
+            } else {
+                Alert.alert("Ainda não consta pago", data.message || "Não recebemos a confirmação ainda. Tente de novo em alguns minutos.");
+            }
+        } catch (err) {
+            Alert.alert("Erro", err instanceof Error ? err.message : "Falha ao verificar pagamento");
+        } finally {
+            setActionLoading(null);
+        }
+    }, [student, refresh]);
+
+    // Cancela uma cobrança Asaas pendente (desativa o Payment Link).
+    const executeCancelAsaasCharge = useCallback(async () => {
+        if (!student?.contract_id) return;
+        setActionLoading("cancel");
+        try {
+            await walletFetch(`/api/wallet/charges/${student.contract_id}`, { method: "DELETE" });
+            Alert.alert("Cobrança cancelada", "O link de pagamento foi desativado.");
+            refresh();
+        } catch (err) {
+            Alert.alert("Erro", err instanceof Error ? err.message : "Falha ao cancelar a cobrança");
+        } finally {
+            setActionLoading(null);
+        }
+    }, [student, refresh]);
+
     const handleCancel = useCallback(async () => {
         if (!student?.contract_id) return;
+
+        // Cobrança Asaas pendente → desativa o Payment Link via Carteira.
+        const isAsaasCharge = contract?.provider === "asaas" || (contract?.billing_type ?? "").startsWith("asaas");
+        if (isAsaasCharge && contract?.status === "pending_payment") {
+            Alert.alert("Cancelar cobrança", "Desativar o link de pagamento desta cobrança?", [
+                { text: "Voltar", style: "cancel" },
+                { text: "Cancelar cobrança", style: "destructive", onPress: executeCancelAsaasCharge },
+            ]);
+            return;
+        }
 
         const isStripe = student.billing_type === "stripe_auto";
 
@@ -189,7 +260,7 @@ export default function ContractDetailScreen() {
                 },
             ]);
         }
-    }, [student]);
+    }, [student, contract, executeCancelAsaasCharge]);
 
     const executeCancelContract = useCallback(async (cancelAtPeriodEnd: boolean) => {
         if (!student?.contract_id) return;
@@ -261,7 +332,13 @@ export default function ContractDetailScreen() {
         );
     }
 
-    const statusCfg = STATUS_CONFIG[student.display_status] || STATUS_CONFIG.courtesy;
+    // Dados Asaas vêm do contrato real (a RPC não os expõe e classifica
+    // pending_payment como cortesia). Corrigimos o status efetivo aqui.
+    const isAsaasContract = contract?.provider === "asaas" || (contract?.billing_type ?? "").startsWith("asaas");
+    const isAsaasAwaiting = isAsaasContract && contract?.status === "pending_payment";
+    const effectiveStatus: DisplayStatus = isAsaasAwaiting ? "awaiting_payment" : student.display_status;
+
+    const statusCfg = STATUS_CONFIG[effectiveStatus] || STATUS_CONFIG.courtesy;
     const initials = student.student_name
         ?.split(" ")
         .slice(0, 2)
@@ -279,11 +356,14 @@ export default function ContractDetailScreen() {
     const showWhatsApp =
         student.display_status === "grace_period" || student.display_status === "overdue";
 
-    const showCheckoutLink = student.display_status === "awaiting_payment";
+    // Cobrança Asaas aguardando pagamento → re-compartilhar link + verificar.
+    const showAsaasCharge = isAsaasAwaiting;
+    // Stripe legado aguardando → checkout Stripe (fluxo antigo).
+    const showStripeCheckout = !isAsaasContract && student.display_status === "awaiting_payment";
     const showCancel =
-        student.display_status !== "canceled" &&
-        student.display_status !== "courtesy" &&
-        student.display_status !== "canceling";
+        effectiveStatus !== "canceled" &&
+        effectiveStatus !== "courtesy" &&
+        effectiveStatus !== "canceling";
 
     return (
         <>
@@ -401,7 +481,7 @@ export default function ContractDetailScreen() {
                     </View>
 
                     {/* Configure Billing - for courtesy or canceled students */}
-                    {(student.display_status === "courtesy" || student.display_status === "canceled") && (
+                    {(effectiveStatus === "courtesy" || effectiveStatus === "canceled") && (
                         <TouchableOpacity
                             onPress={() => setBillingSheetVisible(true)}
                             activeOpacity={0.7}
@@ -445,7 +525,7 @@ export default function ContractDetailScreen() {
                     )}
 
                     {/* Actions */}
-                    {(showMarkPaid || showCheckoutLink || showWhatsApp) && (
+                    {(showMarkPaid || showAsaasCharge || showStripeCheckout || showWhatsApp) && (
                         <View style={{ gap: 10, marginBottom: 16 }}>
                             {showMarkPaid && (
                                 <ActionButton
@@ -457,7 +537,27 @@ export default function ContractDetailScreen() {
                                     onPress={handleMarkPaid}
                                 />
                             )}
-                            {showCheckoutLink && (
+                            {showAsaasCharge && (
+                                <>
+                                    <ActionButton
+                                        label="Compartilhar link de pagamento"
+                                        icon={LinkIcon}
+                                        color={colors.purple[600]}
+                                        bg="#f5f3ff"
+                                        loading={actionLoading === "share-link"}
+                                        onPress={handleShareAsaasLink}
+                                    />
+                                    <ActionButton
+                                        label="Já paguei? Verificar"
+                                        icon={DollarSign}
+                                        color="#0ea5e9"
+                                        bg="#f0f9ff"
+                                        loading={actionLoading === "sync"}
+                                        onPress={handleSyncAsaas}
+                                    />
+                                </>
+                            )}
+                            {showStripeCheckout && (
                                 <ActionButton
                                     label="Gerar link de pagamento"
                                     icon={LinkIcon}
@@ -537,7 +637,7 @@ export default function ContractDetailScreen() {
                     refreshPlans();
                 }}
                 plans={activePlans}
-                hasStripeConnect={hasStripeConnect}
+                walletApproved={walletApproved}
                 preSelectedStudent={student ? {
                     id: student.student_id,
                     name: student.student_name,

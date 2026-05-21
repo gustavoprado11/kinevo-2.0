@@ -46,7 +46,7 @@ export function useTrainerContracts() {
         switch (filter) {
             case "paying":
                 filtered = filtered.filter(
-                    (s) => s.display_status === "active" || s.display_status === "grace_period"
+                    (s) => s.display_status === "active" || s.display_status === "awaiting_payment"
                 );
                 break;
             case "courtesy":
@@ -57,7 +57,8 @@ export function useTrainerContracts() {
                     (s) =>
                         s.display_status === "overdue" ||
                         s.display_status === "grace_period" ||
-                        s.display_status === "canceling"
+                        s.display_status === "canceling" ||
+                        s.display_status === "expired"
                 );
                 break;
             case "canceled":
@@ -79,14 +80,15 @@ export function useTrainerContracts() {
     const counts = useMemo(() => ({
         all: allContracts.length,
         paying: allContracts.filter(
-            (s) => s.display_status === "active" || s.display_status === "grace_period"
+            (s) => s.display_status === "active" || s.display_status === "awaiting_payment"
         ).length,
         courtesy: allContracts.filter((s) => s.display_status === "courtesy").length,
         attention: allContracts.filter(
             (s) =>
                 s.display_status === "overdue" ||
                 s.display_status === "grace_period" ||
-                s.display_status === "canceling"
+                s.display_status === "canceling" ||
+                s.display_status === "expired"
         ).length,
         canceled: allContracts.filter((s) => s.display_status === "canceled").length,
     }), [allContracts]);
