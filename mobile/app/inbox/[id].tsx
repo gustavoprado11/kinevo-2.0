@@ -6,6 +6,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import * as SecureStore from "expo-secure-store";
+import Constants from "expo-constants";
 import { ChevronLeft, Upload, CheckCircle2, MessageCircle } from "lucide-react-native";
 import Animated, { FadeInUp, FadeIn, ZoomIn, Easing } from "react-native-reanimated";
 import { supabase } from "../../lib/supabase";
@@ -313,7 +314,7 @@ export default function InboxItemDetailScreen() {
         try {
             const payload = {
                 submitted_from: "mobile",
-                app_version: "1.0.0",
+                app_version: Constants.expoConfig?.version ?? "unknown",
                 answers: formAnswers,
             };
 

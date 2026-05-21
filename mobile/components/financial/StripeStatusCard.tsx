@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, ActivityIndicator, Linking } from "react-
 import { CheckCircle, AlertTriangle, XCircle } from "lucide-react-native";
 import type { StripeConnectStatus } from "../../types/financial";
 import { useV2Colors } from "../../hooks/useV2Colors";
+import { WEB_URL } from "../../lib/config";
 
 const STRIPE_DASHBOARD_URL = "https://dashboard.stripe.com";
 
@@ -33,7 +34,7 @@ export function StripeStatusCard({ status, isLoading }: Props) {
     if (!status || !status.connected) {
         return (
             <TouchableOpacity
-                onPress={() => Linking.openURL("https://app.kinevo.com.br/financial")}
+                onPress={() => Linking.openURL(`${WEB_URL}/financial`)}
                 activeOpacity={0.7}
                 style={{
                     backgroundColor: "rgba(239,68,68,0.12)",

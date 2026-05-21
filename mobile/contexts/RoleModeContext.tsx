@@ -142,7 +142,13 @@ export function RoleModeProvider({ children }: { children: ReactNode }) {
             }
         } catch (err) {
             if (__DEV__) console.error("[RoleModeContext] Error resolving role:", err);
-            if (!isCancelled()) setRole("student");
+            // Não rebaixa o treinador por erro transitório de rede: restaura o
+            // último papel salvo; só cai em "student" se nunca houve papel salvo.
+            const savedRole = await SecureStore.getItemAsync(ROLE_KEY, { keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK })
+                .catch(() => SecureStore.getItemAsync(ROLE_KEY).catch(() => null));
+            if (!isCancelled()) {
+                setRole(savedRole === "trainer" || savedRole === "student" ? savedRole : "student");
+            }
         } finally {
             if (!isCancelled()) setIsLoadingRole(false);
         }

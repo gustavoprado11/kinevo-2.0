@@ -3,7 +3,7 @@ import { Stack } from "expo-router";
 import { MessageCircle, HelpCircle } from "lucide-react-native";
 import { useV2Colors } from "../../hooks/useV2Colors";
 
-// TODO: Substituir pelo número real de WhatsApp do suporte
+// Número oficial de suporte (mesmo usado no menu do treinador em more.tsx).
 const WHATSAPP_NUMBER = "5531999064997";
 const WHATSAPP_MESSAGE = "Olá! Preciso de ajuda com o app Kinevo.";
 

@@ -18,6 +18,7 @@ import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react-native";
 import { useAuth } from "../../contexts/AuthContext";
+import { translateAuthError } from "../../lib/auth-errors";
 import { useResponsive } from "../../hooks/useResponsive";
 import { WelcomeRoleSheet } from "../../components/auth/WelcomeRoleSheet";
 
@@ -47,7 +48,7 @@ export default function LoginScreen() {
         setLoading(false);
 
         if (error) {
-            Alert.alert("Não foi possível entrar", error.message);
+            Alert.alert("Não foi possível entrar", translateAuthError(error.message));
         } else {
             // Delega ao index.tsx (The Gate) a decisão: home ou verificação de e-mail
             router.replace("/");

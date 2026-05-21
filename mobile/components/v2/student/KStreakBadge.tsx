@@ -13,6 +13,7 @@
 import React, { useEffect } from 'react';
 import { Platform, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Flame } from 'lucide-react-native';
 import Animated, {
     useAnimatedStyle,
     useSharedValue,
@@ -130,7 +131,9 @@ export function KStreakBadge({
                 ]}
             >
                 {showFlame ? (
-                    <Animated.Text style={[{ fontSize: cfg.flameSize }, flameStyle]}>🔥</Animated.Text>
+                    <Animated.View style={flameStyle}>
+                        <Flame size={cfg.flameSize} color={fg} fill={fg} strokeWidth={2} />
+                    </Animated.View>
                 ) : null}
                 <Text style={[styles.label, { fontSize: cfg.fontSize, color: fg }]} numberOfLines={1}>
                     {text}

@@ -17,7 +17,7 @@ export interface TrainerPlan {
     student_count?: number;
 }
 
-const API_URL = process.env.EXPO_PUBLIC_WEB_URL || "https://app.kinevo.com.br";
+const API_URL = process.env.EXPO_PUBLIC_WEB_URL || "https://www.kinevoapp.com";
 
 async function getToken(): Promise<string | null> {
     const { data } = await supabase.auth.getSession();

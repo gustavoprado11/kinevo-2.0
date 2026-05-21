@@ -12,7 +12,7 @@ import {
     Easing,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import {
     Plus,
     ArrowLeft,
@@ -367,6 +367,18 @@ export default function TrainingRoomScreen() {
 
     const [isPickerOpen, setIsPickerOpen] = useState(false);
     const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
+
+    // Vindo do detalhe do aluno: abre o picker já com o aluno pré-selecionado (one-shot).
+    const { studentId: presetStudentId } = useLocalSearchParams<{ studentId?: string }>();
+    const presetHandledRef = useRef(false);
+    useEffect(() => {
+        if (presetStudentId && !presetHandledRef.current) {
+            presetHandledRef.current = true;
+            // Só abre o picker se o aluno ainda não estiver na sala.
+            const alreadyInRoom = Object.values(sessions).some((s) => s.studentId === presetStudentId);
+            if (!alreadyInRoom) setIsPickerOpen(true);
+        }
+    }, [presetStudentId, sessions]);
     const [draggingChipState, setDraggingChipState] = useState<string | null>(null);
     const [chipScrollEnabled, setChipScrollEnabled] = useState(true);
 
@@ -1146,6 +1158,7 @@ export default function TrainingRoomScreen() {
             <StudentPickerModal
                 visible={isPickerOpen}
                 onClose={() => setIsPickerOpen(false)}
+                initialStudentId={presetStudentId ?? null}
             />
 
             {activeSession && (

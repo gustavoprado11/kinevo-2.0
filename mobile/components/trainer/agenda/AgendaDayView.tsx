@@ -17,6 +17,7 @@ import Animated, {
     runOnJS,
 } from "react-native-reanimated";
 import { AppointmentCard } from "./AppointmentCard";
+import { PressableScale } from "../../shared/PressableScale";
 import type { AgendaOccurrence } from "../../../hooks/useAgendaOccurrences";
 import { useV2Colors } from "../../../hooks/useV2Colors";
 
@@ -189,17 +190,17 @@ export function AgendaDayView({
                 >
                     <Pressable
                         onPress={goPrev}
-                        style={({ pressed }) => ({
+                        hitSlop={8}
+                        style={{
                             width: 36,
                             height: 36,
                             borderRadius: 18,
                             backgroundColor: colors.surface.card,
                             alignItems: "center",
                             justifyContent: "center",
-                            opacity: pressed ? 0.7 : 1,
                             borderWidth: 1,
                             borderColor: colors.border.subtle,
-                        })}
+                        }}
                     >
                         <ChevronLeft size={18} color={colors.text.primary} />
                     </Pressable>
@@ -210,17 +211,17 @@ export function AgendaDayView({
                     </Text>
                     <Pressable
                         onPress={goNext}
-                        style={({ pressed }) => ({
+                        hitSlop={8}
+                        style={{
                             width: 36,
                             height: 36,
                             borderRadius: 18,
                             backgroundColor: colors.surface.card,
                             alignItems: "center",
                             justifyContent: "center",
-                            opacity: pressed ? 0.7 : 1,
                             borderWidth: 1,
                             borderColor: colors.border.subtle,
-                        })}
+                        }}
                     >
                         <ChevronRight size={18} color={colors.text.primary} />
                     </Pressable>
@@ -265,21 +266,21 @@ export function AgendaDayView({
                                 <Text style={{ fontSize: 13, color: colors.text.tertiary, textAlign: "center", marginTop: 6, lineHeight: 19 }}>
                                     Nenhum atendimento para este dia.{"\n"}Crie um novo agendamento usando o botão "+".
                                 </Text>
-                                <Pressable
+                                <PressableScale
                                     onPress={onCreatePress}
-                                    style={({ pressed }) => ({
+                                    hapticStyle={Haptics.ImpactFeedbackStyle.Medium}
+                                    style={{
                                         marginTop: 24,
                                         backgroundColor: "#7c3aed",
                                         paddingHorizontal: 22,
                                         paddingVertical: 12,
                                         borderRadius: 100,
-                                        opacity: pressed ? 0.88 : 1,
                                         shadowColor: "#7c3aed",
                                         shadowOffset: { width: 0, height: 4 },
                                         shadowOpacity: 0.25,
                                         shadowRadius: 10,
                                         elevation: 4,
-                                    })}
+                                    }}
                                 >
                                     <Text
                                         style={{
@@ -291,7 +292,7 @@ export function AgendaDayView({
                                     >
                                         Novo agendamento
                                     </Text>
-                                </Pressable>
+                                </PressableScale>
                             </View>
                         ) : (
                             <View style={{ paddingTop: 4 }}>

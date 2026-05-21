@@ -54,7 +54,7 @@ function avatarStatusFor(s: Conversation['student']): AvatarStatus | undefined {
 export default function MessagesScreen() {
     const colors = useV2Colors();
     const router = useRouter();
-    const { conversations, totalUnread, isLoading, refresh } = useTrainerConversations();
+    const { conversations, totalUnread, isLoading, isRefreshing, refresh } = useTrainerConversations();
 
     const [searchText, setSearchText] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -206,7 +206,7 @@ export default function MessagesScreen() {
                         showsVerticalScrollIndicator={false}
                         refreshControl={
                             <RefreshControl
-                                refreshing={false}
+                                refreshing={isRefreshing}
                                 onRefresh={refresh}
                                 tintColor={colors.purple[600]}
                             />

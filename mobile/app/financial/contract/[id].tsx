@@ -34,7 +34,7 @@ import { NewSubscriptionSheet } from "../../../components/financial/NewSubscript
 import type { DisplayStatus } from "../../../types/financial";
 import { useV2Colors } from "../../../hooks/useV2Colors";
 
-const API_URL = process.env.EXPO_PUBLIC_WEB_URL || "https://app.kinevo.com.br";
+const API_URL = process.env.EXPO_PUBLIC_WEB_URL || "https://www.kinevoapp.com";
 
 const STATUS_CONFIG: Record<DisplayStatus, { bg: string; text: string; label: string }> = {
     courtesy: { bg: "#eff6ff", text: "#3b82f6", label: "Cortesia" },
@@ -128,23 +128,33 @@ export default function ContractDetailScreen() {
     }, [student, getToken, refresh]);
 
     const handleCheckoutLink = useCallback(async () => {
-        if (!student?.student_id) return;
+        if (!student?.student_id || !student?.contract_id) return;
 
         setActionLoading("checkout");
         try {
             const token = await getToken();
             if (!token) return;
 
-            // For now, we need to know the plan_id — we'll use the existing contract's plan
-            // The checkout-link endpoint requires both studentId and planId
-            // We don't have plan_id directly, but we can get it from the contract
+            // O checkout-link exige o plan_id real (trainer_plans.id). O contrato guarda
+            // esse vínculo em student_contracts.plan_id — resolver antes de chamar.
+            const { data: contractRow } = await (supabase as any)
+                .from("student_contracts")
+                .select("plan_id")
+                .eq("id", student.contract_id)
+                .single();
+            const planId = contractRow?.plan_id as string | undefined;
+            if (!planId) {
+                Alert.alert("Erro", "Não foi possível identificar o plano deste contrato.");
+                return;
+            }
+
             const res = await fetch(`${API_URL}/api/financial/checkout-link`, {
                 method: "POST",
                 headers: {
                     Authorization: `Bearer ${token}`,
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({ studentId: student.student_id, planId: student.contract_id }),
+                body: JSON.stringify({ studentId: student.student_id, planId }),
             });
 
             const data = await res.json();

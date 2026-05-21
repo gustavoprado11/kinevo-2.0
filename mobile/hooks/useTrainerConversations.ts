@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 
@@ -26,6 +26,7 @@ export interface UseTrainerConversationsReturn {
     conversations: Conversation[];
     totalUnread: number;
     isLoading: boolean;
+    isRefreshing: boolean;
     refresh: () => Promise<void>;
 }
 
@@ -33,6 +34,7 @@ export function useTrainerConversations(): UseTrainerConversationsReturn {
     const { user } = useAuth();
     const [conversations, setConversations] = useState<Conversation[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [isRefreshing, setIsRefreshing] = useState(false);
     const trainerIdRef = useRef<string | null>(null);
     const studentIdsRef = useRef<Set<string>>(new Set());
 
@@ -141,9 +143,18 @@ export function useTrainerConversations(): UseTrainerConversationsReturn {
         fetchConversations();
     }, [fetchConversations]);
 
-    // Real-time: listen for new messages across all students
+    // Chave estável dos IDs dos alunos: só muda quando o conjunto muda (não a
+    // cada mensagem nova), evitando re-subscribe desnecessário/perda de eventos.
+    const studentIdsKey = useMemo(
+        () => conversations.map(c => c.student.id).sort().join(','),
+        [conversations]
+    );
+
+    // Real-time: escuta mensagens novas — filtradas SERVER-SIDE pelos alunos
+    // do treinador (antes recebia todos os INSERTs do projeto e filtrava no cliente).
     useEffect(() => {
-        if (!trainerIdRef.current) return;
+        if (!trainerIdRef.current || !studentIdsKey) return;
+        const ids = studentIdsKey.split(',');
 
         const channel = supabase
             .channel(`trainer_conversations_${trainerIdRef.current}`)
@@ -153,6 +164,7 @@ export function useTrainerConversations(): UseTrainerConversationsReturn {
                     event: 'INSERT',
                     schema: 'public',
                     table: 'messages',
+                    filter: `student_id=in.(${ids.join(',')})`,
                 },
                 (payload) => {
                     const newMsg = payload.new as any;
@@ -198,14 +210,17 @@ export function useTrainerConversations(): UseTrainerConversationsReturn {
             .subscribe();
 
         return () => { supabase.removeChannel(channel); };
-    }, [conversations.length > 0]); // Re-subscribe once we have student data
+    }, [studentIdsKey]); // Re-subscribe só quando o conjunto de alunos muda
 
+    // Pull-to-refresh: usa flag própria (não isLoading) pra mostrar o spinner
+    // sutil em vez de trocar a lista inteira por skeletons (flicker).
     const refresh = useCallback(async () => {
-        setIsLoading(true);
+        setIsRefreshing(true);
         await fetchConversations();
+        setIsRefreshing(false);
     }, [fetchConversations]);
 
     const totalUnread = conversations.reduce((sum, c) => sum + c.unreadCount, 0);
 
-    return { conversations, totalUnread, isLoading, refresh };
+    return { conversations, totalUnread, isLoading, isRefreshing, refresh };
 }

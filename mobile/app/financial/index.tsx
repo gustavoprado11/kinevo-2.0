@@ -64,6 +64,7 @@ export default function FinancialDashboardScreen() {
     const balance = useWalletBalance(walletApproved);
 
     const [subscriptionModalVisible, setSubscriptionModalVisible] = useState(false);
+    const [feedVisibleCount, setFeedVisibleCount] = useState(15);
 
     const payingCount = data?.payingCount ?? 0;
     const courtesyCount = data?.courtesyCount ?? 0;
@@ -71,12 +72,15 @@ export default function FinancialDashboardScreen() {
     const plansCount = activePlans.length;
 
     // Feed unificado: transações + cobranças pendentes, ordenado por data (igual web).
-    const feed: Array<{ key: string; created: string; kind: "tx" | "pending"; tx?: FinancialTransaction; charge?: PendingCharge }> = [
+    const feedAll: Array<{ key: string; created: string; kind: "tx" | "pending"; tx?: FinancialTransaction; charge?: PendingCharge }> = [
         ...(data?.recentTransactions ?? []).map((tx) => ({ key: tx.id, created: tx.created_at, kind: "tx" as const, tx })),
         ...pendingCharges.map((c) => ({ key: `pending-${c.contractId}`, created: c.createdAt, kind: "pending" as const, charge: c })),
     ]
-        .sort((a, b) => new Date(b.created).getTime() - new Date(a.created).getTime())
-        .slice(0, 15);
+        .sort((a, b) => new Date(b.created).getTime() - new Date(a.created).getTime());
+    // Paginação incremental ("Ver mais") — antes cortava em 15 fixo e cobranças
+    // pendentes além disso sumiam da visão do treinador.
+    const feed = feedAll.slice(0, feedVisibleCount);
+    const hasMoreFeed = feedAll.length > feedVisibleCount;
 
     const onRefresh = () => {
         refresh();
@@ -238,7 +242,17 @@ export default function FinancialDashboardScreen() {
                                         )}
                                     </View>
                                 ))
-                            ) : (
+                            ) : null}
+                            {hasMoreFeed && (
+                                <TouchableOpacity
+                                    onPress={() => setFeedVisibleCount((c) => c + 15)}
+                                    activeOpacity={0.7}
+                                    style={{ paddingVertical: 14, alignItems: "center" }}
+                                >
+                                    <Text style={{ fontSize: 14, fontWeight: "600", color: colors.brand.primary }}>Ver mais</Text>
+                                </TouchableOpacity>
+                            )}
+                            {feed.length === 0 && (
                                 <View style={{ padding: 24, alignItems: "center" }}>
                                     <DollarSign size={32} color="#cbd5e1" style={{ marginBottom: 8 }} />
                                     <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text.tertiary }}>Nenhuma transação ainda</Text>

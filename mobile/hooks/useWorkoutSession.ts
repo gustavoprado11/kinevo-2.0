@@ -122,6 +122,9 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
     const [workoutNotes, setWorkoutNotes] = useState<WorkoutNote[]>([]);
     const [studentId, setStudentId] = useState<string | null>(null);
     const [sessionId, setSessionId] = useState<string | null>(null);
+    // Promessa de criação de sessão em voo — evita criar 2+ sessões quando várias
+    // séries são marcadas em sequência antes do sessionId chegar ao estado.
+    const createSessionPromiseRef = useRef<Promise<string | null> | null>(null);
     const preSubmissionIdRef = useRef<string | null>(null);
     const [assignedProgramId, setAssignedProgramId] = useState<string | null>(null);
     const scheduledDaysRef = useRef<number[] | null>(null);
@@ -303,7 +306,20 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
         setIndex: number,
         setData: WorkoutSetData
     ) => {
-        if (!sessionId || !setData.completed) return;
+        if (!setData.completed) return;
+
+        // Garante uma sessão ANTES de gravar. Sem isto, marcar séries antes da
+        // sessão existir não persistia nada (perda de treino se o app fechasse).
+        let sid = sessionId;
+        if (!sid) {
+            sid = await createSession();
+            if (!sid) {
+                // Sem sessão (ex.: offline ou dados faltando). A série fica no estado
+                // e será reenviada no upsert de catch-up do finishWorkout.
+                if (__DEV__) console.warn('[useWorkoutSession] persistSetLog sem sessão — série será sincronizada ao finalizar');
+                return;
+            }
+        }
 
         const weight = parseFloat(setData.weight) || 0;
         const repsCompleted = parseInt(setData.reps) || 0;
@@ -312,7 +328,7 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
             const { error } = await supabase
                 .from('set_logs' as any)
                 .upsert({
-                    workout_session_id: sessionId,
+                    workout_session_id: sid,
                     assigned_workout_item_id: exercise.id,
                     planned_exercise_id: exercise.planned_exercise_id || exercise.exercise_id,
                     executed_exercise_id: exercise.exercise_id,
@@ -674,9 +690,12 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
 
     const handleSetChange = (exerciseIndex: number, setIndex: number, field: 'weight' | 'reps', value: string) => {
         setExercises(prev => {
-            const newExercises = JSON.parse(JSON.stringify(prev)); // Deep copy for safety
-            const exercise = newExercises[exerciseIndex];
-            const sets = exercise.setsData;
+            const exercise = prev[exerciseIndex];
+            if (!exercise) return prev;
+
+            // Update imutável raso: clona só o exercício afetado e suas séries
+            // (antes: JSON deep-clone de TODOS os exercícios a cada tecla = lag).
+            const sets = exercise.setsData.map(s => ({ ...s }));
 
             // Get the value BEFORE the update
             const oldValue = sets[setIndex][field];
@@ -710,6 +729,8 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                 }
             }
 
+            const newExercises = [...prev];
+            newExercises[exerciseIndex] = { ...exercise, setsData: sets };
             return newExercises;
         });
     };
@@ -918,7 +939,19 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
     const createSession = async (preWorkoutSubmissionId?: string): Promise<string | null> => {
         if (sessionId) return sessionId; // Already exists
         if (!user || !studentId) return null;
+        // Dedupe: se já há uma criação em voo, reaproveita (evita sessões duplicadas).
+        if (createSessionPromiseRef.current) return createSessionPromiseRef.current;
 
+        const promise = createSessionInternal(preWorkoutSubmissionId);
+        createSessionPromiseRef.current = promise;
+        try {
+            return await promise;
+        } finally {
+            createSessionPromiseRef.current = null;
+        }
+    };
+
+    const createSessionInternal = async (preWorkoutSubmissionId?: string): Promise<string | null> => {
         try {
             const { data: studentFull }: { data: any; error: any } = await supabase
                 .from('students' as any)
@@ -990,7 +1023,12 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
     };
 
     const finishWorkout = async (rpe?: number, feedback?: string, postWorkoutSubmissionId?: string) => {
-        if (isSubmitting || !user) return;
+        if (isSubmitting) return; // já finalizando (toque duplo) — ignora silenciosamente
+        if (!user) {
+            // Não deixa o aluno preso sem feedback ao finalizar sem sessão de auth.
+            Alert.alert("Sessão expirada", "Faça login novamente para finalizar o treino.");
+            return;
+        }
 
         setIsSubmitting(true);
 

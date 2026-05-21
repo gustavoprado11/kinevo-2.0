@@ -12,7 +12,7 @@ import {
 } from "../hooks/useTrainerNotificationPreferences";
 import { syncAllRuleReminders } from "../hooks/useScheduleAppointmentReminder";
 
-const API_URL = process.env.EXPO_PUBLIC_WEB_URL || "https://app.kinevo.com.br";
+const API_URL = process.env.EXPO_PUBLIC_WEB_URL || "https://www.kinevoapp.com";
 
 interface NotificationPreferences {
     workout_completed: boolean;
@@ -257,7 +257,7 @@ export default function NotificationSettingsScreen() {
                                                 <Pressable
                                                     key={opt}
                                                     onPress={() => handlePickReminderMinutes(opt)}
-                                                    style={({ pressed }) => ({
+                                                    style={{
                                                         flex: 1,
                                                         paddingVertical: 10,
                                                         borderRadius: 10,
@@ -265,8 +265,7 @@ export default function NotificationSettingsScreen() {
                                                         backgroundColor: selected ? "#7c3aed" : "#f8fafc",
                                                         borderWidth: 1,
                                                         borderColor: selected ? "#7c3aed" : "#e2e8f0",
-                                                        opacity: pressed ? 0.85 : 1,
-                                                    })}
+                                                    }}
                                                 >
                                                     <Text
                                                         style={{

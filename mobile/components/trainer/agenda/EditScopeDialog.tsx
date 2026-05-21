@@ -109,15 +109,14 @@ function ScopeOption({
     return (
         <Pressable
             onPress={onPress}
-            style={({ pressed }) => ({
+            style={{
                 paddingVertical: 12,
                 paddingHorizontal: 14,
                 borderRadius: 12,
                 backgroundColor: colors.surface.card2,
                 borderWidth: 1,
                 borderColor: colors.border.default,
-                opacity: pressed ? 0.7 : 1,
-            })}
+            }}
         >
             <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text.primary }}>{label}</Text>
             <Text style={{ fontSize: 12, color: colors.text.tertiary, marginTop: 2 }}>{description}</Text>

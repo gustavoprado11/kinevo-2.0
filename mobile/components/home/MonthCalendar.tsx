@@ -91,10 +91,12 @@ export function MonthCalendar({
         fetchRange?.(monthRange.start, monthRange.end);
     }, []);
 
-    const monthLabel = anchorDate.toLocaleDateString("pt-BR", {
+    const monthLabelRaw = anchorDate.toLocaleDateString("pt-BR", {
         month: "long",
         year: "numeric",
     });
+    // Sentence case (só a 1ª letra). Evita "Maio De 2026" do textTransform capitalize.
+    const monthLabel = monthLabelRaw.charAt(0).toUpperCase() + monthLabelRaw.slice(1);
 
     return (
         <View style={{ marginBottom: 24 }}>
@@ -109,7 +111,6 @@ export function MonthCalendar({
                         fontSize: 13,
                         fontWeight: "700",
                         color: "#0f172a",
-                        textTransform: "capitalize",
                         letterSpacing: 1,
                     }}
                 >

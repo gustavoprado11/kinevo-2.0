@@ -19,7 +19,7 @@ import { useRoleMode } from "../../contexts/RoleModeContext";
 import type { TrainerPlan } from "../../hooks/useTrainerPlans";
 import { useV2Colors, type V2Palette } from "../../hooks/useV2Colors";
 
-const API_URL = process.env.EXPO_PUBLIC_WEB_URL || "https://app.kinevo.com.br";
+const API_URL = process.env.EXPO_PUBLIC_WEB_URL || "https://www.kinevoapp.com";
 
 type BillingType = "asaas_recurring" | "asaas_one_off" | "manual_recurring" | "manual_one_off" | "courtesy";
 type Step = "student" | "billing" | "plan" | "confirm";

@@ -66,6 +66,7 @@ export default function ProgramBuilderScreen() {
     const addNote = useProgramBuilderStore((s) => s.addNote);
     const addWarmup = useProgramBuilderStore((s) => s.addWarmup);
     const addCardio = useProgramBuilderStore((s) => s.addCardio);
+    const clearSupersets = useProgramBuilderStore((s) => s.clearSupersets);
     const [setSchemeEditingItemId, setSetSchemeEditingItemId] = useState<string | null>(null);
     const [nameFocused, setNameFocused] = useState(false);
     const [descriptionFocused, setDescriptionFocused] = useState(false);
@@ -190,7 +191,18 @@ export default function ProgramBuilderScreen() {
                         "O snapshot de IA não suporta supersets. Remova os supersets adicionados, ou salve como programa novo (sem vincular à geração).",
                         [
                             { text: "Cancelar", style: "cancel" },
-                            { text: "Remover supersets", style: "default" },
+                            {
+                                text: "Remover supersets",
+                                style: "default",
+                                onPress: async () => {
+                                    clearSupersets();
+                                    const r2 = await saveAndAssign(params.studentId!);
+                                    if (r2.ok) {
+                                        reset();
+                                        router.back();
+                                    }
+                                },
+                            },
                             {
                                 text: "Salvar como programa novo",
                                 style: "destructive",
@@ -211,13 +223,13 @@ export default function ProgramBuilderScreen() {
             }
         } catch (err) {
             const message = err instanceof Error ? err.message : 'Erro desconhecido';
-            console.error('[program-builder] save failed:', err);
+            if (__DEV__) console.error('[program-builder] save failed:', err);
             Alert.alert(
                 'Erro ao salvar',
                 `${message}\n\nTente novamente. Se persistir, contate o suporte.`
             );
         }
-    }, [draft, params.studentId, saveAndAssign, saveAsNewProgramDiscardingAi, saveAsTemplate, reset, router, isEditMode, saveAssignedProgramFull, isEditTemplateMode, saveTemplateFull]);
+    }, [draft, params.studentId, saveAndAssign, saveAsNewProgramDiscardingAi, saveAsTemplate, reset, router, isEditMode, saveAssignedProgramFull, isEditTemplateMode, saveTemplateFull, clearSupersets]);
 
     const handleAIGenerated = useCallback(
         (result: AgentResult) => {

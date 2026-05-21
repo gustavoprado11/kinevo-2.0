@@ -175,6 +175,22 @@ export default function WorkoutPlayerScreen() {
     // Auto-show pre-checkin or create session when triggers are resolved.
     // Gate adicional: NÃO criar session enquanto Pré-treino Sheet pendente.
     const sessionCreatedRef = React.useRef(false);
+
+    // Cria a sessão e, se falhar (offline/dados faltando), avisa o aluno em vez
+    // de deixá-lo treinar uma "sessão fantasma" que não grava nada.
+    const ensureSession = React.useCallback(async (submissionId?: string) => {
+        const sid = await createSession(submissionId);
+        if (!sid) {
+            sessionCreatedRef.current = false; // libera nova tentativa
+            Alert.alert(
+                "Não foi possível iniciar o treino",
+                "Verifique sua conexão e tente novamente.",
+                [{ text: "Voltar", onPress: () => router.back() }],
+            );
+        }
+        return sid;
+    }, [createSession, router]);
+
     React.useEffect(() => {
         if (isLoading || triggersLoading || sessionCreatedRef.current) return;
         if (!readinessDecided) return; // Espera decisão da readiness sheet
@@ -184,7 +200,7 @@ export default function WorkoutPlayerScreen() {
         } else if (!preWorkoutTrigger && preCheckinState === 'pending') {
             // No pre-workout trigger — create session immediately
             sessionCreatedRef.current = true;
-            createSession();
+            ensureSession();
         }
     }, [isLoading, triggersLoading, preWorkoutTrigger, preCheckinState, readinessDecided]);
 
@@ -441,7 +457,7 @@ export default function WorkoutPlayerScreen() {
             setPreSubmissionId(result.submission_id);
             setPreCheckinState('completed');
             sessionCreatedRef.current = true;
-            await createSession(result.submission_id);
+            await ensureSession(result.submission_id);
         } catch (err: any) {
             if (__DEV__) console.error('[PreCheckin] Submit error:', err?.message);
             // Don't block the workout — skip and continue
@@ -451,18 +467,18 @@ export default function WorkoutPlayerScreen() {
                     onPress: () => {
                         setPreCheckinState('skipped');
                         sessionCreatedRef.current = true;
-                        createSession();
+                        ensureSession();
                     },
                 },
             ]);
         }
-    }, [preWorkoutTrigger, assignedProgramId, createSession, profile]);
+    }, [preWorkoutTrigger, assignedProgramId, ensureSession, profile]);
 
     const handlePreCheckinSkip = useCallback(() => {
         setPreCheckinState('skipped');
         sessionCreatedRef.current = true;
-        createSession();
-    }, [createSession]);
+        ensureSession();
+    }, [ensureSession]);
 
     // ── Post-workout check-in handlers ──
     // Use a ref-based approach to avoid circular dependency with handleConfirmFinish
@@ -634,7 +650,13 @@ export default function WorkoutPlayerScreen() {
                 isFinishingRef.current = true;
             }
         } catch (error: any) {
-            Alert.alert("Erro", error.message || "Falha ao finalizar.");
+            // Mantém o aluno na tela com o treino preservado para tentar de novo
+            // (ex.: queda de conexão). Nada é perdido — basta refinalizar.
+            if (__DEV__) console.error("[workout] executeFinish error:", error?.message);
+            Alert.alert(
+                "Não foi possível finalizar",
+                "Verifique sua conexão e toque em finalizar novamente. Seu treino não foi perdido.",
+            );
         }
     };
 
@@ -712,7 +734,7 @@ export default function WorkoutPlayerScreen() {
             </View>
 
             <KeyboardAvoidingView
-                behavior="padding"
+                behavior={Platform.OS === "ios" ? "padding" : undefined}
                 style={{ flex: 1, backgroundColor: colors.surface.canvas }}
                 keyboardVerticalOffset={Platform.OS === "ios" ? 10 : 0}
             >
@@ -829,7 +851,7 @@ export default function WorkoutPlayerScreen() {
                                     if (item.type === 'section_header') {
                                         return (
                                             <View key={`header-${item.label}`} style={{ marginTop: 20, marginBottom: 8, paddingHorizontal: 4 }}>
-                                                <Text style={{ fontSize: 11, fontWeight: '700', letterSpacing: 2, color: 'rgba(0,0,0,0.40)' }}>
+                                                <Text style={{ fontSize: 11, fontWeight: '700', letterSpacing: 2, color: colors.text.tertiary }}>
                                                     {item.label}
                                                 </Text>
                                             </View>

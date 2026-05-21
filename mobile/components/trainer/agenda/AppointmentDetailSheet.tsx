@@ -7,9 +7,13 @@ import {
     Pressable,
     Alert,
     ActivityIndicator,
-    TextInput,
 } from "react-native";
-import BottomSheet, { BottomSheetBackdrop, BottomSheetView } from "@gorhom/bottom-sheet";
+import BottomSheet, {
+    BottomSheetBackdrop,
+    BottomSheetView,
+    BottomSheetScrollView,
+    BottomSheetTextInput,
+} from "@gorhom/bottom-sheet";
 import {
     CalendarClock,
     Repeat,
@@ -445,7 +449,11 @@ export function AppointmentDetailSheet({
                 ref={sheetRef}
                 snapPoints={snapPoints}
                 index={0}
+                enableDynamicSizing={false}
                 enablePanDownToClose
+                keyboardBehavior="interactive"
+                keyboardBlurBehavior="restore"
+                android_keyboardInputMode="adjustResize"
                 onClose={onClose}
                 backdropComponent={renderBackdrop}
                 backgroundStyle={{ backgroundColor: colors.surface.card }}
@@ -499,7 +507,7 @@ export function AppointmentDetailSheet({
                         )}
                     </View>
 
-                    <ScrollView
+                    <BottomSheetScrollView
                         style={{ flex: 1 }}
                         contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40 }}
                         keyboardShouldPersistTaps="handled"
@@ -639,7 +647,7 @@ export function AppointmentDetailSheet({
                                                     Haptics.selectionAsync();
                                                     setNewDate(d);
                                                 }}
-                                                style={({ pressed }) => ({
+                                                style={{
                                                     width: 56,
                                                     paddingVertical: 10,
                                                     alignItems: "center",
@@ -647,8 +655,7 @@ export function AppointmentDetailSheet({
                                                     backgroundColor: selected ? "#7c3aed" : colors.surface.card2,
                                                     borderWidth: 1,
                                                     borderColor: selected ? "#7c3aed" : colors.border.default,
-                                                    opacity: pressed ? 0.85 : 1,
-                                                })}
+                                                }}
                                             >
                                                 <Text
                                                     style={{
@@ -699,15 +706,14 @@ export function AppointmentDetailSheet({
                                                     Haptics.selectionAsync();
                                                     setNewTime(t);
                                                 }}
-                                                style={({ pressed }) => ({
+                                                style={{
                                                     paddingVertical: 8,
                                                     paddingHorizontal: 14,
                                                     borderRadius: 100,
                                                     backgroundColor: selected ? "#7c3aed" : colors.surface.card2,
                                                     borderWidth: 1,
                                                     borderColor: selected ? "#7c3aed" : colors.border.default,
-                                                    opacity: pressed ? 0.85 : 1,
-                                                })}
+                                                }}
                                             >
                                                 <Text style={{ fontSize: 13, fontWeight: "600", color: selected ? "#ffffff" : colors.text.primary }}>
                                                     {t}
@@ -736,7 +742,7 @@ export function AppointmentDetailSheet({
                         {mode === "edit_notes" && (
                             <View>
                                 <SectionLabel colors={colors}>Notas (opcional)</SectionLabel>
-                                <TextInput
+                                <BottomSheetTextInput
                                     value={notesDraft}
                                     onChangeText={setNotesDraft}
                                     placeholder="Foco do treino, observações..."
@@ -788,7 +794,7 @@ export function AppointmentDetailSheet({
                                 <Text style={{ fontSize: 12, color: "#b91c1c" }}>{error}</Text>
                             </View>
                         ) : null}
-                    </ScrollView>
+                    </BottomSheetScrollView>
                 </BottomSheetView>
             </BottomSheet>
 
@@ -887,7 +893,7 @@ function ActionButton({
     return (
         <Pressable
             onPress={onPress}
-            style={({ pressed }) => ({
+            style={{
                 flexDirection: "row",
                 alignItems: "center",
                 paddingVertical: 14,
@@ -896,8 +902,7 @@ function ActionButton({
                 backgroundColor: colors.surface.card2,
                 borderWidth: 1,
                 borderColor: colors.border.default,
-                opacity: pressed ? 0.7 : 1,
-            })}
+            }}
         >
             <View style={{ width: 24, alignItems: "center" }}>{icon}</View>
             <Text style={{ marginLeft: 10, fontSize: 14, fontWeight: "600", color: labelColor ?? colors.text.primary }}>

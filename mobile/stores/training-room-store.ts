@@ -155,6 +155,8 @@ interface TrainingRoomStore {
     // Cleanup
     finishSession: (studentId: string) => void;
     clearExpiredSessions: () => void;
+    /** Limpa todo o estado (usado no logout para não vazar entre contas). */
+    reset: () => void;
 
     // Session count helper
     getSessionCount: () => number;
@@ -444,6 +446,10 @@ export const useTrainingRoomStore = create<TrainingRoomStore>()(
 
                     return { sessions, sessionOrder, activeStudentId: activeId };
                 });
+            },
+
+            reset() {
+                set({ sessions: {}, activeStudentId: null, sessionOrder: [] });
             },
 
             getSessionCount() {

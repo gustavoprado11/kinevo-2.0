@@ -95,8 +95,12 @@ export default function StudentProfileScreen({
             return;
         }
 
-        // Navigate to training room — the StudentPickerModal will handle adding
-        router.push("/(trainer-tabs)/training-room" as any);
+        // Navigate to training room já com o aluno pré-selecionado no picker
+        // (em vez de cair numa sala vazia e ter que re-selecionar manualmente).
+        router.push({
+            pathname: "/(trainer-tabs)/training-room",
+            params: { studentId: student.id },
+        } as any);
     }, [data, sessions, setActiveStudent, router]);
 
     /**

@@ -24,7 +24,9 @@ function formatDurationHM(min: number | null | undefined): string | null {
 
 function formatToday(): string {
   const d = new Date();
-  return d.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+  const s = d.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+  // Sentence case (só a 1ª letra). Evita "Quinta-Feira, 21 De Maio" do capitalize.
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 // Padding lateral do ScrollView (scroll.paddingHorizontal) e gap entre os
@@ -224,7 +226,10 @@ export default function HealthScreen() {
         <View style={styles.sourcesCard}>
           <Text style={styles.sourcesLabel}>FONTES CONECTADAS</Text>
           <View style={styles.chips}>
-            {(data?.connections ?? []).map((c) => (
+            {(data?.connections ?? [])
+              // iOS só mostra Apple Saúde; Android só mostra Health Connect.
+              .filter((c) => (Platform.OS === 'ios' ? c.source === 'healthkit' : c.source !== 'healthkit'))
+              .map((c) => (
               <View key={c.source} style={[styles.chip, c.status === 'active' ? styles.chipActive : styles.chipInactive]}>
                 <Activity size={11} color={c.status === 'active' ? '#22C55E' : colors.text.tertiary} strokeWidth={2.5} />
                 <Text style={styles.chipText}>
@@ -256,7 +261,6 @@ function createStyles(c: V2Palette) {
   headerDate: {
     fontSize: 12,
     color: c.text.tertiary,
-    textTransform: 'capitalize',
   },
   headerTitle: {
     fontSize: 28,

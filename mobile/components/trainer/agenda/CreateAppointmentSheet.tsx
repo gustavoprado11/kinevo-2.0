@@ -2,14 +2,17 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
     View,
     Text,
-    TextInput,
     TouchableOpacity,
     ScrollView,
     Image,
     ActivityIndicator,
     Pressable,
 } from "react-native";
-import BottomSheet, { BottomSheetBackdrop, BottomSheetView } from "@gorhom/bottom-sheet";
+import BottomSheet, {
+    BottomSheetBackdrop,
+    BottomSheetScrollView,
+    BottomSheetTextInput,
+} from "@gorhom/bottom-sheet";
 import { Check, ChevronRight, Search, X } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { useTrainerStudentsList, type TrainerStudent } from "../../../hooks/useTrainerStudentsList";
@@ -267,14 +270,28 @@ export function CreateAppointmentSheet({
             ref={sheetRef}
             snapPoints={snapPoints}
             index={0}
+            enableDynamicSizing={false}
             enablePanDownToClose
+            keyboardBehavior="interactive"
+            keyboardBlurBehavior="restore"
+            android_keyboardInputMode="adjustResize"
             onClose={onClose}
             backdropComponent={renderBackdrop}
             backgroundStyle={{ backgroundColor: colors.surface.card }}
             handleIndicatorStyle={{ backgroundColor: colors.text.quaternary }}
         >
-            <BottomSheetView style={{ flex: 1 }}>
-                {/* Header */}
+            {/* IMPORTANT: BottomSheetScrollView must be a direct child of BottomSheet
+                so the integrated scroll/pan delegation works. Wrapping it inside a
+                BottomSheetView used to make the sheet "jump" back up when the user
+                scrolled vertically — the sheet's pan handler was interpreting the
+                scroll as a drag instead of forwarding it to the ScrollView. */}
+            <BottomSheetScrollView
+                style={{ flex: 1 }}
+                contentContainerStyle={{ paddingBottom: 40 }}
+                keyboardShouldPersistTaps="handled"
+                stickyHeaderIndices={[0]}
+            >
+                {/* Sticky header */}
                 <View
                     style={{
                         flexDirection: "row",
@@ -282,6 +299,7 @@ export function CreateAppointmentSheet({
                         justifyContent: "space-between",
                         paddingHorizontal: 20,
                         paddingBottom: 12,
+                        backgroundColor: colors.surface.card,
                         borderBottomWidth: 1,
                         borderBottomColor: colors.border.subtle,
                     }}
@@ -303,11 +321,7 @@ export function CreateAppointmentSheet({
                     </TouchableOpacity>
                 </View>
 
-                <ScrollView
-                    style={{ flex: 1 }}
-                    contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40 }}
-                    keyboardShouldPersistTaps="handled"
-                >
+                <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
                     {/* Aluno picker */}
                     <SectionLabel colors={colors}>Aluno</SectionLabel>
                     {selectedStudent ? (
@@ -316,7 +330,7 @@ export function CreateAppointmentSheet({
                                 Haptics.selectionAsync();
                                 setStudentId(null);
                             }}
-                            style={({ pressed }) => ({
+                            style={{
                                 flexDirection: "row",
                                 alignItems: "center",
                                 padding: 12,
@@ -324,8 +338,7 @@ export function CreateAppointmentSheet({
                                 backgroundColor: colors.purple[100],
                                 borderWidth: 1,
                                 borderColor: "#7c3aed",
-                                opacity: pressed ? 0.85 : 1,
-                            })}
+                            }}
                         >
                             {selectedStudent.avatar_url ? (
                                 <Image
@@ -366,7 +379,7 @@ export function CreateAppointmentSheet({
                         >
                             <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 8, paddingVertical: 4 }}>
                                 <Search size={16} color={colors.text.quaternary} />
-                                <TextInput
+                                <BottomSheetTextInput
                                     placeholder="Buscar aluno..."
                                     placeholderTextColor={colors.text.quaternary}
                                     value={studentSearch}
@@ -377,7 +390,12 @@ export function CreateAppointmentSheet({
                             {studentsLoading ? (
                                 <ActivityIndicator size="small" color="#7c3aed" style={{ marginVertical: 16 }} />
                             ) : (
-                                <ScrollView style={{ maxHeight: 160 }} nestedScrollEnabled>
+                                // Render the student list inline (no nested vertical
+                                // ScrollView). A nested ScrollView inside
+                                // BottomSheetScrollView caused gesture conflicts that
+                                // made the sheet "jump" while the user scrolled.
+                                // The parent BottomSheetScrollView handles overflow.
+                                <View>
                                     {filteredStudents.length === 0 ? (
                                         <Text style={{ textAlign: "center", color: colors.text.quaternary, fontSize: 12, paddingVertical: 16 }}>
                                             Nenhum aluno encontrado
@@ -426,7 +444,7 @@ export function CreateAppointmentSheet({
                                             </Pressable>
                                         ))
                                     )}
-                                </ScrollView>
+                                </View>
                             )}
                         </View>
                     )}
@@ -451,7 +469,7 @@ export function CreateAppointmentSheet({
                                         Haptics.selectionAsync();
                                         setDate(d);
                                     }}
-                                    style={({ pressed }) => ({
+                                    style={{
                                         width: 56,
                                         paddingVertical: 10,
                                         alignItems: "center",
@@ -459,8 +477,7 @@ export function CreateAppointmentSheet({
                                         backgroundColor: selected ? "#7c3aed" : colors.surface.card2,
                                         borderWidth: 1,
                                         borderColor: selected ? "#7c3aed" : colors.border.default,
-                                        opacity: pressed ? 0.85 : 1,
-                                    })}
+                                    }}
                                 >
                                     <Text
                                         style={{
@@ -514,15 +531,14 @@ export function CreateAppointmentSheet({
                                         Haptics.selectionAsync();
                                         setTime(t);
                                     }}
-                                    style={({ pressed }) => ({
+                                    style={{
                                         paddingVertical: 8,
                                         paddingHorizontal: 14,
                                         borderRadius: 100,
                                         backgroundColor: selected ? "#7c3aed" : colors.surface.card2,
                                         borderWidth: 1,
                                         borderColor: selected ? "#7c3aed" : colors.border.default,
-                                        opacity: pressed ? 0.85 : 1,
-                                    })}
+                                    }}
                                 >
                                     <Text style={{ fontSize: 13, fontWeight: "600", color: selected ? "#ffffff" : colors.text.primary }}>
                                         {t}
@@ -544,7 +560,7 @@ export function CreateAppointmentSheet({
                                         Haptics.selectionAsync();
                                         setDuration(d);
                                     }}
-                                    style={({ pressed }) => ({
+                                    style={{
                                         flex: 1,
                                         paddingVertical: 10,
                                         borderRadius: 10,
@@ -552,8 +568,7 @@ export function CreateAppointmentSheet({
                                         backgroundColor: selected ? "#7c3aed" : colors.surface.card2,
                                         borderWidth: 1,
                                         borderColor: selected ? "#7c3aed" : colors.border.default,
-                                        opacity: pressed ? 0.85 : 1,
-                                    })}
+                                    }}
                                 >
                                     <Text style={{ fontSize: 13, fontWeight: "600", color: selected ? "#ffffff" : colors.text.primary }}>
                                         {d} min
@@ -576,7 +591,7 @@ export function CreateAppointmentSheet({
                                         setFrequency(opt.value);
                                         if (opt.value === "once") setEndsOn(null);
                                     }}
-                                    style={({ pressed }) => ({
+                                    style={{
                                         flexDirection: "row",
                                         alignItems: "center",
                                         padding: 12,
@@ -584,8 +599,7 @@ export function CreateAppointmentSheet({
                                         backgroundColor: selected ? colors.purple[100] : colors.surface.card2,
                                         borderWidth: 1,
                                         borderColor: selected ? "#7c3aed" : colors.border.default,
-                                        opacity: pressed ? 0.85 : 1,
-                                    })}
+                                    }}
                                 >
                                     <View style={{ flex: 1 }}>
                                         <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text.primary }}>
@@ -603,7 +617,7 @@ export function CreateAppointmentSheet({
 
                     {/* Notes */}
                     <SectionLabel colors={colors}>Notas (opcional)</SectionLabel>
-                    <TextInput
+                    <BottomSheetTextInput
                         value={notes}
                         onChangeText={setNotes}
                         placeholder="Foco do treino, observações..."
@@ -654,8 +668,8 @@ export function CreateAppointmentSheet({
                             <Text style={{ fontSize: 12, color: "#ef4444" }}>{error}</Text>
                         </View>
                     ) : null}
-                </ScrollView>
-            </BottomSheetView>
+                </View>
+            </BottomSheetScrollView>
         </BottomSheet>
     );
 }
