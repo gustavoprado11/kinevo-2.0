@@ -21,10 +21,24 @@ import { useScheduleAppointmentReminder } from "../../../hooks/useScheduleAppoin
 import type { AppointmentFrequency } from "@kinevo/shared/types/appointments";
 import { useV2Colors, type V2Palette } from "../../../hooks/useV2Colors";
 
+/** When provided, the sheet edits an existing recurring rule instead of
+ *  creating one. Date isn't editable here (use "Remarcar" to move day/time of a
+ *  series); this edits student / time / duration / frequency / notes. */
+export interface EditingAppointment {
+    id: string;
+    studentId: string;
+    startTime: string; // HH:MM
+    durationMinutes: number;
+    frequency: AppointmentFrequency;
+    notes: string | null;
+}
+
 interface CreateAppointmentSheetProps {
     visible: boolean;
     /** Optional initial date (defaults to today). Used when opened from agenda day. */
     initialDate?: Date;
+    /** When set, the sheet is in edit mode for this rule. */
+    editing?: EditingAppointment | null;
     onClose: () => void;
     onCreated: () => void;
 }
@@ -70,15 +84,17 @@ const TIME_SLOTS: string[] = (() => {
 export function CreateAppointmentSheet({
     visible,
     initialDate,
+    editing,
     onClose,
     onCreated,
 }: CreateAppointmentSheetProps) {
     const colors = useV2Colors();
+    const isEdit = !!editing;
     const sheetRef = useRef<BottomSheet>(null);
     const snapPoints = useMemo(() => ["92%"], []);
     const { students: studentsListed, isLoading: studentsLoading } = useTrainerStudentsList();
-    const { createAppointment } = useAppointmentMutations();
-    const { getReminderPermissionStatus, requestReminderPermission, scheduleForRule } =
+    const { createAppointment, updateRecurring } = useAppointmentMutations();
+    const { getReminderPermissionStatus, requestReminderPermission, scheduleForRule, refreshForRule } =
         useScheduleAppointmentReminder();
     const [permissionDenied, setPermissionDenied] = useState(false);
 
@@ -96,21 +112,30 @@ export function CreateAppointmentSheet({
     useEffect(() => {
         if (visible) {
             sheetRef.current?.expand();
-            // Reset form on each open
-            setStudentId(null);
+            // Prefill from the rule when editing, otherwise reset to defaults.
+            if (editing) {
+                setStudentId(editing.studentId);
+                setTime(editing.startTime);
+                setDuration(editing.durationMinutes);
+                setFrequency(editing.frequency);
+                setNotes(editing.notes ?? "");
+            } else {
+                setStudentId(null);
+                setTime("09:00");
+                setDuration(60);
+                setFrequency("weekly");
+                setNotes("");
+            }
             setDate(initialDate ?? new Date());
-            setTime("09:00");
-            setDuration(60);
-            setFrequency("weekly");
             setEndsOn(null);
-            setNotes("");
             setStudentSearch("");
             setError(null);
             setSubmitting(false);
         } else {
             sheetRef.current?.close();
         }
-    }, [visible, initialDate]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [visible, initialDate, editing?.id]);
 
     const renderBackdrop = useCallback(
         (props: any) => (
@@ -153,6 +178,31 @@ export function CreateAppointmentSheet({
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         setSubmitting(true);
 
+        // Edit mode: update the rule's student/time/duration/frequency/notes.
+        // Day/start date stay as-is (moving a series is "Remarcar").
+        if (editing) {
+            const res = await updateRecurring({
+                id: editing.id,
+                studentId,
+                startTime: time,
+                durationMinutes: duration,
+                frequency,
+                notes: notes.trim() ? notes.trim() : null,
+            });
+            if (!res.success) {
+                setSubmitting(false);
+                setError(res.error ?? "Erro ao atualizar agendamento");
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                return;
+            }
+            await refreshForRule(editing.id);
+            setSubmitting(false);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            onCreated();
+            onClose();
+            return;
+        }
+
         const startsOn = toLocalDateKey(date);
         const dayOfWeek = date.getDay();
 
@@ -192,6 +242,7 @@ export function CreateAppointmentSheet({
         onCreated();
         onClose();
     }, [
+        editing,
         studentId,
         date,
         time,
@@ -200,9 +251,11 @@ export function CreateAppointmentSheet({
         endsOn,
         notes,
         createAppointment,
+        updateRecurring,
         getReminderPermissionStatus,
         requestReminderPermission,
         scheduleForRule,
+        refreshForRule,
         onCreated,
         onClose,
     ]);
@@ -237,7 +290,7 @@ export function CreateAppointmentSheet({
                         <X size={22} color={colors.text.tertiary} />
                     </TouchableOpacity>
                     <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text.primary }}>
-                        Novo agendamento
+                        {isEdit ? "Editar agendamento" : "Novo agendamento"}
                     </Text>
                     <TouchableOpacity onPress={handleSubmit} disabled={submitting} hitSlop={8}>
                         {submitting ? (
@@ -378,7 +431,10 @@ export function CreateAppointmentSheet({
                         </View>
                     )}
 
-                    {/* Date picker (horizontal scroll of days) */}
+                    {/* Date picker (horizontal scroll of days) — create only.
+                        Moving an existing series' day/date is done via "Remarcar". */}
+                    {!isEdit && (
+                    <>
                     <SectionLabel colors={colors}>Data</SectionLabel>
                     <ScrollView
                         horizontal
@@ -439,6 +495,8 @@ export function CreateAppointmentSheet({
                             );
                         })}
                     </ScrollView>
+                    </>
+                    )}
 
                     {/* Time picker (horizontal slots) */}
                     <SectionLabel colors={colors}>Horário</SectionLabel>

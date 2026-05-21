@@ -52,6 +52,18 @@ export interface RescheduleOccurrenceInput {
     notes?: string | null;
 }
 
+export interface MarkOccurrenceStatusInput {
+    recurringAppointmentId: string;
+    occurrenceDate: string; // YYYY-MM-DD
+    status: "completed" | "no_show";
+    notes?: string | null;
+}
+
+export interface ClearOccurrenceStatusInput {
+    recurringAppointmentId: string;
+    occurrenceDate: string; // YYYY-MM-DD
+}
+
 export interface MutationResult<T = void> {
     success: boolean;
     error?: string;
@@ -435,11 +447,77 @@ export function useAppointmentMutations() {
         [ensureTrainer],
     );
 
+    /** Mark a single occurrence as completed/no_show — upsert in
+     *  appointment_exceptions (kind = status). Mirrors web markOccurrenceStatus. */
+    const markOccurrenceStatus = useCallback(
+        async (input: MarkOccurrenceStatusInput): Promise<MutationResult> => {
+            const auth = ensureTrainer();
+            if ("error" in auth) return { success: false, error: auth.error };
+
+            const { data: rule } = await supabase
+                .from("recurring_appointments")
+                .select("id, trainer_id")
+                .eq("id", input.recurringAppointmentId)
+                .single();
+            if (!rule) return { success: false, error: "Rotina não encontrada" };
+            if (rule.trainer_id !== auth.trainerId) {
+                return { success: false, error: "Sem permissão" };
+            }
+
+            const { error } = await supabase
+                .from("appointment_exceptions")
+                .upsert(
+                    {
+                        recurring_appointment_id: input.recurringAppointmentId,
+                        trainer_id: auth.trainerId,
+                        occurrence_date: input.occurrenceDate,
+                        kind: input.status,
+                        new_date: null,
+                        new_start_time: null,
+                        notes: input.notes ?? null,
+                    },
+                    { onConflict: "recurring_appointment_id,occurrence_date" },
+                );
+            if (error) {
+                if (__DEV__) console.error("[markOccurrenceStatus]", error);
+                return { success: false, error: "Erro ao atualizar status" };
+            }
+            return { success: true };
+        },
+        [ensureTrainer],
+    );
+
+    /** Revert a completed/no_show occurrence back to scheduled by deleting the
+     *  status exception. Guarded to `kind in (completed, no_show)` so a
+     *  reschedule/cancel exception on the same slot is never removed. */
+    const clearOccurrenceStatus = useCallback(
+        async (input: ClearOccurrenceStatusInput): Promise<MutationResult> => {
+            const auth = ensureTrainer();
+            if ("error" in auth) return { success: false, error: auth.error };
+
+            const { error } = await supabase
+                .from("appointment_exceptions")
+                .delete()
+                .eq("recurring_appointment_id", input.recurringAppointmentId)
+                .eq("trainer_id", auth.trainerId)
+                .eq("occurrence_date", input.occurrenceDate)
+                .in("kind", ["completed", "no_show"]);
+            if (error) {
+                if (__DEV__) console.error("[clearOccurrenceStatus]", error);
+                return { success: false, error: "Erro ao desmarcar" };
+            }
+            return { success: true };
+        },
+        [ensureTrainer],
+    );
+
     return {
         createAppointment,
         updateRecurring,
         cancelSeries,
         cancelOccurrence,
         rescheduleOccurrence,
+        markOccurrenceStatus,
+        clearOccurrenceStatus,
     };
 }

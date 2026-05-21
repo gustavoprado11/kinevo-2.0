@@ -25,6 +25,7 @@ export default function AgendaScreen() {
     const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
     const [createOpen, setCreateOpen] = useState(false);
     const [detailOccurrence, setDetailOccurrence] = useState<AgendaOccurrence | null>(null);
+    const [editOccurrence, setEditOccurrence] = useState<AgendaOccurrence | null>(null);
 
     // Fetch a 3-day window around the selected day to keep adjacent swipes snappy.
     const { rangeStart, rangeEnd } = useMemo(() => {
@@ -153,8 +154,30 @@ export default function AgendaScreen() {
             <AppointmentDetailSheet
                 occurrence={detailOccurrence}
                 frequencyHint={detailOccurrence?.frequency}
+                onRequestEdit={(occ) => {
+                    setDetailOccurrence(null);
+                    setEditOccurrence(occ);
+                }}
                 onClose={() => setDetailOccurrence(null)}
                 onChanged={handleAfterMutation}
+            />
+
+            <CreateAppointmentSheet
+                visible={!!editOccurrence}
+                editing={
+                    editOccurrence
+                        ? {
+                            id: editOccurrence.recurringAppointmentId,
+                            studentId: editOccurrence.studentId,
+                            startTime: editOccurrence.startTime,
+                            durationMinutes: editOccurrence.durationMinutes,
+                            frequency: editOccurrence.frequency,
+                            notes: editOccurrence.notes,
+                        }
+                        : null
+                }
+                onClose={() => setEditOccurrence(null)}
+                onCreated={handleAfterMutation}
             />
         </>
     );

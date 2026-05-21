@@ -17,6 +17,9 @@ import {
     PencilLine,
     X,
     StickyNote,
+    CheckCircle2,
+    XCircle,
+    RotateCcw,
 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { EditScopeDialog, type EditScope } from "./EditScopeDialog";
@@ -38,6 +41,8 @@ interface AppointmentDetailSheetProps {
      * `useAppointmentMutations` if the projection doesn't include it.
      */
     frequencyHint?: AppointmentFrequency;
+    /** Opens the full edit form (student/time/duration/frequency/notes). */
+    onRequestEdit: (occurrence: AgendaOccurrence) => void;
     onClose: () => void;
     onChanged: () => void;
 }
@@ -115,14 +120,21 @@ type Mode = "view" | "reschedule" | "edit_notes";
 export function AppointmentDetailSheet({
     occurrence,
     frequencyHint,
+    onRequestEdit,
     onClose,
     onChanged,
 }: AppointmentDetailSheetProps) {
     const colors = useV2Colors();
     const sheetRef = useRef<BottomSheet>(null);
     const snapPoints = useMemo(() => ["75%", "92%"], []);
-    const { cancelOccurrence, cancelSeries, rescheduleOccurrence, updateRecurring } =
-        useAppointmentMutations();
+    const {
+        cancelOccurrence,
+        cancelSeries,
+        rescheduleOccurrence,
+        updateRecurring,
+        markOccurrenceStatus,
+        clearOccurrenceStatus,
+    } = useAppointmentMutations();
     const { scheduleForRule, cancelForRule, refreshForRule } = useScheduleAppointmentReminder();
 
     const [mode, setMode] = useState<Mode>("view");
@@ -368,6 +380,51 @@ export function AppointmentDetailSheet({
         onClose();
     }, [occurrence, notesDraft, updateRecurring, onChanged, onClose]);
 
+    // Mark status flow (completed / no_show) ------------------------------
+    const handleMarkStatus = useCallback(
+        async (status: "completed" | "no_show") => {
+            if (!occurrence) return;
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            setBusy(true);
+            setError(null);
+            const res = await markOccurrenceStatus({
+                recurringAppointmentId: occurrence.recurringAppointmentId,
+                occurrenceDate: occurrence.originalDate,
+                status,
+            });
+            setBusy(false);
+            if (!res.success) {
+                setError(res.error ?? "Erro ao atualizar status");
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                return;
+            }
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            onChanged();
+            onClose();
+        },
+        [occurrence, markOccurrenceStatus, onChanged, onClose],
+    );
+
+    const handleClearStatus = useCallback(async () => {
+        if (!occurrence) return;
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        setBusy(true);
+        setError(null);
+        const res = await clearOccurrenceStatus({
+            recurringAppointmentId: occurrence.recurringAppointmentId,
+            occurrenceDate: occurrence.originalDate,
+        });
+        setBusy(false);
+        if (!res.success) {
+            setError(res.error ?? "Erro ao desmarcar");
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            return;
+        }
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        onChanged();
+        onClose();
+    }, [occurrence, clearOccurrenceStatus, onChanged, onClose]);
+
     // Day options for reschedule (today → +60d)
     const dayOptions = useMemo(() => {
         const today = new Date();
@@ -507,6 +564,40 @@ export function AppointmentDetailSheet({
 
                                 {/* Actions */}
                                 <View style={{ marginTop: 24, gap: 10 }}>
+                                    {occurrence.status === "completed" || occurrence.status === "no_show" ? (
+                                        <ActionButton
+                                            colors={colors}
+                                            icon={<RotateCcw size={18} color={colors.text.primary} />}
+                                            label={occurrence.status === "completed" ? "Desmarcar conclusão" : "Desmarcar falta"}
+                                            onPress={handleClearStatus}
+                                        />
+                                    ) : occurrence.status === "scheduled" ? (
+                                        // Only plain scheduled occurrences can be marked: a 'rescheduled'
+                                        // occurrence keeps its exception at the original slot, and the
+                                        // mark upsert (keyed on original date) would overwrite it.
+                                        <>
+                                            <ActionButton
+                                                colors={colors}
+                                                icon={<CheckCircle2 size={18} color="#16a34a" />}
+                                                label="Marcar como concluído"
+                                                labelColor="#16a34a"
+                                                onPress={() => handleMarkStatus("completed")}
+                                            />
+                                            <ActionButton
+                                                colors={colors}
+                                                icon={<XCircle size={18} color="#d97706" />}
+                                                label="Marcar falta"
+                                                labelColor="#d97706"
+                                                onPress={() => handleMarkStatus("no_show")}
+                                            />
+                                        </>
+                                    ) : null}
+                                    <ActionButton
+                                        colors={colors}
+                                        icon={<PencilLine size={18} color={colors.text.primary} />}
+                                        label="Editar"
+                                        onPress={() => onRequestEdit(occurrence)}
+                                    />
                                     <ActionButton
                                         colors={colors}
                                         icon={<CalendarClock size={18} color={colors.text.primary} />}
@@ -515,7 +606,7 @@ export function AppointmentDetailSheet({
                                     />
                                     <ActionButton
                                         colors={colors}
-                                        icon={<PencilLine size={18} color={colors.text.primary} />}
+                                        icon={<StickyNote size={18} color={colors.text.primary} />}
                                         label="Editar notas"
                                         onPress={handleEditNotesPress}
                                     />
