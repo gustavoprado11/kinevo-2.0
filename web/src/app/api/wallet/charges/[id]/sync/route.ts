@@ -23,6 +23,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { AsaasApiError, listPaymentsByLink } from '@/lib/asaas'
 import { getDecryptedApiKey, requireTrainer, WalletAuthError } from '@/lib/asaas/wallet-service'
+import { logContractEvent } from '@/lib/contract-events'
 
 const PAID_STATUSES = new Set(['RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH'])
 
@@ -124,6 +125,17 @@ export async function POST(
             if (unblockErr) {
                 console.error('[wallet/charges/sync] unblock failed', unblockErr)
             }
+        }
+
+        // 6. Histórico do contrato (idempotência tratada no backfill/leitura)
+        if (contract.student_id) {
+            await logContractEvent({
+                studentId: contract.student_id,
+                trainerId: trainer.id,
+                contractId: contract.id,
+                eventType: 'payment_received',
+                metadata: { provider: 'asaas', amount: paid.value, paymentId: paid.id, via: 'sync', method: paid.billingType },
+            })
         }
 
         return NextResponse.json({

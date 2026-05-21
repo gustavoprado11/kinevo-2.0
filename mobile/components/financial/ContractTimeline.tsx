@@ -42,7 +42,8 @@ function formatEventDate(dateStr: string): string {
 function getEventDetail(event: ContractEvent): string | null {
     const meta = event.metadata || {};
     if (event.event_type === "payment_received" && meta.amount) {
-        return `R$ ${Number(meta.amount).toFixed(2).replace(".", ",")} — ${meta.method || ""}`;
+        const value = `R$ ${Number(meta.amount).toFixed(2).replace(".", ",")}`;
+        return meta.method ? `${value} — ${meta.method}` : value;
     }
     if (event.event_type === "contract_canceled" && meta.canceled_by) {
         const scheduled = meta.scheduled ? " (agendado)" : "";

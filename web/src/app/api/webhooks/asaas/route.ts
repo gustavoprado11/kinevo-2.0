@@ -23,6 +23,7 @@ import {
     resolveTrainerByAsaasPayment,
     resolveTrainerByAsaasTransfer,
 } from '@/lib/financial/notify'
+import { logContractEvent } from '@/lib/contract-events'
 
 const formatBRL = (n: number) =>
     n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -215,6 +216,16 @@ async function handlePaymentReceived(event: AsaasWebhookEvent) {
             if (upsertErr) {
                 console.error('[asaas-webhook] upsert transaction failed:', upsertErr)
             }
+            // Registra no histórico do contrato (timeline do detalhe do aluno)
+            if (contract.student_id) {
+                await logContractEvent({
+                    studentId: contract.student_id as string,
+                    trainerId: contract.trainer_id as string,
+                    contractId,
+                    eventType: 'payment_received',
+                    metadata: { provider: 'asaas', amount: payment.value, paymentId: payment.id, method: payment.billingType },
+                })
+            }
         }
     } else {
         // Fallback: tenta só atualizar pelo asaas_payment_id (caso a linha
@@ -292,6 +303,17 @@ async function handlePaymentOverdue(event: AsaasWebhookEvent) {
         if (byLink && byLink.length > 0) {
             matchedContract = byLink[0] as ContractRef
         }
+    }
+
+    // Registra no histórico do contrato
+    if (matchedContract) {
+        await logContractEvent({
+            studentId: matchedContract.student_id,
+            trainerId: matchedContract.trainer_id,
+            contractId: matchedContract.id,
+            eventType: 'contract_overdue',
+            metadata: { provider: 'asaas', amount: payment.value, paymentId: payment.id },
+        })
     }
 
     // Notifica o trainer que o aluno atrasou. O bloqueio de acesso em si fica

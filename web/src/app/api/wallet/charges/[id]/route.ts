@@ -17,6 +17,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { AsaasApiError, deactivatePaymentLink, getPaymentLink } from '@/lib/asaas'
 import { getDecryptedApiKey, requireTrainer, WalletAuthError } from '@/lib/asaas/wallet-service'
+import { logContractEvent } from '@/lib/contract-events'
 
 // ============================================================================
 // GET /api/wallet/charges/[id]
@@ -97,7 +98,7 @@ export async function DELETE(
         // 1. Carrega contrato e valida ownership
         const { data: contract, error: loadErr } = await supabaseAdmin
             .from('student_contracts')
-            .select('id, trainer_id, status, asaas_payment_link_id')
+            .select('id, trainer_id, student_id, status, asaas_payment_link_id')
             .eq('id', contractId)
             .maybeSingle()
         if (loadErr || !contract) {
@@ -145,6 +146,16 @@ export async function DELETE(
         if (updErr) {
             console.error('[wallet/charges DELETE] contract update failed', updErr)
             return NextResponse.json({ error: 'Falha ao cancelar cobrança' }, { status: 500 })
+        }
+
+        if (contract.student_id) {
+            await logContractEvent({
+                studentId: contract.student_id as string,
+                trainerId: trainer.id,
+                contractId,
+                eventType: 'contract_canceled',
+                metadata: { provider: 'asaas', by: 'trainer' },
+            })
         }
 
         return NextResponse.json({ canceled: true })

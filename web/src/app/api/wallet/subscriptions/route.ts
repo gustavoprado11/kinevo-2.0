@@ -26,6 +26,7 @@ import {
     type AsaasSubscriptionCycle,
 } from '@/lib/asaas'
 import { getDecryptedApiKey, requireTrainer, WalletAuthError } from '@/lib/asaas/wallet-service'
+import { logContractEvent } from '@/lib/contract-events'
 
 interface SubBody {
     studentId?: string
@@ -163,6 +164,15 @@ export async function POST(request: NextRequest) {
             .from('student_contracts')
             .update({ asaas_payment_link_id: link.id })
             .eq('id', contract.id)
+
+        // 8. Histórico do contrato
+        await logContractEvent({
+            studentId: student.id,
+            trainerId: trainer.id,
+            contractId: contract.id,
+            eventType: 'contract_created',
+            metadata: { provider: 'asaas', amount: Number(plan.price), billingType, cycle, kind: 'recurring' },
+        })
 
         return NextResponse.json({
             contractId: contract.id,
