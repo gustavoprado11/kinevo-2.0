@@ -219,6 +219,16 @@ Antes: cancelar contrato `asaas_auto_recurring` só marcava `canceled` no banco 
 
 Validação: web tsc limpo, 47/47 testes Asaas. Mobile já roteia o cancelamento de recorrente ativa pra essa rota (sem mudança no app).
 
+### Rodada 10 (2026-05-21) — Recorrência só no cartão + Asaas cuida da régua
+Problema: PIX/boleto não têm débito automático; assinatura nesses métodos exigiria o aluno pagar todo ciclo (e a Kinevo nem reenviava o link → recorrência não se sustentava). Decisão de produto:
+- **Assinatura recorrente = só cartão de crédito** (único com auto-débito). `/api/wallet/subscriptions` força `billingType = CREDIT_CARD`. PIX/boleto ficam só em cobrança avulsa.
+- **`notificationEnabled: true`** na assinatura → a Asaas cuida de recibos e cobrança em caso de falha de cartão (trainer não manda nada).
+- UI: mobile (`NewSubscriptionSheet`) e web (`cobrar-carteira-modal`) deixam claro que recorrência é no cartão; a simulação de taxas na recorrência mostra só cartão.
+
+Validação: web tsc limpo, mobile tsc sem erros novos.
+
+Obs.: assinaturas PIX/boleto antigas (ex.: contrato de teste R$5 PIX) seguem como estão — a regra vale pras novas.
+
 ### Pendente (fora do escopo de paridade da tela)
 - Tooltips (?) nos stat cards: omitidos de propósito (padrão de hover do web; no mobile os labels já são autoexplicativos).
 - Upload de documento in-app: o envio de KYC é numa página externa (onboardingUrl), igual ao web.

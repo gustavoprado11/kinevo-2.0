@@ -106,13 +106,15 @@ export function CobrarCarteiraModal({
     )
 
     const allowedMethods = useMemo(() => {
+        // Recorrência é só no cartão (único com débito automático).
+        if (mode === 'recurring') return ['CREDIT_CARD'] as const
         if (!selectedPlan) return ['PIX', 'CREDIT_CARD'] as const
         const m: Array<'PIX' | 'CREDIT_CARD' | 'BOLETO'> = []
         if (selectedPlan.allow_pix ?? true) m.push('PIX')
         if (selectedPlan.allow_credit_card ?? true) m.push('CREDIT_CARD')
         if (selectedPlan.allow_boleto) m.push('BOLETO')
         return m.length > 0 ? m : (['PIX', 'CREDIT_CARD'] as const)
-    }, [selectedPlan])
+    }, [selectedPlan, mode])
 
     const canSubmit = !loading && studentId && planId && dueDate && selectedPlan
 
@@ -340,6 +342,12 @@ export function CobrarCarteiraModal({
                             </p>
                         </button>
                     </div>
+                    {mode === 'recurring' && (
+                        <p className="mt-2 text-[11px] text-k-text-tertiary leading-snug">
+                            A recorrência é cobrada no <b>cartão de crédito</b> (débito automático todo ciclo).
+                            Pra PIX ou boleto, use a cobrança avulsa.
+                        </p>
+                    )}
                 </div>
 
                 {/* Vencimento */}

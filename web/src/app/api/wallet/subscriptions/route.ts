@@ -44,19 +44,10 @@ function planIntervalToCycle(interval: string | null | undefined, count?: number
     return 'MONTHLY'
 }
 
-interface PlanCols {
-    allow_pix?: boolean | null
-    allow_credit_card?: boolean | null
-    allow_boleto?: boolean | null
-}
-
-function deriveBillingType(plan: PlanCols): AsaasBillingType {
-    const allowed: AsaasBillingType[] = []
-    if (plan.allow_pix ?? true) allowed.push('PIX')
-    if (plan.allow_credit_card ?? true) allowed.push('CREDIT_CARD')
-    if (plan.allow_boleto ?? false) allowed.push('BOLETO')
-    return allowed.length === 1 ? allowed[0] : 'UNDEFINED'
-}
+// Recorrência é SÓ no cartão de crédito — único método com débito automático.
+// PIX/boleto não auto-debitam (exigiriam o aluno pagar todo ciclo), então
+// ficam restritos a cobrança avulsa. Decisão de produto (2026-05).
+const RECURRING_BILLING_TYPE: AsaasBillingType = 'CREDIT_CARD'
 
 function dueDateToLimitDays(dueDate: string): number {
     const today = new Date()
@@ -102,7 +93,8 @@ export async function POST(request: NextRequest) {
         const cycle = planIntervalToCycle(plan.interval, plan.interval_count)
         const nextDueDate = body.nextDueDate ?? new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10)
         const dueDateLimitDays = dueDateToLimitDays(nextDueDate)
-        const billingType = body.billingType ?? deriveBillingType(plan)
+        // Recorrência sempre no cartão (auto-débito). PIX/boleto não recorrem.
+        const billingType = RECURRING_BILLING_TYPE
 
         // 3. apiKey da subconta
         const apiKey = await getDecryptedApiKey(trainer.id)
@@ -148,7 +140,8 @@ export async function POST(request: NextRequest) {
                     chargeType: 'RECURRENT',
                     subscriptionCycle: cycle,
                     dueDateLimitDays,
-                    notificationEnabled: false,
+                    // Asaas cuida da régua da recorrência (recibos/falha de cartão).
+                    notificationEnabled: true,
                     split,
                 },
                 contract.id,

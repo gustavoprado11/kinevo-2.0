@@ -47,7 +47,7 @@ function formatCurrency(value: number): string {
 }
 
 const BILLING_OPTIONS: { key: BillingType; label: string; desc: string; icon: any; requiresWallet?: boolean }[] = [
-    { key: "asaas_recurring", label: "Assinatura via Carteira", desc: "PIX, cartão ou boleto — renova automático. Gera link pra enviar.", icon: CreditCard, requiresWallet: true },
+    { key: "asaas_recurring", label: "Assinatura via Carteira", desc: "Cartão de crédito — cobra automático todo ciclo. Gera link pra enviar.", icon: CreditCard, requiresWallet: true },
     { key: "asaas_one_off", label: "Cobrança avulsa via Carteira", desc: "PIX, cartão ou boleto, uma vez. Gera link pra enviar.", icon: DollarSign, requiresWallet: true },
     { key: "manual_recurring", label: "Controle manual (recorrente)", desc: "Você registra os pagamentos feitos por fora (Pix, dinheiro, etc.)", icon: DollarSign },
     { key: "manual_one_off", label: "Pagamento único", desc: "Um pagamento avulso, sem renovação automática", icon: DollarSign },
@@ -448,7 +448,9 @@ export function NewSubscriptionSheet({ visible, onClose, onSuccess, plans, walle
                                     <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                                         <LinkIcon size={14} color="#7c3aed" />
                                         <Text style={{ fontSize: 13, color: "#7c3aed", fontWeight: "500", flex: 1 }}>
-                                            Um link de pagamento (PIX, cartão ou boleto) será gerado para compartilhar com o aluno.
+                                            {selectedBilling === "asaas_recurring"
+                                                ? "Assinatura no cartão de crédito (cobrança automática todo ciclo). Um link é gerado para o aluno cadastrar o cartão."
+                                                : "Um link de pagamento (PIX, cartão ou boleto) será gerado para compartilhar com o aluno."}
                                         </Text>
                                     </View>
                                 </View>
