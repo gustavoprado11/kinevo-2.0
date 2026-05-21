@@ -97,6 +97,7 @@ export default function ProgramBuilderScreen() {
         saveAndAssign,
         saveAsNewProgramDiscardingAi,
         saveAssignedProgramFull,
+        saveTemplateFull,
     } = useProgramBuilder();
 
     // Edit mode (Round 1): the route loaded an existing assigned program via
@@ -105,13 +106,20 @@ export default function ProgramBuilderScreen() {
     // `editingAssignedProgramId` (set by initFromAssignedProgram) rather than
     // just `params.mode` so a mid-flight nav refresh can't show a stale draft.
     const isEditMode = params.mode === "edit" && !!draft.editingAssignedProgramId;
+    // Edit-existing-template mode: route loaded a `program_templates` row via
+    // `initFromTemplate`. Same full-editing UI, but the save writes the
+    // `*_templates` tables via `saveTemplateFull`.
+    const isEditTemplateMode = params.mode === "edit-template" && !!draft.editingTemplateId;
+    // Combined flag for UI affordances shared by both edit flows (placeholder,
+    // header copy, reset-on-exit).
+    const isEditingExisting = isEditMode || isEditTemplateMode;
 
     useEffect(() => {
         // When coming from text prescription, AI hand-off, or edit-existing,
         // the store is already pre-filled (`initFromParsedText` /
         // `initFromAiSnapshot` / `initFromAssignedProgram`); don't blow it
         // away.
-        if (params.mode === "from-text" || params.mode === "from-ai" || params.mode === "edit") return;
+        if (params.mode === "from-text" || params.mode === "from-ai" || params.mode === "edit" || params.mode === "edit-template") return;
         // mode=ai opens the AI sheet on a fresh draft, but only after we
         // make sure the draft is initialized.
         initNewProgram(params.studentId);
@@ -147,6 +155,16 @@ export default function ProgramBuilderScreen() {
         }
 
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+        // Edit-template mode: full save against the *_templates tables.
+        if (isEditTemplateMode) {
+            const result = await saveTemplateFull();
+            if (result.ok) {
+                reset();
+                router.back();
+            }
+            return;
+        }
 
         // Edit mode: full save against assigned_* tables. The check above
         // already guarantees at least one exercise.
@@ -199,7 +217,7 @@ export default function ProgramBuilderScreen() {
                 `${message}\n\nTente novamente. Se persistir, contate o suporte.`
             );
         }
-    }, [draft, params.studentId, saveAndAssign, saveAsNewProgramDiscardingAi, saveAsTemplate, reset, router, isEditMode, saveAssignedProgramFull]);
+    }, [draft, params.studentId, saveAndAssign, saveAsNewProgramDiscardingAi, saveAsTemplate, reset, router, isEditMode, saveAssignedProgramFull, isEditTemplateMode, saveTemplateFull]);
 
     const handleAIGenerated = useCallback(
         (result: AgentResult) => {
@@ -299,11 +317,11 @@ export default function ProgramBuilderScreen() {
         // Edit mode: never persist the loaded draft across navigations —
         // always reset on exit so a future "create new" flow doesn't see
         // editingAssignedProgramId leaking from the previous session.
-        if (isEditMode) {
+        if (isEditingExisting) {
             if (isDirty) {
                 Alert.alert(
                     "Descartar alterações?",
-                    "As alterações de nome/descrição/duração não salvas serão perdidas.",
+                    "As alterações não salvas serão perdidas.",
                     [
                         { text: "Cancelar", style: "cancel" },
                         { text: "Descartar", style: "destructive", onPress: () => { reset(); router.back(); } },
@@ -327,7 +345,7 @@ export default function ProgramBuilderScreen() {
         } else {
             router.back();
         }
-    }, [isDirty, reset, router, isEditMode]);
+    }, [isDirty, reset, router, isEditingExisting]);
 
     const handleDeleteWorkout = useCallback((workoutId: string, workoutName: string) => {
         if (draft.workouts.length <= 1) {
@@ -478,7 +496,7 @@ export default function ProgramBuilderScreen() {
                      *  rola junto com os cards. */}
                     <ProgramBuilderCompactBar
                         programName={draft.name}
-                        placeholder={isEditMode ? "Editar programa" : "Sem nome"}
+                        placeholder={isEditTemplateMode ? "Editar modelo" : isEditMode ? "Editar programa" : "Sem nome"}
                         onBack={handleBack}
                         onSave={handleSave}
                         isSaving={isSaving}
@@ -494,7 +512,7 @@ export default function ProgramBuilderScreen() {
                                 workouts={draft.workouts}
                                 currentWorkout={currentWorkout}
                                 currentWorkoutId={currentWorkoutId}
-                                isEditMode={isEditMode}
+                                isEditMode={isEditingExisting}
                                 nameFocused={nameFocused}
                                 descriptionFocused={descriptionFocused}
                                 onNameFocus={() => setNameFocused(true)}

@@ -18,6 +18,7 @@ import {
     CalendarClock,
     Activity,
     CheckCircle2,
+    LayoutTemplate,
 } from "lucide-react-native";
 import Animated, { FadeInUp, FadeIn, Easing } from "react-native-reanimated";
 import { useRouter } from "expo-router";
@@ -79,6 +80,7 @@ const QUICK_ACCESS: Array<{
     { key: "agenda", label: "Agenda", icon: Calendar, color: colors.purple[600], route: "/agenda" },
     { key: "financial", label: "Financeiro", icon: DollarSign, color: colors.semantic.info.default, route: "/financial" },
     { key: "exercises", label: "Exercícios", icon: Dumbbell, color: colors.semantic.warning.default, route: "/exercises" },
+    { key: "templates", label: "Modelos", icon: LayoutTemplate, color: colors.semantic.success.default, route: "/program-templates" },
 ];
 
 export default function DashboardScreen() {
@@ -333,15 +335,15 @@ export default function DashboardScreen() {
                         </Animated.View>
                     ) : null}
 
-                    {/* Quick Access — grid 3 cols (mantém items existentes do QuickActions). */}
+                    {/* Quick Access — grade 2x2 (wrap). */}
                     <Animated.View
                         entering={FadeInUp.delay(150).duration(300).easing(Easing.out(Easing.cubic))}
                         style={{ marginTop: spacing[5], paddingHorizontal: spacing[5] }}
                     >
                         <SectionLabel>Acesso rápido</SectionLabel>
-                        <View style={{ flexDirection: "row", gap: spacing[2] }}>
+                        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing[2] }}>
                             {QUICK_ACCESS.map((q) => (
-                                <View key={q.key} style={{ flex: 1 }}>
+                                <View key={q.key} style={{ width: "48%" }}>
                                     <KCard
                                         variant="tinted"
                                         onPress={() => {

@@ -108,6 +108,14 @@ export interface ProgramDraft {
      */
     editingAssignedProgramId: string | null;
     /**
+     * Like `editingAssignedProgramId` but for editing a reusable
+     * `program_templates` row. Mutually exclusive with the assigned id; the
+     * save flow routes to `saveTemplateFull` when set. Optional so the many
+     * create-flow draft literals don't all need to spell it out — reads treat
+     * `undefined` as "not editing a template".
+     */
+    editingTemplateId?: string | null;
+    /**
      * Snapshot of `assigned_workouts.id` values present at load time. Used
      * by the edit save flow to distinguish UPDATE (id ∈ snapshot) from
      * INSERT (id ∉ snapshot, i.e. a workout added after the load). Empty
@@ -174,6 +182,50 @@ export interface AssignedProgramHydrationData {
     description: string | null;
     duration_weeks: number | null;
     assigned_workouts: AssignedWorkoutRow[];
+}
+
+/** Item row as returned by the workout_item_templates join (template edit). */
+interface TemplateItemRow {
+    id: string;
+    item_type: string;
+    order_index: number;
+    parent_item_id: string | null;
+    exercise_id: string | null;
+    substitute_exercise_ids?: string[] | null;
+    sets: number | null;
+    reps: string | null;
+    rest_seconds: number | null;
+    notes: string | null;
+    item_config?: Record<string, unknown> | null;
+    method_key?: MethodKey | null;
+    rounds?: number | null;
+    exercise_function?: string | null;
+    /** Per-set rows are materialized in workout_item_set_templates. */
+    workout_item_set_templates?: AssignedSetRow[] | null;
+    /** Resolved exercise name/equipment (joined separately, like the assigned loader). */
+    exercise_name?: string;
+    exercise_equipment?: string | null;
+    exercise_muscle_groups?: string[];
+}
+
+/** Workout row as returned by the workout_templates join. Note: templates store
+ *  `frequency` as a string[] of day keys (not the int[] `scheduled_days` that
+ *  assigned_workouts uses). */
+interface TemplateWorkoutRow {
+    id: string;
+    name: string;
+    order_index: number;
+    frequency?: string[] | null;
+    workout_item_templates?: TemplateItemRow[] | null;
+}
+
+/** Top-level program_templates row used to hydrate the builder for editing. */
+export interface TemplateHydrationData {
+    id: string;
+    name: string;
+    description: string | null;
+    duration_weeks: number | null;
+    workout_templates: TemplateWorkoutRow[];
 }
 
 /** Parsed exercise from text prescription AI */
@@ -243,6 +295,12 @@ interface ProgramBuilderState {
         studentId: string,
         program: AssignedProgramHydrationData,
     ) => void;
+    /**
+     * Hydrate the draft for editing an existing `program_templates` row. Like
+     * `initFromAssignedProgram` but no student is involved and the save flow
+     * routes to `saveTemplateFull` (which writes the `*_templates` tables).
+     */
+    initFromTemplate: (program: TemplateHydrationData) => void;
 
     // Program metadata
     updateName: (name: string) => void;
@@ -317,6 +375,7 @@ function createEmptyDraft(studentId?: string): ProgramDraft {
         originatedFromAi: false,
         originalSnapshot: null,
         editingAssignedProgramId: null,
+        editingTemplateId: null,
         originalWorkoutIds: [],
         originalItemIds: [],
     };
@@ -382,6 +441,60 @@ function workoutsFromAssignedProgram(rows: AssignedWorkoutRow[]): Workout[] {
             name: w.name,
             order_index: w.order_index,
             frequency: scheduledDaysToFrequency(w.scheduled_days),
+            items,
+        };
+    });
+}
+
+/** Mirror of `workoutsFromAssignedProgram` for the template tables. Reads
+ *  `frequency` directly (already a string[]) instead of converting from
+ *  `scheduled_days`, and pulls per-set rows from `workout_item_set_templates`. */
+function workoutsFromTemplate(rows: TemplateWorkoutRow[]): Workout[] {
+    const sortedWorkouts = [...rows].sort((a, b) => a.order_index - b.order_index);
+    return sortedWorkouts.map((w) => {
+        const itemsRaw = [...(w.workout_item_templates ?? [])].sort(
+            (a, b) => a.order_index - b.order_index,
+        );
+        const items: WorkoutItem[] = itemsRaw.map((it) => {
+            const setRows = it.workout_item_set_templates ?? [];
+            const collapsed = setRows.length > 0
+                ? collapseExpandedScheme(
+                    [...setRows].sort((a, b) => a.set_number - b.set_number) as unknown as WorkoutSet[],
+                    it.rounds ?? 1,
+                )
+                : { scheme: [] as WorkoutSet[], rounds: 1 };
+            const finalScheme = collapsed.scheme.length > 0 ? collapsed.scheme : null;
+            const rawType = it.item_type;
+            const normalizedType: WorkoutItem['item_type'] =
+                rawType === 'superset' || rawType === 'note' || rawType === 'warmup' || rawType === 'cardio'
+                    ? rawType
+                    : 'exercise';
+            return {
+                id: it.id,
+                item_type: normalizedType,
+                order_index: it.order_index,
+                parent_item_id: it.parent_item_id,
+                exercise_id: it.exercise_id ?? '',
+                exercise_name: it.exercise_name ?? '',
+                exercise_equipment: it.exercise_equipment ?? null,
+                exercise_muscle_groups: it.exercise_muscle_groups ?? [],
+                sets: it.sets ?? 3,
+                reps: it.reps ?? '10',
+                rest_seconds: it.rest_seconds ?? 60,
+                notes: it.notes ?? null,
+                exercise_function: it.exercise_function ?? null,
+                item_config: (it.item_config as Record<string, unknown>) ?? {},
+                substitute_exercise_ids: it.substitute_exercise_ids ?? [],
+                set_scheme: finalScheme,
+                method_key: it.method_key ?? null,
+                rounds: typeof it.rounds === 'number' && it.rounds >= 1 ? it.rounds : 1,
+            };
+        });
+        return {
+            id: w.id,
+            name: w.name,
+            order_index: w.order_index,
+            frequency: Array.isArray(w.frequency) ? w.frequency : [],
             items,
         };
     });
@@ -796,6 +909,48 @@ export const useProgramBuilderStore = create<ProgramBuilderState>()(
                     originatedFromAi: false,
                     originalSnapshot: null,
                     editingAssignedProgramId: program.id,
+                    editingTemplateId: null,
+                    originalWorkoutIds,
+                    originalItemIds,
+                };
+                set({
+                    draft,
+                    currentWorkoutId: workouts[0].id,
+                    isDirty: false,
+                    isSaving: false,
+                });
+            },
+
+            initFromTemplate: (program) => {
+                let workouts = workoutsFromTemplate(program.workout_templates ?? []);
+                if (workouts.length === 0) {
+                    workouts = [{
+                        id: Crypto.randomUUID(),
+                        name: 'Treino A',
+                        order_index: 0,
+                        frequency: [],
+                        items: [],
+                    }];
+                }
+                const originalWorkoutIds: string[] = [];
+                const originalItemIds: string[] = [];
+                for (const w of program.workout_templates ?? []) {
+                    originalWorkoutIds.push(w.id);
+                    for (const it of w.workout_item_templates ?? []) {
+                        originalItemIds.push(it.id);
+                    }
+                }
+                const draft: ProgramDraft = {
+                    name: program.name ?? '',
+                    description: program.description ?? '',
+                    duration_weeks: program.duration_weeks ?? null,
+                    studentId: null,
+                    workouts,
+                    generationId: null,
+                    originatedFromAi: false,
+                    originalSnapshot: null,
+                    editingAssignedProgramId: null,
+                    editingTemplateId: program.id,
                     originalWorkoutIds,
                     originalItemIds,
                 };

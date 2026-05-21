@@ -9,6 +9,7 @@ export interface ProgramTemplate {
     duration_weeks: number | null;
     created_at: string;
     workout_count: number;
+    usage_count: number;
 }
 
 export function useTrainerProgramTemplates() {
