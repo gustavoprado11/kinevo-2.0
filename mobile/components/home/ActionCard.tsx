@@ -1,13 +1,15 @@
 // LEGACY — ainda usado em app/(tabs)/home.tsx (modo aluno). Migrar quando refatorar área student (futura fase).
-import React from "react";
+import React, { useState } from "react";
 import { View, Text, Pressable } from "react-native";
-import { Dumbbell, ChevronRight, Coffee, Check, Play, AlertCircle, PartyPopper, RotateCcw } from "lucide-react-native";
+import { Dumbbell, ChevronRight, ChevronDown, Coffee, Check, Play, AlertCircle, PartyPopper, RotateCcw } from "lucide-react-native";
 import Animated, {
+    FadeIn,
     useSharedValue,
     useAnimatedStyle,
     withTiming,
 } from "react-native-reanimated";
 import { PressableScale } from "../shared/PressableScale";
+import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import { ANIM } from "../../lib/animations";
 import type { PendingWorkout, WeeklyProgress } from "@kinevo/shared/utils/schedule-projection";
@@ -73,6 +75,10 @@ interface ActionCardProps {
     } | null;
     /** Full weekly progress data */
     weeklyProgress?: WeeklyProgress | null;
+    /** Programa: nome, semana atual (1-indexed) e duração total — painel expandido */
+    programName?: string | null;
+    programWeek?: number | null;
+    programDurationWeeks?: number | null;
     /** Callbacks */
     onStartWorkout?: (workoutId: string) => void;
     onShare?: () => void;
@@ -95,6 +101,9 @@ export function ActionCard({
     todayWorkout,
     todaySession,
     weeklyProgress,
+    programName,
+    programWeek,
+    programDurationWeeks,
     onStartWorkout,
     onShare,
     // Legacy/past-date props
@@ -108,6 +117,7 @@ export function ActionCard({
 }: ActionCardProps) {
     const colors = useV2Colors();
     const styles = makeStyles(colors);
+    const [expanded, setExpanded] = useState(false);
     // ─── Non-today view: keep legacy behavior for past/future dates ───
     if (timeContext !== 'today') {
         const workout = selectedWorkout;
@@ -264,41 +274,119 @@ export function ActionCard({
     const remaining = (weeklyProgress?.expectedCount || 0) - (weeklyProgress?.completedCount || 0);
     const hasTodaySession = !!todaySession;
 
-    // STATE 1: Scheduled today + not done yet
+    // STATE 1: Scheduled today + not done yet → HERÓI premium expansível.
+    // Toque no card = expandir/recolher o painel do programa; "Iniciar" (botão
+    // aninhado) é a única forma de começar o treino — evita starts acidentais.
     if (todayWorkout && !hasTodaySession) {
+        const expectedCount = weeklyProgress?.expectedCount ?? 0;
+        const completedCount = weeklyProgress?.completedCount ?? 0;
+        const pendingCount = weeklyProgress?.pendingWorkouts?.length ?? 0;
+        const adherence = expectedCount > 0 ? Math.round((completedCount / expectedCount) * 100) : 0;
+        const pct = (programWeek != null && programDurationWeeks)
+            ? Math.min(100, Math.round((programWeek / programDurationWeeks) * 100))
+            : null;
         return (
             <View style={{ marginBottom: 32 }}>
-                <Text style={styles.sectionTitle}>Treino de Hoje</Text>
                 <PressableScale
-                    onPress={() => onStartWorkout?.(todayWorkout.id)}
-                    pressScale={0.96}
-                    style={styles.cardShell}
+                    onPress={() => setExpanded((e) => !e)}
+                    pressScale={0.98}
+                    accessibilityHint="Toque para ver o progresso do programa"
+                    style={styles.heroShell}
                 >
-                    <View style={styles.heroCardInner}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-                            <View style={styles.heroIcon}>
-                                <Dumbbell size={20} color="#7c3aed" />
+                    <LinearGradient
+                        colors={['#18181B', '#27272A', '#3B0764', '#5B21B6']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.heroGradient}
+                    >
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                            <View style={styles.heroIconDark}>
+                                <Dumbbell size={20} color="#FFFFFF" strokeWidth={2.2} />
                             </View>
-                            <View style={styles.badge}>
-                                <Text style={styles.badgeText}>AGENDADO</Text>
+                            <View style={styles.heroBadge}>
+                                <Text style={styles.heroBadgeText}>Agendado</Text>
                             </View>
                         </View>
-                        <Text style={styles.heroTitle}>{todayWorkout.name}</Text>
+                        <Text style={styles.heroEyebrow}>Treino de hoje</Text>
+                        <Text style={styles.heroTitleDark} numberOfLines={2}>{todayWorkout.name}</Text>
                         {todayWorkout.notes && (
-                            <Text style={{ fontSize: 13, color: colors.text.tertiary, marginBottom: 16 }} numberOfLines={1}>
-                                {todayWorkout.notes}
-                            </Text>
+                            <Text style={styles.heroNotes} numberOfLines={1}>{todayWorkout.notes}</Text>
                         )}
-                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 }}>
-                            <Text style={{ fontSize: 14, fontWeight: '500', color: colors.text.tertiary }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 16 }}>
+                            <Text style={styles.heroCount}>
                                 {(Array.isArray(todayWorkout.items) ? todayWorkout.items.length : todayWorkout.items?.length) || 0} exercícios
                             </Text>
-                            <View style={styles.startButton}>
-                                <Play size={16} color="white" fill="white" />
-                                <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 14 }}>Iniciar</Text>
-                            </View>
+                            <PressableScale
+                                onPress={() => onStartWorkout?.(todayWorkout.id)}
+                                pressScale={0.94}
+                                hapticStyle={Haptics.ImpactFeedbackStyle.Medium}
+                                accessibilityLabel={`Iniciar treino ${todayWorkout.name}`}
+                                style={styles.heroStartButton}
+                            >
+                                <Play size={15} color="#4C1D95" fill="#4C1D95" />
+                                <Text style={styles.heroStartText}>Iniciar</Text>
+                            </PressableScale>
                         </View>
-                    </View>
+
+                        {expanded && (
+                            <Animated.View entering={FadeIn.duration(180)} style={styles.heroPanel}>
+                                <Text style={styles.panelEyebrow}>Programa atual</Text>
+                                {programName ? (
+                                    <Text style={styles.panelTitle} numberOfLines={1}>{programName}</Text>
+                                ) : null}
+                                {programWeek != null && (
+                                    <>
+                                        <View style={styles.weekRow}>
+                                            <Text style={styles.weekText}>
+                                                Semana {programWeek}{programDurationWeeks ? ` de ${programDurationWeeks}` : ''}
+                                            </Text>
+                                            {pct != null && <Text style={styles.weekPct}>{pct}% concluído</Text>}
+                                        </View>
+                                        {pct != null && (
+                                            <View style={styles.bar}>
+                                                <View style={[styles.barFill, { flex: pct }]} />
+                                                <View style={{ flex: 100 - pct }} />
+                                            </View>
+                                        )}
+                                    </>
+                                )}
+                                <View style={styles.tiles}>
+                                    <View style={styles.tile}>
+                                        <Text style={styles.tileLabel}>Aderência</Text>
+                                        <Text style={styles.tileValue}>{adherence}<Text style={styles.tileSuffix}>%</Text></Text>
+                                    </View>
+                                    <View style={styles.tile}>
+                                        <Text style={styles.tileLabel}>Feitos</Text>
+                                        <Text style={styles.tileValue}>{completedCount}<Text style={styles.tileSuffix}>/{expectedCount}</Text></Text>
+                                    </View>
+                                    <View style={styles.tile}>
+                                        <Text style={styles.tileLabel}>Pendentes</Text>
+                                        <Text style={styles.tileValue}>{pendingCount}</Text>
+                                    </View>
+                                </View>
+                                {pendingCount > 0 && (
+                                    <View style={styles.pendHint}>
+                                        <AlertCircle size={14} color="#FCD34D" strokeWidth={2.2} />
+                                        <Text style={styles.pendHintText}>
+                                            {pendingCount === 1
+                                                ? 'Resta 1 treino para fechar a meta da semana'
+                                                : `Restam ${pendingCount} treinos para fechar a meta da semana`}
+                                        </Text>
+                                    </View>
+                                )}
+                            </Animated.View>
+                        )}
+
+                        <View style={styles.handle}>
+                            <Text style={styles.handleText}>{expanded ? 'Ocultar' : 'Ver progresso do programa'}</Text>
+                            <ChevronDown
+                                size={14}
+                                color="rgba(255,255,255,0.6)"
+                                strokeWidth={2.4}
+                                style={{ transform: [{ rotate: expanded ? '180deg' : '0deg' }] }}
+                            />
+                        </View>
+                    </LinearGradient>
                 </PressableScale>
             </View>
         );
@@ -541,6 +629,201 @@ function makeStyles(colors: V2Palette) {
             borderRadius: 24,
             borderWidth: 1,
             borderColor: colors.border.default,
+        },
+        // ── Herói premium (STATE 1: agendado hoje) ──
+        heroShell: {
+            borderRadius: 24,
+            overflow: 'hidden' as const,
+            shadowColor: '#7C3AED',
+            shadowOffset: { width: 0, height: 12 },
+            shadowOpacity: 0.22,
+            shadowRadius: 24,
+            elevation: 8,
+        },
+        heroGradient: {
+            padding: 20,
+            borderRadius: 24,
+            borderWidth: 1,
+            borderColor: 'rgba(255,255,255,0.07)',
+        },
+        heroIconDark: {
+            height: 44,
+            width: 44,
+            borderRadius: 22,
+            backgroundColor: 'rgba(124,58,237,0.30)',
+            borderWidth: 1,
+            borderColor: 'rgba(255,255,255,0.12)',
+            alignItems: 'center' as const,
+            justifyContent: 'center' as const,
+        },
+        heroBadge: {
+            backgroundColor: 'rgba(255,255,255,0.12)',
+            borderWidth: 1,
+            borderColor: 'rgba(255,255,255,0.15)',
+            paddingHorizontal: 12,
+            paddingVertical: 5,
+            borderRadius: 20,
+        },
+        heroBadgeText: {
+            color: 'rgba(255,255,255,0.85)',
+            fontSize: 9,
+            fontWeight: '800' as const,
+            textTransform: 'uppercase' as const,
+            letterSpacing: 2.5,
+        },
+        heroEyebrow: {
+            fontSize: 10,
+            fontWeight: '800' as const,
+            letterSpacing: 1.5,
+            textTransform: 'uppercase' as const,
+            color: 'rgba(255,255,255,0.55)',
+            marginBottom: 6,
+        },
+        heroTitleDark: {
+            fontSize: 26,
+            fontWeight: '800' as const,
+            color: '#FFFFFF',
+            letterSpacing: -0.6,
+        },
+        heroNotes: {
+            fontSize: 13,
+            color: 'rgba(255,255,255,0.6)',
+            marginTop: 4,
+        },
+        heroCount: {
+            fontSize: 14,
+            fontWeight: '500' as const,
+            color: 'rgba(255,255,255,0.7)',
+        },
+        heroStartButton: {
+            flexDirection: 'row' as const,
+            alignItems: 'center' as const,
+            gap: 7,
+            backgroundColor: '#FFFFFF',
+            paddingHorizontal: 18,
+            paddingVertical: 11,
+            borderRadius: 14,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.25,
+            shadowRadius: 8,
+            elevation: 4,
+        },
+        heroStartText: {
+            color: '#4C1D95',
+            fontWeight: '800' as const,
+            fontSize: 14,
+        },
+        // ── Painel expandido (progresso do programa) ──
+        heroPanel: {
+            marginTop: 16,
+            paddingTop: 16,
+            borderTopWidth: 1,
+            borderTopColor: 'rgba(255,255,255,0.12)',
+        },
+        panelEyebrow: {
+            fontSize: 10,
+            fontWeight: '800' as const,
+            textTransform: 'uppercase' as const,
+            letterSpacing: 1.4,
+            color: 'rgba(255,255,255,0.5)',
+            marginBottom: 3,
+        },
+        panelTitle: {
+            fontSize: 16,
+            fontWeight: '800' as const,
+            color: '#FFFFFF',
+            letterSpacing: -0.3,
+            marginBottom: 12,
+        },
+        weekRow: {
+            flexDirection: 'row' as const,
+            alignItems: 'center' as const,
+            justifyContent: 'space-between' as const,
+            marginBottom: 7,
+        },
+        weekText: {
+            fontSize: 15,
+            fontWeight: '800' as const,
+            color: '#FFFFFF',
+        },
+        weekPct: {
+            fontSize: 11,
+            fontWeight: '700' as const,
+            color: 'rgba(255,255,255,0.6)',
+        },
+        bar: {
+            height: 7,
+            borderRadius: 99,
+            backgroundColor: 'rgba(255,255,255,0.14)',
+            overflow: 'hidden' as const,
+            flexDirection: 'row' as const,
+            marginBottom: 16,
+        },
+        barFill: {
+            borderRadius: 99,
+            backgroundColor: '#C084FC',
+        },
+        tiles: {
+            flexDirection: 'row' as const,
+            gap: 8,
+        },
+        tile: {
+            flex: 1,
+            backgroundColor: 'rgba(255,255,255,0.08)',
+            borderWidth: 1,
+            borderColor: 'rgba(255,255,255,0.10)',
+            borderRadius: 14,
+            paddingVertical: 11,
+            paddingHorizontal: 10,
+        },
+        tileLabel: {
+            fontSize: 9,
+            fontWeight: '800' as const,
+            textTransform: 'uppercase' as const,
+            letterSpacing: 0.8,
+            color: 'rgba(255,255,255,0.5)',
+        },
+        tileValue: {
+            fontSize: 20,
+            fontWeight: '800' as const,
+            color: '#FFFFFF',
+            letterSpacing: -0.5,
+            marginTop: 3,
+        },
+        tileSuffix: {
+            fontSize: 12,
+            fontWeight: '700' as const,
+            color: 'rgba(255,255,255,0.6)',
+        },
+        pendHint: {
+            flexDirection: 'row' as const,
+            alignItems: 'center' as const,
+            gap: 7,
+            marginTop: 12,
+        },
+        pendHintText: {
+            flex: 1,
+            fontSize: 12,
+            fontWeight: '600' as const,
+            color: '#FCD34D',
+        },
+        handle: {
+            flexDirection: 'row' as const,
+            alignItems: 'center' as const,
+            justifyContent: 'center' as const,
+            gap: 6,
+            marginTop: 16,
+            paddingTop: 14,
+            borderTopWidth: 1,
+            borderTopColor: 'rgba(255,255,255,0.12)',
+        },
+        handleText: {
+            fontSize: 11,
+            fontWeight: '700' as const,
+            letterSpacing: 0.6,
+            textTransform: 'uppercase' as const,
+            color: 'rgba(255,255,255,0.6)',
         },
         completedShell: {
             borderRadius: 24,

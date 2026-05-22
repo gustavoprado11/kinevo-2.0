@@ -10,7 +10,7 @@ import { useStudentAccess } from "../../hooks/useStudentAccess";
 import { ScreenWrapper } from "../../components/ScreenWrapper";
 import { PaymentBlockedScreen } from "../../components/PaymentBlockedScreen";
 import { User } from "lucide-react-native";
-import { toDateKey, isDateInProgram } from "@kinevo/shared/utils/schedule-projection";
+import { toDateKey, isDateInProgram, getProgramWeek } from "@kinevo/shared/utils/schedule-projection";
 
 import { UnifiedCalendar } from "../../components/home/UnifiedCalendar";
 import { ActionCard } from "../../components/home/ActionCard";
@@ -20,17 +20,14 @@ import { ExtraActivitiesBlock } from "../../components/strava/ExtraActivitiesBlo
 import { useStravaDays } from "../../hooks/useStravaActivities";
 import { ShareWorkoutModal } from "../../components/workout/ShareWorkoutModal";
 import { useLatestUnreadReport } from "../../hooks/useLatestUnreadReport";
-import { KRing, KStreakBadge } from "../../components/v2/student";
 import { useV2Colors } from "../../hooks/useV2Colors";
 import { v2 } from "@kinevo/shared/tokens";
-import { LinearGradient } from "expo-linear-gradient";
-import { Trophy, Flame, Dumbbell, Star, type LucideIcon } from "lucide-react-native";
-import { ReadinessCard } from "../../components/health/ReadinessCard";
+import { Flame, Dumbbell, Star, type LucideIcon } from "lucide-react-native";
+import { ReadinessCompactCard, ReadinessCompactSkeleton } from "../../components/health/ReadinessCompactCard";
 import { useReadinessToday } from "../../hooks/useReadinessToday";
 import { getReadinessRecommendation } from "../../lib/readiness";
 import { useHealthDashboard } from "../../hooks/useHealthDashboard";
 import { HealthPromotionalCard } from "../../components/health/HealthPromotionalCard";
-import { ReadinessCardSkeleton } from "../../components/health/ReadinessCardSkeleton";
 import { useWearableConnections } from "../../hooks/useWearableConnections";
 import { HealthOnboardingSheet } from "../../components/onboarding/HealthOnboardingSheet";
 
@@ -103,6 +100,11 @@ export default function HomeScreen() {
 
         const exerciseCount = workout.items?.length || 0;
 
+        // Semana do programa na data do treino (chip "SEMANA X/Y" do T4 Lista).
+        const pWeek = (programStartedAt && programDurationWeeks)
+            ? getProgramWeek(startDate, programStartedAt, programDurationWeeks)
+            : null;
+
         setShareData({
             workoutName: workout.name,
             duration: durationStr,
@@ -110,11 +112,12 @@ export default function HomeScreen() {
             volume: 0,
             date: startDate.toLocaleDateString('pt-BR'),
             studentName: profile?.name || 'Aluno',
-            coach: profile?.coach || null
+            coach: profile?.coach || null,
+            programWeek: (pWeek && programDurationWeeks) ? { current: pWeek, total: programDurationWeeks } : undefined,
         });
         setShareModalVisible(true);
         setShareSessionId(session.id);
-    }, [sessionsMap, selectedDate, profile]);
+    }, [sessionsMap, selectedDate, profile, programStartedAt, programDurationWeeks]);
 
     const handleOpenReport = useCallback(async () => {
         if (!unreadReport) return;
@@ -392,9 +395,6 @@ export default function HomeScreen() {
                     />
                 </Animated.View>
 
-                {/* Fase 14a — Readiness Card (escondido silenciosamente sem dados/conexão) */}
-                <ReadinessCardSlot />
-
                 {isLoading && !programName ? (
                     <View className="py-20 items-center">
                         <ActivityIndicator color="#7c3aed" />
@@ -402,28 +402,17 @@ export default function HomeScreen() {
                     </View>
                 ) : (
                     <>
-                        {/* ── Hero V2 student: KRing meta semanal + KStreakBadge ── */}
-                        {programName && (
-                            <Animated.View
-                                entering={FadeInUp.delay(100).duration(ENTER.duration).easing(ENTER.easing)}
-                            >
-                                <WeeklyProgressHero
-                                    programName={programName}
-                                    completed={weeklyProgress?.totalSessions || 0}
-                                    target={weeklyProgress?.targetSessions || 0}
-                                    streak={streakWeeks}
-                                />
-                            </Animated.View>
-                        )}
-
-                        {/* ── Action Card: Slide-Up stagger delay 300ms ── */}
+                        {/* ── Herói: Treino de hoje (ActionCard) — ação principal no topo ── */}
                         <Animated.View
-                            entering={FadeInUp.delay(150).duration(ENTER.duration).easing(ENTER.easing)}
+                            entering={FadeInUp.delay(100).duration(ENTER.duration).easing(ENTER.easing)}
                         >
                             <ActionCard
                                 todayWorkout={selectedWorkoutData.timeContext === 'today' ? selectedWorkoutData.workout : undefined}
                                 todaySession={selectedWorkoutData.timeContext === 'today' ? selectedWorkoutData.todaySession : undefined}
                                 weeklyProgress={weeklyProgressFull}
+                                programName={programName}
+                                programWeek={programStartedAt ? getProgramWeek(new Date(), programStartedAt, programDurationWeeks) : null}
+                                programDurationWeeks={programDurationWeeks}
                                 onStartWorkout={(id) => router.push(`/workout/${id}`)}
                                 onPress={() => {
                                     if (selectedWorkoutData.workout?.id) {
@@ -440,9 +429,28 @@ export default function HomeScreen() {
                             />
                         </Animated.View>
 
-                        {/* ── Workout List: Slide-Up stagger delay 400ms ── */}
+                        {/* ── Prontidão compacta: conecta a recuperação ao treino acima ── */}
                         <Animated.View
-                            entering={FadeInUp.delay(200).duration(ENTER.duration).easing(ENTER.easing)}
+                            entering={FadeInUp.delay(130).duration(ENTER.duration).easing(ENTER.easing)}
+                        >
+                            <ReadinessCardSlot />
+                        </Animated.View>
+
+                        {/* ── Achievements grid (sobe p/ acima da dobra) ── */}
+                        {programName && (
+                            <Animated.View
+                                entering={FadeInUp.delay(160).duration(ENTER.duration).easing(ENTER.easing)}
+                            >
+                                <AchievementsGrid
+                                    streak={streakWeeks}
+                                    totalCompletedThisProgram={weeklyProgressFull?.completedCount ?? weeklyProgress?.totalSessions ?? 0}
+                                />
+                            </Animated.View>
+                        )}
+
+                        {/* ── Workout List ── */}
+                        <Animated.View
+                            entering={FadeInUp.delay(220).duration(ENTER.duration).easing(ENTER.easing)}
                             className="mb-6"
                         >
                             {workouts.length > 0 ? (
@@ -458,18 +466,6 @@ export default function HomeScreen() {
                                 </View>
                             )}
                         </Animated.View>
-
-                        {/* ── Achievements grid (V2 polish) ── */}
-                        {programName && (
-                            <Animated.View
-                                entering={FadeInUp.delay(220).duration(ENTER.duration).easing(ENTER.easing)}
-                            >
-                                <AchievementsGrid
-                                    streak={streakWeeks}
-                                    totalCompletedThisProgram={weeklyProgressFull?.completedCount ?? weeklyProgress?.totalSessions ?? 0}
-                                />
-                            </Animated.View>
-                        )}
 
                         {/* ── Weekly summary narrativo (V2 polish) ── */}
                         {programName && (
@@ -500,140 +496,6 @@ export default function HomeScreen() {
                 sessionId={shareSessionId}
             />
         </ScreenWrapper>
-    );
-}
-
-// ── Hero V2 student: dark gradient + KRing + KStreakBadge + glow.
-// Substitui ProgressCard legacy. Apenas presentation — props derivadas
-// de useActiveProgram + streak computado inline.
-function WeeklyProgressHero({
-    programName,
-    completed,
-    target,
-    streak,
-}: {
-    programName: string;
-    completed: number;
-    target: number;
-    streak: number;
-}) {
-    const isComplete = target > 0 && completed >= target;
-    return (
-        <View
-            style={{
-                borderRadius: v2.radius.xl,
-                marginBottom: 16,
-                overflow: 'hidden',
-                borderWidth: 1,
-                borderColor: 'rgba(255,255,255,0.06)',
-                shadowColor: '#7C3AED',
-                shadowOffset: { width: 0, height: 12 },
-                shadowOpacity: 0.18,
-                shadowRadius: 24,
-                elevation: 8,
-            }}
-        >
-            <LinearGradient
-                colors={['#18181B', '#27272A', '#3B0764', '#5B21B6']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={{ padding: 20 }}
-            >
-                {/* Top row: eyebrow + program name + trophy */}
-                <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 18 }}>
-                    <View style={{ flex: 1, marginRight: 12 }}>
-                        <Text
-                            style={{
-                                fontFamily: 'PlusJakartaSans_700Bold',
-                                fontSize: 10,
-                                letterSpacing: 1.4,
-                                textTransform: 'uppercase',
-                                color: 'rgba(255,255,255,0.5)',
-                                marginBottom: 4,
-                            }}
-                        >
-                            Programa atual
-                        </Text>
-                        <Text
-                            style={{
-                                fontFamily: 'PlusJakartaSans_800ExtraBold',
-                                fontSize: 19,
-                                letterSpacing: -0.4,
-                                color: '#FFFFFF',
-                            }}
-                            numberOfLines={2}
-                        >
-                            {programName}
-                        </Text>
-                    </View>
-                    <LinearGradient
-                        colors={['#FCD34D', '#F59E0B']}
-                        style={{
-                            width: 40,
-                            height: 40,
-                            borderRadius: 12,
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            shadowColor: '#F59E0B',
-                            shadowOffset: { width: 0, height: 4 },
-                            shadowOpacity: 0.4,
-                            shadowRadius: 10,
-                        }}
-                    >
-                        <Trophy size={20} color="#78350F" strokeWidth={2.5} />
-                    </LinearGradient>
-                </View>
-
-                {/* Progress row: KRing + stats */}
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-                    <KRing
-                        value={completed}
-                        max={Math.max(target, 1)}
-                        size="md"
-                        color={isComplete ? 'gold' : 'purple'}
-                        centerContent={
-                            <Text
-                                style={{
-                                    fontFamily: 'PlusJakartaSans_800ExtraBold',
-                                    fontSize: 18,
-                                    color: '#FFFFFF',
-                                }}
-                            >
-                                {completed}/{Math.max(target, 0)}
-                            </Text>
-                        }
-                    />
-                    <View style={{ flex: 1, gap: 4 }}>
-                        <Text
-                            style={{
-                                fontFamily: 'PlusJakartaSans_700Bold',
-                                fontSize: 9.5,
-                                letterSpacing: 1.1,
-                                textTransform: 'uppercase',
-                                color: 'rgba(255,255,255,0.55)',
-                            }}
-                        >
-                            Meta semanal
-                        </Text>
-                        <Text
-                            style={{
-                                fontFamily: 'PlusJakartaSans_800ExtraBold',
-                                fontSize: 22,
-                                letterSpacing: -0.6,
-                                color: '#FFFFFF',
-                            }}
-                        >
-                            {completed}/{target} treinos
-                        </Text>
-                        {streak >= 2 ? (
-                            <View style={{ marginTop: 6, alignSelf: 'flex-start' }}>
-                                <KStreakBadge count={streak} unit="semanas" size="sm" variant="pill" />
-                            </View>
-                        ) : null}
-                    </View>
-                </View>
-            </LinearGradient>
-        </View>
     );
 }
 
@@ -788,8 +650,9 @@ function WeeklySummaryCard({ completed, target }: { completed: number; target: n
     );
 }
 
-// Fase 14a → 14c — Slot do ReadinessCard com 3 branches:
-//   1. Tem readiness → ReadinessCard
+// Fase 14a → 14c — Slot da Prontidão com 3 branches (agora versão compacta,
+// abaixo do herói de treino):
+//   1. Tem readiness → ReadinessCompactCard
 //   2. Sem readiness mas tem conexão ativa → Skeleton (sync rodando)
 //   3. Sem conexão ativa → HealthPromotionalCard (CTA reabre onboarding)
 function ReadinessCardSlot() {
@@ -801,7 +664,7 @@ function ReadinessCardSlot() {
 
     if (readiness) {
         return (
-            <ReadinessCard
+            <ReadinessCompactCard
                 result={readiness}
                 recommendation={getReadinessRecommendation(readiness)}
                 hrToday={dashboard?.hrRestingToday}
@@ -813,7 +676,7 @@ function ReadinessCardSlot() {
 
     // Carregando: mostra skeleton só se há conexão ativa (senão fica vazio)
     if ((readinessLoading || connLoading) && hasActive) {
-        return <ReadinessCardSkeleton />;
+        return <ReadinessCompactSkeleton />;
     }
 
     if (!hasActive) {
