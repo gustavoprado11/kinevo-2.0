@@ -14,6 +14,7 @@ import { MiniStat } from '../../components/health/MiniStat';
 import { PeriodTabs, type PeriodValue } from '../../components/health/PeriodTabs';
 import { EduCard } from '../../components/health/EduCard';
 import { EDUCATION, type MetricKind } from '../../lib/healthInsights/education';
+import { hrvMetricFromSource, hrvMetricLabel, type HrvMetric } from '../../lib/hrv';
 
 const PERIOD_DAYS: Record<PeriodValue, number> = { '7d': 7, '30d': 30, '90d': 90 };
 
@@ -70,6 +71,7 @@ interface MetricSeries {
     light: number | null;
     awake: number | null;
   };
+  hrvMetric?: HrvMetric | null;
 }
 
 function isValidMetric(m: string | undefined): m is MetricKind {
@@ -193,14 +195,20 @@ async function fetchSeries(metric: MetricKind, days: number): Promise<MetricSeri
     return { points, baseline, todayValue: sorted[0]?.steps ?? null };
   }
 
-  // hrv
+  // hrv — Fix discrepância #2: filtra pra uma única métrica (SDNN iOS / RMSSD
+  // Android), pois não são comparáveis. Usa a métrica do registro mais recente.
   const { data: rows }: any = await supabase
     .from('hrv_samples' as any)
-    .select('sample_date, value_ms')
+    .select('sample_date, value_ms, source')
     .eq('student_id', studentId)
     .gte('sample_date', baselineStartISO)
     .order('sample_date', { ascending: true });
-  const all = (rows ?? []) as Array<{ sample_date: string; value_ms: number }>;
+  const allRaw = (rows ?? []) as Array<{ sample_date: string; value_ms: number; source: string | null }>;
+  const sortedRaw = [...allRaw].sort((a, b) => b.sample_date.localeCompare(a.sample_date));
+  const hrvMetric = hrvMetricFromSource(sortedRaw[0]?.source);
+  const all = hrvMetric
+    ? allRaw.filter((r) => hrvMetricFromSource(r.source) === hrvMetric)
+    : allRaw;
   const points: DataPoint[] = [];
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(today.getTime() - i * 24 * 60 * 60 * 1000);
@@ -211,7 +219,7 @@ async function fetchSeries(metric: MetricKind, days: number): Promise<MetricSeri
   const allMs = all.map((r) => Number(r.value_ms)).filter(Number.isFinite);
   const baseline = allMs.length > 0 ? avg(allMs) : null;
   const sorted = [...all].sort((a, b) => b.sample_date.localeCompare(a.sample_date));
-  return { points, baseline, todayValue: sorted[0]?.value_ms ?? null };
+  return { points, baseline, todayValue: sorted[0]?.value_ms ?? null, hrvMetric };
 }
 
 function formatHours(hours: number | null | undefined): string | null {
@@ -255,6 +263,12 @@ export default function HealthMetricDetailScreen() {
 
   const color = METRIC_COLOR[metric];
   const unit = METRIC_UNIT[metric];
+  // Rótulo da métrica de HRV (SDNN/RMSSD) — não comparáveis entre plataformas.
+  const hrvSuffix = metric === 'hrv' && series?.hrvMetric ? ` (${hrvMetricLabel(series.hrvMetric)})` : '';
+  const detailTitle = `${METRIC_TITLE[metric]}${hrvSuffix}`;
+  const detailEyebrow = metric === 'hrv' && series?.hrvMetric
+    ? `HRV (${hrvMetricLabel(series.hrvMetric)}) · hoje`
+    : METRIC_EYEBROW[metric];
 
   // Hero values
   const heroValue = useMemo(() => {
@@ -348,7 +362,7 @@ export default function HealthMetricDetailScreen() {
     <View style={styles.container}>
       <SafeAreaView edges={['top']}>
         <HealthDetailHeader
-          title={METRIC_TITLE[metric]}
+          title={detailTitle}
           subtitle={PERIOD_DAYS[period] + ' dias'}
           onBack={() => router.back()}
         />
@@ -356,7 +370,7 @@ export default function HealthMetricDetailScreen() {
 
       <ScrollView contentContainerStyle={styles.scroll}>
         <HeroStatBlock
-          eyebrow={METRIC_EYEBROW[metric]}
+          eyebrow={detailEyebrow}
           value={heroValue}
           unit={metric === 'sleep' ? undefined : unit}
           deltaText={deltaInfo?.text ?? null}

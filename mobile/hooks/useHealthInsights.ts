@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { evaluateInsights } from '../lib/healthInsights/evaluate';
 import { prioritize } from '../lib/healthInsights/prioritize';
+import { hrvMetricFromSource } from '../lib/hrv';
 import type {
   HealthInsight,
   RuleInput,
@@ -100,7 +101,7 @@ async function fetchSamples(studentId: string): Promise<RuleInput> {
       .gte('sample_date', ninetyISO)
       .order('sample_date', { ascending: false }),
     supabase.from('hrv_samples' as any)
-      .select('sample_date, value_ms')
+      .select('sample_date, value_ms, source')
       .eq('student_id', studentId)
       .gte('sample_date', ninetyISO)
       .order('sample_date', { ascending: false }),
@@ -129,10 +130,17 @@ async function fetchSamples(studentId: string): Promise<RuleInput> {
     sampleDate: r.sample_date,
     bpm: Number(r.bpm),
   }));
-  const hrvSamples: HrvSample[] = (hrvRes.data ?? []).map((r: any) => ({
-    sampleDate: r.sample_date,
-    valueMs: Number(r.value_ms),
-  }));
+  // Fix discrepância #2: regras de HRV (queda/streak) calculam baseline sobre
+  // a série. Misturar SDNN (iOS) e RMSSD (Android) corromperia o baseline, então
+  // filtramos pra métrica do registro mais recente (rows vêm desc por data).
+  const hrvRows = (hrvRes.data ?? []) as Array<{ sample_date: string; value_ms: number; source: string | null }>;
+  const dominantHrvMetric = hrvMetricFromSource(hrvRows[0]?.source);
+  const hrvSamples: HrvSample[] = hrvRows
+    .filter((r) => !dominantHrvMetric || hrvMetricFromSource(r.source) === dominantHrvMetric)
+    .map((r) => ({
+      sampleDate: r.sample_date,
+      valueMs: Number(r.value_ms),
+    }));
   const stepsSamples: StepsSample[] = (stepsRes.data ?? []).map((r: any) => ({
     sampleDate: r.sample_date,
     steps: r.steps,

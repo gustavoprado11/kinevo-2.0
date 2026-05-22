@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { hrvMetricFromSource, type HrvMetric } from '../lib/hrv';
 
 function toDateOnlyISO(d: Date): string {
   // Fix BUG 2 (1.6.0/33): usa local time do device, não UTC. Evita
@@ -28,6 +29,7 @@ export interface HealthDashboardData {
   stepsToday: number | null;
   hrvToday: number | null;
   hrvBaseline30d: number | null;
+  hrvMetric: HrvMetric | null;
   sleepWeek: Array<{ date: string; minutes: number | null }>;
   connections: Array<{ source: string; status: string; last_sync_at: string | null; granted_categories: string[] }>;
 }
@@ -70,10 +72,10 @@ export function useHealthDashboard(): UseHealthDashboardResult {
           .eq('student_id', studentId).gte('sample_date', thirtyDaysAgoISO),
         supabase.from('daily_activity_samples' as any).select('steps')
           .eq('student_id', studentId).eq('sample_date', todayISO).maybeSingle(),
-        supabase.from('hrv_samples' as any).select('value_ms')
+        supabase.from('hrv_samples' as any).select('value_ms, source')
           .eq('student_id', studentId).eq('sample_date', todayISO).maybeSingle(),
-        supabase.from('hrv_samples' as any).select('value_ms')
-          .eq('student_id', studentId).gte('sample_date', thirtyDaysAgoISO),
+        supabase.from('hrv_samples' as any).select('value_ms, source, sample_date')
+          .eq('student_id', studentId).gte('sample_date', thirtyDaysAgoISO).order('sample_date', { ascending: false }),
         supabase.from('daily_sleep_samples' as any).select('sample_date, duration_minutes')
           .eq('student_id', studentId).gte('sample_date', sevenDaysAgoISO).order('sample_date'),
         supabase.from('wearable_connections' as any).select('source, status, last_sync_at, granted_categories')
@@ -85,9 +87,18 @@ export function useHealthDashboard(): UseHealthDashboardResult {
         ? Math.round(hrBaseRows.reduce((acc, r) => acc + Number(r.bpm), 0) / hrBaseRows.length)
         : null;
 
-      const hrvBaseRows = (hrvBaselineRes.data ?? []) as Array<{ value_ms: number }>;
-      const hrvBaseline = hrvBaseRows.length > 0
-        ? Math.round(hrvBaseRows.reduce((acc, r) => acc + Number(r.value_ms), 0) / hrvBaseRows.length)
+      // Fix discrepância #2: SDNN (iOS) e RMSSD (Android) não são comparáveis.
+      // A métrica é a do valor de hoje (ou, sem hoje, a do registro mais
+      // recente). O baseline só agrega registros da MESMA métrica.
+      const hrvBaseRows = (hrvBaselineRes.data ?? []) as Array<{ value_ms: number; source: string | null }>;
+      const hrvTodaySource = (hrvTodayRes.data as { source?: string | null } | null)?.source ?? null;
+      const hrvMetric: HrvMetric | null =
+        hrvMetricFromSource(hrvTodaySource) ?? hrvMetricFromSource(hrvBaseRows[0]?.source);
+      const hrvSameMetric = hrvMetric
+        ? hrvBaseRows.filter((r) => hrvMetricFromSource(r.source) === hrvMetric)
+        : [];
+      const hrvBaseline = hrvSameMetric.length > 0
+        ? Math.round(hrvSameMetric.reduce((acc, r) => acc + Number(r.value_ms), 0) / hrvSameMetric.length)
         : null;
 
       const sleepWeekRows = (sleepWeekRes.data ?? []) as Array<{ sample_date: string; duration_minutes: number | null }>;
@@ -111,6 +122,7 @@ export function useHealthDashboard(): UseHealthDashboardResult {
         stepsToday: stepsRes.data?.steps ?? null,
         hrvToday: hrvTodayRes.data?.value_ms ?? null,
         hrvBaseline30d: hrvBaseline,
+        hrvMetric,
         sleepWeek,
         connections: (connRes.data ?? []) as HealthDashboardData['connections'],
       });
