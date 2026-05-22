@@ -372,7 +372,7 @@ export function LandingAiAssistant() {
                 >
                     <h2 className="font-jakarta text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-[#1D1D1F] leading-[1.05]">
                         Uma IA que entende{' '}
-                        <span className="bg-gradient-to-r from-[#007AFF] via-[#7C3AED] to-[#34C759] bg-clip-text text-transparent">
+                        <span className="bg-gradient-to-r from-[#7C3AED] via-[#7C3AED] to-[#34C759] bg-clip-text text-transparent">
                             cada aluno seu.
                         </span>
                     </h2>

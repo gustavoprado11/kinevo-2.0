@@ -114,7 +114,7 @@ export function DailyActivityFeed({ activities, scheduledToday }: DailyActivityF
                             onClick={() => setShowFilters(v => !v)}
                             className={`p-1.5 rounded-lg transition-colors ${
                                 showFilters || hasActiveFilters
-                                    ? 'bg-[#007AFF]/10 text-[#007AFF] dark:bg-primary/10 dark:text-primary'
+                                    ? 'bg-[#7C3AED]/10 text-[#7C3AED] dark:bg-primary/10 dark:text-primary'
                                     : 'text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#6E6E73] dark:hover:text-k-text-secondary hover:bg-[#F5F5F7] dark:hover:bg-muted'
                             }`}
                             title="Filtrar treinos"
@@ -153,7 +153,7 @@ export function DailyActivityFeed({ activities, scheduledToday }: DailyActivityF
                                 onClick={() => setRpeFilter(opt.value)}
                                 className={`text-[10px] font-medium px-2 py-1 rounded-md transition-colors ${
                                     rpeFilter === opt.value
-                                        ? 'bg-[#007AFF] text-white dark:bg-primary dark:text-primary-foreground'
+                                        ? 'bg-[#7C3AED] text-white dark:bg-primary dark:text-primary-foreground'
                                         : 'bg-white dark:bg-surface-card border border-[#E8E8ED] dark:border-k-border-subtle text-[#6E6E73] dark:text-k-text-secondary hover:bg-[#F5F5F7] dark:hover:bg-muted'
                                 }`}
                             >
@@ -167,7 +167,7 @@ export function DailyActivityFeed({ activities, scheduledToday }: DailyActivityF
                         onClick={() => setFeedbackOnly(v => !v)}
                         className={`flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded-md transition-colors ${
                             feedbackOnly
-                                ? 'bg-[#007AFF] text-white dark:bg-primary dark:text-primary-foreground'
+                                ? 'bg-[#7C3AED] text-white dark:bg-primary dark:text-primary-foreground'
                                 : 'bg-white dark:bg-surface-card border border-[#E8E8ED] dark:border-k-border-subtle text-[#6E6E73] dark:text-k-text-secondary hover:bg-[#F5F5F7] dark:hover:bg-muted'
                         }`}
                     >
@@ -180,7 +180,7 @@ export function DailyActivityFeed({ activities, scheduledToday }: DailyActivityF
             {filteredActivities.length === 0 && hasActiveFilters ? (
                 <div className="py-6 text-center">
                     <p className="text-sm text-[#6E6E73] dark:text-k-text-secondary">Nenhum treino encontrado com esses filtros</p>
-                    <button onClick={clearFilters} className="text-xs text-[#007AFF] dark:text-primary mt-1 hover:opacity-80 transition-colors">
+                    <button onClick={clearFilters} className="text-xs text-[#7C3AED] dark:text-primary mt-1 hover:opacity-80 transition-colors">
                         Limpar filtros
                     </button>
                 </div>
@@ -215,7 +215,7 @@ export function DailyActivityFeed({ activities, scheduledToday }: DailyActivityF
                             <div className="flex items-center gap-4">
                                 {/* Avatar */}
                                 <div className="h-9 w-9 shrink-0 rounded-full border border-[#E8E8ED] dark:border-border bg-[#F5F5F7] dark:bg-muted flex items-center justify-center">
-                                    <span className="text-xs font-bold text-[#007AFF] dark:text-primary">
+                                    <span className="text-xs font-bold text-[#7C3AED] dark:text-primary">
                                         {activity.studentName.charAt(0).toUpperCase()}
                                     </span>
                                 </div>

@@ -198,20 +198,20 @@ export function Sidebar({ financialBadge, trainerName, trainerEmail, trainerAvat
                                     relative flex items-center gap-3 py-2 rounded-lg text-sm tracking-tight transition-all duration-200 ease-out group
                                     ${isCollapsed ? 'justify-center px-0' : 'px-3'}
                                     ${active
-                                        ? 'bg-[#007AFF]/10 dark:bg-glass-bg-active text-[#007AFF] dark:text-foreground font-semibold'
+                                        ? 'bg-[#7C3AED]/10 dark:bg-glass-bg-active text-[#7C3AED] dark:text-foreground font-semibold'
                                         : 'text-[#6E6E73] dark:text-muted-foreground/60 hover:text-[#1D1D1F] dark:hover:text-foreground hover:bg-[#F5F5F7] dark:hover:bg-glass-bg font-medium'
                                     }
                                 `}
                             >
                                 {active && (
                                     <span
-                                        className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] bg-[#007AFF] dark:bg-violet-500 rounded-r-full"
+                                        className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] bg-[#7C3AED] dark:bg-violet-500 rounded-r-full"
                                     />
                                 )}
                                 <Icon
                                     size={18}
                                     strokeWidth={1.5}
-                                    className={`shrink-0 transition-colors duration-200 ${active ? 'text-[#007AFF] dark:text-violet-400' : 'text-[#AEAEB2] dark:text-muted-foreground/60 group-hover:text-[#6E6E73] dark:group-hover:text-foreground'}`}
+                                    className={`shrink-0 transition-colors duration-200 ${active ? 'text-[#7C3AED] dark:text-violet-400' : 'text-[#AEAEB2] dark:text-muted-foreground/60 group-hover:text-[#6E6E73] dark:group-hover:text-foreground'}`}
                                 />
                                 <span
                                     className={`whitespace-nowrap transition-all duration-300 ${
@@ -264,11 +264,11 @@ export function Sidebar({ financialBadge, trainerName, trainerEmail, trainerAvat
                                             data-onboarding={item.onboardingId}
                                             className={`relative flex items-center gap-3 w-full py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                                                 active
-                                                    ? 'bg-[#007AFF]/10 dark:bg-glass-bg-active text-[#007AFF] dark:text-foreground font-semibold'
+                                                    ? 'bg-[#7C3AED]/10 dark:bg-glass-bg-active text-[#7C3AED] dark:text-foreground font-semibold'
                                                     : 'text-[#6E6E73] dark:text-muted-foreground/60 hover:text-[#1D1D1F] dark:hover:text-foreground hover:bg-[#F5F5F7] dark:hover:bg-glass-bg'
                                             } ${isCollapsed ? 'justify-center px-0' : 'px-3'}`}
                                         >
-                                            <item.icon size={18} strokeWidth={1.5} className={`shrink-0 transition-colors duration-200 ${active ? 'text-[#007AFF] dark:text-violet-400' : 'text-[#AEAEB2] dark:text-muted-foreground/60'}`} />
+                                            <item.icon size={18} strokeWidth={1.5} className={`shrink-0 transition-colors duration-200 ${active ? 'text-[#7C3AED] dark:text-violet-400' : 'text-[#AEAEB2] dark:text-muted-foreground/60'}`} />
                                             {!isCollapsed && <span>{item.name}</span>}
                                         </Link>
                                         {isCollapsed && (
@@ -289,13 +289,13 @@ export function Sidebar({ financialBadge, trainerName, trainerEmail, trainerAvat
                         href="/settings"
                         className={`relative flex items-center gap-3 w-full py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                             isActive('/settings')
-                                ? 'bg-[#007AFF]/10 dark:bg-glass-bg-active text-[#007AFF] dark:text-foreground font-semibold'
+                                ? 'bg-[#7C3AED]/10 dark:bg-glass-bg-active text-[#7C3AED] dark:text-foreground font-semibold'
                                 : 'text-[#6E6E73] dark:text-muted-foreground/60 hover:text-[#1D1D1F] dark:hover:text-foreground hover:bg-[#F5F5F7] dark:hover:bg-glass-bg'
                         } ${isCollapsed ? 'justify-center px-0' : 'px-3'}`}
                     >
                         <Settings size={18} strokeWidth={1.5} className={`shrink-0 transition-colors ${
                             isActive('/settings')
-                                ? 'text-[#007AFF] dark:text-foreground'
+                                ? 'text-[#7C3AED] dark:text-foreground'
                                 : 'text-[#AEAEB2] dark:text-muted-foreground/60 group-hover/nav:text-[#6E6E73] dark:group-hover/nav:text-foreground'
                         }`} />
                         {!isCollapsed && <span>Configurações</span>}

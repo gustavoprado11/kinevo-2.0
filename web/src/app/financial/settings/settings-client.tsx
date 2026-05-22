@@ -176,7 +176,7 @@ export function FinancialSettingsClient({
 
                 {/* ─── Carteira ──────────────────────────────────────────── */}
                 <Section
-                    icon={<Wallet size={18} className="text-[#007AFF] dark:text-violet-400" />}
+                    icon={<Wallet size={18} className="text-[#7C3AED] dark:text-violet-400" />}
                     title="Carteira"
                     description="Status atual da conta financeira que recebe as cobranças."
                 >
@@ -193,7 +193,7 @@ export function FinancialSettingsClient({
                                 <button
                                     onClick={syncWallet}
                                     disabled={syncing}
-                                    className="text-xs text-[#007AFF] dark:text-violet-400 hover:text-[#0056B3] dark:hover:text-violet-300 inline-flex items-center gap-1"
+                                    className="text-xs text-[#7C3AED] dark:text-violet-400 hover:text-[#6D28D9] dark:hover:text-violet-300 inline-flex items-center gap-1"
                                 >
                                     {syncing ? <Loader2 size={11} className="animate-spin" /> : <RefreshCw size={11} />}
                                     Atualizar
@@ -220,7 +220,7 @@ export function FinancialSettingsClient({
                         <Row label="Titular" help={wallet.ownerLabel}>
                             <Link
                                 href="/financial/wallet"
-                                className="text-xs text-[#007AFF] dark:text-violet-400 hover:underline"
+                                className="text-xs text-[#7C3AED] dark:text-violet-400 hover:underline"
                             >
                                 Ver detalhes
                             </Link>
@@ -231,7 +231,7 @@ export function FinancialSettingsClient({
                         <Row label="Motivo da reprovação" help={wallet.rejectionReason}>
                             <Link
                                 href="/financial/wallet"
-                                className="text-xs px-3 py-1.5 rounded-lg bg-[#007AFF] dark:bg-violet-600 text-white hover:bg-[#0056B3] dark:hover:bg-violet-500"
+                                className="text-xs px-3 py-1.5 rounded-lg bg-[#7C3AED] dark:bg-violet-600 text-white hover:bg-[#6D28D9] dark:hover:bg-violet-500"
                             >
                                 Refazer cadastro
                             </Link>
@@ -246,7 +246,7 @@ export function FinancialSettingsClient({
                             </p>
                             <Link
                                 href="/financial/wallet"
-                                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#007AFF] dark:bg-violet-600 text-white text-xs font-medium hover:bg-[#0056B3] dark:hover:bg-violet-500"
+                                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#7C3AED] dark:bg-violet-600 text-white text-xs font-medium hover:bg-[#6D28D9] dark:hover:bg-violet-500"
                             >
                                 Ativar agora
                                 <ExternalLink size={11} />
@@ -257,7 +257,7 @@ export function FinancialSettingsClient({
 
                 {/* ─── Métodos de pagamento padrão ──────────────────────── */}
                 <Section
-                    icon={<CreditCard size={18} className="text-[#007AFF] dark:text-violet-400" />}
+                    icon={<CreditCard size={18} className="text-[#7C3AED] dark:text-violet-400" />}
                     title="Métodos de pagamento padrão"
                     description="Pré-seleção que aparece ao criar novos planos. Você pode mudar plano a plano depois."
                 >
@@ -289,7 +289,7 @@ export function FinancialSettingsClient({
 
                 {/* ─── Taxas ──────────────────────────────────────────────── */}
                 <Section
-                    icon={<Percent size={18} className="text-[#007AFF] dark:text-violet-400" />}
+                    icon={<Percent size={18} className="text-[#7C3AED] dark:text-violet-400" />}
                     title="Taxas vigentes"
                     description="Cobradas pela Asaas (parceira financeira). A Kinevo não cobra taxa em cima."
                 >
@@ -326,7 +326,7 @@ export function FinancialSettingsClient({
 
                 {/* ─── Inadimplência ──────────────────────────────────────── */}
                 <Section
-                    icon={<ShieldAlert size={18} className="text-[#007AFF] dark:text-violet-400" />}
+                    icon={<ShieldAlert size={18} className="text-[#7C3AED] dark:text-violet-400" />}
                     title="Inadimplência"
                     description="O que acontece quando um aluno atrasa o pagamento."
                 >
@@ -351,7 +351,7 @@ export function FinancialSettingsClient({
                                     ) : (
                                         <button
                                             onClick={() => void save('overdueGraceDays', 3)}
-                                            className="text-[#007AFF] dark:text-violet-400 font-medium hover:underline"
+                                            className="text-[#7C3AED] dark:text-violet-400 font-medium hover:underline"
                                         >
                                             Restaurar padrão (3 dias)
                                         </button>
@@ -366,7 +366,7 @@ export function FinancialSettingsClient({
                                     max={15}
                                     value={settings.overdueGraceDays}
                                     onChange={e => setGraceDays(Number(e.target.value))}
-                                    className="w-32 accent-[#007AFF] dark:accent-violet-500"
+                                    className="w-32 accent-[#7C3AED] dark:accent-violet-500"
                                 />
                                 <span className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary min-w-[60px] text-center px-2.5 py-1 bg-[#F5F5F7] dark:bg-glass-bg rounded-md">
                                     {settings.overdueGraceDays} {settings.overdueGraceDays === 1 ? 'dia' : 'dias'}
@@ -384,7 +384,7 @@ export function FinancialSettingsClient({
 
                 {/* ─── Notificações ──────────────────────────────────────── */}
                 <Section
-                    icon={<BellRing size={18} className="text-[#007AFF] dark:text-violet-400" />}
+                    icon={<BellRing size={18} className="text-[#7C3AED] dark:text-violet-400" />}
                     title="Notificações"
                     description="Avisos por push no app sobre o que acontece no seu Financeiro."
                 >
@@ -439,7 +439,7 @@ export function FinancialSettingsClient({
                                 </p>
                             </div>
                         </div>
-                        <span className="text-xs text-[#007AFF] dark:text-violet-400 font-medium">
+                        <span className="text-xs text-[#7C3AED] dark:text-violet-400 font-medium">
                             Gerenciar →
                         </span>
                     </div>
@@ -556,7 +556,7 @@ function ToggleSwitch({ on, onChange, disabled }: { on: boolean; onChange: (v: b
             disabled={disabled}
             onClick={() => onChange(!on)}
             className={`w-10 h-6 rounded-full relative transition-colors ${
-                on ? 'bg-[#007AFF] dark:bg-violet-600' : 'bg-[#E8E8ED] dark:bg-k-border-primary'
+                on ? 'bg-[#7C3AED] dark:bg-violet-600' : 'bg-[#E8E8ED] dark:bg-k-border-primary'
             } ${disabled ? 'opacity-60 cursor-wait' : ''}`}
         >
             <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${

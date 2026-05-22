@@ -252,7 +252,7 @@ function Avatar({
             className={`rounded-full bg-gradient-to-br from-[#007AFF]/10 to-violet-500/10 dark:from-violet-500/20 dark:to-blue-500/20 flex items-center justify-center shrink-0 ${ringClass}`}
             style={{ width: size, height: size }}
         >
-            <span className="text-[11px] font-bold text-[#007AFF] dark:text-violet-300">
+            <span className="text-[11px] font-bold text-[#7C3AED] dark:text-violet-300">
                 {initials(student.studentName)}
             </span>
         </div>

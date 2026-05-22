@@ -54,10 +54,10 @@ export function SearchResults({ students = [], onSelect }: SearchResultsProps) {
                             key={student.id}
                             value={`aluno ${student.name}`}
                             onSelect={() => run(() => router.push(`/students/${student.id}`))}
-                            className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer text-sm text-[#1D1D1F] dark:text-k-text-primary data-[selected=true]:bg-[#007AFF]/10 dark:data-[selected=true]:bg-glass-bg-active transition-colors"
+                            className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer text-sm text-[#1D1D1F] dark:text-k-text-primary data-[selected=true]:bg-[#7C3AED]/10 dark:data-[selected=true]:bg-glass-bg-active transition-colors"
                         >
-                            <div className="w-7 h-7 rounded-full bg-[#007AFF]/10 dark:bg-violet-500/10 flex items-center justify-center shrink-0">
-                                <span className="text-[11px] font-bold text-[#007AFF] dark:text-violet-400">
+                            <div className="w-7 h-7 rounded-full bg-[#7C3AED]/10 dark:bg-violet-500/10 flex items-center justify-center shrink-0">
+                                <span className="text-[11px] font-bold text-[#7C3AED] dark:text-violet-400">
                                     {student.name.charAt(0).toUpperCase()}
                                 </span>
                             </div>
@@ -199,7 +199,7 @@ function Row({
         <Command.Item
             value={value}
             onSelect={onSelect}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer text-sm text-[#1D1D1F] dark:text-k-text-primary data-[selected=true]:bg-[#007AFF]/10 dark:data-[selected=true]:bg-glass-bg-active transition-colors"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer text-sm text-[#1D1D1F] dark:text-k-text-primary data-[selected=true]:bg-[#7C3AED]/10 dark:data-[selected=true]:bg-glass-bg-active transition-colors"
         >
             <span className="shrink-0" aria-hidden="true">{icon}</span>
             <span className="flex-1 font-medium">{label}</span>

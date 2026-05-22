@@ -419,7 +419,7 @@ export function AssistantActionCards({
                                     })()}
 
                                     {row.type === 'form' && (
-                                        <Link href="/forms" onClick={e => e.stopPropagation()} className="text-[11px] font-medium text-[#007AFF] dark:text-primary hover:opacity-80 flex items-center gap-1 transition-colors">
+                                        <Link href="/forms" onClick={e => e.stopPropagation()} className="text-[11px] font-medium text-[#7C3AED] dark:text-primary hover:opacity-80 flex items-center gap-1 transition-colors">
                                             Revisar <ChevronRight className="w-3 h-3" />
                                         </Link>
                                     )}
@@ -436,7 +436,7 @@ export function AssistantActionCards({
                                                 </button>
                                             )}
                                             {onSellPlan && row.studentId && (
-                                                <button onClick={(e) => { e.stopPropagation(); onSellPlan(row.studentId!) }} className="text-[11px] font-medium text-[#007AFF] dark:text-primary hover:opacity-80 transition-colors">
+                                                <button onClick={(e) => { e.stopPropagation(); onSellPlan(row.studentId!) }} className="text-[11px] font-medium text-[#7C3AED] dark:text-primary hover:opacity-80 transition-colors">
                                                     Vender plano
                                                 </button>
                                             )}

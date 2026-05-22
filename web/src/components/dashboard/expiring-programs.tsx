@@ -49,7 +49,7 @@ export const ExpiringPrograms = memo(function ExpiringPrograms({ programs }: Exp
                         >
                             <div className="flex items-center gap-4 min-w-0">
                                 <div className="h-10 w-10 shrink-0 rounded-full border border-[#E8E8ED] dark:border-border bg-[#F5F5F7] dark:bg-muted flex items-center justify-center">
-                                    <span className="text-sm font-bold text-[#007AFF] dark:text-primary">
+                                    <span className="text-sm font-bold text-[#7C3AED] dark:text-primary">
                                         {p.studentName.charAt(0).toUpperCase()}
                                     </span>
                                 </div>
@@ -65,7 +65,7 @@ export const ExpiringPrograms = memo(function ExpiringPrograms({ programs }: Exp
                                     </span>
                                 </div>
                             </div>
-                            <span className="text-sm font-medium text-[#007AFF] dark:text-violet-400 group-hover:text-[#0056B3] dark:group-hover:text-violet-300 transition-colors flex-shrink-0 flex items-center gap-1">
+                            <span className="text-sm font-medium text-[#7C3AED] dark:text-violet-400 group-hover:text-[#6D28D9] dark:group-hover:text-violet-300 transition-colors flex-shrink-0 flex items-center gap-1">
                                 <Calendar size={12} />
                                 {p.endsInDays <= 0 ? 'Criar próximo' : 'Renovar'} →
                             </span>

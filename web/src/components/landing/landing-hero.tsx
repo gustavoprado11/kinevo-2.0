@@ -45,10 +45,10 @@ function DashSidebar() {
                 <span className="font-jakarta text-sm font-bold text-[#1D1D1F]">Kinevo</span>
             </div>
             <nav className="flex-1 px-2 py-1 space-y-0.5">
-                <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-[#007AFF]/10 relative">
-                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-4 bg-[#007AFF] rounded-r" />
-                    <LayoutDashboard className="w-[15px] h-[15px] text-[#007AFF]" strokeWidth={1.5} />
-                    <span className="font-jakarta text-xs font-medium text-[#007AFF]">Dashboard</span>
+                <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-[#7C3AED]/10 relative">
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-4 bg-[#7C3AED] rounded-r" />
+                    <LayoutDashboard className="w-[15px] h-[15px] text-[#7C3AED]" strokeWidth={1.5} />
+                    <span className="font-jakarta text-xs font-medium text-[#7C3AED]">Dashboard</span>
                 </div>
                 {[
                     { icon: Users, label: 'Alunos' },
@@ -167,7 +167,7 @@ function DashStatCards() {
             <div className="rounded-xl border border-[#D2D2D7] bg-white p-4 shadow-sm">
                 <div className="flex items-center gap-2">
                     <div className="w-6 h-6 rounded-lg bg-blue-50 flex items-center justify-center">
-                        <Users className="w-3 h-3 text-[#007AFF]" strokeWidth={1.5} />
+                        <Users className="w-3 h-3 text-[#7C3AED]" strokeWidth={1.5} />
                     </div>
                     <span className="font-jakarta text-[9px] font-medium uppercase tracking-wide text-[#86868B]">Alunos ativos</span>
                 </div>
@@ -183,7 +183,7 @@ function DashStatCards() {
                 </div>
                 <p className="font-jakarta text-2xl font-bold text-[#1D1D1F] mt-2">14<span className="text-[#86868B] text-base font-normal">/27</span></p>
                 <div className="w-full h-1 bg-[#F0F0F5] rounded-full mt-2">
-                    <div className="h-1 bg-[#007AFF] rounded-full" style={{ width: '52%' }} />
+                    <div className="h-1 bg-[#7C3AED] rounded-full" style={{ width: '52%' }} />
                 </div>
             </div>
             <div className="rounded-xl border border-[#D2D2D7] bg-white p-4 shadow-sm">
@@ -247,7 +247,7 @@ function DashWidgets() {
             </div>
             <div className="rounded-xl border border-[#D2D2D7] bg-white p-4 shadow-sm">
                 <div className="flex items-center gap-2 mb-3">
-                    <Calendar className="w-3.5 h-3.5 text-[#007AFF]" strokeWidth={1.5} />
+                    <Calendar className="w-3.5 h-3.5 text-[#7C3AED]" strokeWidth={1.5} />
                     <span className="font-jakarta text-xs font-semibold text-[#1D1D1F]">Programas encerrando</span>
                 </div>
                 <div className="space-y-2">

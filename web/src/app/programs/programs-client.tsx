@@ -239,7 +239,7 @@ function ApplyToStudentDialog({
                             placeholder="Buscar aluno..."
                             value={search}
                             onChange={e => setSearch(e.target.value)}
-                            className="w-full bg-white dark:bg-glass-bg border border-[#D2D2D7] dark:border-k-border-primary rounded-lg py-2 pl-9 pr-3 text-sm text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:outline-none focus:ring-1 focus:ring-[#007AFF]/30 dark:focus:ring-violet-500/30 focus:border-[#007AFF] dark:focus:border-violet-500/50"
+                            className="w-full bg-white dark:bg-glass-bg border border-[#D2D2D7] dark:border-k-border-primary rounded-lg py-2 pl-9 pr-3 text-sm text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:outline-none focus:ring-1 focus:ring-[#7C3AED]/30 dark:focus:ring-violet-500/30 focus:border-[#7C3AED] dark:focus:border-violet-500/50"
                             autoFocus
                         />
                     </div>
@@ -260,12 +260,12 @@ function ApplyToStudentDialog({
                                 onClick={() => setSelectedId(student.id)}
                                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all ${
                                     selectedId === student.id
-                                        ? 'bg-[#007AFF]/10 dark:bg-violet-500/10 ring-1 ring-[#007AFF]/30 dark:ring-violet-500/30'
+                                        ? 'bg-[#7C3AED]/10 dark:bg-violet-500/10 ring-1 ring-[#7C3AED]/30 dark:ring-violet-500/30'
                                         : 'hover:bg-[#F5F5F7] dark:hover:bg-glass-bg-active'
                                 }`}
                             >
                                 <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                                    selectedId === student.id ? 'border-[#007AFF] dark:border-violet-500 bg-[#007AFF] dark:bg-violet-500' : 'border-[#D2D2D7] dark:border-k-border-primary'
+                                    selectedId === student.id ? 'border-[#7C3AED] dark:border-violet-500 bg-[#7C3AED] dark:bg-violet-500' : 'border-[#D2D2D7] dark:border-k-border-primary'
                                 }`}>
                                     {selectedId === student.id && <Check className="w-2.5 h-2.5 text-white" />}
                                 </div>
@@ -304,9 +304,9 @@ function ApplyToStudentDialog({
                     ]).map(opt => (
                         <label key={opt.value} className="flex items-center gap-2.5 cursor-pointer">
                             <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                                mode === opt.value ? 'border-[#007AFF] dark:border-violet-500' : 'border-[#D2D2D7] dark:border-k-border-primary'
+                                mode === opt.value ? 'border-[#7C3AED] dark:border-violet-500' : 'border-[#D2D2D7] dark:border-k-border-primary'
                             }`}>
-                                {mode === opt.value && <div className="w-2 h-2 rounded-full bg-[#007AFF] dark:bg-violet-500" />}
+                                {mode === opt.value && <div className="w-2 h-2 rounded-full bg-[#7C3AED] dark:bg-violet-500" />}
                             </div>
                             <span className="text-sm text-[#1D1D1F] dark:text-k-text-secondary">{opt.label}</span>
                         </label>
@@ -317,14 +317,14 @@ function ApplyToStudentDialog({
                 <div className="flex items-center justify-end gap-3 p-4 border-t border-[#E8E8ED] dark:border-k-border-subtle">
                     <button
                         onClick={onClose}
-                        className="px-4 py-2 text-sm font-medium text-[#007AFF] dark:text-k-text-secondary hover:text-[#0056B3] dark:hover:text-k-text-primary transition-colors"
+                        className="px-4 py-2 text-sm font-medium text-[#7C3AED] dark:text-k-text-secondary hover:text-[#6D28D9] dark:hover:text-k-text-primary transition-colors"
                     >
                         Cancelar
                     </button>
                     <button
                         onClick={handleApply}
                         disabled={!selectedId || isAssigning}
-                        className="px-5 py-2 bg-[#007AFF] dark:bg-violet-600 hover:bg-[#0056B3] dark:hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-full transition-all flex items-center gap-2"
+                        className="px-5 py-2 bg-[#7C3AED] dark:bg-violet-600 hover:bg-[#6D28D9] dark:hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-full transition-all flex items-center gap-2"
                     >
                         {isAssigning && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                         Aplicar
@@ -408,7 +408,7 @@ export function ProgramsClient({ trainer, programs: initialPrograms }: ProgramsC
                 <button
                     data-onboarding="programs-create-btn"
                     onClick={() => router.push('/programs/new')}
-                    className="flex items-center gap-2 rounded-full bg-[#007AFF] dark:bg-glass-bg hover:bg-[#0056B3] dark:hover:bg-glass-bg-active text-white dark:text-k-text-secondary border border-transparent dark:border-k-border-primary px-5 py-2 text-sm font-semibold transition-all shadow-sm dark:shadow-none"
+                    className="flex items-center gap-2 rounded-full bg-[#7C3AED] dark:bg-glass-bg hover:bg-[#6D28D9] dark:hover:bg-glass-bg-active text-white dark:text-k-text-secondary border border-transparent dark:border-k-border-primary px-5 py-2 text-sm font-semibold transition-all shadow-sm dark:shadow-none"
                 >
                     <Plus size={16} strokeWidth={2} />
                     Novo Programa
@@ -418,13 +418,13 @@ export function ProgramsClient({ trainer, programs: initialPrograms }: ProgramsC
             <div className="space-y-4">
                 {/* Search */}
                 <div className="relative group">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#AEAEB2] dark:text-k-text-quaternary group-focus-within:text-[#007AFF] dark:group-focus-within:text-violet-500 transition-colors" strokeWidth={1.5} />
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#AEAEB2] dark:text-k-text-quaternary group-focus-within:text-[#7C3AED] dark:group-focus-within:text-violet-500 transition-colors" strokeWidth={1.5} />
                     <input
                         type="text"
                         placeholder="Buscar programas..."
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
-                        className="w-full bg-white dark:bg-glass-bg border border-[#D2D2D7] dark:border-k-border-primary rounded-xl py-2.5 pl-11 pr-4 text-sm text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 dark:focus:ring-violet-500/20 focus:border-[#007AFF] dark:focus:border-violet-500/50 transition-all"
+                        className="w-full bg-white dark:bg-glass-bg border border-[#D2D2D7] dark:border-k-border-primary rounded-xl py-2.5 pl-11 pr-4 text-sm text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/20 dark:focus:ring-violet-500/20 focus:border-[#7C3AED] dark:focus:border-violet-500/50 transition-all"
                     />
                 </div>
 
@@ -438,7 +438,7 @@ export function ProgramsClient({ trainer, programs: initialPrograms }: ProgramsC
                                 <p className="text-xs text-[#86868B] dark:text-k-text-quaternary mt-1">Tente outro termo de busca</p>
                                 <button
                                     onClick={() => setSearchQuery('')}
-                                    className="mt-4 text-xs font-medium text-[#007AFF] hover:text-[#0056B3] dark:text-violet-400 dark:hover:text-violet-300 transition-colors"
+                                    className="mt-4 text-xs font-medium text-[#7C3AED] hover:text-[#6D28D9] dark:text-violet-400 dark:hover:text-violet-300 transition-colors"
                                 >
                                     Limpar busca
                                 </button>
@@ -451,7 +451,7 @@ export function ProgramsClient({ trainer, programs: initialPrograms }: ProgramsC
                                 </p>
                                 <button
                                     onClick={() => router.push('/programs/new')}
-                                    className="mt-5 text-xs font-medium text-[#007AFF] dark:text-violet-400 hover:text-[#0056B3] dark:hover:text-violet-300 transition-colors"
+                                    className="mt-5 text-xs font-medium text-[#7C3AED] dark:text-violet-400 hover:text-[#6D28D9] dark:hover:text-violet-300 transition-colors"
                                 >
                                     Criar primeiro programa
                                 </button>

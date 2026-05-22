@@ -53,7 +53,7 @@ export const ExerciseSwapPanel = memo(function ExerciseSwapPanel({
     }, [exercises, item.exercise?.muscle_groups, item.exercise_id, query])
 
     return (
-        <div className="bg-white dark:bg-surface-card rounded-xl border border-[#007AFF]/30 dark:border-violet-500/30 p-4 relative transition-all">
+        <div className="bg-white dark:bg-surface-card rounded-xl border border-[#7C3AED]/30 dark:border-violet-500/30 p-4 relative transition-all">
             <div className="flex items-center gap-3 mb-3">
                 <Search className="w-4 h-4 text-k-text-quaternary shrink-0" />
                 <input
@@ -80,7 +80,7 @@ export const ExerciseSwapPanel = memo(function ExerciseSwapPanel({
                     swapCandidates.map(ex => (
                         <div
                             key={ex.id}
-                            className="flex items-center gap-1 rounded-lg hover:bg-[#007AFF]/10 dark:hover:bg-violet-500/10 transition-colors group/swap"
+                            className="flex items-center gap-1 rounded-lg hover:bg-[#7C3AED]/10 dark:hover:bg-violet-500/10 transition-colors group/swap"
                         >
                             <button
                                 onClick={() => onConfirm(ex)}
@@ -103,7 +103,7 @@ export const ExerciseSwapPanel = memo(function ExerciseSwapPanel({
                                         e.stopPropagation()
                                         onShowVideo(ex)
                                     }}
-                                    className="p-1.5 text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#007AFF] dark:hover:text-violet-400 transition-colors shrink-0 mr-1"
+                                    className="p-1.5 text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#7C3AED] dark:hover:text-violet-400 transition-colors shrink-0 mr-1"
                                     title="Ver vídeo demonstrativo"
                                 >
                                     <PlayCircle className="w-3.5 h-3.5" />

@@ -112,7 +112,7 @@ function MultiPicker({
                         value={query}
                         onChange={e => setQuery(e.target.value)}
                         placeholder="Buscar aluno..."
-                        className="w-full rounded-lg border border-[#D2D2D7] bg-white py-2 pl-8 pr-3 text-xs text-[#1D1D1F] placeholder:text-[#AEAEB2] outline-none focus:border-[#007AFF] focus:ring-1 focus:ring-[#007AFF]/20 dark:rounded-md dark:border-k-border-subtle dark:bg-glass-bg dark:text-k-text-primary dark:placeholder:text-k-text-quaternary dark:focus:border-violet-500/50"
+                        className="w-full rounded-lg border border-[#D2D2D7] bg-white py-2 pl-8 pr-3 text-xs text-[#1D1D1F] placeholder:text-[#AEAEB2] outline-none focus:border-[#7C3AED] focus:ring-1 focus:ring-[#7C3AED]/20 dark:rounded-md dark:border-k-border-subtle dark:bg-glass-bg dark:text-k-text-primary dark:placeholder:text-k-text-quaternary dark:focus:border-violet-500/50"
                     />
                 </div>
             )}
@@ -121,7 +121,7 @@ function MultiPicker({
                     <button
                         type="button"
                         onClick={toggleAll}
-                        className="text-[11px] font-semibold text-[#007AFF] hover:text-[#0056B3] transition-colors dark:text-violet-400 dark:hover:text-violet-300"
+                        className="text-[11px] font-semibold text-[#7C3AED] hover:text-[#6D28D9] transition-colors dark:text-violet-400 dark:hover:text-violet-300"
                     >
                         {allFilteredSelected ? 'Desmarcar todos' : 'Selecionar todos'}
                     </button>
@@ -146,7 +146,7 @@ function MultiPicker({
                                     key={student.id}
                                     className={`flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 transition-all border-b border-[#E8E8ED] last:border-b-0 dark:border-b-0 ${
                                         isSelected
-                                            ? 'bg-[#007AFF]/5 dark:bg-violet-500/10'
+                                            ? 'bg-[#7C3AED]/5 dark:bg-violet-500/10'
                                             : 'hover:bg-[#F5F5F7] dark:hover:bg-surface-elevated'
                                     } ${isLocked ? 'cursor-default opacity-90' : ''}`}
                                 >
@@ -155,7 +155,7 @@ function MultiPicker({
                                         checked={isSelected}
                                         onChange={() => toggleStudent(student.id)}
                                         disabled={isLocked}
-                                        className="h-4 w-4 rounded border-[#D2D2D7] text-[#007AFF] focus:ring-[#007AFF] accent-[#007AFF] dark:border-k-border-subtle dark:text-violet-600 dark:focus:ring-violet-500 dark:accent-violet-600"
+                                        className="h-4 w-4 rounded border-[#D2D2D7] text-[#7C3AED] focus:ring-[#7C3AED] accent-[#7C3AED] dark:border-k-border-subtle dark:text-violet-600 dark:focus:ring-violet-500 dark:accent-violet-600"
                                     />
                                     <div className="flex h-7 w-7 items-center justify-center rounded-full border border-k-border-primary bg-glass-bg overflow-hidden shrink-0">
                                         {student.avatar_url ? (

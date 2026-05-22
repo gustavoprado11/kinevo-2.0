@@ -65,7 +65,7 @@ export function SupersetItemCard({
             {/* Faixa vertical azul (identidade do superset) */}
             <div
                 aria-hidden
-                className="absolute top-4 bottom-4 left-0 w-1 rounded-r-full bg-[#007AFF]/20 dark:bg-violet-600/20"
+                className="absolute top-4 bottom-4 left-0 w-1 rounded-r-full bg-[#7C3AED]/20 dark:bg-violet-600/20"
             />
 
             {/* Header */}
@@ -81,10 +81,10 @@ export function SupersetItemCard({
                         </div>
                     )}
                     <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-xs font-bold text-[#007AFF] dark:text-violet-400 truncate">
+                        <span className="text-xs font-bold text-[#7C3AED] dark:text-violet-400 truncate">
                             Superset
                         </span>
-                        <span className="flex items-center justify-center bg-[#007AFF]/10 dark:bg-violet-500/10 text-[#007AFF] dark:text-violet-300 text-[10px] font-bold px-1.5 py-0.5 rounded border border-[#007AFF]/20 dark:border-violet-500/20 shrink-0">
+                        <span className="flex items-center justify-center bg-[#7C3AED]/10 dark:bg-violet-500/10 text-[#7C3AED] dark:text-violet-300 text-[10px] font-bold px-1.5 py-0.5 rounded border border-[#7C3AED]/20 dark:border-violet-500/20 shrink-0">
                             {children.length}
                         </span>
                     </div>
@@ -113,7 +113,7 @@ export function SupersetItemCard({
                                     }
                                     onFocus={(e) => e.target.select()}
                                     placeholder="0"
-                                    className="w-8 bg-transparent text-[#1C1C1E] dark:text-k-text-primary text-xs font-medium text-center focus:outline-none focus:text-[#007AFF] dark:focus:text-violet-400 transition-colors placeholder:text-k-border-subtle border-b border-transparent focus:border-[#007AFF]/50 dark:focus:border-violet-500/50 p-0"
+                                    className="w-8 bg-transparent text-[#1C1C1E] dark:text-k-text-primary text-xs font-medium text-center focus:outline-none focus:text-[#7C3AED] dark:focus:text-violet-400 transition-colors placeholder:text-k-border-subtle border-b border-transparent focus:border-[#7C3AED]/50 dark:focus:border-violet-500/50 p-0"
                                 />
                                 <span className="text-[10px] text-[#8E8E93] dark:text-k-text-tertiary">
                                     s
@@ -141,7 +141,7 @@ export function SupersetItemCard({
                                 <button
                                     type="button"
                                     onClick={onDuplicate}
-                                    className="p-1.5 rounded-md text-[var(--text-quaternary)] hover:text-[#007AFF] dark:hover:text-violet-400 hover:bg-[#007AFF]/10 dark:hover:bg-violet-400/10 transition-colors"
+                                    className="p-1.5 rounded-md text-[var(--text-quaternary)] hover:text-[#7C3AED] dark:hover:text-violet-400 hover:bg-[#7C3AED]/10 dark:hover:bg-violet-400/10 transition-colors"
                                     title="Duplicar superset"
                                     aria-label="Duplicar superset"
                                 >
@@ -152,7 +152,7 @@ export function SupersetItemCard({
                                 <button
                                     type="button"
                                     onClick={onDissolveSuperset}
-                                    className="p-1.5 rounded-md text-[var(--text-quaternary)] hover:text-[#007AFF] dark:hover:text-violet-400 hover:bg-[#007AFF]/10 dark:hover:bg-violet-400/10 transition-colors"
+                                    className="p-1.5 rounded-md text-[var(--text-quaternary)] hover:text-[#7C3AED] dark:hover:text-violet-400 hover:bg-[#7C3AED]/10 dark:hover:bg-violet-400/10 transition-colors"
                                     title="Dissolver superset"
                                     aria-label="Dissolver superset"
                                 >

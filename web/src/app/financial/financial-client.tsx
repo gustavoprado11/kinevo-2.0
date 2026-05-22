@@ -403,7 +403,7 @@ export function FinancialDashboardClient({
                                 <div ref={chargeBtnRef} className="relative">
                                     <button
                                         onClick={() => setChargeDropdownOpen(o => !o)}
-                                        className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#007AFF] hover:bg-[#0056B3] dark:bg-violet-600 dark:hover:bg-violet-500 text-white text-sm font-medium transition-colors active:scale-[0.98] shadow-[0_4px_10px_-2px_rgba(0,122,255,0.35)] dark:shadow-[0_4px_10px_-2px_rgba(124,58,237,0.35)]"
+                                        className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] dark:bg-violet-600 dark:hover:bg-violet-500 text-white text-sm font-medium transition-colors active:scale-[0.98] shadow-[0_4px_10px_-2px_rgba(0,122,255,0.35)] dark:shadow-[0_4px_10px_-2px_rgba(124,58,237,0.35)]"
                                     >
                                         <Send size={15} />
                                         Cobrar aluno
@@ -416,8 +416,8 @@ export function FinancialDashboardClient({
                                                 onClick={() => openChargeNew('one_off')}
                                                 className="w-full flex items-start gap-3 px-4 py-3 hover:bg-[#F5F5F7] dark:hover:bg-glass-bg transition-colors text-left"
                                             >
-                                                <div className="rounded-lg bg-[#007AFF]/10 dark:bg-violet-500/10 p-2 shrink-0">
-                                                    <Receipt size={15} className="text-[#007AFF] dark:text-violet-400" />
+                                                <div className="rounded-lg bg-[#7C3AED]/10 dark:bg-violet-500/10 p-2 shrink-0">
+                                                    <Receipt size={15} className="text-[#7C3AED] dark:text-violet-400" />
                                                 </div>
                                                 <div>
                                                     <p className="text-sm font-medium text-[#1D1D1F] dark:text-k-text-primary">Cobrança avulsa</p>
@@ -573,8 +573,8 @@ export function FinancialDashboardClient({
                         value={formatCurrency(monthlyRevenue)}
                     />
                     <StatCard
-                        icon={<Users size={18} className="text-[#007AFF] dark:text-violet-400" />}
-                        iconBg="bg-[#007AFF]/10 dark:bg-violet-500/10"
+                        icon={<Users size={18} className="text-[#7C3AED] dark:text-violet-400" />}
+                        iconBg="bg-[#7C3AED]/10 dark:bg-violet-500/10"
                         label="Alunos pagantes"
                         tooltip="Alunos com cobrança ativa. Não inclui cortesia."
                         value={payingCount.toString()}
@@ -878,7 +878,7 @@ export function FinancialDashboardClient({
                                 {attentionStudents.length > 4 && (
                                     <Link
                                         href="/financial/subscriptions"
-                                        className="block px-5 py-3 text-xs text-center text-[#007AFF] dark:text-violet-400 hover:bg-[#F5F5F7] dark:hover:bg-glass-bg border-t border-[#E8E8ED] dark:border-k-border-subtle"
+                                        className="block px-5 py-3 text-xs text-center text-[#7C3AED] dark:text-violet-400 hover:bg-[#F5F5F7] dark:hover:bg-glass-bg border-t border-[#E8E8ED] dark:border-k-border-subtle"
                                     >
                                         Ver todos ({attentionStudents.length})
                                     </Link>

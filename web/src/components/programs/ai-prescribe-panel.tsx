@@ -204,7 +204,7 @@ export function AiPrescribePanel({
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-[#E8E8ED] dark:border-k-border-subtle flex-shrink-0">
                 <div className="flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-[#007AFF] dark:text-violet-400" />
+                    <FileText className="w-4 h-4 text-[#7C3AED] dark:text-violet-400" />
                     <span className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary">Texto para Treino</span>
                 </div>
                 <button
@@ -226,12 +226,12 @@ export function AiPrescribePanel({
                             value={text}
                             onChange={(e) => setText(e.target.value)}
                             placeholder={"Cole ou digite seu treino aqui...\n\nExemplo:\nSupino Inclinado Halter 3x8-10\nPuxada Aberta 3x10-12\nRemada Serrote 3x10"}
-                            className="flex-1 min-h-[280px] resize-none rounded-lg border border-[#E8E8ED] dark:border-k-border-subtle bg-[#FAFAFA] dark:bg-surface-canvas px-3 py-3 text-sm text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30 dark:focus:ring-violet-500/30 focus:border-[#007AFF] dark:focus:border-violet-500 transition-colors"
+                            className="flex-1 min-h-[280px] resize-none rounded-lg border border-[#E8E8ED] dark:border-k-border-subtle bg-[#FAFAFA] dark:bg-surface-canvas px-3 py-3 text-sm text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/30 dark:focus:ring-violet-500/30 focus:border-[#7C3AED] dark:focus:border-violet-500 transition-colors"
                         />
                         <button
                             onClick={handleGenerate}
                             disabled={text.trim().length === 0}
-                            className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-lg text-sm font-semibold text-white bg-[#007AFF] hover:bg-[#0066D6] dark:bg-violet-600 dark:hover:bg-violet-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-lg text-sm font-semibold text-white bg-[#7C3AED] hover:bg-[#6D28D9] dark:bg-violet-600 dark:hover:bg-violet-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                             <Sparkles className="w-4 h-4" />
                             Gerar Treino
@@ -241,7 +241,7 @@ export function AiPrescribePanel({
 
                 {state === 'loading' && (
                     <div className="flex-1 flex flex-col items-center justify-center gap-3 py-12">
-                        <Loader2 className="w-6 h-6 text-[#007AFF] dark:text-violet-400 animate-spin" />
+                        <Loader2 className="w-6 h-6 text-[#7C3AED] dark:text-violet-400 animate-spin" />
                         <p className="text-sm text-[#6E6E73] dark:text-k-text-tertiary">Analisando prescrição...</p>
                         <p className="text-xs text-[#AEAEB2] dark:text-k-text-quaternary">Identificando exercícios e parâmetros</p>
                     </div>
@@ -291,7 +291,7 @@ export function AiPrescribePanel({
                         {/* Reset button */}
                         <button
                             onClick={handleReset}
-                            className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-lg text-sm font-semibold text-[#007AFF] dark:text-violet-400 bg-[#007AFF]/5 hover:bg-[#007AFF]/10 dark:bg-violet-500/[0.08] dark:hover:bg-violet-500/[0.15] transition-colors"
+                            className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-lg text-sm font-semibold text-[#7C3AED] dark:text-violet-400 bg-[#7C3AED]/5 hover:bg-[#7C3AED]/10 dark:bg-violet-500/[0.08] dark:hover:bg-violet-500/[0.15] transition-colors"
                         >
                             <RotateCcw className="w-4 h-4" />
                             Nova prescrição
@@ -310,7 +310,7 @@ export function AiPrescribePanel({
                         </div>
                         <button
                             onClick={() => setState('idle')}
-                            className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-[#007AFF] dark:text-violet-400 bg-[#007AFF]/5 hover:bg-[#007AFF]/10 dark:bg-violet-500/[0.08] dark:hover:bg-violet-500/[0.15] transition-colors"
+                            className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-[#7C3AED] dark:text-violet-400 bg-[#7C3AED]/5 hover:bg-[#7C3AED]/10 dark:bg-violet-500/[0.08] dark:hover:bg-violet-500/[0.15] transition-colors"
                         >
                             <RotateCcw className="w-4 h-4" />
                             Tentar novamente

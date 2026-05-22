@@ -481,7 +481,7 @@ export function LandingSalaDeTreino() {
                                             </span>
                                             <span
                                                 className={`w-1.5 h-1.5 rounded-full ${
-                                                    s.status === 'resting' ? 'bg-[#007AFF]' : 'bg-[#34C759]'
+                                                    s.status === 'resting' ? 'bg-[#7C3AED]' : 'bg-[#34C759]'
                                                 } ${s.status === 'training' ? 'animate-pulse' : ''}`}
                                             />
                                         </button>

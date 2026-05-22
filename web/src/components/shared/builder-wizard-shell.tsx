@@ -132,7 +132,7 @@ export function BuilderWizardShell({
                                         isCompleted
                                             ? 'bg-[#34C759] text-white dark:bg-emerald-500'
                                             : isActive
-                                                ? 'bg-[#007AFF] text-white dark:bg-violet-600'
+                                                ? 'bg-[#7C3AED] text-white dark:bg-violet-600'
                                                 : 'bg-[#E8E8ED] text-[#AEAEB2] dark:bg-surface-elevated dark:text-k-text-quaternary'
                                     }`}
                                 >
@@ -146,7 +146,7 @@ export function BuilderWizardShell({
                                     {label}
                                 </span>
                                 {i < stepLabels.length - 1 && (
-                                    <div className={`w-8 h-px ml-1 ${isCompleted ? 'bg-[#007AFF] dark:bg-emerald-500' : 'bg-[#E8E8ED] dark:bg-surface-elevated'}`} />
+                                    <div className={`w-8 h-px ml-1 ${isCompleted ? 'bg-[#7C3AED] dark:bg-emerald-500' : 'bg-[#E8E8ED] dark:bg-surface-elevated'}`} />
                                 )}
                             </div>
                         )
@@ -178,7 +178,7 @@ export function BuilderWizardShell({
                             type="button"
                             onClick={() => { void onSave?.() }}
                             disabled={!canSave || isSaving}
-                            className="inline-flex items-center gap-1.5 rounded-lg bg-[#007AFF] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#0066D6] disabled:cursor-not-allowed disabled:opacity-40 dark:bg-violet-600 dark:hover:bg-violet-500"
+                            className="inline-flex items-center gap-1.5 rounded-lg bg-[#7C3AED] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#6D28D9] disabled:cursor-not-allowed disabled:opacity-40 dark:bg-violet-600 dark:hover:bg-violet-500"
                         >
                             {isSaving ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -192,7 +192,7 @@ export function BuilderWizardShell({
                             type="button"
                             onClick={onAdvance}
                             disabled={!canAdvance}
-                            className="rounded-lg bg-[#007AFF] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#0066D6] disabled:cursor-not-allowed disabled:opacity-40 dark:bg-violet-600 dark:hover:bg-violet-500"
+                            className="rounded-lg bg-[#7C3AED] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#6D28D9] disabled:cursor-not-allowed disabled:opacity-40 dark:bg-violet-600 dark:hover:bg-violet-500"
                         >
                             Próximo
                         </button>

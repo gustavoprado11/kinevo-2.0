@@ -73,7 +73,7 @@ export function WeekNavigator({
             <button
                 type="button"
                 onClick={onToday}
-                className="ml-1.5 h-8 px-3 text-[11px] font-semibold text-[#007AFF] dark:text-violet-400 border border-[#D2D2D7] dark:border-k-border-primary bg-white dark:bg-surface-card hover:bg-[#F5F5F7] dark:hover:bg-glass-bg rounded-lg transition-colors"
+                className="ml-1.5 h-8 px-3 text-[11px] font-semibold text-[#7C3AED] dark:text-violet-400 border border-[#D2D2D7] dark:border-k-border-primary bg-white dark:bg-surface-card hover:bg-[#F5F5F7] dark:hover:bg-glass-bg rounded-lg transition-colors"
             >
                 Hoje
             </button>

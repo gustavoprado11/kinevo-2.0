@@ -166,7 +166,7 @@ export function GoogleCalendarClient({
                                     <label
                                         className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
                                             selectedId === cal.id
-                                                ? 'border-[#007AFF] dark:border-violet-500/50 bg-[#007AFF]/5 dark:bg-violet-500/10'
+                                                ? 'border-[#7C3AED] dark:border-violet-500/50 bg-[#7C3AED]/5 dark:bg-violet-500/10'
                                                 : 'border-[#E8E8ED] dark:border-k-border-subtle hover:bg-[#F9F9FB] dark:hover:bg-white/5'
                                         }`}
                                     >
@@ -176,7 +176,7 @@ export function GoogleCalendarClient({
                                             value={cal.id}
                                             checked={selectedId === cal.id}
                                             onChange={() => setSelectedId(cal.id)}
-                                            className="accent-[#007AFF] dark:accent-violet-500"
+                                            className="accent-[#7C3AED] dark:accent-violet-500"
                                         />
                                         <Calendar className="w-4 h-4 text-[#86868B] dark:text-k-text-quaternary" />
                                         <div className="flex-1 min-w-0">
@@ -197,7 +197,7 @@ export function GoogleCalendarClient({
                             type="button"
                             onClick={handleSaveCalendar}
                             disabled={saving || !selectedId}
-                            className="w-full px-4 py-2.5 bg-[#007AFF] dark:bg-violet-600 hover:bg-[#0056B3] dark:hover:bg-violet-500 text-white text-sm font-semibold rounded-full transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+                            className="w-full px-4 py-2.5 bg-[#7C3AED] dark:bg-violet-600 hover:bg-[#6D28D9] dark:hover:bg-violet-500 text-white text-sm font-semibold rounded-full transition-all disabled:opacity-60 flex items-center justify-center gap-2"
                         >
                             {saving ? (
                                 <>
@@ -238,7 +238,7 @@ export function GoogleCalendarClient({
                                 <div className="flex gap-2">
                                     <a
                                         href="/settings/integrations/google-calendar?step=select"
-                                        className="flex-1 px-4 py-2 text-sm font-medium text-[#007AFF] dark:text-violet-400 border border-[#007AFF]/20 dark:border-violet-500/30 hover:bg-[#007AFF]/5 dark:hover:bg-violet-500/10 rounded-full transition-all text-center"
+                                        className="flex-1 px-4 py-2 text-sm font-medium text-[#7C3AED] dark:text-violet-400 border border-[#7C3AED]/20 dark:border-violet-500/30 hover:bg-[#7C3AED]/5 dark:hover:bg-violet-500/10 rounded-full transition-all text-center"
                                     >
                                         Trocar calendário
                                     </a>
@@ -277,7 +277,7 @@ export function GoogleCalendarClient({
                                 </div>
                                 <a
                                     href="/settings/integrations/google-calendar/start"
-                                    className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#007AFF] dark:bg-violet-600 hover:bg-[#0056B3] dark:hover:bg-violet-500 text-white text-sm font-semibold rounded-full transition-all active:scale-95"
+                                    className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#7C3AED] dark:bg-violet-600 hover:bg-[#6D28D9] dark:hover:bg-violet-500 text-white text-sm font-semibold rounded-full transition-all active:scale-95"
                                 >
                                     <Link2 className="w-4 h-4" />
                                     Conectar Google Calendar

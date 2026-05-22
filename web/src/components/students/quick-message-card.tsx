@@ -80,7 +80,7 @@ export function QuickMessageCard({ studentId, studentName, suggestions = [], onO
                 {onOpenThread && (
                     <button
                         onClick={onOpenThread}
-                        className="text-[10px] font-bold text-[#007AFF] dark:text-violet-400 hover:underline"
+                        className="text-[10px] font-bold text-[#7C3AED] dark:text-violet-400 hover:underline"
                     >
                         Ver conversa
                     </button>
@@ -140,13 +140,13 @@ export function QuickMessageCard({ studentId, studentName, suggestions = [], onO
                     onKeyDown={handleKeyDown}
                     placeholder={`Enviar mensagem para ${firstName}...`}
                     rows={1}
-                    className="flex-1 resize-none bg-[#F5F5F7] dark:bg-surface-inset rounded-xl px-3.5 py-2 text-sm text-[#1D1D1F] dark:text-k-text-primary placeholder-[#AEAEB2] dark:placeholder-k-text-quaternary outline-none focus:ring-1 focus:ring-[#007AFF]/20 dark:focus:ring-violet-500/20 max-h-[80px]"
+                    className="flex-1 resize-none bg-[#F5F5F7] dark:bg-surface-inset rounded-xl px-3.5 py-2 text-sm text-[#1D1D1F] dark:text-k-text-primary placeholder-[#AEAEB2] dark:placeholder-k-text-quaternary outline-none focus:ring-1 focus:ring-[#7C3AED]/20 dark:focus:ring-violet-500/20 max-h-[80px]"
                 />
                 <button
                     type="button"
                     onClick={handleSubmit}
                     disabled={!text.trim() || isSending}
-                    className="p-2 rounded-full bg-[#007AFF] dark:bg-violet-600 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#0066D6] dark:hover:bg-violet-500 transition-colors flex-shrink-0"
+                    className="p-2 rounded-full bg-[#7C3AED] dark:bg-violet-600 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#6D28D9] dark:hover:bg-violet-500 transition-colors flex-shrink-0"
                 >
                     {isSending ? (
                         <Loader2 size={16} className="animate-spin" />

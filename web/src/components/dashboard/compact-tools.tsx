@@ -27,10 +27,10 @@ export function CompactTools({ onNewStudent }: CompactToolsProps) {
             <button
                 data-onboarding="dashboard-new-student"
                 onClick={onNewStudent}
-                className={`flex items-center gap-3 p-3 ${cardClass} hover:shadow-apple-hover dark:hover:shadow-none hover:border-[#007AFF] dark:hover:border-k-border-primary transition-all`}
+                className={`flex items-center gap-3 p-3 ${cardClass} hover:shadow-apple-hover dark:hover:shadow-none hover:border-[#7C3AED] dark:hover:border-k-border-primary transition-all`}
             >
                 <div className="w-8 h-8 rounded-lg bg-[#F5F5F7] dark:bg-violet-500/10 flex items-center justify-center flex-shrink-0">
-                    <Plus size={16} className="text-[#007AFF] dark:text-violet-400" />
+                    <Plus size={16} className="text-[#7C3AED] dark:text-violet-400" />
                 </div>
                 <span className="text-sm font-medium text-[#1D1D1F] dark:text-k-text-secondary">Novo aluno</span>
             </button>
@@ -44,7 +44,7 @@ export function CompactTools({ onNewStudent }: CompactToolsProps) {
                 </div>
                 <button
                     onClick={handleCopyAppLink}
-                    className="text-sm text-[#007AFF] dark:text-k-text-quaternary hover:text-[#0056B3] dark:hover:text-k-text-primary px-2 py-1 rounded-lg transition-colors flex items-center gap-1"
+                    className="text-sm text-[#7C3AED] dark:text-k-text-quaternary hover:text-[#6D28D9] dark:hover:text-k-text-primary px-2 py-1 rounded-lg transition-colors flex items-center gap-1"
                 >
                     {copied ? (
                         <>

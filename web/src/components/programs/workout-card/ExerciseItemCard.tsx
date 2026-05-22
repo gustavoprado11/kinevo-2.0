@@ -188,7 +188,7 @@ export function ExerciseItemCard({
                                     <button
                                         type="button"
                                         onClick={() => showExerciseVideo(item.exercise!)}
-                                        className="text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#007AFF] dark:hover:text-violet-400 transition-colors shrink-0"
+                                        className="text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#7C3AED] dark:hover:text-violet-400 transition-colors shrink-0"
                                         title="Ver vídeo demonstrativo"
                                         aria-label="Ver vídeo demonstrativo"
                                     >
@@ -249,7 +249,7 @@ export function ExerciseItemCard({
                                         <button
                                             type="button"
                                             onClick={onDuplicate}
-                                            className="p-1.5 rounded-md text-[var(--text-quaternary)] hover:text-[#007AFF] dark:hover:text-violet-400 hover:bg-[#007AFF]/10 dark:hover:bg-violet-400/10 transition-colors"
+                                            className="p-1.5 rounded-md text-[var(--text-quaternary)] hover:text-[#7C3AED] dark:hover:text-violet-400 hover:bg-[#7C3AED]/10 dark:hover:bg-violet-400/10 transition-colors"
                                             title="Duplicar exercício"
                                             aria-label="Duplicar exercício"
                                         >
@@ -259,7 +259,7 @@ export function ExerciseItemCard({
                                     <button
                                         type="button"
                                         onClick={startSwap}
-                                        className="p-1.5 rounded-md text-[var(--text-quaternary)] hover:text-[#007AFF] dark:hover:text-violet-400 hover:bg-[#007AFF]/10 dark:hover:bg-violet-400/10 transition-colors"
+                                        className="p-1.5 rounded-md text-[var(--text-quaternary)] hover:text-[#7C3AED] dark:hover:text-violet-400 hover:bg-[#7C3AED]/10 dark:hover:bg-violet-400/10 transition-colors"
                                         title="Trocar exercício"
                                         aria-label="Trocar exercício"
                                     >

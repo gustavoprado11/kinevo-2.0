@@ -452,7 +452,7 @@ export function SubscriptionsClient({
                         )}
                         <button
                             onClick={() => handleOpenConfigModal('new')}
-                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#007AFF] dark:bg-violet-600 hover:bg-[#0056B3] dark:hover:bg-violet-500 text-white text-sm font-medium transition-colors active:scale-[0.98]"
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#7C3AED] dark:bg-violet-600 hover:bg-[#6D28D9] dark:hover:bg-violet-500 text-white text-sm font-medium transition-colors active:scale-[0.98]"
                         >
                             <Plus size={15} />
                             Nova assinatura
@@ -523,14 +523,14 @@ export function SubscriptionsClient({
                     {/* Busca */}
                     <div className="relative group">
                         <div className="absolute inset-y-0 left-3.5 flex items-center pointer-events-none">
-                            <Search className="w-4 h-4 text-[#AEAEB2] dark:text-k-text-quaternary group-focus-within:text-[#007AFF] dark:group-focus-within:text-violet-500 transition-colors" strokeWidth={1.5} />
+                            <Search className="w-4 h-4 text-[#AEAEB2] dark:text-k-text-quaternary group-focus-within:text-[#7C3AED] dark:group-focus-within:text-violet-500 transition-colors" strokeWidth={1.5} />
                         </div>
                         <input
                             type="text"
                             placeholder="Buscar por nome do aluno…"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full bg-white dark:bg-surface-card border border-[#E8E8ED] dark:border-k-border-primary rounded-xl py-2.5 pl-10 pr-4 text-sm text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:outline-none focus:ring-2 focus:ring-[#007AFF]/15 dark:focus:ring-violet-500/15 focus:border-[#007AFF]/50 dark:focus:border-violet-500/50"
+                            className="w-full bg-white dark:bg-surface-card border border-[#E8E8ED] dark:border-k-border-primary rounded-xl py-2.5 pl-10 pr-4 text-sm text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/15 dark:focus:ring-violet-500/15 focus:border-[#7C3AED]/50 dark:focus:border-violet-500/50"
                         />
                     </div>
                 </div>
@@ -680,7 +680,7 @@ export function SubscriptionsClient({
                                                                 onClick={(e) => handleToggleBlock(s, !s.block_on_fail, e)}
                                                                 disabled={actionLoading === s.contract_id}
                                                                 className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors disabled:opacity-50 ${
-                                                                    s.block_on_fail ? 'bg-[#007AFF] dark:bg-violet-600' : 'bg-[#8E8E93] dark:bg-gray-600'
+                                                                    s.block_on_fail ? 'bg-[#7C3AED] dark:bg-violet-600' : 'bg-[#8E8E93] dark:bg-gray-600'
                                                                 }`}
                                                                 title={s.block_on_fail ? 'Bloqueio ativo' : 'Acesso livre'}
                                                             >
@@ -702,7 +702,7 @@ export function SubscriptionsClient({
                                                                                 setBlockConfirmId(null)
                                                                                 handleToggleBlock(s, true, e)
                                                                             }}
-                                                                            className="px-2.5 py-1 text-[10px] font-semibold rounded-lg bg-[#007AFF] dark:bg-violet-600 text-white hover:bg-[#0056B3] dark:hover:bg-violet-500 transition-colors"
+                                                                            className="px-2.5 py-1 text-[10px] font-semibold rounded-lg bg-[#7C3AED] dark:bg-violet-600 text-white hover:bg-[#6D28D9] dark:hover:bg-violet-500 transition-colors"
                                                                         >
                                                                             Confirmar
                                                                         </button>
@@ -738,7 +738,7 @@ export function SubscriptionsClient({
                                                                             e.stopPropagation()
                                                                             handleOpenConfigModal('new', s)
                                                                         }}
-                                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-[#007AFF]/10 dark:bg-violet-500/10 text-[#007AFF] dark:text-violet-400 border border-[#007AFF]/20 dark:border-violet-500/20 hover:bg-[#007AFF]/20 dark:hover:bg-violet-500/20 transition-colors"
+                                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-[#7C3AED]/10 dark:bg-violet-500/10 text-[#7C3AED] dark:text-violet-400 border border-[#7C3AED]/20 dark:border-violet-500/20 hover:bg-[#7C3AED]/20 dark:hover:bg-violet-500/20 transition-colors"
                                                                     >
                                                                         <Settings2 size={12} strokeWidth={2} />
                                                                         Configurar
@@ -763,7 +763,7 @@ export function SubscriptionsClient({
                                                                 {s.display_status === 'awaiting_payment' && (
                                                                     <button
                                                                         onClick={(e) => handleCopyLink(s, e)}
-                                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-[#007AFF]/10 dark:bg-violet-500/10 text-[#007AFF] dark:text-violet-400 border border-[#007AFF]/20 dark:border-violet-500/20 hover:bg-[#007AFF]/20 dark:hover:bg-violet-500/20 transition-colors"
+                                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-[#7C3AED]/10 dark:bg-violet-500/10 text-[#7C3AED] dark:text-violet-400 border border-[#7C3AED]/20 dark:border-violet-500/20 hover:bg-[#7C3AED]/20 dark:hover:bg-violet-500/20 transition-colors"
                                                                     >
                                                                         <Copy size={12} strokeWidth={2} />
                                                                         Copiar Link

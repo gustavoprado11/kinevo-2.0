@@ -284,7 +284,7 @@ export function TrainerVideoModal({
                                 onDragOver={(e) => e.preventDefault()}
                                 onDrop={handleDrop}
                                 onClick={() => fileInputRef.current?.click()}
-                                className="border-2 border-dashed border-[#D2D2D7] dark:border-k-border-primary rounded-xl p-6 text-center cursor-pointer hover:border-[#007AFF] dark:hover:border-violet-500/50 transition-colors"
+                                className="border-2 border-dashed border-[#D2D2D7] dark:border-k-border-primary rounded-xl p-6 text-center cursor-pointer hover:border-[#7C3AED] dark:hover:border-violet-500/50 transition-colors"
                             >
                                 <Upload size={24} className="mx-auto mb-2 text-[#AEAEB2] dark:text-k-text-quaternary" />
                                 {selectedFile ? (
@@ -313,7 +313,7 @@ export function TrainerVideoModal({
                                 <div className="space-y-2">
                                     <div className="h-1.5 bg-[#F5F5F7] dark:bg-surface-inset rounded-full overflow-hidden">
                                         <div
-                                            className="h-full bg-[#007AFF] dark:bg-violet-500 rounded-full transition-all duration-300"
+                                            className="h-full bg-[#7C3AED] dark:bg-violet-500 rounded-full transition-all duration-300"
                                             style={{ width: `${uploadProgress}%` }}
                                         />
                                     </div>
@@ -336,7 +336,7 @@ export function TrainerVideoModal({
                                 placeholder="https://www.youtube.com/watch?v=... ou link direto"
                                 value={externalUrl}
                                 onChange={(e) => { setExternalUrl(e.target.value); setError(null) }}
-                                className="w-full px-4 py-2.5 rounded-lg border border-[#D2D2D7] dark:border-k-border-primary bg-white dark:bg-surface-inset text-sm text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30 dark:focus:ring-violet-500/30 focus:border-[#007AFF] dark:focus:border-violet-500"
+                                className="w-full px-4 py-2.5 rounded-lg border border-[#D2D2D7] dark:border-k-border-primary bg-white dark:bg-surface-inset text-sm text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/30 dark:focus:ring-violet-500/30 focus:border-[#7C3AED] dark:focus:border-violet-500"
                             />
                             <p className="text-xs text-[#AEAEB2] dark:text-k-text-quaternary">YouTube, Vimeo, ou URL direta de vídeo</p>
                         </div>
@@ -372,7 +372,7 @@ export function TrainerVideoModal({
                     <button
                         onClick={tab === 'upload' ? handleSaveUpload : handleSaveLink}
                         disabled={uploading || deleting || (tab === 'upload' && !selectedFile) || (tab === 'link' && !externalUrl.trim())}
-                        className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium text-white bg-[#007AFF] dark:bg-violet-600 hover:bg-[#0066D6] dark:hover:bg-violet-700 transition-colors disabled:opacity-50"
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium text-white bg-[#7C3AED] dark:bg-violet-600 hover:bg-[#6D28D9] dark:hover:bg-violet-700 transition-colors disabled:opacity-50"
                     >
                         {uploading && <Loader2 size={14} className="animate-spin" />}
                         Salvar

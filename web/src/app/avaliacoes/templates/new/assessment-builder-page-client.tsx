@@ -140,10 +140,10 @@ export function AssessmentBuilderPageClient({
                             {/* Card: Em branco */}
                             <button
                                 onClick={startBlank}
-                                className="group text-left rounded-xl border border-[#D2D2D7] bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.08)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.12)] hover:border-[#007AFF] cursor-pointer transition-all duration-200 dark:border-k-border-primary dark:bg-surface-card dark:shadow-none dark:hover:border-violet-500/30 dark:hover:bg-glass-bg"
+                                className="group text-left rounded-xl border border-[#D2D2D7] bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.08)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.12)] hover:border-[#7C3AED] cursor-pointer transition-all duration-200 dark:border-k-border-primary dark:bg-surface-card dark:shadow-none dark:hover:border-violet-500/30 dark:hover:bg-glass-bg"
                             >
-                                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F5F5F7] group-hover:bg-[#007AFF]/10 mb-3 transition-colors dark:bg-surface-elevated dark:group-hover:bg-violet-500/10">
-                                    <FileText size={20} className="text-[#AEAEB2] group-hover:text-[#007AFF] dark:text-violet-400" strokeWidth={1.5} />
+                                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F5F5F7] group-hover:bg-[#7C3AED]/10 mb-3 transition-colors dark:bg-surface-elevated dark:group-hover:bg-violet-500/10">
+                                    <FileText size={20} className="text-[#AEAEB2] group-hover:text-[#7C3AED] dark:text-violet-400" strokeWidth={1.5} />
                                 </div>
                                 <h3 className="text-sm font-semibold text-[#1D1D1F] mb-1 dark:text-k-text-primary dark:group-hover:text-violet-300 transition-colors">
                                     Em branco
@@ -157,10 +157,10 @@ export function AssessmentBuilderPageClient({
                             <button
                                 onClick={() => setKinevoModalOpen(true)}
                                 disabled={kinevoTemplates.length === 0}
-                                className="group text-left rounded-xl border border-[#D2D2D7] bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.08)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.12)] hover:border-[#007AFF] cursor-pointer transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed dark:border-k-border-primary dark:bg-surface-card dark:shadow-none dark:hover:border-violet-500/30 dark:hover:bg-glass-bg"
+                                className="group text-left rounded-xl border border-[#D2D2D7] bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.08)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.12)] hover:border-[#7C3AED] cursor-pointer transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed dark:border-k-border-primary dark:bg-surface-card dark:shadow-none dark:hover:border-violet-500/30 dark:hover:bg-glass-bg"
                             >
-                                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F5F5F7] group-hover:bg-[#007AFF]/10 mb-3 transition-colors dark:bg-surface-elevated dark:group-hover:bg-violet-500/10">
-                                    <Activity size={20} className="text-[#AEAEB2] group-hover:text-[#007AFF] dark:text-violet-400" strokeWidth={1.5} />
+                                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F5F5F7] group-hover:bg-[#7C3AED]/10 mb-3 transition-colors dark:bg-surface-elevated dark:group-hover:bg-violet-500/10">
+                                    <Activity size={20} className="text-[#AEAEB2] group-hover:text-[#7C3AED] dark:text-violet-400" strokeWidth={1.5} />
                                 </div>
                                 <h3 className="text-sm font-semibold text-[#1D1D1F] mb-1 dark:text-k-text-primary dark:group-hover:text-violet-300 transition-colors">
                                     Partir de template Kinevo
@@ -190,7 +190,7 @@ export function AssessmentBuilderPageClient({
                                     placeholder="Ex: Avaliação inicial completa"
                                     value={title}
                                     onChange={(e) => setTitle(e.target.value)}
-                                    className="w-full rounded-lg border border-[#D2D2D7] bg-white px-4 py-3 text-sm text-[#1D1D1F] placeholder:text-[#AEAEB2] outline-none focus:border-[#007AFF] focus:ring-1 focus:ring-[#007AFF]/20 transition-all dark:rounded-xl dark:border-k-border-subtle dark:bg-glass-bg dark:text-k-text-primary dark:placeholder:text-k-text-quaternary dark:focus:border-violet-500/50 dark:focus:ring-2 dark:focus:ring-violet-500/10"
+                                    className="w-full rounded-lg border border-[#D2D2D7] bg-white px-4 py-3 text-sm text-[#1D1D1F] placeholder:text-[#AEAEB2] outline-none focus:border-[#7C3AED] focus:ring-1 focus:ring-[#7C3AED]/20 transition-all dark:rounded-xl dark:border-k-border-subtle dark:bg-glass-bg dark:text-k-text-primary dark:placeholder:text-k-text-quaternary dark:focus:border-violet-500/50 dark:focus:ring-2 dark:focus:ring-violet-500/10"
                                 />
                             </div>
 
@@ -202,12 +202,12 @@ export function AssessmentBuilderPageClient({
                                     placeholder="Descrição breve do propósito desta avaliação"
                                     value={description}
                                     onChange={(e) => setDescription(e.target.value)}
-                                    className="min-h-[80px] w-full rounded-lg border border-[#D2D2D7] bg-white px-4 py-3 text-sm text-[#1D1D1F] placeholder:text-[#AEAEB2] outline-none focus:border-[#007AFF] focus:ring-1 focus:ring-[#007AFF]/20 resize-none transition-all dark:rounded-xl dark:border-k-border-subtle dark:bg-glass-bg dark:text-k-text-primary dark:placeholder:text-k-text-quaternary dark:focus:border-violet-500/50 dark:focus:ring-2 dark:focus:ring-violet-500/10"
+                                    className="min-h-[80px] w-full rounded-lg border border-[#D2D2D7] bg-white px-4 py-3 text-sm text-[#1D1D1F] placeholder:text-[#AEAEB2] outline-none focus:border-[#7C3AED] focus:ring-1 focus:ring-[#7C3AED]/20 resize-none transition-all dark:rounded-xl dark:border-k-border-subtle dark:bg-glass-bg dark:text-k-text-primary dark:placeholder:text-k-text-quaternary dark:focus:border-violet-500/50 dark:focus:ring-2 dark:focus:ring-violet-500/10"
                                 />
                             </div>
 
                             {schemaSeed.sections.length > 0 && (
-                                <div className="rounded-lg bg-[#007AFF]/5 border border-[#007AFF]/15 px-3 py-2 text-xs text-[#007AFF] dark:bg-violet-500/5 dark:border-violet-500/20 dark:text-violet-400">
+                                <div className="rounded-lg bg-[#7C3AED]/5 border border-[#7C3AED]/15 px-3 py-2 text-xs text-[#7C3AED] dark:bg-violet-500/5 dark:border-violet-500/20 dark:text-violet-400">
                                     Schema pré-preenchido com {schemaSeed.sections.length} {schemaSeed.sections.length === 1 ? 'seção' : 'seções'} do template Kinevo. Você poderá ajustar no próximo passo.
                                 </div>
                             )}
@@ -296,14 +296,14 @@ export function AssessmentBuilderPageClient({
                                     key={t.id}
                                     type="button"
                                     onClick={() => startFromKinevo(t)}
-                                    className="group w-full text-left rounded-xl border border-k-border-subtle bg-surface-card p-4 hover:border-[#007AFF] hover:bg-[#F5F5F7] transition-all dark:hover:border-violet-500/30 dark:hover:bg-glass-bg"
+                                    className="group w-full text-left rounded-xl border border-k-border-subtle bg-surface-card p-4 hover:border-[#7C3AED] hover:bg-[#F5F5F7] transition-all dark:hover:border-violet-500/30 dark:hover:bg-glass-bg"
                                 >
                                     <div className="flex items-start gap-3">
-                                        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-[#007AFF]/10 dark:bg-violet-500/10">
-                                            <Activity size={14} className="text-[#007AFF] dark:text-violet-400" />
+                                        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-[#7C3AED]/10 dark:bg-violet-500/10">
+                                            <Activity size={14} className="text-[#7C3AED] dark:text-violet-400" />
                                         </div>
                                         <div className="min-w-0 flex-1">
-                                            <p className="text-sm font-semibold text-k-text-primary group-hover:text-[#007AFF] dark:group-hover:text-violet-300 transition-colors">
+                                            <p className="text-sm font-semibold text-k-text-primary group-hover:text-[#7C3AED] dark:group-hover:text-violet-300 transition-colors">
                                                 {t.title}
                                             </p>
                                             {t.description && (

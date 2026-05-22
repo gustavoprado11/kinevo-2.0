@@ -112,7 +112,7 @@ function TriggerSlot({
                     <button
                         onClick={() => templates.length > 0 && setOpen(!open)}
                         disabled={templates.length === 0}
-                        className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-[10px] bg-[#F5F5F7]/60 dark:bg-glass-bg border border-transparent text-sm text-[#AEAEB2] dark:text-k-text-quaternary hover:border-[#007AFF]/20 dark:hover:border-violet-500/30 hover:text-[#6E6E73] dark:hover:text-k-text-tertiary transition-all disabled:opacity-50 disabled:cursor-not-allowed focus:border-[#007AFF]/40 dark:focus:border-violet-500/50 focus:ring-2 focus:ring-[#007AFF]/10 dark:focus:ring-0 focus:bg-white dark:focus:bg-surface-card outline-none"
+                        className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-[10px] bg-[#F5F5F7]/60 dark:bg-glass-bg border border-transparent text-sm text-[#AEAEB2] dark:text-k-text-quaternary hover:border-[#7C3AED]/20 dark:hover:border-violet-500/30 hover:text-[#6E6E73] dark:hover:text-k-text-tertiary transition-all disabled:opacity-50 disabled:cursor-not-allowed focus:border-[#7C3AED]/40 dark:focus:border-violet-500/50 focus:ring-2 focus:ring-[#7C3AED]/10 dark:focus:ring-0 focus:bg-white dark:focus:bg-surface-card outline-none"
                     >
                         <span>{templates.length === 0 ? 'Nenhum template disponível' : 'Selecionar formulário...'}</span>
                         <ChevronDown className="w-3.5 h-3.5 shrink-0" />
@@ -235,7 +235,7 @@ export function ProgramFormTriggers({
                     {!readOnly && availableTemplates.length === 0 && (
                         <p className="text-[10px] text-[#AEAEB2] dark:text-k-text-quaternary mt-3">
                             Crie um formulário de check-in em{' '}
-                            <a href="/forms" className="text-[#007AFF] dark:text-violet-400 hover:underline">Avaliações</a>
+                            <a href="/forms" className="text-[#7C3AED] dark:text-violet-400 hover:underline">Avaliações</a>
                             {' '}para poder vinculá-lo aqui.
                         </p>
                     )}
@@ -322,7 +322,7 @@ export function ProgramFormTriggers({
                         {!readOnly && availableTemplates.length === 0 && (
                             <p className="text-[10px] text-[#AEAEB2] dark:text-k-text-quaternary mt-3">
                                 Crie um formulário de check-in em{' '}
-                                <a href="/forms" className="text-[#007AFF] dark:text-violet-400 hover:underline">Avaliações</a>
+                                <a href="/forms" className="text-[#7C3AED] dark:text-violet-400 hover:underline">Avaliações</a>
                                 {' '}para poder vinculá-lo aqui.
                             </p>
                         )}

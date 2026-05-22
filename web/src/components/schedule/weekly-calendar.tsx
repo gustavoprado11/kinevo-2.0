@@ -186,7 +186,7 @@ function DayColumn({
                 role="gridcell"
                 aria-label={`Coluna ${date}`}
                 className={`absolute inset-0 cursor-pointer transition-colors ${
-                    isOver ? 'bg-[#007AFF]/5 dark:bg-violet-500/10' : ''
+                    isOver ? 'bg-[#7C3AED]/5 dark:bg-violet-500/10' : ''
                 } ${isToday ? 'bg-[#F5F5F7] dark:bg-glass-bg' : ''}`}
                 style={{ height: `${CALENDAR_HEIGHT_PX}px` }}
             >
@@ -324,7 +324,7 @@ export function WeeklyCalendar({
                                 <div
                                     className={`text-[10px] font-medium uppercase tracking-wider ${
                                         isToday
-                                            ? 'text-[#007AFF] dark:text-violet-400'
+                                            ? 'text-[#7C3AED] dark:text-violet-400'
                                             : 'text-[#86868B] dark:text-k-text-quaternary'
                                     }`}
                                 >
@@ -333,7 +333,7 @@ export function WeeklyCalendar({
                                 <div
                                     className={`text-sm font-medium tabular-nums ${
                                         isToday
-                                            ? 'text-[#007AFF] dark:text-violet-400'
+                                            ? 'text-[#7C3AED] dark:text-violet-400'
                                             : 'text-[#1D1D1F] dark:text-k-text-primary'
                                     }`}
                                 >

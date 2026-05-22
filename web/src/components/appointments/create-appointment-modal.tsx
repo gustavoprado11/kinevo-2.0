@@ -359,7 +359,7 @@ export function CreateAppointmentModal({
                                                 unoptimized
                                             />
                                         ) : (
-                                            <span className="text-xs font-bold text-[#007AFF] dark:text-primary">
+                                            <span className="text-xs font-bold text-[#7C3AED] dark:text-primary">
                                                 {selectedStudent.name.charAt(0).toUpperCase()}
                                             </span>
                                         )}
@@ -401,7 +401,7 @@ export function CreateAppointmentModal({
                                         onFocus={() => setStudentDropdownOpen(true)}
                                         placeholder="Buscar aluno..."
                                         autoComplete="off"
-                                        className="w-full rounded-lg border border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-glass-bg pl-9 pr-3 py-2.5 text-sm text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:outline-none focus:border-[#007AFF] dark:focus:border-violet-500/50 focus:ring-4 focus:ring-[#007AFF]/20 dark:focus:ring-violet-500/20 transition-all"
+                                        className="w-full rounded-lg border border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-glass-bg pl-9 pr-3 py-2.5 text-sm text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:outline-none focus:border-[#7C3AED] dark:focus:border-violet-500/50 focus:ring-4 focus:ring-[#7C3AED]/20 dark:focus:ring-violet-500/20 transition-all"
                                     />
                                     {studentDropdownOpen && (
                                         <div
@@ -437,7 +437,7 @@ export function CreateAppointmentModal({
                                                                     unoptimized
                                                                 />
                                                             ) : (
-                                                                <span className="text-xs font-bold text-[#007AFF] dark:text-primary">
+                                                                <span className="text-xs font-bold text-[#7C3AED] dark:text-primary">
                                                                     {s.name.charAt(0).toUpperCase()}
                                                                 </span>
                                                             )}
@@ -540,7 +540,7 @@ export function CreateAppointmentModal({
                                                     aria-label={`${lbl} — dia ${idx + 1}`}
                                                     className={`h-8 rounded-md text-[11px] font-semibold transition-all ${
                                                         selected
-                                                            ? 'bg-[#007AFF] dark:bg-violet-600 text-white shadow-sm'
+                                                            ? 'bg-[#7C3AED] dark:bg-violet-600 text-white shadow-sm'
                                                             : 'bg-white dark:bg-white/5 text-[#6E6E73] dark:text-k-text-secondary hover:bg-[#E8E8ED] dark:hover:bg-white/10 border border-[#E8E8ED] dark:border-transparent'
                                                     } ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
                                                 >
@@ -564,7 +564,7 @@ export function CreateAppointmentModal({
                                                 }
                                                 required
                                                 aria-label={`Horário do dia ${idx + 1}`}
-                                                className="w-full rounded-lg border border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-glass-bg pl-8 pr-2 py-1.5 text-sm text-[#1D1D1F] dark:text-k-text-primary focus:outline-none focus:border-[#007AFF] dark:focus:border-violet-500/50"
+                                                className="w-full rounded-lg border border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-glass-bg pl-8 pr-2 py-1.5 text-sm text-[#1D1D1F] dark:text-k-text-primary focus:outline-none focus:border-[#7C3AED] dark:focus:border-violet-500/50"
                                             />
                                         </div>
                                         <div className="flex items-center gap-1">
@@ -583,7 +583,7 @@ export function CreateAppointmentModal({
                                                         }
                                                         className={`px-2 py-1 rounded-md text-[11px] font-semibold transition-all ${
                                                             active
-                                                                ? 'bg-[#007AFF] dark:bg-violet-600 text-white'
+                                                                ? 'bg-[#7C3AED] dark:bg-violet-600 text-white'
                                                                 : 'bg-white dark:bg-white/5 text-[#6E6E73] dark:text-k-text-secondary hover:bg-[#E8E8ED] dark:hover:bg-white/10 border border-[#E8E8ED] dark:border-transparent'
                                                         }`}
                                                     >
@@ -603,7 +603,7 @@ export function CreateAppointmentModal({
                                                     })
                                                 }
                                                 aria-label={`Duração personalizada do dia ${idx + 1}`}
-                                                className="w-16 rounded-md border border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-glass-bg px-2 py-1 text-[11px] text-[#1D1D1F] dark:text-k-text-primary focus:outline-none focus:border-[#007AFF] dark:focus:border-violet-500/50"
+                                                className="w-16 rounded-md border border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-glass-bg px-2 py-1 text-[11px] text-[#1D1D1F] dark:text-k-text-primary focus:outline-none focus:border-[#7C3AED] dark:focus:border-violet-500/50"
                                             />
                                         </div>
                                     </div>
@@ -620,7 +620,7 @@ export function CreateAppointmentModal({
                             onClick={addSlot}
                             disabled={!!addDisabledReason}
                             title={addDisabledReason ?? undefined}
-                            className="mt-2 w-full flex items-center justify-center gap-2 px-3 py-2 border border-dashed border-[#D2D2D7] dark:border-k-border-subtle rounded-lg text-xs font-semibold text-[#6E6E73] dark:text-k-text-secondary hover:border-[#007AFF] dark:hover:border-violet-500 hover:text-[#007AFF] dark:hover:text-violet-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-[#D2D2D7] disabled:hover:text-[#6E6E73]"
+                            className="mt-2 w-full flex items-center justify-center gap-2 px-3 py-2 border border-dashed border-[#D2D2D7] dark:border-k-border-subtle rounded-lg text-xs font-semibold text-[#6E6E73] dark:text-k-text-secondary hover:border-[#7C3AED] dark:hover:border-violet-500 hover:text-[#7C3AED] dark:hover:text-violet-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-[#D2D2D7] disabled:hover:text-[#6E6E73]"
                         >
                             <Plus className="w-3.5 h-3.5" strokeWidth={2} />
                             Adicionar dia
@@ -647,7 +647,7 @@ export function CreateAppointmentModal({
                                 min={todayKey}
                                 onChange={(e) => setStartsOn(e.target.value)}
                                 required
-                                className="w-full rounded-lg border border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-glass-bg px-10 py-2.5 text-[#1D1D1F] dark:text-k-text-primary focus:outline-none focus:border-[#007AFF] dark:focus:border-violet-500/50 focus:ring-4 focus:ring-[#007AFF]/20 dark:focus:ring-violet-500/20 transition-all text-sm"
+                                className="w-full rounded-lg border border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-glass-bg px-10 py-2.5 text-[#1D1D1F] dark:text-k-text-primary focus:outline-none focus:border-[#7C3AED] dark:focus:border-violet-500/50 focus:ring-4 focus:ring-[#7C3AED]/20 dark:focus:ring-violet-500/20 transition-all text-sm"
                             />
                         </div>
                         {isMonthly && (
@@ -672,7 +672,7 @@ export function CreateAppointmentModal({
                             maxLength={500}
                             rows={2}
                             placeholder="Ex: treino A toda terça, treino B toda quinta"
-                            className="w-full rounded-lg border border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-glass-bg px-3.5 py-2.5 text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:outline-none focus:border-[#007AFF] dark:focus:border-violet-500/50 focus:ring-4 focus:ring-[#007AFF]/20 dark:focus:ring-violet-500/20 transition-all text-sm resize-none"
+                            className="w-full rounded-lg border border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-glass-bg px-3.5 py-2.5 text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:outline-none focus:border-[#7C3AED] dark:focus:border-violet-500/50 focus:ring-4 focus:ring-[#7C3AED]/20 dark:focus:ring-violet-500/20 transition-all text-sm resize-none"
                         />
                     </div>
 
@@ -681,7 +681,7 @@ export function CreateAppointmentModal({
                             type="button"
                             onClick={loading ? undefined : onClose}
                             disabled={loading}
-                            className="flex-1 px-4 py-2.5 text-sm font-semibold text-[#007AFF] dark:text-k-text-secondary hover:text-[#0056B3] dark:hover:text-k-text-primary hover:bg-[#F5F5F7] dark:hover:bg-glass-bg rounded-full transition-all disabled:opacity-50"
+                            className="flex-1 px-4 py-2.5 text-sm font-semibold text-[#7C3AED] dark:text-k-text-secondary hover:text-[#6D28D9] dark:hover:text-k-text-primary hover:bg-[#F5F5F7] dark:hover:bg-glass-bg rounded-full transition-all disabled:opacity-50"
                         >
                             Cancelar
                         </button>
@@ -697,7 +697,7 @@ export function CreateAppointmentModal({
                                     ? 'Selecione um aluno pra continuar'
                                     : undefined
                             }
-                            className="flex-1 px-4 py-2.5 bg-[#007AFF] dark:bg-violet-600 hover:bg-[#0056B3] dark:hover:bg-violet-500 text-white text-sm font-semibold rounded-full shadow-sm dark:shadow-lg dark:shadow-violet-500/20 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-60"
+                            className="flex-1 px-4 py-2.5 bg-[#7C3AED] dark:bg-violet-600 hover:bg-[#6D28D9] dark:hover:bg-violet-500 text-white text-sm font-semibold rounded-full shadow-sm dark:shadow-lg dark:shadow-violet-500/20 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-60"
                         >
                             {loading ? (
                                 <>

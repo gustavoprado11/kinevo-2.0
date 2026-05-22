@@ -239,7 +239,7 @@ export function EditAppointmentModal({ isOpen, onClose, rule, onSuccess }: Props
                                         aria-pressed={selected}
                                         className={`h-9 rounded-lg text-xs font-semibold transition-all ${
                                             selected
-                                                ? 'bg-[#007AFF] dark:bg-violet-600 text-white shadow-sm'
+                                                ? 'bg-[#7C3AED] dark:bg-violet-600 text-white shadow-sm'
                                                 : 'bg-[#F5F5F7] dark:bg-white/5 text-[#6E6E73] dark:text-k-text-secondary hover:bg-[#E8E8ED] dark:hover:bg-white/10'
                                         } ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
                                     >
@@ -268,7 +268,7 @@ export function EditAppointmentModal({ isOpen, onClose, rule, onSuccess }: Props
                                 value={startTime}
                                 onChange={(e) => setStartTime(e.target.value)}
                                 required
-                                className="w-full rounded-lg border border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-glass-bg px-10 py-2.5 text-sm text-[#1D1D1F] dark:text-k-text-primary focus:outline-none focus:border-[#007AFF] dark:focus:border-violet-500/50 focus:ring-4 focus:ring-[#007AFF]/20 dark:focus:ring-violet-500/20"
+                                className="w-full rounded-lg border border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-glass-bg px-10 py-2.5 text-sm text-[#1D1D1F] dark:text-k-text-primary focus:outline-none focus:border-[#7C3AED] dark:focus:border-violet-500/50 focus:ring-4 focus:ring-[#7C3AED]/20 dark:focus:ring-violet-500/20"
                             />
                         </div>
                     </div>
@@ -290,7 +290,7 @@ export function EditAppointmentModal({ isOpen, onClose, rule, onSuccess }: Props
                                         }}
                                         className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                                             active
-                                                ? 'bg-[#007AFF] dark:bg-violet-600 text-white'
+                                                ? 'bg-[#7C3AED] dark:bg-violet-600 text-white'
                                                 : 'bg-[#F5F5F7] dark:bg-white/5 text-[#6E6E73] dark:text-k-text-secondary hover:bg-[#E8E8ED] dark:hover:bg-white/10'
                                         }`}
                                     >
@@ -306,7 +306,7 @@ export function EditAppointmentModal({ isOpen, onClose, rule, onSuccess }: Props
                                 value={customDuration}
                                 onChange={(e) => setCustomDuration(e.target.value)}
                                 aria-label="Duração personalizada (minutos)"
-                                className="w-24 rounded-lg border border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-glass-bg px-3 py-1.5 text-sm text-[#1D1D1F] dark:text-k-text-primary focus:outline-none focus:border-[#007AFF] dark:focus:border-violet-500/50 focus:ring-2 focus:ring-[#007AFF]/20 dark:focus:ring-violet-500/20"
+                                className="w-24 rounded-lg border border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-glass-bg px-3 py-1.5 text-sm text-[#1D1D1F] dark:text-k-text-primary focus:outline-none focus:border-[#7C3AED] dark:focus:border-violet-500/50 focus:ring-2 focus:ring-[#7C3AED]/20 dark:focus:ring-violet-500/20"
                             />
                         </div>
                     </div>
@@ -329,7 +329,7 @@ export function EditAppointmentModal({ isOpen, onClose, rule, onSuccess }: Props
                                 value={startsOn}
                                 onChange={(e) => setStartsOn(e.target.value)}
                                 required
-                                className="w-full rounded-lg border border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-glass-bg px-10 py-2.5 text-sm text-[#1D1D1F] dark:text-k-text-primary focus:outline-none focus:border-[#007AFF] dark:focus:border-violet-500/50 focus:ring-4 focus:ring-[#007AFF]/20 dark:focus:ring-violet-500/20"
+                                className="w-full rounded-lg border border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-glass-bg px-10 py-2.5 text-sm text-[#1D1D1F] dark:text-k-text-primary focus:outline-none focus:border-[#7C3AED] dark:focus:border-violet-500/50 focus:ring-4 focus:ring-[#7C3AED]/20 dark:focus:ring-violet-500/20"
                             />
                         </div>
                     </div>
@@ -347,7 +347,7 @@ export function EditAppointmentModal({ isOpen, onClose, rule, onSuccess }: Props
                             onChange={(e) => setNotes(e.target.value)}
                             maxLength={500}
                             rows={2}
-                            className="w-full rounded-lg border border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-glass-bg px-3.5 py-2.5 text-sm text-[#1D1D1F] dark:text-k-text-primary focus:outline-none focus:border-[#007AFF] dark:focus:border-violet-500/50 focus:ring-4 focus:ring-[#007AFF]/20 dark:focus:ring-violet-500/20 resize-none"
+                            className="w-full rounded-lg border border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-glass-bg px-3.5 py-2.5 text-sm text-[#1D1D1F] dark:text-k-text-primary focus:outline-none focus:border-[#7C3AED] dark:focus:border-violet-500/50 focus:ring-4 focus:ring-[#7C3AED]/20 dark:focus:ring-violet-500/20 resize-none"
                         />
                     </div>
 
@@ -356,14 +356,14 @@ export function EditAppointmentModal({ isOpen, onClose, rule, onSuccess }: Props
                             type="button"
                             onClick={loading ? undefined : onClose}
                             disabled={loading}
-                            className="flex-1 px-4 py-2.5 text-sm font-semibold text-[#007AFF] dark:text-k-text-secondary hover:text-[#0056B3] dark:hover:text-k-text-primary hover:bg-[#F5F5F7] dark:hover:bg-glass-bg rounded-full transition-all disabled:opacity-50"
+                            className="flex-1 px-4 py-2.5 text-sm font-semibold text-[#7C3AED] dark:text-k-text-secondary hover:text-[#6D28D9] dark:hover:text-k-text-primary hover:bg-[#F5F5F7] dark:hover:bg-glass-bg rounded-full transition-all disabled:opacity-50"
                         >
                             Cancelar
                         </button>
                         <button
                             type="submit"
                             disabled={loading}
-                            className="flex-1 px-4 py-2.5 bg-[#007AFF] dark:bg-violet-600 hover:bg-[#0056B3] dark:hover:bg-violet-500 text-white text-sm font-semibold rounded-full shadow-sm dark:shadow-lg dark:shadow-violet-500/20 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-60"
+                            className="flex-1 px-4 py-2.5 bg-[#7C3AED] dark:bg-violet-600 hover:bg-[#6D28D9] dark:hover:bg-violet-500 text-white text-sm font-semibold rounded-full shadow-sm dark:shadow-lg dark:shadow-violet-500/20 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-60"
                         >
                             {loading ? (
                                 <>

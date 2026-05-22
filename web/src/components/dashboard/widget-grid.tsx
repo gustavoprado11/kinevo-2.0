@@ -77,7 +77,7 @@ function SortableWidget({
         >
             {/* Customizing overlay */}
             {isCustomizing && (
-                <div className="absolute inset-0 z-10 rounded-xl border-2 border-dashed border-[#007AFF]/30 dark:border-primary/30 pointer-events-none" />
+                <div className="absolute inset-0 z-10 rounded-xl border-2 border-dashed border-[#7C3AED]/30 dark:border-primary/30 pointer-events-none" />
             )}
 
             {/* Drag handle + remove button */}
@@ -166,7 +166,7 @@ export function WidgetGrid({ widgetMap }: WidgetGridProps) {
                     aria-label={isCustomizing ? 'Concluir personalização do dashboard' : 'Personalizar layout do dashboard'}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                         isCustomizing
-                            ? 'bg-[#007AFF] text-white shadow-md hover:bg-[#0056B3]'
+                            ? 'bg-[#7C3AED] text-white shadow-md hover:bg-[#6D28D9]'
                             : 'text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#6E6E73] dark:hover:text-k-text-secondary hover:bg-[#F5F5F7] dark:hover:bg-muted'
                     }`}
                 >

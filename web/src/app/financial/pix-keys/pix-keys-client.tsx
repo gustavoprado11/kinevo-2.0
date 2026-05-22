@@ -139,7 +139,7 @@ export function PixKeysClient({ trainer, pixKeys }: Props) {
                     {!adding && (
                         <button
                             onClick={() => setAdding(true)}
-                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#007AFF] dark:bg-violet-600 hover:bg-[#0056B3] dark:hover:bg-violet-500 text-white text-sm font-medium transition-colors active:scale-[0.98]"
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#7C3AED] dark:bg-violet-600 hover:bg-[#6D28D9] dark:hover:bg-violet-500 text-white text-sm font-medium transition-colors active:scale-[0.98]"
                         >
                             <Plus size={15} />
                             Adicionar chave
@@ -189,7 +189,7 @@ export function PixKeysClient({ trainer, pixKeys }: Props) {
                         </p>
                         <button
                             onClick={() => setAdding(true)}
-                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#007AFF] dark:bg-violet-600 hover:bg-[#0056B3] dark:hover:bg-violet-500 text-white text-sm font-medium"
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#7C3AED] dark:bg-violet-600 hover:bg-[#6D28D9] dark:hover:bg-violet-500 text-white text-sm font-medium"
                         >
                             <Plus size={15} />
                             Adicionar primeira chave
@@ -209,7 +209,7 @@ export function PixKeysClient({ trainer, pixKeys }: Props) {
                                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
                                     k.is_default
                                         ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400'
-                                        : 'bg-[#007AFF]/10 text-[#007AFF] dark:bg-violet-500/10 dark:text-violet-400'
+                                        : 'bg-[#7C3AED]/10 text-[#7C3AED] dark:bg-violet-500/10 dark:text-violet-400'
                                 }`}>
                                     <KeyTypeIcon type={k.key_type} />
                                 </div>
@@ -367,7 +367,7 @@ function AddKeyForm({
     })()
 
     return (
-        <div className="rounded-2xl border border-[#007AFF]/20 dark:border-violet-500/20 bg-[#007AFF]/[0.03] dark:bg-violet-500/[0.04] p-5 mb-4">
+        <div className="rounded-2xl border border-[#7C3AED]/20 dark:border-violet-500/20 bg-[#7C3AED]/[0.03] dark:bg-violet-500/[0.04] p-5 mb-4">
             <h3 className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary mb-3">
                 Adicionar nova chave PIX
             </h3>
@@ -460,7 +460,7 @@ function AddKeyForm({
                     onClick={submit}
                     disabled={!canSubmit}
                     title={missingFieldHint ?? undefined}
-                    className="inline-flex items-center gap-2 text-sm px-4 py-2 rounded-xl bg-[#007AFF] dark:bg-violet-600 hover:bg-[#0056B3] dark:hover:bg-violet-500 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="inline-flex items-center gap-2 text-sm px-4 py-2 rounded-xl bg-[#7C3AED] dark:bg-violet-600 hover:bg-[#6D28D9] dark:hover:bg-violet-500 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     {busy && <Loader2 size={14} className="animate-spin" />}
                     Validar e salvar
@@ -471,7 +471,7 @@ function AddKeyForm({
 }
 
 const inputCls =
-    'w-full px-3.5 py-2 rounded-lg border border-[#E8E8ED] dark:border-k-border-primary bg-white dark:bg-surface-card text-sm text-[#1D1D1F] dark:text-k-text-primary focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30 dark:focus:ring-violet-500/30 focus:border-[#007AFF] dark:focus:border-violet-500'
+    'w-full px-3.5 py-2 rounded-lg border border-[#E8E8ED] dark:border-k-border-primary bg-white dark:bg-surface-card text-sm text-[#1D1D1F] dark:text-k-text-primary focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/30 dark:focus:ring-violet-500/30 focus:border-[#7C3AED] dark:focus:border-violet-500'
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
     return (

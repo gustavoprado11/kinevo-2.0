@@ -1613,7 +1613,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
                                 placeholder="Adicione detalhes sobre o objetivo, metodologia ou observações gerais..."
-                                className="w-full bg-white dark:bg-glass-bg border border-[#D2D2D7] dark:border-k-border-primary rounded-xl px-4 py-3 text-sm text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:ring-1 focus:ring-[#007AFF]/20 dark:focus:ring-violet-500/50 focus:border-[#007AFF] dark:focus:border-violet-500/30 transition-all min-h-[80px] resize-none"
+                                className="w-full bg-white dark:bg-glass-bg border border-[#D2D2D7] dark:border-k-border-primary rounded-xl px-4 py-3 text-sm text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:ring-1 focus:ring-[#7C3AED]/20 dark:focus:ring-violet-500/50 focus:border-[#7C3AED] dark:focus:border-violet-500/30 transition-all min-h-[80px] resize-none"
                             />
                         </div>
                     </div>
@@ -1667,7 +1667,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                         className="flex-shrink-0 w-5 flex items-center justify-center border-r border-[#E8E8ED] dark:border-k-border-subtle bg-[#FAFAFA] dark:bg-surface-primary hover:bg-[#F0F0F2] dark:hover:bg-glass-bg transition-colors group"
                         title={isLibraryCollapsed ? 'Expandir biblioteca' : 'Minimizar biblioteca'}
                     >
-                        <ChevronLeft className={`w-3.5 h-3.5 text-[#AEAEB2] dark:text-k-text-quaternary group-hover:text-[#007AFF] dark:group-hover:text-violet-400 transition-all duration-200 ${isLibraryCollapsed ? 'rotate-180' : ''}`} />
+                        <ChevronLeft className={`w-3.5 h-3.5 text-[#AEAEB2] dark:text-k-text-quaternary group-hover:text-[#7C3AED] dark:group-hover:text-violet-400 transition-all duration-200 ${isLibraryCollapsed ? 'rotate-180' : ''}`} />
                     </button>
 
                     {/* Right Panel: Canvas */}
@@ -1676,7 +1676,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                         {builderViewMode === 'compare' && (
                             <div className="flex items-center justify-between px-4 py-2 border-b border-[#E8E8ED] dark:border-k-border-subtle bg-[#F5F5F7] dark:bg-surface-elevated flex-shrink-0">
                                 <div className="flex items-center gap-2 min-w-0">
-                                    <GitCompareArrows className="w-4 h-4 text-[#007AFF] dark:text-violet-400 shrink-0" />
+                                    <GitCompareArrows className="w-4 h-4 text-[#7C3AED] dark:text-violet-400 shrink-0" />
                                     <span className="text-xs font-medium text-[#6E6E73] dark:text-k-text-tertiary">Comparando com:</span>
                                     <span className="text-xs font-semibold text-[#1D1D1F] dark:text-k-text-primary truncate">
                                         {compareProgramData?.programName || 'Programa anterior'}
@@ -1746,7 +1746,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                                         </DndContext>
                                         <button
                                             onClick={addWorkout}
-                                            className="w-8 h-8 flex items-center justify-center rounded-lg text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#007AFF] dark:hover:text-k-text-primary hover:bg-[#007AFF]/10 dark:hover:bg-glass-bg transition-all ml-2"
+                                            className="w-8 h-8 flex items-center justify-center rounded-lg text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#7C3AED] dark:hover:text-k-text-primary hover:bg-[#7C3AED]/10 dark:hover:bg-glass-bg transition-all ml-2"
                                             title="Adicionar Treino"
                                         >
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1784,7 +1784,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                                         onDragOver={handleCanvasDragOver}
                                         onDragLeave={handleCanvasDragLeave}
                                         onDrop={handleCanvasDrop}
-                                        className={`flex-1 overflow-y-auto px-6 pt-3 pb-6 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent transition-colors duration-200 ${isDraggingOver ? 'bg-[#007AFF]/5 dark:bg-violet-500/5 ring-2 ring-inset ring-[#007AFF]/20 dark:ring-violet-500/20' : ''}`}
+                                        className={`flex-1 overflow-y-auto px-6 pt-3 pb-6 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent transition-colors duration-200 ${isDraggingOver ? 'bg-[#7C3AED]/5 dark:bg-violet-500/5 ring-2 ring-inset ring-[#7C3AED]/20 dark:ring-violet-500/20' : ''}`}
                                     >
                                         <div className="pb-20">
                                             {activeWorkout ? (
@@ -1917,7 +1917,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                                                                 <span className="flex items-center gap-0.5 ml-1 border-l border-[#E8E8ED] dark:border-k-border-subtle pl-2">
                                                                     <span
                                                                         onClick={(e) => { e.stopPropagation(); duplicateWorkout(workout.id) }}
-                                                                        className="p-0.5 rounded text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#007AFF] dark:hover:text-violet-400 transition-colors cursor-pointer"
+                                                                        className="p-0.5 rounded text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#7C3AED] dark:hover:text-violet-400 transition-colors cursor-pointer"
                                                                         title="Duplicar treino"
                                                                     >
                                                                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1946,7 +1946,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
 
                                     <button
                                         onClick={addWorkout}
-                                        className="w-7 h-7 flex items-center justify-center rounded-lg text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#007AFF] dark:hover:text-k-text-primary hover:bg-[#007AFF]/10 dark:hover:bg-glass-bg transition-all ml-1 shrink-0"
+                                        className="w-7 h-7 flex items-center justify-center rounded-lg text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#7C3AED] dark:hover:text-k-text-primary hover:bg-[#7C3AED]/10 dark:hover:bg-glass-bg transition-all ml-1 shrink-0"
                                         title="Adicionar Treino"
                                     >
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1991,7 +1991,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                                         onDragOver={handleCanvasDragOver}
                                         onDragLeave={handleCanvasDragLeave}
                                         onDrop={handleCanvasDrop}
-                                        className={`flex-1 overflow-y-auto px-6 pt-3 pb-6 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent transition-colors duration-200 ${isDraggingOver ? 'bg-[#007AFF]/5 dark:bg-violet-500/5 ring-2 ring-inset ring-[#007AFF]/20 dark:ring-violet-500/20' : ''}`}
+                                        className={`flex-1 overflow-y-auto px-6 pt-3 pb-6 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent transition-colors duration-200 ${isDraggingOver ? 'bg-[#7C3AED]/5 dark:bg-violet-500/5 ring-2 ring-inset ring-[#7C3AED]/20 dark:ring-violet-500/20' : ''}`}
                                     >
                                         <div className={`mx-auto pb-20 transition-[max-width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
                                             builderViewMode === 'preview' ? 'max-w-6xl flex gap-8' : 'max-w-3xl'

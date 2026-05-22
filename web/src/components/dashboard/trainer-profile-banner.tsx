@@ -53,7 +53,7 @@ export function TrainerProfileBanner({ selfStudentId }: TrainerProfileBannerProp
                 {/* Top row: icon + text */}
                 <div className="flex items-start gap-3 pr-6">
                     <div className="w-10 h-10 bg-[#F5F5F7] dark:bg-violet-500/15 rounded-xl flex items-center justify-center flex-shrink-0 border border-[#E8E8ED] dark:border-violet-500/20">
-                        <Dumbbell size={20} className="text-[#007AFF] dark:text-violet-400" />
+                        <Dumbbell size={20} className="text-[#7C3AED] dark:text-violet-400" />
                     </div>
                     <div>
                         <h4 className="text-sm font-bold text-[#1D1D1F] dark:text-foreground">
@@ -69,7 +69,7 @@ export function TrainerProfileBanner({ selfStudentId }: TrainerProfileBannerProp
                 <div className="pl-[52px]">
                     <button
                         onClick={handleNavigate}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#007AFF] dark:bg-violet-600 hover:bg-[#0066D6] dark:hover:bg-violet-500 text-white text-xs font-semibold rounded-full dark:rounded-xl transition-all"
+                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#7C3AED] dark:bg-violet-600 hover:bg-[#6D28D9] dark:hover:bg-violet-500 text-white text-xs font-semibold rounded-full dark:rounded-xl transition-all"
                     >
                         Ver Meu Perfil
                         <ArrowRight size={14} />

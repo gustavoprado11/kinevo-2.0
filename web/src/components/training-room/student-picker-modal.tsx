@@ -175,7 +175,7 @@ export function StudentPickerModal({ isOpen, onClose, trainerId }: StudentPicker
                                     placeholder="Buscar aluno..."
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
-                                    className="w-full rounded-lg border border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-glass-bg py-2.5 pl-10 pr-4 text-sm text-[#1D1D1F] dark:text-foreground placeholder:text-[#AEAEB2] dark:placeholder:text-muted-foreground/60 focus:border-[#007AFF] dark:focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-[#007AFF]/20 dark:focus:ring-violet-500/50"
+                                    className="w-full rounded-lg border border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-glass-bg py-2.5 pl-10 pr-4 text-sm text-[#1D1D1F] dark:text-foreground placeholder:text-[#AEAEB2] dark:placeholder:text-muted-foreground/60 focus:border-[#7C3AED] dark:focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-[#7C3AED]/20 dark:focus:ring-violet-500/50"
                                     autoFocus
                                 />
                             </div>
@@ -184,7 +184,7 @@ export function StudentPickerModal({ isOpen, onClose, trainerId }: StudentPicker
                             <div className="max-h-[360px] overflow-y-auto space-y-1 -mx-1 px-1">
                                 {isLoading ? (
                                     <div className="flex items-center justify-center py-12">
-                                        <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#007AFF] dark:border-violet-500 border-t-transparent" />
+                                        <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#7C3AED] dark:border-violet-500 border-t-transparent" />
                                     </div>
                                 ) : filtered.length === 0 ? (
                                     <p className="py-8 text-center text-sm text-[#86868B] dark:text-muted-foreground">
@@ -254,7 +254,7 @@ export function StudentPickerModal({ isOpen, onClose, trainerId }: StudentPicker
                             {/* Back to students */}
                             <button
                                 onClick={() => setSelectedStudent(null)}
-                                className="mb-4 flex items-center gap-2 text-xs text-[#007AFF] dark:text-muted-foreground hover:text-[#0056B3] dark:hover:text-violet-400 transition-colors"
+                                className="mb-4 flex items-center gap-2 text-xs text-[#7C3AED] dark:text-muted-foreground hover:text-[#6D28D9] dark:hover:text-violet-400 transition-colors"
                             >
                                 <ChevronRight size={14} className="rotate-180" />
                                 Voltar para lista de alunos
@@ -379,7 +379,7 @@ export function StudentPickerModal({ isOpen, onClose, trainerId }: StudentPicker
                         <button
                             onClick={handleConfirm}
                             disabled={!selectedWorkoutId || isAdding}
-                            className="w-full rounded-full bg-[#007AFF] dark:bg-violet-600 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#0066D6] dark:hover:bg-violet-500 disabled:bg-[#D2D2D7] dark:disabled:bg-violet-600 disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="w-full rounded-full bg-[#7C3AED] dark:bg-violet-600 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#6D28D9] dark:hover:bg-violet-500 disabled:bg-[#D2D2D7] dark:disabled:bg-violet-600 disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                             {isAdding ? (
                                 <span className="flex items-center justify-center gap-2">
@@ -415,7 +415,7 @@ function WorkoutOptionButton({
             className={`
                 w-full flex items-center gap-3 rounded-xl p-3 text-left transition-all
                 ${isSelected
-                    ? 'bg-[#007AFF]/5 dark:bg-violet-600/20 border-2 border-[#007AFF] dark:border-violet-500/40'
+                    ? 'bg-[#7C3AED]/5 dark:bg-violet-600/20 border-2 border-[#7C3AED] dark:border-violet-500/40'
                     : workout.isPending
                         ? 'bg-amber-50/50 dark:bg-amber-500/5 border border-amber-200 dark:border-amber-500/20 hover:bg-amber-50 dark:hover:bg-amber-500/10'
                         : 'bg-white dark:bg-glass-bg border border-[#E8E8ED] dark:border-transparent hover:bg-[#F5F5F7] dark:hover:bg-glass-bg-hover hover:border-[#D2D2D7]'
@@ -423,7 +423,7 @@ function WorkoutOptionButton({
             `}
         >
             <div className={`flex h-8 w-8 items-center justify-center rounded-lg shrink-0 ${
-                isSelected ? 'bg-[#007AFF]/10 dark:bg-violet-600/30'
+                isSelected ? 'bg-[#7C3AED]/10 dark:bg-violet-600/30'
                     : isFullyDone ? 'bg-emerald-50 dark:bg-emerald-500/15'
                     : workout.isPending ? 'bg-amber-50 dark:bg-amber-500/15'
                     : 'bg-[#F5F5F7] dark:bg-glass-bg'
@@ -432,7 +432,7 @@ function WorkoutOptionButton({
                     <svg className="h-4 w-4 text-emerald-500 dark:text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 ) : (
                     <Dumbbell size={16} className={
-                        isSelected ? 'text-[#007AFF] dark:text-violet-400'
+                        isSelected ? 'text-[#7C3AED] dark:text-violet-400'
                             : workout.isPending ? 'text-amber-500 dark:text-amber-400'
                             : 'text-[#AEAEB2] dark:text-muted-foreground'
                     } />
@@ -440,7 +440,7 @@ function WorkoutOptionButton({
             </div>
             <div className="flex-1 min-w-0">
                 <span className={`text-sm font-medium block truncate ${
-                    isSelected ? 'text-[#007AFF] dark:text-violet-300'
+                    isSelected ? 'text-[#7C3AED] dark:text-violet-300'
                         : isFullyDone ? 'text-[#86868B] dark:text-muted-foreground'
                         : 'text-[#1D1D1F] dark:text-foreground'
                 }`}>
@@ -472,7 +472,7 @@ function WorkoutOptionButton({
                 </span>
             )}
             {isSelected && (
-                <div className="ml-auto h-2 w-2 rounded-full bg-[#007AFF] dark:bg-violet-400 shrink-0" />
+                <div className="ml-auto h-2 w-2 rounded-full bg-[#7C3AED] dark:bg-violet-400 shrink-0" />
             )}
         </button>
     )

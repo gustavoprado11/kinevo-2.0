@@ -114,12 +114,12 @@ export function MuscleGroupManagerModal({ isOpen, onClose, trainerId, manager }:
                             onChange={(e) => setNewName(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
                             placeholder="Nome do novo grupo (ex: Potência)"
-                            className="flex-1 px-4 py-2.5 bg-white dark:bg-glass-bg border border-[#D2D2D7] dark:border-k-border-primary rounded-lg text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-[#007AFF]/20 dark:focus:ring-2 dark:focus:ring-violet-500/20 focus:border-[#007AFF] dark:focus:border-violet-500/50 transition-all text-sm"
+                            className="flex-1 px-4 py-2.5 bg-white dark:bg-glass-bg border border-[#D2D2D7] dark:border-k-border-primary rounded-lg text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-[#7C3AED]/20 dark:focus:ring-2 dark:focus:ring-violet-500/20 focus:border-[#7C3AED] dark:focus:border-violet-500/50 transition-all text-sm"
                         />
                         <button
                             onClick={handleCreate}
                             disabled={isCreating || !newName.trim()}
-                            className="px-4 py-2 bg-[#007AFF] dark:bg-violet-600 hover:bg-[#0066D6] dark:hover:bg-violet-500 disabled:opacity-50 text-white font-medium text-sm rounded-full dark:rounded-lg shadow-sm dark:shadow-lg dark:shadow-violet-500/20 transition-all active:scale-95 flex items-center gap-2 whitespace-nowrap"
+                            className="px-4 py-2 bg-[#7C3AED] dark:bg-violet-600 hover:bg-[#6D28D9] dark:hover:bg-violet-500 disabled:opacity-50 text-white font-medium text-sm rounded-full dark:rounded-lg shadow-sm dark:shadow-lg dark:shadow-violet-500/20 transition-all active:scale-95 flex items-center gap-2 whitespace-nowrap"
                         >
                             {isCreating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" strokeWidth={2.5} />}
                             Adicionar
@@ -130,13 +130,13 @@ export function MuscleGroupManagerModal({ isOpen, onClose, trainerId, manager }:
 
                     {/* Search */}
                     <div className="relative group">
-                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#AEAEB2] dark:text-muted-foreground/40 group-focus-within:text-[#007AFF] dark:group-focus-within:text-violet-500 transition-colors" strokeWidth={1.5} />
+                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#AEAEB2] dark:text-muted-foreground/40 group-focus-within:text-[#7C3AED] dark:group-focus-within:text-violet-500 transition-colors" strokeWidth={1.5} />
                         <input
                             type="text"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="Buscar grupos..."
-                            className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-glass-bg border border-[#D2D2D7] dark:border-k-border-primary rounded-lg text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-[#007AFF]/20 dark:focus:ring-2 dark:focus:ring-violet-500/20 focus:border-[#007AFF] dark:focus:border-violet-500/50 transition-all text-sm"
+                            className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-glass-bg border border-[#D2D2D7] dark:border-k-border-primary rounded-lg text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-[#7C3AED]/20 dark:focus:ring-2 dark:focus:ring-violet-500/20 focus:border-[#7C3AED] dark:focus:border-violet-500/50 transition-all text-sm"
                         />
                     </div>
 
@@ -172,7 +172,7 @@ export function MuscleGroupManagerModal({ isOpen, onClose, trainerId, manager }:
                                                         if (e.key === 'Enter') handleUpdate()
                                                         if (e.key === 'Escape') setEditingId(null)
                                                     }}
-                                                    className="w-full bg-white dark:bg-surface-inset border border-[#007AFF] dark:border-violet-500/50 rounded-lg px-3 py-1.5 text-[#1D1D1F] dark:text-k-text-primary text-sm focus:outline-none focus:ring-1 focus:ring-[#007AFF]/20 dark:focus:ring-violet-500/50"
+                                                    className="w-full bg-white dark:bg-surface-inset border border-[#7C3AED] dark:border-violet-500/50 rounded-lg px-3 py-1.5 text-[#1D1D1F] dark:text-k-text-primary text-sm focus:outline-none focus:ring-1 focus:ring-[#7C3AED]/20 dark:focus:ring-violet-500/50"
                                                 />
                                             ) : (
                                                 <span className="text-sm font-medium text-[#1D1D1F] dark:text-k-text-secondary">{group.name}</span>
@@ -229,7 +229,7 @@ export function MuscleGroupManagerModal({ isOpen, onClose, trainerId, manager }:
                 <div className="p-6 border-t border-[#E8E8ED] dark:border-white/5 flex justify-end">
                     <button
                         onClick={onClose}
-                        className="px-6 py-2.5 text-[#007AFF] dark:text-white dark:bg-glass-bg hover:text-[#0056B3] dark:hover:bg-glass-bg-active font-medium rounded-full transition-all text-sm"
+                        className="px-6 py-2.5 text-[#7C3AED] dark:text-white dark:bg-glass-bg hover:text-[#6D28D9] dark:hover:bg-glass-bg-active font-medium rounded-full transition-all text-sm"
                     >
                         Fechar
                     </button>

@@ -548,12 +548,12 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                                     }}
                                                     className={`group text-left rounded-xl border bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.08)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.12)] cursor-pointer transition-all duration-200 dark:bg-surface-card dark:shadow-none dark:hover:bg-glass-bg ${
                                                         isSelected
-                                                            ? 'border-[#007AFF] dark:border-violet-500/30'
-                                                            : 'border-[#D2D2D7] hover:border-[#007AFF] dark:border-k-border-primary dark:hover:border-violet-500/30'
+                                                            ? 'border-[#7C3AED] dark:border-violet-500/30'
+                                                            : 'border-[#D2D2D7] hover:border-[#7C3AED] dark:border-k-border-primary dark:hover:border-violet-500/30'
                                                     }`}
                                                 >
-                                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F5F5F7] group-hover:bg-[#007AFF]/10 mb-3 transition-colors dark:bg-surface-elevated dark:group-hover:bg-violet-500/10">
-                                                        <Icon size={20} className="text-[#AEAEB2] group-hover:text-[#007AFF] dark:text-violet-400" strokeWidth={1.5} />
+                                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F5F5F7] group-hover:bg-[#7C3AED]/10 mb-3 transition-colors dark:bg-surface-elevated dark:group-hover:bg-violet-500/10">
+                                                        <Icon size={20} className="text-[#AEAEB2] group-hover:text-[#7C3AED] dark:text-violet-400" strokeWidth={1.5} />
                                                     </div>
                                                     <h3 className="text-sm font-semibold text-[#1D1D1F] mb-1 dark:text-k-text-primary dark:group-hover:text-violet-300 transition-colors">
                                                         {card.label}
@@ -594,7 +594,7 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                                 }
                                                 value={title}
                                                 onChange={(e) => setTitle(e.target.value)}
-                                                className="w-full rounded-lg border border-[#D2D2D7] bg-white px-4 py-3 text-sm text-[#1D1D1F] placeholder:text-[#AEAEB2] outline-none focus:border-[#007AFF] focus:ring-1 focus:ring-[#007AFF]/20 transition-all dark:rounded-xl dark:border-k-border-subtle dark:bg-glass-bg dark:text-k-text-primary dark:placeholder:text-k-text-quaternary dark:focus:border-violet-500/50 dark:focus:ring-2 dark:focus:ring-violet-500/10"
+                                                className="w-full rounded-lg border border-[#D2D2D7] bg-white px-4 py-3 text-sm text-[#1D1D1F] placeholder:text-[#AEAEB2] outline-none focus:border-[#7C3AED] focus:ring-1 focus:ring-[#7C3AED]/20 transition-all dark:rounded-xl dark:border-k-border-subtle dark:bg-glass-bg dark:text-k-text-primary dark:placeholder:text-k-text-quaternary dark:focus:border-violet-500/50 dark:focus:ring-2 dark:focus:ring-violet-500/10"
                                             />
                                         </div>
 
@@ -607,7 +607,7 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                                 placeholder="Descrição breve para o aluno"
                                                 value={description}
                                                 onChange={(e) => setDescription(e.target.value)}
-                                                className="min-h-[80px] w-full rounded-lg border border-[#D2D2D7] bg-white px-4 py-3 text-sm text-[#1D1D1F] placeholder:text-[#AEAEB2] outline-none focus:border-[#007AFF] focus:ring-1 focus:ring-[#007AFF]/20 resize-none transition-all dark:rounded-xl dark:border-k-border-subtle dark:bg-glass-bg dark:text-k-text-primary dark:placeholder:text-k-text-quaternary dark:focus:border-violet-500/50 dark:focus:ring-2 dark:focus:ring-violet-500/10"
+                                                className="min-h-[80px] w-full rounded-lg border border-[#D2D2D7] bg-white px-4 py-3 text-sm text-[#1D1D1F] placeholder:text-[#AEAEB2] outline-none focus:border-[#7C3AED] focus:ring-1 focus:ring-[#7C3AED]/20 resize-none transition-all dark:rounded-xl dark:border-k-border-subtle dark:bg-glass-bg dark:text-k-text-primary dark:placeholder:text-k-text-quaternary dark:focus:border-violet-500/50 dark:focus:ring-2 dark:focus:ring-violet-500/10"
                                             />
                                         </div>
 
@@ -618,11 +618,11 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                                     type="checkbox"
                                                     checked={aiEnabled}
                                                     onChange={(e) => setAiEnabled(e.target.checked)}
-                                                    className="mt-0.5 h-4 w-4 rounded border-[#D2D2D7] text-[#007AFF] accent-[#007AFF] dark:border-k-border-subtle dark:text-violet-600 dark:accent-violet-600"
+                                                    className="mt-0.5 h-4 w-4 rounded border-[#D2D2D7] text-[#7C3AED] accent-[#7C3AED] dark:border-k-border-subtle dark:text-violet-600 dark:accent-violet-600"
                                                 />
                                                 <span className="flex-1">
                                                     <span className="flex items-center gap-1.5 text-sm font-medium text-[#1D1D1F] dark:text-k-text-primary">
-                                                        <Sparkles size={14} className="text-[#007AFF] dark:text-violet-400" />
+                                                        <Sparkles size={14} className="text-[#7C3AED] dark:text-violet-400" />
                                                         Criar com IA
                                                     </span>
                                                     <span className="mt-0.5 block text-xs text-[#86868B] dark:text-k-text-quaternary">
@@ -644,8 +644,8 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                 <div className="max-w-xl mx-auto">
                                     <div className="rounded-2xl border border-[#D2D2D7] bg-white p-8 shadow-[0_1px_3px_rgba(0,0,0,0.08)] space-y-6 dark:border-k-border-primary dark:bg-surface-card dark:shadow-xl">
                                         <div className="flex items-center gap-3">
-                                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#007AFF]/10 dark:bg-violet-500/10">
-                                                <Sparkles size={20} className="text-[#007AFF] dark:text-violet-400" />
+                                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#7C3AED]/10 dark:bg-violet-500/10">
+                                                <Sparkles size={20} className="text-[#7C3AED] dark:text-violet-400" />
                                             </div>
                                             <div>
                                                 <h2 className="text-lg font-semibold text-[#1D1D1F] dark:font-bold dark:text-k-text-primary">Assistente IA</h2>
@@ -667,7 +667,7 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                                 }
                                                 value={aiGoal}
                                                 onChange={(e) => setAiGoal(e.target.value)}
-                                                className="w-full rounded-lg border border-[#D2D2D7] bg-white px-4 py-3 text-sm text-[#1D1D1F] placeholder:text-[#AEAEB2] outline-none focus:border-[#007AFF] focus:ring-1 focus:ring-[#007AFF]/20 transition-all dark:rounded-xl dark:border-k-border-subtle dark:bg-glass-bg dark:text-k-text-primary dark:placeholder:text-k-text-quaternary dark:focus:border-violet-500/50 dark:focus:ring-2 dark:focus:ring-violet-500/10"
+                                                className="w-full rounded-lg border border-[#D2D2D7] bg-white px-4 py-3 text-sm text-[#1D1D1F] placeholder:text-[#AEAEB2] outline-none focus:border-[#7C3AED] focus:ring-1 focus:ring-[#7C3AED]/20 transition-all dark:rounded-xl dark:border-k-border-subtle dark:bg-glass-bg dark:text-k-text-primary dark:placeholder:text-k-text-quaternary dark:focus:border-violet-500/50 dark:focus:ring-2 dark:focus:ring-violet-500/10"
                                             />
                                         </div>
 
@@ -679,7 +679,7 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                                 placeholder="Descreva o perfil dos alunos, restrições, foco do treinamento..."
                                                 value={aiStudentContext}
                                                 onChange={(e) => setAiStudentContext(e.target.value)}
-                                                className="min-h-[100px] w-full rounded-lg border border-[#D2D2D7] bg-white px-4 py-3 text-sm text-[#1D1D1F] placeholder:text-[#AEAEB2] outline-none focus:border-[#007AFF] focus:ring-1 focus:ring-[#007AFF]/20 resize-none transition-all dark:rounded-xl dark:border-k-border-subtle dark:bg-glass-bg dark:text-k-text-primary dark:placeholder:text-k-text-quaternary dark:focus:border-violet-500/50 dark:focus:ring-2 dark:focus:ring-violet-500/10"
+                                                className="min-h-[100px] w-full rounded-lg border border-[#D2D2D7] bg-white px-4 py-3 text-sm text-[#1D1D1F] placeholder:text-[#AEAEB2] outline-none focus:border-[#7C3AED] focus:ring-1 focus:ring-[#7C3AED]/20 resize-none transition-all dark:rounded-xl dark:border-k-border-subtle dark:bg-glass-bg dark:text-k-text-primary dark:placeholder:text-k-text-quaternary dark:focus:border-violet-500/50 dark:focus:ring-2 dark:focus:ring-violet-500/10"
                                             />
                                         </div>
 
@@ -693,7 +693,7 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                             <button
                                                 onClick={handleGenerateAI}
                                                 disabled={isGeneratingAI || !aiGoal.trim()}
-                                                className="h-11 px-8 bg-[#007AFF] hover:bg-[#0066D6] text-white rounded-full font-medium text-sm transition-all disabled:opacity-50 flex items-center gap-2 dark:bg-violet-600 dark:hover:bg-violet-500 dark:rounded-xl"
+                                                className="h-11 px-8 bg-[#7C3AED] hover:bg-[#6D28D9] text-white rounded-full font-medium text-sm transition-all disabled:opacity-50 flex items-center gap-2 dark:bg-violet-600 dark:hover:bg-violet-500 dark:rounded-xl"
                                             >
                                                 {isGeneratingAI ? (
                                                     <>
@@ -726,7 +726,7 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                                 {CATEGORY_CARDS.find(c => c.value === category)?.label ?? category}
                                             </span>
                                             {draftSource === 'ai_assisted' && (
-                                                <span className="flex items-center gap-1 rounded-full bg-[#007AFF]/10 px-2 py-0.5 text-[10px] font-bold text-[#007AFF] border border-[#007AFF]/20 dark:bg-violet-500/10 dark:text-violet-400 dark:border-violet-500/20">
+                                                <span className="flex items-center gap-1 rounded-full bg-[#7C3AED]/10 px-2 py-0.5 text-[10px] font-bold text-[#7C3AED] border border-[#7C3AED]/20 dark:bg-violet-500/10 dark:text-violet-400 dark:border-violet-500/20">
                                                     <Sparkles size={10} strokeWidth={2} />
                                                     IA
                                                 </span>
@@ -745,7 +745,7 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                                         className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full border transition-all ${
                                                             showPreview
                                                                 ? 'border-violet-300 bg-violet-50 text-violet-600 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-400'
-                                                                : 'border-[#007AFF] bg-[#007AFF]/5 hover:bg-[#007AFF]/10 text-[#007AFF] dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-400 dark:hover:bg-violet-500/20'
+                                                                : 'border-[#7C3AED] bg-[#7C3AED]/5 hover:bg-[#7C3AED]/10 text-[#7C3AED] dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-400 dark:hover:bg-violet-500/20'
                                                         } dark:rounded-lg`}
                                                     >
                                                         <Smartphone size={12} />
@@ -754,7 +754,7 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                                     <button
                                                         onClick={handleAuditAI}
                                                         disabled={isAuditingAI || questions.length === 0}
-                                                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full border border-[#D2D2D7] bg-transparent hover:bg-[#F5F5F7] text-[#007AFF] transition-all disabled:opacity-40 dark:rounded-lg dark:border-k-border-subtle dark:hover:bg-glass-bg dark:text-k-text-secondary dark:hover:text-violet-400"
+                                                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full border border-[#D2D2D7] bg-transparent hover:bg-[#F5F5F7] text-[#7C3AED] transition-all disabled:opacity-40 dark:rounded-lg dark:border-k-border-subtle dark:hover:bg-glass-bg dark:text-k-text-secondary dark:hover:text-violet-400"
                                                     >
                                                         <Sparkles size={12} />
                                                         {isAuditingAI ? 'Auditando...' : 'Auditar Qualidade'}
@@ -803,7 +803,7 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                                             <ul className="space-y-1">
                                                                 {aiChecklist.map((item) => (
                                                                     <li key={item} className="flex items-start gap-2 text-xs text-[#6E6E73] dark:text-k-text-secondary">
-                                                                        <span className="mt-1.5 block h-1 w-1 rounded-full bg-[#007AFF] dark:bg-violet-400 shrink-0" />
+                                                                        <span className="mt-1.5 block h-1 w-1 rounded-full bg-[#7C3AED] dark:bg-violet-400 shrink-0" />
                                                                         {item}
                                                                     </li>
                                                                 ))}
@@ -856,7 +856,7 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                                                     placeholder="Texto da pergunta..."
                                                                     value={q.label}
                                                                     onChange={(e) => updateQuestion(index, { label: e.target.value })}
-                                                                    className="w-full rounded-lg border border-[#E8E8ED] bg-[#F5F5F7] px-3 py-2 text-sm text-[#1D1D1F] outline-none focus:border-[#007AFF] focus:bg-white transition-all dark:border-k-border-subtle dark:bg-glass-bg dark:text-k-text-primary dark:focus:border-violet-500/50"
+                                                                    className="w-full rounded-lg border border-[#E8E8ED] bg-[#F5F5F7] px-3 py-2 text-sm text-[#1D1D1F] outline-none focus:border-[#7C3AED] focus:bg-white transition-all dark:border-k-border-subtle dark:bg-glass-bg dark:text-k-text-primary dark:focus:border-violet-500/50"
                                                                 />
                                                                 <div className="flex items-center gap-3">
                                                                     <span className="px-2 py-0.5 text-[10px] font-medium rounded-full bg-[#F5F5F7] text-[#6E6E73] dark:rounded-md dark:border dark:bg-surface-elevated dark:text-k-text-tertiary dark:border-k-border-subtle">
@@ -867,7 +867,7 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                                                             type="checkbox"
                                                                             checked={q.required ?? true}
                                                                             onChange={(e) => updateQuestion(index, { required: e.target.checked })}
-                                                                            className="h-3.5 w-3.5 rounded border-[#D2D2D7] text-[#007AFF] accent-[#007AFF] dark:border-k-border-subtle dark:text-violet-600 dark:accent-violet-600"
+                                                                            className="h-3.5 w-3.5 rounded border-[#D2D2D7] text-[#7C3AED] accent-[#7C3AED] dark:border-k-border-subtle dark:text-violet-600 dark:accent-violet-600"
                                                                         />
                                                                         <span className="text-[11px] text-[#6E6E73] dark:text-k-text-secondary">Obrigatório</span>
                                                                     </label>
@@ -892,7 +892,7 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                                                             placeholder={`Opção ${optIdx + 1}`}
                                                                             value={opt.label}
                                                                             onChange={(e) => updateOption(index, optIdx, e.target.value)}
-                                                                            className="flex-1 rounded-lg border border-[#E8E8ED] bg-[#F5F5F7] px-3 py-1.5 text-xs text-[#1D1D1F] outline-none focus:border-[#007AFF] focus:bg-white transition-all dark:border-k-border-subtle dark:bg-glass-bg dark:text-k-text-primary dark:focus:border-violet-500/50"
+                                                                            className="flex-1 rounded-lg border border-[#E8E8ED] bg-[#F5F5F7] px-3 py-1.5 text-xs text-[#1D1D1F] outline-none focus:border-[#7C3AED] focus:bg-white transition-all dark:border-k-border-subtle dark:bg-glass-bg dark:text-k-text-primary dark:focus:border-violet-500/50"
                                                                         />
                                                                         {(q.options || []).length > 2 && (
                                                                             <button
@@ -906,7 +906,7 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                                                 ))}
                                                                 <button
                                                                     onClick={() => addOption(index)}
-                                                                    className="text-[11px] font-semibold text-[#007AFF] hover:text-[#0056B3] transition-colors pl-6 dark:text-violet-400 dark:hover:text-violet-300"
+                                                                    className="text-[11px] font-semibold text-[#7C3AED] hover:text-[#6D28D9] transition-colors pl-6 dark:text-violet-400 dark:hover:text-violet-300"
                                                                 >
                                                                     + Adicionar opção
                                                                 </button>
@@ -948,7 +948,7 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                             <div data-onboarding="form-question-types" className="relative">
                                                 <button
                                                     onClick={() => setShowAddMenu(!showAddMenu)}
-                                                    className="w-full h-11 border-2 border-dashed border-[#D2D2D7] hover:border-[#007AFF]/30 rounded-xl text-sm font-semibold text-[#6E6E73] hover:text-[#007AFF] transition-all flex items-center justify-center gap-2 dark:border-k-border-subtle dark:hover:border-violet-500/30 dark:text-k-text-secondary dark:hover:text-violet-400"
+                                                    className="w-full h-11 border-2 border-dashed border-[#D2D2D7] hover:border-[#7C3AED]/30 rounded-xl text-sm font-semibold text-[#6E6E73] hover:text-[#7C3AED] transition-all flex items-center justify-center gap-2 dark:border-k-border-subtle dark:hover:border-violet-500/30 dark:text-k-text-secondary dark:hover:text-violet-400"
                                                 >
                                                     <Plus size={16} />
                                                     Adicionar Pergunta

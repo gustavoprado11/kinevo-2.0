@@ -424,7 +424,7 @@ function CompareMock() {
 
     const diffStyles = {
         load: { bg: 'bg-[#34C759]/10', text: 'text-[#34C759]' },
-        added: { bg: 'bg-[#007AFF]/10', text: 'text-[#007AFF]' },
+        added: { bg: 'bg-[#7C3AED]/10', text: 'text-[#7C3AED]' },
         removed: { bg: 'bg-[#FF9500]/10', text: 'text-[#FF9500]' },
     }
 

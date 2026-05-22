@@ -163,7 +163,7 @@ function MetricCard({
 }
 
 const metricInputClass =
-    'w-full bg-transparent text-[var(--text-primary)] text-[13px] font-bold tabular-nums focus:outline-none focus:text-[#007AFF] dark:focus:text-violet-400 transition-colors placeholder:text-[var(--text-quaternary)] placeholder:font-medium p-0'
+    'w-full bg-transparent text-[var(--text-primary)] text-[13px] font-bold tabular-nums focus:outline-none focus:text-[#7C3AED] dark:focus:text-violet-400 transition-colors placeholder:text-[var(--text-quaternary)] placeholder:font-medium p-0'
 
 function ReadonlyValue({ value }: { value: string | number }) {
     return (
@@ -200,7 +200,7 @@ function FunctionSelect({
             value={value ?? ''}
             onChange={(e) => onChange((e.target.value || null) as ExerciseFunction | null)}
             aria-label="Função do exercício"
-            className="w-full bg-transparent text-[13px] font-semibold text-[var(--text-primary)] cursor-pointer focus:outline-none focus:text-[#007AFF] dark:focus:text-violet-400 transition-colors p-0 appearance-none pr-3"
+            className="w-full bg-transparent text-[13px] font-semibold text-[var(--text-primary)] cursor-pointer focus:outline-none focus:text-[#7C3AED] dark:focus:text-violet-400 transition-colors p-0 appearance-none pr-3"
             style={{
                 backgroundImage:
                     "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'><path fill='none' stroke='%23999' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round' d='M2.5 4l2.5 2.5L7.5 4'/></svg>\")",

@@ -184,7 +184,7 @@ export function AvaliacoesClient({
                                 setPresetStudentIdForCreate(undefined)
                                 setCreateSessionOpen(true)
                             }}
-                            className="flex items-center gap-2 px-4 py-2 bg-[#007AFF] hover:bg-[#0066D6] text-white text-sm font-medium rounded-full transition-all dark:bg-violet-600 dark:hover:bg-violet-500 dark:rounded-xl"
+                            className="flex items-center gap-2 px-4 py-2 bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-sm font-medium rounded-full transition-all dark:bg-violet-600 dark:hover:bg-violet-500 dark:rounded-xl"
                         >
                             <Plus size={14} />
                             Nova avaliação
@@ -248,9 +248,9 @@ export function AvaliacoesClient({
                 {upcomingNext7d.length > 0 && (
                     <div className="bg-white rounded-xl border border-[#D2D2D7] shadow-[0_1px_3px_rgba(0,0,0,0.08)] overflow-hidden dark:bg-transparent dark:border-k-border-subtle dark:shadow-none dark:rounded-none">
                         <div className="flex items-center gap-2 px-5 py-4 border-b border-[#E8E8ED] dark:border-k-border-subtle">
-                            <Send size={14} className="text-[#007AFF] dark:text-violet-400" />
+                            <Send size={14} className="text-[#7C3AED] dark:text-violet-400" />
                             <h2 className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary">Próximas</h2>
-                            <span className="px-1.5 py-0.5 rounded-full bg-[#007AFF]/10 text-[10px] font-bold text-[#007AFF] border border-[#007AFF]/20 dark:bg-violet-500/10 dark:text-violet-400 dark:border-violet-500/20">
+                            <span className="px-1.5 py-0.5 rounded-full bg-[#7C3AED]/10 text-[10px] font-bold text-[#7C3AED] border border-[#7C3AED]/20 dark:bg-violet-500/10 dark:text-violet-400 dark:border-violet-500/20">
                                 {upcomingNext7d.length}
                             </span>
                         </div>
@@ -276,7 +276,7 @@ export function AvaliacoesClient({
                             </div>
                             <button
                                 onClick={() => router.push('/avaliacoes/templates')}
-                                className="text-xs text-[#007AFF] hover:text-[#0056B3] transition-colors font-medium dark:text-k-text-quaternary dark:hover:text-k-text-secondary"
+                                className="text-xs text-[#7C3AED] hover:text-[#6D28D9] transition-colors font-medium dark:text-k-text-quaternary dark:hover:text-k-text-secondary"
                             >
                                 Gerenciar →
                             </button>
@@ -328,7 +328,7 @@ export function AvaliacoesClient({
                                         onClick={() => setAssessmentFilter(f.key)}
                                         className={`px-3 py-1.5 text-xs font-medium rounded-full transition-all ${
                                             assessmentFilter === f.key
-                                                ? 'bg-[#007AFF] text-white dark:bg-violet-500/10 dark:text-violet-400 dark:border dark:border-violet-500/30'
+                                                ? 'bg-[#7C3AED] text-white dark:bg-violet-500/10 dark:text-violet-400 dark:border dark:border-violet-500/30'
                                                 : 'bg-[#F5F5F7] text-[#6E6E73] hover:bg-[#E8E8ED] dark:bg-glass-bg dark:text-k-text-quaternary dark:border-k-border-subtle dark:hover:text-k-text-secondary'
                                         }`}
                                     >
@@ -366,7 +366,7 @@ export function AvaliacoesClient({
                         </p>
                         <button
                             onClick={() => router.push('/avaliacoes/templates/new')}
-                            className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-[#007AFF] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#0066D6] dark:bg-violet-600 dark:hover:bg-violet-500"
+                            className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-[#7C3AED] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#6D28D9] dark:bg-violet-600 dark:hover:bg-violet-500"
                         >
                             <Plus className="h-3.5 w-3.5" />
                             Criar template de avaliação

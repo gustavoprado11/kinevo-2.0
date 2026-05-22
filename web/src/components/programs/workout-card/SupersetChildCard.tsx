@@ -67,7 +67,7 @@ export function SupersetChildCard({
                                 <button
                                     type="button"
                                     onClick={openVideo}
-                                    className="text-[var(--text-quaternary)] hover:text-[#007AFF] dark:hover:text-violet-400 transition-colors shrink-0"
+                                    className="text-[var(--text-quaternary)] hover:text-[#7C3AED] dark:hover:text-violet-400 transition-colors shrink-0"
                                     title="Ver vídeo demonstrativo"
                                     aria-label="Ver vídeo demonstrativo"
                                 >

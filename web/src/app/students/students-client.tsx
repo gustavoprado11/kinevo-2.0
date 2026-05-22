@@ -265,8 +265,8 @@ export function StudentsClient({
                     {label}
                     {isActive && (
                         sortDir === 'asc'
-                            ? <ChevronUp size={12} className="text-[#007AFF] dark:text-violet-400" />
-                            : <ChevronDown size={12} className="text-[#007AFF] dark:text-violet-400" />
+                            ? <ChevronUp size={12} className="text-[#7C3AED] dark:text-violet-400" />
+                            : <ChevronDown size={12} className="text-[#7C3AED] dark:text-violet-400" />
                     )}
                 </div>
             </th>
@@ -290,7 +290,7 @@ export function StudentsClient({
                 <Button
                     data-onboarding="students-add-btn"
                     onClick={() => setIsModalOpen(true)}
-                    className="gap-2 bg-[#007AFF] dark:bg-violet-600 hover:bg-[#0066D6] dark:hover:bg-violet-500 rounded-full dark:rounded-xl px-5 py-2 text-sm font-medium shadow-none dark:shadow-lg dark:shadow-violet-500/20 transition-all"
+                    className="gap-2 bg-[#7C3AED] dark:bg-violet-600 hover:bg-[#6D28D9] dark:hover:bg-violet-500 rounded-full dark:rounded-xl px-5 py-2 text-sm font-medium shadow-none dark:shadow-lg dark:shadow-violet-500/20 transition-all"
                 >
                     <Plus size={14} strokeWidth={2.5} />
                     Novo Aluno
@@ -306,7 +306,7 @@ export function StudentsClient({
                         placeholder="Buscar por nome ou email..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full rounded-lg border border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-glass-bg py-2.5 pl-10 pr-4 text-sm text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:outline-none focus:border-[#007AFF] dark:focus:border-violet-500/40 focus:ring-1 focus:ring-[#007AFF]/20 dark:focus:ring-2 dark:focus:ring-violet-500/10 transition-all"
+                        className="w-full rounded-lg border border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-glass-bg py-2.5 pl-10 pr-4 text-sm text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:outline-none focus:border-[#7C3AED] dark:focus:border-violet-500/40 focus:ring-1 focus:ring-[#7C3AED]/20 dark:focus:ring-2 dark:focus:ring-violet-500/10 transition-all"
                     />
                 </div>
             </div>
@@ -319,7 +319,7 @@ export function StudentsClient({
                         onClick={() => setActiveFilter(f.key)}
                         className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap ${
                             activeFilter === f.key
-                                ? 'bg-[#007AFF] dark:bg-violet-600/15 text-white dark:text-violet-400 border border-transparent dark:border-violet-500/30'
+                                ? 'bg-[#7C3AED] dark:bg-violet-600/15 text-white dark:text-violet-400 border border-transparent dark:border-violet-500/30'
                                 : 'bg-white dark:bg-transparent text-[#6E6E73] dark:text-k-text-quaternary border border-[#D2D2D7] dark:border-transparent hover:bg-[#F5F5F7] dark:hover:bg-glass-bg hover:text-[#1D1D1F] dark:hover:text-k-text-tertiary'
                         }`}
                     >
@@ -358,7 +358,7 @@ export function StudentsClient({
                                 </p>
                                 <Button
                                     onClick={() => setIsModalOpen(true)}
-                                    className="bg-[#007AFF] dark:bg-violet-600 hover:bg-[#0066D6] dark:hover:bg-violet-500 rounded-full dark:rounded-xl px-5 py-2 text-sm font-medium"
+                                    className="bg-[#7C3AED] dark:bg-violet-600 hover:bg-[#6D28D9] dark:hover:bg-violet-500 rounded-full dark:rounded-xl px-5 py-2 text-sm font-medium"
                                 >
                                     Cadastrar primeiro aluno
                                 </Button>

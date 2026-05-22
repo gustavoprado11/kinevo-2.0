@@ -72,7 +72,7 @@ export function WorkoutItemCard({
                             onChange={(e) => onUpdate({ notes: e.target.value })}
                             placeholder="Escreva uma nota..."
                             rows={2}
-                            className="w-full px-3 py-2 bg-[#F9F9FB] dark:bg-surface-inset border border-[#E8E8ED] dark:border-k-border-subtle rounded-lg text-k-text-primary placeholder:text-k-text-quaternary focus:outline-none focus:border-[#007AFF]/40 dark:focus:border-violet-500/40 text-sm resize-none"
+                            className="w-full px-3 py-2 bg-[#F9F9FB] dark:bg-surface-inset border border-[#E8E8ED] dark:border-k-border-subtle rounded-lg text-k-text-primary placeholder:text-k-text-quaternary focus:outline-none focus:border-[#7C3AED]/40 dark:focus:border-violet-500/40 text-sm resize-none"
                         />
                     )}
                 </div>

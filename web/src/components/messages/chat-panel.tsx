@@ -183,7 +183,7 @@ export function ChatPanel({ studentId, studentName, studentAvatar, onBack }: Cha
 
                 <Link
                     href={`/students/${studentId}`}
-                    className="text-xs font-semibold text-[#007AFF] dark:text-violet-400 hover:underline"
+                    className="text-xs font-semibold text-[#7C3AED] dark:text-violet-400 hover:underline"
                 >
                     Ver perfil
                 </Link>
@@ -201,7 +201,7 @@ export function ChatPanel({ studentId, studentName, studentAvatar, onBack }: Cha
                         <button
                             onClick={loadMore}
                             disabled={isLoadingMore}
-                            className="text-xs text-[#007AFF] dark:text-violet-400 hover:underline disabled:opacity-50 flex items-center gap-1"
+                            className="text-xs text-[#7C3AED] dark:text-violet-400 hover:underline disabled:opacity-50 flex items-center gap-1"
                         >
                             {isLoadingMore && <Loader2 size={12} className="animate-spin" />}
                             Carregar anteriores
@@ -235,7 +235,7 @@ export function ChatPanel({ studentId, studentName, studentAvatar, onBack }: Cha
                             <div className={`flex ${msg.sender_type === 'trainer' ? 'justify-end' : 'justify-start'} mb-1`}>
                                 <div className={`max-w-[75%] rounded-2xl px-3.5 py-2 ${
                                     msg.sender_type === 'trainer'
-                                        ? 'bg-[#007AFF] dark:bg-violet-600 text-white rounded-br-md'
+                                        ? 'bg-[#7C3AED] dark:bg-violet-600 text-white rounded-br-md'
                                         : 'bg-white dark:bg-surface-card text-[#1D1D1F] dark:text-white rounded-bl-md shadow-sm border border-[#D2D2D7]/50 dark:border-k-border-subtle'
                                 }`}>
                                     {/* Image */}

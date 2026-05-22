@@ -79,7 +79,7 @@ export function WorkoutFeedbackModal({
                                     }
                                     className={`flex flex-col items-center gap-0.5 rounded-xl p-2 text-center transition-all ${
                                         selectedRpe === option.value
-                                            ? 'bg-[#007AFF]/10 dark:bg-violet-600/20 border-2 border-[#007AFF] dark:border-violet-500/40 scale-105'
+                                            ? 'bg-[#7C3AED]/10 dark:bg-violet-600/20 border-2 border-[#7C3AED] dark:border-violet-500/40 scale-105'
                                             : 'bg-[#F5F5F7] dark:bg-glass-bg border border-[#E8E8ED] dark:border-transparent hover:bg-[#ECECF0] dark:hover:bg-glass-bg-hover'
                                     }`}
                                 >
@@ -91,7 +91,7 @@ export function WorkoutFeedbackModal({
                             ))}
                         </div>
                         {selectedRpe && (
-                            <p className="mt-2 text-center text-xs text-[#007AFF] dark:text-violet-400">
+                            <p className="mt-2 text-center text-xs text-[#7C3AED] dark:text-violet-400">
                                 {RPE_OPTIONS[selectedRpe - 1].label}
                             </p>
                         )}
@@ -107,7 +107,7 @@ export function WorkoutFeedbackModal({
                             onChange={(e) => setFeedback(e.target.value)}
                             placeholder="Como foi o treino?"
                             rows={3}
-                            className="w-full rounded-xl border border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-glass-bg px-4 py-3 text-sm text-[#1D1D1F] dark:text-foreground placeholder:text-[#AEAEB2] dark:placeholder:text-muted-foreground/40 focus:border-[#007AFF] dark:focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-[#007AFF]/20 dark:focus:ring-violet-500/50 resize-none"
+                            className="w-full rounded-xl border border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-glass-bg px-4 py-3 text-sm text-[#1D1D1F] dark:text-foreground placeholder:text-[#AEAEB2] dark:placeholder:text-muted-foreground/40 focus:border-[#7C3AED] dark:focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-[#7C3AED]/20 dark:focus:ring-violet-500/50 resize-none"
                         />
                     </div>
                 </div>
@@ -124,7 +124,7 @@ export function WorkoutFeedbackModal({
                     <button
                         onClick={handleConfirm}
                         disabled={isSubmitting}
-                        className="flex-1 rounded-full bg-[#007AFF] dark:bg-violet-600 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#0066D6] dark:hover:bg-violet-500 disabled:opacity-40"
+                        className="flex-1 rounded-full bg-[#7C3AED] dark:bg-violet-600 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#6D28D9] dark:hover:bg-violet-500 disabled:opacity-40"
                     >
                         {isSubmitting ? (
                             <span className="flex items-center justify-center gap-2">

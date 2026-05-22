@@ -117,7 +117,7 @@ export function StudentAccessDialog({ isOpen, onClose, studentData }: StudentAcc
 
                         <button
                             onClick={onClose}
-                            className="w-full pt-4 text-[#007AFF] dark:text-muted-foreground hover:text-[#0056B3] dark:hover:text-foreground/80 text-sm font-medium transition-colors"
+                            className="w-full pt-4 text-[#7C3AED] dark:text-muted-foreground hover:text-[#6D28D9] dark:hover:text-foreground/80 text-sm font-medium transition-colors"
                         >
                             Fechar e voltar para a lista
                         </button>

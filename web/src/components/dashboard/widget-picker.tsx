@@ -24,7 +24,7 @@ export function WidgetPicker() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 12 }}
                 transition={{ duration: 0.25 }}
-                className="mb-5 rounded-xl border border-[#007AFF]/20 dark:border-primary/20 bg-[#007AFF]/[0.03] dark:bg-primary/5 p-5"
+                className="mb-5 rounded-xl border border-[#7C3AED]/20 dark:border-primary/20 bg-[#7C3AED]/[0.03] dark:bg-primary/5 p-5"
             >
                 <div className="flex items-center justify-between mb-4">
                     <div>
@@ -45,7 +45,7 @@ export function WidgetPicker() {
                         </button>
                         <button
                             onClick={() => setCustomizing(false)}
-                            className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-medium bg-[#007AFF] text-white rounded-lg hover:bg-[#0056B3] transition-colors shadow-sm"
+                            className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-medium bg-[#7C3AED] text-white rounded-lg hover:bg-[#6D28D9] transition-colors shadow-sm"
                         >
                             <Check className="w-3 h-3" />
                             Concluir
@@ -77,13 +77,13 @@ export function WidgetPicker() {
                                     isActive
                                         ? isRequired
                                             ? 'border-[#E8E8ED] dark:border-k-border-subtle bg-[#F5F5F7] dark:bg-muted/50 opacity-60 cursor-default'
-                                            : 'border-[#007AFF]/30 dark:border-primary/30 bg-[#007AFF]/5 dark:bg-primary/10 hover:bg-[#007AFF]/10'
-                                        : 'border-[#E8E8ED] dark:border-k-border-subtle bg-white dark:bg-surface-card hover:border-[#007AFF]/30 dark:hover:border-primary/30 hover:bg-[#007AFF]/5'
+                                            : 'border-[#7C3AED]/30 dark:border-primary/30 bg-[#7C3AED]/5 dark:bg-primary/10 hover:bg-[#7C3AED]/10'
+                                        : 'border-[#E8E8ED] dark:border-k-border-subtle bg-white dark:bg-surface-card hover:border-[#7C3AED]/30 dark:hover:border-primary/30 hover:bg-[#7C3AED]/5'
                                 }`}
                             >
                                 <div className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 ${
                                     isActive
-                                        ? 'bg-[#007AFF] dark:bg-primary'
+                                        ? 'bg-[#7C3AED] dark:bg-primary'
                                         : 'border border-[#D2D2D7] dark:border-k-border-primary'
                                 }`}>
                                     {isActive ? (

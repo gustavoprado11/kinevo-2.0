@@ -217,7 +217,7 @@ export function TemplatesClient({ trainer, templates: initialTemplates, mode = '
                 <div className="flex items-center gap-3">
                     <button
                         onClick={() => router.push(backHref)}
-                        className="p-1.5 rounded-lg text-[#007AFF] hover:text-[#0056B3] hover:bg-[#F5F5F7] transition-all dark:text-k-text-quaternary dark:hover:text-k-text-secondary dark:hover:bg-glass-bg"
+                        className="p-1.5 rounded-lg text-[#7C3AED] hover:text-[#6D28D9] hover:bg-[#F5F5F7] transition-all dark:text-k-text-quaternary dark:hover:text-k-text-secondary dark:hover:bg-glass-bg"
                     >
                         <ArrowLeft size={18} />
                     </button>
@@ -246,7 +246,7 @@ export function TemplatesClient({ trainer, templates: initialTemplates, mode = '
                         placeholder="Buscar templates..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full rounded-lg border border-[#D2D2D7] bg-white pl-10 pr-4 py-2.5 text-sm text-[#1D1D1F] placeholder:text-[#AEAEB2] outline-none focus:border-[#007AFF] focus:ring-1 focus:ring-[#007AFF]/20 transition-all dark:rounded-xl dark:border-k-border-subtle dark:bg-glass-bg dark:text-k-text-primary dark:placeholder:text-k-text-quaternary dark:focus:border-violet-500/50 dark:focus:ring-0"
+                        className="w-full rounded-lg border border-[#D2D2D7] bg-white pl-10 pr-4 py-2.5 text-sm text-[#1D1D1F] placeholder:text-[#AEAEB2] outline-none focus:border-[#7C3AED] focus:ring-1 focus:ring-[#7C3AED]/20 transition-all dark:rounded-xl dark:border-k-border-subtle dark:bg-glass-bg dark:text-k-text-primary dark:placeholder:text-k-text-quaternary dark:focus:border-violet-500/50 dark:focus:ring-0"
                     />
                 </div>
             )}
@@ -268,7 +268,7 @@ export function TemplatesClient({ trainer, templates: initialTemplates, mode = '
                         </p>
                         <button
                             onClick={() => router.push(builderHref)}
-                            className="text-xs font-medium text-[#007AFF] hover:text-[#0056B3] dark:text-violet-400 dark:hover:text-violet-300 transition-colors"
+                            className="text-xs font-medium text-[#7C3AED] hover:text-[#6D28D9] dark:text-violet-400 dark:hover:text-violet-300 transition-colors"
                         >
                             Criar primeiro template
                         </button>
@@ -306,7 +306,7 @@ export function TemplatesClient({ trainer, templates: initialTemplates, mode = '
                                             <Icon size={16} className={config.color} />
                                         </div>
                                         <div className="min-w-0">
-                                            <h3 className="text-sm font-semibold text-[#1D1D1F] group-hover:text-[#007AFF] dark:text-k-text-primary dark:group-hover:text-violet-400 transition-colors truncate">
+                                            <h3 className="text-sm font-semibold text-[#1D1D1F] group-hover:text-[#7C3AED] dark:text-k-text-primary dark:group-hover:text-violet-400 transition-colors truncate">
                                                 {cleanTemplateName(template.title)}
                                             </h3>
                                             <div className="flex items-center gap-2 mt-0.5">
@@ -321,7 +321,7 @@ export function TemplatesClient({ trainer, templates: initialTemplates, mode = '
                                                     </span>
                                                 )}
                                                 {template.created_source === 'ai_assisted' && (
-                                                    <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-[#007AFF]/10 text-[#007AFF] border border-[#007AFF]/20 dark:bg-violet-500/10 dark:text-violet-400 dark:border-violet-500/20">
+                                                    <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-[#7C3AED]/10 text-[#7C3AED] border border-[#7C3AED]/20 dark:bg-violet-500/10 dark:text-violet-400 dark:border-violet-500/20">
                                                         IA
                                                     </span>
                                                 )}
@@ -350,7 +350,7 @@ export function TemplatesClient({ trainer, templates: initialTemplates, mode = '
                                                 </div>
                                             ))}
                                             {sections.length > 3 && (
-                                                <span className="text-[10px] text-[#007AFF] font-medium pl-6 dark:text-k-text-quaternary dark:font-normal">
+                                                <span className="text-[10px] text-[#7C3AED] font-medium pl-6 dark:text-k-text-quaternary dark:font-normal">
                                                     +{sections.length - 3} mais...
                                                 </span>
                                             )}
@@ -367,7 +367,7 @@ export function TemplatesClient({ trainer, templates: initialTemplates, mode = '
                                                 </div>
                                             ))}
                                             {questions.length > 3 && (
-                                                <span className="text-[10px] text-[#007AFF] font-medium pl-6 dark:text-k-text-quaternary dark:font-normal">
+                                                <span className="text-[10px] text-[#7C3AED] font-medium pl-6 dark:text-k-text-quaternary dark:font-normal">
                                                     +{questions.length - 3} mais...
                                                 </span>
                                             )}
@@ -390,7 +390,7 @@ export function TemplatesClient({ trainer, templates: initialTemplates, mode = '
                                                 e.stopPropagation()
                                                 router.push(`/forms?assign=${template.id}`)
                                             }}
-                                            className="text-[#007AFF] hover:text-[#0056B3] dark:text-violet-400 dark:hover:text-violet-300 opacity-0 group-hover:opacity-100 transition-all font-medium"
+                                            className="text-[#7C3AED] hover:text-[#6D28D9] dark:text-violet-400 dark:hover:text-violet-300 opacity-0 group-hover:opacity-100 transition-all font-medium"
                                         >
                                             Enviar para aluno →
                                         </button>

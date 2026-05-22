@@ -78,7 +78,7 @@ export function ConversationList({
                         Mensagens
                     </h2>
                     {totalUnread > 0 && (
-                        <span className="flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[10px] font-bold rounded-full bg-[#007AFF] dark:bg-violet-600 text-white">
+                        <span className="flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[10px] font-bold rounded-full bg-[#7C3AED] dark:bg-violet-600 text-white">
                             {totalUnread > 99 ? '99+' : totalUnread}
                         </span>
                     )}
@@ -92,7 +92,7 @@ export function ConversationList({
                         placeholder="Buscar por nome..."
                         value={search}
                         onChange={e => setSearch(e.target.value)}
-                        className="w-full pl-8 pr-3 py-2.5 text-sm bg-white dark:bg-glass-bg rounded-lg border border-[#D2D2D7] dark:border-k-border-subtle text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary outline-none focus:border-[#007AFF] dark:focus:border-violet-500/40 focus:ring-1 focus:ring-[#007AFF]/20 dark:focus:ring-violet-500/10 transition-all"
+                        className="w-full pl-8 pr-3 py-2.5 text-sm bg-white dark:bg-glass-bg rounded-lg border border-[#D2D2D7] dark:border-k-border-subtle text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary outline-none focus:border-[#7C3AED] dark:focus:border-violet-500/40 focus:ring-1 focus:ring-[#7C3AED]/20 dark:focus:ring-violet-500/10 transition-all"
                     />
                 </div>
             </div>
@@ -125,7 +125,7 @@ export function ConversationList({
                                 onClick={() => onSelect(conv.student.id)}
                                 className={`w-full flex items-center gap-3 px-5 py-3 text-left transition-colors border-b border-[#F5F5F7] dark:border-k-border-subtle/50 last:border-b-0 ${
                                     isSelected
-                                        ? 'bg-[#007AFF]/8 dark:bg-violet-600/10'
+                                        ? 'bg-[#7C3AED]/8 dark:bg-violet-600/10'
                                         : 'hover:bg-[#F5F5F7] dark:hover:bg-white/[0.03]'
                                 }`}
                             >
@@ -145,7 +145,7 @@ export function ConversationList({
                                         </div>
                                     )}
                                     {hasUnread && (
-                                        <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-[#007AFF] dark:bg-violet-500 border-2 border-white dark:border-surface-card" />
+                                        <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-[#7C3AED] dark:bg-violet-500 border-2 border-white dark:border-surface-card" />
                                     )}
                                 </div>
 
@@ -175,7 +175,7 @@ export function ConversationList({
                                             </p>
                                         )}
                                         {hasUnread && (
-                                            <span className="flex-shrink-0 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold rounded-full bg-[#007AFF] dark:bg-violet-600 text-white">
+                                            <span className="flex-shrink-0 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold rounded-full bg-[#7C3AED] dark:bg-violet-600 text-white">
                                                 {conv.unreadCount > 9 ? '9+' : conv.unreadCount}
                                             </span>
                                         )}

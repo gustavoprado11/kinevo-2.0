@@ -67,11 +67,11 @@ function DaySelectorButtons({
 
                 let colorClass = ''
                 if (isSelected) {
-                    colorClass = "bg-[#007AFF] dark:bg-violet-600 text-white border-[#007AFF] dark:border-violet-500 shadow-sm"
+                    colorClass = "bg-[#7C3AED] dark:bg-violet-600 text-white border-[#7C3AED] dark:border-violet-500 shadow-sm"
                 } else if (isOccupied) {
                     colorClass = "bg-[#E5E5EA] dark:bg-glass-bg text-[#8E8E93] dark:text-k-text-quaternary border-transparent cursor-not-allowed"
                 } else {
-                    colorClass = "bg-[#E5E5EA] dark:bg-transparent text-[#8E8E93] dark:text-k-text-tertiary border-transparent hover:bg-[#007AFF]/10 hover:text-[#007AFF] dark:hover:bg-glass-bg-active dark:hover:text-k-text-primary"
+                    colorClass = "bg-[#E5E5EA] dark:bg-transparent text-[#8E8E93] dark:text-k-text-tertiary border-transparent hover:bg-[#7C3AED]/10 hover:text-[#7C3AED] dark:hover:bg-glass-bg-active dark:hover:text-k-text-primary"
                 }
 
                 return (
@@ -153,12 +153,12 @@ function SupersetConnector({
     return (
         <div className="relative flex items-center justify-center py-1 group">
             {/* Connector line */}
-            <div className="absolute inset-x-4 h-px bg-[#E8E8ED] dark:bg-muted/50 group-hover:bg-[#007AFF]/30 dark:group-hover:bg-violet-500/30 transition-colors" />
+            <div className="absolute inset-x-4 h-px bg-[#E8E8ED] dark:bg-muted/50 group-hover:bg-[#7C3AED]/30 dark:group-hover:bg-violet-500/30 transition-colors" />
 
             {/* Connect button */}
             <button
                 onClick={onConnect}
-                className="relative z-sticky flex items-center gap-1.5 px-2 py-1 rounded-full bg-white dark:bg-slate-900 border border-[#D2D2D7] dark:border-slate-800 hover:bg-[#007AFF] dark:hover:bg-violet-600 hover:border-[#007AFF] dark:hover:border-violet-500 text-[#6E6E73] dark:text-slate-400 hover:text-white dark:hover:text-foreground transition-all duration-200 opacity-0 group-hover:opacity-100 text-xs font-medium"
+                className="relative z-sticky flex items-center gap-1.5 px-2 py-1 rounded-full bg-white dark:bg-slate-900 border border-[#D2D2D7] dark:border-slate-800 hover:bg-[#7C3AED] dark:hover:bg-violet-600 hover:border-[#7C3AED] dark:hover:border-violet-500 text-[#6E6E73] dark:text-slate-400 hover:text-white dark:hover:text-foreground transition-all duration-200 opacity-0 group-hover:opacity-100 text-xs font-medium"
             >
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -306,18 +306,18 @@ export function WorkoutPanel({
                                 onBlur={handleNameSave}
                                 onKeyDown={(e) => e.key === 'Enter' && handleNameSave()}
                                 autoFocus
-                                className="px-0 py-1 bg-transparent border-0 border-b border-[#007AFF] dark:border-violet-500 rounded-none text-lg text-[#1D1D1F] dark:text-k-text-primary font-bold focus:outline-none focus:ring-0 placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary w-auto min-w-[200px]"
+                                className="px-0 py-1 bg-transparent border-0 border-b border-[#7C3AED] dark:border-violet-500 rounded-none text-lg text-[#1D1D1F] dark:text-k-text-primary font-bold focus:outline-none focus:ring-0 placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary w-auto min-w-[200px]"
                                 style={{ transformOrigin: 'left center' }}
                             />
                         ) : (
                             <button
                                 ref={titleRef as React.RefObject<HTMLButtonElement>}
                                 onClick={() => { setTempName(workout.name); setIsEditingName(true) }}
-                                className="font-bold text-lg text-[#1D1D1F] dark:text-k-text-primary hover:text-[#007AFF] dark:hover:text-violet-400 flex items-center gap-2 group will-change-transform"
+                                className="font-bold text-lg text-[#1D1D1F] dark:text-k-text-primary hover:text-[#7C3AED] dark:hover:text-violet-400 flex items-center gap-2 group will-change-transform"
                                 style={{ transformOrigin: 'left center' }}
                             >
                                 {workout.name}
-                                <svg className="w-3.5 h-3.5 text-[#AEAEB2] dark:text-k-text-quaternary group-hover:text-[#007AFF] dark:group-hover:text-violet-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className="w-3.5 h-3.5 text-[#AEAEB2] dark:text-k-text-quaternary group-hover:text-[#7C3AED] dark:group-hover:text-violet-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                 </svg>
                             </button>

@@ -73,8 +73,8 @@ export const ExerciseSubstitutesSection = memo(function ExerciseSubstitutesSecti
                 onClick={() => setIsOpen(!isOpen)}
                 className="flex items-center gap-2 text-[10px] font-semibold transition-colors group select-none"
             >
-                <Repeat className={`w-3 h-3 ${isOpen ? 'text-[#007AFF] dark:text-violet-400' : 'text-[#6E6E73] dark:text-k-text-tertiary group-hover:text-[#1D1D1F] dark:group-hover:text-k-text-primary'}`} />
-                <span className={isOpen || selectedCount > 0 ? 'text-[#007AFF] dark:text-violet-400' : 'text-[#6E6E73] dark:text-k-text-tertiary group-hover:text-[#1D1D1F] dark:group-hover:text-k-text-secondary'}>
+                <Repeat className={`w-3 h-3 ${isOpen ? 'text-[#7C3AED] dark:text-violet-400' : 'text-[#6E6E73] dark:text-k-text-tertiary group-hover:text-[#1D1D1F] dark:group-hover:text-k-text-primary'}`} />
+                <span className={isOpen || selectedCount > 0 ? 'text-[#7C3AED] dark:text-violet-400' : 'text-[#6E6E73] dark:text-k-text-tertiary group-hover:text-[#1D1D1F] dark:group-hover:text-k-text-secondary'}>
                     {selectedCount > 0 ? `Substituições (${selectedCount})` : 'Substituições (nenhuma)'}
                 </span>
             </button>
@@ -88,7 +88,7 @@ export const ExerciseSubstitutesSection = memo(function ExerciseSubstitutesSecti
                                 value={query}
                                 onChange={(e) => setQuery(e.target.value)}
                                 placeholder="Buscar exercício..."
-                                className="w-full h-8 pl-8 pr-3 bg-white dark:bg-glass-bg border border-[#D2D2D7] dark:border-transparent rounded-lg text-[#1D1D1F] dark:text-k-text-primary text-xs placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:outline-none focus:ring-1 focus:ring-[#007AFF]/30 dark:focus:ring-violet-500/50 transition-all font-medium"
+                                className="w-full h-8 pl-8 pr-3 bg-white dark:bg-glass-bg border border-[#D2D2D7] dark:border-transparent rounded-lg text-[#1D1D1F] dark:text-k-text-primary text-xs placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:outline-none focus:ring-1 focus:ring-[#7C3AED]/30 dark:focus:ring-violet-500/50 transition-all font-medium"
                             />
                             <Search className="w-3.5 h-3.5 text-k-text-quaternary absolute left-2.5 top-2.5" />
                         </div>
@@ -106,12 +106,12 @@ export const ExerciseSubstitutesSection = memo(function ExerciseSubstitutesSecti
                                             key={exercise.id}
                                             onClick={() => toggleSubstitute(exercise.id)}
                                             className={`w-full text-left flex items-center justify-between p-2 rounded-lg transition-all group/item ${isSelected
-                                                ? 'bg-[#007AFF]/10 dark:bg-violet-500/10 border border-[#007AFF]/20 dark:border-violet-500/20'
+                                                ? 'bg-[#7C3AED]/10 dark:bg-violet-500/10 border border-[#7C3AED]/20 dark:border-violet-500/20'
                                                 : 'hover:bg-[#F5F5F7] dark:hover:bg-glass-bg border border-transparent hover:border-[#E8E8ED] dark:hover:border-k-border-subtle'
                                                 }`}
                                         >
                                             <div className="min-w-0 flex-1 pr-2">
-                                                <div className={`text-xs font-medium truncate transition-colors ${isSelected ? 'text-[#007AFF] dark:text-violet-300' : 'text-[#1D1D1F] dark:text-k-text-secondary group-hover/item:text-[#1D1D1F] dark:group-hover/item:text-k-text-primary'}`}>
+                                                <div className={`text-xs font-medium truncate transition-colors ${isSelected ? 'text-[#7C3AED] dark:text-violet-300' : 'text-[#1D1D1F] dark:text-k-text-secondary group-hover/item:text-[#1D1D1F] dark:group-hover/item:text-k-text-primary'}`}>
                                                     {exercise.name}
                                                 </div>
                                                 <div className="text-[9px] text-k-text-quaternary truncate mt-0.5">
@@ -120,7 +120,7 @@ export const ExerciseSubstitutesSection = memo(function ExerciseSubstitutesSecti
                                             </div>
 
                                             {isSelected && (
-                                                <div className="text-[#007AFF] dark:text-violet-400 animate-in zoom-in-50 duration-200">
+                                                <div className="text-[#7C3AED] dark:text-violet-400 animate-in zoom-in-50 duration-200">
                                                     <Check className="w-3.5 h-3.5" />
                                                 </div>
                                             )}

@@ -55,7 +55,7 @@ export function PastWorkoutSelector({ workouts, selectedId, onSelect, isLoading 
         <div ref={ref} className="relative px-3 py-2">
             <button
                 onClick={() => setOpen(!open)}
-                className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-[#E8E8ED] dark:border-k-border-subtle bg-white dark:bg-surface-card text-left hover:border-[#007AFF]/30 dark:hover:border-violet-500/30 transition-all"
+                className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-[#E8E8ED] dark:border-k-border-subtle bg-white dark:bg-surface-card text-left hover:border-[#7C3AED]/30 dark:hover:border-violet-500/30 transition-all"
             >
                 <div className="min-w-0">
                     {selected ? (
@@ -93,7 +93,7 @@ export function PastWorkoutSelector({ workouts, selectedId, onSelect, isLoading 
                                     onClick={() => { onSelect(w.workoutId); setOpen(false) }}
                                     className={`w-full text-left px-3 py-2.5 text-xs transition-colors ${
                                         w.workoutId === selectedId
-                                            ? 'bg-[#007AFF]/5 dark:bg-violet-500/10 text-[#007AFF] dark:text-violet-400 font-semibold'
+                                            ? 'bg-[#7C3AED]/5 dark:bg-violet-500/10 text-[#7C3AED] dark:text-violet-400 font-semibold'
                                             : 'text-[#1D1D1F] dark:text-k-text-primary hover:bg-[#F5F5F7] dark:hover:bg-glass-bg'
                                     }`}
                                 >

@@ -141,7 +141,7 @@ export function UpcomingAppointmentsWidget({ appointments, studentsById }: Props
                                                     unoptimized
                                                 />
                                             ) : (
-                                                <span className="text-sm font-bold text-[#007AFF] dark:text-primary">
+                                                <span className="text-sm font-bold text-[#7C3AED] dark:text-primary">
                                                     {studentInitial(studentName)}
                                                 </span>
                                             )}

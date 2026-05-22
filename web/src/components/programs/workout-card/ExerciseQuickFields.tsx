@@ -24,8 +24,8 @@ export const ExerciseQuickFields = memo(function ExerciseQuickFields({
         ? 'block text-[9px] font-bold text-[#8E8E93] dark:text-k-text-tertiary mb-0.5'
         : 'block text-[10px] font-bold text-[#8E8E93] dark:text-k-text-tertiary mb-1'
     const inputClass = compact
-        ? 'w-full bg-transparent text-[#1C1C1E] dark:text-k-text-primary text-xs font-semibold focus:outline-none focus:text-[#007AFF] dark:focus:text-violet-400 transition-colors placeholder:text-k-border-subtle p-0'
-        : 'w-full bg-transparent text-[#1C1C1E] dark:text-k-text-primary text-sm font-semibold focus:outline-none focus:text-[#007AFF] dark:focus:text-violet-400 transition-colors placeholder:text-k-border-subtle p-0'
+        ? 'w-full bg-transparent text-[#1C1C1E] dark:text-k-text-primary text-xs font-semibold focus:outline-none focus:text-[#7C3AED] dark:focus:text-violet-400 transition-colors placeholder:text-k-border-subtle p-0'
+        : 'w-full bg-transparent text-[#1C1C1E] dark:text-k-text-primary text-sm font-semibold focus:outline-none focus:text-[#7C3AED] dark:focus:text-violet-400 transition-colors placeholder:text-k-border-subtle p-0'
 
     return (
         <div className={compact ? 'grid grid-cols-3 gap-1.5' : 'grid grid-cols-1 sm:grid-cols-3 gap-2.5'}>

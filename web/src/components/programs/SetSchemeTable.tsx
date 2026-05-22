@@ -300,7 +300,7 @@ function RoundsStepper({
                 Rodadas
             </span>
             {readonly ? (
-                <span className="px-1 text-sm font-extrabold tabular-nums text-[#007AFF] dark:text-violet-400">
+                <span className="px-1 text-sm font-extrabold tabular-nums text-[#7C3AED] dark:text-violet-400">
                     {rounds}
                 </span>
             ) : (
@@ -310,11 +310,11 @@ function RoundsStepper({
                         onClick={onDecrement}
                         disabled={rounds <= ROUND_MIN}
                         aria-label="Diminuir rodadas"
-                        className="w-5 h-5 rounded flex items-center justify-center text-[#007AFF] dark:text-violet-400 hover:bg-[var(--glass-bg-active)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        className="w-5 h-5 rounded flex items-center justify-center text-[#7C3AED] dark:text-violet-400 hover:bg-[var(--glass-bg-active)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                     >
                         <Minus className="w-3 h-3" />
                     </button>
-                    <span className="min-w-[1.1rem] text-center text-sm font-extrabold tabular-nums text-[#007AFF] dark:text-violet-400">
+                    <span className="min-w-[1.1rem] text-center text-sm font-extrabold tabular-nums text-[#7C3AED] dark:text-violet-400">
                         {rounds}
                     </span>
                     <button
@@ -322,7 +322,7 @@ function RoundsStepper({
                         onClick={onIncrement}
                         disabled={rounds >= ROUND_MAX}
                         aria-label="Aumentar rodadas"
-                        className="w-5 h-5 rounded flex items-center justify-center text-[#007AFF] dark:text-violet-400 hover:bg-[var(--glass-bg-active)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        className="w-5 h-5 rounded flex items-center justify-center text-[#7C3AED] dark:text-violet-400 hover:bg-[var(--glass-bg-active)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                     >
                         <Plus className="w-3 h-3" />
                     </button>
@@ -401,7 +401,7 @@ function SetRow({
     const usePct = unit === 'pct'
 
     const inputClass =
-        'w-full bg-transparent text-[var(--text-primary)] text-xs px-1.5 py-1 border-b border-transparent focus:border-[#007AFF]/50 dark:focus:border-violet-500/50 focus:outline-none'
+        'w-full bg-transparent text-[var(--text-primary)] text-xs px-1.5 py-1 border-b border-transparent focus:border-[#7C3AED]/50 dark:focus:border-violet-500/50 focus:outline-none'
 
     const typeBorderClass = SET_TYPE_BORDER_CLASS[set.set_type] ?? ''
 
@@ -502,7 +502,7 @@ function SetRow({
                                     onUpdate({ weight_target_pct1rm: null })
                                 }
                             }}
-                            className="text-xs font-medium text-[var(--text-secondary)] bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors focus:outline-none focus:ring-1 focus:ring-[#007AFF] dark:focus:ring-violet-500"
+                            className="text-xs font-medium text-[var(--text-secondary)] bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors focus:outline-none focus:ring-1 focus:ring-[#7C3AED] dark:focus:ring-violet-500"
                         >
                             <option value="kg">kg</option>
                             <option value="pct">% 1RM</option>

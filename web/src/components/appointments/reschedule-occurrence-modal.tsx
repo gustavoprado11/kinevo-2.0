@@ -140,7 +140,7 @@ export function RescheduleOccurrenceModal({
                                 value={newDate}
                                 onChange={(e) => setNewDate(e.target.value)}
                                 required
-                                className="w-full rounded-lg border border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-glass-bg px-10 py-2.5 text-sm text-[#1D1D1F] dark:text-k-text-primary focus:outline-none focus:border-[#007AFF] dark:focus:border-violet-500/50 focus:ring-4 focus:ring-[#007AFF]/20 dark:focus:ring-violet-500/20"
+                                className="w-full rounded-lg border border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-glass-bg px-10 py-2.5 text-sm text-[#1D1D1F] dark:text-k-text-primary focus:outline-none focus:border-[#7C3AED] dark:focus:border-violet-500/50 focus:ring-4 focus:ring-[#7C3AED]/20 dark:focus:ring-violet-500/20"
                             />
                         </div>
                     </div>
@@ -163,7 +163,7 @@ export function RescheduleOccurrenceModal({
                                 value={newStartTime}
                                 onChange={(e) => setNewStartTime(e.target.value)}
                                 required
-                                className="w-full rounded-lg border border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-glass-bg px-10 py-2.5 text-sm text-[#1D1D1F] dark:text-k-text-primary focus:outline-none focus:border-[#007AFF] dark:focus:border-violet-500/50 focus:ring-4 focus:ring-[#007AFF]/20 dark:focus:ring-violet-500/20"
+                                className="w-full rounded-lg border border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-glass-bg px-10 py-2.5 text-sm text-[#1D1D1F] dark:text-k-text-primary focus:outline-none focus:border-[#7C3AED] dark:focus:border-violet-500/50 focus:ring-4 focus:ring-[#7C3AED]/20 dark:focus:ring-violet-500/20"
                             />
                         </div>
                     </div>
@@ -176,7 +176,7 @@ export function RescheduleOccurrenceModal({
                             <label
                                 className={`flex items-start gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-all ${
                                     scope === 'only_this'
-                                        ? 'border-[#007AFF] dark:border-violet-500/50 bg-[#007AFF]/5 dark:bg-violet-500/10'
+                                        ? 'border-[#7C3AED] dark:border-violet-500/50 bg-[#7C3AED]/5 dark:bg-violet-500/10'
                                         : 'border-[#E8E8ED] dark:border-k-border-subtle hover:bg-[#F9F9FB] dark:hover:bg-white/5'
                                 }`}
                             >
@@ -186,7 +186,7 @@ export function RescheduleOccurrenceModal({
                                     value="only_this"
                                     checked={scope === 'only_this'}
                                     onChange={() => setScope('only_this')}
-                                    className="mt-0.5 accent-[#007AFF] dark:accent-violet-500"
+                                    className="mt-0.5 accent-[#7C3AED] dark:accent-violet-500"
                                 />
                                 <div className="flex-1 min-w-0">
                                     <p className="text-xs font-semibold text-[#1D1D1F] dark:text-k-text-primary">
@@ -200,7 +200,7 @@ export function RescheduleOccurrenceModal({
                             <label
                                 className={`flex items-start gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-all ${
                                     scope === 'this_and_future'
-                                        ? 'border-[#007AFF] dark:border-violet-500/50 bg-[#007AFF]/5 dark:bg-violet-500/10'
+                                        ? 'border-[#7C3AED] dark:border-violet-500/50 bg-[#7C3AED]/5 dark:bg-violet-500/10'
                                         : 'border-[#E8E8ED] dark:border-k-border-subtle hover:bg-[#F9F9FB] dark:hover:bg-white/5'
                                 }`}
                             >
@@ -210,7 +210,7 @@ export function RescheduleOccurrenceModal({
                                     value="this_and_future"
                                     checked={scope === 'this_and_future'}
                                     onChange={() => setScope('this_and_future')}
-                                    className="mt-0.5 accent-[#007AFF] dark:accent-violet-500"
+                                    className="mt-0.5 accent-[#7C3AED] dark:accent-violet-500"
                                 />
                                 <div className="flex-1 min-w-0">
                                     <p className="text-xs font-semibold text-[#1D1D1F] dark:text-k-text-primary">
@@ -229,14 +229,14 @@ export function RescheduleOccurrenceModal({
                             type="button"
                             onClick={loading ? undefined : onClose}
                             disabled={loading}
-                            className="flex-1 px-4 py-2.5 text-sm font-semibold text-[#007AFF] dark:text-k-text-secondary hover:text-[#0056B3] dark:hover:text-k-text-primary hover:bg-[#F5F5F7] dark:hover:bg-glass-bg rounded-full transition-all disabled:opacity-50"
+                            className="flex-1 px-4 py-2.5 text-sm font-semibold text-[#7C3AED] dark:text-k-text-secondary hover:text-[#6D28D9] dark:hover:text-k-text-primary hover:bg-[#F5F5F7] dark:hover:bg-glass-bg rounded-full transition-all disabled:opacity-50"
                         >
                             Cancelar
                         </button>
                         <button
                             type="submit"
                             disabled={loading}
-                            className="flex-1 px-4 py-2.5 bg-[#007AFF] dark:bg-violet-600 hover:bg-[#0056B3] dark:hover:bg-violet-500 text-white text-sm font-semibold rounded-full shadow-sm dark:shadow-lg dark:shadow-violet-500/20 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-60"
+                            className="flex-1 px-4 py-2.5 bg-[#7C3AED] dark:bg-violet-600 hover:bg-[#6D28D9] dark:hover:bg-violet-500 text-white text-sm font-semibold rounded-full shadow-sm dark:shadow-lg dark:shadow-violet-500/20 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-60"
                         >
                             {loading ? (
                                 <>

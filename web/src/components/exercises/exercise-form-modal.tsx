@@ -368,7 +368,7 @@ export function ExerciseFormModal({ isOpen, onClose, onSuccess, exercise, traine
                             value={name}
                             onChange={e => setName(e.target.value)}
                             placeholder="Ex: Supino Reto"
-                            className="w-full px-4 py-3 bg-white dark:bg-glass-bg border border-[#D2D2D7] dark:border-k-border-subtle rounded-lg text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:outline-none focus:ring-1 focus:ring-[#007AFF]/20 dark:focus:ring-2 dark:focus:ring-violet-500/10 focus:border-[#007AFF] dark:focus:border-violet-500/50 transition-all text-sm"
+                            className="w-full px-4 py-3 bg-white dark:bg-glass-bg border border-[#D2D2D7] dark:border-k-border-subtle rounded-lg text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:outline-none focus:ring-1 focus:ring-[#7C3AED]/20 dark:focus:ring-2 dark:focus:ring-violet-500/10 focus:border-[#7C3AED] dark:focus:border-violet-500/50 transition-all text-sm"
                         />
                     </div>
 
@@ -402,7 +402,7 @@ export function ExerciseFormModal({ isOpen, onClose, onSuccess, exercise, traine
                             value={equipment}
                             onChange={e => setEquipment(e.target.value)}
                             placeholder="Ex: Barra, Halteres, Máquina..."
-                            className="w-full px-4 py-3 bg-white dark:bg-glass-bg border border-[#D2D2D7] dark:border-k-border-subtle rounded-lg text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:outline-none focus:ring-1 focus:ring-[#007AFF]/20 dark:focus:ring-2 dark:focus:ring-violet-500/10 focus:border-[#007AFF] dark:focus:border-violet-500/50 transition-all text-sm"
+                            className="w-full px-4 py-3 bg-white dark:bg-glass-bg border border-[#D2D2D7] dark:border-k-border-subtle rounded-lg text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:outline-none focus:ring-1 focus:ring-[#7C3AED]/20 dark:focus:ring-2 dark:focus:ring-violet-500/10 focus:border-[#7C3AED] dark:focus:border-violet-500/50 transition-all text-sm"
                         />
                     </div>
 
@@ -416,7 +416,7 @@ export function ExerciseFormModal({ isOpen, onClose, onSuccess, exercise, traine
                             value={videoUrl}
                             onChange={e => setVideoUrl(e.target.value)}
                             placeholder="https://..."
-                            className="w-full px-4 py-3 bg-white dark:bg-glass-bg border border-[#D2D2D7] dark:border-k-border-subtle rounded-lg text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:outline-none focus:ring-1 focus:ring-[#007AFF]/20 dark:focus:ring-2 dark:focus:ring-violet-500/10 focus:border-[#007AFF] dark:focus:border-violet-500/50 transition-all text-sm"
+                            className="w-full px-4 py-3 bg-white dark:bg-glass-bg border border-[#D2D2D7] dark:border-k-border-subtle rounded-lg text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:outline-none focus:ring-1 focus:ring-[#7C3AED]/20 dark:focus:ring-2 dark:focus:ring-violet-500/10 focus:border-[#7C3AED] dark:focus:border-violet-500/50 transition-all text-sm"
                         />
                         {videoUrl && (
                             <div className="mt-3 aspect-video rounded-xl overflow-hidden bg-[#F5F5F7] dark:bg-surface-inset border border-[#E8E8ED] dark:border-k-border-subtle dark:ring-1 dark:ring-k-border-subtle">
@@ -487,7 +487,7 @@ export function ExerciseFormModal({ isOpen, onClose, onSuccess, exercise, traine
                                         onDragOver={(e) => e.preventDefault()}
                                         onDrop={(e) => { e.preventDefault(); const file = e.dataTransfer.files[0]; if (file) handleTrainerFileSelect(file) }}
                                         onClick={() => trainerVideoInputRef.current?.click()}
-                                        className="border-2 border-dashed border-[#D2D2D7] dark:border-k-border-primary rounded-xl p-5 text-center cursor-pointer hover:border-[#007AFF] dark:hover:border-violet-500/50 transition-colors"
+                                        className="border-2 border-dashed border-[#D2D2D7] dark:border-k-border-primary rounded-xl p-5 text-center cursor-pointer hover:border-[#7C3AED] dark:hover:border-violet-500/50 transition-colors"
                                     >
                                         <Upload size={20} className="mx-auto mb-1.5 text-[#AEAEB2] dark:text-k-text-quaternary" />
                                         {trainerVideoFile ? (
@@ -511,7 +511,7 @@ export function ExerciseFormModal({ isOpen, onClose, onSuccess, exercise, traine
                                     />
                                     {videoUploading && videoProgress > 0 && (
                                         <div className="h-1.5 bg-[#F5F5F7] dark:bg-surface-inset rounded-full overflow-hidden">
-                                            <div className="h-full bg-[#007AFF] dark:bg-violet-500 rounded-full transition-all duration-300" style={{ width: `${videoProgress}%` }} />
+                                            <div className="h-full bg-[#7C3AED] dark:bg-violet-500 rounded-full transition-all duration-300" style={{ width: `${videoProgress}%` }} />
                                         </div>
                                     )}
                                 </div>
@@ -524,7 +524,7 @@ export function ExerciseFormModal({ isOpen, onClose, onSuccess, exercise, traine
                                         placeholder="https://www.youtube.com/watch?v=... ou link direto"
                                         value={trainerVideoUrl}
                                         onChange={(e) => { setTrainerVideoUrl(e.target.value); setVideoError(null) }}
-                                        className="w-full px-4 py-2.5 rounded-lg border border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-glass-bg text-sm text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:outline-none focus:ring-1 focus:ring-[#007AFF]/20 dark:focus:ring-2 dark:focus:ring-violet-500/10 focus:border-[#007AFF] dark:focus:border-violet-500/50 transition-all"
+                                        className="w-full px-4 py-2.5 rounded-lg border border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-glass-bg text-sm text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:outline-none focus:ring-1 focus:ring-[#7C3AED]/20 dark:focus:ring-2 dark:focus:ring-violet-500/10 focus:border-[#7C3AED] dark:focus:border-violet-500/50 transition-all"
                                     />
                                     <p className="text-[10px] text-[#AEAEB2] dark:text-k-text-quaternary">YouTube, Vimeo, ou URL direta de vídeo</p>
                                 </div>
@@ -546,7 +546,7 @@ export function ExerciseFormModal({ isOpen, onClose, onSuccess, exercise, traine
                             onChange={e => setInstructions(e.target.value)}
                             rows={3}
                             placeholder="Dicas de execução..."
-                            className="w-full px-4 py-3 bg-white dark:bg-glass-bg border border-[#D2D2D7] dark:border-k-border-subtle rounded-lg text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:outline-none focus:ring-1 focus:ring-[#007AFF]/20 dark:focus:ring-2 dark:focus:ring-violet-500/10 focus:border-[#007AFF] dark:focus:border-violet-500/50 transition-all resize-none text-sm"
+                            className="w-full px-4 py-3 bg-white dark:bg-glass-bg border border-[#D2D2D7] dark:border-k-border-subtle rounded-lg text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:outline-none focus:ring-1 focus:ring-[#7C3AED]/20 dark:focus:ring-2 dark:focus:ring-violet-500/10 focus:border-[#7C3AED] dark:focus:border-violet-500/50 transition-all resize-none text-sm"
                         />
                     </div>
 
@@ -562,14 +562,14 @@ export function ExerciseFormModal({ isOpen, onClose, onSuccess, exercise, traine
                 <div className="p-6 pt-4 border-t border-[#E8E8ED] dark:border-k-border-subtle flex justify-end gap-3 rounded-b-2xl">
                     <button
                         onClick={onClose}
-                        className="px-6 py-2.5 text-[#007AFF] dark:text-k-text-secondary hover:text-[#0056B3] dark:hover:text-k-text-primary hover:bg-[#F5F5F7] dark:hover:bg-glass-bg rounded-full transition-all text-sm font-medium"
+                        className="px-6 py-2.5 text-[#7C3AED] dark:text-k-text-secondary hover:text-[#6D28D9] dark:hover:text-k-text-primary hover:bg-[#F5F5F7] dark:hover:bg-glass-bg rounded-full transition-all text-sm font-medium"
                     >
                         Cancelar
                     </button>
                     <button
                         onClick={handleSave}
                         disabled={saving}
-                        className="px-6 py-2.5 bg-[#007AFF] dark:bg-violet-600 hover:bg-[#0066D6] dark:hover:bg-violet-500 text-white rounded-full font-medium transition-all disabled:bg-[#D2D2D7] dark:disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-sm dark:shadow-lg dark:shadow-violet-500/20 active:scale-95 text-sm"
+                        className="px-6 py-2.5 bg-[#7C3AED] dark:bg-violet-600 hover:bg-[#6D28D9] dark:hover:bg-violet-500 text-white rounded-full font-medium transition-all disabled:bg-[#D2D2D7] dark:disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-sm dark:shadow-lg dark:shadow-violet-500/20 active:scale-95 text-sm"
                     >
                         {saving && <Loader2 className="w-4 h-4 animate-spin" />}
                         Salvar Exercício
@@ -660,7 +660,7 @@ function CreatableMultiSelect({ availableGroups, selectedGroups, onChange, onCre
     return (
         <div className="relative" ref={containerRef}>
             <div
-                className={`w-full bg-white dark:bg-glass-bg border border-[#D2D2D7] dark:border-k-border-subtle rounded-lg min-h-[46px] p-1.5 flex flex-wrap gap-1.5 transition-all ${isOpen ? 'ring-1 ring-[#007AFF]/20 dark:ring-2 dark:ring-violet-500/10 border-[#007AFF] dark:border-violet-500/50' : ''}`}
+                className={`w-full bg-white dark:bg-glass-bg border border-[#D2D2D7] dark:border-k-border-subtle rounded-lg min-h-[46px] p-1.5 flex flex-wrap gap-1.5 transition-all ${isOpen ? 'ring-1 ring-[#7C3AED]/20 dark:ring-2 dark:ring-violet-500/10 border-[#7C3AED] dark:border-violet-500/50' : ''}`}
                 onClick={() => {
                     const input = containerRef.current?.querySelector('input')
                     input?.focus()
@@ -668,7 +668,7 @@ function CreatableMultiSelect({ availableGroups, selectedGroups, onChange, onCre
                 }}
             >
                 {selectedGroups.map(group => (
-                    <span key={group.id} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#007AFF]/10 dark:bg-violet-500/10 text-[#007AFF] dark:text-violet-300 text-[11px] font-medium border border-[#007AFF]/20 dark:border-violet-500/20">
+                    <span key={group.id} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#7C3AED]/10 dark:bg-violet-500/10 text-[#7C3AED] dark:text-violet-300 text-[11px] font-medium border border-[#7C3AED]/20 dark:border-violet-500/20">
                         {group.name}
                         <button
                             type="button"
@@ -676,7 +676,7 @@ function CreatableMultiSelect({ availableGroups, selectedGroups, onChange, onCre
                                 e.stopPropagation()
                                 handleRemove(group.id)
                             }}
-                            className="hover:text-[#0056B3] dark:hover:text-white transition-colors ml-0.5"
+                            className="hover:text-[#6D28D9] dark:hover:text-white transition-colors ml-0.5"
                         >
                             <X className="w-3 h-3" strokeWidth={2.5} />
                         </button>
@@ -728,7 +728,7 @@ function CreatableMultiSelect({ availableGroups, selectedGroups, onChange, onCre
                                                 CUSTOM
                                             </span>
                                         )}
-                                        {selectedGroups.some(g => g.id === group.id) && <Check className="w-4 h-4 text-[#007AFF] dark:text-violet-400" />}
+                                        {selectedGroups.some(g => g.id === group.id) && <Check className="w-4 h-4 text-[#7C3AED] dark:text-violet-400" />}
                                     </div>
 
                                 </button>
@@ -744,7 +744,7 @@ function CreatableMultiSelect({ availableGroups, selectedGroups, onChange, onCre
                                         <select
                                             value={parentForNewGroup ?? ''}
                                             onChange={e => setParentForNewGroup(e.target.value || null)}
-                                            className="w-full px-2.5 py-1.5 text-sm bg-white dark:bg-glass-bg border border-[#D2D2D7] dark:border-k-border-subtle rounded-md text-[#1D1D1F] dark:text-k-text-primary focus:outline-none focus:ring-1 focus:ring-[#007AFF]/20 dark:focus:ring-violet-500/20 focus:border-[#007AFF] dark:focus:border-violet-500/50"
+                                            className="w-full px-2.5 py-1.5 text-sm bg-white dark:bg-glass-bg border border-[#D2D2D7] dark:border-k-border-subtle rounded-md text-[#1D1D1F] dark:text-k-text-primary focus:outline-none focus:ring-1 focus:ring-[#7C3AED]/20 dark:focus:ring-violet-500/20 focus:border-[#7C3AED] dark:focus:border-violet-500/50"
                                         >
                                             <option value="">Nenhum — grupo principal</option>
                                             {parentCandidates.map(p => (
@@ -758,7 +758,7 @@ function CreatableMultiSelect({ availableGroups, selectedGroups, onChange, onCre
                                     <button
                                         onClick={handleCreate}
                                         disabled={isCreating}
-                                        className="w-full px-4 py-3 text-left text-sm text-[#007AFF] dark:text-violet-300 hover:bg-[#007AFF]/5 dark:hover:bg-violet-500/10 flex items-center gap-2 transition-colors"
+                                        className="w-full px-4 py-3 text-left text-sm text-[#7C3AED] dark:text-violet-300 hover:bg-[#7C3AED]/5 dark:hover:bg-violet-500/10 flex items-center gap-2 transition-colors"
                                     >
                                         {isCreating ? (
                                             <Loader2 className="w-4 h-4 animate-spin" />

@@ -154,7 +154,7 @@ export function PlansClient({ trainer, plans: initialPlans, hasStripeConnect, us
                     </div>
                     <button
                         onClick={handleCreatePlan}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#007AFF] dark:bg-violet-600 hover:bg-[#0056B3] dark:hover:bg-violet-500 text-white text-sm font-medium transition-colors active:scale-[0.98] shrink-0"
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#7C3AED] dark:bg-violet-600 hover:bg-[#6D28D9] dark:hover:bg-violet-500 text-white text-sm font-medium transition-colors active:scale-[0.98] shrink-0"
                     >
                         <Plus size={15} />
                         Novo plano
@@ -165,8 +165,8 @@ export function PlansClient({ trainer, plans: initialPlans, hasStripeConnect, us
                 {plans.length > 0 && (
                     <div className="grid grid-cols-3 gap-3 mb-6">
                         <StatCard
-                            icon={<Layers size={16} className="text-[#007AFF] dark:text-violet-400" />}
-                            iconBg="bg-[#007AFF]/10 dark:bg-violet-500/10"
+                            icon={<Layers size={16} className="text-[#7C3AED] dark:text-violet-400" />}
+                            iconBg="bg-[#7C3AED]/10 dark:bg-violet-500/10"
                             label="Planos ativos"
                             value={stats.activeCount.toString()}
                             detail={`de ${stats.totalCount} ${stats.totalCount === 1 ? 'cadastrado' : 'cadastrados'}`}

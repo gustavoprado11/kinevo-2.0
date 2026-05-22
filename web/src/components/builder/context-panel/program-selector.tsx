@@ -48,7 +48,7 @@ export function ProgramSelector({ programs, selectedId, onSelect, isLoading }: P
         <div ref={ref} className="relative">
             <button
                 onClick={() => setOpen(!open)}
-                className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-[#E8E8ED] dark:border-k-border-subtle bg-white dark:bg-surface-card text-left hover:border-[#007AFF]/30 dark:hover:border-violet-500/30 transition-all"
+                className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-[#E8E8ED] dark:border-k-border-subtle bg-white dark:bg-surface-card text-left hover:border-[#7C3AED]/30 dark:hover:border-violet-500/30 transition-all"
             >
                 <span className="text-[11px] font-medium text-[#1D1D1F] dark:text-k-text-primary truncate max-w-[180px]">
                     {selected ? selected.programName : 'Selecionar programa...'}
@@ -64,14 +64,14 @@ export function ProgramSelector({ programs, selectedId, onSelect, isLoading }: P
                             onClick={() => { onSelect(p.programId); setOpen(false) }}
                             className={`w-full text-left px-3 py-2.5 flex items-center justify-between transition-colors ${
                                 p.programId === selectedId
-                                    ? 'bg-[#007AFF]/5 dark:bg-violet-500/10'
+                                    ? 'bg-[#7C3AED]/5 dark:bg-violet-500/10'
                                     : 'hover:bg-[#F5F5F7] dark:hover:bg-glass-bg'
                             }`}
                         >
                             <div className="min-w-0 flex-1">
                                 <span className={`block text-xs truncate ${
                                     p.programId === selectedId
-                                        ? 'text-[#007AFF] dark:text-violet-400 font-semibold'
+                                        ? 'text-[#7C3AED] dark:text-violet-400 font-semibold'
                                         : 'text-[#1D1D1F] dark:text-k-text-primary font-medium'
                                 }`}>
                                     {p.programName}

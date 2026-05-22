@@ -111,7 +111,7 @@ export function DashboardHeader({ trainerName, students = [] }: DashboardHeaderP
                 <button
                     data-onboarding="dashboard-training-room"
                     onClick={() => router.push('/training-room')}
-                    className="flex items-center gap-2 px-4 py-1.5 bg-[#007AFF] dark:bg-transparent border-0 dark:border dark:border-k-border-primary text-white dark:text-k-text-secondary hover:bg-[#0066D6] dark:hover:bg-glass-bg dark:hover:text-k-text-primary text-sm font-medium rounded-xl transition-colors"
+                    className="flex items-center gap-2 px-4 py-1.5 bg-[#7C3AED] dark:bg-transparent border-0 dark:border dark:border-k-border-primary text-white dark:text-k-text-secondary hover:bg-[#6D28D9] dark:hover:bg-glass-bg dark:hover:text-k-text-primary text-sm font-medium rounded-xl transition-colors"
                 >
                     <Monitor size={16} className="text-white dark:text-emerald-400" />
                     <span className="hidden md:inline">Sala de Treino</span>

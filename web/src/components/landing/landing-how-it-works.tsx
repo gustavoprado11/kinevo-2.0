@@ -27,7 +27,7 @@ export function LandingHowItWorks() {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative">
                     {/* Connector */}
-                    <div className="hidden md:block absolute top-10 left-[calc(16.67%+0.75rem)] right-[calc(16.67%+0.75rem)] h-px bg-gradient-to-r from-[#7C3AED]/15 via-[#007AFF]/15 to-[#34C759]/15" />
+                    <div className="hidden md:block absolute top-10 left-[calc(16.67%+0.75rem)] right-[calc(16.67%+0.75rem)] h-px bg-gradient-to-r from-[#7C3AED]/15 via-[#7C3AED]/15 to-[#34C759]/15" />
 
                     {steps.map((step, i) => (
                         <motion.div

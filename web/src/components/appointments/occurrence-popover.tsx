@@ -211,7 +211,7 @@ export function OccurrencePopover({
                                     unoptimized
                                 />
                             ) : (
-                                <span className="text-xs font-bold text-[#007AFF] dark:text-k-text-secondary">
+                                <span className="text-xs font-bold text-[#7C3AED] dark:text-k-text-secondary">
                                     {studentInitial(studentName)}
                                 </span>
                             )}
@@ -244,7 +244,7 @@ export function OccurrencePopover({
                                 className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-medium text-[#1D1D1F] dark:text-k-text-primary hover:bg-[#F5F5F7] dark:hover:bg-glass-bg transition-colors"
                             >
                                 <CalendarClock
-                                    className="w-4 h-4 text-[#007AFF] dark:text-violet-400 flex-shrink-0"
+                                    className="w-4 h-4 text-[#7C3AED] dark:text-violet-400 flex-shrink-0"
                                     strokeWidth={1.5}
                                 />
                                 Remarcar este treino
@@ -353,7 +353,7 @@ export function OccurrencePopover({
                                 value={endDate}
                                 onChange={(e) => setEndDate(e.target.value)}
                                 disabled={ending}
-                                className="w-full rounded-md border border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-glass-bg px-2 py-1.5 text-[11px] text-[#1D1D1F] dark:text-k-text-primary focus:outline-none focus:border-[#007AFF] dark:focus:border-violet-500/50 disabled:opacity-50"
+                                className="w-full rounded-md border border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-glass-bg px-2 py-1.5 text-[11px] text-[#1D1D1F] dark:text-k-text-primary focus:outline-none focus:border-[#7C3AED] dark:focus:border-violet-500/50 disabled:opacity-50"
                             />
                             <div className="flex items-center gap-2 pt-1">
                                 <button

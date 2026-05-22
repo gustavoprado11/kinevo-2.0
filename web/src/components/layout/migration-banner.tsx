@@ -62,11 +62,11 @@ export function MigrationBanner() {
 
     return (
         <div
-            className={`mb-4 flex items-center gap-3 rounded-xl border border-[#007AFF]/20 bg-[#007AFF]/5 px-4 py-3 transition-opacity duration-200 ${closing ? 'opacity-0' : 'opacity-100'}`}
+            className={`mb-4 flex items-center gap-3 rounded-xl border border-[#7C3AED]/20 bg-[#7C3AED]/5 px-4 py-3 transition-opacity duration-200 ${closing ? 'opacity-0' : 'opacity-100'}`}
             role="status"
         >
-            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#007AFF]/10">
-                <Sparkles className="h-4 w-4 text-[#007AFF] dark:text-violet-400" />
+            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#7C3AED]/10">
+                <Sparkles className="h-4 w-4 text-[#7C3AED] dark:text-violet-400" />
             </div>
             <p className="flex-1 text-sm text-[#1D1D1F] dark:text-k-text-secondary">
                 Reorganizamos: <strong className="font-semibold">Formulários e Avaliações</strong> voltaram a viver juntos no menu.
@@ -75,7 +75,7 @@ export function MigrationBanner() {
                 type="button"
                 onClick={handleDismiss}
                 disabled={busy}
-                className="flex items-center gap-1.5 rounded-full bg-[#007AFF] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#0066D6] dark:bg-violet-600 dark:hover:bg-violet-500 transition-colors"
+                className="flex items-center gap-1.5 rounded-full bg-[#7C3AED] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#6D28D9] dark:bg-violet-600 dark:hover:bg-violet-500 transition-colors"
             >
                 Entendi
             </button>
@@ -84,7 +84,7 @@ export function MigrationBanner() {
                 onClick={handleDismiss}
                 disabled={busy}
                 aria-label="Fechar"
-                className="ml-1 flex h-7 w-7 items-center justify-center rounded-full text-[#86868B] hover:bg-[#007AFF]/10 hover:text-[#1D1D1F] dark:text-k-text-quaternary dark:hover:text-k-text-primary transition-colors"
+                className="ml-1 flex h-7 w-7 items-center justify-center rounded-full text-[#86868B] hover:bg-[#7C3AED]/10 hover:text-[#1D1D1F] dark:text-k-text-quaternary dark:hover:text-k-text-primary transition-colors"
             >
                 <X className="h-3.5 w-3.5" />
             </button>

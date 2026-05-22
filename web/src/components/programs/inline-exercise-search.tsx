@@ -117,14 +117,14 @@ export function InlineExerciseSearch({ exercises, onAdd, compact = false }: Inli
             <div
                 className={`flex items-center gap-2 px-3.5 py-2.5 transition-all duration-200 ${
                     showDropdown
-                        ? 'rounded-t-xl rounded-b-none border border-[#007AFF]/30 dark:border-violet-500/40 bg-white dark:bg-surface-card ring-2 ring-[#007AFF]/10 dark:ring-violet-500/10'
+                        ? 'rounded-t-xl rounded-b-none border border-[#7C3AED]/30 dark:border-violet-500/40 bg-white dark:bg-surface-card ring-2 ring-[#7C3AED]/10 dark:ring-violet-500/10'
                         : isFocused
-                            ? 'rounded-xl border border-[#007AFF]/30 dark:border-violet-500/40 bg-white dark:bg-surface-card ring-2 ring-[#007AFF]/10 dark:ring-violet-500/10'
+                            ? 'rounded-xl border border-[#7C3AED]/30 dark:border-violet-500/40 bg-white dark:bg-surface-card ring-2 ring-[#7C3AED]/10 dark:ring-violet-500/10'
                             : 'rounded-xl border border-transparent bg-[#F5F5F7]/60 dark:bg-glass-bg hover:bg-[#F5F5F7] dark:hover:bg-glass-bg-hover'
                 }`}
             >
                 <Search className={`w-4 h-4 flex-shrink-0 transition-colors ${
-                    isFocused ? 'text-[#007AFF] dark:text-violet-400' : 'text-[#AEAEB2] dark:text-k-text-quaternary'
+                    isFocused ? 'text-[#7C3AED] dark:text-violet-400' : 'text-[#AEAEB2] dark:text-k-text-quaternary'
                 }`} />
                 <input
                     ref={inputRef}
@@ -155,7 +155,7 @@ export function InlineExerciseSearch({ exercises, onAdd, compact = false }: Inli
                 <div
                     id={dropdownId}
                     role="listbox"
-                    className="absolute top-full left-0 right-0 z-dropdown bg-white dark:bg-surface-card border border-[#007AFF]/15 dark:border-violet-500/20 border-t-[#E8E8ED] dark:border-t-k-border-subtle rounded-b-xl shadow-lg dark:shadow-xl overflow-hidden"
+                    className="absolute top-full left-0 right-0 z-dropdown bg-white dark:bg-surface-card border border-[#7C3AED]/15 dark:border-violet-500/20 border-t-[#E8E8ED] dark:border-t-k-border-subtle rounded-b-xl shadow-lg dark:shadow-xl overflow-hidden"
                 >
                     {results.length > 0 ? (
                         <div ref={listRef} className="p-1 max-h-[360px] overflow-y-auto">
@@ -170,7 +170,7 @@ export function InlineExerciseSearch({ exercises, onAdd, compact = false }: Inli
                                     onMouseEnter={() => setHighlightIndex(idx)}
                                     className={`group/row w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors cursor-pointer ${
                                         highlightIndex === idx
-                                            ? 'bg-[#007AFF]/[0.06] dark:bg-violet-500/10'
+                                            ? 'bg-[#7C3AED]/[0.06] dark:bg-violet-500/10'
                                             : 'hover:bg-[#F5F5F7] dark:hover:bg-glass-bg'
                                     }`}
                                 >
@@ -191,14 +191,14 @@ export function InlineExerciseSearch({ exercises, onAdd, compact = false }: Inli
                                                     e.stopPropagation()
                                                     handlePreview(exercise)
                                                 }}
-                                                className="p-1.5 rounded-md text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#007AFF] dark:hover:text-violet-400 hover:bg-[#007AFF]/[0.08] dark:hover:bg-violet-500/10 opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100 transition-all"
+                                                className="p-1.5 rounded-md text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#7C3AED] dark:hover:text-violet-400 hover:bg-[#7C3AED]/[0.08] dark:hover:bg-violet-500/10 opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100 transition-all"
                                                 title="Ver vídeo"
                                                 aria-label="Ver vídeo"
                                             >
                                                 <PlayCircle className="w-4 h-4" />
                                             </button>
                                         )}
-                                        <div className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium text-[#007AFF] dark:text-violet-400 bg-[#007AFF]/[0.06] dark:bg-violet-500/10 rounded-md">
+                                        <div className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium text-[#7C3AED] dark:text-violet-400 bg-[#7C3AED]/[0.06] dark:bg-violet-500/10 rounded-md">
                                             <Plus className="w-3 h-3" />
                                             Adicionar
                                         </div>

@@ -205,7 +205,7 @@ export function NotificationBell({ sidebarMode }: NotificationBellProps = {}) {
                             {unreadCount > 0 && (
                                 <button
                                     onClick={handleMarkAllRead}
-                                    className="text-xs text-[#007AFF] dark:text-violet-400 hover:underline"
+                                    className="text-xs text-[#7C3AED] dark:text-violet-400 hover:underline"
                                 >
                                     Marcar todas como lidas
                                 </button>
@@ -248,7 +248,7 @@ export function NotificationBell({ sidebarMode }: NotificationBellProps = {}) {
                                         className={`
                                             w-full text-left px-4 py-3 flex gap-3 transition-colors border-b border-[#F5F5F7] dark:border-k-border-subtle last:border-b-0
                                             ${!notif.is_read
-                                                ? 'bg-[#007AFF]/[0.03] dark:bg-violet-500/[0.04]'
+                                                ? 'bg-[#7C3AED]/[0.03] dark:bg-violet-500/[0.04]'
                                                 : 'hover:bg-[#F5F5F7] dark:hover:bg-glass-bg'
                                             }
                                         `}
@@ -262,7 +262,7 @@ export function NotificationBell({ sidebarMode }: NotificationBellProps = {}) {
                                                     {notif.title}
                                                 </p>
                                                 {!notif.is_read && (
-                                                    <span className="w-2 h-2 rounded-full bg-[#007AFF] dark:bg-violet-500 flex-shrink-0 mt-1.5" />
+                                                    <span className="w-2 h-2 rounded-full bg-[#7C3AED] dark:bg-violet-500 flex-shrink-0 mt-1.5" />
                                                 )}
                                             </div>
                                             <p className="text-xs text-[#86868B] dark:text-muted-foreground mt-0.5 truncate">
