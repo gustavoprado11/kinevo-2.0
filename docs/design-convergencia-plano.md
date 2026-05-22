@@ -95,14 +95,24 @@ Ordem por **risco/tráfego** (do mais seguro/visível ao mais sensível):
 
 **Track auth (baixíssimo risco):** `login`, `signup`, `auth/*` — encaixar entre fases conforme conveniência.
 
-### Fase 3 — Mobile (incremental, web como referência viva) 📱
-- [ ] Resolver split v1/v2: novas telas via `useV2Colors`; mapear o que ainda usa `tokens/legacy`.
-- [ ] Aplicar **contenção** herdada do web, tela a tela:
-  - Card: borda leve + sombra sutil (em vez de sombra pesada sem borda).
-  - Input/search: neutro em repouso → roxo só no foco.
-  - Badge/status: sem UPPERCASE agressivo; pílula translúcida + ring + dot.
-- [ ] **Preservar explicitamente (NÃO mexer):** `components/health/HeroStatBlock`, `ReadinessCard`, `v2/BottomNav` (glass), `v2/KButton` (glow), `v2/KPICard` (sparkline).
-- [ ] Ordem sugerida (espelhar o web já finalizado): Início → Alunos → Programas → Inbox → Financeiro.
+### Fase 3 — Mobile 📱 ◐ AUDITORIA FEITA — escopo muito menor que o previsto
+
+**Achado central:** o DS v2 do mobile **já estava alinhado** aos princípios. A "discrepância" original era quase toda do lado **web** (azul Apple), já resolvida nas Fases 0–2. Verificado por leitura/auditoria:
+- ✅ **Fonte** idêntica (Plus Jakarta Sans) — nada a fazer.
+- ✅ **Cor** já é roxo `#7C3AED` (marca do mobile) — sem migração.
+- ✅ `KCard` já contido (borda `neutral[200]` + sombra `xs`) — sem mudança.
+- ✅ `KSearchBox` já neutro em repouso → roxo no foco (linha 55) — sem mudança.
+- ✅ `uppercase` (85 arquivos) = labels de **eyebrow/seção**, padrão **compartilhado** com o web (token `micro`). Manter — strippar seria regressão.
+- ✅ `toUpperCase()` = **iniciais de avatar** — manter.
+
+**Única divergência real corrigida:** `components/v2/KStatus.tsx` — pill estava `uppercase`+tracking 0.4 (contrariava o próprio `mobile/CLAUDE.md` "sentence case" e o badge contido do web). → `transform: 'none'`, `letterSpacing: 0`. Typecheck sem erros. Propaga a todo `KStatus`.
+
+- [x] Auditoria de uppercase/contenção (KCard, KSearchBox, KStatus).
+- [x] `KStatus` → sentence case.
+- [ ] **Preservadas (NÃO tocar):** `health/HeroStatBlock`, `ReadinessCard`, `v2/BottomNav` (glass), `v2/KButton` (glow), `v2/KPICard` (sparkline).
+- [ ] **Pendente (opcional, sob demanda):** se Gustavo apontar telas/cards específicos que "pesam", revisar caso a caso — sem bulk-edit (evita regredir o premium).
+
+**Conclusão:** a convergência foi essencialmente alcançada migrando o web para o roxo. O mobile precisou de 1 ajuste (KStatus).
 
 ---
 
