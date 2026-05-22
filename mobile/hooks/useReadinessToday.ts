@@ -125,6 +125,7 @@ export function useReadinessToday(): UseReadinessTodayResult {
           hr_component: Math.round(result.hrComponent * 1000) / 1000,
           sleep_minutes: sleepMinutes,
           hr_baseline_30d: baseline,
+          source: 'computed',
           computed_at: new Date().toISOString(),
         },
         { onConflict: 'student_id,score_date' }

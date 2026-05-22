@@ -10,6 +10,8 @@ export type HrvMetric = 'sdnn' | 'rmssd';
 export function hrvMetricFromSource(source: string | null | undefined): HrvMetric | null {
   if (source === 'healthkit') return 'sdnn';
   if (source === 'health_connect') return 'rmssd';
+  // Wearables dedicados reportam RMSSD.
+  if (source === 'oura' || source === 'whoop') return 'rmssd';
   return null;
 }
 

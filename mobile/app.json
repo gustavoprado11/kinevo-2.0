@@ -121,6 +121,9 @@
       },
       "strava": {
         "clientId": "244932"
+      },
+      "oura": {
+        "clientId": "67e1288a-4093-4691-81eb-9ce17ae31279"
       }
     },
     "owner": "gustavocprado"

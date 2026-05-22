@@ -269,13 +269,16 @@ export default function HealthScreen() {
           <Text style={styles.sourcesLabel}>FONTES CONECTADAS</Text>
           <View style={styles.chips}>
             {(data?.connections ?? [])
-              // iOS só mostra Apple Saúde; Android só mostra Health Connect.
-              .filter((c) => (Platform.OS === 'ios' ? c.source === 'healthkit' : c.source !== 'healthkit'))
+              // Fontes conhecidas com rótulo próprio. iOS mostra Apple Saúde;
+              // Android mostra Health Connect; Oura aparece em ambas.
+              .filter((c) =>
+                c.source === 'oura' ||
+                (Platform.OS === 'ios' ? c.source === 'healthkit' : c.source === 'health_connect'))
               .map((c) => (
               <View key={c.source} style={[styles.chip, c.status === 'active' ? styles.chipActive : styles.chipInactive]}>
                 <Activity size={11} color={c.status === 'active' ? '#22C55E' : colors.text.tertiary} strokeWidth={2.5} />
                 <Text style={styles.chipText}>
-                  {c.source === 'healthkit' ? 'Apple Saúde' : 'Google Health Connect'}
+                  {c.source === 'healthkit' ? 'Apple Saúde' : c.source === 'oura' ? 'Oura Ring' : 'Google Health Connect'}
                 </Text>
               </View>
             ))}

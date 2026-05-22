@@ -8,6 +8,10 @@ describe('hrvMetricFromSource', () => {
   it('mapeia health_connect → rmssd (Android)', () => {
     expect(hrvMetricFromSource('health_connect')).toBe('rmssd');
   });
+  it('mapeia wearables dedicados (Oura/Whoop) → rmssd', () => {
+    expect(hrvMetricFromSource('oura')).toBe('rmssd');
+    expect(hrvMetricFromSource('whoop')).toBe('rmssd');
+  });
   it('retorna null para fonte desconhecida/ausente', () => {
     expect(hrvMetricFromSource('strava')).toBeNull();
     expect(hrvMetricFromSource(null)).toBeNull();

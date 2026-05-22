@@ -122,6 +122,9 @@ export async function recomputeReadinessLastDays(
           hr_component: Math.round(result.hrComponent * 1000) / 1000,
           sleep_minutes: sleepMin,
           hr_baseline_30d: baseline,
+          // source explícito: o trigger de prioridade (#6) usa isso pra impedir
+          // que o readiness computado sobrescreva o score nativo de Oura/Whoop.
+          source: 'computed',
           computed_at: new Date().toISOString(),
         },
         { onConflict: 'student_id,score_date' }
