@@ -10,7 +10,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         const baseStyles = 'inline-flex items-center justify-center rounded-lg text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 disabled:pointer-events-none disabled:opacity-50 active:scale-[0.98]'
 
         const variants = {
-            default: 'bg-primary text-primary-foreground shadow-sm shadow-primary/20 hover:bg-primary/90 hover:shadow-md hover:shadow-primary/30',
+            default: 'bg-gradient-to-br from-[var(--k-purple-700)] to-[var(--k-purple-500)] text-primary-foreground shadow-[var(--k-shadow-glow-purple)] hover:brightness-[1.06] hover:shadow-[var(--k-shadow-glow-purple)]',
             outline: 'border border-border bg-white text-slate-700 shadow-sm hover:bg-slate-50 hover:border-slate-300 hover:text-slate-900',
             ghost: 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
             destructive: 'bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90',
