@@ -201,6 +201,10 @@ exports[`@kinevo/shared/tokens · snapshot > v2 paleta — baseline determiníst
   },
   "FONT_FAMILY": "PlusJakartaSans",
   "colors": {
+    "border": {
+      "default": "#E4E4E7",
+      "subtle": "rgba(0,0,0,0.04)",
+    },
     "brand": {
       "primary": "#7C3AED",
       "primaryDark": "#6D28D9",
@@ -262,6 +266,85 @@ exports[`@kinevo/shared/tokens · snapshot > v2 paleta — baseline determiníst
       "glass": "rgba(255,255,255,0.78)",
       "tintPurple": "rgba(124,58,237,0.04)",
     },
+    "text": {
+      "primary": "#09090B",
+      "quaternary": "#A1A1AA",
+      "secondary": "#3F3F46",
+      "tertiary": "#71717A",
+    },
+  },
+  "colorsDark": {
+    "border": {
+      "default": "rgba(255,255,255,0.08)",
+      "subtle": "rgba(255,255,255,0.04)",
+    },
+    "brand": {
+      "primary": "#7C3AED",
+      "primaryDark": "#6D28D9",
+      "primaryLight": "#EDE9FE",
+    },
+    "neutral": {
+      "0": "#FFFFFF",
+      "100": "#F4F4F5",
+      "200": "#E4E4E7",
+      "300": "#D4D4D8",
+      "400": "#A1A1AA",
+      "50": "#FAFAFA",
+      "500": "#71717A",
+      "600": "#52525B",
+      "700": "#3F3F46",
+      "800": "#27272A",
+      "900": "#18181B",
+      "950": "#09090B",
+    },
+    "purple": {
+      "100": "#EDE9FE",
+      "200": "#DDD6FE",
+      "300": "#C4B5FD",
+      "400": "#A78BFA",
+      "50": "#F5F3FF",
+      "500": "#8B5CF6",
+      "600": "#7C3AED",
+      "700": "#6D28D9",
+      "800": "#5B21B6",
+      "900": "#4C1D95",
+      "950": "#2E1065",
+    },
+    "semantic": {
+      "danger": {
+        "bg": "#FEE2E2",
+        "default": "#EF4444",
+        "fg": "#B91C1C",
+      },
+      "info": {
+        "bg": "#DBEAFE",
+        "default": "#3B82F6",
+        "fg": "#1D4ED8",
+      },
+      "success": {
+        "bg": "#D1FAE5",
+        "default": "#10B981",
+        "fg": "#047857",
+      },
+      "warning": {
+        "bg": "#FEF3C7",
+        "default": "#F59E0B",
+        "fg": "#B45309",
+      },
+    },
+    "surface": {
+      "canvas": "#09090B",
+      "card": "#18181B",
+      "card2": "#27272A",
+      "glass": "rgba(24,24,27,0.78)",
+      "tintPurple": "rgba(124,58,237,0.10)",
+    },
+    "text": {
+      "primary": "#FAFAFA",
+      "quaternary": "#52525B",
+      "secondary": "#A1A1AA",
+      "tertiary": "#71717A",
+    },
   },
   "durations": {
     "default": 240,
@@ -281,6 +364,152 @@ exports[`@kinevo/shared/tokens · snapshot > v2 paleta — baseline determiníst
       0.2,
       1,
     ],
+  },
+  "elevation": {
+    "flat": {
+      "dark": {
+        "android": {
+          "elevation": 0,
+        },
+        "border": {
+          "color": "rgba(124,58,237,0.18)",
+          "width": 1,
+        },
+        "ios": {
+          "shadowColor": "#09090B",
+          "shadowOffset": {
+            "height": 0,
+            "width": 0,
+          },
+          "shadowOpacity": 0,
+          "shadowRadius": 0,
+        },
+        "web": "none",
+      },
+      "light": {
+        "android": {
+          "elevation": 0,
+        },
+        "ios": {
+          "shadowColor": "#09090B",
+          "shadowOffset": {
+            "height": 0,
+            "width": 0,
+          },
+          "shadowOpacity": 0,
+          "shadowRadius": 0,
+        },
+        "web": "none",
+      },
+    },
+    "floating": {
+      "dark": {
+        "android": {
+          "elevation": 8,
+        },
+        "border": {
+          "color": "rgba(124,58,237,0.42)",
+          "width": 1,
+        },
+        "ios": {
+          "shadowColor": "#7C3AED",
+          "shadowOffset": {
+            "height": 6,
+            "width": 0,
+          },
+          "shadowOpacity": 0.22,
+          "shadowRadius": 18,
+        },
+        "web": "0 6px 18px rgba(124,58,237,0.22), 0 2px 8px rgba(124,58,237,0.14)",
+      },
+      "light": {
+        "android": {
+          "elevation": 8,
+        },
+        "ios": {
+          "shadowColor": "#09090B",
+          "shadowOffset": {
+            "height": 8,
+            "width": 0,
+          },
+          "shadowOpacity": 0.08,
+          "shadowRadius": 20,
+        },
+        "web": "0 8px 20px rgba(9,9,11,0.08), 0 2px 6px rgba(9,9,11,0.05)",
+      },
+    },
+    "hero": {
+      "dark": {
+        "android": {
+          "elevation": 14,
+        },
+        "border": {
+          "color": "rgba(139,92,246,0.55)",
+          "width": 1,
+        },
+        "ios": {
+          "shadowColor": "#7C3AED",
+          "shadowOffset": {
+            "height": 10,
+            "width": 0,
+          },
+          "shadowOpacity": 0.36,
+          "shadowRadius": 32,
+        },
+        "web": "0 10px 32px rgba(124,58,237,0.36), 0 4px 12px rgba(124,58,237,0.20)",
+      },
+      "light": {
+        "android": {
+          "elevation": 14,
+        },
+        "ios": {
+          "shadowColor": "#09090B",
+          "shadowOffset": {
+            "height": 16,
+            "width": 0,
+          },
+          "shadowOpacity": 0.12,
+          "shadowRadius": 36,
+        },
+        "web": "0 16px 36px rgba(9,9,11,0.12), 0 4px 12px rgba(9,9,11,0.06)",
+      },
+    },
+    "raised": {
+      "dark": {
+        "android": {
+          "elevation": 2,
+        },
+        "border": {
+          "color": "rgba(124,58,237,0.28)",
+          "width": 1,
+        },
+        "ios": {
+          "shadowColor": "#7C3AED",
+          "shadowOffset": {
+            "height": 2,
+            "width": 0,
+          },
+          "shadowOpacity": 0.12,
+          "shadowRadius": 8,
+        },
+        "web": "0 2px 8px rgba(124,58,237,0.12)",
+      },
+      "light": {
+        "android": {
+          "elevation": 2,
+        },
+        "ios": {
+          "shadowColor": "#09090B",
+          "shadowOffset": {
+            "height": 2,
+            "width": 0,
+          },
+          "shadowOpacity": 0.05,
+          "shadowRadius": 6,
+        },
+        "web": "0 2px 6px rgba(9,9,11,0.05), 0 1px 2px rgba(9,9,11,0.04)",
+      },
+    },
   },
   "getFontFamily": [Function],
   "motion": {

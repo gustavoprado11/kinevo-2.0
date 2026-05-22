@@ -24,15 +24,15 @@
   --card-foreground: #1D1D1F;
   --popover: #ffffff;
   --popover-foreground: #1D1D1F;
-  --primary: #007AFF;
+  --primary: #7C3AED;
   --primary-foreground: #ffffff;
   --muted: #F5F5F7;
   --muted-foreground: #6E6E73;
   --accent: #F5F5F7;
-  --accent-foreground: #007AFF;
+  --accent-foreground: #7C3AED;
   --border: #D2D2D7;
   --input: #D2D2D7;
-  --ring: #007AFF;
+  --ring: #7C3AED;
   --destructive: #FF3B30;
   --destructive-foreground: #ffffff;
   color-scheme: light;
