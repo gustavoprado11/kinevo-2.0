@@ -2,8 +2,12 @@
 
 ## Status
 - [x] Rascunho
-- [ ] Em implementação
+- [x] Em implementação
 - [ ] Concluída
+
+> Batch 1 (#1/#3/#4) e Batch 2 (#2/#5) **implementados e merged na `main`**
+> (commits `ce05f96`, `f203f2c`, `03ee81a`, `8d25571`). Falta apenas a
+> validação em **device real** (iOS + Android) para marcar como Concluída.
 
 ## Contexto
 
@@ -171,14 +175,14 @@ Após a implementação, os totais diários de passos/calorias/distância do Kin
 Sugestão: **fases #1+#3+#4 num primeiro batch** (sem mudança de schema, alto impacto), depois **#2+#5** num segundo batch.
 
 ## Critérios de Aceite
-- [ ] Passos/calorias/distância do dia batem com o app Saúde nativo (iPhone só e iPhone+Watch), tolerância pequena
-- [ ] HRV exibido com métrica/fonte corretas; baselines não misturam SDNN com RMSSD
-- [ ] FC repouso coincide com valor diário do nativo
-- [ ] Aba de saúde sincroniza ao focar e mostra "atualizado há X"
-- [ ] Sono não infla por sobreposição de fontes
-- [ ] Sem novos erros de TypeScript (`tsc --noEmit` limpo)
-- [ ] Retrocompatível; migrations backward-compat
-- [ ] Testado em device real (HealthKit não funciona pleno no simulador; Watch nunca no simulador)
+- [x] Lógica de dedup (statistics/aggregate) e merge de sono implementada (iOS+Android)
+- [x] HRV: baselines não misturam SDNN com RMSSD; métrica derivada da fonte e rotulada na UI
+- [x] FC repouso via valor representativo (discreteAverage iOS / BPM_AVG Android)
+- [x] Aba de saúde sincroniza ao focar e mostra "atualizado há X"
+- [x] Sono mescla intervalos sobrepostos (não soma duplicado) — coberto por testes de `mergedMinutes`
+- [x] Sem novos erros de TypeScript (`tsc --noEmit` limpo — projeto inteiro a 0 erros)
+- [x] Retrocompatível; sem migration (métrica HRV derivada de `source`)
+- [ ] **Validação em device real** (iOS só, iPhone+Watch, Android): números batem com o app de saúde nativo e sono não infla — *pendente*
 
 ## Restrições Técnicas
 - Seguir CLAUDE.md: zero `any` novo, mudanças cirúrgicas, retrocompat obrigatória.
@@ -219,9 +223,10 @@ Sugestão: **fases #1+#3+#4 num primeiro batch** (sem mudança de schema, alto i
 
 ## Notas de Implementação
 
-### Batch 1 — implementado (2026-05-21)
+### Batch 1 — ✅ concluído / merged na `main` (2026-05-21)
 
-Cobre causas #1, #3 e #4. Sem mudança de schema.
+Cobre causas #1, #3 e #4. Sem mudança de schema. Commits `ce05f96` (#1/#3
+motor de sync), `03ee81a` (#4 frescor/sync no foco) e `8d25571` (spec doc).
 
 **#1 + #3 iOS — `lib/healthSync/healthKitSync.ts`**
 - Novo helper `queryDailyStatistic()` usando `queryStatisticsCollectionForQuantity` (anchor à meia-noite local, intervalo `{ day: 1 }`). Deduplica entre fontes via `HKStatisticsCollectionQuery`, espelhando o app Saúde.
@@ -244,9 +249,10 @@ Cobre causas #1, #3 e #4. Sem mudança de schema.
 - `vitest run`: 277/277 passando.
 - ⚠️ Pendente teste em **device real** (HealthKit/Health Connect não funcionam pleno em simulador): conferir passos/cal/dist iguais ao app nativo em (a) iPhone só e (b) iPhone+Apple Watch.
 
-### Batch 2 — implementado (2026-05-21)
+### Batch 2 — ✅ concluído / merged na `main` (2026-05-21)
 
-Cobre causas #2 e #5. **Sem migration** (ver decisão abaixo).
+Cobre causas #2 e #5. **Sem migration** (ver decisão abaixo). Commits
+`f203f2c` (#2 HRV) e `ce05f96` (#5 sono, junto do motor de sync).
 
 **Decisão — #2 sem coluna nova:** o spec previa adicionar `hrv_metric`. Na implementação, `hrv_samples.source` ('healthkit'/'health_connect') já identifica unicamente a métrica (SDNN/RMSSD), então derivamos via `lib/hrv.ts::hrvMetricFromSource`. Mais cirúrgico, backward-compat por definição, zero risco de migration/backfill.
 
