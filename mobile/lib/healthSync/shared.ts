@@ -13,6 +13,37 @@ export function emptyCounts(): SyncCounts {
   return { sleep: 0, steps: 0, hr_resting: 0, hrv: 0 };
 }
 
+// Fix discrepância #5: contagem dupla de sono. Quando >1 fonte grava o mesmo
+// período (ex: Apple Watch + app terceiro como AutoSleep/Pillow), somar as
+// durações infla o total. mergedMinutes mescla intervalos sobrepostos e conta
+// cada minuto coberto uma única vez. Também lida com cochilos (intervalos
+// disjuntos no mesmo dia somam normalmente). Type-safe — usa só start/end.
+export interface TimeInterval {
+  start: number; // epoch ms
+  end: number; // epoch ms
+}
+
+export function mergedMinutes(intervals: readonly TimeInterval[]): number {
+  const valid = intervals.filter((iv) => iv.end > iv.start);
+  if (valid.length === 0) return 0;
+  const sorted = [...valid].sort((a, b) => a.start - b.start);
+  let totalMs = 0;
+  let curStart = sorted[0].start;
+  let curEnd = sorted[0].end;
+  for (let i = 1; i < sorted.length; i++) {
+    const iv = sorted[i];
+    if (iv.start <= curEnd) {
+      if (iv.end > curEnd) curEnd = iv.end;
+    } else {
+      totalMs += curEnd - curStart;
+      curStart = iv.start;
+      curEnd = iv.end;
+    }
+  }
+  totalMs += curEnd - curStart;
+  return totalMs / 60000;
+}
+
 export function toDateOnlyISO(d: Date): string {
   // Fix BUG 2 (1.6.0/33): usa local time do device, não UTC.
   // toISOString() converte pra UTC, causando bucket cruzado: samples

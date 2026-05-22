@@ -5,16 +5,21 @@ import { Platform } from 'react-native';
 import {
   queryCategorySamples,
   queryQuantitySamples,
+  queryStatisticsCollectionForQuantity,
   CategoryValueSleepAnalysis,
   type CategorySampleTyped,
   type QuantitySampleTyped,
+  type QuantityTypeIdentifier,
+  type StatisticsOptions,
 } from '@kingstinct/react-native-healthkit';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   emptyCounts,
   getStudentId,
+  mergedMinutes,
   recomputeReadinessLastDays,
   SyncCounts,
+  TimeInterval,
   toDateOnlyISO,
   upsertConnectionStatus,
 } from './shared';
@@ -48,76 +53,116 @@ interface SleepDailyAgg {
   raw: Array<{ start: string; end: string; stage: number }>;
 }
 
-function aggregateSleep(samples: readonly SleepSample[]): Map<string, SleepDailyAgg> {
-  const byDate = new Map<string, SleepDailyAgg>();
-  for (const sample of samples) {
-    const start = sample.startDate;
-    const end = sample.endDate;
-    const durMin = Math.max(0, (end.getTime() - start.getTime()) / 60000);
-    if (durMin <= 0) continue;
-    const value = Number(sample.value);
+// Fix discrepância #5: em vez de somar a duração de cada sample (que conta em
+// dobro quando Apple Watch + app terceiro gravam a mesma noite), coletamos os
+// intervalos por fase e mesclamos os sobrepostos (mergedMinutes). Cada minuto
+// é contado uma vez só. duration = cobertura mesclada de TODAS as fases de sono.
+interface SleepIntervals {
+  deep: TimeInterval[];
+  rem: TimeInterval[];
+  light: TimeInterval[];
+  asleepAny: TimeInterval[]; // união de deep+rem+core+asleep(legacy) p/ duração
+  awake: TimeInterval[];
+  inBed: TimeInterval[];
+  raw: Array<{ start: string; end: string; stage: number }>;
+}
 
-    const sampleDate = toDateOnlyISO(end);
-    let agg = byDate.get(sampleDate);
-    if (!agg) {
-      agg = {
-        duration_minutes: 0,
-        efficiency_pct: null,
-        deep_minutes: 0,
-        rem_minutes: 0,
-        light_minutes: 0,
-        awake_minutes: 0,
-        raw: [],
-      };
-      byDate.set(sampleDate, agg);
+function aggregateSleep(samples: readonly SleepSample[]): Map<string, SleepDailyAgg> {
+  const acc = new Map<string, SleepIntervals>();
+  for (const sample of samples) {
+    const start = sample.startDate.getTime();
+    const end = sample.endDate.getTime();
+    if (!(end > start)) continue;
+    const value = Number(sample.value);
+    const iv: TimeInterval = { start, end };
+
+    const sampleDate = toDateOnlyISO(sample.endDate);
+    let day = acc.get(sampleDate);
+    if (!day) {
+      day = { deep: [], rem: [], light: [], asleepAny: [], awake: [], inBed: [], raw: [] };
+      acc.set(sampleDate, day);
     }
 
-    agg.raw.push({ start: start.toISOString(), end: end.toISOString(), stage: value });
+    day.raw.push({ start: sample.startDate.toISOString(), end: sample.endDate.toISOString(), stage: value });
 
     if (value === CategoryValueSleepAnalysis.asleepDeep) {
-      agg.deep_minutes += durMin;
-      agg.duration_minutes += durMin;
+      day.deep.push(iv);
+      day.asleepAny.push(iv);
     } else if (value === CategoryValueSleepAnalysis.asleepREM) {
-      agg.rem_minutes += durMin;
-      agg.duration_minutes += durMin;
+      day.rem.push(iv);
+      day.asleepAny.push(iv);
     } else if (value === CategoryValueSleepAnalysis.asleepCore) {
-      agg.light_minutes += durMin;
-      agg.duration_minutes += durMin;
+      day.light.push(iv);
+      day.asleepAny.push(iv);
     } else if (value === CategoryValueSleepAnalysis.awake) {
-      agg.awake_minutes += durMin;
+      day.awake.push(iv);
     } else if (value === CategoryValueSleepAnalysis.asleep || value === CategoryValueSleepAnalysis.asleepUnspecified) {
-      // Legacy single-stage: conta como duração mas sem detalhamento
-      agg.duration_minutes += durMin;
+      // Legacy single-stage: conta como duração mas sem detalhamento de fase
+      day.asleepAny.push(iv);
+    } else if (value === CategoryValueSleepAnalysis.inBed) {
+      day.inBed.push(iv);
     }
-    // inBed (0) é ignorado — só usado pra cálculo de eficiência abaixo
   }
 
-  for (const [, agg] of byDate) {
-    const explicitInBed = agg.raw
-      .filter((r) => r.stage === CategoryValueSleepAnalysis.inBed)
-      .reduce((acc, r) => acc + (new Date(r.end).getTime() - new Date(r.start).getTime()) / 60000, 0);
-    // Fallback robustness: se Apple emitir samples só por fase de sono
-    // (sem inBed explícito), usa asleep+awake como proxy de tempo na cama.
-    // Apple Watch padrão sempre emite inBed; iPhone-only ou apps third-party
-    // podem omitir. Sem este fallback, efficiency_pct viraria null.
-    const inBedMin = Math.max(explicitInBed, agg.duration_minutes + agg.awake_minutes);
-    if (inBedMin > 0) {
-      agg.efficiency_pct = Math.min(100, Math.round((agg.duration_minutes / inBedMin) * 1000) / 10);
-    }
-    agg.duration_minutes = Math.round(agg.duration_minutes);
-    agg.deep_minutes = Math.round(agg.deep_minutes);
-    agg.rem_minutes = Math.round(agg.rem_minutes);
-    agg.light_minutes = Math.round(agg.light_minutes);
-    agg.awake_minutes = Math.round(agg.awake_minutes);
+  const byDate = new Map<string, SleepDailyAgg>();
+  for (const [sampleDate, day] of acc) {
+    const duration = mergedMinutes(day.asleepAny);
+    const deep = mergedMinutes(day.deep);
+    const rem = mergedMinutes(day.rem);
+    const light = mergedMinutes(day.light);
+    const awake = mergedMinutes(day.awake);
+    const explicitInBed = mergedMinutes(day.inBed);
+    // Fallback: Apple Watch sempre emite inBed; iPhone-only/apps third-party
+    // podem omitir. Sem inBed explícito, usa asleep+awake como proxy.
+    const inBedMin = Math.max(explicitInBed, duration + awake);
+    const efficiency_pct = inBedMin > 0
+      ? Math.min(100, Math.round((duration / inBedMin) * 1000) / 10)
+      : null;
+    byDate.set(sampleDate, {
+      duration_minutes: Math.round(duration),
+      efficiency_pct,
+      deep_minutes: Math.round(deep),
+      rem_minutes: Math.round(rem),
+      light_minutes: Math.round(light),
+      awake_minutes: Math.round(awake),
+      raw: day.raw,
+    });
   }
   return byDate;
 }
 
-function aggregateQuantitySamplesByDay(samples: readonly QuantitySampleTyped<any>[]): Map<string, number> {
+// Fix discrepância #1/#3: bucket diário DEDUPLICADO entre fontes via
+// HKStatisticsCollectionQuery. Somar samples brutos (queryQuantitySamples)
+// conta o mesmo passo/caloria 2-3x quando iPhone + Apple Watch + apps
+// terceiros gravam em paralelo — o app Saúde já deduplica. Esta query
+// espelha exatamente o número do app Saúde.
+//   'cumulativeSum'  → passos, calorias, distância (totais do dia)
+//   'discreteAverage'→ FC repouso (valor representativo, não média cega)
+async function queryDailyStatistic(
+  identifier: QuantityTypeIdentifier,
+  option: 'cumulativeSum' | 'discreteAverage',
+  startDate: Date,
+  endDate: Date,
+): Promise<Map<string, number>> {
   const byDate = new Map<string, number>();
-  for (const s of samples) {
-    const day = toDateOnlyISO(s.endDate ?? s.startDate);
-    byDate.set(day, (byDate.get(day) ?? 0) + Number(s.quantity ?? 0));
+  // Anchor à meia-noite local: alinha os buckets ao dia do dispositivo
+  // (consistente com toDateOnlyISO), evitando vazamento de fuso (UTC-3+).
+  const anchor = new Date(startDate);
+  anchor.setHours(0, 0, 0, 0);
+  const collection = await queryStatisticsCollectionForQuantity(
+    identifier,
+    [option] as StatisticsOptions[],
+    anchor,
+    { day: 1 },
+    { filter: { date: { startDate, endDate } } },
+  );
+  for (const bucket of collection ?? []) {
+    const when = bucket.startDate ?? bucket.endDate;
+    if (!when) continue;
+    const q = option === 'cumulativeSum' ? bucket.sumQuantity : bucket.averageQuantity;
+    const value = q?.quantity;
+    if (value == null || !Number.isFinite(value) || value <= 0) continue;
+    byDate.set(toDateOnlyISO(when), value);
   }
   return byDate;
 }
@@ -204,16 +249,13 @@ export async function syncHealthKit(
     lastError = e?.message;
   }
 
-  // ── Activity (steps + active energy + distance) ──
+  // ── Activity (steps + active energy + distance) — deduplicado entre fontes ──
   try {
-    const [stepsSamples, kcalSamples, distSamples] = await Promise.all([
-      queryQuantitySamples('HKQuantityTypeIdentifierStepCount', { filter: dateFilter, limit: 0, ascending: true } as any).catch(() => []),
-      queryQuantitySamples('HKQuantityTypeIdentifierActiveEnergyBurned', { filter: dateFilter, limit: 0, ascending: true } as any).catch(() => []),
-      queryQuantitySamples('HKQuantityTypeIdentifierDistanceWalkingRunning', { filter: dateFilter, limit: 0, ascending: true } as any).catch(() => []),
+    const [stepsByDay, kcalByDay, distByDay] = await Promise.all([
+      queryDailyStatistic('HKQuantityTypeIdentifierStepCount', 'cumulativeSum', startDate, endDate).catch(() => new Map<string, number>()),
+      queryDailyStatistic('HKQuantityTypeIdentifierActiveEnergyBurned', 'cumulativeSum', startDate, endDate).catch(() => new Map<string, number>()),
+      queryDailyStatistic('HKQuantityTypeIdentifierDistanceWalkingRunning', 'cumulativeSum', startDate, endDate).catch(() => new Map<string, number>()),
     ]);
-    const stepsByDay = aggregateQuantitySamplesByDay(stepsSamples as readonly QuantitySampleTyped<any>[]);
-    const kcalByDay = aggregateQuantitySamplesByDay(kcalSamples as readonly QuantitySampleTyped<any>[]);
-    const distByDay = aggregateQuantitySamplesByDay(distSamples as readonly QuantitySampleTyped<any>[]);
     const allDays = new Set<string>([...stepsByDay.keys(), ...kcalByDay.keys(), ...distByDay.keys()]);
     for (const day of allDays) {
       await supabase.from('daily_activity_samples' as any).upsert(
@@ -235,14 +277,9 @@ export async function syncHealthKit(
     lastError = e?.message;
   }
 
-  // ── HR repouso ──
+  // ── HR repouso — valor diário representativo, deduplicado entre fontes ──
   try {
-    const samples = await queryQuantitySamples('HKQuantityTypeIdentifierRestingHeartRate', {
-      filter: dateFilter,
-      limit: 0,
-      ascending: true,
-    } as any);
-    const byDay = averageQuantityByDay(samples as readonly QuantitySampleTyped<any>[]);
+    const byDay = await queryDailyStatistic('HKQuantityTypeIdentifierRestingHeartRate', 'discreteAverage', startDate, endDate);
     for (const [day, bpm] of byDay) {
       await supabase.from('hr_resting_samples' as any).upsert(
         {

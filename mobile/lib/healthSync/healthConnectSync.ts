@@ -5,8 +5,10 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   emptyCounts,
   getStudentId,
+  mergedMinutes,
   recomputeReadinessLastDays,
   SyncCounts,
+  TimeInterval,
   toDateOnlyISO,
   upsertConnectionStatus,
 } from './shared';
@@ -14,12 +16,10 @@ import {
 // Lib é importada apenas no Android — em iOS, requires native (não existe).
 // Tipos importados eagerly (não causam runtime side-effect).
 import type {
-  RestingHeartRateRecord,
-  StepsRecord,
   SleepSessionRecord,
   HeartRateVariabilityRmssdRecord,
-  ActiveCaloriesBurnedRecord,
 } from 'react-native-health-connect/lib/typescript/types/records.types';
+import type { AggregationGroupResult } from 'react-native-health-connect/lib/typescript/types/aggregate.types';
 
 export type HealthConnectSdkStatus = 'available' | 'unavailable' | 'update_required' | 'unsupported';
 
@@ -100,7 +100,20 @@ function recordTypeToCategory(recordType: string): string | null {
   return null;
 }
 
-function aggregateSleepSessions(sessions: SleepSessionRecord[]): Map<string, {
+// aggregateGroupByPeriod exige TimeRangeFilter em hora LOCAL (sem 'Z'/offset),
+// pois o slicing por 'DAYS' é baseado no calendário. ISO com Z (instant) faz
+// o Health Connect lançar erro. Formata YYYY-MM-DDTHH:mm:ss em hora local.
+function toLocalDateTimeNoTZ(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const h = String(d.getHours()).padStart(2, '0');
+  const min = String(d.getMinutes()).padStart(2, '0');
+  const s = String(d.getSeconds()).padStart(2, '0');
+  return `${y}-${m}-${day}T${h}:${min}:${s}`;
+}
+
+interface SleepDailyAgg {
   duration_minutes: number;
   efficiency_pct: number | null;
   deep_minutes: number;
@@ -108,63 +121,74 @@ function aggregateSleepSessions(sessions: SleepSessionRecord[]): Map<string, {
   light_minutes: number;
   awake_minutes: number;
   raw: Array<{ start: string; end: string; stage?: number }>;
-}> {
-  const byDate = new Map<string, ReturnType<typeof aggregateSleepSessions> extends Map<string, infer V> ? V : never>();
-  for (const session of sessions ?? []) {
-    const sessionStart = new Date(session.startTime);
-    const sessionEnd = new Date(session.endTime);
-    if (!(sessionEnd.getTime() > sessionStart.getTime())) continue;
-    const day = toDateOnlyISO(sessionEnd);
+}
 
-    let agg = byDate.get(day);
-    if (!agg) {
-      agg = {
-        duration_minutes: 0,
-        efficiency_pct: null,
-        deep_minutes: 0,
-        rem_minutes: 0,
-        light_minutes: 0,
-        awake_minutes: 0,
-        raw: [],
-      };
-      byDate.set(day, agg);
+// Fix discrepância #5: mescla intervalos sobrepostos (mergedMinutes) em vez de
+// somar durações. Quando >1 app grava SleepSession da mesma noite, somar
+// duplicava. duration = cobertura mesclada das fases de sono; o total da
+// sessão (mesclado) vira o denominador da eficiência (proxy de tempo na cama).
+interface SleepIntervalsHC {
+  deep: TimeInterval[];
+  rem: TimeInterval[];
+  light: TimeInterval[];
+  asleepAny: TimeInterval[];
+  awake: TimeInterval[];
+  session: TimeInterval[];
+  raw: Array<{ start: string; end: string; stage?: number }>;
+}
+
+function aggregateSleepSessions(sessions: SleepSessionRecord[]): Map<string, SleepDailyAgg> {
+  const acc = new Map<string, SleepIntervalsHC>();
+  for (const session of sessions ?? []) {
+    const sessionStart = new Date(session.startTime).getTime();
+    const sessionEnd = new Date(session.endTime).getTime();
+    if (!(sessionEnd > sessionStart)) continue;
+    const day = toDateOnlyISO(new Date(session.endTime));
+
+    let d = acc.get(day);
+    if (!d) {
+      d = { deep: [], rem: [], light: [], asleepAny: [], awake: [], session: [], raw: [] };
+      acc.set(day, d);
     }
 
-    const sessionTotalMin = (sessionEnd.getTime() - sessionStart.getTime()) / 60000;
+    d.session.push({ start: sessionStart, end: sessionEnd });
 
     if (session.stages && session.stages.length > 0) {
-      let awakeMin = 0;
-      let sleepMin = 0;
       for (const stg of session.stages) {
-        const sStart = new Date(stg.startTime);
-        const sEnd = new Date(stg.endTime);
-        const dur = Math.max(0, (sEnd.getTime() - sStart.getTime()) / 60000);
-        agg.raw.push({ start: stg.startTime, end: stg.endTime, stage: stg.stage });
-        if (stg.stage === STAGE_DEEP) { agg.deep_minutes += dur; sleepMin += dur; }
-        else if (stg.stage === STAGE_REM) { agg.rem_minutes += dur; sleepMin += dur; }
-        else if (stg.stage === STAGE_LIGHT) { agg.light_minutes += dur; sleepMin += dur; }
-        else if (stg.stage === STAGE_AWAKE) { awakeMin += dur; }
-        else if (stg.stage === STAGE_SLEEPING) { sleepMin += dur; }
-      }
-      agg.awake_minutes += awakeMin;
-      agg.duration_minutes += sleepMin;
-      if (sessionTotalMin > 0) {
-        const eff = (sleepMin / sessionTotalMin) * 100;
-        agg.efficiency_pct = Math.round(eff * 10) / 10;
+        const sStart = new Date(stg.startTime).getTime();
+        const sEnd = new Date(stg.endTime).getTime();
+        if (!(sEnd > sStart)) continue;
+        const iv: TimeInterval = { start: sStart, end: sEnd };
+        d.raw.push({ start: stg.startTime, end: stg.endTime, stage: stg.stage });
+        if (stg.stage === STAGE_DEEP) { d.deep.push(iv); d.asleepAny.push(iv); }
+        else if (stg.stage === STAGE_REM) { d.rem.push(iv); d.asleepAny.push(iv); }
+        else if (stg.stage === STAGE_LIGHT) { d.light.push(iv); d.asleepAny.push(iv); }
+        else if (stg.stage === STAGE_AWAKE) { d.awake.push(iv); }
+        else if (stg.stage === STAGE_SLEEPING) { d.asleepAny.push(iv); }
       }
     } else {
-      // Sem stages: salva só duração total
-      agg.duration_minutes += sessionTotalMin;
-      agg.raw.push({ start: session.startTime, end: session.endTime });
+      // Sem stages: a sessão inteira conta como sono
+      d.asleepAny.push({ start: sessionStart, end: sessionEnd });
+      d.raw.push({ start: session.startTime, end: session.endTime });
     }
   }
 
-  for (const [, agg] of byDate) {
-    agg.duration_minutes = Math.round(agg.duration_minutes);
-    agg.deep_minutes = Math.round(agg.deep_minutes);
-    agg.rem_minutes = Math.round(agg.rem_minutes);
-    agg.light_minutes = Math.round(agg.light_minutes);
-    agg.awake_minutes = Math.round(agg.awake_minutes);
+  const byDate = new Map<string, SleepDailyAgg>();
+  for (const [day, d] of acc) {
+    const duration = mergedMinutes(d.asleepAny);
+    const awake = mergedMinutes(d.awake);
+    const sessionTotal = mergedMinutes(d.session);
+    const denom = Math.max(sessionTotal, duration);
+    const efficiency_pct = denom > 0 ? Math.round((duration / denom) * 1000) / 10 : null;
+    byDate.set(day, {
+      duration_minutes: Math.round(duration),
+      efficiency_pct,
+      deep_minutes: Math.round(mergedMinutes(d.deep)),
+      rem_minutes: Math.round(mergedMinutes(d.rem)),
+      light_minutes: Math.round(mergedMinutes(d.light)),
+      awake_minutes: Math.round(awake),
+      raw: d.raw,
+    });
   }
   return byDate;
 }
@@ -220,6 +244,17 @@ export async function syncHealthConnect(
     endTime: endTime.toISOString(),
   };
 
+  // Filtro em hora local + buckets de dia ancorados à meia-noite local, pra
+  // agregação por período (passos/cal/dist/FC). Veja toLocalDateTimeNoTZ.
+  const startMidnight = new Date(startTime);
+  startMidnight.setHours(0, 0, 0, 0);
+  const localTimeRangeFilter = {
+    operator: 'between' as const,
+    startTime: toLocalDateTimeNoTZ(startMidnight),
+    endTime: toLocalDateTimeNoTZ(endTime),
+  };
+  const daySlicer = { period: 'DAYS' as const, length: 1 };
+
   let lastError: string | undefined;
 
   // ─── Sleep ───
@@ -261,46 +296,42 @@ export async function syncHealthConnect(
 
   if (wantsActivity) {
     try {
-      const [stepsRes, kcalRes, distRes] = await Promise.all([
+      // Fix discrepância #1: agregação por período deduplica entre apps/fontes
+      // respeitando a prioridade de origem do Health Connect. Somar registros
+      // brutos (readRecords) contava em dobro quando >1 app grava passos.
+      // Unidades já vêm normalizadas (inKilocalories / inMeters).
+      const [stepsGroups, kcalGroups, distGroups] = (await Promise.all([
         grantedRecordTypes.includes('Steps')
-          ? hc.readRecords('Steps', { timeRangeFilter }).catch(() => ({ records: [] }))
-          : Promise.resolve({ records: [] }),
+          ? hc.aggregateGroupByPeriod({ recordType: 'Steps', timeRangeFilter: localTimeRangeFilter, timeRangeSlicer: daySlicer }).catch(() => [])
+          : Promise.resolve([]),
         grantedRecordTypes.includes('ActiveCaloriesBurned')
-          ? hc.readRecords('ActiveCaloriesBurned', { timeRangeFilter }).catch(() => ({ records: [] }))
-          : Promise.resolve({ records: [] }),
+          ? hc.aggregateGroupByPeriod({ recordType: 'ActiveCaloriesBurned', timeRangeFilter: localTimeRangeFilter, timeRangeSlicer: daySlicer }).catch(() => [])
+          : Promise.resolve([]),
         grantedRecordTypes.includes('Distance')
-          ? hc.readRecords('Distance', { timeRangeFilter }).catch(() => ({ records: [] }))
-          : Promise.resolve({ records: [] }),
-      ]);
+          ? hc.aggregateGroupByPeriod({ recordType: 'Distance', timeRangeFilter: localTimeRangeFilter, timeRangeSlicer: daySlicer }).catch(() => [])
+          : Promise.resolve([]),
+      ])) as [
+        AggregationGroupResult<'Steps'>[],
+        AggregationGroupResult<'ActiveCaloriesBurned'>[],
+        AggregationGroupResult<'Distance'>[],
+      ];
 
       const stepsByDay = new Map<string, number>();
-      for (const r of (stepsRes.records ?? []) as StepsRecord[]) {
-        const day = toDateOnlyISO(new Date(r.endTime));
-        stepsByDay.set(day, (stepsByDay.get(day) ?? 0) + Number(r.count ?? 0));
+      for (const g of stepsGroups ?? []) {
+        const v = Number(g.result.COUNT_TOTAL);
+        if (Number.isFinite(v) && v > 0) stepsByDay.set(g.startTime.slice(0, 10), v);
       }
 
       const kcalByDay = new Map<string, number>();
-      for (const r of (kcalRes.records ?? []) as ActiveCaloriesBurnedRecord[]) {
-        const day = toDateOnlyISO(new Date(r.endTime));
-        // Energy.unit pode ser 'kilocalories' | 'calories' | 'joules' | 'kilojoules'.
-        let kcal = Number(r.energy?.value ?? 0);
-        const unit = r.energy?.unit;
-        if (unit === 'calories') kcal = kcal / 1000;
-        else if (unit === 'joules') kcal = kcal / 4184;
-        else if (unit === 'kilojoules') kcal = kcal / 4.184;
-        kcalByDay.set(day, (kcalByDay.get(day) ?? 0) + kcal);
+      for (const g of kcalGroups ?? []) {
+        const v = Number(g.result.ACTIVE_CALORIES_TOTAL?.inKilocalories ?? 0);
+        if (Number.isFinite(v) && v > 0) kcalByDay.set(g.startTime.slice(0, 10), v);
       }
 
       const distByDay = new Map<string, number>();
-      for (const r of (distRes.records ?? []) as any[]) {
-        const day = toDateOnlyISO(new Date(r.endTime));
-        let meters = Number(r.distance?.value ?? 0);
-        const unit = r.distance?.unit;
-        if (unit === 'kilometers') meters = meters * 1000;
-        else if (unit === 'feet') meters = meters * 0.3048;
-        else if (unit === 'miles') meters = meters * 1609.344;
-        else if (unit === 'inches') meters = meters * 0.0254;
-        distByDay.set(day, (distByDay.get(day) ?? 0) + meters);
+      for (const g of distGroups ?? []) {
+        const v = Number(g.result.DISTANCE?.inMeters ?? 0);
+        if (Number.isFinite(v) && v > 0) distByDay.set(g.startTime.slice(0, 10), v);
       }
 
       const allDays = new Set<string>([...stepsByDay.keys(), ...kcalByDay.keys(), ...distByDay.keys()]);
@@ -325,27 +356,22 @@ export async function syncHealthConnect(
     }
   }
 
-  // ─── HR repouso ───
+  // ─── HR repouso — média diária deduplicada por prioridade de origem ───
   if (grantedRecordTypes.includes('RestingHeartRate')) {
     try {
-      const res = await hc.readRecords('RestingHeartRate', { timeRangeFilter });
-      const records = (res.records ?? []) as RestingHeartRateRecord[];
-      const byDate = new Map<string, { sum: number; count: number }>();
-      for (const r of records) {
-        const day = toDateOnlyISO(new Date(r.time));
-        const v = Number(r.beatsPerMinute);
-        if (!Number.isFinite(v) || v <= 0) continue;
-        const cur = byDate.get(day) ?? { sum: 0, count: 0 };
-        cur.sum += v;
-        cur.count += 1;
-        byDate.set(day, cur);
-      }
-      for (const [day, { sum, count }] of byDate) {
+      const groups = (await hc.aggregateGroupByPeriod({
+        recordType: 'RestingHeartRate',
+        timeRangeFilter: localTimeRangeFilter,
+        timeRangeSlicer: daySlicer,
+      })) as AggregationGroupResult<'RestingHeartRate'>[];
+      for (const g of groups ?? []) {
+        const bpm = Number(g.result.BPM_AVG);
+        if (!Number.isFinite(bpm) || bpm <= 0) continue;
         await supabase.from('hr_resting_samples' as any).upsert(
           {
             student_id: studentId,
-            sample_date: day,
-            bpm: Math.round(sum / count),
+            sample_date: g.startTime.slice(0, 10),
+            bpm: Math.round(bpm),
             source: 'health_connect',
             synced_at: new Date().toISOString(),
           },
