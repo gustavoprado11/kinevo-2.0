@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { View, Text, ScrollView, RefreshControl, StyleSheet, Pressable, ActivityIndicator, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Moon, Heart, Footprints, Activity, Zap } from 'lucide-react-native';
@@ -8,12 +8,13 @@ import { useHealthDashboard } from '../../hooks/useHealthDashboard';
 import { useHealthKitSync } from '../../hooks/useHealthKitSync';
 import { useHealthConnectSync } from '../../hooks/useHealthConnectSync';
 import { useHealthInsights } from '../../hooks/useHealthInsights';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Platform } from 'react-native';
 import { toast } from '../../lib/toast';
 import { useV2Colors, type V2Palette } from '../../hooks/useV2Colors';
 import { InsightsCard } from '../../components/health/InsightsCard';
 import { ActivityWeekCard } from '../../components/strava/ActivityWeekCard';
+import { hrvMetricLabel } from '../../lib/hrv';
 
 function formatDurationHM(min: number | null | undefined): string | null {
   if (min == null) return null;
@@ -27,6 +28,21 @@ function formatToday(): string {
   const s = d.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
   // Sentence case (só a 1ª letra). Evita "Quinta-Feira, 21 De Maio" do capitalize.
   return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+// Fix discrepância #4: frescor do dado. O aluno comparava o Kinevo (defasado
+// até 12h pelo background sync) com o app de saúde aberto ao vivo e via
+// "discrepância". Mostrar "atualizado há X" deixa o atraso explícito.
+function formatRelativeTime(iso: string | null): string | null {
+  if (!iso) return null;
+  const diffMs = Date.now() - new Date(iso).getTime();
+  if (!Number.isFinite(diffMs) || diffMs < 60_000) return 'agora';
+  const min = Math.floor(diffMs / 60_000);
+  if (min < 60) return `há ${min} min`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `há ${h}h`;
+  const d = Math.floor(h / 24);
+  return `há ${d}d`;
 }
 
 // Padding lateral do ScrollView (scroll.paddingHorizontal) e gap entre os
@@ -66,6 +82,25 @@ export default function HealthScreen() {
       setRefreshing(false);
     }
   }, [syncIncremental, refresh, refreshInsights]);
+
+  // Fix discrepância #4: sincroniza ao focar a aba (debounce 5min) pra reduzir
+  // a defasagem vs o background sync de 12h. Silencioso — sem toast de erro.
+  const lastFocusSyncRef = useRef(0);
+  useFocusEffect(
+    useCallback(() => {
+      const now = Date.now();
+      if (now - lastFocusSyncRef.current < 5 * 60 * 1000) return;
+      lastFocusSyncRef.current = now;
+      void (async () => {
+        try {
+          await syncIncremental();
+          await Promise.all([refresh(), refreshInsights()]);
+        } catch {
+          // foco é best-effort; pull-to-refresh continua disponível
+        }
+      })();
+    }, [syncIncremental, refresh, refreshInsights])
+  );
 
   const hasAnyConnection = (data?.connections.length ?? 0) > 0;
   const hasAnyData =
@@ -145,6 +180,8 @@ export default function HealthScreen() {
   const steps = data?.stepsToday ?? null;
   const hrv = data?.hrvToday != null ? Math.round(Number(data.hrvToday)) : null;
   const hrvBase = data?.hrvBaseline30d ?? null;
+  // Rótulo da métrica (SDNN no iOS / RMSSD no Android) — não são comparáveis.
+  const hrvLabelSuffix = data?.hrvMetric ? ` ${hrvMetricLabel(data.hrvMetric)}` : '';
 
   const stepsGoal = 8000;
   const stepsProgress = steps != null ? Math.min(100, Math.round((steps / stepsGoal) * 100)) : null;
@@ -167,6 +204,11 @@ export default function HealthScreen() {
         <View style={styles.header}>
           <Text style={styles.headerDate}>{formatToday()}</Text>
           <Text style={styles.headerTitle}>Sua saúde</Text>
+          {(refreshing || isSyncing) ? (
+            <Text style={styles.headerSync}>Atualizando…</Text>
+          ) : lastSyncAt ? (
+            <Text style={styles.headerSync}>Atualizado {formatRelativeTime(lastSyncAt)}</Text>
+          ) : null}
         </View>
 
         {/* Fase 14d — Insights heurísticos no topo (até 3 por sessão) */}
@@ -207,7 +249,7 @@ export default function HealthScreen() {
             />
             <HealthMetricCard
               icon={Zap}
-              label="HRV"
+              label={`HRV${hrvLabelSuffix}`}
               value={hrv}
               unit="ms"
               sub={hrvBase != null ? `Baseline: ${hrvBase}` : 'Sem Apple Watch'}
@@ -239,6 +281,11 @@ export default function HealthScreen() {
             ))}
           </View>
         </View>
+
+        <Text style={styles.partialNote}>
+          Passos, calorias e frequência de hoje são parciais e se completam ao
+          longo do dia. Os totais batem com seu app de saúde após a sincronização.
+        </Text>
       </ScrollView>
     </SafeAreaView>
   );
@@ -268,6 +315,18 @@ function createStyles(c: V2Palette) {
     color: c.text.primary,
     letterSpacing: -0.6,
     marginTop: 2,
+  },
+  headerSync: {
+    fontSize: 12,
+    color: c.text.tertiary,
+    marginTop: 6,
+  },
+  partialNote: {
+    fontSize: 11,
+    lineHeight: 16,
+    color: c.text.tertiary,
+    marginTop: 16,
+    paddingHorizontal: 4,
   },
   grid: {
     gap: 12,
