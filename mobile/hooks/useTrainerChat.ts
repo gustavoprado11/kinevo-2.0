@@ -109,7 +109,7 @@ export function useTrainerChat() {
         if (error || !data) return { messages: [], hasMore: false };
 
         const hasMore = data.length > limit;
-        const msgs = (hasMore ? data.slice(0, limit) : data).reverse() as ChatMessage[];
+        const msgs = (hasMore ? data.slice(0, limit) : data).reverse() as unknown as ChatMessage[];
         return { messages: msgs, hasMore };
     }, []);
 
@@ -139,7 +139,7 @@ export function useTrainerChat() {
             if (__DEV__) console.error('[useTrainerChat] notifyTrainer (text) error:', err);
         });
 
-        return data as ChatMessage;
+        return data as unknown as ChatMessage;
     }, [user]);
 
     // Send an image message
@@ -198,7 +198,7 @@ export function useTrainerChat() {
             if (__DEV__) console.error('[useTrainerChat] notifyTrainer (image) error:', err);
         });
 
-        return data as ChatMessage;
+        return data as unknown as ChatMessage;
     }, [user]);
 
     // Mark trainer messages as read

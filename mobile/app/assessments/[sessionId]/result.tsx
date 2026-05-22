@@ -4,7 +4,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ChevronLeft, Share2 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
-import * as FileSystem from 'expo-file-system';
+// SDK 54: cacheDirectory/EncodingType/writeAsStringAsync saíram do export
+// padrão e foram pro entrypoint legacy. Mantém a API usada aqui funcionando.
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { colors } from '@/theme';
 import { supabase } from '../../../lib/supabase';

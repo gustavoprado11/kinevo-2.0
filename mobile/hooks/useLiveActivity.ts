@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { Platform } from 'react-native';
 import type { ExerciseData } from './useWorkoutSession';
+import type { WorkoutActivityState } from '../modules/live-activity-controller';
 
 // Lazy-import native module (iOS only)
 let liveActivityModule: typeof import('../modules/live-activity-controller') | null = null;
@@ -61,12 +62,12 @@ export function useLiveActivity({
     const isRestingRef = useRef(false);
     const restEndTimestampRef = useRef<number | null>(null);
     const timerDataRef = useRef<TimerUpdateData | null>(null);
-    const getWorkoutStateRef = useRef<(() => Record<string, unknown> | null)>(() => null);
+    const getWorkoutStateRef = useRef<(() => WorkoutActivityState | null)>(() => null);
 
     const isSupported = Platform.OS === 'ios' && !!liveActivityModule?.isLiveActivitySupported();
 
     // Calculate workout state from exercises
-    const getWorkoutState = useCallback(() => {
+    const getWorkoutState = useCallback((): WorkoutActivityState | null => {
         if (exercises.length === 0) return null;
 
         // Find current exercise (first with incomplete sets)

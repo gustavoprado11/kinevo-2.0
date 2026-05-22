@@ -569,7 +569,7 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                     const { data: studentForVideos }: { data: any; error: any } = await supabase
                         .from('students' as any)
                         .select('coach_id')
-                        .eq('auth_user_id', user.id)
+                        .eq('auth_user_id', currentUser.id)
                         .single();
 
                     if (studentForVideos?.coach_id) {

@@ -47,7 +47,7 @@ export function useTrainerChatRoom(studentId: string): UseTrainerChatRoomReturn 
         if (error || !data) return { messages: [], hasMore: false };
 
         const hasMoreResult = data.length > limit;
-        const msgs = (hasMoreResult ? data.slice(0, limit) : data).reverse() as ChatMessage[];
+        const msgs = (hasMoreResult ? data.slice(0, limit) : data).reverse() as unknown as ChatMessage[];
         return { messages: msgs, hasMore: hasMoreResult };
     }, [studentId]);
 
@@ -107,7 +107,7 @@ export function useTrainerChatRoom(studentId: string): UseTrainerChatRoomReturn 
             if (__DEV__) console.error('[useTrainerChatRoom] notifyStudent error:', err);
         });
 
-        return data as ChatMessage;
+        return data as unknown as ChatMessage;
     }, [user, studentId]);
 
     // Notify student via web API push route
