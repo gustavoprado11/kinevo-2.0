@@ -31,6 +31,7 @@ import { PreWorkoutFormSheet } from '../../components/workout/PreWorkoutFormShee
 import { PostWorkoutFormSheet } from '../../components/workout/PostWorkoutFormSheet';
 import { useWorkoutFormTriggers } from '../../hooks/useWorkoutFormTriggers';
 import { supabase } from '../../lib/supabase';
+import { getProgramWeek } from '@kinevo/shared/utils/schedule-projection';
 import type { ExerciseSubstituteOption, ExerciseData, WorkoutNote } from '../../hooks/useWorkoutSession';
 import { ShareableCardProps } from '../../components/workout/sharing/types';
 import { watchFinishState } from '../../lib/finishWorkoutFromWatch';
@@ -619,6 +620,33 @@ export default function WorkoutPlayerScreen() {
                         };
                     });
 
+                // Semana do programa p/ o chip "SEMANA X/Y" do card Lista (T4).
+                // Best-effort: 2 queries leves; qualquer falha → sem chip, não bloqueia.
+                let programWeek: { current: number; total: number } | undefined;
+                try {
+                    const { data: sessRow } = await supabase
+                        .from('workout_sessions' as any)
+                        .select('assigned_program_id')
+                        .eq('id', success)
+                        .maybeSingle();
+                    const pid = (sessRow as any)?.assigned_program_id;
+                    if (pid) {
+                        const { data: prog } = await supabase
+                            .from('assigned_programs' as any)
+                            .select('started_at, duration_weeks')
+                            .eq('id', pid)
+                            .maybeSingle();
+                        const startedAt = (prog as any)?.started_at;
+                        const total = (prog as any)?.duration_weeks;
+                        if (startedAt && total) {
+                            const wk = getProgramWeek(new Date(), startedAt, total);
+                            if (wk) programWeek = { current: wk, total };
+                        }
+                    }
+                } catch (err) {
+                    if (__DEV__) console.error('[workout] programWeek fetch failed:', err);
+                }
+
                 setSuccessData({
                     workoutName: workoutName,
                     duration: duration,
@@ -632,7 +660,8 @@ export default function WorkoutPlayerScreen() {
                     rpe,
                     maxLoads: maxLoads,
                     exerciseDetails: exerciseDetails,
-                    sessionId: success
+                    sessionId: success,
+                    programWeek,
                 });
 
                 // Set celebration data (summary for the celebration screen)
@@ -642,6 +671,14 @@ export default function WorkoutPlayerScreen() {
                     totalSets,
                     totalVolume,
                     rpe,
+                    workoutName,
+                    endDate: new Date(),
+                    coach: profile?.coach
+                        ? { name: profile.coach.name, initial: (profile.coach.name || 'K').charAt(0).toUpperCase() }
+                        : undefined,
+                    // prCount / streakDays / deltaVolumePct: opcionais — popular numa
+                    // próxima leva (via useSessionStats expandido + histórico). Sem eles,
+                    // os badges/delta apenas não renderizam (fallback graceful).
                 });
 
                 // Show full-screen celebration animation first
