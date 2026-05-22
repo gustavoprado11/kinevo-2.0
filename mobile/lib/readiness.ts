@@ -62,7 +62,7 @@ export function getReadinessRecommendation(result: ReadinessResult): string {
     return 'Recuperação boa. Treino normal recomendado.';
   }
   if (result.category === 'regular') {
-    return 'Recuperação parcial. Considere reduzir 10% da carga ou manter intensidade moderada.';
+    return 'Recuperação parcial hoje. Se as cargas de sempre pesarem mais que o normal, tudo bem — ajuste o peso ou as reps pra treinar no que você consegue hoje. Autorregular rende tanto quanto manter a carga fixa.';
   }
-  return 'Recuperação reduzida. Considere treino mais leve, mobilidade ou descanso ativo hoje.';
+  return 'Recuperação baixa hoje. Sono e estresse podem tirar 15–20% da sua força, e isso é normal. Treine pelo que sente: reduza a carga ou as reps e capriche na execução — fazer o que dá hoje vale mais que insistir na carga de sempre.';
 }

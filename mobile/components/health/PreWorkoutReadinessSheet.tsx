@@ -41,6 +41,15 @@ const CATEGORY_GRADIENT: Record<ReadinessCategory, [string, string]> = {
   reduzido: ['#7c3aed', '#EF4444'],
 };
 
+// CTA positivo e coerente com a nota — nunca "mesmo assim" (enquadramento
+// negativo que aparecia até com readiness bom). Quem abriu o treino quer começar.
+const CATEGORY_CTA: Record<ReadinessCategory, string> = {
+  otimo: 'Bora treinar',
+  bom: 'Começar treino',
+  regular: 'Começar treino',
+  reduzido: 'Começar treino',
+};
+
 function formatSleep(min: number | null | undefined): string {
   if (min == null) return '–';
   const h = Math.floor(min / 60);
@@ -62,6 +71,11 @@ export function PreWorkoutReadinessSheet({
   const categoryColor = CATEGORY_COLOR[readiness.category];
   const gradient = CATEGORY_GRADIENT[readiness.category];
   const recommendation = getReadinessRecommendation(readiness);
+  const ctaLabel = CATEGORY_CTA[readiness.category];
+  // Card de orientação só aparece quando há ajuste acionável (recuperação
+  // parcial/baixa). Em ótimo/bom não há "sugestão" — o score já diz tudo.
+  const showSuggestion =
+    readiness.category === 'regular' || readiness.category === 'reduzido';
 
   return (
     <Modal
@@ -114,10 +128,12 @@ export function PreWorkoutReadinessSheet({
                 </View>
               </View>
 
-              <View style={styles.recommendationCard}>
-                <Text style={styles.recommendationLabel}>SUGESTÃO</Text>
-                <Text style={styles.recommendationText}>{recommendation}</Text>
-              </View>
+              {showSuggestion && (
+                <View style={styles.recommendationCard}>
+                  <Text style={styles.recommendationLabel}>COMO TREINAR HOJE</Text>
+                  <Text style={styles.recommendationText}>{recommendation}</Text>
+                </View>
+              )}
             </ScrollView>
 
             <View style={styles.actions}>
@@ -128,12 +144,12 @@ export function PreWorkoutReadinessSheet({
                   end={{ x: 1, y: 0 }}
                   style={styles.ctaPrimary}
                 >
-                  <Text style={styles.ctaPrimaryText}>Treinar mesmo assim</Text>
+                  <Text style={styles.ctaPrimaryText}>{ctaLabel}</Text>
                   <ArrowRight size={18} color="#FFF" strokeWidth={2.5} />
                 </LinearGradient>
               </Pressable>
               <Pressable onPress={onReschedule} style={styles.ctaSecondary}>
-                <Text style={styles.ctaSecondaryText}>Reagendar pra amanhã</Text>
+                <Text style={styles.ctaSecondaryText}>Agora não</Text>
               </Pressable>
             </View>
           </SafeAreaView>
