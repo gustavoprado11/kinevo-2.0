@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Kinevo · Semana Perfeita — card comemorativo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --purple:#7C3AED; --canvas:#F4F5F8; --card:#FFFFFF;
+    --tx-1:#09090B; --tx-2:#3F3F46; --tx-3:#71717A; --tx-4:#A1A1AA; --border:#E4E4E7;
+    --green:#16A34A; --green2:#22C55E; --indigo:#6366F1; --gold:#FCD34D; --gold2:#F59E0B;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{font-family:'Plus Jakarta Sans',system-ui,sans-serif; background:#0B0B0F; color:#E7E7EA; -webkit-font-smoothing:antialiased; padding:40px 24px 80px;}
+  .doc{max-width:1180px; margin:0 auto 26px;}
+  .doc h1{font-size:30px; font-weight:800; letter-spacing:-.5px; color:#fff; margin-bottom:6px;}
+  .doc .sub{color:#9b9ba3; font-size:15px; line-height:1.6; max-width:860px;}
+  .doc .sub b{color:#fff;} .doc code{color:#c7d2fe; font-size:12.5px;}
+  .h2{font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:1.4px; color:#a78bfa; margin:34px auto 18px; max-width:1180px;}
+  .stage{display:flex; gap:40px; justify-content:center; flex-wrap:wrap; align-items:flex-start;}
+  .col .cap{text-align:center; margin-bottom:14px; max-width:320px;}
+  .col .cap .tag{display:inline-block; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1.3px; padding:5px 12px; border-radius:999px; background:#2a2418; color:#fcd34d; border:1px solid #5b4a2a;}
+  .col .cap p{font-size:12.5px; color:#9b9ba3; margin-top:8px; line-height:1.5;}
+
+  /* ===== SHARE CARD 320x568 ===== */
+  .shareframe{width:320px; border-radius:26px; overflow:hidden; box-shadow:0 30px 70px rgba(0,0,0,.55); position:relative;}
+  .share{position:relative; width:320px; height:568px; overflow:hidden; background:linear-gradient(160deg,#312E81 0%,#1E1B4B 50%,#0F172A 100%);}
+  .glowA{position:absolute; top:-120px; left:-120px; width:320px; height:320px; border-radius:50%; background:rgba(124,58,237,.22);}
+  .glowB{position:absolute; bottom:-80px; right:-80px; width:240px; height:240px; border-radius:50%; background:rgba(252,211,77,.10);}
+  .confetti i{position:absolute; width:8px; height:8px; border-radius:2px; opacity:.9;}
+  .scontent{position:absolute; inset:0; padding:34px 28px; display:flex; flex-direction:column;}
+  .sbadge{align-self:flex-start; display:flex; align-items:center; gap:6px; background:rgba(252,211,77,.14); border:1px solid rgba(252,211,77,.4); color:#FCD34D; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:2px; padding:6px 11px; border-radius:8px;}
+  .medal{width:84px; height:84px; border-radius:50%; background:radial-gradient(circle at 35% 30%, #FDE68A, #F59E0B 70%, #B45309); display:grid; place-items:center; box-shadow:0 10px 30px rgba(245,158,11,.4), inset 0 2px 6px rgba(255,255,255,.5); border:2px solid rgba(255,255,255,.35);}
+  .stitle{color:#F8FAFC; font-size:34px; font-weight:900; letter-spacing:-1.2px; line-height:1.04;}
+  .ssub{color:#C4B5FD; font-size:13px; font-weight:600; margin-top:6px;}
+  .smetrics{display:flex; align-items:center; margin-top:18px;}
+  .smetric{flex:1;}
+  .smetric .v{color:#DDD6FE; font-size:30px; font-weight:900; letter-spacing:-1px; line-height:1;}
+  .smetric .v small{font-size:15px; color:#A78BFA;}
+  .smetric .l{color:#94A3B8; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; margin-top:5px;}
+  .sdiv{width:1px; height:48px; background:rgba(255,255,255,.10); margin:0 14px;}
+  .checklist{margin-top:18px; display:flex; flex-direction:column; gap:7px;}
+  .crow{display:flex; align-items:center; gap:9px;}
+  .crow .ck{width:18px; height:18px; border-radius:6px; background:rgba(34,197,94,.2); display:grid; place-items:center; flex:0 0 auto;}
+  .crow .nm{color:#E2E8F0; font-size:12.5px; font-weight:600;}
+  .crow .dy{color:#64748B; font-size:11px; margin-left:auto;}
+  .sfooter{margin-top:auto; display:flex; align-items:center; justify-content:space-between; padding-top:18px; border-top:1px solid rgba(255,255,255,.08);}
+  .sfoot-l{display:flex; align-items:center; gap:9px;}
+  .sfoot-l .av{width:30px;height:30px;border-radius:50%;background:#475569 url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23cbd5e1"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>') center/18px no-repeat;}
+  .sfoot-l .nme{color:#F1F5F9; font-size:12px; font-weight:700;} .sfoot-l .dt{color:#94A3B8; font-size:10px;}
+  .klogo{display:flex; align-items:center; gap:6px; color:#fff; font-weight:800; font-size:13px;}
+  .klogo .ki{width:22px;height:22px;border-radius:7px;background:linear-gradient(135deg,#7C3AED,#A855F7);display:grid;place-items:center;}
+  .pillcount{align-self:flex-start; margin-top:14px; display:flex; align-items:center; gap:6px; background:rgba(244,114,182,.12); border:1px solid rgba(244,114,182,.25); color:#FBCFE8; font-size:12px; font-weight:700; padding:7px 12px; border-radius:99px;}
+
+  /* phone (in-app) */
+  .phone{width:300px; border-radius:44px; padding:10px; background:linear-gradient(160deg,#2a2a32,#0e0e12); box-shadow:0 30px 60px rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,255,255,.05);}
+  .screen{position:relative; width:100%; height:600px; border-radius:34px; overflow:hidden; background:var(--canvas);}
+  .notch{position:absolute; top:8px; left:50%; transform:translateX(-50%); width:90px; height:24px; background:#000; border-radius:14px; z-index:30;}
+  .scrim{position:absolute; inset:0; background:rgba(9,9,15,.55); backdrop-filter:blur(2px); z-index:10;}
+  .sheet{position:absolute; left:12px; right:12px; bottom:12px; background:#fff; border-radius:28px; padding:22px 20px 18px; z-index:12; box-shadow:0 -10px 40px rgba(0,0,0,.3); overflow:hidden;}
+  .sheet .confetti i{position:absolute;}
+  .sheet .medal{width:64px;height:64px;margin:0 auto 14px;}
+  .sheet h3{text-align:center; font-size:23px; font-weight:900; color:var(--tx-1); letter-spacing:-.6px;}
+  .sheet .sh-sub{text-align:center; font-size:13px; color:var(--tx-3); margin-top:5px; line-height:1.4;}
+  .sheet .preview{margin:16px auto 0; width:120px; height:170px; border-radius:14px; overflow:hidden; box-shadow:0 8px 22px rgba(0,0,0,.25); position:relative; background:linear-gradient(160deg,#312E81,#1E1B4B,#0F172A);}
+  .sheet .preview .pm{position:absolute;top:14px;left:0;right:0;display:flex;justify-content:center;}
+  .sheet .preview .pt{position:absolute;top:54px;left:0;right:0;text-align:center;color:#fff;font-size:13px;font-weight:900;}
+  .sheet .preview .pp{position:absolute;top:78px;left:0;right:0;text-align:center;color:#C4B5FD;font-size:8px;font-weight:700;}
+  .sheet .btns{margin-top:18px; display:flex; flex-direction:column; gap:9px;}
+  .sheet .primary{display:flex; align-items:center; justify-content:center; gap:8px; background:#7C3AED; color:#fff; font-size:15px; font-weight:800; padding:14px; border-radius:15px;}
+  .sheet .ghost{text-align:center; font-size:14px; font-weight:700; color:var(--tx-3); padding:8px;}
+
+  /* small home state-5 card */
+  .h5{background:var(--card); border:1px solid rgba(16,185,129,.18); border-radius:20px; box-shadow:0 2px 8px rgba(9,9,11,.05); padding:16px; display:flex; align-items:center; gap:14px;}
+  .h5 .ic{width:46px;height:46px;border-radius:14px;background:rgba(16,185,129,.10);display:grid;place-items:center;flex:0 0 auto;}
+  .h5 .t{font-size:15px;font-weight:800;color:var(--tx-1);} .h5 .s{font-size:12px;color:var(--tx-3);margin-top:2px;}
+  .h5 .share{margin-left:auto;background:rgba(124,58,237,.08);border:1px solid rgba(124,58,237,.18);color:#7c3aed;font-size:12px;font-weight:700;padding:9px 13px;border-radius:12px;flex:0 0 auto;}
+
+  /* conquista */
+  .qcard{width:150px; background:var(--card); border:1px solid var(--border); border-radius:14px; box-shadow:0 2px 8px rgba(9,9,11,.05); padding:13px; display:flex; flex-direction:column; gap:7px;}
+  .qcard.gold{border-color:rgba(245,158,11,.35); background:linear-gradient(160deg,#fffdf7,#fff);}
+  .qcard .qt{font-size:14px; font-weight:800; color:var(--tx-1);}
+  .qcard .qs{font-size:11px; font-weight:500; color:var(--tx-3);}
+
+  .ref{max-width:1180px;margin:24px auto 0;}
+  .map{background:#15151B;border:1px solid #26262F;border-radius:16px;padding:20px 22px;}
+  .map h3{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:1.2px;color:#86efac;margin-bottom:12px;}
+  .map li{list-style:none;font-size:13px;line-height:1.55;color:#c4c4cc;padding-left:18px;position:relative;margin-bottom:8px;}
+  .map li::before{content:'';position:absolute;left:0;top:7px;width:7px;height:7px;border-radius:50%;background:#22c55e;}
+  .map li.warn::before{background:#f59e0b;} .map li b{color:#fff;} .map li code{color:#c7d2fe;font-size:11.5px;}
+  svg{display:block;}
+</style>
+</head>
+<body>
+
+<div class="doc">
+  <h1>Semana Perfeita — card comemorativo &amp; conquista</h1>
+  <p class="sub">Quando o aluno completa <b>todos os treinos previstos da semana</b> (<code>weeklyProgress.isWeekComplete</code>), comemoramos com um momento in-app + um card pronto pra compartilhar. E "semanas perfeitas" vira uma conquista. Visual alinhado ao pipeline atual (<code>components/workout/sharing/</code> · 320×568 · <code>ShareBrandFooter</code>).</p>
+</div>
+
+<div class="h2">1 · O card compartilhável (320×568, formato story) — duas variações</div>
+<div class="stage">
+
+  <!-- VAR 1: SELO -->
+  <div class="col">
+    <div class="cap"><span class="tag">A · Selo / medalha</span><p>Medalha dourada no topo, título grande e a lista dos treinos da semana como "prova".</p></div>
+    <div class="shareframe"><div class="share">
+      <div class="glowA"></div><div class="glowB"></div>
+      <div class="confetti">
+        <i style="top:40px;left:30px;background:#FCD34D;transform:rotate(20deg)"></i>
+        <i style="top:60px;left:230px;background:#A78BFA;transform:rotate(-15deg)"></i>
+        <i style="top:90px;left:150px;background:#F472B6;transform:rotate(40deg)"></i>
+        <i style="top:120px;left:60px;background:#34D399;transform:rotate(10deg)"></i>
+        <i style="top:30px;left:180px;background:#fff;transform:rotate(-30deg)"></i>
+        <i style="top:150px;left:260px;background:#FCD34D;transform:rotate(25deg)"></i>
+        <i style="top:200px;left:25px;background:#A78BFA;transform:rotate(-20deg)"></i>
+      </div>
+      <div class="scontent">
+        <span class="sbadge">✦ Semana perfeita ✦</span>
+        <div style="height:18px"></div>
+        <div class="medal"><svg width="40" height="40" viewBox="0 0 24 24" fill="#78350F"><path d="M6 4h12v3a6 6 0 0 1-12 0zM4 5h2v2a2 2 0 0 1-2-2zm14 0h2a2 2 0 0 1-2 2zM9 14h6l-1 4h-4z"/></svg></div>
+        <div style="height:16px"></div>
+        <div class="stitle">Semana<br>perfeita!</div>
+        <div class="ssub">Programa de treinos III · Semana 2</div>
+        <div class="smetrics">
+          <div class="smetric"><div class="v">5<small>/5</small></div><div class="l">Treinos</div></div>
+          <div class="sdiv"></div>
+          <div class="smetric"><div class="v">100<small>%</small></div><div class="l">Aderência</div></div>
+        </div>
+        <div class="checklist">
+          <div class="crow"><span class="ck"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="3"><path d="M5 13l4 4 10-10"/></svg></span><span class="nm">Superior A</span><span class="dy">seg</span></div>
+          <div class="crow"><span class="ck"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="3"><path d="M5 13l4 4 10-10"/></svg></span><span class="nm">Inferior A</span><span class="dy">ter</span></div>
+          <div class="crow"><span class="ck"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="3"><path d="M5 13l4 4 10-10"/></svg></span><span class="nm">Superior B</span><span class="dy">qua</span></div>
+          <div class="crow"><span class="ck"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="3"><path d="M5 13l4 4 10-10"/></svg></span><span class="nm">Inferior B</span><span class="dy">qui</span></div>
+          <div class="crow"><span class="ck"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="3"><path d="M5 13l4 4 10-10"/></svg></span><span class="nm">Superior C</span><span class="dy">sex</span></div>
+        </div>
+        <div class="sfooter">
+          <div class="sfoot-l"><div class="av"></div><div><div class="nme">Gustavo</div><div class="dt">17–23 de maio</div></div></div>
+          <div class="klogo"><div class="ki"><svg width="13" height="13" viewBox="0 0 24 24" fill="#fff"><path d="M4 4h3v6l5-6h4l-6 7 6 9h-4l-5-7v7H4z"/></svg></div>Kinevo</div>
+        </div>
+      </div>
+    </div></div>
+  </div>
+
+  <!-- VAR 2: 100% HERO -->
+  <div class="col">
+    <div class="cap"><span class="tag">B · "100%" em destaque</span><p>O número 100% é o herói; a lista de treinos vira prova compacta. Mais "impacto" no feed.</p></div>
+    <div class="shareframe"><div class="share">
+      <div class="glowA"></div><div class="glowB"></div>
+      <div class="confetti">
+        <i style="top:50px;left:40px;background:#FCD34D;transform:rotate(20deg)"></i>
+        <i style="top:70px;left:250px;background:#A78BFA;transform:rotate(-15deg)"></i>
+        <i style="top:110px;left:150px;background:#F472B6;transform:rotate(40deg)"></i>
+        <i style="top:36px;left:120px;background:#34D399;transform:rotate(10deg)"></i>
+        <i style="top:150px;left:280px;background:#fff;transform:rotate(-30deg)"></i>
+        <i style="top:190px;left:30px;background:#FCD34D;transform:rotate(25deg)"></i>
+      </div>
+      <div class="scontent">
+        <span class="sbadge">✦ Semana perfeita ✦</span>
+        <div style="flex:0 0 auto; margin-top:30px; text-align:center;">
+          <div style="color:#FDE68A; font-size:96px; font-weight:900; letter-spacing:-5px; line-height:.9; text-shadow:0 6px 30px rgba(245,158,11,.4);">100<span style="font-size:46px">%</span></div>
+          <div style="color:#F8FAFC; font-size:22px; font-weight:900; letter-spacing:.5px; text-transform:uppercase; margin-top:6px;">Semana perfeita</div>
+          <div class="ssub" style="text-align:center;">5 de 5 treinos · Programa III · Semana 2</div>
+        </div>
+        <div class="pillcount" style="align-self:center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FBCFE8" stroke-width="2"><path d="M12 2l3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z"/></svg>2ª semana perfeita seguida</div>
+        <div class="checklist" style="margin-top:22px;">
+          <div class="crow"><span class="ck"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="3"><path d="M5 13l4 4 10-10"/></svg></span><span class="nm">Superior A</span><span class="dy">45min</span></div>
+          <div class="crow"><span class="ck"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="3"><path d="M5 13l4 4 10-10"/></svg></span><span class="nm">Inferior A</span><span class="dy">52min</span></div>
+          <div class="crow"><span class="ck"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="3"><path d="M5 13l4 4 10-10"/></svg></span><span class="nm">Superior B</span><span class="dy">48min</span></div>
+          <div class="crow"><span class="ck"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="3"><path d="M5 13l4 4 10-10"/></svg></span><span class="nm">Inferior B</span><span class="dy">50min</span></div>
+          <div class="crow"><span class="ck"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="3"><path d="M5 13l4 4 10-10"/></svg></span><span class="nm">Superior C</span><span class="dy">46min</span></div>
+        </div>
+        <div class="sfooter">
+          <div class="sfoot-l"><div class="av"></div><div><div class="nme">Gustavo</div><div class="dt">17–23 de maio</div></div></div>
+          <div class="klogo"><div class="ki"><svg width="13" height="13" viewBox="0 0 24 24" fill="#fff"><path d="M4 4h3v6l5-6h4l-6 7 6 9h-4l-5-7v7H4z"/></svg></div>Kinevo</div>
+        </div>
+      </div>
+    </div></div>
+  </div>
+
+</div>
+
+<div class="h2">2 · O momento in-app — após o treino que fecha a semana</div>
+<div class="stage">
+  <!-- celebration sheet -->
+  <div class="col">
+    <div class="cap"><span class="tag">Comemoração</span><p>Ao concluir o último treino da semana, sobe uma folha comemorativa com CTA de compartilhar (reaproveita o <code>WorkoutCelebration</code>).</p></div>
+    <div class="phone"><div class="screen">
+      <div class="notch"></div>
+      <div class="scrim"></div>
+      <div class="sheet">
+        <div class="confetti">
+          <i style="top:14px;left:30px;width:7px;height:7px;border-radius:2px;background:#FCD34D;transform:rotate(20deg)"></i>
+          <i style="top:24px;left:230px;width:7px;height:7px;border-radius:2px;background:#A78BFA;transform:rotate(-15deg)"></i>
+          <i style="top:40px;left:150px;width:7px;height:7px;border-radius:2px;background:#F472B6;transform:rotate(40deg)"></i>
+          <i style="top:18px;left:110px;width:7px;height:7px;border-radius:2px;background:#34D399;transform:rotate(10deg)"></i>
+          <i style="top:50px;left:250px;width:7px;height:7px;border-radius:2px;background:#7C3AED;transform:rotate(-30deg)"></i>
+        </div>
+        <div class="medal" style="margin-top:8px"><svg width="30" height="30" viewBox="0 0 24 24" fill="#78350F"><path d="M6 4h12v3a6 6 0 0 1-12 0zM4 5h2v2a2 2 0 0 1-2-2zm14 0h2a2 2 0 0 1-2 2zM9 14h6l-1 4h-4z"/></svg></div>
+        <h3>Semana perfeita! 🎉</h3>
+        <p class="sh-sub">Você fechou os <b>5 treinos</b> da semana.<br>Sua 2ª semana perfeita seguida 🔥</p>
+        <div class="preview">
+          <div class="pm"><div style="width:34px;height:34px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#FDE68A,#F59E0B 70%,#B45309);"></div></div>
+          <div class="pt">Semana<br>perfeita!</div>
+          <div class="pp">5/5 · 100% · Programa III</div>
+        </div>
+        <div class="btns">
+          <div class="primary"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M4 12v8h16v-8M16 6l-4-4-4 4M12 2v14"/></svg>Compartilhar</div>
+          <div class="ghost">Agora não</div>
+        </div>
+      </div>
+    </div></div>
+  </div>
+
+  <!-- home state 5 with share -->
+  <div class="col" style="width:340px;">
+    <div class="cap" style="max-width:340px;"><span class="tag">+ Persistente na Home</span><p>O estado "Semana completa" do herói (e o resumo) ganham um botão "Compartilhar" — pra reviver o card depois.</p></div>
+    <div style="background:#F4F5F8; border-radius:24px; padding:18px; width:340px;">
+      <div class="h5">
+        <div class="ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="1.7"><path d="M12 2l2 6 6 .5-4.5 4 1.5 6-5-3.5-5 3.5 1.5-6L4 8.5 10 8z"/></svg></div>
+        <div><div class="t">Semana completa! 🎉</div><div class="s">Todos os 5 treinos concluídos.</div></div>
+        <div class="share">Compartilhar</div>
+      </div>
+      <div style="height:12px"></div>
+      <div style="background:#fff;border:1px solid #E4E4E7;border-radius:16px;padding:14px;font-size:13px;color:#3F3F46;line-height:1.5;">
+        Você treinou <b style="color:#09090B">5 vezes</b> esta semana — aderência <b style="color:#09090B">100%</b>. <span style="color:#7C3AED;font-style:italic;">Semana perfeita!</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="h2">3 · A conquista "Semanas perfeitas"</div>
+<div class="stage" style="justify-content:flex-start; max-width:1180px; margin:0 auto;">
+  <div class="qcard gold">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2"><path d="M6 4h12v3a6 6 0 0 1-12 0zM9 14h6l-1 4h-4z"/></svg>
+    <div class="qt">2 semanas</div><div class="qs">perfeitas</div>
+  </div>
+  <div class="qcard">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2"><path d="M12 2c1 4-2 5-2 8a2 2 0 0 0 4 0c2 2 3 4 3 6a5 5 0 0 1-10 0c0-5 5-6 5-14z"/></svg>
+    <div class="qt">Comece um…</div><div class="qs">treine 2 sem.</div>
+  </div>
+  <div class="qcard">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2"><path d="M6.5 6.5l11 11M4 8l-1 1 2 2M20 16l1-1-2-2"/></svg>
+    <div class="qt">5 treinos</div><div class="qs">neste programa</div>
+  </div>
+  <div class="qcard">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2"><path d="M12 2l3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z"/></svg>
+    <div class="qt">5/25</div><div class="qs">rumo a marco</div>
+  </div>
+</div>
+
+<div class="ref">
+  <ul class="map">
+    <h3>● Dados — o que já temos vs o que falta</h3>
+    <li><b>Gatilho "semana perfeita"</b> (esta semana) → <code>weeklyProgress.isWeekComplete</code> + <code>completedCount === expectedCount</code>. <b>Já existe.</b></li>
+    <li><b>Conteúdo do card</b> (treinos da semana com ✓, programa, Semana X, nome, datas) → <code>workouts</code> + <code>sessionsMap</code> + <code>getProgramWeek</code> + <code>getWeekRange</code>. <b>Já temos.</b></li>
+    <li><b>Duração por treino</b> (variação B) → <code>completed_at − started_at</code> da sessão. <b>Já temos.</b> (Volume em kg exigiria somar <code>set_logs</code> — deixaria de fora por ora.)</li>
+    <li><b>Pipeline de compartilhar</b> → novo <code>PerfectWeekTemplate</code> em <code>components/workout/sharing/</code> + captura via view-shot, igual aos outros. <b>Reaproveita tudo.</b></li>
+    <li class="warn"><b>Contagem de semanas perfeitas</b> (a conquista + "2ª seguida") → <b>NÃO é trackeado hoje</b>. Calcular no histórico é frágil (a grade da semana pode ter mudado). Sugiro <b>persistir</b>: gravar um registro quando a semana fecha 100% (tabela <code>perfect_weeks</code> ou flag por semana) — única peça que precisa de backend. Enquanto isso, a conquista pode aparecer só a partir da 1ª semana perfeita detectada ao vivo.</li>
+  </ul>
+</div>
+
+</body>
+</html>

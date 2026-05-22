@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Kinevo · Aba Início — Redesign v2 (fiel aos dados)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --purple:#7C3AED; --purple-dark:#6D28D9; --purple-100:#EDE9FE;
+    --canvas:#F4F5F8; --card:#FFFFFF;
+    --tx-1:#09090B; --tx-2:#3F3F46; --tx-3:#71717A; --tx-4:#A1A1AA;
+    --border:#E4E4E7;
+    --green:#16A34A; --green2:#22C55E; --indigo:#6366F1;
+    --amber:#F59E0B; --amber2:#D97706; --red:#EF4444;
+    --r-md:12px; --r-lg:16px; --r-xl:20px; --r-2xl:24px;
+    --shadow-card:0 2px 8px rgba(9,9,11,.05);
+    --shadow-glow:0 12px 28px rgba(124,58,237,.30);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{font-family:'Plus Jakarta Sans',system-ui,sans-serif; background:#0B0B0F; color:#E7E7EA; -webkit-font-smoothing:antialiased; padding:40px 24px 80px;}
+  .doc{max-width:1240px; margin:0 auto 40px;}
+  .doc h1{font-size:30px; font-weight:800; letter-spacing:-.5px; color:#fff; margin-bottom:6px;}
+  .doc .sub{color:#9b9ba3; font-size:15px; line-height:1.6; max-width:820px; margin-bottom:26px;}
+  .panel{background:#15151B; border:1px solid #26262F; border-radius:16px; padding:20px 22px; margin-bottom:28px;}
+  .panel h3{font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:1.2px; margin-bottom:14px; color:#fcd34d;}
+  .corr{display:grid; grid-template-columns:1fr 1fr; gap:10px 28px;}
+  @media(max-width:760px){.corr{grid-template-columns:1fr;}}
+  .corr li{list-style:none; font-size:13.5px; line-height:1.5; color:#c4c4cc; padding-left:24px; position:relative;}
+  .corr li::before{content:'✦'; position:absolute; left:0; top:0; color:#fbbf24; font-size:12px;}
+  .corr li s{color:#7d7d86;} .corr li b{color:#fff;}
+
+  .h2{font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:1.4px; color:#a78bfa; margin:8px 0 18px; max-width:1240px; margin-left:auto; margin-right:auto;}
+  .stage{display:flex; gap:40px; justify-content:center; flex-wrap:wrap; align-items:flex-start; margin-bottom:46px;}
+  .col{width:330px;}
+  .col .cap{text-align:center; margin-bottom:14px;}
+  .col .cap .tag{display:inline-block; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1.3px; padding:5px 12px; border-radius:999px;}
+  .cap.a .tag{background:#1d2e22; color:#86efac; border:1px solid #2f5b3c;}
+  .cap.b .tag{background:#1d2230; color:#93c5fd; border:1px solid #2f3c5b;}
+  .col .cap p{font-size:12.5px; color:#9b9ba3; margin-top:8px; line-height:1.5; min-height:34px;}
+  .notes{margin-top:16px; display:flex; flex-direction:column; gap:8px;}
+  .note{font-size:12px; line-height:1.5; color:#b9b9c2; padding:8px 12px; border-radius:10px; background:#15151B; border:1px solid #26262F;}
+  .note b{color:#fff;} .note.warn{border-color:#5b3a2a; background:#1f1813;} .note.warn b{color:#fcd34d;}
+
+  /* ===== PHONE ===== */
+  .phone{width:330px; border-radius:46px; padding:11px; background:linear-gradient(160deg,#2a2a32,#0e0e12); box-shadow:0 30px 60px rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,255,255,.05);}
+  .screen{position:relative; width:100%; height:680px; border-radius:36px; overflow:hidden; background:var(--canvas);}
+  .notch{position:absolute; top:8px; left:50%; transform:translateX(-50%); width:96px; height:26px; background:#000; border-radius:16px; z-index:30;}
+  .statusbar{position:absolute; top:0; left:0; right:0; height:42px; display:flex; align-items:center; justify-content:space-between; padding:0 22px; font-size:13px; font-weight:700; color:var(--tx-1); z-index:20;}
+  .statusbar .r{display:flex; gap:5px; align-items:center;}
+  .viewport{position:absolute; inset:0; top:42px; bottom:0; overflow-y:auto; overflow-x:hidden; padding:6px 16px 92px;}
+  .viewport::-webkit-scrollbar{width:0;}
+  .fold{position:absolute; left:0; right:0; bottom:74px; height:46px; background:linear-gradient(to bottom,rgba(244,245,248,0),var(--canvas)); z-index:15; pointer-events:none;}
+
+  .hd{display:flex; align-items:flex-start; justify-content:space-between; padding:8px 2px 14px;}
+  .hd .logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#7C3AED,#A855F7);display:grid;place-items:center;flex:0 0 auto;margin-right:10px;}
+  .hd .greet small{font-size:12px; color:var(--tx-3); font-weight:600;}
+  .hd .greet h2{font-size:21px; font-weight:800; color:var(--tx-1); letter-spacing:-.4px; line-height:1.1; margin:1px 0;}
+  .hd .greet .date{font-size:12px; color:var(--tx-3); font-weight:500;}
+  .hd .left{display:flex;}
+  .avatar{width:46px;height:46px;border-radius:50%;background:#d8d8de url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23a1a1aa"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>') center/26px no-repeat; flex:0 0 auto;}
+
+  .cal{margin-bottom:14px;}
+  .cal .crow{display:flex; align-items:center; justify-content:space-between; padding:2px 4px 8px;}
+  .cal .crow span{font-size:13px; font-weight:700; letter-spacing:1px; color:var(--tx-3);}
+  .days{display:flex; justify-content:space-between;}
+  .day{display:flex; flex-direction:column; align-items:center; gap:5px; width:13%;}
+  .day .dn{font-size:11px; font-weight:700; color:var(--tx-4);}
+  .day .num{font-size:14px; font-weight:600; color:var(--tx-2); width:30px; height:30px; display:grid; place-items:center; border-radius:50%;}
+  .day.sel .dn{color:var(--purple);}
+  .day.sel .num{background:var(--purple); color:#fff; font-weight:800;}
+  .day .dot{width:6px; height:6px; border-radius:50%; background:transparent;}
+  .dot.g{background:var(--green2);} .dot.r{background:var(--red);} .dot.m{background:#94a3b8;}
+
+  .eyebrow{font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:1.5px;}
+  .sectitle{font-size:18px; font-weight:700; color:var(--tx-1); letter-spacing:.3px; margin:8px 2px 12px;}
+
+  /* HERO treino (STATE 1 — agendado, premium) */
+  .hero{position:relative; overflow:hidden; border-radius:var(--r-2xl); padding:20px; color:#fff; margin-bottom:16px;
+        background:linear-gradient(135deg,#18181B 0%,#27272A 38%,#3B0764 78%,#5B21B6 100%);
+        box-shadow:var(--shadow-glow); border:1px solid rgba(255,255,255,.07);}
+  .hero .htop{display:flex; align-items:center; justify-content:space-between; margin-bottom:18px;}
+  .hero .ico{width:44px;height:44px;border-radius:22px;background:rgba(124,58,237,.30);border:1px solid rgba(255,255,255,.12);display:grid;place-items:center;}
+  .hero .badge{background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.15); color:rgba(255,255,255,.85); font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:2.5px; padding:5px 12px; border-radius:20px;}
+  .hero h3{font-size:26px; font-weight:800; letter-spacing:-.6px; margin-bottom:2px;}
+  .hero .row{display:flex; align-items:center; justify-content:space-between; margin-top:16px;}
+  .hero .cnt{font-size:14px; font-weight:500; color:rgba(255,255,255,.7);}
+  .hero .start{display:flex; align-items:center; gap:7px; background:#fff; color:#4C1D95; font-size:14px; font-weight:800; padding:11px 18px; border-radius:14px; box-shadow:0 6px 16px rgba(0,0,0,.28);}
+  /* chip prontidão dentro do herói (opção 2) */
+  .ribbon{display:flex; align-items:center; gap:9px; background:rgba(255,255,255,.09); border:1px solid rgba(255,255,255,.14); border-radius:14px; padding:9px 11px; margin-bottom:16px;}
+  .ribbon .d{width:9px;height:9px;border-radius:50%;background:var(--indigo);box-shadow:0 0 0 3px rgba(99,102,241,.25);}
+  .ribbon .t{font-size:12px; font-weight:600; color:rgba(255,255,255,.9); flex:1;}
+  .ribbon .t b{font-weight:800; color:#fff;}
+
+  /* PRONTIDÃO card (dark indigo, real) */
+  .readiness{background:linear-gradient(135deg,#1E1B4B,#312E81); border-radius:var(--r-xl); padding:20px; color:#fff; margin-bottom:16px;}
+  .readiness .eyebrow{color:rgba(255,255,255,.6); letter-spacing:1.6px;}
+  .readiness.lite{padding:16px 18px;}
+  .readiness .scorerow{display:flex; align-items:center; gap:12px; margin:10px 0;}
+  .readiness .score{font-weight:800; letter-spacing:-2px; line-height:1; color:#F1F5F9;}
+  .readiness .pill{font-size:12px; font-weight:700; padding:4px 11px; border-radius:10px; background:rgba(99,102,241,.16); border:1px solid var(--indigo); color:#c7d2fe;}
+  .readiness .rec{font-size:13px; line-height:1.45; color:rgba(255,255,255,.85); margin-bottom:14px;}
+  .readiness .stats{display:flex; background:rgba(0,0,0,.25); border-radius:12px; padding:10px 4px;}
+  .readiness .stat{flex:1; text-align:center; border-right:1px solid rgba(255,255,255,.08);}
+  .readiness .stat:last-child{border-right:none;}
+  .readiness .stat .l{font-size:10px; color:rgba(255,255,255,.55); display:block; margin:2px 0;}
+  .readiness .stat .v{font-size:13px; font-weight:700;}
+
+  /* CONQUISTAS */
+  .conq-h{display:flex; align-items:center; justify-content:space-between; margin:4px 2px 10px;}
+  .conq-h .eyebrow{color:var(--tx-3); letter-spacing:1.2px;}
+  .conq{display:flex; gap:8px; margin-bottom:14px;}
+  .qcard{flex:1; background:var(--card); border:1px solid var(--border); border-radius:var(--r-md); box-shadow:var(--shadow-card); padding:12px 10px; display:flex; flex-direction:column; gap:6px;}
+  .qcard .qt{font-size:13px; font-weight:700; color:var(--tx-1);}
+  .qcard .qs{font-size:11px; font-weight:500; color:var(--tx-3); line-height:1.25;}
+  .qcard.lock{opacity:.6;}
+
+  /* PROGRAMA card claro (demovido) */
+  .prog{display:flex; align-items:center; gap:16px; padding:16px; background:var(--card); border:1px solid var(--border); border-radius:var(--r-xl); box-shadow:var(--shadow-card); margin-bottom:16px;}
+  .prog .pinfo .eyebrow{color:var(--tx-3); letter-spacing:1.1px;}
+  .prog .pinfo h4{font-size:15px; font-weight:800; color:var(--tx-1); margin:3px 0 1px; letter-spacing:-.2px;}
+  .prog .pinfo .ps{font-size:12px; color:var(--tx-3); font-weight:600;}
+
+  /* workout list */
+  .wli{display:flex; align-items:center; gap:14px; padding:14px 16px; background:var(--card); border:1px solid var(--border); border-radius:var(--r-xl); box-shadow:var(--shadow-card); margin-bottom:10px;}
+  .wli.done{border-color:rgba(16,185,129,.18);}
+  .wli .wico{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;flex:0 0 auto;background:rgba(124,58,237,.12);}
+  .wli.done .wico{background:rgba(16,185,129,.14);}
+  .wli .wmid{flex:1;}
+  .wli .wn{font-size:15px; font-weight:700; color:var(--tx-2);}
+  .wli.done .wn{color:var(--tx-3);}
+  .wli .wsub{font-size:12px; color:var(--tx-4); margin-top:2px;}
+  .wli .wsub .gw{color:var(--green); font-weight:700;}
+  .wli .wsub .pw{color:var(--tx-4); font-weight:700;}
+  .wli .chev{color:var(--tx-4);} .wli.done .chev{color:var(--green2);}
+
+  .ringwrap{position:relative; display:grid; place-items:center;}
+  .ringwrap .rt{position:absolute; font-weight:800; color:var(--tx-1);}
+
+  .tabbar{position:absolute; left:14px; right:14px; bottom:12px; height:62px; border-radius:22px; z-index:25; background:rgba(255,255,255,.82); backdrop-filter:blur(18px); border:1px solid rgba(9,9,11,.06); box-shadow:0 8px 24px rgba(0,0,0,.10); display:flex; align-items:center; padding:0 6px;}
+  .tab{flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; color:var(--tx-4);}
+  .tab .tl{font-size:9.5px; font-weight:700;}
+  .tab.act{color:var(--purple);}
+  .tab.act .pillbg{background:linear-gradient(135deg,rgba(237,233,254,.7),rgba(245,243,255,.4));}
+  .tab .iconwrap{width:44px;height:26px;border-radius:14px;display:grid;place-items:center;}
+
+  .mini{font-size:11px;color:var(--tx-4);text-align:center;padding:9px;border:1px dashed var(--border);border-radius:12px;margin-bottom:10px;}
+
+  /* reference strips */
+  .ref{max-width:1240px; margin:0 auto 44px;}
+  .refgrid{display:flex; gap:14px; flex-wrap:wrap;}
+  .scard{flex:1; min-width:210px; background:#fff; border-radius:18px; padding:14px; border:1px solid #26262F;}
+  .scard .sct{font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.8px; color:#0B0B0F; margin-bottom:10px; text-align:center;}
+  .scard .sn{font-size:11px; color:#71717a; text-align:center; margin-top:8px; line-height:1.4;}
+  svg{display:block;}
+  /* compact card used inside ref scards */
+  .c-card{border-radius:16px; padding:13px 14px; display:flex; align-items:center; gap:12px; border:1px solid var(--border); background:#fff;}
+  .c-ico{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;flex:0 0 auto;}
+  .c-t{font-size:14px; font-weight:800; color:var(--tx-1);}
+  .c-s{font-size:11.5px; color:var(--tx-3); margin-top:2px; line-height:1.3;}
+  .c-badge{font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:2px;padding:4px 9px;border-radius:14px;margin-left:auto;}
+</style>
+</head>
+<body>
+
+<div class="doc">
+  <h1>Aba Início — redesign v2 <span style="color:#86efac;font-size:18px;">(fiel aos dados)</span></h1>
+  <p class="sub">Revisão da Proposta A com base no código real (hooks, <code style="color:#c7d2fe">ReadinessCardSlot</code>, máquina de estados do <code style="color:#c7d2fe">ActionCard</code>). Tudo que aparece aqui existe no sistema; valores são os dos seus prints. As duas decisões em aberto estão lado a lado para você escolher visualmente.</p>
+
+  <div class="panel">
+    <h3>✦ Correções da v1 → v2 (o que eu havia inventado)</h3>
+    <ul class="corr">
+      <li><s>"~45 min" no treino</s> → <b>não existe duração estimada</b>; só "5 exercícios" (duração só após concluir).</li>
+      <li><s>"12 semanas de sequência" no topo</s> → seu streak real é <b>&lt; 2 → conquista bloqueada</b> ("Comece um streak").</li>
+      <li><s>Herói fixo "Iniciar treino"</s> → herói é <b>máquina de estados</b> ligada ao dia do calendário (ver faixa abaixo).</li>
+      <li><s>Prontidão sempre presente</s> → é <b>opcional</b>: some sem wearable (HR/HRV "–" no seu print).</li>
+      <li>Conquistas usam dados reais: <b>streak bloqueado · 3 treinos · 3/25</b> rumo a marco.</li>
+      <li>Prontidão mantém a <b>recomendação completa</b> ("regular/reduzido" têm 2–3 frases de coaching).</li>
+    </ul>
+  </div>
+</div>
+
+<div class="h2">Decisão em aberto — como tratar a Prontidão (ambas resolvem "treino &gt; prontidão" e sobem as conquistas)</div>
+<div class="stage">
+
+  <!-- ============ OPÇÃO 1 ============ -->
+  <div class="col">
+    <div class="cap a"><span class="tag">Opção 1 · recomendada</span><p>Treino é o herói. Prontidão continua um card próprio (lógica de 4 estados intacta), só mais leve e abaixo do treino.</p></div>
+    <div class="phone"><div class="screen">
+      <div class="notch"></div>
+      <div class="statusbar"><span>11:44</span><div class="r">
+        <svg width="17" height="11" viewBox="0 0 17 11" fill="#09090B"><rect x="0" y="7" width="3" height="4" rx="1"/><rect x="4" y="5" width="3" height="6" rx="1"/><rect x="8" y="3" width="3" height="8" rx="1"/><rect x="12" y="1" width="3" height="10" rx="1"/></svg>
+        <svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="#09090B" stroke-width="1.4"><path d="M1 4.5C3 2.5 13 2.5 15 4.5"/><path d="M3.5 7C5 5.5 11 5.5 12.5 7"/><circle cx="8" cy="9.5" r="1" fill="#09090B" stroke="none"/></svg>
+        <svg width="24" height="12" viewBox="0 0 24 12"><rect x="1" y="1" width="20" height="10" rx="2.5" fill="none" stroke="#09090B" stroke-opacity=".4"/><rect x="2.5" y="2.5" width="16" height="7" rx="1.5" fill="#09090B"/><rect x="22" y="4" width="1.5" height="4" rx="1" fill="#09090B"/></svg>
+      </div></div>
+      <div class="viewport">
+        <div class="hd">
+          <div class="left">
+            <div class="logo"><svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M4 4h3v6l5-6h4l-6 7 6 9h-4l-5-7v7H4z"/></svg></div>
+            <div class="greet"><small>Bom dia,</small><h2>Gustavo</h2><span class="date">sexta-feira, 22 de maio</span></div>
+          </div>
+          <div class="avatar"></div>
+        </div>
+        <div class="cal">
+          <div class="crow"><span>17/05 — 23/05</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#71717A" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></div>
+          <div class="days">
+            <div class="day"><span class="dn">D</span><span class="num">17</span><span class="dot g"></span></div>
+            <div class="day"><span class="dn">S</span><span class="num">18</span><span class="dot g"></span></div>
+            <div class="day"><span class="dn">T</span><span class="num">19</span><span class="dot g"></span></div>
+            <div class="day"><span class="dn">Q</span><span class="num">20</span><span class="dot g"></span></div>
+            <div class="day"><span class="dn">Q</span><span class="num">21</span><span class="dot r"></span></div>
+            <div class="day sel"><span class="dn">S</span><span class="num">22</span><span class="dot m"></span></div>
+            <div class="day"><span class="dn">S</span><span class="num">23</span><span class="dot"></span></div>
+          </div>
+        </div>
+        <!-- HERO treino (STATE 1) -->
+        <div class="hero">
+          <div class="htop"><div class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M6.5 6.5l11 11M4 8l-1 1 2 2M20 16l1-1-2-2M8 4l-1 1 2 2M16 20l1-1-2-2"/></svg></div><span class="badge">Agendado</span></div>
+          <span class="eyebrow" style="color:rgba(255,255,255,.55)">Treino de hoje</span>
+          <h3 style="margin-top:6px">Inferior B</h3>
+          <div class="row"><span class="cnt">5 exercícios</span><span class="start"><svg width="15" height="15" viewBox="0 0 24 24" fill="#4C1D95"><path d="M7 5l12 7-12 7z"/></svg>Iniciar</span></div>
+        </div>
+        <!-- conquistas sobem -->
+        <div class="conq-h"><span class="eyebrow">Suas conquistas</span></div>
+        <div class="conq">
+          <div class="qcard lock"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2"><path d="M12 2c1 4-2 5-2 8a2 2 0 0 0 4 0c2 2 3 4 3 6a5 5 0 0 1-10 0c0-5 5-6 5-14z"/></svg><span class="qt">Comece um…</span><span class="qs">treine 2 sem.</span></div>
+          <div class="qcard"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2"><path d="M6.5 6.5l11 11M4 8l-1 1 2 2M20 16l1-1-2-2"/></svg><span class="qt">3 treinos</span><span class="qs">neste programa</span></div>
+          <div class="qcard lock"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2"><path d="M12 2l3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z"/></svg><span class="qt">3/25</span><span class="qs">rumo a marco</span></div>
+        </div>
+        <!-- prontidão demovida (card próprio, leve) -->
+        <div class="readiness lite">
+          <span class="eyebrow">Prontidão hoje</span>
+          <div class="scorerow"><span class="score" style="font-size:38px">72</span><span class="pill">Bom</span></div>
+          <p class="rec">Recuperação boa. Treino normal recomendado.</p>
+          <div class="stats">
+            <div class="stat"><span class="l">Sono</span><span class="v">6h11</span></div>
+            <div class="stat"><span class="l">HR</span><span class="v">–</span></div>
+            <div class="stat"><span class="l">HRV</span><span class="v">–</span></div>
+          </div>
+        </div>
+        <!-- programa claro -->
+        <div class="prog">
+          <div class="ringwrap" style="width:52px;height:52px;">
+            <svg width="52" height="52" viewBox="0 0 52 52"><circle cx="26" cy="26" r="21" fill="none" stroke="#EDE9FE" stroke-width="5"/><circle cx="26" cy="26" r="21" fill="none" stroke="#7C3AED" stroke-width="5" stroke-linecap="round" stroke-dasharray="132" stroke-dashoffset="53" transform="rotate(-90 26 26)"/></svg>
+            <span class="rt" style="font-size:12px">3/5</span>
+          </div>
+          <div class="pinfo"><span class="eyebrow">Programa atual</span><h4>Programa de treinos III</h4><span class="ps">Meta semanal · 3 de 5 treinos</span></div>
+        </div>
+        <h2 class="sectitle">Seus treinos</h2>
+        <div class="wli done"><div class="wico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.4"><path d="M5 13l4 4 10-10"/></svg></div><div class="wmid"><div class="wn">Superior A</div><div class="wsub">6 exercícios · <span class="gw">1/1 sem.</span></div></div><svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></div>
+        <div class="mini">↓ Inferior A · Superior B · Inferior B · Superior C · aderência</div>
+      </div>
+      <div class="fold"></div>
+      <div class="tabbar">
+        <div class="tab act"><div class="iconwrap pillbg"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2.3"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg></div><span class="tl">Início</span></div>
+        <div class="tab"><div class="iconwrap"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11a8 8 0 0 1-11 7L3 21l3-7A8 8 0 1 1 21 11z"/></svg></div><span class="tl">Mensagens</span></div>
+        <div class="tab"><div class="iconwrap"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.8 5.6a5 5 0 0 0-7.1 0L12 7.3l-1.7-1.7a5 5 0 1 0-7.1 7.1L12 21l8.8-8.3a5 5 0 0 0 0-7.1z"/></svg></div><span class="tl">Saúde</span></div>
+        <div class="tab"><div class="iconwrap"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div><span class="tl">Histórico</span></div>
+        <div class="tab"><div class="iconwrap"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg></div><span class="tl">Perfil</span></div>
+      </div>
+    </div></div>
+    <div class="notes">
+      <div class="note"><b>Mudança mínima no código:</b> reordenar + estilizar só o STATE 1 do treino + versão clara do programa. O <b>ReadinessCardSlot fica byte-a-byte igual</b>, só muda de lugar.</div>
+      <div class="note"><b>Não trunca</b> a recomendação de coaching — importante nos dias "regular/reduzido".</div>
+    </div>
+  </div>
+
+  <!-- ============ OPÇÃO 2 ============ -->
+  <div class="col">
+    <div class="cap b"><span class="tag">Opção 2 · chip no herói</span><p>Prontidão vira um chip tocável no topo do treino → abre Saúde. Mais enxuto, mais perto do mockup original.</p></div>
+    <div class="phone"><div class="screen">
+      <div class="notch"></div>
+      <div class="statusbar"><span>11:44</span><div class="r">
+        <svg width="17" height="11" viewBox="0 0 17 11" fill="#09090B"><rect x="0" y="7" width="3" height="4" rx="1"/><rect x="4" y="5" width="3" height="6" rx="1"/><rect x="8" y="3" width="3" height="8" rx="1"/><rect x="12" y="1" width="3" height="10" rx="1"/></svg>
+        <svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="#09090B" stroke-width="1.4"><path d="M1 4.5C3 2.5 13 2.5 15 4.5"/><path d="M3.5 7C5 5.5 11 5.5 12.5 7"/><circle cx="8" cy="9.5" r="1" fill="#09090B" stroke="none"/></svg>
+        <svg width="24" height="12" viewBox="0 0 24 12"><rect x="1" y="1" width="20" height="10" rx="2.5" fill="none" stroke="#09090B" stroke-opacity=".4"/><rect x="2.5" y="2.5" width="16" height="7" rx="1.5" fill="#09090B"/><rect x="22" y="4" width="1.5" height="4" rx="1" fill="#09090B"/></svg>
+      </div></div>
+      <div class="viewport">
+        <div class="hd">
+          <div class="left">
+            <div class="logo"><svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M4 4h3v6l5-6h4l-6 7 6 9h-4l-5-7v7H4z"/></svg></div>
+            <div class="greet"><small>Bom dia,</small><h2>Gustavo</h2><span class="date">sexta-feira, 22 de maio</span></div>
+          </div>
+          <div class="avatar"></div>
+        </div>
+        <div class="cal">
+          <div class="crow"><span>17/05 — 23/05</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#71717A" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></div>
+          <div class="days">
+            <div class="day"><span class="dn">D</span><span class="num">17</span><span class="dot g"></span></div>
+            <div class="day"><span class="dn">S</span><span class="num">18</span><span class="dot g"></span></div>
+            <div class="day"><span class="dn">T</span><span class="num">19</span><span class="dot g"></span></div>
+            <div class="day"><span class="dn">Q</span><span class="num">20</span><span class="dot g"></span></div>
+            <div class="day"><span class="dn">Q</span><span class="num">21</span><span class="dot r"></span></div>
+            <div class="day sel"><span class="dn">S</span><span class="num">22</span><span class="dot m"></span></div>
+            <div class="day"><span class="dn">S</span><span class="num">23</span><span class="dot"></span></div>
+          </div>
+        </div>
+        <!-- HERO treino com chip prontidão -->
+        <div class="hero">
+          <div class="ribbon"><span class="d"></span><span class="t"><b>Prontidão 72 · Bom.</b> Treino normal recomendado.</span><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></div>
+          <div class="htop"><div class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M6.5 6.5l11 11M4 8l-1 1 2 2M20 16l1-1-2-2M8 4l-1 1 2 2M16 20l1-1-2-2"/></svg></div><span class="badge">Agendado</span></div>
+          <span class="eyebrow" style="color:rgba(255,255,255,.55)">Treino de hoje</span>
+          <h3 style="margin-top:6px">Inferior B</h3>
+          <div class="row"><span class="cnt">5 exercícios</span><span class="start"><svg width="15" height="15" viewBox="0 0 24 24" fill="#4C1D95"><path d="M7 5l12 7-12 7z"/></svg>Iniciar</span></div>
+        </div>
+        <div class="conq-h"><span class="eyebrow">Suas conquistas</span></div>
+        <div class="conq">
+          <div class="qcard lock"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2"><path d="M12 2c1 4-2 5-2 8a2 2 0 0 0 4 0c2 2 3 4 3 6a5 5 0 0 1-10 0c0-5 5-6 5-14z"/></svg><span class="qt">Comece um…</span><span class="qs">treine 2 sem.</span></div>
+          <div class="qcard"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2"><path d="M6.5 6.5l11 11M4 8l-1 1 2 2M20 16l1-1-2-2"/></svg><span class="qt">3 treinos</span><span class="qs">neste programa</span></div>
+          <div class="qcard lock"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2"><path d="M12 2l3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z"/></svg><span class="qt">3/25</span><span class="qs">rumo a marco</span></div>
+        </div>
+        <div class="prog">
+          <div class="ringwrap" style="width:52px;height:52px;">
+            <svg width="52" height="52" viewBox="0 0 52 52"><circle cx="26" cy="26" r="21" fill="none" stroke="#EDE9FE" stroke-width="5"/><circle cx="26" cy="26" r="21" fill="none" stroke="#7C3AED" stroke-width="5" stroke-linecap="round" stroke-dasharray="132" stroke-dashoffset="53" transform="rotate(-90 26 26)"/></svg>
+            <span class="rt" style="font-size:12px">3/5</span>
+          </div>
+          <div class="pinfo"><span class="eyebrow">Programa atual</span><h4>Programa de treinos III</h4><span class="ps">Meta semanal · 3 de 5 treinos</span></div>
+        </div>
+        <h2 class="sectitle">Seus treinos</h2>
+        <div class="wli done"><div class="wico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.4"><path d="M5 13l4 4 10-10"/></svg></div><div class="wmid"><div class="wn">Superior A</div><div class="wsub">6 exercícios · <span class="gw">1/1 sem.</span></div></div><svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></div>
+        <div class="mini">↓ Inferior A · Superior B · Inferior B · Superior C · aderência</div>
+      </div>
+      <div class="fold"></div>
+      <div class="tabbar">
+        <div class="tab act"><div class="iconwrap pillbg"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2.3"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg></div><span class="tl">Início</span></div>
+        <div class="tab"><div class="iconwrap"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11a8 8 0 0 1-11 7L3 21l3-7A8 8 0 1 1 21 11z"/></svg></div><span class="tl">Mensagens</span></div>
+        <div class="tab"><div class="iconwrap"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.8 5.6a5 5 0 0 0-7.1 0L12 7.3l-1.7-1.7a5 5 0 1 0-7.1 7.1L12 21l8.8-8.3a5 5 0 0 0 0-7.1z"/></svg></div><span class="tl">Saúde</span></div>
+        <div class="tab"><div class="iconwrap"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div><span class="tl">Histórico</span></div>
+        <div class="tab"><div class="iconwrap"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg></div><span class="tl">Perfil</span></div>
+      </div>
+    </div></div>
+    <div class="notes">
+      <div class="note warn"><b>Trade-off:</b> a recomendação longa de "regular/reduzido" fica escondida atrás de 1 toque (abre Saúde).</div>
+      <div class="note warn"><b>Sem wearable</b> o chip some — e some também o card promocional "conectar" que existe hoje. Precisaria realocar esse CTA.</div>
+      <div class="note"><b>Mais código:</b> exige subir os dados de prontidão pro herói e duplicar parte da lógica do slot.</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ===== REF 1: estados do herói ===== -->
+<div class="ref">
+  <div class="h2" style="text-align:left;margin-left:0">O herói de treino é uma máquina de estados — só o "Agendado" ganha destaque premium</div>
+  <div class="refgrid">
+    <div class="scard">
+      <div class="sct">1 · Agendado (hoje)</div>
+      <div style="border-radius:16px;padding:14px;background:linear-gradient(135deg,#18181B,#3B0764,#5B21B6);color:#fff;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><div class="c-ico" style="background:rgba(124,58,237,.3);width:34px;height:34px;border-radius:17px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M6.5 6.5l11 11M4 8l-1 1 2 2M20 16l1-1-2-2"/></svg></div><span style="font-size:8px;font-weight:800;letter-spacing:2px;color:rgba(255,255,255,.85);">AGENDADO</span></div>
+        <div style="font-size:19px;font-weight:800;">Inferior B</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;"><span style="font-size:12px;color:rgba(255,255,255,.7);">5 exercícios</span><span style="background:#fff;color:#4C1D95;font-size:12px;font-weight:800;padding:7px 13px;border-radius:11px;">▶ Iniciar</span></div>
+      </div>
+      <div class="sn"><b>Único estado com destaque.</b> É o "comece o treino de hoje".</div>
+    </div>
+    <div class="scard">
+      <div class="sct">2 · Realizado</div>
+      <div class="c-card" style="background:rgba(16,185,129,.06);border-color:rgba(16,185,129,.18);">
+        <div class="c-ico" style="background:rgba(16,185,129,.18);"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5"><path d="M5 13l4 4 10-10"/></svg></div>
+        <div><div class="c-t">Inferior B</div><div class="c-s" style="color:#16a34a;font-weight:600;">45min • PSE 7</div></div>
+      </div>
+      <div class="sn">Calmo, verde. Mostra duração real (calculada da sessão).</div>
+    </div>
+    <div class="scard">
+      <div class="sct">3 · Descanso</div>
+      <div class="c-card">
+        <div class="c-ico" style="background:rgba(16,185,129,.08);"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="1.6"><path d="M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4z"/></svg></div>
+        <div><div class="c-t">Descanso merecido</div><div class="c-s">2 treinos restantes esta semana.</div></div>
+      </div>
+      <div class="sn"><b>Atenção:</b> em dia de descanso NÃO há "Iniciar". O herói fica calmo.</div>
+    </div>
+    <div class="scard">
+      <div class="sct">4 · Pendente / Compensar</div>
+      <div class="c-card" style="border-color:rgba(245,158,11,.25);">
+        <div class="c-ico" style="background:rgba(245,158,11,.1);"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M6.5 6.5l11 11M4 8l-1 1 2 2M20 16l1-1-2-2"/></svg></div>
+        <div style="flex:1"><div class="c-t">Superior C</div><div class="c-s" style="color:#92400e;">era p/ quinta (21/05)</div></div>
+        <span class="c-badge" style="background:rgba(245,158,11,.15);color:#f59e0b;">Compensar</span>
+      </div>
+      <div class="sn">Âmbar. Aparece quando há treino perdido a recuperar.</div>
+    </div>
+    <div class="scard">
+      <div class="sct">5 · Semana completa</div>
+      <div class="c-card" style="border-color:rgba(16,185,129,.18);">
+        <div class="c-ico" style="background:rgba(16,185,129,.08);"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="1.7"><path d="M12 2l2 6 6 .5-4.5 4 1.5 6-5-3.5-5 3.5 1.5-6L4 8.5 10 8z"/></svg></div>
+        <div><div class="c-t">Semana completa! 🎉</div><div class="c-s">Todos os 5 treinos concluídos.</div></div>
+      </div>
+      <div class="sn">Celebração ao fechar a meta semanal.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== REF 2: 4 estados da prontidão ===== -->
+<div class="ref">
+  <div class="h2" style="text-align:left;margin-left:0">Prontidão tem 4 estados no slot (o que você configurou) — qualquer opção precisa respeitá-los</div>
+  <div class="refgrid">
+    <div class="scard">
+      <div class="sct">A · Com dado</div>
+      <div style="border-radius:14px;padding:13px;background:linear-gradient(135deg,#1E1B4B,#312E81);color:#fff;">
+        <div style="font-size:9px;font-weight:800;letter-spacing:1.4px;color:rgba(255,255,255,.6);">PRONTIDÃO HOJE</div>
+        <div style="display:flex;align-items:center;gap:9px;margin:6px 0;"><span style="font-size:30px;font-weight:800;color:#F1F5F9;">72</span><span style="font-size:11px;font-weight:700;color:#c7d2fe;border:1px solid #6366F1;background:rgba(99,102,241,.16);padding:3px 9px;border-radius:9px;">Bom</span></div>
+        <div style="font-size:11px;color:rgba(255,255,255,.8);">Recuperação boa. Treino normal recomendado.</div>
+      </div>
+      <div class="sn">Tem readiness → card completo.</div>
+    </div>
+    <div class="scard">
+      <div class="sct">B · Sincronizando</div>
+      <div style="border-radius:14px;padding:13px;background:linear-gradient(135deg,#1E1B4B,#312E81);">
+        <div style="height:9px;width:70px;background:rgba(255,255,255,.12);border-radius:5px;margin-bottom:12px;"></div>
+        <div style="height:30px;width:50px;background:rgba(255,255,255,.10);border-radius:8px;margin-bottom:10px;"></div>
+        <div style="height:9px;width:130px;background:rgba(255,255,255,.08);border-radius:5px;"></div>
+      </div>
+      <div class="sn">Wearable conectado mas sem dado ainda → skeleton.</div>
+    </div>
+    <div class="scard">
+      <div class="sct">C · Sem wearable</div>
+      <div class="c-card" style="background:linear-gradient(135deg,#f59e0b,#d97706);border:none;">
+        <div class="c-ico" style="background:rgba(255,255,255,.22);"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M12 2l2.4 7.4H22l-6 4.4 2.3 7.2-6.3-4.6L5.7 21 8 13.8 2 9.4h7.6z"/></svg></div>
+        <div><div class="c-t" style="color:#fff;">Conecte sua saúde</div><div class="c-s" style="color:#fff;opacity:.9;">Veja sua prontidão diária.</div></div>
+      </div>
+      <div class="sn"><b>Card promocional</b> (CTA p/ conectar). É o estado do SEU print.</div>
+    </div>
+    <div class="scard">
+      <div class="sct">D · Oculta</div>
+      <div style="border-radius:14px;padding:13px;border:1px dashed var(--border);display:grid;place-items:center;min-height:96px;color:var(--tx-4);font-size:12px;">(nada renderizado)</div>
+      <div class="sn">Sem conexão e sem promo → some silenciosamente.</div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

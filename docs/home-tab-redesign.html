@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Kinevo · Aba Início — Proposta de Redesign</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    /* ---- tokens v2 reais do app ---- */
+    --purple:#7C3AED; --purple-dark:#6D28D9; --purple-100:#EDE9FE;
+    --canvas:#F4F5F8; --card:#FFFFFF; --card2:#FAFAFA;
+    --tx-1:#09090B; --tx-2:#3F3F46; --tx-3:#71717A; --tx-4:#A1A1AA;
+    --border:#E4E4E7;
+    --green:#16A34A; --green2:#22C55E; --green-bg:rgba(16,185,129,.06); --green-bd:rgba(16,185,129,.18);
+    --amber:#F59E0B; --amber2:#D97706; --red:#EF4444; --indigo:#6366F1;
+    --r-md:12px; --r-lg:16px; --r-xl:20px; --r-2xl:24px;
+    --shadow-card:0 2px 8px rgba(9,9,11,.05);
+    --shadow-glow:0 12px 28px rgba(124,58,237,.30);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    font-family:'Plus Jakarta Sans',system-ui,sans-serif;
+    background:#0B0B0F; color:#E7E7EA; -webkit-font-smoothing:antialiased;
+    padding:40px 24px 80px;
+  }
+  /* ---------- página / explicação ---------- */
+  .doc{max-width:1200px; margin:0 auto 48px;}
+  .doc h1{font-size:30px; font-weight:800; letter-spacing:-.5px; color:#fff; margin-bottom:8px;}
+  .doc .sub{color:#9b9ba3; font-size:15px; line-height:1.6; max-width:760px; margin-bottom:28px;}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:28px;}
+  @media(max-width:760px){.grid2{grid-template-columns:1fr;}}
+  .panel{background:#15151B; border:1px solid #26262F; border-radius:16px; padding:20px 22px;}
+  .panel h3{font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:1.2px; margin-bottom:12px; display:flex; align-items:center; gap:8px;}
+  .panel.prob h3{color:#fda4af;} .panel.fix h3{color:#86efac;}
+  .panel ul{list-style:none; display:flex; flex-direction:column; gap:10px;}
+  .panel li{font-size:13.5px; line-height:1.55; color:#c4c4cc; padding-left:18px; position:relative;}
+  .panel li::before{content:''; position:absolute; left:0; top:7px; width:7px; height:7px; border-radius:50%;}
+  .panel.prob li::before{background:#f43f5e;} .panel.fix li::before{background:#22c55e;}
+  .panel li b{color:#fff; font-weight:700;}
+  .refs{font-size:12.5px; color:#7d7d86; line-height:1.7; max-width:900px; margin-bottom:8px;}
+  .refs a{color:#a78bfa; text-decoration:none;}
+  /* ---------- fileira de fones ---------- */
+  .stage{display:flex; gap:40px; justify-content:center; flex-wrap:wrap; align-items:flex-start;}
+  .col{width:330px;}
+  .col .cap{text-align:center; margin-bottom:14px;}
+  .col .cap .tag{display:inline-block; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1.3px; padding:5px 12px; border-radius:999px;}
+  .cap.now .tag{background:#3a1d22; color:#fca5a5; border:1px solid #5b2a30;}
+  .cap.a .tag{background:#1d2e22; color:#86efac; border:1px solid #2f5b3c;}
+  .cap.b .tag{background:#1d2230; color:#93c5fd; border:1px solid #2f3c5b;}
+  .col .cap p{font-size:12.5px; color:#9b9ba3; margin-top:8px; line-height:1.5;}
+  /* annotations under each phone */
+  .notes{margin-top:18px; display:flex; flex-direction:column; gap:8px;}
+  .note{font-size:12px; line-height:1.5; color:#b9b9c2; padding:8px 12px; border-radius:10px; background:#15151B; border:1px solid #26262F; display:flex; gap:8px;}
+  .note .n{flex:0 0 18px; height:18px; border-radius:50%; font-size:11px; font-weight:800; display:grid; place-items:center; color:#0B0B0F;}
+  .note.bad .n{background:#f43f5e; color:#fff;} .note.good .n{background:#22c55e; color:#06270f;}
+
+  /* ============ PHONE ============ */
+  .phone{
+    width:330px; border-radius:46px; padding:11px;
+    background:linear-gradient(160deg,#2a2a32,#0e0e12);
+    box-shadow:0 30px 60px rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,255,255,.05);
+  }
+  .screen{
+    position:relative; width:100%; height:660px; border-radius:36px; overflow:hidden;
+    background:var(--canvas);
+  }
+  .notch{position:absolute; top:8px; left:50%; transform:translateX(-50%); width:96px; height:26px; background:#000; border-radius:16px; z-index:30;}
+  .statusbar{position:absolute; top:0; left:0; right:0; height:42px; display:flex; align-items:center; justify-content:space-between; padding:0 22px; font-size:13px; font-weight:700; color:var(--tx-1); z-index:20;}
+  .statusbar .r{display:flex; gap:5px; align-items:center;}
+  .viewport{position:absolute; inset:0; top:42px; bottom:0; overflow-y:auto; overflow-x:hidden; padding:6px 16px 92px;}
+  .viewport::-webkit-scrollbar{width:0;}
+
+  /* faded edge to hint scroll / fold */
+  .fold{position:absolute; left:0; right:0; bottom:74px; height:46px; background:linear-gradient(to bottom,rgba(244,245,248,0),var(--canvas)); z-index:15; pointer-events:none;}
+
+  /* ----- header ----- */
+  .hd{display:flex; align-items:flex-start; justify-content:space-between; padding:8px 2px 14px;}
+  .hd .logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#7C3AED,#A855F7);display:grid;place-items:center;flex:0 0 auto;margin-right:10px;}
+  .hd .greet small{font-size:12px; color:var(--tx-3); font-weight:600;}
+  .hd .greet h2{font-size:21px; font-weight:800; color:var(--tx-1); letter-spacing:-.4px; line-height:1.1; margin:1px 0;}
+  .hd .greet .date{font-size:12px; color:var(--tx-3); font-weight:500;}
+  .hd .left{display:flex;}
+  .avatar{width:46px;height:46px;border-radius:50%;background:#d8d8de url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23a1a1aa"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>') center/26px no-repeat; flex:0 0 auto;}
+
+  /* streak chip (propostas) */
+  .streakchip{display:inline-flex; align-items:center; gap:5px; margin-top:6px; background:rgba(245,158,11,.12); border:1px solid rgba(245,158,11,.3); color:#b45309; font-size:11px; font-weight:800; padding:3px 9px; border-radius:999px;}
+
+  /* ----- calendar ----- */
+  .cal{margin-bottom:14px;}
+  .cal .crow{display:flex; align-items:center; justify-content:space-between; padding:2px 4px 8px;}
+  .cal .crow span{font-size:13px; font-weight:700; letter-spacing:1px; color:var(--tx-3);}
+  .days{display:flex; justify-content:space-between;}
+  .day{display:flex; flex-direction:column; align-items:center; gap:5px; width:13%;}
+  .day .dn{font-size:11px; font-weight:700; color:var(--tx-4);}
+  .day .num{font-size:14px; font-weight:600; color:var(--tx-2); width:30px; height:30px; display:grid; place-items:center; border-radius:50%;}
+  .day.sel .dn{color:var(--purple);}
+  .day.sel .num{background:var(--purple); color:#fff; font-weight:800;}
+  .day .dot{width:6px; height:6px; border-radius:50%; background:transparent;}
+  .dot.g{background:var(--green2);} .dot.r{background:var(--red);} .dot.m{background:#94a3b8;}
+
+  /* ----- generic card ----- */
+  .card{background:var(--card); border:1px solid var(--border); border-radius:var(--r-xl); box-shadow:var(--shadow-card); margin-bottom:14px;}
+  .eyebrow{font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:1.5px;}
+  .sectitle{font-size:18px; font-weight:800; color:var(--tx-1); letter-spacing:-.3px; margin:6px 2px 12px;}
+
+  /* ===== READINESS card (escuro, atual) ===== */
+  .readiness{background:linear-gradient(135deg,#1E1B4B,#312E81); border:none; border-radius:var(--r-xl); padding:20px; color:#fff; margin-bottom:14px;}
+  .readiness .eyebrow{color:rgba(255,255,255,.6);}
+  .readiness .scorerow{display:flex; align-items:center; gap:12px; margin:6px 0 4px;}
+  .readiness .score{font-size:56px; font-weight:800; letter-spacing:-2px; line-height:1; color:#F1F5F9;}
+  .readiness .pill{font-size:13px; font-weight:700; padding:4px 12px; border-radius:10px; background:rgba(99,102,241,.16); border:1px solid var(--indigo); color:#c7d2fe;}
+  .readiness .rec{font-size:14px; line-height:1.4; color:rgba(255,255,255,.85); margin:8px 0 14px;}
+  .readiness .stats{display:flex; background:rgba(0,0,0,.25); border-radius:12px; padding:10px 4px;}
+  .readiness .stat{flex:1; text-align:center; border-right:1px solid rgba(255,255,255,.08);}
+  .readiness .stat:last-child{border-right:none;}
+  .readiness .stat .l{font-size:10px; color:rgba(255,255,255,.6); display:block; margin:2px 0;}
+  .readiness .stat .v{font-size:13px; font-weight:700;}
+
+  /* ===== readiness COMPACTO (proposta B - stat row) ===== */
+  .statrow{display:flex; gap:8px; margin-bottom:14px;}
+  .stile{flex:1; background:var(--card); border:1px solid var(--border); border-radius:var(--r-lg); box-shadow:var(--shadow-card); padding:12px 10px; display:flex; flex-direction:column; gap:3px; align-items:flex-start;}
+  .stile .lab{font-size:9.5px; font-weight:800; text-transform:uppercase; letter-spacing:.8px; color:var(--tx-4);}
+  .stile .big{font-size:22px; font-weight:800; color:var(--tx-1); letter-spacing:-.5px; line-height:1;}
+  .stile .big small{font-size:12px; font-weight:700; color:var(--tx-3);}
+  .stile .sub{font-size:10px; font-weight:600;}
+  .stile .ring{width:34px;height:34px;}
+
+  /* ===== readiness RIBBON (proposta A) ===== */
+  .ribbon{display:flex; align-items:center; gap:9px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.12); border-radius:999px; padding:6px 8px 6px 10px; margin-bottom:14px;}
+  .ribbon .dot{width:9px;height:9px;border-radius:50%;background:var(--green2);box-shadow:0 0 0 3px rgba(34,197,94,.2);}
+  .ribbon .txt{font-size:12px; font-weight:600; color:rgba(255,255,255,.9); flex:1;}
+  .ribbon .txt b{font-weight:800; color:#fff;}
+  .ribbon .chev{color:rgba(255,255,255,.5);}
+
+  /* ===== HERO TREINO (proposta) ===== */
+  .hero{position:relative; overflow:hidden; border-radius:var(--r-2xl); padding:18px; color:#fff; margin-bottom:14px;
+        background:linear-gradient(135deg,#18181B 0%,#27272A 38%,#3B0764 78%,#5B21B6 100%);
+        box-shadow:var(--shadow-glow); border:1px solid rgba(255,255,255,.07);}
+  .hero .eyebrow{color:rgba(255,255,255,.55);}
+  .hero .htop{display:flex; align-items:center; justify-content:space-between;}
+  .hero .ico{width:42px;height:42px;border-radius:12px;background:rgba(124,58,237,.28);border:1px solid rgba(255,255,255,.12);display:grid;place-items:center;}
+  .hero h3{font-size:26px; font-weight:800; letter-spacing:-.6px; margin:10px 0 2px;}
+  .hero .meta{font-size:13px; font-weight:500; color:rgba(255,255,255,.7); margin-bottom:14px;}
+  .hero .cta{display:flex; align-items:center; justify-content:center; gap:8px; width:100%; background:#fff; color:#4C1D95; font-size:15px; font-weight:800; padding:13px; border-radius:14px; box-shadow:0 6px 16px rgba(0,0,0,.25);}
+  .hero.green-cta .cta{background:linear-gradient(135deg,#7C3AED,#9333EA); color:#fff;}
+
+  /* ===== CONQUISTAS strip ===== */
+  .conq-h{display:flex; align-items:center; justify-content:space-between; margin:4px 2px 10px;}
+  .conq-h .eyebrow{color:var(--tx-3);}
+  .conq-h a{font-size:11px; font-weight:700; color:var(--purple);}
+  .conq{display:flex; gap:8px; margin-bottom:12px;}
+  .qcard{flex:1; background:var(--card); border:1px solid var(--border); border-radius:var(--r-md); box-shadow:var(--shadow-card); padding:11px 10px; display:flex; flex-direction:column; gap:5px;}
+  .qcard .qi{color:var(--purple);}
+  .qcard .qt{font-size:13px; font-weight:800; color:var(--tx-1);}
+  .qcard .qs{font-size:10.5px; font-weight:500; color:var(--tx-3); line-height:1.3;}
+  .qcard.lock{opacity:.55;}
+  .adh{background:var(--card); border:1px solid var(--border); border-radius:var(--r-lg); box-shadow:var(--shadow-card); padding:12px 14px; margin-bottom:14px;}
+  .adh p{font-size:13px; color:var(--tx-2); line-height:1.45;} .adh b{color:var(--tx-1); font-weight:800;}
+  .adh .lnk{font-size:13px; font-weight:700; color:var(--purple); margin-top:3px; display:inline-block;}
+
+  /* ===== PROGRAMA card (versão demovida / leve) ===== */
+  .prog{display:flex; align-items:center; gap:16px; padding:16px;}
+  .prog .ring{flex:0 0 auto;}
+  .prog .pinfo .eyebrow{color:var(--tx-3);}
+  .prog .pinfo h4{font-size:15px; font-weight:800; color:var(--tx-1); margin:3px 0 1px; letter-spacing:-.2px;}
+  .prog .pinfo .ps{font-size:12px; color:var(--tx-3); font-weight:600;}
+
+  /* ===== programa HERO escuro (atual) ===== */
+  .proghero{position:relative; overflow:hidden; border-radius:var(--r-2xl); padding:18px; color:#fff; margin-bottom:14px;
+            background:linear-gradient(135deg,#18181B 0%,#27272A 38%,#3B0764 78%,#5B21B6 100%);
+            box-shadow:var(--shadow-glow); border:1px solid rgba(255,255,255,.07);}
+  .proghero .eyebrow{color:rgba(255,255,255,.55);}
+  .proghero .ph-top{display:flex; justify-content:space-between; align-items:flex-start;}
+  .proghero h3{font-size:20px; font-weight:800; letter-spacing:-.4px; margin:4px 0 14px; max-width:200px;}
+  .proghero .trophy{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#FCD34D,#F59E0B);display:grid;place-items:center;}
+  .proghero .ph-bot{display:flex; align-items:center; gap:16px;}
+  .proghero .meta-l{font-size:9.5px; font-weight:800; text-transform:uppercase; letter-spacing:1.1px; color:rgba(255,255,255,.55);}
+  .proghero .meta-v{font-size:22px; font-weight:800; letter-spacing:-.6px;}
+
+  /* ===== workout list item ===== */
+  .wli{display:flex; align-items:center; gap:14px; padding:14px 16px; background:var(--card); border:1px solid var(--border); border-radius:var(--r-xl); box-shadow:var(--shadow-card); margin-bottom:10px;}
+  .wli.done{border-color:var(--green-bd);}
+  .wli .wico{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;flex:0 0 auto;background:rgba(124,58,237,.12);}
+  .wli.done .wico{background:rgba(16,185,129,.14);}
+  .wli .wmid{flex:1;}
+  .wli .wn{font-size:15px; font-weight:700; color:var(--tx-2);}
+  .wli.done .wn{color:var(--tx-3);}
+  .wli .wsub{font-size:12px; color:var(--tx-4); margin-top:2px;}
+  .wli .wsub .gw{color:var(--green); font-weight:700;}
+  .wli .wsub .pw{color:var(--tx-4); font-weight:700;}
+  .wli .chev{color:var(--tx-4);}
+  .wli.done .chev{color:var(--green2);}
+
+  /* ----- ring svg helper ----- */
+  .ringwrap{position:relative; display:grid; place-items:center;}
+  .ringwrap .rt{position:absolute; font-weight:800; color:var(--tx-1);}
+
+  /* ----- tab bar ----- */
+  .tabbar{position:absolute; left:14px; right:14px; bottom:12px; height:62px; border-radius:22px; z-index:25;
+          background:rgba(255,255,255,.82); backdrop-filter:blur(18px); border:1px solid rgba(9,9,11,.06);
+          box-shadow:0 8px 24px rgba(0,0,0,.10); display:flex; align-items:center; padding:0 6px;}
+  .tab{flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; color:var(--tx-4);}
+  .tab .tl{font-size:9.5px; font-weight:700;}
+  .tab.act{color:var(--purple);}
+  .tab.act .pillbg{background:linear-gradient(135deg,rgba(237,233,254,.7),rgba(245,243,255,.4));}
+  .tab .iconwrap{width:44px;height:26px;border-radius:14px;display:grid;place-items:center;}
+
+  .mini{font-size:11px;color:var(--tx-4);text-align:center;padding:10px;border:1px dashed var(--border);border-radius:12px;margin-bottom:10px;}
+  svg{display:block;}
+</style>
+</head>
+<body>
+
+<div class="doc">
+  <h1>Aba Início — proposta de redesign</h1>
+  <p class="sub">App do aluno (mobile). Dois problemas levantados: (1) o card de <b style="color:#fff">Prontidão</b> tem mais destaque que o treino; (2) as <b style="color:#fff">Conquistas</b> ficam escondidas no fim da tela. Abaixo: diagnóstico, princípio aplicado e duas propostas comparáveis com a tela atual. Tokens, cores e tipografia são os reais do app (v2 / Plus Jakarta Sans).</p>
+
+  <div class="grid2">
+    <div class="panel prob">
+      <h3>● O que está acontecendo hoje</h3>
+      <ul>
+        <li><b>Prontidão rouba a cena:</b> card full-width, gradiente escuro e número de <b>56pt</b> aparecendo <b>antes</b> do treino. O olho cai num número, não na ação.</li>
+        <li><b>O treino é o motivo do app</b>, mas vira card branco discreto e fica <b>abaixo da dobra</b>.</li>
+        <li><b>Dois heróis escuros</b> em sequência (Prontidão + Programa) competem entre si e empurram tudo para baixo.</li>
+        <li><b>Conquistas no rodapé:</b> só aparecem após rolar toda a lista de treinos — o gatilho de retenção (streak) fica invisível.</li>
+      </ul>
+    </div>
+    <div class="panel fix">
+      <h3>● Princípio &amp; direção</h3>
+      <ul>
+        <li><b>Hierarquia = prioridade da tarefa:</b> o herói passa a ser <b>"Iniciar o treino de hoje"</b> (meta das fontes: levar ao treino em &lt;60s).</li>
+        <li><b>Prontidão vira contexto que enquadra o treino</b>, não concorrente — exatamente como o Whoop usa o recovery para sugerir a meta do dia.</li>
+        <li><b>Conquistas sobem</b> e viram glanceáveis (streak no cabeçalho + faixa compacta), padrão Duolingo/Apple Rings.</li>
+        <li><b>Um herói só.</b> Programa atual é demovido a um card leve de progresso.</li>
+      </ul>
+    </div>
+  </div>
+  <p class="refs">Referências consultadas: padrões de home de apps de treino (Hevy / Fitbod / Future — treino como herói + CTA imediato), Whoop/Oura (recovery enquadra o esforço do dia), e boas práticas de UX de fitness 2025 (<a href="https://stormotion.io/blog/fitness-app-ux/">stormotion</a>, <a href="https://www.zfort.com/blog/How-to-Design-a-Fitness-App-UX-UI-Best-Practices-for-Engagement-and-Retention">zfort</a>, <a href="https://www.uxmatters.com/mt/archives/2025/07/designing-a-fitness-platform-ux-design-challenges-and-solutions.php">UXmatters</a>): "progresso e streaks visíveis na home" + "goal → start em &lt;60s". Vale validar layouts finais no <a href="https://mobbin.com/discover/apps/ios/popular">Mobbin</a> (Hevy, Strava, Future, Whoop).</p>
+</div>
+
+<div class="stage">
+
+  <!-- ============================ ATUAL ============================ -->
+  <div class="col">
+    <div class="cap now"><span class="tag">Atual</span><p>Prontidão (56pt) + Programa, dois heróis escuros antes do treino. Conquistas só no fim.</p></div>
+    <div class="phone"><div class="screen">
+      <div class="notch"></div>
+      <div class="statusbar"><span>11:44</span><div class="r">
+        <svg width="17" height="11" viewBox="0 0 17 11" fill="#09090B"><rect x="0" y="7" width="3" height="4" rx="1"/><rect x="4" y="5" width="3" height="6" rx="1"/><rect x="8" y="3" width="3" height="8" rx="1"/><rect x="12" y="1" width="3" height="10" rx="1"/></svg>
+        <svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="#09090B" stroke-width="1.4"><path d="M1 4.5C3 2.5 13 2.5 15 4.5"/><path d="M3.5 7C5 5.5 11 5.5 12.5 7"/><circle cx="8" cy="9.5" r="1" fill="#09090B" stroke="none"/></svg>
+        <svg width="24" height="12" viewBox="0 0 24 12"><rect x="1" y="1" width="20" height="10" rx="2.5" fill="none" stroke="#09090B" stroke-opacity=".4"/><rect x="2.5" y="2.5" width="16" height="7" rx="1.5" fill="#09090B"/><rect x="22" y="4" width="1.5" height="4" rx="1" fill="#09090B"/></svg>
+      </div></div>
+      <div class="viewport">
+        <!-- header -->
+        <div class="hd">
+          <div class="left">
+            <div class="logo"><svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M4 4h3v6l5-6h4l-6 7 6 9h-4l-5-7v7H4z"/></svg></div>
+            <div class="greet"><small>Bom dia,</small><h2>Gustavo</h2><span class="date">sexta-feira, 22 de maio</span></div>
+          </div>
+          <div class="avatar"></div>
+        </div>
+        <!-- calendar -->
+        <div class="cal">
+          <div class="crow"><span>17/05 — 23/05</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#71717A" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></div>
+          <div class="days">
+            <div class="day"><span class="dn">D</span><span class="num">17</span><span class="dot g"></span></div>
+            <div class="day"><span class="dn">S</span><span class="num">18</span><span class="dot g"></span></div>
+            <div class="day"><span class="dn">T</span><span class="num">19</span><span class="dot g"></span></div>
+            <div class="day"><span class="dn">Q</span><span class="num">20</span><span class="dot g"></span></div>
+            <div class="day"><span class="dn">Q</span><span class="num">21</span><span class="dot r"></span></div>
+            <div class="day sel"><span class="dn">S</span><span class="num">22</span><span class="dot m"></span></div>
+            <div class="day"><span class="dn">S</span><span class="num">23</span><span class="dot"></span></div>
+          </div>
+        </div>
+        <!-- READINESS hero -->
+        <div class="readiness">
+          <span class="eyebrow">Prontidão hoje</span>
+          <div class="scorerow"><span class="score">72</span><span class="pill">Bom</span></div>
+          <p class="rec">Recuperação boa. Treino normal recomendado.</p>
+          <div class="stats">
+            <div class="stat"><span class="l">Sono</span><span class="v">6h11</span></div>
+            <div class="stat"><span class="l">HR</span><span class="v">—</span></div>
+            <div class="stat"><span class="l">HRV</span><span class="v">—</span></div>
+          </div>
+        </div>
+        <!-- PROGRAMA hero -->
+        <div class="proghero">
+          <div class="ph-top">
+            <div><span class="eyebrow">Programa atual</span><h3>Programa de treinos III</h3></div>
+            <div class="trophy"><svg width="20" height="20" viewBox="0 0 24 24" fill="#78350F"><path d="M6 4h12v3a6 6 0 0 1-12 0zM4 5h2v2a2 2 0 0 1-2-2zm14 0h2a2 2 0 0 1-2 2zM9 14h6l-1 4h-4z"/></svg></div>
+          </div>
+          <div class="ph-bot">
+            <div class="ringwrap" style="width:64px;height:64px;">
+              <svg width="64" height="64" viewBox="0 0 64 64"><circle cx="32" cy="32" r="27" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="6"/><circle cx="32" cy="32" r="27" fill="none" stroke="#A855F7" stroke-width="6" stroke-linecap="round" stroke-dasharray="170" stroke-dashoffset="68" transform="rotate(-90 32 32)"/></svg>
+              <span class="rt" style="color:#fff;font-size:14px;">3/5</span>
+            </div>
+            <div><span class="meta-l">Meta semanal</span><div class="meta-v">3/5 treinos</div></div>
+          </div>
+        </div>
+        <!-- treino de hoje (discreto, abaixo da dobra) -->
+        <h2 class="sectitle">Treino de Hoje</h2>
+        <div class="wli"><div class="wico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2"><path d="M6.5 6.5l11 11M4 8l-1 1 2 2M20 16l1-1-2-2M8 4l-1 1 2 2M16 20l1-1-2-2"/></svg></div><div class="wmid"><div class="wn">Inferior B</div><div class="wsub">5 exercícios · <span class="pw">0/1 sem.</span></div></div><svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></div>
+        <div class="mini">↓ Programa, Superior A/B/C, e só lá no fim: <b>Suas Conquistas</b></div>
+      </div>
+      <div class="fold"></div>
+      <!-- tabbar -->
+      <div class="tabbar">
+        <div class="tab act"><div class="iconwrap pillbg"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2.3"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg></div><span class="tl">Início</span></div>
+        <div class="tab"><div class="iconwrap"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11a8 8 0 0 1-11 7L3 21l3-7A8 8 0 1 1 21 11z"/></svg></div><span class="tl">Mensagens</span></div>
+        <div class="tab"><div class="iconwrap"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.8 5.6a5 5 0 0 0-7.1 0L12 7.3l-1.7-1.7a5 5 0 1 0-7.1 7.1L12 21l8.8-8.3a5 5 0 0 0 0-7.1z"/></svg></div><span class="tl">Saúde</span></div>
+        <div class="tab"><div class="iconwrap"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div><span class="tl">Histórico</span></div>
+        <div class="tab"><div class="iconwrap"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg></div><span class="tl">Perfil</span></div>
+      </div>
+    </div></div>
+    <div class="notes">
+      <div class="note bad"><span class="n">1</span><span>Número de 56pt domina a tela inteira — vira o ponto focal por engano.</span></div>
+      <div class="note bad"><span class="n">2</span><span>Treino de hoje só aparece após dois cards escuros, abaixo da dobra.</span></div>
+      <div class="note bad"><span class="n">3</span><span>Conquistas exigem rolar a lista inteira para serem vistas.</span></div>
+    </div>
+  </div>
+
+  <!-- ============================ PROPOSTA A ============================ -->
+  <div class="col">
+    <div class="cap a"><span class="tag">Proposta A · recomendada</span><p>Treino vira o herói. Prontidão é uma faixa de contexto dentro dele. Conquistas sobem.</p></div>
+    <div class="phone"><div class="screen">
+      <div class="notch"></div>
+      <div class="statusbar"><span>11:44</span><div class="r">
+        <svg width="17" height="11" viewBox="0 0 17 11" fill="#09090B"><rect x="0" y="7" width="3" height="4" rx="1"/><rect x="4" y="5" width="3" height="6" rx="1"/><rect x="8" y="3" width="3" height="8" rx="1"/><rect x="12" y="1" width="3" height="10" rx="1"/></svg>
+        <svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="#09090B" stroke-width="1.4"><path d="M1 4.5C3 2.5 13 2.5 15 4.5"/><path d="M3.5 7C5 5.5 11 5.5 12.5 7"/><circle cx="8" cy="9.5" r="1" fill="#09090B" stroke="none"/></svg>
+        <svg width="24" height="12" viewBox="0 0 24 12"><rect x="1" y="1" width="20" height="10" rx="2.5" fill="none" stroke="#09090B" stroke-opacity=".4"/><rect x="2.5" y="2.5" width="16" height="7" rx="1.5" fill="#09090B"/><rect x="22" y="4" width="1.5" height="4" rx="1" fill="#09090B"/></svg>
+      </div></div>
+      <div class="viewport">
+        <!-- header + streak -->
+        <div class="hd">
+          <div class="left">
+            <div class="logo"><svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M4 4h3v6l5-6h4l-6 7 6 9h-4l-5-7v7H4z"/></svg></div>
+            <div class="greet"><small>Bom dia,</small><h2>Gustavo</h2>
+              <span class="streakchip"><svg width="11" height="11" viewBox="0 0 24 24" fill="#b45309"><path d="M12 2c1 4-2 5-2 8a2 2 0 0 0 4 0c2 2 3 4 3 6a5 5 0 0 1-10 0c0-5 5-6 5-14z"/></svg>12 semanas de sequência</span>
+            </div>
+          </div>
+          <div class="avatar"></div>
+        </div>
+        <!-- calendar -->
+        <div class="cal">
+          <div class="crow"><span>17/05 — 23/05</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#71717A" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></div>
+          <div class="days">
+            <div class="day"><span class="dn">D</span><span class="num">17</span><span class="dot g"></span></div>
+            <div class="day"><span class="dn">S</span><span class="num">18</span><span class="dot g"></span></div>
+            <div class="day"><span class="dn">T</span><span class="num">19</span><span class="dot g"></span></div>
+            <div class="day"><span class="dn">Q</span><span class="num">20</span><span class="dot g"></span></div>
+            <div class="day"><span class="dn">Q</span><span class="num">21</span><span class="dot r"></span></div>
+            <div class="day sel"><span class="dn">S</span><span class="num">22</span><span class="dot m"></span></div>
+            <div class="day"><span class="dn">S</span><span class="num">23</span><span class="dot"></span></div>
+          </div>
+        </div>
+        <!-- HERO treino com ribbon de prontidão -->
+        <div class="hero">
+          <div class="ribbon">
+            <span class="dot"></span>
+            <span class="txt"><b>Prontidão 72 · Bom.</b> Treino normal recomendado.</span>
+            <svg class="chev" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </div>
+          <div class="htop">
+            <span class="eyebrow">Treino de hoje</span>
+            <div class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M6.5 6.5l11 11M4 8l-1 1 2 2M20 16l1-1-2-2M8 4l-1 1 2 2M16 20l1-1-2-2"/></svg></div>
+          </div>
+          <h3>Inferior B</h3>
+          <p class="meta">5 exercícios · ~45 min · 0/1 esta semana</p>
+          <div class="cta"><svg width="18" height="18" viewBox="0 0 24 24" fill="#4C1D95"><path d="M7 5l12 7-12 7z"/></svg>Iniciar treino</div>
+        </div>
+        <!-- CONQUISTAS sobem -->
+        <div class="conq-h"><span class="eyebrow">Suas conquistas</span><a>Ver todas</a></div>
+        <div class="conq">
+          <div class="qcard"><span class="qi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2"><path d="M12 2c1 4-2 5-2 8a2 2 0 0 0 4 0c2 2 3 4 3 6a5 5 0 0 1-10 0c0-5 5-6 5-14z"/></svg></span><span class="qt">12 sem.</span><span class="qs">consistente</span></div>
+          <div class="qcard"><span class="qi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2"><path d="M6.5 6.5l11 11M4 8l-1 1 2 2M20 16l1-1-2-2"/></svg></span><span class="qt">3 treinos</span><span class="qs">neste programa</span></div>
+          <div class="qcard"><span class="qi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2"><path d="M12 2l3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z"/></svg></span><span class="qt">3/25</span><span class="qs">rumo a marco</span></div>
+        </div>
+        <!-- programa demovido -->
+        <div class="card prog">
+          <div class="ringwrap ring" style="width:54px;height:54px;">
+            <svg width="54" height="54" viewBox="0 0 54 54"><circle cx="27" cy="27" r="22" fill="none" stroke="#EDE9FE" stroke-width="5"/><circle cx="27" cy="27" r="22" fill="none" stroke="#7C3AED" stroke-width="5" stroke-linecap="round" stroke-dasharray="138" stroke-dashoffset="55" transform="rotate(-90 27 27)"/></svg>
+            <span class="rt" style="font-size:13px;">3/5</span>
+          </div>
+          <div class="pinfo"><span class="eyebrow">Programa atual</span><h4>Programa de treinos III</h4><span class="ps">Meta semanal · 3 de 5 treinos</span></div>
+        </div>
+        <!-- lista da semana -->
+        <h2 class="sectitle">Treinos da semana</h2>
+        <div class="wli done"><div class="wico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.4"><path d="M5 13l4 4 10-10"/></svg></div><div class="wmid"><div class="wn">Superior A</div><div class="wsub">6 exercícios · <span class="gw">1/1 sem.</span></div></div><svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></div>
+        <div class="mini">↓ restante da semana</div>
+      </div>
+      <div class="fold"></div>
+      <div class="tabbar">
+        <div class="tab act"><div class="iconwrap pillbg"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2.3"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg></div><span class="tl">Início</span></div>
+        <div class="tab"><div class="iconwrap"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11a8 8 0 0 1-11 7L3 21l3-7A8 8 0 1 1 21 11z"/></svg></div><span class="tl">Mensagens</span></div>
+        <div class="tab"><div class="iconwrap"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.8 5.6a5 5 0 0 0-7.1 0L12 7.3l-1.7-1.7a5 5 0 1 0-7.1 7.1L12 21l8.8-8.3a5 5 0 0 0 0-7.1z"/></svg></div><span class="tl">Saúde</span></div>
+        <div class="tab"><div class="iconwrap"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div><span class="tl">Histórico</span></div>
+        <div class="tab"><div class="iconwrap"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg></div><span class="tl">Perfil</span></div>
+      </div>
+    </div></div>
+    <div class="notes">
+      <div class="note good"><span class="n">1</span><span><b>Treino é o herói:</b> recebe o gradiente premium + glow e um CTA "Iniciar treino" — ação em 1 toque.</span></div>
+      <div class="note good"><span class="n">2</span><span><b>Prontidão vira contexto:</b> faixa fininha no topo do herói que <i>enquadra</i> o treino, sem competir.</span></div>
+      <div class="note good"><span class="n">3</span><span><b>Conquistas acima da dobra</b> + streak no cabeçalho. Programa atual demovido a card leve.</span></div>
+    </div>
+  </div>
+
+  <!-- ============================ PROPOSTA B ============================ -->
+  <div class="col">
+    <div class="cap b"><span class="tag">Proposta B · alternativa</span><p>Resumo glanceável: 3 métricas pequenas e equilibradas no topo, treino-herói logo abaixo.</p></div>
+    <div class="phone"><div class="screen">
+      <div class="notch"></div>
+      <div class="statusbar"><span>11:44</span><div class="r">
+        <svg width="17" height="11" viewBox="0 0 17 11" fill="#09090B"><rect x="0" y="7" width="3" height="4" rx="1"/><rect x="4" y="5" width="3" height="6" rx="1"/><rect x="8" y="3" width="3" height="8" rx="1"/><rect x="12" y="1" width="3" height="10" rx="1"/></svg>
+        <svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="#09090B" stroke-width="1.4"><path d="M1 4.5C3 2.5 13 2.5 15 4.5"/><path d="M3.5 7C5 5.5 11 5.5 12.5 7"/><circle cx="8" cy="9.5" r="1" fill="#09090B" stroke="none"/></svg>
+        <svg width="24" height="12" viewBox="0 0 24 12"><rect x="1" y="1" width="20" height="10" rx="2.5" fill="none" stroke="#09090B" stroke-opacity=".4"/><rect x="2.5" y="2.5" width="16" height="7" rx="1.5" fill="#09090B"/><rect x="22" y="4" width="1.5" height="4" rx="1" fill="#09090B"/></svg>
+      </div></div>
+      <div class="viewport">
+        <div class="hd">
+          <div class="left">
+            <div class="logo"><svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M4 4h3v6l5-6h4l-6 7 6 9h-4l-5-7v7H4z"/></svg></div>
+            <div class="greet"><small>Bom dia,</small><h2>Gustavo</h2><span class="date">sexta-feira, 22 de maio</span></div>
+          </div>
+          <div class="avatar"></div>
+        </div>
+        <div class="cal">
+          <div class="crow"><span>17/05 — 23/05</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#71717A" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></div>
+          <div class="days">
+            <div class="day"><span class="dn">D</span><span class="num">17</span><span class="dot g"></span></div>
+            <div class="day"><span class="dn">S</span><span class="num">18</span><span class="dot g"></span></div>
+            <div class="day"><span class="dn">T</span><span class="num">19</span><span class="dot g"></span></div>
+            <div class="day"><span class="dn">Q</span><span class="num">20</span><span class="dot g"></span></div>
+            <div class="day"><span class="dn">Q</span><span class="num">21</span><span class="dot r"></span></div>
+            <div class="day sel"><span class="dn">S</span><span class="num">22</span><span class="dot m"></span></div>
+            <div class="day"><span class="dn">S</span><span class="num">23</span><span class="dot"></span></div>
+          </div>
+        </div>
+        <!-- stat row glanceável -->
+        <div class="statrow">
+          <div class="stile">
+            <div class="ringwrap ring" style="width:32px;height:32px;margin-bottom:2px;">
+              <svg width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="13" fill="none" stroke="#EDE9FE" stroke-width="4"/><circle cx="16" cy="16" r="13" fill="none" stroke="#6366F1" stroke-width="4" stroke-linecap="round" stroke-dasharray="82" stroke-dashoffset="23" transform="rotate(-90 16 16)"/></svg>
+            </div>
+            <span class="lab">Prontidão</span><span class="big">72 <small>Bom</small></span>
+          </div>
+          <div class="stile"><span class="lab" style="margin-bottom:4px">Aderência</span><span class="big">60<small>%</small></span><span class="sub" style="color:#16a34a">3 de 5 treinos</span></div>
+          <div class="stile"><span class="lab" style="margin-bottom:4px">Sequência</span><span class="big">12<small> sem</small></span><span class="sub" style="color:#b45309">🔥 recorde</span></div>
+        </div>
+        <!-- HERO treino -->
+        <div class="hero green-cta">
+          <div class="htop">
+            <span class="eyebrow">Treino de hoje</span>
+            <div class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M6.5 6.5l11 11M4 8l-1 1 2 2M20 16l1-1-2-2M8 4l-1 1 2 2M16 20l1-1-2-2"/></svg></div>
+          </div>
+          <h3>Inferior B</h3>
+          <p class="meta">5 exercícios · ~45 min · 0/1 esta semana</p>
+          <div class="cta"><svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M7 5l12 7-12 7z"/></svg>Iniciar treino</div>
+        </div>
+        <!-- conquistas -->
+        <div class="conq-h"><span class="eyebrow">Suas conquistas</span><a>Ver todas</a></div>
+        <div class="conq">
+          <div class="qcard"><span class="qi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2"><path d="M12 2c1 4-2 5-2 8a2 2 0 0 0 4 0c2 2 3 4 3 6a5 5 0 0 1-10 0c0-5 5-6 5-14z"/></svg></span><span class="qt">12 sem.</span><span class="qs">consistente</span></div>
+          <div class="qcard"><span class="qi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2"><path d="M6.5 6.5l11 11M4 8l-1 1 2 2M20 16l1-1-2-2"/></svg></span><span class="qt">3 treinos</span><span class="qs">neste programa</span></div>
+          <div class="qcard"><span class="qi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2"><path d="M12 2l3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z"/></svg></span><span class="qt">3/25</span><span class="qs">rumo a marco</span></div>
+        </div>
+        <h2 class="sectitle">Treinos da semana</h2>
+        <div class="wli done"><div class="wico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.4"><path d="M5 13l4 4 10-10"/></svg></div><div class="wmid"><div class="wn">Superior A</div><div class="wsub">6 exercícios · <span class="gw">1/1 sem.</span></div></div><svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></div>
+        <div class="mini">↓ restante da semana</div>
+      </div>
+      <div class="fold"></div>
+      <div class="tabbar">
+        <div class="tab act"><div class="iconwrap pillbg"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2.3"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg></div><span class="tl">Início</span></div>
+        <div class="tab"><div class="iconwrap"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11a8 8 0 0 1-11 7L3 21l3-7A8 8 0 1 1 21 11z"/></svg></div><span class="tl">Mensagens</span></div>
+        <div class="tab"><div class="iconwrap"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.8 5.6a5 5 0 0 0-7.1 0L12 7.3l-1.7-1.7a5 5 0 1 0-7.1 7.1L12 21l8.8-8.3a5 5 0 0 0 0-7.1z"/></svg></div><span class="tl">Saúde</span></div>
+        <div class="tab"><div class="iconwrap"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div><span class="tl">Histórico</span></div>
+        <div class="tab"><div class="iconwrap"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg></div><span class="tl">Perfil</span></div>
+      </div>
+    </div></div>
+    <div class="notes">
+      <div class="note good"><span class="n">1</span><span><b>Prontidão, aderência e sequência</b> viram 3 tiles pequenos e equilibrados — informativos, mas nenhum domina.</span></div>
+      <div class="note good"><span class="n">2</span><span><b>Treino-herói logo abaixo</b> com CTA. Conquistas ainda acima da dobra.</span></div>
+      <div class="note good"><span class="n">3</span><span>Bom se quiser manter prontidão visível como número. Risco: a fileira empurra o herói ~80px para baixo.</span></div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
