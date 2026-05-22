@@ -16,19 +16,24 @@ export interface ShareableCardProps {
     rpe?: number;
     // For Photo Template
     backgroundImageUri?: string;
-    // For Max Loads Template
+    // For Max Loads / Recorde Template
     maxLoads?: {
         exerciseName: string;
         weight: number;
-        reps: number;
+        reps: number | string;
         isPr?: boolean;
+        /** Ganho em kg vs. melhor anterior do mesmo exercício (para o delta pill do T2). */
+        delta?: number | null;
+        /** Data do recorde anterior (ex.: "15 mai"), para "+2,5 kg desde 15 mai". */
+        previousDate?: string | null;
     }[];
-    // For Full Workout Template
+    // For Full Workout / Lista Template
     exerciseDetails?: {
         name: string;
         sets: number;
-        reps: number;
-        weight: number;
+        reps: number | string;
+        weight: number | null;
+        isPr?: boolean;
     }[];
 
     // ── NOVOS CAMPOS (todos opcionais) ──
@@ -38,4 +43,6 @@ export interface ShareableCardProps {
     deltaVolumePercent?: number;
     /** Quantidade de PRs ganhos nesta sessão. */
     prCount?: number;
+    /** Semana do programa (T4 Lista): chip "SEMANA current/total". */
+    programWeek?: { current: number; total: number };
 }

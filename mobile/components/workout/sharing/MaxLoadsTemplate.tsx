@@ -1,316 +1,134 @@
+// T2 — Recorde / Greeting card. Celebra UM momento: cream wash quente +
+// troféu watermark sutil + número gigante + delta verde. Fallback p/ "maior
+// carga da sessão" quando não há PR. Ref: share-cards.jsx → T2Recorde.
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Trophy } from 'lucide-react-native';
+import Svg, { Defs, RadialGradient, Stop, Rect, Path } from 'react-native-svg';
 import { ShareableCardProps } from './types';
 import { ShareBrandFooter } from './_shared/ShareBrandFooter';
-import { formatVolumeAbsolute } from './_shared/formatVolume';
+import { ShareTopRow } from './_shared/ShareTopRow';
+import { ShareGrain } from './_shared/ShareGrain';
+import { pickHighlightPR } from './_shared/pickHighlightPR';
+import { SHARE_TOKENS, FONT, CARD_W, CARD_H } from './_shared/tokens';
+import { fmtKg } from './_shared/formatVolume';
 
-const GOLD = '#F4C04E';
-const GOLD_SOFT = '#FDE68A';
-const GOLD_BORDER = 'rgba(244, 196, 78, 0.4)';
-const GOLD_BG = 'rgba(244, 196, 78, 0.18)';
-const GOLD_EYEBROW = 'rgba(244, 196, 78, 0.75)';
-const GOLD_EYEBROW_VOLUME = 'rgba(244, 196, 78, 0.55)';
+const TROPHY_PATHS = [
+    'M6 9H4.5a2.5 2.5 0 0 1 0-5H6',
+    'M18 9h1.5a2.5 2.5 0 0 0 0-5H18',
+    'M4 22h16',
+    'M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22',
+    'M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22',
+    'M18 2H6v7a6 6 0 0 0 12 0V2Z',
+];
 
-export const MaxLoadsTemplate = ({
-    workoutName,
-    date,
-    coach,
-    maxLoads,
-    volume,
-}: ShareableCardProps) => {
-    const displayLoads =
-        maxLoads?.slice().sort((a, b) => b.weight - a.weight).slice(0, 3) ?? [];
+export const MaxLoadsTemplate = ({ workoutName, maxLoads, exerciseDetails, date, coach }: ShareableCardProps) => {
+    const pr = pickHighlightPR(maxLoads, exerciseDetails);
 
     return (
-        <View style={[styles.container, { width: 320, height: 568 }]}>
-            <LinearGradient
-                colors={['#1E1B4B', '#0F172A', '#020617']}
-                locations={[0, 0.45, 1]}
-                style={styles.gradient}
-            />
+        <View style={styles.container}>
+            {/* Radial cream wash */}
+            <View style={StyleSheet.absoluteFill}>
+                <Svg width={CARD_W} height={CARD_H}>
+                    <Defs>
+                        <RadialGradient id="t2wash" cx="50%" cy="0%" r="80%">
+                            <Stop offset="0" stopColor={SHARE_TOKENS.warmRadial} stopOpacity={1} />
+                            <Stop offset="0.6" stopColor={SHARE_TOKENS.warmRadial} stopOpacity={0} />
+                        </RadialGradient>
+                    </Defs>
+                    <Rect x="0" y="0" width={CARD_W} height={CARD_H} fill="url(#t2wash)" />
+                </Svg>
+            </View>
+            {/* Trophy watermark */}
+            <View style={{ position: 'absolute', right: -180, bottom: -160, opacity: 0.045 }}>
+                <Svg width={520} height={520} viewBox="0 0 24 24">
+                    {TROPHY_PATHS.map((d, i) => (
+                        <Path key={i} d={d} fill="none" stroke={SHARE_TOKENS.goldText} strokeWidth={0.6} />
+                    ))}
+                </Svg>
+            </View>
+            <ShareGrain opacity={0.06} />
 
-            {/* Decorative glows */}
-            <View style={styles.glowGold} />
-            <View style={styles.glowPurple} />
+            <View style={styles.inner}>
+                <ShareTopRow label="Kinevo" date={date} />
 
-            <View style={styles.content}>
-                {/* Header */}
-                <View style={styles.header}>
-                    <View style={styles.badge}>
-                        <Trophy size={12} color={GOLD} />
-                        <Text style={styles.badgeText}>Destaques do Treino</Text>
-                    </View>
-                    <Text style={styles.workoutName} numberOfLines={2}>
-                        {workoutName}
-                    </Text>
-                    <Text style={styles.date}>{date}</Text>
-                </View>
-
-                {/* Loads list */}
-                <View style={styles.loadsContainer}>
-                    {displayLoads.length > 0 ? (
-                        displayLoads.map((item, index) => {
-                            const isPr = !!item.isPr;
-                            return (
-                                <View key={index} style={styles.loadItem}>
-                                    {isPr && (
-                                        <Text style={styles.eyebrow}>SUPERIOR A</Text>
-                                    )}
-                                    <View style={styles.weightRow}>
-                                        <Text
-                                            style={[
-                                                styles.weightText,
-                                                isPr && styles.weightTextPr,
-                                            ]}
-                                        >
-                                            {item.weight}
-                                            <Text style={styles.unitText}>kg</Text>
-                                        </Text>
-                                        {isPr && (
-                                            <View style={styles.prBadge}>
-                                                <Text style={styles.prText}>PR</Text>
-                                            </View>
-                                        )}
-                                    </View>
-                                    <View style={styles.metaRow}>
-                                        <Text
-                                            style={styles.exerciseName}
-                                            numberOfLines={1}
-                                            adjustsFontSizeToFit
-                                            minimumFontScale={0.75}
-                                        >
-                                            {item.exerciseName}
-                                        </Text>
-                                        <Text style={styles.metaDot}>·</Text>
-                                        <Text style={styles.repsText}>
-                                            {item.reps} reps
-                                        </Text>
-                                    </View>
-                                    {isPr && (
-                                        <View style={styles.deltaPill}>
-                                            <Text style={styles.deltaText}>
-                                                Recorde pessoal
-                                            </Text>
-                                        </View>
-                                    )}
-                                </View>
-                            );
-                        })
-                    ) : (
-                        <View style={styles.emptyState}>
-                            <Text style={styles.emptyText}>
-                                Sem dados de carga registrados.
-                            </Text>
+                {pr ? (
+                    <>
+                        <View style={{ marginTop: 38 }}>
+                            <View style={[styles.badge, !pr.isPr && styles.badgeNeutral]}>
+                                {pr.isPr && (
+                                    <Svg width={11} height={11} viewBox="0 0 24 24">
+                                        {TROPHY_PATHS.map((d, i) => (
+                                            <Path key={i} d={d} fill="none" stroke={SHARE_TOKENS.goldText} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
+                                        ))}
+                                    </Svg>
+                                )}
+                                <Text style={[styles.badgeText, !pr.isPr && { color: SHARE_TOKENS.textSecondary }]}>
+                                    {pr.isPr ? 'Recorde pessoal' : 'Maior carga da sessão'}
+                                </Text>
+                            </View>
                         </View>
-                    )}
-                </View>
+
+                        <View style={{ marginTop: 22 }}>
+                            <Text style={styles.exName} numberOfLines={2}>{pr.exerciseName}</Text>
+
+                            <View style={styles.weightRow}>
+                                <Text style={styles.weight}>{fmtKg(pr.weight)}</Text>
+                                <Text style={styles.unit}>kg</Text>
+                            </View>
+
+                            <Text style={styles.repsLine}>
+                                <Text style={styles.repsStrong}>{pr.reps} repetições</Text>
+                                <Text style={styles.repsSoft}>{`  ·  ${workoutName}`}</Text>
+                            </Text>
+
+                            {pr.delta != null && (
+                                <View style={styles.deltaPill}>
+                                    <Svg width={11} height={11} viewBox="0 0 24 24">
+                                        <Path d="M7 17l5-5 5 5" fill="none" stroke={SHARE_TOKENS.successText} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+                                        <Path d="M12 12V4" fill="none" stroke={SHARE_TOKENS.successText} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+                                    </Svg>
+                                    <Text style={styles.deltaText}>
+                                        +{fmtKg(pr.delta)} kg{pr.previousDate ? ` desde ${pr.previousDate}` : ''}
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
+                    </>
+                ) : (
+                    <View style={{ marginTop: 60 }}>
+                        <Text style={styles.exName}>{workoutName}</Text>
+                        <Text style={[styles.repsSoft, { marginTop: 10 }]}>Sem cargas registradas nesta sessão.</Text>
+                    </View>
+                )}
 
                 <View style={{ flex: 1 }} />
-
-                {/* Volume bloco */}
-                <View style={styles.volumeContainer}>
-                    <Text style={styles.volumeEyebrow}>TOTAL LEVANTADO</Text>
-                    <Text
-                        style={styles.volumeValue}
-                        numberOfLines={1}
-                        adjustsFontSizeToFit
-                        minimumFontScale={0.7}
-                    >
-                        {formatVolumeAbsolute(volume)}
-                    </Text>
-                </View>
-
-                <ShareBrandFooter coach={coach} tint="gold" />
+                <ShareBrandFooter coach={coach} borderColor="rgba(139,90,15,0.18)" />
             </View>
         </View>
     );
 };
 
 const styles = StyleSheet.create({
-    container: {
-        backgroundColor: '#020617',
-        overflow: 'hidden',
-    },
-    gradient: {
-        ...StyleSheet.absoluteFillObject,
-    },
-    glowGold: {
-        position: 'absolute',
-        top: -70,
-        right: -70,
-        width: 240,
-        height: 240,
-        borderRadius: 120,
-        backgroundColor: 'rgba(244, 196, 78, 0.06)',
-    },
-    glowPurple: {
-        position: 'absolute',
-        bottom: -90,
-        left: -90,
-        width: 260,
-        height: 260,
-        borderRadius: 130,
-        backgroundColor: 'rgba(124, 58, 237, 0.05)',
-    },
-    content: {
-        flex: 1,
-        paddingHorizontal: 28,
-        paddingTop: 28,
-        paddingBottom: 40,
-    },
-    header: {
-        marginBottom: 24,
-    },
+    container: { width: CARD_W, height: CARD_H, backgroundColor: SHARE_TOKENS.canvasT2, overflow: 'hidden' },
+    inner: { flex: 1, paddingHorizontal: 28, paddingTop: 28, paddingBottom: 24 },
     badge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: GOLD_BG,
-        paddingHorizontal: 10,
-        paddingVertical: 5,
-        borderRadius: 6,
-        alignSelf: 'flex-start',
-        marginBottom: 14,
-        gap: 6,
-        borderWidth: 1,
-        borderColor: 'rgba(244, 196, 78, 0.25)',
+        alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6,
+        backgroundColor: '#FFFFFF', borderWidth: StyleSheet.hairlineWidth, borderColor: SHARE_TOKENS.goldBorder,
+        paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999,
     },
-    badgeText: {
-        color: GOLD,
-        fontSize: 10,
-        fontWeight: '700',
-        textTransform: 'uppercase',
-        letterSpacing: 1,
-    },
-    workoutName: {
-        color: '#F8FAFC',
-        fontSize: 28,
-        fontWeight: '900',
-        textTransform: 'uppercase',
-        letterSpacing: -0.5,
-        lineHeight: 32,
-        marginBottom: 4,
-    },
-    date: {
-        color: '#94A3B8',
-        fontSize: 13,
-        fontWeight: '500',
-    },
-    loadsContainer: {
-        gap: 10,
-    },
-    loadItem: {
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255, 255, 255, 0.06)',
-        paddingBottom: 8,
-    },
-    eyebrow: {
-        color: GOLD_EYEBROW,
-        fontSize: 10,
-        fontWeight: '700',
-        letterSpacing: 2.5,
-        marginBottom: 4,
-    },
-    weightRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-    },
-    weightText: {
-        color: '#F8FAFC',
-        fontSize: 44,
-        fontWeight: '900',
-        letterSpacing: -1.5,
-        lineHeight: 48,
-    },
-    weightTextPr: {
-        color: GOLD,
-    },
-    unitText: {
-        fontSize: 18,
-        color: '#94A3B8',
-        fontWeight: '700',
-    },
-    prBadge: {
-        backgroundColor: GOLD_BG,
-        paddingHorizontal: 8,
-        paddingVertical: 3,
-        borderRadius: 6,
-        borderWidth: 1,
-        borderColor: GOLD_BORDER,
-    },
-    prText: {
-        color: GOLD,
-        fontSize: 9,
-        fontWeight: '800',
-        textTransform: 'uppercase',
-        letterSpacing: 1.5,
-    },
-    metaRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        marginTop: 4,
-    },
-    exerciseName: {
-        color: '#E2E8F0',
-        fontSize: 14,
-        fontWeight: '700',
-        flexShrink: 1,
-    },
-    metaDot: {
-        color: '#475569',
-        fontSize: 13,
-        fontWeight: '700',
-    },
-    repsText: {
-        color: '#94A3B8',
-        fontSize: 13,
-        fontWeight: '600',
-    },
+    badgeNeutral: { borderColor: SHARE_TOKENS.hairline },
+    badgeText: { fontFamily: FONT.bold, fontSize: 10.5, color: SHARE_TOKENS.goldText, letterSpacing: 0.3 },
+    exName: { fontFamily: FONT.bold, fontSize: 22, color: SHARE_TOKENS.textPrimary, letterSpacing: -0.5, lineHeight: 24 },
+    weightRow: { marginTop: 24, flexDirection: 'row', alignItems: 'baseline', gap: 8 },
+    weight: { fontFamily: FONT.extrabold, fontSize: 108, color: SHARE_TOKENS.textPrimary, letterSpacing: -5.5, lineHeight: 100, fontVariant: ['tabular-nums'] },
+    unit: { fontFamily: FONT.semibold, fontSize: 28, color: SHARE_TOKENS.textSecondary, letterSpacing: -0.5 },
+    repsLine: { marginTop: 14, fontSize: 14 },
+    repsStrong: { fontFamily: FONT.semibold, fontSize: 14, color: SHARE_TOKENS.textPrimary },
+    repsSoft: { fontFamily: FONT.medium, fontSize: 14, color: SHARE_TOKENS.textSecondary },
     deltaPill: {
-        alignSelf: 'flex-start',
-        marginTop: 8,
-        backgroundColor: 'rgba(52, 211, 153, 0.12)',
-        paddingHorizontal: 8,
-        paddingVertical: 3,
-        borderRadius: 6,
-        borderWidth: 1,
-        borderColor: 'rgba(52, 211, 153, 0.25)',
+        alignSelf: 'flex-start', marginTop: 18, flexDirection: 'row', alignItems: 'center', gap: 6,
+        backgroundColor: SHARE_TOKENS.successBg, borderWidth: StyleSheet.hairlineWidth, borderColor: SHARE_TOKENS.successBorder,
+        paddingHorizontal: 9, paddingVertical: 4, borderRadius: 999,
     },
-    deltaText: {
-        color: '#34D399',
-        fontSize: 10,
-        fontWeight: '700',
-        letterSpacing: 0.3,
-    },
-    emptyState: {
-        padding: 24,
-        alignItems: 'center',
-        backgroundColor: 'rgba(255, 255, 255, 0.03)',
-        borderRadius: 12,
-    },
-    emptyText: {
-        color: '#64748B',
-    },
-    volumeContainer: {
-        marginTop: 8,
-        paddingTop: 6,
-        marginBottom: 20,
-    },
-    volumeEyebrow: {
-        color: GOLD_EYEBROW_VOLUME,
-        fontSize: 10,
-        fontWeight: '700',
-        letterSpacing: 2.5,
-        marginBottom: 4,
-    },
-    volumeValue: {
-        color: GOLD_SOFT,
-        fontSize: 22,
-        fontWeight: '900',
-        letterSpacing: -0.5,
-        fontVariant: ['tabular-nums'],
-    },
+    deltaText: { fontFamily: FONT.bold, fontSize: 11, color: SHARE_TOKENS.successText },
 });

@@ -3,7 +3,7 @@ import {
     View, Text, Modal, Pressable, Platform, Alert, useWindowDimensions, StyleSheet,
 } from 'react-native';
 import {
-    Share2, X, Camera, Image as ImageIcon, Trophy, FileText, Target,
+    Share2, X, Camera, Image as ImageIcon, Trophy, FileText, Target, TrendingUp,
 } from 'lucide-react-native';
 import Animated, {
     useSharedValue, useAnimatedStyle, withTiming, withSequence,
@@ -19,11 +19,13 @@ import { useSessionStats } from '../../hooks/useSessionStats';
 import { useV2Colors, type V2Palette } from '../../hooks/useV2Colors';
 
 // Templates
+import { EditorialTemplate } from './sharing/EditorialTemplate';
 import { PhotoOverlayTemplate } from './sharing/PhotoOverlayTemplate';
 import { MaxLoadsTemplate } from './sharing/MaxLoadsTemplate';
 import { FullWorkoutTemplate } from './sharing/FullWorkoutTemplate';
 import { SummaryTemplate } from './sharing/SummaryTemplate';
 import { ShareableCardProps } from './sharing/types';
+import { pickHighlightPR } from './sharing/_shared/pickHighlightPR';
 
 interface ShareWorkoutModalProps {
     visible: boolean;
@@ -43,7 +45,7 @@ function computePreviewScale(screenWidth: number, screenHeight: number) {
     return { previewScale, scaledH: CARD_H * previewScale };
 }
 
-type TemplateType = 'photo' | 'highlights' | 'full_workout' | 'summary';
+type TemplateType = 'editorial' | 'photo' | 'highlights' | 'full_workout' | 'summary';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -160,7 +162,7 @@ export function ShareWorkoutModal({ visible, onClose, data, sessionId }: ShareWo
     const scale = useSharedValue(0);
     const viewShotRef = useRef<ViewShot>(null);
     const [isSharing, setIsSharing] = useState(false);
-    const [selectedTemplate, setSelectedTemplate] = useState<TemplateType>('photo');
+    const [selectedTemplate, setSelectedTemplate] = useState<TemplateType>('summary');
     const [backgroundImage, setBackgroundImage] = useState<string | undefined>(undefined);
 
     const { volume: statsVolume, maxLoads: statsMaxLoads, exerciseDetails: statsExerciseDetails } = useSessionStats(sessionId || null);
@@ -168,10 +170,14 @@ export function ShareWorkoutModal({ visible, onClose, data, sessionId }: ShareWo
     useEffect(() => {
         if (visible) {
             scale.value = withTiming(1, ANIM.timing.normal);
+            // Default por contexto: tem PR → Recorde; senão → Resumo.
+            // (Foto vira default só após o usuário escolher uma imagem.)
+            const pick = pickHighlightPR(data?.maxLoads, data?.exerciseDetails);
+            setSelectedTemplate(pick?.isPr ? 'highlights' : 'summary');
         } else {
             scale.value = withTiming(0, { duration: 200 });
             setTimeout(() => {
-                setSelectedTemplate('photo');
+                setSelectedTemplate('summary');
                 setBackgroundImage(undefined);
             }, 300);
         }
@@ -259,10 +265,11 @@ export function ShareWorkoutModal({ visible, onClose, data, sessionId }: ShareWo
     };
 
     const templates: { key: TemplateType; label: string; Icon: any }[] = [
+        { key: 'editorial', label: 'Volume', Icon: TrendingUp },
         { key: 'photo', label: 'Foto', Icon: Camera },
-        { key: 'highlights', label: 'Destaques', Icon: Trophy },
+        { key: 'highlights', label: 'Recorde', Icon: Trophy },
         { key: 'full_workout', label: 'Completo', Icon: FileText },
-        { key: 'summary', label: 'Meta', Icon: Target },
+        { key: 'summary', label: 'Resumo', Icon: Target },
     ];
 
     return (
@@ -289,6 +296,7 @@ export function ShareWorkoutModal({ visible, onClose, data, sessionId }: ShareWo
                                     transform: [{ scale: PREVIEW_SCALE }],
                                 }}
                             >
+                                {selectedTemplate === 'editorial' && <EditorialTemplate {...templateData} />}
                                 {selectedTemplate === 'photo' && <PhotoOverlayTemplate {...templateData} />}
                                 {selectedTemplate === 'highlights' && <MaxLoadsTemplate {...templateData} />}
                                 {selectedTemplate === 'full_workout' && <FullWorkoutTemplate {...templateData} />}

@@ -1,313 +1,112 @@
+// T4 — Lista / Receipt. Documento do treino: linhas zebradas + colunas
+// tabulares + PRs inline + chip de semana. Ref: share-cards.jsx → T4Lista.
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { CheckCircle2, Clock, Flame, TrendingUp, Trophy } from 'lucide-react-native';
 import { ShareableCardProps } from './types';
 import { ShareBrandFooter } from './_shared/ShareBrandFooter';
+import { ShareTopRow } from './_shared/ShareTopRow';
+import { ShareGrain } from './_shared/ShareGrain';
+import { ShareAccentStripe } from './_shared/ShareAccentStripe';
+import { SHARE_TOKENS, FONT, CARD_W, CARD_H } from './_shared/tokens';
+import { fmtKg, fmtVolume } from './_shared/formatVolume';
 
-const MAX_VISIBLE_EXERCISES = 5;
+const MAX_ROWS = 8;
 
 export const FullWorkoutTemplate = ({
     workoutName,
-    date,
     duration,
     volume,
-    coach,
     exerciseDetails,
-    streakDays,
-    prCount,
+    programWeek,
+    date,
+    coach,
 }: ShareableCardProps) => {
-    const exercises = exerciseDetails ?? [];
-    const visibleExercises = exercises.slice(0, MAX_VISIBLE_EXERCISES);
-    const remainingCount = exercises.length - MAX_VISIBLE_EXERCISES;
-
-    const showPrBadge = (prCount ?? 0) > 0 || exercises.length > 0; // placeholder até hook expor
-    const showStreakBadge = (streakDays ?? 0) > 0 || exercises.length > 0; // placeholder
+    const all = exerciseDetails ?? [];
+    const visible = all.slice(0, MAX_ROWS);
+    const remaining = all.length - visible.length;
 
     return (
-        <View style={[styles.container, { width: 320, height: 568 }]}>
-            <LinearGradient
-                colors={['#0F172A', '#1A2541', '#020617']}
-                locations={[0, 0.55, 1]}
-                style={styles.gradient}
-            />
+        <View style={styles.container}>
+            <ShareAccentStripe />
+            <ShareGrain opacity={0.05} />
 
-            <View style={styles.glowPurple} />
+            <View style={styles.inner}>
+                <ShareTopRow label="Treino do dia" date={date} />
 
-            <View style={styles.content}>
-                {/* Header */}
-                <View style={styles.header}>
-                    <View style={styles.achievementsRow}>
-                        {showPrBadge && (
-                            <View style={[styles.achBadge, styles.achBadgeGold]}>
-                                <Trophy size={9} color="#F4C04E" />
-                                <Text style={[styles.achText, { color: '#F4C04E' }]}>
-                                    RECORDE
-                                </Text>
-                            </View>
-                        )}
-                        {showStreakBadge && (
-                            <View style={[styles.achBadge, styles.achBadgePink]}>
-                                <Flame size={9} color="#F472B6" />
-                                <Text style={[styles.achText, { color: '#F472B6' }]}>
-                                    {streakDays ? `${streakDays}d` : 'SEQUÊNCIA'}
-                                </Text>
-                            </View>
-                        )}
-                        <View style={[styles.achBadge, styles.achBadgeGreen]}>
-                            <CheckCircle2 size={9} color="#34D399" />
-                            <Text style={[styles.achText, { color: '#34D399' }]}>
-                                COMPLETO
-                            </Text>
-                        </View>
+                {/* Title + program chip */}
+                <View style={styles.titleRow}>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={styles.title} numberOfLines={1}>{workoutName}</Text>
+                        <Text style={styles.subtitle} numberOfLines={1}>
+                            {duration} · {fmtVolume(volume)} kg
+                        </Text>
                     </View>
-                    <Text style={styles.workoutName} numberOfLines={2}>
-                        {workoutName}
-                    </Text>
-                    <Text style={styles.date}>{date}</Text>
-                </View>
-
-                {/* Exercise list */}
-                <View style={styles.exerciseList}>
-                    {visibleExercises.map((ex, index) => (
-                        <View key={index} style={styles.exerciseRow}>
-                            <LinearGradient
-                                colors={['#7C3AED', '#A78BFA']}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 1 }}
-                                style={styles.exerciseIndex}
-                            >
-                                <Text style={styles.indexText}>{index + 1}</Text>
-                            </LinearGradient>
-                            <View style={styles.exerciseInfo}>
-                                <Text
-                                    style={styles.exerciseName}
-                                    numberOfLines={1}
-                                    adjustsFontSizeToFit
-                                    minimumFontScale={0.75}
-                                >
-                                    {ex.name}
-                                </Text>
-                                <Text style={styles.exerciseSets}>
-                                    {ex.sets}x{ex.reps}
-                                    <Text style={styles.metaDot}> · </Text>
-                                    <Text style={styles.exerciseWeight}>{ex.weight}kg</Text>
-                                </Text>
-                            </View>
-                        </View>
-                    ))}
-
-                    {remainingCount > 0 && (
-                        <View style={styles.moreRow}>
-                            <Text style={styles.moreText}>
-                                + {remainingCount} mais
-                            </Text>
+                    {programWeek && (
+                        <View style={styles.weekChip}>
+                            <Text style={styles.weekChipText}>SEMANA {programWeek.current}/{programWeek.total}</Text>
                         </View>
                     )}
                 </View>
 
-                <View style={{ flex: 1 }} />
-
-                {/* Stats bar */}
-                <View style={styles.statsRow}>
-                    <View style={styles.statItem}>
-                        <Clock size={18} color="#A78BFA" />
-                        <Text style={styles.statValue}>{duration}</Text>
-                        <Text style={styles.statLabel}>DURAÇÃO</Text>
-                    </View>
-                    <View style={styles.statDivider} />
-                    <View style={styles.statItem}>
-                        <TrendingUp size={18} color="#F472B6" />
-                        <Text
-                            style={styles.statValue}
-                            numberOfLines={1}
-                            adjustsFontSizeToFit
-                            minimumFontScale={0.7}
-                        >
-                            {(volume / 1000).toFixed(1)}t
-                        </Text>
-                        <Text style={styles.statLabel}>TOTAL</Text>
-                    </View>
-                    <View style={styles.statDivider} />
-                    <View style={styles.statItem}>
-                        <CheckCircle2 size={18} color="#34D399" />
-                        <Text style={styles.statValue}>{exercises.length}</Text>
-                        <Text
-                            style={styles.statLabel}
-                            numberOfLines={1}
-                            adjustsFontSizeToFit
-                            minimumFontScale={0.7}
-                        >
-                            EXERCÍCIOS
-                        </Text>
-                    </View>
+                {/* Header row */}
+                <View style={styles.headerRow}>
+                    <View style={{ width: 18 }} />
+                    <Text style={[styles.headLabel, { flex: 1 }]}>Exercício</Text>
+                    <Text style={[styles.headLabel, { width: 44, textAlign: 'right' }]}>Séries</Text>
+                    <Text style={[styles.headLabel, { width: 64, textAlign: 'right' }]}>Carga</Text>
                 </View>
 
-                <ShareBrandFooter coach={coach} tint="purple" />
+                {/* Rows */}
+                <View style={{ flex: 1 }}>
+                    {visible.map((ex, i) => (
+                        <View key={i} style={[styles.row, i % 2 === 1 && styles.rowZebra]}>
+                            <Text style={styles.idx}>{String(i + 1).padStart(2, '0')}</Text>
+                            <View style={styles.nameCell}>
+                                <Text style={styles.exName} numberOfLines={1}>{ex.name}</Text>
+                                {ex.isPr && (
+                                    <View style={styles.prBadge}>
+                                        <Text style={styles.prText}>PR</Text>
+                                    </View>
+                                )}
+                            </View>
+                            <Text style={styles.sets}>{ex.sets}×{ex.reps}</Text>
+                            <Text style={[styles.load, ex.weight == null && { color: SHARE_TOKENS.textTertiary }]}>
+                                {ex.weight == null ? '—' : `${fmtKg(ex.weight)} kg`}
+                            </Text>
+                        </View>
+                    ))}
+                    {remaining > 0 && (
+                        <Text style={styles.more}>+ {remaining} mais</Text>
+                    )}
+                </View>
+
+                <ShareBrandFooter coach={coach} borderColor="rgba(60,40,15,0.16)" />
             </View>
         </View>
     );
 };
 
 const styles = StyleSheet.create({
-    container: {
-        backgroundColor: '#020617',
-        overflow: 'hidden',
+    container: { width: CARD_W, height: CARD_H, backgroundColor: SHARE_TOKENS.canvas, overflow: 'hidden' },
+    inner: { flex: 1, paddingHorizontal: 24, paddingTop: 24, paddingBottom: 20 },
+    titleRow: { marginTop: 18, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 10 },
+    title: { fontFamily: FONT.bold, fontSize: 22, color: SHARE_TOKENS.textPrimary, letterSpacing: -0.7 },
+    subtitle: { fontFamily: FONT.medium, fontSize: 11.5, color: SHARE_TOKENS.textSecondary, marginTop: 4, fontVariant: ['tabular-nums'] },
+    weekChip: { backgroundColor: SHARE_TOKENS.brandSoft, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 5 },
+    weekChipText: { fontFamily: FONT.bold, fontSize: 9.5, color: SHARE_TOKENS.brandText, letterSpacing: 0.4 },
+    headerRow: {
+        marginTop: 16, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 8, paddingVertical: 6,
+        borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: SHARE_TOKENS.hairline,
     },
-    gradient: {
-        ...StyleSheet.absoluteFillObject,
-    },
-    glowPurple: {
-        position: 'absolute',
-        top: -80,
-        right: -80,
-        width: 220,
-        height: 220,
-        borderRadius: 110,
-        backgroundColor: 'rgba(124, 58, 237, 0.07)',
-    },
-    content: {
-        flex: 1,
-        padding: 24,
-        paddingVertical: 28,
-    },
-    header: {
-        marginBottom: 18,
-    },
-    achievementsRow: {
-        flexDirection: 'row',
-        flexWrap: 'nowrap',
-        gap: 6,
-        marginBottom: 12,
-    },
-    achBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-        paddingHorizontal: 7,
-        paddingVertical: 3,
-        borderRadius: 100,
-        borderWidth: 1,
-    },
-    achBadgeGold: {
-        backgroundColor: 'rgba(244, 196, 78, 0.16)',
-        borderColor: 'rgba(244, 196, 78, 0.4)',
-    },
-    achBadgePink: {
-        backgroundColor: 'rgba(244, 114, 182, 0.16)',
-        borderColor: 'rgba(244, 114, 182, 0.4)',
-    },
-    achBadgeGreen: {
-        backgroundColor: 'rgba(52, 211, 153, 0.16)',
-        borderColor: 'rgba(52, 211, 153, 0.4)',
-    },
-    achText: {
-        fontSize: 9,
-        fontWeight: '800',
-        letterSpacing: 0.3,
-        textTransform: 'uppercase',
-    },
-    workoutName: {
-        color: '#F8FAFC',
-        fontSize: 26,
-        fontWeight: '900',
-        textTransform: 'uppercase',
-        letterSpacing: -0.5,
-        lineHeight: 30,
-        marginBottom: 3,
-    },
-    date: {
-        color: '#94A3B8',
-        fontSize: 13,
-        fontWeight: '500',
-    },
-    exerciseList: {
-        gap: 6,
-        marginBottom: 4,
-    },
-    exerciseRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-        paddingVertical: 4,
-    },
-    exerciseIndex: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    indexText: {
-        color: '#FFFFFF',
-        fontSize: 14,
-        fontWeight: '800',
-    },
-    exerciseInfo: {
-        flex: 1,
-    },
-    exerciseName: {
-        color: '#F1F5F9',
-        fontSize: 14,
-        fontWeight: '700',
-        marginBottom: 2,
-    },
-    exerciseSets: {
-        color: '#94A3B8',
-        fontSize: 11,
-        fontWeight: '600',
-    },
-    metaDot: {
-        color: '#475569',
-    },
-    exerciseWeight: {
-        color: '#A78BFA',
-        fontSize: 12,
-        fontWeight: '700',
-    },
-    moreRow: {
-        paddingVertical: 6,
-        paddingLeft: 44,
-    },
-    moreText: {
-        color: '#64748B',
-        fontSize: 11,
-        fontWeight: '600',
-    },
-    statsRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginTop: 20,
-        marginBottom: 14,
-        paddingVertical: 10,
-        paddingHorizontal: 14,
-        backgroundColor: 'rgba(255, 255, 255, 0.04)',
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.06)',
-    },
-    statItem: {
-        alignItems: 'center',
-        gap: 4,
-        flex: 1,
-    },
-    statValue: {
-        color: '#F8FAFC',
-        fontSize: 16,
-        fontWeight: '800',
-        letterSpacing: -0.3,
-    },
-    statLabel: {
-        color: '#64748B',
-        fontSize: 9,
-        fontWeight: '600',
-        textTransform: 'uppercase',
-        letterSpacing: 1,
-    },
-    statDivider: {
-        width: 1,
-        height: 32,
-        backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    },
+    headLabel: { fontFamily: FONT.bold, fontSize: 9, color: SHARE_TOKENS.textTertiary, letterSpacing: 0.8, textTransform: 'uppercase' },
+    row: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 8, paddingVertical: 8, borderRadius: 4 },
+    rowZebra: { backgroundColor: 'rgba(124,58,237,0.025)' },
+    idx: { width: 18, fontFamily: FONT.semibold, fontSize: 10, color: SHARE_TOKENS.textTertiary, fontVariant: ['tabular-nums'] },
+    nameCell: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6, minWidth: 0 },
+    exName: { fontFamily: FONT.semibold, fontSize: 12.5, color: SHARE_TOKENS.textPrimary, flexShrink: 1 },
+    prBadge: { backgroundColor: SHARE_TOKENS.goldBg, borderWidth: StyleSheet.hairlineWidth, borderColor: SHARE_TOKENS.goldBorder, borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 },
+    prText: { fontFamily: FONT.extrabold, fontSize: 8.5, color: SHARE_TOKENS.goldText, letterSpacing: 0.4 },
+    sets: { width: 44, textAlign: 'right', fontFamily: FONT.semibold, fontSize: 12.5, color: SHARE_TOKENS.textPrimary, fontVariant: ['tabular-nums'] },
+    load: { width: 64, textAlign: 'right', fontFamily: FONT.bold, fontSize: 12.5, color: SHARE_TOKENS.textPrimary, fontVariant: ['tabular-nums'] },
+    more: { paddingHorizontal: 8, paddingTop: 8, fontFamily: FONT.medium, fontSize: 11, color: SHARE_TOKENS.textSecondary },
 });
