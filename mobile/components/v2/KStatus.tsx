@@ -53,8 +53,8 @@ export function KStatus({
     const fontSize = isPill ? (isSm ? 10 : 11) : (isSm ? 11 : typography.bodySm.size);
     const fontWeight = isPill ? '700' : '600';
     const fontFamily = isPill ? 'PlusJakartaSans_700Bold' : 'PlusJakartaSans_600SemiBold';
-    const letterSpacing = isPill ? 0.4 : 0;
-    const transform = isPill ? 'uppercase' : 'none';
+    const letterSpacing = 0;
+    const transform = 'none';
 
     const textColor = isPill ? palette.fg : colors.text.secondary;
 
