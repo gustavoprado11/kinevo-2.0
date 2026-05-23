@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Award } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { useV2Colors } from '../../hooks/useV2Colors';
@@ -31,13 +31,14 @@ export function PerfectWeekBanner({ completedCount, consecutiveCount = 0, onShar
                 <Text style={[styles.title, { color: colors.text.primary }]} numberOfLines={1}>Semana perfeita!</Text>
                 <Text style={[styles.sub, { color: colors.text.tertiary }]} numberOfLines={1}>{subtitle}</Text>
             </View>
-            <Pressable
+            <TouchableOpacity
                 onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onShare(); }}
-                style={({ pressed }) => [styles.shareBtn, pressed && { opacity: 0.7 }]}
+                activeOpacity={0.7}
+                style={styles.shareBtn}
                 hitSlop={8}
             >
                 <Text style={styles.shareText}>Compartilhar</Text>
-            </Pressable>
+            </TouchableOpacity>
         </View>
     );
 }

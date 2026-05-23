@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import {
-    View, Text, Modal, Pressable, Platform, Alert, useWindowDimensions, StyleSheet,
+    View, Text, Modal, Pressable, TouchableOpacity, Platform, Alert, useWindowDimensions, StyleSheet,
 } from 'react-native';
 import { X, Share2 } from 'lucide-react-native';
 import ViewShot, { captureRef } from 'react-native-view-shot';
@@ -78,14 +78,15 @@ export function PerfectWeekShareModal({ visible, onClose, data }: PerfectWeekSha
                         </View>
                     </View>
 
-                    <Pressable
+                    <TouchableOpacity
                         onPress={handleShare}
                         disabled={isSharing}
-                        style={({ pressed }) => [styles.shareBtn, pressed && { opacity: 0.85 }]}
+                        activeOpacity={0.85}
+                        style={styles.shareBtn}
                     >
                         <Share2 size={18} color="#fff" strokeWidth={2.4} />
                         <Text style={styles.shareText}>{isSharing ? 'Gerando…' : 'Compartilhar'}</Text>
-                    </Pressable>
+                    </TouchableOpacity>
                 </View>
 
                 {/* Captura off-screen em tamanho real (1:1) */}
