@@ -35,6 +35,13 @@ const nextConfig: NextConfig = {
         source: "/strava-callback",
         destination: "/strava-callback.html",
       },
+      // Oura OAuth callback page servida sem .html.
+      // URL canônica registrada no Oura Dashboard:
+      // https://www.kinevoapp.com/oura-callback
+      {
+        source: "/oura-callback",
+        destination: "/oura-callback.html",
+      },
     ];
   },
   async redirects() {
