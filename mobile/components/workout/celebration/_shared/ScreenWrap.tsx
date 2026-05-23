@@ -1,11 +1,13 @@
 import React from 'react';
-import { View, useWindowDimensions, StyleSheet } from 'react-native';
+import { View, Image, useWindowDimensions, StyleSheet } from 'react-native';
 import Svg, { Defs, RadialGradient, Stop, Rect } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CELEB_TOKENS } from './tokens';
 
-// Fundo light + radial wash quente no topo. (Grain do mock é no-op — sem PNG;
-// é sub-perceptível. Pra ligar, dropar assets/.../grain.png e sobrepor <Image>.)
+const GRAIN = require('../../../../assets/share-grain.png');
+
+// Fundo light + radial wash quente no topo + grain de papel sub-perceptível
+// (mesmo tile dos cards de compartilhamento, opacidade bem baixa).
 export function ScreenWrap({ tintTop, children }: { tintTop: string; children: React.ReactNode }) {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -20,6 +22,11 @@ export function ScreenWrap({ tintTop, children }: { tintTop: string; children: R
         </Defs>
         <Rect x="0" y="0" width={width} height={height} fill="url(#celebWash)" />
       </Svg>
+      <Image
+        source={GRAIN}
+        resizeMode="repeat"
+        style={[StyleSheet.absoluteFill, { opacity: 0.035 }]}
+      />
       <View style={{ flex: 1, paddingTop: insets.top, paddingBottom: insets.bottom }}>
         {children}
       </View>
