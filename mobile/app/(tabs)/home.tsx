@@ -328,17 +328,17 @@ export default function HomeScreen() {
                 let detail: string | null = null;
                 if (s.completed_at && s.started_at) {
                     const mins = Math.max(1, Math.round((new Date(s.completed_at).getTime() - new Date(s.started_at).getTime()) / 60000));
-                    detail = `${mins}min`;
+                    detail = `${mins} min`;
                 }
                 rows.push({ name: w?.name || 'Treino', detail, t });
             }
         });
         rows.sort((a, b) => a.t - b.t);
 
-        const month = start.toLocaleDateString('pt-BR', { month: 'long' });
         const last = new Date(start);
         last.setDate(last.getDate() + 6);
-        const weekRangeLabel = `${start.getDate()}–${last.getDate()} de ${month}`;
+        const shortMon = last.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '');
+        const weekRangeLabel = `${start.getDate()}–${last.getDate()} ${shortMon}`;
         const pWeek = (programStartedAt && programDurationWeeks)
             ? getProgramWeek(new Date(), programStartedAt, programDurationWeeks)
             : null;
@@ -352,7 +352,7 @@ export default function HomeScreen() {
             workouts: rows.map((r) => ({ name: r.name, detail: r.detail })),
             studentName: profile?.name || studentName || 'Atleta',
             weekRangeLabel,
-            coach: profile?.coach ? { name: profile.coach.name, avatar_url: profile.coach.avatar_url } : null,
+            coach: profile?.coach ? { name: profile.coach.name, avatar_url: profile.coach.avatar_url, instagram_handle: profile.coach.instagram_handle ?? null } : null,
         };
     }, [weeklyProgressFull, sessionsMap, workouts, programName, programStartedAt, programDurationWeeks, profile, studentName, consecutiveCount]);
 

@@ -42,6 +42,8 @@ import {
 } from 'lucide-react-native';
 import { WeekGoalCard, JourneyCard } from '../../components/history';
 import { startOfWeek, type WeekGoalData, type JourneyData } from '../../lib/history';
+import { PerfectWeekTemplate, type PerfectWeekCardProps } from '../../components/workout/sharing/PerfectWeekTemplate';
+import { CARD_W as SHARE_CARD_W, CARD_H as SHARE_CARD_H } from '../../components/workout/sharing/_shared/tokens';
 
 const AVATAR_NAMES = [
     'Alysson Lanza',
@@ -283,6 +285,8 @@ export default function ComponentsShowcaseScreen() {
 
                 <HistoryRedesignSection />
 
+                <ShareT6Section />
+
                 <Text style={styles.footer}>
                     Próximo: Fase 2 — aplicar componentes às telas.
                 </Text>
@@ -349,6 +353,77 @@ function HistoryRedesignSection() {
             <JourneyCard data={mockJourney({ totalWorkouts: 6, firstWorkoutDate: new Date(Date.now() - 8 * 86400000), volumeKg: 38000, totalDurationSec: 9600, streakDays: 2, activeDaysLast7: 3, weeklyWorkoutCounts: [0, 0, 0, 0, 0, 0, 2, 4] })} />
             <Text style={styles.cardLabel}>vazio · zero treinos</Text>
             <JourneyCard data={mockJourney({ totalWorkouts: 0, firstWorkoutDate: null, volumeKg: 0, totalDurationSec: 0, streakDays: 0, activeDaysLast7: 0, weeklyWorkoutCounts: [0, 0, 0, 0, 0, 0, 0, 0] })} />
+        </Section>
+    );
+}
+
+// ── T6 Semana Perfeita (share card) ──
+function mockPerfectWeek(partial: Partial<PerfectWeekCardProps>): PerfectWeekCardProps {
+    return {
+        completedCount: 5,
+        expectedCount: 5,
+        programName: 'Programa de treinos III',
+        programWeek: 2,
+        consecutiveCount: 2,
+        workouts: [
+            { name: 'Superior A', detail: '45 min' },
+            { name: 'Inferior A', detail: '52 min' },
+            { name: 'Superior B', detail: '48 min' },
+            { name: 'Inferior B', detail: '50 min' },
+            { name: 'Superior C', detail: '46 min' },
+        ],
+        studentName: 'Gustavo Prado',
+        weekRangeLabel: '17–23 mai',
+        coach: { name: 'Raquel Lima', avatar_url: null, instagram_handle: 'raquelima.coach' },
+        ...partial,
+    };
+}
+
+function ScaledShareCard({ data, scale = 0.62 }: { data: PerfectWeekCardProps; scale?: number }) {
+    return (
+        <View style={{ width: SHARE_CARD_W * scale, height: SHARE_CARD_H * scale, borderRadius: 20, overflow: 'hidden' }}>
+            <View
+                style={{
+                    width: SHARE_CARD_W, height: SHARE_CARD_H,
+                    transform: [
+                        { scale },
+                        { translateX: -(SHARE_CARD_W - SHARE_CARD_W * scale) / 2 },
+                        { translateY: -(SHARE_CARD_H - SHARE_CARD_H * scale) / 2 },
+                    ],
+                }}
+            >
+                <PerfectWeekTemplate {...data} />
+            </View>
+        </View>
+    );
+}
+
+function ShareT6Section() {
+    return (
+        <Section title="T6 — Semana Perfeita" subtitle="Share card editorial · estados + edge cases.">
+            <Text style={styles.cardLabel}>5/5 · 2ª seguida</Text>
+            <ScaledShareCard data={mockPerfectWeek({})} />
+            <Text style={styles.cardLabel}>3/3 · primeira semana</Text>
+            <ScaledShareCard data={mockPerfectWeek({
+                completedCount: 3, expectedCount: 3, consecutiveCount: 1,
+                workouts: [
+                    { name: 'Full body A', detail: '38 min' },
+                    { name: 'Full body B', detail: '41 min' },
+                    { name: 'Full body C', detail: null },
+                ],
+            })} />
+            <Text style={styles.cardLabel}>6/6 · marco (+1 mais) · sem programa</Text>
+            <ScaledShareCard data={mockPerfectWeek({
+                completedCount: 6, expectedCount: 6, consecutiveCount: 5, programName: null, programWeek: null,
+                workouts: [
+                    { name: 'Push', detail: '44 min' },
+                    { name: 'Pull', detail: '47 min' },
+                    { name: 'Legs', detail: '55 min' },
+                    { name: 'Upper', detail: '40 min' },
+                    { name: 'Lower', detail: '49 min' },
+                    { name: 'Cardio', detail: '30 min' },
+                ],
+            })} />
         </Section>
     );
 }
