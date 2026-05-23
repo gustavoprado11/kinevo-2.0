@@ -106,6 +106,9 @@ function TemplateSegment({
     }, [selected]);
 
     const segmentWidth = (screenWidth - 48 - 8) / templates.length;
+    // Em telas estreitas (iPhone SE ~320pt) 5 abas em linha (ícone + label)
+    // estouram a largura. Empilha ícone sobre label e reduz a fonte.
+    const compact = screenWidth < 380;
 
     const pillStyle = useAnimatedStyle(() => ({
         transform: [{
@@ -133,12 +136,13 @@ function TemplateSegment({
                             Haptics.selectionAsync();
                             onSelect(t.key);
                         }}
-                        style={styles.segmentTab}
+                        style={[styles.segmentTab, compact && { flexDirection: 'column', gap: 3 }]}
                     >
                         <t.Icon size={14} color={isActive ? colors.text.primary : colors.text.quaternary} />
                         <Text
+                            numberOfLines={1}
                             style={{
-                                fontSize: 12,
+                                fontSize: compact ? 11 : 12,
                                 fontWeight: isActive ? '600' : '500',
                                 color: isActive ? colors.text.primary : colors.text.quaternary,
                             }}
