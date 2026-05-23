@@ -32,6 +32,7 @@ export function usePerfectWeek(opts: UsePerfectWeekOpts) {
     } = opts;
 
     const [consecutiveCount, setConsecutiveCount] = useState(0);
+    const [totalCount, setTotalCount] = useState(0);
     const weekKey = toDateOnly(weekStart);
 
     useEffect(() => {
@@ -66,7 +67,9 @@ export function usePerfectWeek(opts: UsePerfectWeekOpts) {
                     .limit(260);
                 if (cancelled) return;
 
-                const set = new Set<string>(((data || []) as any[]).map((r) => r.week_start_date));
+                const rows = (data || []) as any[];
+                const set = new Set<string>(rows.map((r) => r.week_start_date));
+                setTotalCount(rows.length);
                 let count = 0;
                 const cursor = new Date(weekStart);
                 cursor.setHours(12, 0, 0, 0);
@@ -83,5 +86,5 @@ export function usePerfectWeek(opts: UsePerfectWeekOpts) {
         return () => { cancelled = true; };
     }, [studentId, weekKey, isWeekComplete, completedCount, expectedCount]);
 
-    return { consecutiveCount };
+    return { consecutiveCount, totalCount };
 }

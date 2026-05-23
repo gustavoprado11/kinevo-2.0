@@ -26,7 +26,8 @@ import { ShareWorkoutModal } from "../../components/workout/ShareWorkoutModal";
 import { useLatestUnreadReport } from "../../hooks/useLatestUnreadReport";
 import { useV2Colors } from "../../hooks/useV2Colors";
 import { v2 } from "@kinevo/shared/tokens";
-import { Flame, Dumbbell, Star, type LucideIcon } from "lucide-react-native";
+import { Flame, Dumbbell, Star, Award } from "lucide-react-native";
+import { AchievementCard } from "../../components/achievements/AchievementCard";
 import { ReadinessCompactCard, ReadinessCompactSkeleton } from "../../components/health/ReadinessCompactCard";
 import { useReadinessToday } from "../../hooks/useReadinessToday";
 import { getReadinessRecommendation } from "../../lib/readiness";
@@ -294,7 +295,7 @@ export default function HomeScreen() {
     // perfeitas consecutivas. weekStart é o mesmo de calculateWeeklyProgress
     // (getWeekRange, domingo-baseado) p/ alinhar a chave.
     const weekStart = getWeekRange(new Date()).start;
-    const { consecutiveCount } = usePerfectWeek({
+    const { consecutiveCount, totalCount: perfectWeeksTotal } = usePerfectWeek({
         studentId: profile?.id,
         trainerId: profile?.coach_id,
         weekStart,
@@ -528,6 +529,7 @@ export default function HomeScreen() {
                                 <AchievementsGrid
                                     streak={streakWeeks}
                                     totalCompletedThisProgram={weeklyProgressFull?.completedCount ?? weeklyProgress?.totalSessions ?? 0}
+                                    perfectWeeks={perfectWeeksTotal}
                                 />
                             </Animated.View>
                         )}
@@ -589,20 +591,22 @@ export default function HomeScreen() {
     );
 }
 
-// ── Achievements grid (3 cards inline). Cards usam dados disponíveis:
-// streak (já temos), PR mais recente (não temos no hook de home), milestone
-// de total treinos (não temos longitudinal). Por isso, omitimos cards
-// quando hook não expõe dado — não inventamos números.
+// ── Achievements grid (scroll horizontal). Cards usam dados disponíveis:
+// semanas perfeitas (perfect_weeks), streak (já temos), total treinos do
+// programa, marco. Não inventamos números — cada card sai de dado real.
 function AchievementsGrid({
     streak,
     totalCompletedThisProgram,
+    perfectWeeks,
 }: {
     streak: number;
     totalCompletedThisProgram: number;
+    perfectWeeks: number;
 }) {
     const colors = useV2Colors();
     // Marco arbitrário pra "rumo a": próximo múltiplo de 25 acima do atual.
     const milestoneTarget = Math.max(25, Math.ceil((totalCompletedThisProgram + 1) / 25) * 25);
+    const CARD_W = 116;
 
     return (
         <View style={{ marginBottom: 16 }}>
@@ -620,77 +624,38 @@ function AchievementsGrid({
                 </Text>
             </View>
 
-            <View style={{ flexDirection: 'row', gap: 8 }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 2 }}>
+                {perfectWeeks > 0 && (
+                    <AchievementCard
+                        icon={Award}
+                        title={perfectWeeks === 1 ? '1 semana' : `${perfectWeeks} semanas`}
+                        subtitle="perfeitas"
+                        gold
+                        width={CARD_W}
+                    />
+                )}
                 <AchievementCard
                     icon={Flame}
                     title={streak >= 2 ? `${streak} semanas` : 'Comece um streak'}
                     subtitle={streak >= 2 ? 'consistente' : 'treine 2 sem.'}
                     locked={streak < 2}
+                    width={CARD_W}
                 />
                 <AchievementCard
                     icon={Dumbbell}
                     title={`${totalCompletedThisProgram} treinos`}
                     subtitle="neste programa"
                     locked={totalCompletedThisProgram === 0}
+                    width={CARD_W}
                 />
                 <AchievementCard
                     icon={Star}
                     title={`${totalCompletedThisProgram}/${milestoneTarget}`}
                     subtitle="rumo a marco"
                     locked={totalCompletedThisProgram < milestoneTarget}
+                    width={CARD_W}
                 />
-            </View>
-        </View>
-    );
-}
-
-function AchievementCard({
-    icon,
-    title,
-    subtitle,
-    locked,
-}: {
-    icon: LucideIcon;
-    title: string;
-    subtitle: string;
-    locked?: boolean;
-}) {
-    const colors = useV2Colors();
-    const Icon = icon;
-    return (
-        <View
-            style={{
-                flex: 1,
-                backgroundColor: colors.surface.card,
-                borderRadius: v2.radius.md,
-                borderWidth: 1,
-                borderColor: colors.border.default,
-                padding: 12,
-                gap: 6,
-                opacity: locked ? 0.6 : 1,
-            }}
-        >
-            <Icon size={22} color={colors.brand.primary} strokeWidth={2} />
-            <Text
-                style={{
-                    fontFamily: 'PlusJakartaSans_700Bold',
-                    fontSize: 13,
-                    color: colors.text.primary,
-                }}
-                numberOfLines={1}
-            >
-                {title}
-            </Text>
-            <Text
-                style={{
-                    fontFamily: 'PlusJakartaSans_500Medium',
-                    fontSize: 11,
-                    color: colors.text.tertiary,
-                }}
-                numberOfLines={1}
-            >
-                {subtitle}
-            </Text>
+            </ScrollView>
         </View>
     );
 }

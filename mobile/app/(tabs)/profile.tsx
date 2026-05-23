@@ -10,7 +10,7 @@ import { useRouter } from "expo-router";
 import Animated, { FadeInUp, FadeIn, Easing } from "react-native-reanimated";
 import {
     LogOut, Settings, HelpCircle, Shield, ChevronRight, CreditCard, Users,
-    Sun, Moon, Monitor, Check, Heart,
+    Sun, Moon, Monitor, Check, Heart, Award,
 } from "lucide-react-native";
 import { PressableScale } from "../../components/shared/PressableScale";
 import { useV2Colors } from "../../hooks/useV2Colors";
@@ -49,6 +49,14 @@ export default function ProfileScreen() {
     // Menu items com tints rgba (funcionam em light e dark) + iconColor neutro
     // via token que inverte automaticamente entre os modos.
     const MENU_ITEMS = [
+        {
+            id: 'achievements',
+            label: 'Conquistas',
+            Icon: Award,
+            iconColor: '#F59E0B',
+            iconBg: 'rgba(245, 158, 11, 0.12)',
+            route: '/profile/achievements',
+        },
         {
             id: 'settings',
             label: 'Configurações',
