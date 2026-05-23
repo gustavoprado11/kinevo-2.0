@@ -24,6 +24,8 @@ import { ChevronLeft } from 'lucide-react-native';
 import { WorkoutFeedbackModal } from '../../components/workout/WorkoutFeedbackModal';
 import { WorkoutSuccessModal } from '../../components/workout/WorkoutSuccessModal';
 import { WorkoutCelebration, CelebrationData } from '../../components/workout/WorkoutCelebration';
+import { ShareWorkoutModal } from '../../components/workout/ShareWorkoutModal';
+import { fetchCelebrationExtras } from '../../lib/celebrationStats';
 import { ExerciseVideoModal } from '../../components/workout/ExerciseVideoModal';
 import { RestTimerOverlay } from '../../components/workout/RestTimerOverlay';
 import { ExerciseSwapModal } from '../../components/workout/ExerciseSwapModal';
@@ -273,6 +275,7 @@ export default function WorkoutPlayerScreen() {
     const [showCelebration, setShowCelebration] = React.useState(false);
     const [celebrationData, setCelebrationData] = React.useState<CelebrationData | undefined>(undefined);
     const [showSuccessModal, setShowSuccessModal] = React.useState(false);
+    const [showShareModal, setShowShareModal] = React.useState(false);
     const [videoModalUrl, setVideoModalUrl] = React.useState<string | null>(null);
     const [swapModalVisible, setSwapModalVisible] = React.useState(false);
     const [swapModalLoading, setSwapModalLoading] = React.useState(false);
@@ -664,6 +667,16 @@ export default function WorkoutPlayerScreen() {
                     programWeek,
                 });
 
+                // Extras que ativam os badges da celebração (PR / streak / delta de
+                // volume). Best-effort e awaited ANTES de exibir, pra entrarem na
+                // animação inicial. Qualquer falha → 0 (badges não renderizam).
+                const extras = await fetchCelebrationExtras({
+                    sessionId: success,
+                    studentId: profile?.id,
+                    workoutName,
+                    currentVolume: totalVolume,
+                });
+
                 // Set celebration data (summary for the celebration screen)
                 setCelebrationData({
                     duration,
@@ -676,9 +689,9 @@ export default function WorkoutPlayerScreen() {
                     coach: profile?.coach
                         ? { name: profile.coach.name, initial: (profile.coach.name || 'K').charAt(0).toUpperCase() }
                         : undefined,
-                    // prCount / streakDays / deltaVolumePct: opcionais — popular numa
-                    // próxima leva (via useSessionStats expandido + histórico). Sem eles,
-                    // os badges/delta apenas não renderizam (fallback graceful).
+                    prCount: extras.prCount,
+                    streakDays: extras.streakDays,
+                    deltaVolumePct: extras.deltaVolumePct,
                 });
 
                 // Show full-screen celebration animation first
@@ -720,6 +733,18 @@ export default function WorkoutPlayerScreen() {
         // After celebration fades out, show the success/share modal
         setShowSuccessModal(true);
     }, []);
+
+    // CTA "Compartilhar conquista" da celebração → abre o share direto
+    // (short-circuit do success modal). Os dados já estão em successData.
+    const handleCelebrationShare = useCallback(() => {
+        setShowCelebration(false);
+        setShowShareModal(true);
+    }, []);
+
+    const handleShareClose = useCallback(() => {
+        setShowShareModal(false);
+        router.replace('/(tabs)/home');
+    }, [router]);
 
     const handleSuccessClose = () => {
         setShowSuccessModal(false);
@@ -1090,7 +1115,15 @@ export default function WorkoutPlayerScreen() {
             <WorkoutCelebration
                 visible={showCelebration}
                 onComplete={handleCelebrationComplete}
+                onShare={handleCelebrationShare}
                 data={celebrationData}
+            />
+            {/* Share modal direto (atalho do CTA da celebração) */}
+            <ShareWorkoutModal
+                visible={showShareModal}
+                onClose={handleShareClose}
+                data={successData}
+                sessionId={successData?.sessionId}
             />
             {/* Rest Timer Overlay */}
             {restTimer && (

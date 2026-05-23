@@ -12,115 +12,134 @@ interface PrInfo {
     previousDate: string;
 }
 
+export interface SessionStats {
+    volume: number;
+    maxLoads: NonNullable<ShareableCardProps['maxLoads']>;
+    exerciseDetails: NonNullable<ShareableCardProps['exerciseDetails']>;
+    /** Nº total de exercícios com PR na sessão (não limitado ao top-3 de maxLoads). */
+    prCount: number;
+}
+
+const EMPTY_STATS: SessionStats = { volume: 0, maxLoads: [], exerciseDetails: [], prCount: 0 };
+
+/**
+ * Carrega as estatísticas de uma sessão concluída: volume (main-only quando há
+ * exercise_function), maxLoads com detecção de PR, exerciseDetails e o nº total
+ * de PRs. Reutilizável fora de React (ex.: montar a celebração no fim do treino).
+ * Best-effort: qualquer falha → stats zeradas (nunca lança).
+ */
+export async function loadSessionStats(sessionId: string): Promise<SessionStats> {
+    try {
+        const { data: logs, error } = await supabase
+            .from('set_logs' as any)
+            .select(`
+                weight,
+                reps_completed,
+                is_completed,
+                exercise_id,
+                assigned_workout_item_id,
+                exercises:exercises!set_logs_exercise_id_fkey (name),
+                assigned_workout_items:assigned_workout_item_id (exercise_function)
+            `)
+            .eq('workout_session_id', sessionId)
+            .eq('is_completed', true);
+
+        if (error) throw error;
+        if (!logs) return EMPTY_STATS;
+
+        let totalVolume = 0;
+        // Keyed by exercise_id (precisa do id pra cruzar com o histórico de PR).
+        const exerciseMaxes: Record<string, { weight: number, reps: number, name: string, exerciseId: string }> = {};
+        const exerciseAgg: Record<string, { name: string, sets: number, maxWeight: number, maxReps: number, order: number, exerciseId: string }> = {};
+        let exerciseOrder = 0;
+
+        const hasAnyFunction = logs.some((log: any) => log.assigned_workout_items?.exercise_function);
+
+        logs.forEach((log: any) => {
+            const weight = Number(log.weight) || 0;
+            const reps = Number(log.reps_completed) || 0;
+            const name = log.exercises?.name || 'Exercício';
+            const exerciseId = log.exercise_id as string;
+            const exerciseFunction = log.assigned_workout_items?.exercise_function;
+
+            const countsForVolume = !hasAnyFunction || exerciseFunction === 'main';
+            if (countsForVolume) {
+                totalVolume += weight * reps;
+            }
+
+            const key = exerciseId || name;
+            if (!exerciseMaxes[key] || weight > exerciseMaxes[key].weight) {
+                exerciseMaxes[key] = { weight, reps, name, exerciseId };
+            }
+
+            if (!exerciseAgg[key]) {
+                exerciseAgg[key] = { name, sets: 0, maxWeight: 0, maxReps: 0, order: exerciseOrder++, exerciseId };
+            }
+            exerciseAgg[key].sets += 1;
+            if (weight > exerciseAgg[key].maxWeight) {
+                exerciseAgg[key].maxWeight = weight;
+                exerciseAgg[key].maxReps = reps;
+            }
+        });
+
+        // ── PR detection: compara o máx da sessão com o histórico do aluno ──
+        const prByExercise = await detectPRs(sessionId, exerciseMaxes);
+
+        const maxLoads = Object.values(exerciseMaxes)
+            .sort((a, b) => b.weight - a.weight)
+            .slice(0, 3)
+            .map(item => {
+                const pr = prByExercise[item.exerciseId];
+                return {
+                    exerciseName: item.name,
+                    weight: item.weight,
+                    reps: item.reps,
+                    isPr: !!pr,
+                    delta: pr?.delta ?? null,
+                    previousDate: pr?.previousDate ?? null,
+                };
+            });
+
+        const exerciseDetails = Object.values(exerciseAgg)
+            .sort((a, b) => a.order - b.order)
+            .map(item => ({
+                name: item.name,
+                sets: item.sets,
+                reps: item.maxReps,
+                // Peso corporal / não registrado → null (vira "—" na lista).
+                weight: item.maxWeight > 0 ? item.maxWeight : null,
+                isPr: !!prByExercise[item.exerciseId],
+            }));
+
+        return {
+            volume: totalVolume,
+            maxLoads,
+            exerciseDetails,
+            prCount: Object.keys(prByExercise).length,
+        };
+    } catch (err) {
+        if (__DEV__) console.error("Error loading session stats:", err);
+        return EMPTY_STATS;
+    }
+}
+
 export function useSessionStats(sessionId: string | null) {
-    const [stats, setStats] = useState<{
-        volume: number;
-        maxLoads: ShareableCardProps['maxLoads'];
-        exerciseDetails: ShareableCardProps['exerciseDetails'];
-        loading: boolean;
-    }>({
-        volume: 0,
-        maxLoads: [],
-        exerciseDetails: [],
-        loading: false
+    const [stats, setStats] = useState<SessionStats & { loading: boolean }>({
+        ...EMPTY_STATS,
+        loading: false,
     });
 
     useEffect(() => {
         if (!sessionId) return;
 
-        const fetchStats = async () => {
-            setStats(prev => ({ ...prev, loading: true }));
-            try {
-                const { data: logs, error } = await supabase
-                    .from('set_logs' as any)
-                    .select(`
-                        weight,
-                        reps_completed,
-                        is_completed,
-                        exercise_id,
-                        assigned_workout_item_id,
-                        exercises:exercises!set_logs_exercise_id_fkey (name),
-                        assigned_workout_items:assigned_workout_item_id (exercise_function)
-                    `)
-                    .eq('workout_session_id', sessionId)
-                    .eq('is_completed', true);
+        let cancelled = false;
+        setStats(prev => ({ ...prev, loading: true }));
 
-                if (error) throw error;
+        loadSessionStats(sessionId).then(result => {
+            if (!cancelled) setStats({ ...result, loading: false });
+        });
 
-                if (logs) {
-                    let totalVolume = 0;
-                    // Keyed by exercise_id (precisa do id pra cruzar com o histórico de PR).
-                    const exerciseMaxes: Record<string, { weight: number, reps: number, name: string, exerciseId: string }> = {};
-                    const exerciseAgg: Record<string, { name: string, sets: number, maxWeight: number, maxReps: number, order: number, exerciseId: string }> = {};
-                    let exerciseOrder = 0;
-
-                    const hasAnyFunction = logs.some((log: any) => log.assigned_workout_items?.exercise_function);
-
-                    logs.forEach((log: any) => {
-                        const weight = Number(log.weight) || 0;
-                        const reps = Number(log.reps_completed) || 0;
-                        const name = log.exercises?.name || 'Exercício';
-                        const exerciseId = log.exercise_id as string;
-                        const exerciseFunction = log.assigned_workout_items?.exercise_function;
-
-                        const countsForVolume = !hasAnyFunction || exerciseFunction === 'main';
-                        if (countsForVolume) {
-                            totalVolume += weight * reps;
-                        }
-
-                        const key = exerciseId || name;
-                        if (!exerciseMaxes[key] || weight > exerciseMaxes[key].weight) {
-                            exerciseMaxes[key] = { weight, reps, name, exerciseId };
-                        }
-
-                        if (!exerciseAgg[key]) {
-                            exerciseAgg[key] = { name, sets: 0, maxWeight: 0, maxReps: 0, order: exerciseOrder++, exerciseId };
-                        }
-                        exerciseAgg[key].sets += 1;
-                        if (weight > exerciseAgg[key].maxWeight) {
-                            exerciseAgg[key].maxWeight = weight;
-                            exerciseAgg[key].maxReps = reps;
-                        }
-                    });
-
-                    // ── PR detection: compara o máx da sessão com o histórico do aluno ──
-                    const prByExercise = await detectPRs(sessionId, exerciseMaxes);
-
-                    const maxLoads = Object.values(exerciseMaxes)
-                        .sort((a, b) => b.weight - a.weight)
-                        .slice(0, 3)
-                        .map(item => {
-                            const pr = prByExercise[item.exerciseId];
-                            return {
-                                exerciseName: item.name,
-                                weight: item.weight,
-                                reps: item.reps,
-                                isPr: !!pr,
-                                delta: pr?.delta ?? null,
-                                previousDate: pr?.previousDate ?? null,
-                            };
-                        });
-
-                    const exerciseDetails = Object.values(exerciseAgg)
-                        .sort((a, b) => a.order - b.order)
-                        .map(item => ({
-                            name: item.name,
-                            sets: item.sets,
-                            reps: item.maxReps,
-                            // Peso corporal / não registrado → null (vira "—" na lista).
-                            weight: item.maxWeight > 0 ? item.maxWeight : null,
-                            isPr: !!prByExercise[item.exerciseId],
-                        }));
-
-                    setStats({ volume: totalVolume, maxLoads, exerciseDetails, loading: false });
-                }
-            } catch (err) {
-                if (__DEV__) console.error("Error fetching session stats:", err);
-                setStats(prev => ({ ...prev, loading: false }));
-            }
-        };
-
-        fetchStats();
+        return () => { cancelled = true; };
     }, [sessionId]);
 
     return stats;
