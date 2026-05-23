@@ -1,0 +1,55 @@
+import React from 'react';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { Award } from 'lucide-react-native';
+import * as Haptics from 'expo-haptics';
+import { useV2Colors } from '../../hooks/useV2Colors';
+
+interface PerfectWeekBannerProps {
+    completedCount: number;
+    /** >1 mostra "Nª seguida". */
+    consecutiveCount?: number;
+    onShare: () => void;
+}
+
+/**
+ * Banner persistente na Home quando a semana fecha 100%. Reabre o card
+ * compartilhável a qualquer momento da semana. Ref: docs/home-semana-perfeita.html.
+ */
+export function PerfectWeekBanner({ completedCount, consecutiveCount = 0, onShare }: PerfectWeekBannerProps) {
+    const colors = useV2Colors();
+
+    const subtitle = consecutiveCount > 1
+        ? `${consecutiveCount}ª semana perfeita seguida`
+        : `Todos os ${completedCount} treinos concluídos.`;
+
+    return (
+        <View style={[styles.card, { backgroundColor: colors.surface.card, borderColor: 'rgba(16,185,129,0.18)' }]}>
+            <View style={styles.icon}>
+                <Award size={24} color="#10b981" strokeWidth={1.8} />
+            </View>
+            <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={[styles.title, { color: colors.text.primary }]} numberOfLines={1}>Semana perfeita!</Text>
+                <Text style={[styles.sub, { color: colors.text.tertiary }]} numberOfLines={1}>{subtitle}</Text>
+            </View>
+            <Pressable
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onShare(); }}
+                style={({ pressed }) => [styles.shareBtn, pressed && { opacity: 0.7 }]}
+                hitSlop={8}
+            >
+                <Text style={styles.shareText}>Compartilhar</Text>
+            </Pressable>
+        </View>
+    );
+}
+
+const styles = StyleSheet.create({
+    card: {
+        flexDirection: 'row', alignItems: 'center', gap: 14,
+        borderRadius: 20, borderWidth: 1, padding: 16, marginBottom: 16,
+    },
+    icon: { width: 46, height: 46, borderRadius: 14, backgroundColor: 'rgba(16,185,129,0.10)', alignItems: 'center', justifyContent: 'center' },
+    title: { fontSize: 15, fontWeight: '800' },
+    sub: { fontSize: 12, marginTop: 2 },
+    shareBtn: { backgroundColor: 'rgba(124,58,237,0.08)', borderWidth: 1, borderColor: 'rgba(124,58,237,0.18)', borderRadius: 12, paddingVertical: 9, paddingHorizontal: 13 },
+    shareText: { color: '#7c3aed', fontSize: 12, fontWeight: '700' },
+});

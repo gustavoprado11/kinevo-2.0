@@ -10,10 +10,14 @@ import { useStudentAccess } from "../../hooks/useStudentAccess";
 import { ScreenWrapper } from "../../components/ScreenWrapper";
 import { PaymentBlockedScreen } from "../../components/PaymentBlockedScreen";
 import { User } from "lucide-react-native";
-import { toDateKey, isDateInProgram, getProgramWeek } from "@kinevo/shared/utils/schedule-projection";
+import { toDateKey, isDateInProgram, getProgramWeek, getWeekRange } from "@kinevo/shared/utils/schedule-projection";
 
 import { UnifiedCalendar } from "../../components/home/UnifiedCalendar";
 import { ActionCard } from "../../components/home/ActionCard";
+import { PerfectWeekBanner } from "../../components/home/PerfectWeekBanner";
+import { PerfectWeekShareModal } from "../../components/workout/sharing/PerfectWeekShareModal";
+import type { PerfectWeekCardProps } from "../../components/workout/sharing/PerfectWeekTemplate";
+import { usePerfectWeek } from "../../hooks/usePerfectWeek";
 import { WorkoutList } from "../../components/home/WorkoutList";
 import { ReportReadyCard } from "../../components/home/ReportReadyCard";
 import { ExtraActivitiesBlock } from "../../components/strava/ExtraActivitiesBlock";
@@ -44,6 +48,7 @@ export default function HomeScreen() {
     const { days: stravaDays } = useStravaDays(35);
 
     const {
+        data: activeProgramData,
         programName,
         workouts,
         sessions,
@@ -75,6 +80,9 @@ export default function HomeScreen() {
     const [shareModalVisible, setShareModalVisible] = useState(false);
     const [shareData, setShareData] = useState<any>(null);
     const [shareSessionId, setShareSessionId] = useState<string | undefined>(undefined);
+
+    // Semana Perfeita — share state
+    const [perfectWeekShareVisible, setPerfectWeekShareVisible] = useState(false);
 
     const handleShareWorkout = useCallback(async (workout: any) => {
         if (!workout) return;
@@ -281,6 +289,69 @@ export default function HomeScreen() {
         return count;
     }, [sessionsMap]);
 
+    // ── Semana Perfeita ──
+    // Persiste a semana 100% (idempotente) e devolve a contagem de semanas
+    // perfeitas consecutivas. weekStart é o mesmo de calculateWeeklyProgress
+    // (getWeekRange, domingo-baseado) p/ alinhar a chave.
+    const weekStart = getWeekRange(new Date()).start;
+    const { consecutiveCount } = usePerfectWeek({
+        studentId: profile?.id,
+        trainerId: profile?.coach_id,
+        weekStart,
+        isWeekComplete: !!weeklyProgressFull?.isWeekComplete,
+        completedCount: weeklyProgressFull?.completedCount ?? 0,
+        expectedCount: weeklyProgressFull?.expectedCount ?? 0,
+        assignedProgramId: (activeProgramData as any)?.id ?? null,
+        programWeek: programStartedAt ? getProgramWeek(new Date(), programStartedAt, programDurationWeeks) : null,
+    });
+
+    // Monta o card compartilhável a partir das sessões concluídas da semana.
+    const perfectWeekCard = useMemo<PerfectWeekCardProps | null>(() => {
+        const wp = weeklyProgressFull;
+        if (!wp?.isWeekComplete || (wp.expectedCount ?? 0) <= 0) return null;
+
+        const { start, end } = getWeekRange(new Date());
+        const rows: { name: string; detail: string | null; t: number }[] = [];
+        const seen = new Set<string>();
+        sessionsMap.forEach((daySessions) => {
+            for (const s of daySessions) {
+                if (s.status !== 'completed') continue;
+                const t = new Date(s.completed_at || s.started_at).getTime();
+                if (t < start.getTime() || t > end.getTime()) continue;
+                if (seen.has(s.id)) continue;
+                seen.add(s.id);
+                const w = workouts.find((w) => w.id === s.assigned_workout_id);
+                let detail: string | null = null;
+                if (s.completed_at && s.started_at) {
+                    const mins = Math.max(1, Math.round((new Date(s.completed_at).getTime() - new Date(s.started_at).getTime()) / 60000));
+                    detail = `${mins}min`;
+                }
+                rows.push({ name: w?.name || 'Treino', detail, t });
+            }
+        });
+        rows.sort((a, b) => a.t - b.t);
+
+        const month = start.toLocaleDateString('pt-BR', { month: 'long' });
+        const last = new Date(start);
+        last.setDate(last.getDate() + 6);
+        const weekRangeLabel = `${start.getDate()}–${last.getDate()} de ${month}`;
+        const pWeek = (programStartedAt && programDurationWeeks)
+            ? getProgramWeek(new Date(), programStartedAt, programDurationWeeks)
+            : null;
+
+        return {
+            completedCount: wp.completedCount,
+            expectedCount: wp.expectedCount,
+            programName,
+            programWeek: pWeek,
+            consecutiveCount,
+            workouts: rows.map((r) => ({ name: r.name, detail: r.detail })),
+            studentName: profile?.name || studentName || 'Atleta',
+            weekRangeLabel,
+            coach: profile?.coach ? { name: profile.coach.name, avatar_url: profile.coach.avatar_url } : null,
+        };
+    }, [weeklyProgressFull, sessionsMap, workouts, programName, programStartedAt, programDurationWeeks, profile, studentName, consecutiveCount]);
+
     // Compute today's completed workout IDs for WorkoutList badges
     const todayCompletedWorkoutIds = useMemo(() => {
         const todayKey = toDateKey(new Date());
@@ -429,6 +500,19 @@ export default function HomeScreen() {
                             />
                         </Animated.View>
 
+                        {/* ── Semana Perfeita: banner persistente quando fecha 100% ── */}
+                        {perfectWeekCard && (
+                            <Animated.View
+                                entering={FadeInUp.delay(115).duration(ENTER.duration).easing(ENTER.easing)}
+                            >
+                                <PerfectWeekBanner
+                                    completedCount={perfectWeekCard.completedCount}
+                                    consecutiveCount={perfectWeekCard.consecutiveCount}
+                                    onShare={() => setPerfectWeekShareVisible(true)}
+                                />
+                            </Animated.View>
+                        )}
+
                         {/* ── Prontidão compacta: conecta a recuperação ao treino acima ── */}
                         <Animated.View
                             entering={FadeInUp.delay(130).duration(ENTER.duration).easing(ENTER.easing)}
@@ -494,6 +578,12 @@ export default function HomeScreen() {
                 onClose={() => setShareModalVisible(false)}
                 data={shareData}
                 sessionId={shareSessionId}
+            />
+
+            <PerfectWeekShareModal
+                visible={perfectWeekShareVisible}
+                onClose={() => setPerfectWeekShareVisible(false)}
+                data={perfectWeekCard ?? undefined}
             />
         </ScreenWrapper>
     );
