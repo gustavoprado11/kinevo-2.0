@@ -26,6 +26,7 @@ import { FullWorkoutTemplate } from './sharing/FullWorkoutTemplate';
 import { ShareableCardProps } from './sharing/types';
 import { WorkoutHealthCard } from './WorkoutHealthCard';
 import { useWorkoutHealthSummary } from '../../hooks/useWorkoutHealthSummary';
+import { useSessionStats } from '../../hooks/useSessionStats';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -78,6 +79,10 @@ export function WorkoutSuccessModal({ visible, onClose, data }: WorkoutSuccessMo
     const CARD_PREVIEW_HEIGHT = CARD_PREVIEW_WIDTH * CARD_ASPECT_RATIO;
     const insets = useSafeAreaInsets();
     const [shareModalVisible, setShareModalVisible] = useState(false);
+
+    // Stats reais da sessão (com PR detectado) — alinha o teaser com o card
+    // realmente compartilhado. Fallback no snapshot local de `data` enquanto carrega.
+    const sessionStats = useSessionStats(data?.sessionId ?? null);
 
     // ── Animation shared values ──
     const ring1Scale = useSharedValue(0);
@@ -275,15 +280,23 @@ export function WorkoutSuccessModal({ visible, onClose, data }: WorkoutSuccessMo
 
     if (!data) return null;
 
+    // Prefere os stats reais (têm isPr); cai no snapshot local enquanto carrega.
+    const previewData: ShareableCardProps = {
+        ...data,
+        maxLoads: sessionStats.maxLoads.length ? sessionStats.maxLoads : data.maxLoads,
+        exerciseDetails: sessionStats.exerciseDetails.length
+            ? sessionStats.exerciseDetails
+            : data.exerciseDetails,
+    };
+
     // ── Preview template selection ──
     // Prefer MaxLoads if there are loads; fallback to FullWorkout (always has exerciseDetails).
-    const hasMaxLoads = (data.maxLoads?.length ?? 0) > 0;
-    const hasExerciseDetails = (data.exerciseDetails?.length ?? 0) > 0;
+    const hasMaxLoads = (previewData.maxLoads?.length ?? 0) > 0;
     const previewTemplate: 'maxloads' | 'fullworkout' = hasMaxLoads
         ? 'maxloads'
         : 'fullworkout';
 
-    const prCount = data.maxLoads?.filter((l) => l.isPr).length ?? 0;
+    const prCount = previewData.maxLoads?.filter((l) => l.isPr).length ?? 0;
 
     return (
         <Modal
@@ -362,10 +375,10 @@ export function WorkoutSuccessModal({ visible, onClose, data }: WorkoutSuccessMo
                             }}
                         >
                             {previewTemplate === 'maxloads' && (
-                                <MaxLoadsTemplate {...data} />
+                                <MaxLoadsTemplate {...previewData} />
                             )}
                             {previewTemplate === 'fullworkout' && (
-                                <FullWorkoutTemplate {...data} />
+                                <FullWorkoutTemplate {...previewData} />
                             )}
                         </View>
                     </Animated.View>
