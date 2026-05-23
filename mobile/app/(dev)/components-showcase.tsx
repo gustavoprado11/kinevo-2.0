@@ -40,6 +40,8 @@ import {
     ClipboardList,
     MoreHorizontal,
 } from 'lucide-react-native';
+import { WeekGoalCard, JourneyCard } from '../../components/history';
+import { startOfWeek, type WeekGoalData, type JourneyData } from '../../lib/history';
 
 const AVATAR_NAMES = [
     'Alysson Lanza',
@@ -279,11 +281,75 @@ export default function ComponentsShowcaseScreen() {
                     </View>
                 </Section>
 
+                <HistoryRedesignSection />
+
                 <Text style={styles.footer}>
                     Próximo: Fase 2 — aplicar componentes às telas.
                 </Text>
             </ScrollView>
         </SafeAreaView>
+    );
+}
+
+// ── Histórico de Treinos redesign (WeekGoalCard + JourneyCard) ──
+function mockWeek(partial: Partial<WeekGoalData>): WeekGoalData {
+    const weekStart = startOfWeek(new Date());
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+    weekEnd.setHours(23, 59, 59, 999);
+    return {
+        weekStart,
+        weekEnd,
+        goal: 5,
+        completed: 4,
+        volumeKg: 45500,
+        totalSets: 34,
+        totalDurationSec: 8100,
+        daysRemainingInWeek: 2,
+        ...partial,
+    };
+}
+
+function mockJourney(partial: Partial<JourneyData>): JourneyData {
+    return {
+        totalWorkouts: 34,
+        firstWorkoutDate: new Date(Date.now() - 250 * 86400000),
+        volumeKg: 262000,
+        totalDurationSec: 61200,
+        streakDays: 6,
+        activeDaysLast7: 6,
+        avgMinutesPerWorkout: 30,
+        weeklyWorkoutCounts: [1, 1, 2, 3, 3, 4, 4, 5],
+        ...partial,
+    };
+}
+
+function HistoryRedesignSection() {
+    return (
+        <Section title="Histórico — WeekGoalCard" subtitle="6 estados narrativos + edge cases.">
+            <Text style={styles.cardLabel}>falta 1 · dia favorito</Text>
+            <WeekGoalCard data={mockWeek({ completed: 4, goal: 5, favoriteRemainingWeekday: 'no sábado' })} />
+            <Text style={styles.cardLabel}>falta 1 · sem dia favorito</Text>
+            <WeekGoalCard data={mockWeek({ completed: 4, goal: 5 })} />
+            <Text style={styles.cardLabel}>meta batida</Text>
+            <WeekGoalCard data={mockWeek({ completed: 5, goal: 5 })} />
+            <Text style={styles.cardLabel}>dá pra fechar</Text>
+            <WeekGoalCard data={mockWeek({ completed: 2, goal: 5, daysRemainingInWeek: 4 })} />
+            <Text style={styles.cardLabel}>semana corrida</Text>
+            <WeekGoalCard data={mockWeek({ completed: 1, goal: 5, daysRemainingInWeek: 1 })} />
+            <Text style={styles.cardLabel}>semana em branco</Text>
+            <WeekGoalCard data={mockWeek({ completed: 0, goal: 5, volumeKg: 0, totalSets: 0, totalDurationSec: 0 })} />
+
+            <Text style={[styles.sectionTitle, { marginTop: 16 }]}>Desempenho — JourneyCard</Text>
+            <Text style={styles.cardLabel}>completo</Text>
+            <JourneyCard data={mockJourney({})} />
+            <Text style={styles.cardLabel}>sem sequência</Text>
+            <JourneyCard data={mockJourney({ streakDays: 0, activeDaysLast7: 0 })} />
+            <Text style={styles.cardLabel}>primeiro mês</Text>
+            <JourneyCard data={mockJourney({ totalWorkouts: 6, firstWorkoutDate: new Date(Date.now() - 8 * 86400000), volumeKg: 38000, totalDurationSec: 9600, streakDays: 2, activeDaysLast7: 3, weeklyWorkoutCounts: [0, 0, 0, 0, 0, 0, 2, 4] })} />
+            <Text style={styles.cardLabel}>vazio · zero treinos</Text>
+            <JourneyCard data={mockJourney({ totalWorkouts: 0, firstWorkoutDate: null, volumeKg: 0, totalDurationSec: 0, streakDays: 0, activeDaysLast7: 0, weeklyWorkoutCounts: [0, 0, 0, 0, 0, 0, 0, 0] })} />
+        </Section>
     );
 }
 

@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { View, Text, ScrollView, Pressable, LayoutAnimation, Platform, UIManager, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-    Calendar, Trophy, ChevronDown, Flame, Check, Clock, Dumbbell, Repeat, ClipboardCheck, FileText,
+    Calendar, Trophy, ChevronDown, Flame, Check, Clock, Dumbbell, Repeat2, ClipboardCheck, FileText,
 } from 'lucide-react-native';
 import Animated, {
     useSharedValue,
@@ -28,12 +28,31 @@ import { useStudentProfile } from '../../hooks/useStudentProfile';
 import { supabase } from '../../lib/supabase';
 import { WARMUP_TYPE_LABELS, CARDIO_EQUIPMENT_LABELS, type WarmupType, type CardioEquipment, type CardioConfig } from '@kinevo/shared/types/workout-items';
 import { PressableScale } from '../../components/shared/PressableScale';
-import { KRing, KPRCard } from '../../components/v2/student';
+import { KPRCard } from '../../components/v2/student';
 import { useV2Colors } from '../../hooks/useV2Colors';
 import { v2 } from '@kinevo/shared/tokens';
-import { LinearGradient } from 'expo-linear-gradient';
 import { WorkoutHealthCard } from '../../components/workout/WorkoutHealthCard';
 import { useWorkoutHealthSummary } from '../../hooks/useWorkoutHealthSummary';
+import { useActiveProgram } from '../../hooks/useActiveProgram';
+import { WeekGoalCard, JourneyCard, IntensityBadge } from '../../components/history';
+import {
+    buildWeekGoalData,
+    buildJourneyData,
+    getWorkoutCategory,
+    getIntensity,
+    formatActivityDate,
+    formatTon,
+    type WorkoutCategory,
+} from '../../lib/history';
+
+// Cores do tile de categoria na ActivityRow (tokens-reference §CATEGORIA).
+const CATEGORY_STYLE: Record<WorkoutCategory, { bg: string; fg: string }> = {
+    inferior: { bg: '#FEF3C7', fg: '#A16207' },
+    superior: { bg: '#DBEAFE', fg: '#1D4ED8' },
+    fullbody: { bg: '#EDE9FE', fg: '#6D28D9' },
+    cardio: { bg: '#FECACA', fg: '#B91C1C' },
+    default: { bg: '#EDE9FE', fg: '#6D28D9' },
+};
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -180,6 +199,11 @@ export default function LogsScreen() {
     );
     const { history, stats, isLoading } = useWorkoutHistory();
     const { activities: stravaActivities } = useStravaActivities(120);
+    const { weeklyProgress } = useActiveProgram();
+    // Meta semanal do programa ativo; fallback 5 (sem programa).
+    const weeklyGoal = weeklyProgress?.targetSessions && weeklyProgress.targetSessions > 0
+        ? weeklyProgress.targetSessions
+        : 5;
 
     // Se ExtraActivitiesBlock / ActivityWeekCard navegam com ?filter=strava
     // após mount, sincronizar.
@@ -222,9 +246,10 @@ export default function LogsScreen() {
                         history={history}
                         stravaActivities={stravaActivities}
                         filter={filter}
+                        weeklyGoal={weeklyGoal}
                     />
                 ) : (
-                    <PerformanceView stats={stats} />
+                    <PerformanceView stats={stats} history={history} />
                 )}
             </ScrollView>
         </SafeAreaView>
@@ -326,10 +351,12 @@ function HistoryList({
     history,
     stravaActivities,
     filter,
+    weeklyGoal,
 }: {
     history: HistorySession[];
     stravaActivities: ExternalActivityRow[];
     filter: HistoryFilter;
+    weeklyGoal: number;
 }) {
     const colors = useV2Colors();
     const timeline = buildTimeline(history, stravaActivities, filter);
@@ -358,7 +385,7 @@ function HistoryList({
     return (
         <View>
             {filter !== 'strava' && history.length > 0 && (
-                <HistorySummaryCard history={history} />
+                <WeekGoalCard data={buildWeekGoalData(history, weeklyGoal)} />
             )}
 
             <Text
@@ -390,101 +417,6 @@ function HistoryList({
     );
 }
 
-// ── Summary card roxo gradient. Calcula no front (filter da semana
-// atual) usando sessões expostas pelo hook useWorkoutHistory.
-// "Aderência" requer meta semanal (não exposta aqui) → omitida.
-function HistorySummaryCard({ history }: { history: HistorySession[] }) {
-    const now = new Date();
-    const startOfWeek = new Date(now);
-    startOfWeek.setHours(0, 0, 0, 0);
-    startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
-    const endOfWeek = new Date(startOfWeek);
-    endOfWeek.setDate(endOfWeek.getDate() + 7);
-
-    let weekCount = 0;
-    let weekVolumeKg = 0;
-    for (const s of history) {
-        const t = new Date(s.completed_at).getTime();
-        if (t >= startOfWeek.getTime() && t < endOfWeek.getTime()) {
-            weekCount++;
-            weekVolumeKg += s.volume_load;
-        }
-    }
-    const weekVolumeTon = (weekVolumeKg / 1000).toFixed(1);
-
-    return (
-        <Animated.View
-            entering={FadeInUp.delay(60).duration(ANIM.enter.duration).easing(ANIM.enter.easing)}
-            style={{
-                marginBottom: 16,
-                borderRadius: 20,
-                overflow: 'hidden',
-                shadowColor: '#7C3AED',
-                shadowOffset: { width: 0, height: 8 },
-                shadowOpacity: 0.22,
-                shadowRadius: 18,
-                elevation: 6,
-            }}
-        >
-            <LinearGradient
-                colors={['#7C3AED', '#6D28D9', '#4C1D95']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={{ padding: 18 }}
-            >
-                <Text
-                    style={{
-                        fontFamily: 'PlusJakartaSans_700Bold',
-                        fontSize: 10,
-                        letterSpacing: 1.2,
-                        textTransform: 'uppercase',
-                        color: 'rgba(255,255,255,0.65)',
-                        marginBottom: 14,
-                    }}
-                >
-                    Esta semana
-                </Text>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                    <SummaryStat label="Treinos" value={String(weekCount)} />
-                    <View style={{ width: 1, backgroundColor: 'rgba(255,255,255,0.18)' }} />
-                    <SummaryStat label="Volume" value={`${weekVolumeTon}t`} />
-                    <View style={{ width: 1, backgroundColor: 'rgba(255,255,255,0.18)' }} />
-                    <SummaryStat label="Total" value={String(history.length)} />
-                </View>
-            </LinearGradient>
-        </Animated.View>
-    );
-}
-
-function SummaryStat({ label, value }: { label: string; value: string }) {
-    return (
-        <View style={{ flex: 1, alignItems: 'center', gap: 4 }}>
-            <Text
-                style={{
-                    fontFamily: 'PlusJakartaSans_800ExtraBold',
-                    fontSize: 26,
-                    letterSpacing: -0.8,
-                    color: '#FFFFFF',
-                }}
-                numberOfLines={1}
-            >
-                {value}
-            </Text>
-            <Text
-                style={{
-                    fontFamily: 'PlusJakartaSans_700Bold',
-                    fontSize: 10,
-                    letterSpacing: 0.8,
-                    textTransform: 'uppercase',
-                    color: 'rgba(255,255,255,0.7)',
-                }}
-            >
-                {label}
-            </Text>
-        </View>
-    );
-}
-
 function HistoryCard({ session }: { session: HistorySession }) {
     const colors = useV2Colors();
     const [expanded, setExpanded] = useState(false);
@@ -502,12 +434,11 @@ function HistoryCard({ session }: { session: HistorySession }) {
         transform: [{ rotate: `${interpolate(chevronRotation.value, [0, 1], [0, 180])}deg` }],
     }));
 
-    const dateStr = new Date(session.completed_at).toLocaleDateString('pt-BR', {
-        weekday: 'long', day: 'numeric', month: 'short',
-        hour: '2-digit', minute: '2-digit',
-    }).toUpperCase();
-
+    const dateStr = formatActivityDate(session.completed_at);
     const totalSets = session.exercises.reduce((acc, ex) => acc + ex.sets.length, 0);
+    const category = getWorkoutCategory(session.workout_name);
+    const catStyle = CATEGORY_STYLE[category];
+    const intensity = getIntensity(session.volume_load);
 
     return (
         <PressableScale
@@ -530,28 +461,25 @@ function HistoryCard({ session }: { session: HistorySession }) {
             {/* Header */}
             <View style={{ padding: 16 }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    {/* Ícone de categoria */}
+                    <View
+                        style={{
+                            width: 34, height: 34, borderRadius: 10,
+                            backgroundColor: catStyle.bg,
+                            alignItems: 'center', justifyContent: 'center', marginRight: 12,
+                        }}
+                    >
+                        <Dumbbell size={16} color={catStyle.fg} strokeWidth={1.8} />
+                    </View>
                     <View style={{ flex: 1, marginRight: 12 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                            <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text.primary }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <Text style={{ fontSize: 17, fontWeight: '700', letterSpacing: -0.2, color: colors.text.primary }}>
                                 {session.workout_name}
                             </Text>
-                            {session.is_intense && (
-                                <View
-                                    style={{
-                                        backgroundColor: '#fff7ed', paddingHorizontal: 8,
-                                        paddingVertical: 3, borderRadius: 8,
-                                        flexDirection: 'row', alignItems: 'center', gap: 4,
-                                    }}
-                                >
-                                    <Flame size={10} color="#ea580c" fill="#ea580c" />
-                                    <Text style={{ fontSize: 9, fontWeight: '700', color: '#ea580c', letterSpacing: 1 }}>
-                                        INTENSO
-                                    </Text>
-                                </View>
-                            )}
+                            <IntensityBadge level={intensity} />
                         </View>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                            <Text style={{ fontSize: 12, color: colors.text.quaternary, fontWeight: '600', textTransform: 'uppercase' }}>
+                            <Text style={{ fontSize: 11.5, color: colors.text.tertiary, fontWeight: '500' }}>
                                 {dateStr}
                             </Text>
                             {session.has_pre_checkin && (
@@ -576,30 +504,29 @@ function HistoryCard({ session }: { session: HistorySession }) {
                 {/* Metrics */}
                 <View
                     style={{
-                        flexDirection: 'row', alignItems: 'center', marginTop: 12,
-                        paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.border.subtle, gap: 20,
+                        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                        marginTop: 12, paddingTop: 12,
+                        borderTopWidth: 1, borderTopColor: colors.border.subtle,
                     }}
                 >
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        <Clock size={14} color="#64748b" />
-                        <Text style={{ fontSize: 14, fontWeight: '500', color: colors.text.tertiary }}>
+                        <Clock size={14} color={colors.text.tertiary} strokeWidth={1.8} />
+                        <Text style={{ fontSize: 12.5, fontWeight: '600', color: colors.text.secondary, fontVariant: ['tabular-nums'] }}>
                             {session.duration_seconds != null
                                 ? `${Math.floor(session.duration_seconds / 60)} min`
                                 : '—'}
                         </Text>
                     </View>
-                    <View style={{ width: 1, height: 12, backgroundColor: colors.border.default }} />
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        <Dumbbell size={14} color="#64748b" />
-                        <Text style={{ fontSize: 14, fontWeight: '500', color: colors.text.tertiary }}>
-                            {(session.volume_load / 1000).toFixed(1)} <Text>t</Text>
+                        <Dumbbell size={14} color={colors.text.tertiary} strokeWidth={1.8} />
+                        <Text style={{ fontSize: 12.5, fontWeight: '600', color: colors.text.secondary, fontVariant: ['tabular-nums'] }}>
+                            {formatTon(session.volume_load, 1)} t
                         </Text>
                     </View>
-                    <View style={{ width: 1, height: 12, backgroundColor: colors.border.default }} />
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        <Repeat size={14} color="#64748b" />
-                        <Text style={{ fontSize: 14, fontWeight: '500', color: colors.text.tertiary }}>
-                            {totalSets} <Text>séries</Text>
+                        <Repeat2 size={14} color={colors.text.tertiary} strokeWidth={1.8} />
+                        <Text style={{ fontSize: 12.5, fontWeight: '600', color: colors.text.secondary, fontVariant: ['tabular-nums'] }}>
+                            {totalSets} séries
                         </Text>
                     </View>
                 </View>
@@ -843,11 +770,11 @@ function PublishedReportsSection() {
     );
 }
 
-function PerformanceView({ stats }: { stats: HistoryStats }) {
+function PerformanceView({ stats, history }: { stats: HistoryStats; history: HistorySession[] }) {
     const colors = useV2Colors();
     return (
         <View>
-            <JourneyRingsCard stats={stats} />
+            <JourneyCard data={buildJourneyData(history)} />
 
             {/* Recordes Pessoais */}
             <View>
@@ -900,112 +827,3 @@ function PerformanceView({ stats }: { stats: HistoryStats }) {
     );
 }
 
-// ── Jornada card refatorado: 3 KRings concêntricos (Apple Fitness pattern).
-// Cada ring referencia uma dimensão da jornada do aluno. Targets são
-// heurísticos (próximo marco redondo) e existem só pra preencher max do anel.
-function JourneyRingsCard({ stats }: { stats: HistoryStats }) {
-    const colors = useV2Colors();
-    // Próximo marco: ceil(value/10)*10 com piso mínimo pra evitar div zero.
-    const targetFor = (v: number, step: number, floor: number) =>
-        Math.max(floor, Math.ceil(Math.max(v, 1) / step) * step);
-    const workoutsTarget = targetFor(stats.totalWorkouts, 10, 10);
-    const volumeTarget = targetFor(Math.round(stats.totalVolume), 10, 50);
-    const hoursTarget = targetFor(stats.totalHours, 10, 10);
-
-    return (
-        <Animated.View
-            entering={FadeInUp.delay(100).duration(ANIM.enter.duration).easing(ANIM.enter.easing)}
-            style={{
-                backgroundColor: colors.surface.card,
-                borderRadius: 20,
-                padding: 20,
-                marginBottom: 24,
-                borderWidth: 1,
-                borderColor: colors.border.default,
-            }}
-        >
-            <Text
-                style={{
-                    fontSize: 12,
-                    fontWeight: '700',
-                    color: colors.text.tertiary,
-                    textTransform: 'uppercase',
-                    letterSpacing: 1,
-                    marginBottom: 20,
-                }}
-            >
-                Sua Jornada
-            </Text>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' }}>
-                <View style={{ alignItems: 'center', gap: 8 }}>
-                    <KRing
-                        value={stats.totalWorkouts}
-                        max={workoutsTarget}
-                        size="md"
-                        color="red"
-                        centerContent={
-                            <Text
-                                style={{
-                                    fontFamily: 'PlusJakartaSans_800ExtraBold',
-                                    fontSize: 18,
-                                    color: colors.text.primary,
-                                }}
-                            >
-                                {stats.totalWorkouts}
-                            </Text>
-                        }
-                    />
-                    <Text style={[labelStyle, { color: colors.text.tertiary }]}>Treinos</Text>
-                </View>
-                <View style={{ alignItems: 'center', gap: 8 }}>
-                    <KRing
-                        value={Math.round(stats.totalVolume)}
-                        max={volumeTarget}
-                        size="md"
-                        color="green"
-                        centerContent={
-                            <Text
-                                style={{
-                                    fontFamily: 'PlusJakartaSans_800ExtraBold',
-                                    fontSize: 18,
-                                    color: colors.text.primary,
-                                }}
-                            >
-                                {Math.round(stats.totalVolume)}
-                            </Text>
-                        }
-                    />
-                    <Text style={[labelStyle, { color: colors.text.tertiary }]}>Ton.</Text>
-                </View>
-                <View style={{ alignItems: 'center', gap: 8 }}>
-                    <KRing
-                        value={stats.totalHours}
-                        max={hoursTarget}
-                        size="md"
-                        color="cyan"
-                        centerContent={
-                            <Text
-                                style={{
-                                    fontFamily: 'PlusJakartaSans_800ExtraBold',
-                                    fontSize: 18,
-                                    color: colors.text.primary,
-                                }}
-                            >
-                                {stats.totalHours}
-                            </Text>
-                        }
-                    />
-                    <Text style={[labelStyle, { color: colors.text.tertiary }]}>Horas</Text>
-                </View>
-            </View>
-        </Animated.View>
-    );
-}
-
-// Used by JourneyRingsCard which overrides `color` via inline style array.
-const labelStyle = {
-    fontSize: 10,
-    textTransform: 'uppercase' as const,
-    letterSpacing: 1.5,
-    fontWeight: '700' as const,
-};
