@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from "react";
+import React, { useMemo, useState, useCallback, useEffect } from "react";
 import { View, Text, ScrollView, RefreshControl, ActivityIndicator, Image, TouchableOpacity } from "react-native";
 import Animated, { FadeIn, FadeInDown, FadeInUp, Easing } from "react-native-reanimated";
 import { ANIM } from "../../lib/animations";
@@ -16,8 +16,10 @@ import { UnifiedCalendar } from "../../components/home/UnifiedCalendar";
 import { ActionCard } from "../../components/home/ActionCard";
 import { PerfectWeekBanner } from "../../components/home/PerfectWeekBanner";
 import { PerfectWeekShareModal } from "../../components/workout/sharing/PerfectWeekShareModal";
+import { PerfectWeekCelebrationSheet } from "../../components/home/PerfectWeekCelebrationSheet";
 import type { PerfectWeekCardProps } from "../../components/workout/sharing/PerfectWeekTemplate";
 import { usePerfectWeek } from "../../hooks/usePerfectWeek";
+import { wasPerfectWeekCelebrated, markPerfectWeekCelebrated } from "../../lib/perfectWeekCelebration";
 import { WorkoutList } from "../../components/home/WorkoutList";
 import { ReportReadyCard } from "../../components/home/ReportReadyCard";
 import { ExtraActivitiesBlock } from "../../components/strava/ExtraActivitiesBlock";
@@ -82,8 +84,9 @@ export default function HomeScreen() {
     const [shareData, setShareData] = useState<any>(null);
     const [shareSessionId, setShareSessionId] = useState<string | undefined>(undefined);
 
-    // Semana Perfeita — share state
+    // Semana Perfeita — share + momento comemorativo
     const [perfectWeekShareVisible, setPerfectWeekShareVisible] = useState(false);
+    const [perfectWeekCelebVisible, setPerfectWeekCelebVisible] = useState(false);
 
     const handleShareWorkout = useCallback(async (workout: any) => {
         if (!workout) return;
@@ -353,6 +356,17 @@ export default function HomeScreen() {
         };
     }, [weeklyProgressFull, sessionsMap, workouts, programName, programStartedAt, programDurationWeeks, profile, studentName, consecutiveCount]);
 
+    // Momento comemorativo: sobe 1x por semana quando a semana fecha 100%
+    // (o player faz replace p/ Home ao finalizar, então a folha aparece logo
+    // após o treino que fechou a semana). Guard via MMKV.
+    const perfectWeekKey = `${weekStart.getFullYear()}-${weekStart.getMonth()}-${weekStart.getDate()}`;
+    useEffect(() => {
+        if (perfectWeekCard && !wasPerfectWeekCelebrated(perfectWeekKey)) {
+            markPerfectWeekCelebrated(perfectWeekKey);
+            setPerfectWeekCelebVisible(true);
+        }
+    }, [perfectWeekCard, perfectWeekKey]);
+
     // Compute today's completed workout IDs for WorkoutList badges
     const todayCompletedWorkoutIds = useMemo(() => {
         const todayKey = toDateKey(new Date());
@@ -587,6 +601,15 @@ export default function HomeScreen() {
                 onClose={() => setPerfectWeekShareVisible(false)}
                 data={perfectWeekCard ?? undefined}
             />
+
+            {perfectWeekCard && (
+                <PerfectWeekCelebrationSheet
+                    visible={perfectWeekCelebVisible}
+                    card={perfectWeekCard}
+                    onShare={() => { setPerfectWeekCelebVisible(false); setPerfectWeekShareVisible(true); }}
+                    onClose={() => setPerfectWeekCelebVisible(false)}
+                />
+            )}
         </ScreenWrapper>
     );
 }
