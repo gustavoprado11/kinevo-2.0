@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import Image from 'next/image'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
@@ -86,18 +87,36 @@ export function StudentHeader({ student, onEdit, onDelete, onSchedule, onStartTo
     const [resetError, setResetError] = useState<string | null>(null)
     const [isCopied, setIsCopied] = useState(false)
     const [showActions, setShowActions] = useState(false)
+    const [menuCoords, setMenuCoords] = useState<{ top: number; right: number } | null>(null)
     const actionsRef = useRef<HTMLDivElement>(null)
+    const triggerBtnRef = useRef<HTMLButtonElement>(null)
+    const menuRef = useRef<HTMLDivElement>(null)
 
-    // Close actions dropdown on outside click
+    // Position the actions menu relative to the trigger. The menu is rendered
+    // in a portal (document.body) to escape the header card's `overflow-hidden`,
+    // which would otherwise clip the lower menu items (e.g. "Excluir Aluno").
+    const positionMenu = () => {
+        const rect = triggerBtnRef.current?.getBoundingClientRect()
+        if (rect) setMenuCoords({ top: rect.bottom + 4, right: window.innerWidth - rect.right })
+    }
+
+    // Close actions dropdown on outside click; keep it anchored on scroll/resize
     useEffect(() => {
         if (!showActions) return
         const handleClick = (e: MouseEvent) => {
-            if (actionsRef.current && !actionsRef.current.contains(e.target as Node)) {
-                setShowActions(false)
-            }
+            const target = e.target as Node
+            if (actionsRef.current?.contains(target)) return
+            if (menuRef.current?.contains(target)) return
+            setShowActions(false)
         }
         document.addEventListener('mousedown', handleClick)
-        return () => document.removeEventListener('mousedown', handleClick)
+        window.addEventListener('resize', positionMenu)
+        window.addEventListener('scroll', positionMenu, true)
+        return () => {
+            document.removeEventListener('mousedown', handleClick)
+            window.removeEventListener('resize', positionMenu)
+            window.removeEventListener('scroll', positionMenu, true)
+        }
     }, [showActions])
 
     const handleResetPassword = async () => {
@@ -260,19 +279,25 @@ export function StudentHeader({ student, onEdit, onDelete, onSchedule, onStartTo
                             {!student.is_trainer_profile && (
                                 <div className="relative" ref={actionsRef}>
                                     <button
-                                        onClick={() => setShowActions(!showActions)}
+                                        ref={triggerBtnRef}
+                                        onClick={() => {
+                                            if (!showActions) positionMenu()
+                                            setShowActions(!showActions)
+                                        }}
                                         aria-label="Mais ações"
                                         className="p-2 text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#1D1D1F] dark:hover:text-k-text-primary hover:bg-[#F5F5F7] dark:hover:bg-white/5 rounded-xl transition-all border border-transparent hover:border-[#D2D2D7] dark:hover:border-k-border-primary"
                                     >
                                         <MoreHorizontal className="w-4 h-4" />
                                     </button>
 
-                                    {showActions && (
+                                    {showActions && menuCoords && createPortal(
                                         <motion.div
+                                            ref={menuRef}
                                             initial={{ opacity: 0, scale: 0.95, y: -4 }}
                                             animate={{ opacity: 1, scale: 1, y: 0 }}
                                             transition={{ duration: 0.15 }}
-                                            className="absolute right-0 top-full mt-1 w-48 rounded-xl border border-[#D2D2D7] dark:border-k-border-primary bg-white dark:bg-surface-card shadow-lg z-20 overflow-hidden"
+                                            style={{ top: menuCoords.top, right: menuCoords.right }}
+                                            className="fixed w-48 rounded-xl border border-[#D2D2D7] dark:border-k-border-primary bg-white dark:bg-surface-card shadow-lg z-dropdown overflow-hidden"
                                         >
                                             {onStartTour && (
                                                 <>
@@ -312,7 +337,8 @@ export function StudentHeader({ student, onEdit, onDelete, onSchedule, onStartTo
                                                 <Trash2 className="w-3.5 h-3.5" />
                                                 Excluir Aluno
                                             </button>
-                                        </motion.div>
+                                        </motion.div>,
+                                        document.body
                                     )}
                                 </div>
                             )}
