@@ -473,21 +473,24 @@ export function generateCalendarDays(
 // Week / Month Navigation
 // ---------------------------------------------------------------------------
 
-/** Get the Sunday–Saturday range containing `date`. Optionally timezone-aware.
- *  `end` is set to 23:59:59.999 of Saturday so that timestamp-based comparisons
- *  (Supabase `.lte()`, `d <= end`) include the entire last day of the week. */
+/** Get the Monday–Sunday range containing `date`. Optionally timezone-aware.
+ *  `end` is set to 23:59:59.999 of Sunday so that timestamp-based comparisons
+ *  (Supabase `.lte()`, `d <= end`) include the entire last day of the week.
+ *  A semana de treinos começa na segunda — alinhado com o banco
+ *  (Postgres date_trunc('week') é ISO/segunda) e com getISOWeekRange. */
 export function getWeekRange(date: Date, timeZone?: string): DateRange {
   const d = timeZone ? startOfDayTz(date, timeZone) : startOfDay(date)
-  const start = addDays(d, -d.getDay()) // Sunday 00:00
-  const end = addDays(start, 6) // Saturday 00:00
-  end.setHours(23, 59, 59, 999) // Saturday 23:59:59.999
+  const mondayOffset = (d.getDay() + 6) % 7 // dom=6, seg=0, ter=1, ..., sáb=5
+  const start = addDays(d, -mondayOffset) // Monday 00:00
+  const end = addDays(start, 6) // Sunday 00:00
+  end.setHours(23, 59, 59, 999) // Sunday 23:59:59.999
   return { start, end }
 }
 
 /** Get the ISO 8601 week range (Monday–Sunday) containing `date`. Optionally
- *  timezone-aware. Used pelo dashboard trainer pra alinhar com mobile
- *  (RPC get_trainer_stats / Postgres date_trunc('week'), migração 105).
- *  Outras telas do web continuam usando getWeekRange (domingo-sábado). */
+ *  timezone-aware. Idêntico a getWeekRange (ambos segunda→domingo agora);
+ *  mantido por compatibilidade com o dashboard trainer e RPCs
+ *  (get_trainer_stats / Postgres date_trunc('week'), migração 105). */
 export function getISOWeekRange(date: Date, timeZone?: string): DateRange {
   const d = timeZone ? startOfDayTz(date, timeZone) : startOfDay(date)
   // getDay(): 0=Sun..6=Sat. ISO weekday: 1=Mon..7=Sun → offset pra segunda anterior.
@@ -522,9 +525,9 @@ export function shiftMonth(date: Date, direction: -1 | 1): Date {
 export function getMonthGridRange(date: Date): DateRange {
   const { start: monthStart } = getMonthRange(date)
   const monthEnd = new Date(date.getFullYear(), date.getMonth() + 1, 0) // last day at midnight
-  // Extend to full weeks
-  const start = addDays(monthStart, -monthStart.getDay()) // back to Sunday
-  const end = addDays(monthEnd, 6 - monthEnd.getDay()) // forward to Saturday
+  // Extend to full weeks (Monday-first grid)
+  const start = addDays(monthStart, -((monthStart.getDay() + 6) % 7)) // back to Monday
+  const end = addDays(monthEnd, (7 - monthEnd.getDay()) % 7) // forward to Sunday
   end.setHours(23, 59, 59, 999)
   return { start, end }
 }
