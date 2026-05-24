@@ -120,9 +120,7 @@ export function AdherenceTrendStrip({ weeklyAdherence, onWeekClick }: AdherenceT
                             onClick={onWeekClick ? () => onWeekClick(p.week) : undefined}
                             data-testid={`trend-point-${p.week}`}
                         >
-                            <title>
-                                Semana {p.week}: {Math.round(p.v)}%
-                            </title>
+                            <title>{`Semana ${p.week}: ${Math.round(p.v)}%`}</title>
                         </circle>
                     )
                 })}
