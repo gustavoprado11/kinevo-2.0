@@ -64,7 +64,7 @@ const STATUS_DOT_COLORS: Record<CalendarDay["status"], string | null> = {
     out_of_program: null,
 };
 
-const DAY_NAMES = ["D", "S", "T", "Q", "Q", "S", "S"];
+const DAY_NAMES = ["S", "T", "Q", "Q", "S", "S", "D"]; // segunda → domingo
 
 const SPRING_CONFIG = ANIM.spring.tight;
 

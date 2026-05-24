@@ -23,7 +23,8 @@ const GOALS = [
     { value: "health", label: "Saúde" },
 ] as const;
 
-const DAY_NAMES = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+const DAY_NAMES = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]; // index = dia da semana (0=Dom)
+const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0]; // ordem de exibição: segunda → domingo
 
 const EQUIPMENT_OPTIONS = [
     { value: "academia_completa", label: "Academia Completa" },
@@ -177,7 +178,8 @@ export function PrescriptionProfileForm({ existingProfile, isSaving, onSubmit }:
             {/* Available Days */}
             <SectionLabel>Dias Disponíveis</SectionLabel>
             <View style={{ flexDirection: "row", gap: 6, marginBottom: 20 }}>
-                {DAY_NAMES.map((name, idx) => {
+                {DAY_ORDER.map((idx) => {
+                    const name = DAY_NAMES[idx];
                     const selected = availableDays.includes(idx);
                     return (
                         <TouchableOpacity

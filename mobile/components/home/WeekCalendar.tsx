@@ -23,7 +23,7 @@ const STATUS_COLORS: Record<CalendarDay["status"], string> = {
     out_of_program: "transparent",
 };
 
-const DAY_NAMES = ["D", "S", "T", "Q", "Q", "S", "S"];
+const DAY_NAMES = ["S", "T", "Q", "Q", "S", "S", "D"]; // segunda → domingo
 
 interface WeekCalendarProps {
     workouts: ScheduledWorkoutRef[];

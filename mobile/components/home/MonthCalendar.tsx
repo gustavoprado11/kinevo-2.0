@@ -17,7 +17,7 @@ if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental
     UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-const DAY_NAMES = ["D", "S", "T", "Q", "Q", "S", "S"];
+const DAY_NAMES = ["S", "T", "Q", "Q", "S", "S", "D"]; // segunda → domingo
 
 const STATUS_DOT_COLORS: Record<CalendarDay["status"], string | null> = {
     done: "#7c3aed",

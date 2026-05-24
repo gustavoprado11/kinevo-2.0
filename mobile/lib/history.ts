@@ -71,10 +71,11 @@ function dateKey(d: Date): string {
     return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 }
 
-/** Domingo 00:00 da semana que contém `ref`. */
+/** Segunda 00:00 da semana que contém `ref`. */
 export function startOfWeek(ref: Date = new Date()): Date {
     const d = startOfDay(ref);
-    return addDays(d, -d.getDay());
+    const mondayOffset = (d.getDay() + 6) % 7; // dom=6, seg=0, ..., sáb=5
+    return addDays(d, -mondayOffset);
 }
 
 /** Mês curto pt-BR sem ponto: "mai". */

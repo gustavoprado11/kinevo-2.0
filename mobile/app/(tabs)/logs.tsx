@@ -320,7 +320,8 @@ type TimelineItem =
 function startOfThisWeek(): number {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
-    d.setDate(d.getDate() - d.getDay());
+    const mondayOffset = (d.getDay() + 6) % 7; // dom=6, seg=0, ..., sáb=5
+    d.setDate(d.getDate() - mondayOffset);
     return d.getTime();
 }
 

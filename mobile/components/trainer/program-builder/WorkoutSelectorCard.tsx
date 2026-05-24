@@ -14,8 +14,9 @@ import { PressableScale } from "../../shared/PressableScale";
 import { useV2Colors } from "@/hooks/useV2Colors";
 import type { Workout } from "@/stores/program-builder-store";
 
-const DAY_KEYS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'] as const;
-const DAY_BACKEND_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const;
+// Segunda → domingo (ambas alinhadas por índice).
+const DAY_KEYS = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'] as const;
+const DAY_BACKEND_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
 
 interface WorkoutSelectorCardProps {
     workout: Workout;

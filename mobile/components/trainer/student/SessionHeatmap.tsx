@@ -7,7 +7,7 @@ import { spacing } from "../../../theme/spacing";
 import { useV2Colors } from "../../../hooks/useV2Colors";
 
 // ─── Constants ───────────────────────────────────────────────────────
-const WEEKDAY_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+const WEEKDAY_LABELS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"]; // segunda → domingo
 const CARD_HORIZONTAL_PADDING = 16;
 const CELL_GAP = 6;
 const COLUMNS = 7;
@@ -180,13 +180,13 @@ export function SessionHeatmap({ studentId }: { studentId: string }) {
         const firstDay = new Date(year, month, 1);
         const lastDay = new Date(year, month + 1, 0);
 
-        // Pad to start on Sunday
-        const startPad = firstDay.getDay();
+        // Pad to start on Monday
+        const startPad = (firstDay.getDay() + 6) % 7;
         const paddedStart = new Date(firstDay);
         paddedStart.setDate(paddedStart.getDate() - startPad);
 
-        // Pad to end on Saturday
-        const endPad = 6 - lastDay.getDay();
+        // Pad to end on Sunday
+        const endPad = (7 - lastDay.getDay()) % 7;
         const paddedEnd = new Date(lastDay);
         paddedEnd.setDate(paddedEnd.getDate() + endPad);
 

@@ -265,7 +265,8 @@ export default function HomeScreen() {
         const startOfWeek = (d: Date) => {
             const x = new Date(d);
             x.setHours(0, 0, 0, 0);
-            x.setDate(x.getDate() - x.getDay());
+            const mondayOffset = (x.getDay() + 6) % 7; // dom=6, seg=0, ..., sáb=5
+            x.setDate(x.getDate() - mondayOffset);
             return x;
         };
         let cursor = startOfWeek(todayLocal);
@@ -296,7 +297,7 @@ export default function HomeScreen() {
     // ── Semana Perfeita ──
     // Persiste a semana 100% (idempotente) e devolve a contagem de semanas
     // perfeitas consecutivas. weekStart é o mesmo de calculateWeeklyProgress
-    // (getWeekRange, domingo-baseado) p/ alinhar a chave.
+    // (getWeekRange, segunda-baseado) p/ alinhar a chave.
     const weekStart = getWeekRange(new Date()).start;
     const { consecutiveCount, totalCount: perfectWeeksTotal } = usePerfectWeek({
         studentId: profile?.id,
