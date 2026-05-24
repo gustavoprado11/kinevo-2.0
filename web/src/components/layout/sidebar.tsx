@@ -7,8 +7,8 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
     LayoutDashboard, Users, Dumbbell, Calendar, CalendarDays, Wallet, FileText,
     Activity,
-    PanelLeftClose, MessageSquarePlus, Headphones,
-    LogOut, BookOpen, ChevronRight, Settings,
+    MessageSquarePlus, Headphones,
+    LogOut, BookOpen, ChevronRight, ChevronLeft, Settings,
 } from 'lucide-react'
 import { useSidebarStore, shouldAutoCollapse } from '@/stores/sidebar-store'
 import { FeedbackModal } from '@/components/feedback/feedback-modal'
@@ -143,46 +143,33 @@ export function Sidebar({ financialBadge, trainerName, trainerEmail, trainerAvat
                 isCollapsed ? 'w-[68px]' : 'w-64'
             }`}
         >
-            {/* Header / Logo + Toggle */}
-            <div className={`pt-8 pb-8 flex items-center ${isCollapsed ? 'px-0 justify-center' : 'px-6 justify-between'}`}>
-                {isCollapsed ? (
-                    <button
-                        onClick={toggle}
-                        className="flex items-center justify-center rounded-lg hover:bg-[#F5F5F7] dark:hover:bg-glass-bg transition-colors"
-                        title="Expandir menu"
-                    >
-                        <Image
-                            src="/logo-icon.png"
-                            alt="Kinevo Logo"
-                            width={32}
-                            height={32}
-                            className="rounded-lg"
-                        />
-                    </button>
-                ) : (
-                    <>
-                        <Link href="/dashboard" className="flex items-center gap-3 group overflow-hidden">
-                            <Image
-                                src="/logo-icon.png"
-                                alt="Kinevo Logo"
-                                width={32}
-                                height={32}
-                                className="rounded-lg shrink-0"
-                            />
-                            <span className="text-lg font-semibold text-[#1D1D1F] dark:text-foreground/90 tracking-tight whitespace-nowrap">
-                                Kinevo
-                            </span>
-                        </Link>
-                        <button
-                            onClick={toggle}
-                            className="p-1.5 rounded-lg text-[#AEAEB2] dark:text-muted-foreground/40 hover:text-[#6E6E73] dark:hover:text-foreground hover:bg-[#F5F5F7] dark:hover:bg-glass-bg transition-colors"
-                            title="Recolher menu"
-                        >
-                            <PanelLeftClose size={18} strokeWidth={1.5} />
-                        </button>
-                    </>
-                )}
+            {/* Header / Logo */}
+            <div className={`pt-8 pb-8 flex items-center ${isCollapsed ? 'px-0 justify-center' : 'px-6'}`}>
+                <Link href="/dashboard" className="flex items-center gap-3 group overflow-hidden">
+                    <Image
+                        src="/logo-icon.png"
+                        alt="Kinevo Logo"
+                        width={32}
+                        height={32}
+                        className="rounded-lg shrink-0"
+                    />
+                    {!isCollapsed && (
+                        <span className="text-lg font-semibold text-[#1D1D1F] dark:text-foreground/90 tracking-tight whitespace-nowrap">
+                            Kinevo
+                        </span>
+                    )}
+                </Link>
             </div>
+
+            {/* Edge toggle — collapse/expand handle sitting on the sidebar border */}
+            <button
+                onClick={toggle}
+                title={isCollapsed ? 'Expandir menu' : 'Recolher menu'}
+                aria-label={isCollapsed ? 'Expandir menu' : 'Recolher menu'}
+                className="absolute top-9 -right-3 z-sidebar w-6 h-6 flex items-center justify-center rounded-full border border-[#E8E8ED] dark:border-k-border-subtle bg-white dark:bg-surface-sidebar text-[#AEAEB2] dark:text-muted-foreground/60 hover:text-[#6E6E73] dark:hover:text-foreground hover:bg-[#F5F5F7] dark:hover:bg-glass-bg shadow-sm transition-colors"
+            >
+                {isCollapsed ? <ChevronRight size={14} strokeWidth={2} /> : <ChevronLeft size={14} strokeWidth={2} />}
+            </button>
 
             {/* Navigation */}
             <nav className={`flex-1 space-y-0.5 overflow-y-auto overflow-x-hidden ${isCollapsed ? 'px-2' : 'px-4'}`}>
