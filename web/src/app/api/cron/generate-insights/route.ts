@@ -383,7 +383,8 @@ async function detectLoadStagnation(trainerId: string, today: string): Promise<I
 
 function getWeekStart(date: Date): string {
     const d = new Date(date)
-    d.setDate(d.getDate() - d.getDay())
+    const mondayOffset = (d.getDay() + 6) % 7 // dom=6, seg=0, ..., sáb=5
+    d.setDate(d.getDate() - mondayOffset)
     return d.toISOString().slice(0, 10)
 }
 

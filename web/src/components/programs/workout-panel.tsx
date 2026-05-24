@@ -25,13 +25,13 @@ import {
 } from '@dnd-kit/sortable'
 
 const DAYS = [
-    { key: 'sun', label: 'D', name: 'Domingo' },
     { key: 'mon', label: 'S', name: 'Segunda' },
     { key: 'tue', label: 'T', name: 'Terça' },
     { key: 'wed', label: 'Q', name: 'Quarta' },
     { key: 'thu', label: 'Q', name: 'Quinta' },
     { key: 'fri', label: 'S', name: 'Sexta' },
     { key: 'sat', label: 'S', name: 'Sábado' },
+    { key: 'sun', label: 'D', name: 'Domingo' },
 ] as const
 
 function DaySelectorButtons({

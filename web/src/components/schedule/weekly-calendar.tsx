@@ -24,8 +24,8 @@ import { useDragDropReschedule } from './use-drag-drop-reschedule'
 import type { ScheduleStudent } from '@/app/schedule/schedule-client'
 
 interface Props {
-    weekStart: string // YYYY-MM-DD (domingo)
-    weekEnd: string // YYYY-MM-DD (sábado)
+    weekStart: string // YYYY-MM-DD (segunda)
+    weekEnd: string // YYYY-MM-DD (domingo)
     occurrences: AppointmentOccurrence[]
     studentsById: Record<string, ScheduleStudent>
     onSlotClick: (date: string, time: string) => void

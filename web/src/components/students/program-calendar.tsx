@@ -112,7 +112,7 @@ function WeekView({
     days: CalendarDay[]
     onDayClick?: (day: CalendarDay) => void
 }) {
-    const dayLabels = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']
+    const dayLabels = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'] // segunda → domingo
 
     return (
         <div className="flex items-center justify-between flex-1 max-w-md">
@@ -226,7 +226,7 @@ function MonthView({
     anchorDate: Date
     onDayClick?: (day: CalendarDay) => void
 }) {
-    const dayLabels = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']
+    const dayLabels = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'] // segunda → domingo
     const anchorMonth = anchorDate.getMonth()
 
     return (

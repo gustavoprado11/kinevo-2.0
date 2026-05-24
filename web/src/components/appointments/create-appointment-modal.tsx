@@ -49,7 +49,8 @@ interface Props {
     onSuccess?: (result: { recurringId?: string; groupId?: string }) => void
 }
 
-const DAY_LABELS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
+const DAY_LABELS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'] // index = dia da semana (0=Dom)
+const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0] // ordem de exibição: segunda → domingo
 const DURATION_CHIPS = [45, 60, 90] as const
 const MAX_SLOTS = 7
 
@@ -525,13 +526,14 @@ export function CreateAppointmentModal({
                                     </div>
 
                                     <div className="grid grid-cols-7 gap-1">
-                                        {DAY_LABELS.map((lbl, dow) => {
+                                        {DAY_ORDER.map((dow) => {
+                                            const lbl = DAY_LABELS[dow]
                                             const selected = slot.dayOfWeek === dow
                                             const disabled = isSingleSlotMode
                                             return (
                                                 <button
                                                     type="button"
-                                                    key={lbl}
+                                                    key={dow}
                                                     onClick={() =>
                                                         !disabled && updateSlot(slot.id, { dayOfWeek: dow })
                                                     }

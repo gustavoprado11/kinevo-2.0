@@ -14,12 +14,12 @@ function todayDateKeyBR(): string {
     return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
 }
 
-/** Retorna o domingo da semana que contém `dateKey` (YYYY-MM-DD). */
+/** Retorna a segunda-feira da semana que contém `dateKey` (YYYY-MM-DD). */
 function weekStart(dateKey: string): string {
     const [y, m, d] = dateKey.split('-').map(Number)
     const date = new Date(Date.UTC(y, m - 1, d))
-    const dow = date.getUTCDay()
-    date.setUTCDate(date.getUTCDate() - dow)
+    const mondayOffset = (date.getUTCDay() + 6) % 7 // dom=6, seg=0, ..., sáb=5
+    date.setUTCDate(date.getUTCDate() - mondayOffset)
     return date.toISOString().slice(0, 10)
 }
 

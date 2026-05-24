@@ -23,7 +23,8 @@ interface Props {
     onSuccess?: () => void
 }
 
-const DAY_LABELS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
+const DAY_LABELS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'] // index = dia da semana (0=Dom)
+const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0] // ordem de exibição: segunda → domingo
 const DURATION_CHIPS = [45, 60, 90] as const
 
 function dayOfWeekFromKey(key: string): number {
@@ -227,13 +228,14 @@ export function EditAppointmentModal({ isOpen, onClose, rule, onSuccess }: Props
                             )}
                         </label>
                         <div className="grid grid-cols-7 gap-1">
-                            {DAY_LABELS.map((lbl, idx) => {
+                            {DAY_ORDER.map((idx) => {
+                                const lbl = DAY_LABELS[idx]
                                 const selected = dayOfWeek === idx
                                 const disabled = dayOfWeekReadonly
                                 return (
                                     <button
                                         type="button"
-                                        key={lbl}
+                                        key={idx}
                                         onClick={() => !disabled && setDayOfWeek(idx)}
                                         disabled={disabled}
                                         aria-pressed={selected}

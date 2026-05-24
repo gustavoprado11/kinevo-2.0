@@ -95,7 +95,8 @@ const EQUIPMENT_POOL_HINT: Record<string, string> = {
     apenas_peso_corporal: '~50 exercícios',
 }
 
-const DAY_LABELS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
+const DAY_LABELS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'] // index = dia da semana (0=Dom)
+const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0] // ordem de exibição: segunda → domingo
 
 // ============================================================================
 // Helpers
@@ -769,7 +770,7 @@ export function PrescriptionProfileForm({
                             Dias Disponíveis <span className="text-violet-500">*</span>
                         </label>
                         <div className="flex gap-1.5">
-                            {DAY_LABELS.map((label, index) => (
+                            {DAY_ORDER.map((index) => (
                                 <button
                                     key={index}
                                     type="button"
@@ -780,7 +781,7 @@ export function PrescriptionProfileForm({
                                             : 'bg-glass-bg border-k-border-subtle text-k-text-quaternary hover:border-k-border-primary hover:text-k-text-tertiary'
                                     }`}
                                 >
-                                    {label}
+                                    {DAY_LABELS[index]}
                                 </button>
                             ))}
                         </div>

@@ -352,11 +352,12 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
 
     const sessionsThisWeek = weekSessions.length
 
-    // Sessions per day of week (sparkline data: [Sun, Mon, ..., Sat])
+    // Sessions per day of week (sparkline data: [Mon, Tue, ..., Sun])
     const sessionsPerDay = [0, 0, 0, 0, 0, 0, 0]
     for (const s of weekSessions) {
         const day = new Date(s.completed_at).getDay()
-        sessionsPerDay[day]++
+        const idx = (day + 6) % 7 // Monday-first: seg=0 … dom=6
+        sessionsPerDay[idx]++
     }
 
     // Expected sessions per week: sum unique scheduled_days across all active programs

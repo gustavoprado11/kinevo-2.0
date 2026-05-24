@@ -44,7 +44,8 @@ function todayKeyBR(): string {
 function weekStartOf(dateKey: string): string {
     const [y, m, d] = dateKey.split('-').map(Number)
     const date = new Date(Date.UTC(y, m - 1, d))
-    date.setUTCDate(date.getUTCDate() - date.getUTCDay())
+    const mondayOffset = (date.getUTCDay() + 6) % 7 // dom=6, seg=0, ..., sáb=5
+    date.setUTCDate(date.getUTCDate() - mondayOffset)
     return date.toISOString().slice(0, 10)
 }
 

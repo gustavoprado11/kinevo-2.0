@@ -16,7 +16,8 @@ const formatCurrency = (value: number) => {
     }).format(value)
 }
 
-const DAY_LABELS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
+// Monday-first to match sessionsPerDay ([Mon..Sun])
+const DAY_LABELS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
 
 // ── Trend Badge ──
 
