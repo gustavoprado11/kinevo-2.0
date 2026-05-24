@@ -287,7 +287,7 @@ export function WorkoutPanel({
     return (
         <div className="space-y-6">
             {/* Workout Header — compact single row */}
-            <div className={`sticky -top-3 z-sticky transition-[background-color,border-color,backdrop-filter,margin,padding] duration-300 ${isScrolled ? '-mx-6 px-6 py-2 bg-[#F5F5F7] dark:bg-surface-canvas border-b border-[#E8E8ED] dark:border-k-border-subtle' : ''}`}>
+            <div className={`transition-[background-color,border-color,backdrop-filter,margin,padding] duration-300 ${readonly ? 'relative' : 'sticky -top-3 z-sticky'} ${(!readonly && isScrolled) ? '-mx-6 px-6 py-2 bg-[#F5F5F7] dark:bg-surface-canvas border-b border-[#E8E8ED] dark:border-k-border-subtle' : ''}`}>
                 <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3 min-w-0">
                         {readonly ? (
