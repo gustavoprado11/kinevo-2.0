@@ -1797,22 +1797,22 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
 
                     {/* Center: Condensed timeline (only in student context, hidden on scroll). Compacts at lg, expands at xl. */}
                     {isStudentContext && (
-                        <div className={`hidden lg:flex items-center gap-1.5 xl:gap-2 text-xs text-muted-foreground border-x border-k-border-subtle px-3 xl:px-6 shrink-0 transition-all duration-200 overflow-hidden ${isCanvasScrolled ? 'max-w-0 opacity-0 px-0 border-0' : 'max-w-[600px] opacity-100'}`}>
+                        <div className={`hidden lg:flex items-center gap-1.5 2xl:gap-2 text-xs text-muted-foreground border-x border-k-border-subtle px-2 lg:px-3 2xl:px-5 min-w-0 transition-all duration-200 overflow-hidden ${isCanvasScrolled ? 'max-w-0 opacity-0 px-0 border-0' : 'max-w-[600px] opacity-100'}`}>
                             <Calendar className="w-3.5 h-3.5 text-muted-foreground shrink-0" strokeWidth={1.5} />
-                            <span className="hidden xl:inline text-[10px] text-muted-foreground">Início</span>
+                            <span className="hidden 2xl:inline text-[10px] text-muted-foreground">Início</span>
                             <input
                                 type="date"
                                 value={startDate}
                                 onChange={(e) => handleStartDateChange(e.target.value)}
-                                className="bg-transparent border-none text-xs font-medium text-k-text-secondary focus:ring-0 p-0 [color-scheme:dark] w-[100px] xl:w-[110px] shrink-0"
+                                className="bg-transparent border-none text-xs font-medium text-k-text-secondary focus:ring-0 p-0 [color-scheme:dark] w-[90px] 2xl:w-[104px] shrink-0"
                             />
                             <span className="text-k-border-subtle">→</span>
-                            <span className="hidden xl:inline text-[10px] text-muted-foreground">Fim</span>
+                            <span className="hidden 2xl:inline text-[10px] text-muted-foreground">Fim</span>
                             <input
                                 type="date"
                                 value={endDate}
                                 onChange={(e) => handleEndDateChange(e.target.value)}
-                                className={`bg-transparent border-none text-xs font-medium focus:ring-0 p-0 [color-scheme:dark] w-[100px] xl:w-[110px] shrink-0 transition-colors ${isEndDateFixed ? 'text-violet-400' : 'text-k-text-secondary'}`}
+                                className={`bg-transparent border-none text-xs font-medium focus:ring-0 p-0 [color-scheme:dark] w-[90px] 2xl:w-[104px] shrink-0 transition-colors ${isEndDateFixed ? 'text-violet-400' : 'text-k-text-secondary'}`}
                             />
                             <span className="text-k-border-subtle">·</span>
                             <div className="flex items-center gap-1 shrink-0">
@@ -1823,7 +1823,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                     min="0"
                                     className="bg-transparent border-none text-xs font-bold text-violet-400 focus:ring-0 p-0 w-6 text-center"
                                 />
-                                <span className="text-muted-foreground"><span className="xl:hidden">sem.</span><span className="hidden xl:inline">semanas</span></span>
+                                <span className="text-muted-foreground"><span className="2xl:hidden">sem</span><span className="hidden 2xl:inline">semanas</span></span>
                             </div>
                         </div>
                     )}
