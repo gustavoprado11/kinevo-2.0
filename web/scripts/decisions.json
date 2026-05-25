@@ -1,0 +1,885 @@
+{
+  "approvals": [
+    {
+      "drive_id": "1VZyiCvzwDqzdX4Ih6V7eRnq6wzkCt-lw",
+      "raw_title": "90/90 INF. DINÂMICO.MOV",
+      "action": "NEW",
+      "name": "90/90 Inferior Dinâmico"
+    },
+    {
+      "drive_id": "1ArwquR2KxBgM5yMrMy_qwhmkjvxjAtHa",
+      "raw_title": "AFUNDO.MOV",
+      "action": "UPDATE_existing",
+      "exercise_id": "2b6d5137-b635-4e16-9302-69da7fe6ab94",
+      "exercise_name_hint": "Afundo"
+    },
+    {
+      "drive_id": "1tP00bwfi_0UP0psf7klxXUx-TAX-5Gzz",
+      "raw_title": "AFUNDO 1KB RACK.MOV",
+      "action": "NEW",
+      "name": "Afundo 1 Kettlebell Rack"
+    },
+    {
+      "drive_id": "1yVuUEGE691yyt-YxDPBSKAqSKesA6MjC",
+      "raw_title": "AFUNDO 2KB RACK.MOV",
+      "action": "NEW",
+      "name": "Afundo 2 Kettlebells Rack"
+    },
+    {
+      "drive_id": "1UbhBQBmKc0r0XUYesO4E8lZqzyJnTKFZ",
+      "raw_title": "AFUNDO 2KB/DB .MOV",
+      "action": "UPDATE_existing",
+      "exercise_id": "812b55d2-5afb-40f5-b609-cfe048ea21e3",
+      "exercise_name_hint": "Afundo com Halteres"
+    },
+    {
+      "drive_id": "12-JGA4VMvD2eP4okcoS0NqyHNpYsu2LX",
+      "raw_title": "AFUNDO BB.MOV",
+      "action": "NEW",
+      "name": "Afundo com Barra"
+    },
+    {
+      "drive_id": "1vX_4ZdyYE9oljMP3qfZdi8OMujGpe9Gu",
+      "raw_title": "AFUNDO DB.MOV",
+      "action": "UPDATE_existing",
+      "exercise_id": "812b55d2-5afb-40f5-b609-cfe048ea21e3",
+      "exercise_name_hint": "Afundo com Halteres"
+    },
+    {
+      "drive_id": "1TlaJcDkh4OyoJFNaKl5kvYakvKpj2cPJ",
+      "raw_title": "AFUNDO KB RACK BILATERAL .MOV",
+      "action": "NEW",
+      "name": "Afundo com Kettlebell Rack Bilateral"
+    },
+    {
+      "drive_id": "13zjyiL4epLV5ycE4sT8zObE3A4KZ16Zo",
+      "raw_title": "ALONG FLEX. QUADRIL PÉ NO BANCO.MOV",
+      "action": "NEW",
+      "name": "Alongamento Flexão Quadril Pé no Banco"
+    },
+    {
+      "drive_id": "1Zj9vnvgDG39WBK2k9aNYbbqzI4JDEIbK",
+      "raw_title": "ALONG. ADUTOR C/ KB.MOV",
+      "action": "NEW",
+      "name": "Alongamento Adutor com Kettlebell"
+    },
+    {
+      "drive_id": "1MYhU0w89teTcW18Z3WgvVVqogmimLVrm",
+      "raw_title": "ALONG. FLEX. QUADRIL DINÂMICO .MOV",
+      "action": "NEW",
+      "name": "Alongamento Flexão Quadril Dinâmico"
+    },
+    {
+      "drive_id": "1g48rxgaNLQrCnKSfvLm7n26ixnKh0Kx-",
+      "raw_title": "ALONG. FLEX. QUADRIL DIREÇÕES .MOV",
+      "action": "NEW",
+      "name": "Alongamento Flexão Quadril Direções"
+    },
+    {
+      "drive_id": "1slwkFge0apoWKp-v83Dg-POoR7gQtJAD",
+      "raw_title": "ANDAR CALCANHAR.MOV",
+      "action": "NEW",
+      "name": "Andar Calcanhar"
+    },
+    {
+      "drive_id": "1bKzAIE8JMyxkYxc5wO4NGu_if_ordx-y",
+      "raw_title": "ANDAR PONTA DE PÉ.mov",
+      "action": "NEW",
+      "name": "Andar Ponta de Pé"
+    },
+    {
+      "drive_id": "1Uett0OEyOQ71b10FNHSvs1ZSBC7bh8S6",
+      "raw_title": "AREMESSO DE MEDBALL LATERAL B. ASSIM (perna da frente/parede).MOV",
+      "action": "NEW",
+      "name": "Arremesso de Medball Lateral B. Assim (Perna da Frente/parede)"
+    },
+    {
+      "drive_id": "1dSKlrk5tqJRXadd99oZ3gaRG0QliLE8f",
+      "raw_title": "ARREMESSO DE MEDBALL C/ CONTRA MOVIMENTO .MOV",
+      "action": "NEW",
+      "name": "Arremesso de Medball com Contra Movimento"
+    },
+    {
+      "drive_id": "1L4o2jqvJ0qh6Y8VntGkrsyJqG1a3xKyr",
+      "raw_title": "ARREMESSO DE MEDBALL LATERAL B. PARALELA .MOV",
+      "action": "NEW",
+      "name": "Arremesso de Medball Lateral Base Paralela"
+    },
+    {
+      "drive_id": "1jkwhgE9H49dSGzHyXBhQDl5Knyr-bW67",
+      "raw_title": "AVIÃO 1KB .MOV",
+      "action": "NEW",
+      "name": "Avião 1 Kettlebell"
+    },
+    {
+      "drive_id": "14GIxM81BIT10RlS2CCx8cq59tmKptWXI",
+      "raw_title": "AVIÃO 2KB  .MOV",
+      "action": "NEW",
+      "name": "Avião 2 Kettlebells"
+    },
+    {
+      "drive_id": "1p3e7g1uEnXP1dd2xVA4rdyB-PK-7FM0k",
+      "raw_title": "BACK SQUAT.MOV",
+      "action": "NEW",
+      "name": "Back Squat"
+    },
+    {
+      "drive_id": "192tErPfyt8beqL5KE5UuOKsz3XGXIOQU",
+      "raw_title": "CRUCIFIXO INCLINADO.mov",
+      "action": "UPDATE_existing",
+      "exercise_id": "e23c8991-4def-4a25-8b8b-abacdf6f6eb3",
+      "exercise_name_hint": "Crucifixo Inclinado com Halteres"
+    },
+    {
+      "drive_id": "1lhSL6JIaCRdsmEgj-XuCmKd4b9wWYga7",
+      "raw_title": "DEAD BUG ALTERNADO C/ PESO.MOV",
+      "action": "NEW",
+      "name": "Dead Bug Alternado com Peso"
+    },
+    {
+      "drive_id": "1jd8XF-3VFdSGtw2f3s71Jb0_sU78LrYY",
+      "raw_title": "DEAD BUG C/ BOQUEIO .MOV",
+      "action": "NEW",
+      "name": "Dead Bug com Bloqueio"
+    },
+    {
+      "drive_id": "1-GFSI_AoG0ZsjLUf0KdU7V-C4z3Re_vP",
+      "raw_title": "DEAD ROW ALTERNADO.MOV",
+      "action": "NEW",
+      "name": "Dead Row Alternado"
+    },
+    {
+      "drive_id": "1p-y8_YcyT4qzKVSAFQ-7YDiy_9VRMCGg",
+      "raw_title": "DEAD ROW BIL. .MOV",
+      "action": "NEW",
+      "name": "Dead Row Bilateral"
+    },
+    {
+      "drive_id": "1Zs1nkbn-jnFTt5_5mwDeZy3OPJvj0D64",
+      "raw_title": "DROP BIL..MOV",
+      "action": "NEW",
+      "name": "Drop Bilateral"
+    },
+    {
+      "drive_id": "1w0LX_Il86yYk4ibYPg8a9tw2CdSXW6Ja",
+      "raw_title": "DROP BOX.MOV",
+      "action": "NEW",
+      "name": "Drop Box"
+    },
+    {
+      "drive_id": "1S3CFjfhSS46u-fQai6haqdy1-9Shc5wh",
+      "raw_title": "DROP BOX + JUMP.MOV",
+      "action": "NEW",
+      "name": "Drop Box + Jump"
+    },
+    {
+      "drive_id": "1yXzzf_bTuEa4bbmXRcgLDXIk-vWGJg4d",
+      "raw_title": "DROP UNI.MOV",
+      "action": "NEW",
+      "name": "Drop Unilateral"
+    },
+    {
+      "drive_id": "1bYU2iqZhVkBgNAFIAfU89C5FafQp-_ld",
+      "raw_title": "FLEXAO JOELHO UNI. BOLA SÓ EXC.mov",
+      "action": "NEW",
+      "name": "Flexao Joelho Unilateral Bola só Excêntrico"
+    },
+    {
+      "drive_id": "12qNEblNCuINgO-6OICG4d_NOJJo7VY7Z",
+      "raw_title": "FLEXÃO DE BRAÇOS.MOV",
+      "action": "UPDATE_existing",
+      "exercise_id": "6190cfc3-6756-4797-811d-70f29229b0bf",
+      "exercise_name_hint": "Flexão de Braços"
+    },
+    {
+      "drive_id": "1iHDX2NuqPXFVscEZT04gwgsMVAr2jo4p",
+      "raw_title": "FLEXÃO DE BRAÇOS A.R. C/ KB.MOV",
+      "action": "NEW",
+      "name": "Flexão de Braços Ar. com Kettlebell"
+    },
+    {
+      "drive_id": "1MvBW-M3gIEvN5fGIDtXgoEu96a3cOkSS",
+      "raw_title": "FLEXÃO DE BRAÇOS JOELHO.MOV",
+      "action": "UPDATE_existing",
+      "exercise_id": "7cb944e1-0659-4a6f-b189-53ab098dd76b",
+      "exercise_name_hint": "Flexão de Braços com Apoio"
+    },
+    {
+      "drive_id": "1tL_Ugn_1vbjMUihs1dla-7uw75yrh6rL",
+      "raw_title": "FLEXÃO DE JOELHO NA BOLA.mov",
+      "action": "UPDATE_existing",
+      "exercise_id": "396843da-4de6-4bde-954a-b096ccdd2bb7",
+      "exercise_name_hint": "Flexão de Joelhos na Bola Suíça"
+    },
+    {
+      "drive_id": "1xndQNimihIJAssgdXNy8jOiQznXiRsEJ",
+      "raw_title": "FLEXÃO DE JOELHO NA BOLA SÓ EXC..mov",
+      "action": "NEW",
+      "name": "Flexão de Joelho na Bola só Excêntrico"
+    },
+    {
+      "drive_id": "1Fx1K0vxTbLK25NrtU737KBsleLXFva6s",
+      "raw_title": "FLEXÃO DE JOELHO NO SLIDE.mov",
+      "action": "NEW",
+      "name": "Flexão de Joelho no Slide"
+    },
+    {
+      "drive_id": "1pWWnw8tAOBkE6pwqKbn3iayEwxBqPhMW",
+      "raw_title": "FLEXÃO DE JOELHO SLIDE SÓ EXC.mov",
+      "action": "NEW",
+      "name": "Flexão de Joelho Slide só Excêntrico"
+    },
+    {
+      "drive_id": "1yV3lrHW_uueLpRPZynUdErA-oYB9qRe3",
+      "raw_title": "FLEXÃO DE JOELHO UNI. NA BOLA.MOV",
+      "action": "NEW",
+      "name": "Flexão de Joelho Unilateral na Bola"
+    },
+    {
+      "drive_id": "1_tgRMkTxtSEUMKAIDP-1jCAKpIJHvvS3",
+      "raw_title": "FLEXÃO DE JOELHO UNI. SLIDE.MOV",
+      "action": "NEW",
+      "name": "Flexão de Joelho Unilateral Slide"
+    },
+    {
+      "drive_id": "1QjmQbO3Tg50FlbYsRx1_pDi6T8PGhRG5",
+      "raw_title": "FLEXÃO DE JOELHO UNI. SLIDE SÓ EXC..mov",
+      "action": "NEW",
+      "name": "Flexão de Joelho Unilateral Slide só Excêntrico"
+    },
+    {
+      "drive_id": "1TqBehrldcsLGJZgi5BkboqfWFIX5AdJL",
+      "raw_title": "FLOORPRESS ALTERNADO DB.MOV",
+      "action": "NEW",
+      "name": "Floorpress Alternado com Halteres"
+    },
+    {
+      "drive_id": "1pho4NjjZXsZ5Jv9f3iLISaDhCjpvWQGZ",
+      "raw_title": "FLOORPRESS BIL KB.MOV",
+      "action": "NEW",
+      "name": "Floorpress Bilateral com Kettlebell"
+    },
+    {
+      "drive_id": "1oWnHHK77bQ5FUKVYDqsCoYq9R_ICfXwp",
+      "raw_title": "FLOORPRESS BIL. DB.MOV",
+      "action": "NEW",
+      "name": "Floorpress Bilateral com Halteres"
+    },
+    {
+      "drive_id": "1RtrfTIPmbxcjkfVeY4-oTzQKgNdKPz65",
+      "raw_title": "FLOORPRESS UNI. DB.MOV",
+      "action": "NEW",
+      "name": "Floorpress Unilateral com Halteres"
+    },
+    {
+      "drive_id": "1_6vnhk6gqNR9945Gkshab5JpTvmlp80M",
+      "raw_title": "FLOORPRESS UNI. KB.MOV",
+      "action": "NEW",
+      "name": "Floorpress Unilateral com Kettlebell"
+    },
+    {
+      "drive_id": "132Jetsh6_-OZGB9r8eJtKmz7csl1Yo76",
+      "raw_title": "FRONT SQUAT.MOV",
+      "action": "NEW",
+      "name": "Front Squat"
+    },
+    {
+      "drive_id": "15RdWK_7wMT4xl-VRb0uCu3VYlAYHIsEQ",
+      "raw_title": "FRONT SQUAT 2 DB.MOV",
+      "action": "NEW",
+      "name": "Front Squat 2 com Halteres"
+    },
+    {
+      "drive_id": "1ahucVqd2LFNCqnp-_fWqMqP6PyD1UTDp",
+      "raw_title": "FRONT SQUAT CROSS.MOV",
+      "action": "NEW",
+      "name": "Front Squat Cross"
+    },
+    {
+      "drive_id": "11U_sC426c9ZlesjX4-pdhfHrOvvGBg3N",
+      "raw_title": "GLOBET SQUAT.MOV",
+      "action": "NEW",
+      "name": "Globet Squat"
+    },
+    {
+      "drive_id": "14eaMAklZtnzB69zSZ8mMsSemJ4lfvf5Z",
+      "raw_title": "GLOBET SQUAT 1KB RACK UNI.MOV",
+      "action": "NEW",
+      "name": "Globet Squat 1 Kettlebell Rack Unilateral"
+    },
+    {
+      "drive_id": "1MhCoA4dn21eSBn14ousung8X9BPKVcjc",
+      "raw_title": "GLOBET SQUAT 2KB.MOV",
+      "action": "NEW",
+      "name": "Globet Squat 2 Kettlebells"
+    },
+    {
+      "drive_id": "1PpgRg_FdBvh5NX-8C0pGi6C-dSupDyjm",
+      "raw_title": "GLOBET SQUAT DB RACK UNI .MOV",
+      "action": "NEW",
+      "name": "Globet Squat com Halteres Rack Unilateral"
+    },
+    {
+      "drive_id": "1_Rf24VrG5BMErnqzh8Xl-u2eDum4sIK3",
+      "raw_title": "HIP THRUST ALTERNADO.MOV",
+      "action": "NEW",
+      "name": "Hip Thrust Alternado"
+    },
+    {
+      "drive_id": "17pe_8XJYanirxbYnjGU1cuFV4pzRC7v_",
+      "raw_title": "HIP THRUST BB.MOV",
+      "action": "NEW",
+      "name": "Hip Thrust com Barra"
+    },
+    {
+      "drive_id": "1jKdLnXQkVvvEXRxViPxYdi67OmPbLLaF",
+      "raw_title": "HIP THRUST BIL..MOV",
+      "action": "NEW",
+      "name": "Hip Thrust Bilateral"
+    },
+    {
+      "drive_id": "1ITv13KaDCODtlmtl7kbm83okhGW3FpIR",
+      "raw_title": "HIP THRUST UNI.MOV",
+      "action": "NEW",
+      "name": "Hip Thrust Unilateral"
+    },
+    {
+      "drive_id": "1MGQIv-Zq6XNHUA1dZBAYnGNLukqxNpmu",
+      "raw_title": "HIP THRUST UNI CARGA .MOV",
+      "action": "NEW",
+      "name": "Hip Thrust Unilateral Carga"
+    },
+    {
+      "drive_id": "10e6dnC6zxYP_mPaa_UPF7dQvNRCL3Kss",
+      "raw_title": "HOLLOWBODY DIN..MOV",
+      "action": "NEW",
+      "name": "Hollowbody Dinâmico"
+    },
+    {
+      "drive_id": "1YgoxGBifKuGvzih39yE2IJHHTiqOhouA",
+      "raw_title": "LEQUE (9090) UNI. SENTADO.MOV",
+      "action": "NEW",
+      "name": "Leque (9090) Unilateral Sentado"
+    },
+    {
+      "drive_id": "1SblO7PscrGzQUidYWNKyyf_Z-aJH2RnH",
+      "raw_title": "MOB. QUADRIL UNI. FRENTE-TRÁS SENTADO.mov",
+      "action": "NEW",
+      "name": "Mobilidade Quadril Unilateral Frente-trás Sentado"
+    },
+    {
+      "drive_id": "1yrVa1ZS7EK_eT6-kbQr4xnoVCPnoOWLA",
+      "raw_title": "PASSADA FRENTE ALTERNADA .MOV",
+      "action": "NEW",
+      "name": "Passada Frente Alternada"
+    },
+    {
+      "drive_id": "14r3bbsVwQabBqncVsUjY8KWs8xI43SNF",
+      "raw_title": "PASSADA FRENTE UNI.MOV",
+      "action": "NEW",
+      "name": "Passada Frente Unilateral"
+    },
+    {
+      "drive_id": "1b6OouKNCUuZvNzwue5u3wQEKt333gVCR",
+      "raw_title": "PASSADA NO SUPORTE (BULGARO).MOV",
+      "action": "NEW",
+      "name": "Passada no Suporte Búlgaro"
+    },
+    {
+      "drive_id": "1uT54IOltbgtInEiIffQXRy8-Np-Jqq8f",
+      "raw_title": "PASSADA REVERSA 2KB RACK .MOV",
+      "action": "NEW",
+      "name": "Passada Reversa 2 Kettlebells Rack"
+    },
+    {
+      "drive_id": "15knnXQY_H_CmAfsTvBgMCPK4kMA4_JED",
+      "raw_title": "PASSADA REVERSA ALTERNADA .MOV",
+      "action": "NEW",
+      "name": "Passada Reversa Alternada"
+    },
+    {
+      "drive_id": "1Dbtofu98m5q-KXysdJTJ9zyMcimzFtFc",
+      "raw_title": "PASSADA REVERSA KB RACK UNI.MOV",
+      "action": "NEW",
+      "name": "Passada Reversa com Kettlebell Rack Unilateral"
+    },
+    {
+      "drive_id": "1vD6GH5lpqgAETD_N0WbyiV2JkDSbIR-w",
+      "raw_title": "PASSADA REVERSA UNILATERAL.MOV",
+      "action": "NEW",
+      "name": "Passada Reversa Unilateral"
+    },
+    {
+      "drive_id": "111kjgobX8F2GgKxOLpgSAw5T7-dqhOm5",
+      "raw_title": "PISTOL NO BANCO.MOV",
+      "action": "NEW",
+      "name": "Pistol no Banco"
+    },
+    {
+      "drive_id": "1mp99EmsOB-52lX6ZUAfQk-REHVOGKICE",
+      "raw_title": "PISTOL NO BANCO (SÓ EXC).MOV",
+      "action": "NEW",
+      "name": "Pistol no Banco (Só Excêntrico)"
+    },
+    {
+      "drive_id": "1h-rhe0oM1XYoC3FKfRAcFe7tFR4cBorr",
+      "raw_title": "PONTE ALTA BIL..MOV",
+      "action": "NEW",
+      "name": "Ponte Alta Bilateral"
+    },
+    {
+      "drive_id": "16i-cFhY6qJx6-5aFrL5tgmHKdawf6jd3",
+      "raw_title": "PONTE ALTA BIL. C/ PESO.MOV",
+      "action": "NEW",
+      "name": "Ponte Alta Bilateral com Peso"
+    },
+    {
+      "drive_id": "18S7OMII-iruNKboruXVUzs034WfgCY4M",
+      "raw_title": "PONTE ALTA UNI..MOV",
+      "action": "NEW",
+      "name": "Ponte Alta Unilateral"
+    },
+    {
+      "drive_id": "1q6wU0GbxWdMugembtnaFmnHurtGV1UD3",
+      "raw_title": "PONTE ALTA UNI. AFASTADO.MOV",
+      "action": "NEW",
+      "name": "Ponte Alta Unilateral Afastado"
+    },
+    {
+      "drive_id": "10xGlBfIH6mz5wAJmtDsaYu6H1FPcrXXj",
+      "raw_title": "PONTE BILATERAL.MOV",
+      "action": "NEW",
+      "name": "Ponte Bilateral"
+    },
+    {
+      "drive_id": "1eEuX2VdQVp9uxEIUmZC8DGlBbMbouEA9",
+      "raw_title": "PONTE BILATERAL APERTANDO O ROLINHO.MOV",
+      "action": "NEW",
+      "name": "Ponte Bilateral Apertando o Rolinho"
+    },
+    {
+      "drive_id": "17HG9lCbG2qpzba14zBRejblKpYH0xEIe",
+      "raw_title": "PONTE BIL NA BOLA.MOV",
+      "action": "NEW",
+      "name": "Ponte Bilateral na Bola"
+    },
+    {
+      "drive_id": "1gnRLjI3AOLSqsZVzsZFnaFZkHuz1EOTl",
+      "raw_title": "PONTE UNI.MOV",
+      "action": "NEW",
+      "name": "Ponte Unilateral"
+    },
+    {
+      "drive_id": "154hwKNuYPHqvd9ZM9ynCb5zEM3vY5oJC",
+      "raw_title": "PONTE UNI NA BOLA.MOV",
+      "action": "NEW",
+      "name": "Ponte Unilateral na Bola"
+    },
+    {
+      "drive_id": "15xeRTASqfBzYtZCtbIrjU6vbv7Sn2jbb",
+      "raw_title": "PRANCHA NA BOLA DINÂMICA.mov",
+      "action": "NEW",
+      "name": "Prancha na Bola Dinâmica"
+    },
+    {
+      "drive_id": "1h8KGvEDRJPw9g55WtF33hu8snE8cr2DR",
+      "raw_title": "PRANCHA NA BOLA ISO\" .MOV",
+      "action": "UPDATE_existing",
+      "exercise_id": "1ca26553-8888-451e-8f4d-6e481a1cf381",
+      "exercise_name_hint": "Prancha Isométrica na Bola Suíça"
+    },
+    {
+      "drive_id": "1XE0g2XWm7YSjc8dcukC1ZOd2BGsLrn_L",
+      "raw_title": "PRESS SAJ. ALTERNADO DB.mov",
+      "action": "NEW",
+      "name": "Press Semi-ajoelhado Alternado com Halteres"
+    },
+    {
+      "drive_id": "1zXJkerHuhkdiFmVLjmEd1HTs8F4jGiFM",
+      "raw_title": "PRESS SAJ. ALTERNADO KB.mov",
+      "action": "NEW",
+      "name": "Press Semi-ajoelhado Alternado com Kettlebell"
+    },
+    {
+      "drive_id": "11nN9eEseXoyAxkz4KFaRMroXnSa1ufjH",
+      "raw_title": "PRESS SAJ. BIL. C/ KB.mov",
+      "action": "NEW",
+      "name": "Press Semi-ajoelhado Bilateral com Kettlebell"
+    },
+    {
+      "drive_id": "1eFSMaXFCvmQuuyrK5hMIuQBQCyr-z1im",
+      "raw_title": "PRESS SAJ. BIL. DB.mov",
+      "action": "NEW",
+      "name": "Press Semi-ajoelhado Bilateral com Halteres"
+    },
+    {
+      "drive_id": "10nLQCjPnLSxtk7wlw2vJz58RVrmqYASM",
+      "raw_title": "PRESS SAJ. UNI C/ KB.mov",
+      "action": "NEW",
+      "name": "Press Semi-ajoelhado Unilateral com Kettlebell"
+    },
+    {
+      "drive_id": "1t3IvhBtMqeU2Lj57zyBGAlXaKQAOCV7e",
+      "raw_title": "PRESS SAJ. UNI. DB.mov",
+      "action": "NEW",
+      "name": "Press Semi-ajoelhado Unilateral com Halteres"
+    },
+    {
+      "drive_id": "1Zud6BJvdNQ0rsQ2DA5f_a8pnlIE4nYG6",
+      "raw_title": "PUXADA VERTICAL SUSPENSA NA BB.MOV",
+      "action": "NEW",
+      "name": "Puxada Vertical Suspensa na Barra"
+    },
+    {
+      "drive_id": "131KvHc4xMhyZ1yiPh1B-BJWkq6cpb1I1",
+      "raw_title": "REMADA B.ATLETICA ABERTA POLIA.mov",
+      "action": "NEW",
+      "name": "Remada Base Atlética Aberta Polia"
+    },
+    {
+      "drive_id": "1HTsVLqbkpsj1D-TL4Ubsb1va2kDk5QlX",
+      "raw_title": "REMADA B.ATLETICA BIL.mov",
+      "action": "NEW",
+      "name": "Remada Base Atlética Bilateral"
+    },
+    {
+      "drive_id": "116UljFEVCtRtXIA8PERGb6Tv1u4gh_BT",
+      "raw_title": "REMADA B.ATLETICA UNI POLIA.MOV",
+      "action": "NEW",
+      "name": "Remada Base Atlética Unilateral Polia"
+    },
+    {
+      "drive_id": "1pqVbrolxQ_pGyT4GjOG3Xr_M8axpvxVg",
+      "raw_title": "REMADA CURV. ALTERNADA C/ ISO OPOSTA.MOV",
+      "action": "NEW",
+      "name": "Remada Curvada Alternada com Isométrico Oposta"
+    },
+    {
+      "drive_id": "14_bG1ZBCgVQrV68gLM2GFhI-J0oZzXRb",
+      "raw_title": "REMADA CURVADA ALTERNADA KB/DB.MOV",
+      "action": "NEW",
+      "name": "Remada Curvada Alternada Kettlebell ou Halter"
+    },
+    {
+      "drive_id": "1u8o2lro_0zQi1e2yJljfdSdZHi8CJoqe",
+      "raw_title": "REMADA CURVADA B.ASSIMÉTRICA.mov",
+      "action": "NEW",
+      "name": "Remada Curvada Base Assimétrica"
+    },
+    {
+      "drive_id": "1t1S-hhkn-3RGCzHm-veF2H8wO5QF_meo",
+      "raw_title": "REMADA CURVADA BIL POLIA.mov",
+      "action": "NEW",
+      "name": "Remada Curvada Bilateral Polia"
+    },
+    {
+      "drive_id": "1aY_5n1FpuT5gzo9xZhoUlqQLLd_3C42R",
+      "raw_title": "REMADA CURVADA KB/DB .MOV",
+      "action": "NEW",
+      "name": "Remada Curvada Kettlebell ou Halter"
+    },
+    {
+      "drive_id": "13lurIhO7wE5GeZ54K6tBqy_aLNKg95ur",
+      "raw_title": "REMADA CURVADA KB/DB LATERAL.MOV",
+      "action": "NEW",
+      "name": "Remada Curvada Kettlebell ou Halter Lateral"
+    },
+    {
+      "drive_id": "1vbD_0K38Ib4ax3HA1AMASFK4t0em5sgS",
+      "raw_title": "REMADA CURVADA NA BB.MOV",
+      "action": "UPDATE_existing",
+      "exercise_id": "afb4fed6-7046-4a91-a81a-ebeaaff03aa3",
+      "exercise_name_hint": "Remada Curvada com Barra Reta (Pegada Pronada)"
+    },
+    {
+      "drive_id": "192dMNqpMpU2mpiTHCHcLnKOS9ipfP19n",
+      "raw_title": "REMADA CURVADA UNI POLIA.MOV",
+      "action": "NEW",
+      "name": "Remada Curvada Unilateral Polia"
+    },
+    {
+      "drive_id": "1fdxfQ8VH0aAAXcUoCYejQIvC19Z5v-ol",
+      "raw_title": "REMADA SAJ. BIL POLIA.MOV",
+      "action": "NEW",
+      "name": "Remada Semi-ajoelhado Bilateral Polia"
+    },
+    {
+      "drive_id": "1wVudCBnpdQDC8TTz5IO_OJ32kyFJFf23",
+      "raw_title": "REMADA SAJ. UNI POLIA.mov",
+      "action": "NEW",
+      "name": "Remada Semi-ajoelhado Unilateral Polia"
+    },
+    {
+      "drive_id": "1V-VF4r4BEaKP0ynqa_qfufvIGHJGFx_U",
+      "raw_title": "REMADA SENTADO ABERTA POLIA.mov",
+      "action": "NEW",
+      "name": "Remada Sentado Aberta Polia"
+    },
+    {
+      "drive_id": "1V3OGh-tTdeXg1-NIyezGyJE6PiAmhtHO",
+      "raw_title": "REMADA SENTADO BIL SUPINADA POLIA.mov",
+      "action": "NEW",
+      "name": "Remada Sentado Bilateral Supinada Polia"
+    },
+    {
+      "drive_id": "1jCuLkGs2J2FmLNyOU47RC4yZfxMkgbBR",
+      "raw_title": "REMADA SENTADO BIL. POLIA.mov",
+      "action": "NEW",
+      "name": "Remada Sentado Bilateral Polia"
+    },
+    {
+      "drive_id": "1Iw_yZrjLtYdleRMoQGnXfhLS8rHr96pj",
+      "raw_title": "REMADA SENTADO UNI POLIA.MOV",
+      "action": "NEW",
+      "name": "Remada Sentado Unilateral Polia"
+    },
+    {
+      "drive_id": "1RPRtQ4DfLTdqcBG3wjav3A1dHZpbtgdQ",
+      "raw_title": "REMADA SENTADO UNI SUPINADA POLIA.mov",
+      "action": "NEW",
+      "name": "Remada Sentado Unilateral Supinada Polia"
+    },
+    {
+      "drive_id": "1vsKJcBFcNQI37E9IxKDlSlG65FYaekhL",
+      "raw_title": "REMADA SUSPENSA NA BB.MOV",
+      "action": "UPDATE_existing",
+      "exercise_id": "2bae6cf4-6027-45ad-812f-2c14b01a36ab",
+      "exercise_name_hint": "Remada Invertida Supinada na Barra"
+    },
+    {
+      "drive_id": "1pAvAJHbNsK-0gOtfUtTo9Ysi1RvsY6B0",
+      "raw_title": "ROCKING ADUTOR.MOV",
+      "action": "NEW",
+      "name": "Rocking Adutor"
+    },
+    {
+      "drive_id": "1WmbaJwJu2DnBjQQIkL5bCjH5sEXKBNaF",
+      "raw_title": "ROCKING C/ ROTTOR.mov",
+      "action": "NEW",
+      "name": "Rocking com Rotator"
+    },
+    {
+      "drive_id": "12lEjrRX6YONjhXaRcPT22DkvWmGHy8sw",
+      "raw_title": "SALTITOS FRENTE-COSTAS.mov",
+      "action": "NEW",
+      "name": "Saltitos Frente-costas"
+    },
+    {
+      "drive_id": "1relelpLZJEh8S8hGfDx8TGleUFfNeEaI",
+      "raw_title": "SALTITOS UNI. .mov",
+      "action": "NEW",
+      "name": "Saltitos Unilateral"
+    },
+    {
+      "drive_id": "18R7vtk_QkQYw5NLAfYNaWVe9sX3Aa7cK",
+      "raw_title": "SLAM BALL SOLO.MOV",
+      "action": "NEW",
+      "name": "Slam Ball Solo"
+    },
+    {
+      "drive_id": "1mDHI2f6XHrH0yngJQXNbzMylYnP32SPg",
+      "raw_title": "SLAM BALL SOLO SAJ..MOV",
+      "action": "NEW",
+      "name": "Slam Ball Solo Semi-ajoelhado"
+    },
+    {
+      "drive_id": "1KLItvkO3JRmsUYKWZ3P0mUgQKtOoiLyl",
+      "raw_title": "STEP DOWN.MOV",
+      "action": "NEW",
+      "name": "Step Down"
+    },
+    {
+      "drive_id": "1hlY7wppwf_5_sqoT_IR0vqtsYn1WEFEQ",
+      "raw_title": "STEP UP.MOV",
+      "action": "UPDATE_existing",
+      "exercise_id": "6c3ba5f6-4e68-48ae-a4c7-40e2c6456677",
+      "exercise_name_hint": "Step Up"
+    },
+    {
+      "drive_id": "1OmApQQVL7xRLJsOoZBtemycZwshl21Ru",
+      "raw_title": "STEP UP C/ 2KB.MOV",
+      "action": "NEW",
+      "name": "Step Up com 2 Kettlebells"
+    },
+    {
+      "drive_id": "1UicwhA1mW-TRvPe3w1wN6oIslG5zW2I4",
+      "raw_title": "STEP UP COORD. C/ 2KB.MOV",
+      "action": "NEW",
+      "name": "Step Up Coordenação com 2 Kettlebells"
+    },
+    {
+      "drive_id": "1T7-PNGo9KUOPddpkjBMqmg8cOQggvbTf",
+      "raw_title": "STEP UP COORD. POS. MARCHA.MOV",
+      "action": "NEW",
+      "name": "Step Up Coordenação Posição Marcha"
+    },
+    {
+      "drive_id": "11q4TMuns59ZHbzecZFMRyCtgmEviz9ty",
+      "raw_title": "STEP UP TENSÃO.MOV",
+      "action": "NEW",
+      "name": "Step Up Tensão"
+    },
+    {
+      "drive_id": "1WFf84z1ljuyWPvoFS9uutsB9aaeTuiE4",
+      "raw_title": "STIFF BB.MOV",
+      "action": "NEW",
+      "name": "Stiff com Barra"
+    },
+    {
+      "drive_id": "1zBa691NmrzUxtZb00iOblSH87A0FQN6L",
+      "raw_title": "STIFF BB BASE ABERTA.MOV",
+      "action": "NEW",
+      "name": "Stiff com Barra Base Aberta"
+    },
+    {
+      "drive_id": "16EJry-RaN81JyC92HWq5ZlHH7UgPhkqq",
+      "raw_title": "STIFF DB.MOV",
+      "action": "UPDATE_existing",
+      "exercise_id": "aeba31db-02ec-4820-879a-6615a1ff50b9",
+      "exercise_name_hint": "Stiff com Halteres"
+    },
+    {
+      "drive_id": "1jorAuQmxy7ikN4vH2Mv5AaNqkRSYJVPR",
+      "raw_title": "STIFF UNI BB.MOV",
+      "action": "UPDATE_existing",
+      "exercise_id": "45728245-c521-4a63-a581-b35cf0f22909",
+      "exercise_name_hint": "Stiff Unilateral"
+    },
+    {
+      "drive_id": "1izbYrTV3cOSIj3n83szBkiqEKw_-febP",
+      "raw_title": "STIFF UNI. DB.MOV",
+      "action": "NEW",
+      "name": "Stiff Unilateral com Halter"
+    },
+    {
+      "drive_id": "1w9mdpb9K9q3fezfs34xbfUAJyZSZKkbq",
+      "raw_title": "SUPINO ALTERNADO C/ ISO OPOSTA.MOV",
+      "action": "NEW",
+      "name": "Supino Alternado com Isométrico Oposta"
+    },
+    {
+      "drive_id": "1G_AQpbCegMeOv-vfy6G_YWAHtvTt4rrj",
+      "raw_title": "SUPINO ALTERNADO DB.mov",
+      "action": "NEW",
+      "name": "Supino Alternado com Halteres"
+    },
+    {
+      "drive_id": "1w-1c6S1AqhdmFm7j8SO1tKwOAOtbLfPw",
+      "raw_title": "SUPINO COMBINADO DB (1+1+2).MOV",
+      "action": "NEW",
+      "name": "Supino Combinado com Halteres (1+1+2)"
+    },
+    {
+      "drive_id": "1aB9ZO5w5FPVbiImtYHurY1IGhXnrK0ch",
+      "raw_title": "SUPINO INCLINADO BB.mov",
+      "action": "UPDATE_existing",
+      "exercise_id": "80a13abd-5092-40db-86a1-739e67f18e1b",
+      "exercise_name_hint": "Supino Inclinado com Barra Reta"
+    },
+    {
+      "drive_id": "1-PMhBS7zHMrEjW3RWDIoK7QJuwkar8Pu",
+      "raw_title": "SUPINO INCLINADO COMBINADO (1+1+2).MOV",
+      "action": "NEW",
+      "name": "Supino Inclinado Combinado (1+1+2)"
+    },
+    {
+      "drive_id": "1x0QEFQqzprHxUoKh_JOIoO-NEMcxNEjg",
+      "raw_title": "SUPINO INCLINADO DB.mov",
+      "action": "UPDATE_existing",
+      "exercise_id": "651231b1-48d9-4013-b537-cdc7c15a3e7c",
+      "exercise_name_hint": "Supino Inclinado com Halteres"
+    },
+    {
+      "drive_id": "1kAaj-FjpULLHypKsjfOevEHlVaPxSiRp",
+      "raw_title": "SUPINO INLCINADO ALTERNADO DB.mov",
+      "action": "NEW",
+      "name": "Supino Inclinado Alternado com Halteres"
+    },
+    {
+      "drive_id": "1cKrUwG51rWiHdFqJPdIC8BC_TJATN6lU",
+      "raw_title": "SUPINO RETO BB.mov",
+      "action": "UPDATE_existing",
+      "exercise_id": "fa921fca-3f70-4d8c-803a-2f30a03d3784",
+      "exercise_name_hint": "Supino Reto com Barra"
+    },
+    {
+      "drive_id": "1mbo1M06jSh651By0xU_nW2gNwNMWQ0xo",
+      "raw_title": "SUPINO RETO DB.mov",
+      "action": "UPDATE_existing",
+      "exercise_id": "f86432d8-1959-4a15-9444-835cf0c91f51",
+      "exercise_name_hint": "Supino Reto com Halteres"
+    },
+    {
+      "drive_id": "1WsZ1Kto0Tj2cUL1R1ixLTOPkox1ur1jh",
+      "raw_title": "TERRA 2KB.MOV",
+      "action": "NEW",
+      "name": "Terra 2 Kettlebells"
+    },
+    {
+      "drive_id": "1VUyN98VnY9d-Yu_LWeWMVbbe0-NZmcvH",
+      "raw_title": "TERRA 2KB LATERAL .MOV",
+      "action": "NEW",
+      "name": "Terra 2 Kettlebells Lateral"
+    },
+    {
+      "drive_id": "1ZRvnbPHY1r83e4wruox8Cj_otp19KZty",
+      "raw_title": "TERRA BB.MOV",
+      "action": "NEW",
+      "name": "Terra com Barra"
+    },
+    {
+      "drive_id": "1QehmQ5kzlRHVsYGMoAutj5GaVY6N18yQ",
+      "raw_title": "TERRA KB/DB .MOV",
+      "action": "NEW",
+      "name": "Terra Kettlebell ou Halter"
+    },
+    {
+      "drive_id": "1Pun-T7pkGVt85DEmB-NHGR6S_qQNIHUh",
+      "raw_title": "TERRA SUMÔ BB.MOV",
+      "action": "NEW",
+      "name": "Terra Sumô com Barra"
+    },
+    {
+      "drive_id": "1OAd0NTk6GuhsmL5aYXw-xGt4r-PdVRey",
+      "raw_title": "TERRA SUMÔ KB/DB.MOV",
+      "action": "NEW",
+      "name": "Terra Sumô Kettlebell ou Halter"
+    },
+    {
+      "drive_id": "1sktaNR8gh8ZcOf5pCcbW35SAQ-DIKfMm",
+      "raw_title": "WALL DRILL 1 TROCA ALTERNADA.mov",
+      "action": "NEW",
+      "name": "Wall Drill 1 Troca Alternada"
+    },
+    {
+      "drive_id": "1oqUkMiexqrHtNchq2MkwM2HeeCbNLY2M",
+      "raw_title": "WALL DRILL 3 TROCAS.mov",
+      "action": "NEW",
+      "name": "Wall Drill 3 Trocas"
+    },
+    {
+      "drive_id": "14WeAf5n4gRIdvWu2Q-bLLPf_WL84xXtq",
+      "raw_title": "WALL DRILL LINEAR + 1 TROCA.mov",
+      "action": "NEW",
+      "name": "Wall Drill Linear + 1 Troca"
+    },
+    {
+      "drive_id": "1t8krLeSm6EDQtiTE5PNWV9rG6LrhVkFX",
+      "raw_title": "WALL DRILL LINEAR DINÂMICO.mov",
+      "action": "NEW",
+      "name": "Wall Drill Linear Dinâmico"
+    },
+    {
+      "drive_id": "1VbcHotWV0Y17m9_dwYtHoJ8coBWUj7E9",
+      "raw_title": "WALL DRILL TROCAS - EDUCATIVO LENTO.mov",
+      "action": "NEW",
+      "name": "Wall Drill Trocas - Educativo Lento"
+    }
+  ],
+  "_summary": {
+    "total": 143,
+    "update_existing": 17,
+    "new": 126,
+    "skip": 0
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "_comment": "Template — copie para decisions.json e preencha após revisar docs/aprovacao-videos-conflitos.md. Cada item tem action = UPDATE_existing | NEW | SKIP.",
+  "approvals": [
+    {
+      "drive_id": "1ArwquR2KxBgM5yMrMy_qwhmkjvxjAtHa",
+      "raw_title": "AFUNDO.MOV",
+      "action": "UPDATE_existing",
+      "exercise_id": "2b6d5137-b635-4e16-9302-69da7fe6ab94",
+      "note": "Conflito A.1 — sobrescreve YouTube atual"
+    },
+    {
+      "drive_id": "1tP00bwfi_0UP0psf7klxXUx-TAX-5Gzz",
+      "raw_title": "AFUNDO 1KB RACK.MOV",
+      "action": "NEW",
+      "name": "Afundo 1KB Rack",
+      "note": "Sem match no catálogo — cria novo (is_archived=true)"
+    },
+    {
+      "drive_id": "1XYZexampleXYZ",
+      "action": "SKIP",
+      "note": "Exemplo — não importar este arquivo"
+    }
+  ]
+}

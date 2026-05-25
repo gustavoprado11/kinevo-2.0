@@ -1,0 +1,860 @@
+[
+  {
+    "drive_id": "1VZyiCvzwDqzdX4Ih6V7eRnq6wzkCt-lw",
+    "raw_title": "90/90 INF. DINÂMICO.MOV",
+    "normalized_name": "90/90 INF. DINÂMICO",
+    "size_bytes": 40643634
+  },
+  {
+    "drive_id": "1ArwquR2KxBgM5yMrMy_qwhmkjvxjAtHa",
+    "raw_title": "AFUNDO.MOV",
+    "normalized_name": "AFUNDO",
+    "size_bytes": 36621975
+  },
+  {
+    "drive_id": "1tP00bwfi_0UP0psf7klxXUx-TAX-5Gzz",
+    "raw_title": "AFUNDO 1KB RACK.MOV",
+    "normalized_name": "AFUNDO 1KB RACK",
+    "size_bytes": 22025177
+  },
+  {
+    "drive_id": "1yVuUEGE691yyt-YxDPBSKAqSKesA6MjC",
+    "raw_title": "AFUNDO 2KB RACK.MOV",
+    "normalized_name": "AFUNDO 2KB RACK",
+    "size_bytes": 23768454
+  },
+  {
+    "drive_id": "1UbhBQBmKc0r0XUYesO4E8lZqzyJnTKFZ",
+    "raw_title": "AFUNDO 2KB/DB .MOV",
+    "normalized_name": "AFUNDO 2KB/Halteres",
+    "size_bytes": 28625726
+  },
+  {
+    "drive_id": "12-JGA4VMvD2eP4okcoS0NqyHNpYsu2LX",
+    "raw_title": "AFUNDO BB.MOV",
+    "normalized_name": "AFUNDO Barra",
+    "size_bytes": 43695786
+  },
+  {
+    "drive_id": "1vX_4ZdyYE9oljMP3qfZdi8OMujGpe9Gu",
+    "raw_title": "AFUNDO DB.MOV",
+    "normalized_name": "AFUNDO Halteres",
+    "size_bytes": 29941506
+  },
+  {
+    "drive_id": "1TlaJcDkh4OyoJFNaKl5kvYakvKpj2cPJ",
+    "raw_title": "AFUNDO KB RACK BILATERAL .MOV",
+    "normalized_name": "AFUNDO Kettlebell RACK BILATERAL",
+    "size_bytes": 23467012
+  },
+  {
+    "drive_id": "13zjyiL4epLV5ycE4sT8zObE3A4KZ16Zo",
+    "raw_title": "ALONG FLEX. QUADRIL PÉ NO BANCO.MOV",
+    "normalized_name": "Alongamento Flexao. QUADRIL PÉ NO BANCO",
+    "size_bytes": 62297809
+  },
+  {
+    "drive_id": "1Zj9vnvgDG39WBK2k9aNYbbqzI4JDEIbK",
+    "raw_title": "ALONG. ADUTOR C/ KB.MOV",
+    "normalized_name": "Alongamento. ADUTOR C/ Kettlebell",
+    "size_bytes": 48082959
+  },
+  {
+    "drive_id": "1MYhU0w89teTcW18Z3WgvVVqogmimLVrm",
+    "raw_title": "ALONG. FLEX. QUADRIL DINÂMICO .MOV",
+    "normalized_name": "Alongamento. Flexao. QUADRIL DINÂMICO",
+    "size_bytes": 38740020
+  },
+  {
+    "drive_id": "1g48rxgaNLQrCnKSfvLm7n26ixnKh0Kx-",
+    "raw_title": "ALONG. FLEX. QUADRIL DIREÇÕES .MOV",
+    "normalized_name": "Alongamento. Flexao. QUADRIL DIREÇÕES",
+    "size_bytes": 51399588
+  },
+  {
+    "drive_id": "1slwkFge0apoWKp-v83Dg-POoR7gQtJAD",
+    "raw_title": "ANDAR CALCANHAR.MOV",
+    "normalized_name": "ANDAR CALCANHAR",
+    "size_bytes": 16379344
+  },
+  {
+    "drive_id": "1bKzAIE8JMyxkYxc5wO4NGu_if_ordx-y",
+    "raw_title": "ANDAR PONTA DE PÉ.mov",
+    "normalized_name": "ANDAR PONTA DE PÉ",
+    "size_bytes": 12505817
+  },
+  {
+    "drive_id": "1Uett0OEyOQ71b10FNHSvs1ZSBC7bh8S6",
+    "raw_title": "AREMESSO DE MEDBALL LATERAL B. ASSIM (perna da frente/parede).MOV",
+    "normalized_name": "AREMESSO DE MEDBALL LATERAL B. ASSIM (perna da frente/parede)",
+    "size_bytes": 23390704
+  },
+  {
+    "drive_id": "1dSKlrk5tqJRXadd99oZ3gaRG0QliLE8f",
+    "raw_title": "ARREMESSO DE MEDBALL C/ CONTRA MOVIMENTO .MOV",
+    "normalized_name": "ARREMESSO DE MEDBALL C/ CONTRA MOVIMENTO",
+    "size_bytes": 35432963
+  },
+  {
+    "drive_id": "1L4o2jqvJ0qh6Y8VntGkrsyJqG1a3xKyr",
+    "raw_title": "ARREMESSO DE MEDBALL LATERAL B. PARALELA .MOV",
+    "normalized_name": "ARREMESSO DE MEDBALL LATERAL B. PARALELA",
+    "size_bytes": 22496572
+  },
+  {
+    "drive_id": "1jkwhgE9H49dSGzHyXBhQDl5Knyr-bW67",
+    "raw_title": "AVIÃO 1KB .MOV",
+    "normalized_name": "AVIÃO 1KB",
+    "size_bytes": 48800891
+  },
+  {
+    "drive_id": "14GIxM81BIT10RlS2CCx8cq59tmKptWXI",
+    "raw_title": "AVIÃO 2KB  .MOV",
+    "normalized_name": "AVIÃO 2KB",
+    "size_bytes": 53264933
+  },
+  {
+    "drive_id": "1p3e7g1uEnXP1dd2xVA4rdyB-PK-7FM0k",
+    "raw_title": "BACK SQUAT.MOV",
+    "normalized_name": "BACK SQUAT",
+    "size_bytes": 52063535
+  },
+  {
+    "drive_id": "192tErPfyt8beqL5KE5UuOKsz3XGXIOQU",
+    "raw_title": "CRUCIFIXO INCLINADO.mov",
+    "normalized_name": "CRUCIFIXO INCLINADO",
+    "size_bytes": 45651542
+  },
+  {
+    "drive_id": "1lhSL6JIaCRdsmEgj-XuCmKd4b9wWYga7",
+    "raw_title": "DEAD BUG ALTERNADO C/ PESO.MOV",
+    "normalized_name": "DEAD BUG ALTERNADO C/ PESO",
+    "size_bytes": 43642191
+  },
+  {
+    "drive_id": "1jd8XF-3VFdSGtw2f3s71Jb0_sU78LrYY",
+    "raw_title": "DEAD BUG C/ BOQUEIO .MOV",
+    "normalized_name": "DEAD BUG C/ BOQUEIO",
+    "size_bytes": 48813542
+  },
+  {
+    "drive_id": "1-GFSI_AoG0ZsjLUf0KdU7V-C4z3Re_vP",
+    "raw_title": "DEAD ROW ALTERNADO.MOV",
+    "normalized_name": "DEAD ROW ALTERNADO",
+    "size_bytes": 46574814
+  },
+  {
+    "drive_id": "1p-y8_YcyT4qzKVSAFQ-7YDiy_9VRMCGg",
+    "raw_title": "DEAD ROW BIL. .MOV",
+    "normalized_name": "DEAD ROW Bilateral",
+    "size_bytes": 30716915
+  },
+  {
+    "drive_id": "1Zs1nkbn-jnFTt5_5mwDeZy3OPJvj0D64",
+    "raw_title": "DROP BIL..MOV",
+    "normalized_name": "DROP Bilateral",
+    "size_bytes": 37419442
+  },
+  {
+    "drive_id": "1w0LX_Il86yYk4ibYPg8a9tw2CdSXW6Ja",
+    "raw_title": "DROP BOX.MOV",
+    "normalized_name": "DROP Box",
+    "size_bytes": 38361207
+  },
+  {
+    "drive_id": "1S3CFjfhSS46u-fQai6haqdy1-9Shc5wh",
+    "raw_title": "DROP BOX + JUMP.MOV",
+    "normalized_name": "DROP Box + JUMP",
+    "size_bytes": 45650609
+  },
+  {
+    "drive_id": "1yXzzf_bTuEa4bbmXRcgLDXIk-vWGJg4d",
+    "raw_title": "DROP UNI.MOV",
+    "normalized_name": "DROP Unilateral",
+    "size_bytes": 32265822
+  },
+  {
+    "drive_id": "1bYU2iqZhVkBgNAFIAfU89C5FafQp-_ld",
+    "raw_title": "FLEXAO JOELHO UNI. BOLA SÓ EXC.mov",
+    "normalized_name": "FLEXAO JOELHO Unilateral. BOLA SÓ EXC",
+    "size_bytes": 108844523
+  },
+  {
+    "drive_id": "12qNEblNCuINgO-6OICG4d_NOJJo7VY7Z",
+    "raw_title": "FLEXÃO DE BRAÇOS.MOV",
+    "normalized_name": "FLEXÃO DE BRAÇOS",
+    "size_bytes": 26708747
+  },
+  {
+    "drive_id": "1iHDX2NuqPXFVscEZT04gwgsMVAr2jo4p",
+    "raw_title": "FLEXÃO DE BRAÇOS A.R. C/ KB.MOV",
+    "normalized_name": "FLEXÃO DE BRAÇOS A.R. C/ Kettlebell",
+    "size_bytes": 23205022
+  },
+  {
+    "drive_id": "1MvBW-M3gIEvN5fGIDtXgoEu96a3cOkSS",
+    "raw_title": "FLEXÃO DE BRAÇOS JOELHO.MOV",
+    "normalized_name": "FLEXÃO DE BRAÇOS JOELHO",
+    "size_bytes": 40493833
+  },
+  {
+    "drive_id": "1tL_Ugn_1vbjMUihs1dla-7uw75yrh6rL",
+    "raw_title": "FLEXÃO DE JOELHO NA BOLA.mov",
+    "normalized_name": "FLEXÃO DE JOELHO NA BOLA",
+    "size_bytes": 67646771
+  },
+  {
+    "drive_id": "1xndQNimihIJAssgdXNy8jOiQznXiRsEJ",
+    "raw_title": "FLEXÃO DE JOELHO NA BOLA SÓ EXC..mov",
+    "normalized_name": "FLEXÃO DE JOELHO NA BOLA SÓ EXC",
+    "size_bytes": 89085109
+  },
+  {
+    "drive_id": "1Fx1K0vxTbLK25NrtU737KBsleLXFva6s",
+    "raw_title": "FLEXÃO DE JOELHO NO SLIDE.mov",
+    "normalized_name": "FLEXÃO DE JOELHO NO SLIDE",
+    "size_bytes": 45470161
+  },
+  {
+    "drive_id": "1pWWnw8tAOBkE6pwqKbn3iayEwxBqPhMW",
+    "raw_title": "FLEXÃO DE JOELHO SLIDE SÓ EXC.mov",
+    "normalized_name": "FLEXÃO DE JOELHO SLIDE SÓ EXC",
+    "size_bytes": 69822301
+  },
+  {
+    "drive_id": "1yV3lrHW_uueLpRPZynUdErA-oYB9qRe3",
+    "raw_title": "FLEXÃO DE JOELHO UNI. NA BOLA.MOV",
+    "normalized_name": "FLEXÃO DE JOELHO Unilateral. NA BOLA",
+    "size_bytes": 66697593
+  },
+  {
+    "drive_id": "1_tgRMkTxtSEUMKAIDP-1jCAKpIJHvvS3",
+    "raw_title": "FLEXÃO DE JOELHO UNI. SLIDE.MOV",
+    "normalized_name": "FLEXÃO DE JOELHO Unilateral. SLIDE",
+    "size_bytes": 49886359
+  },
+  {
+    "drive_id": "1QjmQbO3Tg50FlbYsRx1_pDi6T8PGhRG5",
+    "raw_title": "FLEXÃO DE JOELHO UNI. SLIDE SÓ EXC..mov",
+    "normalized_name": "FLEXÃO DE JOELHO Unilateral. SLIDE SÓ EXC",
+    "size_bytes": 55632328
+  },
+  {
+    "drive_id": "1TqBehrldcsLGJZgi5BkboqfWFIX5AdJL",
+    "raw_title": "FLOORPRESS ALTERNADO DB.MOV",
+    "normalized_name": "FLOORPRESS ALTERNADO Halteres",
+    "size_bytes": 37199118
+  },
+  {
+    "drive_id": "1pho4NjjZXsZ5Jv9f3iLISaDhCjpvWQGZ",
+    "raw_title": "FLOORPRESS BIL KB.MOV",
+    "normalized_name": "FLOORPRESS Bilateral Kettlebell",
+    "size_bytes": 46629378
+  },
+  {
+    "drive_id": "1oWnHHK77bQ5FUKVYDqsCoYq9R_ICfXwp",
+    "raw_title": "FLOORPRESS BIL. DB.MOV",
+    "normalized_name": "FLOORPRESS Bilateral. Halteres",
+    "size_bytes": 42376189
+  },
+  {
+    "drive_id": "1RtrfTIPmbxcjkfVeY4-oTzQKgNdKPz65",
+    "raw_title": "FLOORPRESS UNI. DB.MOV",
+    "normalized_name": "FLOORPRESS Unilateral. Halteres",
+    "size_bytes": 36653399
+  },
+  {
+    "drive_id": "1_6vnhk6gqNR9945Gkshab5JpTvmlp80M",
+    "raw_title": "FLOORPRESS UNI. KB.MOV",
+    "normalized_name": "FLOORPRESS Unilateral. Kettlebell",
+    "size_bytes": 39388226
+  },
+  {
+    "drive_id": "132Jetsh6_-OZGB9r8eJtKmz7csl1Yo76",
+    "raw_title": "FRONT SQUAT.MOV",
+    "normalized_name": "FRONT SQUAT",
+    "size_bytes": 62421289
+  },
+  {
+    "drive_id": "15RdWK_7wMT4xl-VRb0uCu3VYlAYHIsEQ",
+    "raw_title": "FRONT SQUAT 2 DB.MOV",
+    "normalized_name": "FRONT SQUAT 2 Halteres",
+    "size_bytes": 23016551
+  },
+  {
+    "drive_id": "1ahucVqd2LFNCqnp-_fWqMqP6PyD1UTDp",
+    "raw_title": "FRONT SQUAT CROSS.MOV",
+    "normalized_name": "FRONT SQUAT CROSS",
+    "size_bytes": 37977205
+  },
+  {
+    "drive_id": "11U_sC426c9ZlesjX4-pdhfHrOvvGBg3N",
+    "raw_title": "GLOBET SQUAT.MOV",
+    "normalized_name": "GLOBET SQUAT",
+    "size_bytes": 22347381
+  },
+  {
+    "drive_id": "14eaMAklZtnzB69zSZ8mMsSemJ4lfvf5Z",
+    "raw_title": "GLOBET SQUAT 1KB RACK UNI.MOV",
+    "normalized_name": "GLOBET SQUAT 1KB RACK Unilateral",
+    "size_bytes": 20423754
+  },
+  {
+    "drive_id": "1MhCoA4dn21eSBn14ousung8X9BPKVcjc",
+    "raw_title": "GLOBET SQUAT 2KB.MOV",
+    "normalized_name": "GLOBET SQUAT 2KB",
+    "size_bytes": 23442947
+  },
+  {
+    "drive_id": "1PpgRg_FdBvh5NX-8C0pGi6C-dSupDyjm",
+    "raw_title": "GLOBET SQUAT DB RACK UNI .MOV",
+    "normalized_name": "GLOBET SQUAT Halteres RACK Unilateral",
+    "size_bytes": 24800180
+  },
+  {
+    "drive_id": "1_Rf24VrG5BMErnqzh8Xl-u2eDum4sIK3",
+    "raw_title": "HIP THRUST ALTERNADO.MOV",
+    "normalized_name": "HIP THRUST ALTERNADO",
+    "size_bytes": 36994733
+  },
+  {
+    "drive_id": "17pe_8XJYanirxbYnjGU1cuFV4pzRC7v_",
+    "raw_title": "HIP THRUST BB.MOV",
+    "normalized_name": "HIP THRUST Barra",
+    "size_bytes": 67132784
+  },
+  {
+    "drive_id": "1jKdLnXQkVvvEXRxViPxYdi67OmPbLLaF",
+    "raw_title": "HIP THRUST BIL..MOV",
+    "normalized_name": "HIP THRUST Bilateral",
+    "size_bytes": 31767304
+  },
+  {
+    "drive_id": "1ITv13KaDCODtlmtl7kbm83okhGW3FpIR",
+    "raw_title": "HIP THRUST UNI.MOV",
+    "normalized_name": "HIP THRUST Unilateral",
+    "size_bytes": 33046486
+  },
+  {
+    "drive_id": "1MGQIv-Zq6XNHUA1dZBAYnGNLukqxNpmu",
+    "raw_title": "HIP THRUST UNI CARGA .MOV",
+    "normalized_name": "HIP THRUST Unilateral CARGA",
+    "size_bytes": 43545222
+  },
+  {
+    "drive_id": "10e6dnC6zxYP_mPaa_UPF7dQvNRCL3Kss",
+    "raw_title": "HOLLOWBODY DIN..MOV",
+    "normalized_name": "HOLLOWBODY Dinamico",
+    "size_bytes": 35922727
+  },
+  {
+    "drive_id": "1YgoxGBifKuGvzih39yE2IJHHTiqOhouA",
+    "raw_title": "LEQUE (9090) UNI. SENTADO.MOV",
+    "normalized_name": "LEQUE (9090) Unilateral. SENTADO",
+    "size_bytes": 57252669
+  },
+  {
+    "drive_id": "1SblO7PscrGzQUidYWNKyyf_Z-aJH2RnH",
+    "raw_title": "MOB. QUADRIL UNI. FRENTE-TRÁS SENTADO.mov",
+    "normalized_name": "Mobilidade. QUADRIL Unilateral. FRENTE-TRÁS SENTADO",
+    "size_bytes": 69255699
+  },
+  {
+    "drive_id": "1yrVa1ZS7EK_eT6-kbQr4xnoVCPnoOWLA",
+    "raw_title": "PASSADA FRENTE ALTERNADA .MOV",
+    "normalized_name": "PASSADA FRENTE ALTERNADA",
+    "size_bytes": 33195637
+  },
+  {
+    "drive_id": "14r3bbsVwQabBqncVsUjY8KWs8xI43SNF",
+    "raw_title": "PASSADA FRENTE UNI.MOV",
+    "normalized_name": "PASSADA FRENTE Unilateral",
+    "size_bytes": 29329589
+  },
+  {
+    "drive_id": "1b6OouKNCUuZvNzwue5u3wQEKt333gVCR",
+    "raw_title": "PASSADA NO SUPORTE (BULGARO).MOV",
+    "normalized_name": "PASSADA NO SUPORTE (BULGARO)",
+    "size_bytes": 27903585
+  },
+  {
+    "drive_id": "1uT54IOltbgtInEiIffQXRy8-Np-Jqq8f",
+    "raw_title": "PASSADA REVERSA 2KB RACK .MOV",
+    "normalized_name": "PASSADA REVERSA 2KB RACK",
+    "size_bytes": 27094587
+  },
+  {
+    "drive_id": "15knnXQY_H_CmAfsTvBgMCPK4kMA4_JED",
+    "raw_title": "PASSADA REVERSA ALTERNADA .MOV",
+    "normalized_name": "PASSADA REVERSA ALTERNADA",
+    "size_bytes": 37278126
+  },
+  {
+    "drive_id": "1Dbtofu98m5q-KXysdJTJ9zyMcimzFtFc",
+    "raw_title": "PASSADA REVERSA KB RACK UNI.MOV",
+    "normalized_name": "PASSADA REVERSA Kettlebell RACK Unilateral",
+    "size_bytes": 22970640
+  },
+  {
+    "drive_id": "1vD6GH5lpqgAETD_N0WbyiV2JkDSbIR-w",
+    "raw_title": "PASSADA REVERSA UNILATERAL.MOV",
+    "normalized_name": "PASSADA REVERSA UNILATERAL",
+    "size_bytes": 25962832
+  },
+  {
+    "drive_id": "111kjgobX8F2GgKxOLpgSAw5T7-dqhOm5",
+    "raw_title": "PISTOL NO BANCO.MOV",
+    "normalized_name": "PISTOL NO BANCO",
+    "size_bytes": 31632648
+  },
+  {
+    "drive_id": "1mp99EmsOB-52lX6ZUAfQk-REHVOGKICE",
+    "raw_title": "PISTOL NO BANCO (SÓ EXC).MOV",
+    "normalized_name": "PISTOL NO BANCO (SÓ EXC)",
+    "size_bytes": 44100103
+  },
+  {
+    "drive_id": "1h-rhe0oM1XYoC3FKfRAcFe7tFR4cBorr",
+    "raw_title": "PONTE ALTA BIL..MOV",
+    "normalized_name": "PONTE ALTA Bilateral",
+    "size_bytes": 39895809
+  },
+  {
+    "drive_id": "16i-cFhY6qJx6-5aFrL5tgmHKdawf6jd3",
+    "raw_title": "PONTE ALTA BIL. C/ PESO.MOV",
+    "normalized_name": "PONTE ALTA Bilateral. C/ PESO",
+    "size_bytes": 48817377
+  },
+  {
+    "drive_id": "18S7OMII-iruNKboruXVUzs034WfgCY4M",
+    "raw_title": "PONTE ALTA UNI..MOV",
+    "normalized_name": "PONTE ALTA Unilateral",
+    "size_bytes": 51407752
+  },
+  {
+    "drive_id": "1q6wU0GbxWdMugembtnaFmnHurtGV1UD3",
+    "raw_title": "PONTE ALTA UNI. AFASTADO.MOV",
+    "normalized_name": "PONTE ALTA Unilateral. AFASTADO",
+    "size_bytes": 52207843
+  },
+  {
+    "drive_id": "10xGlBfIH6mz5wAJmtDsaYu6H1FPcrXXj",
+    "raw_title": "PONTE BILATERAL.MOV",
+    "normalized_name": "PONTE BILATERAL",
+    "size_bytes": 25905343
+  },
+  {
+    "drive_id": "1eEuX2VdQVp9uxEIUmZC8DGlBbMbouEA9",
+    "raw_title": "PONTE BILATERAL APERTANDO O ROLINHO.MOV",
+    "normalized_name": "PONTE BILATERAL APERTANDO O ROLINHO",
+    "size_bytes": 60882963
+  },
+  {
+    "drive_id": "17HG9lCbG2qpzba14zBRejblKpYH0xEIe",
+    "raw_title": "PONTE BIL NA BOLA.MOV",
+    "normalized_name": "PONTE Bilateral NA BOLA",
+    "size_bytes": 33991405
+  },
+  {
+    "drive_id": "1gnRLjI3AOLSqsZVzsZFnaFZkHuz1EOTl",
+    "raw_title": "PONTE UNI.MOV",
+    "normalized_name": "PONTE Unilateral",
+    "size_bytes": 45134586
+  },
+  {
+    "drive_id": "154hwKNuYPHqvd9ZM9ynCb5zEM3vY5oJC",
+    "raw_title": "PONTE UNI NA BOLA.MOV",
+    "normalized_name": "PONTE Unilateral NA BOLA",
+    "size_bytes": 30856073
+  },
+  {
+    "drive_id": "15xeRTASqfBzYtZCtbIrjU6vbv7Sn2jbb",
+    "raw_title": "PRANCHA NA BOLA DINÂMICA.mov",
+    "normalized_name": "PRANCHA NA BOLA DINÂMICA",
+    "size_bytes": 16425385
+  },
+  {
+    "drive_id": "1h8KGvEDRJPw9g55WtF33hu8snE8cr2DR",
+    "raw_title": "PRANCHA NA BOLA ISO\" .MOV",
+    "normalized_name": "PRANCHA NA BOLA Isometrico",
+    "size_bytes": 20580318
+  },
+  {
+    "drive_id": "1XE0g2XWm7YSjc8dcukC1ZOd2BGsLrn_L",
+    "raw_title": "PRESS SAJ. ALTERNADO DB.mov",
+    "normalized_name": "PRESS SAJ. ALTERNADO Halteres",
+    "size_bytes": 46247970
+  },
+  {
+    "drive_id": "1zXJkerHuhkdiFmVLjmEd1HTs8F4jGiFM",
+    "raw_title": "PRESS SAJ. ALTERNADO KB.mov",
+    "normalized_name": "PRESS SAJ. ALTERNADO Kettlebell",
+    "size_bytes": 52253995
+  },
+  {
+    "drive_id": "11nN9eEseXoyAxkz4KFaRMroXnSa1ufjH",
+    "raw_title": "PRESS SAJ. BIL. C/ KB.mov",
+    "normalized_name": "PRESS SAJ. Bilateral. C/ Kettlebell",
+    "size_bytes": 43918668
+  },
+  {
+    "drive_id": "1eFSMaXFCvmQuuyrK5hMIuQBQCyr-z1im",
+    "raw_title": "PRESS SAJ. BIL. DB.mov",
+    "normalized_name": "PRESS SAJ. Bilateral. Halteres",
+    "size_bytes": 26779629
+  },
+  {
+    "drive_id": "10nLQCjPnLSxtk7wlw2vJz58RVrmqYASM",
+    "raw_title": "PRESS SAJ. UNI C/ KB.mov",
+    "normalized_name": "PRESS SAJ. Unilateral C/ Kettlebell",
+    "size_bytes": 33611929
+  },
+  {
+    "drive_id": "1t3IvhBtMqeU2Lj57zyBGAlXaKQAOCV7e",
+    "raw_title": "PRESS SAJ. UNI. DB.mov",
+    "normalized_name": "PRESS SAJ. Unilateral. Halteres",
+    "size_bytes": 31507885
+  },
+  {
+    "drive_id": "1Zud6BJvdNQ0rsQ2DA5f_a8pnlIE4nYG6",
+    "raw_title": "PUXADA VERTICAL SUSPENSA NA BB.MOV",
+    "normalized_name": "PUXADA VERTICAL SUSPENSA NA Barra",
+    "size_bytes": 56404932
+  },
+  {
+    "drive_id": "131KvHc4xMhyZ1yiPh1B-BJWkq6cpb1I1",
+    "raw_title": "REMADA B.ATLETICA ABERTA POLIA.mov",
+    "normalized_name": "REMADA B.ATLETICA ABERTA POLIA",
+    "size_bytes": 53074019
+  },
+  {
+    "drive_id": "1HTsVLqbkpsj1D-TL4Ubsb1va2kDk5QlX",
+    "raw_title": "REMADA B.ATLETICA BIL.mov",
+    "normalized_name": "REMADA B.ATLETICA Bilateral",
+    "size_bytes": 42942125
+  },
+  {
+    "drive_id": "116UljFEVCtRtXIA8PERGb6Tv1u4gh_BT",
+    "raw_title": "REMADA B.ATLETICA UNI POLIA.MOV",
+    "normalized_name": "REMADA B.ATLETICA Unilateral POLIA",
+    "size_bytes": 53067559
+  },
+  {
+    "drive_id": "1pqVbrolxQ_pGyT4GjOG3Xr_M8axpvxVg",
+    "raw_title": "REMADA CURV. ALTERNADA C/ ISO OPOSTA.MOV",
+    "normalized_name": "REMADA CURV. ALTERNADA C/ Isometrico OPOSTA",
+    "size_bytes": 54478425
+  },
+  {
+    "drive_id": "14_bG1ZBCgVQrV68gLM2GFhI-J0oZzXRb",
+    "raw_title": "REMADA CURVADA ALTERNADA KB/DB.MOV",
+    "normalized_name": "REMADA CURVADA ALTERNADA Kettlebell/Halteres",
+    "size_bytes": 33411555
+  },
+  {
+    "drive_id": "1u8o2lro_0zQi1e2yJljfdSdZHi8CJoqe",
+    "raw_title": "REMADA CURVADA B.ASSIMÉTRICA.mov",
+    "normalized_name": "REMADA CURVADA B.ASSIMÉTRICA",
+    "size_bytes": 57886639
+  },
+  {
+    "drive_id": "1t1S-hhkn-3RGCzHm-veF2H8wO5QF_meo",
+    "raw_title": "REMADA CURVADA BIL POLIA.mov",
+    "normalized_name": "REMADA CURVADA Bilateral POLIA",
+    "size_bytes": 63639101
+  },
+  {
+    "drive_id": "1aY_5n1FpuT5gzo9xZhoUlqQLLd_3C42R",
+    "raw_title": "REMADA CURVADA KB/DB .MOV",
+    "normalized_name": "REMADA CURVADA Kettlebell/Halteres",
+    "size_bytes": 27165519
+  },
+  {
+    "drive_id": "13lurIhO7wE5GeZ54K6tBqy_aLNKg95ur",
+    "raw_title": "REMADA CURVADA KB/DB LATERAL.MOV",
+    "normalized_name": "REMADA CURVADA Kettlebell/Halteres LATERAL",
+    "size_bytes": 23687414
+  },
+  {
+    "drive_id": "1vbD_0K38Ib4ax3HA1AMASFK4t0em5sgS",
+    "raw_title": "REMADA CURVADA NA BB.MOV",
+    "normalized_name": "REMADA CURVADA NA Barra",
+    "size_bytes": 40166676
+  },
+  {
+    "drive_id": "192dMNqpMpU2mpiTHCHcLnKOS9ipfP19n",
+    "raw_title": "REMADA CURVADA UNI POLIA.MOV",
+    "normalized_name": "REMADA CURVADA Unilateral POLIA",
+    "size_bytes": 50042519
+  },
+  {
+    "drive_id": "1fdxfQ8VH0aAAXcUoCYejQIvC19Z5v-ol",
+    "raw_title": "REMADA SAJ. BIL POLIA.MOV",
+    "normalized_name": "REMADA SAJ. Bilateral POLIA",
+    "size_bytes": 60065450
+  },
+  {
+    "drive_id": "1wVudCBnpdQDC8TTz5IO_OJ32kyFJFf23",
+    "raw_title": "REMADA SAJ. UNI POLIA.mov",
+    "normalized_name": "REMADA SAJ. Unilateral POLIA",
+    "size_bytes": 61327006
+  },
+  {
+    "drive_id": "1V-VF4r4BEaKP0ynqa_qfufvIGHJGFx_U",
+    "raw_title": "REMADA SENTADO ABERTA POLIA.mov",
+    "normalized_name": "REMADA SENTADO ABERTA POLIA",
+    "size_bytes": 72626681
+  },
+  {
+    "drive_id": "1V3OGh-tTdeXg1-NIyezGyJE6PiAmhtHO",
+    "raw_title": "REMADA SENTADO BIL SUPINADA POLIA.mov",
+    "normalized_name": "REMADA SENTADO Bilateral SUPINADA POLIA",
+    "size_bytes": 66403767
+  },
+  {
+    "drive_id": "1jCuLkGs2J2FmLNyOU47RC4yZfxMkgbBR",
+    "raw_title": "REMADA SENTADO BIL. POLIA.mov",
+    "normalized_name": "REMADA SENTADO Bilateral. POLIA",
+    "size_bytes": 70235836
+  },
+  {
+    "drive_id": "1Iw_yZrjLtYdleRMoQGnXfhLS8rHr96pj",
+    "raw_title": "REMADA SENTADO UNI POLIA.MOV",
+    "normalized_name": "REMADA SENTADO Unilateral POLIA",
+    "size_bytes": 54256383
+  },
+  {
+    "drive_id": "1RPRtQ4DfLTdqcBG3wjav3A1dHZpbtgdQ",
+    "raw_title": "REMADA SENTADO UNI SUPINADA POLIA.mov",
+    "normalized_name": "REMADA SENTADO Unilateral SUPINADA POLIA",
+    "size_bytes": 54478780
+  },
+  {
+    "drive_id": "1vsKJcBFcNQI37E9IxKDlSlG65FYaekhL",
+    "raw_title": "REMADA SUSPENSA NA BB.MOV",
+    "normalized_name": "REMADA SUSPENSA NA Barra",
+    "size_bytes": 64175916
+  },
+  {
+    "drive_id": "1pAvAJHbNsK-0gOtfUtTo9Ysi1RvsY6B0",
+    "raw_title": "ROCKING ADUTOR.MOV",
+    "normalized_name": "ROCKING ADUTOR",
+    "size_bytes": 61740310
+  },
+  {
+    "drive_id": "1WmbaJwJu2DnBjQQIkL5bCjH5sEXKBNaF",
+    "raw_title": "ROCKING C/ ROTTOR.mov",
+    "normalized_name": "ROCKING C/ ROTTOR",
+    "size_bytes": 27855682
+  },
+  {
+    "drive_id": "12lEjrRX6YONjhXaRcPT22DkvWmGHy8sw",
+    "raw_title": "SALTITOS FRENTE-COSTAS.mov",
+    "normalized_name": "SALTITOS FRENTE-COSTAS",
+    "size_bytes": 21031006
+  },
+  {
+    "drive_id": "1relelpLZJEh8S8hGfDx8TGleUFfNeEaI",
+    "raw_title": "SALTITOS UNI. .mov",
+    "normalized_name": "SALTITOS Unilateral",
+    "size_bytes": 34713933
+  },
+  {
+    "drive_id": "18R7vtk_QkQYw5NLAfYNaWVe9sX3Aa7cK",
+    "raw_title": "SLAM BALL SOLO.MOV",
+    "normalized_name": "SLAM BALL SOLO",
+    "size_bytes": 25672208
+  },
+  {
+    "drive_id": "1mDHI2f6XHrH0yngJQXNbzMylYnP32SPg",
+    "raw_title": "SLAM BALL SOLO SAJ..MOV",
+    "normalized_name": "SLAM BALL SOLO SAJ",
+    "size_bytes": 23077474
+  },
+  {
+    "drive_id": "1KLItvkO3JRmsUYKWZ3P0mUgQKtOoiLyl",
+    "raw_title": "STEP DOWN.MOV",
+    "normalized_name": "STEP DOWN",
+    "size_bytes": 31480386
+  },
+  {
+    "drive_id": "1hlY7wppwf_5_sqoT_IR0vqtsYn1WEFEQ",
+    "raw_title": "STEP UP.MOV",
+    "normalized_name": "STEP UP",
+    "size_bytes": 36451730
+  },
+  {
+    "drive_id": "1OmApQQVL7xRLJsOoZBtemycZwshl21Ru",
+    "raw_title": "STEP UP C/ 2KB.MOV",
+    "normalized_name": "STEP UP C/ 2KB",
+    "size_bytes": 34372091
+  },
+  {
+    "drive_id": "1UicwhA1mW-TRvPe3w1wN6oIslG5zW2I4",
+    "raw_title": "STEP UP COORD. C/ 2KB.MOV",
+    "normalized_name": "STEP UP Coordenacao. C/ 2KB",
+    "size_bytes": 38553336
+  },
+  {
+    "drive_id": "1T7-PNGo9KUOPddpkjBMqmg8cOQggvbTf",
+    "raw_title": "STEP UP COORD. POS. MARCHA.MOV",
+    "normalized_name": "STEP UP Coordenacao. Pos. MARCHA",
+    "size_bytes": 41772982
+  },
+  {
+    "drive_id": "11q4TMuns59ZHbzecZFMRyCtgmEviz9ty",
+    "raw_title": "STEP UP TENSÃO.MOV",
+    "normalized_name": "STEP UP TENSÃO",
+    "size_bytes": 46089477
+  },
+  {
+    "drive_id": "1WFf84z1ljuyWPvoFS9uutsB9aaeTuiE4",
+    "raw_title": "STIFF BB.MOV",
+    "normalized_name": "STIFF Barra",
+    "size_bytes": 56288338
+  },
+  {
+    "drive_id": "1zBa691NmrzUxtZb00iOblSH87A0FQN6L",
+    "raw_title": "STIFF BB BASE ABERTA.MOV",
+    "normalized_name": "STIFF Barra BASE ABERTA",
+    "size_bytes": 52785653
+  },
+  {
+    "drive_id": "16EJry-RaN81JyC92HWq5ZlHH7UgPhkqq",
+    "raw_title": "STIFF DB.MOV",
+    "normalized_name": "STIFF Halteres",
+    "size_bytes": 54716284
+  },
+  {
+    "drive_id": "1jorAuQmxy7ikN4vH2Mv5AaNqkRSYJVPR",
+    "raw_title": "STIFF UNI BB.MOV",
+    "normalized_name": "STIFF Unilateral Barra",
+    "size_bytes": 72231675
+  },
+  {
+    "drive_id": "1izbYrTV3cOSIj3n83szBkiqEKw_-febP",
+    "raw_title": "STIFF UNI. DB.MOV",
+    "normalized_name": "STIFF Unilateral. Halteres",
+    "size_bytes": 90282964
+  },
+  {
+    "drive_id": "1w9mdpb9K9q3fezfs34xbfUAJyZSZKkbq",
+    "raw_title": "SUPINO ALTERNADO C/ ISO OPOSTA.MOV",
+    "normalized_name": "SUPINO ALTERNADO C/ Isometrico OPOSTA",
+    "size_bytes": 42811590
+  },
+  {
+    "drive_id": "1G_AQpbCegMeOv-vfy6G_YWAHtvTt4rrj",
+    "raw_title": "SUPINO ALTERNADO DB.mov",
+    "normalized_name": "SUPINO ALTERNADO Halteres",
+    "size_bytes": 31308782
+  },
+  {
+    "drive_id": "1w-1c6S1AqhdmFm7j8SO1tKwOAOtbLfPw",
+    "raw_title": "SUPINO COMBINADO DB (1+1+2).MOV",
+    "normalized_name": "SUPINO COMBINADO Halteres (1+1+2)",
+    "size_bytes": 60695440
+  },
+  {
+    "drive_id": "1aB9ZO5w5FPVbiImtYHurY1IGhXnrK0ch",
+    "raw_title": "SUPINO INCLINADO BB.mov",
+    "normalized_name": "SUPINO INCLINADO Barra",
+    "size_bytes": 32245316
+  },
+  {
+    "drive_id": "1-PMhBS7zHMrEjW3RWDIoK7QJuwkar8Pu",
+    "raw_title": "SUPINO INCLINADO COMBINADO (1+1+2).MOV",
+    "normalized_name": "SUPINO INCLINADO COMBINADO (1+1+2)",
+    "size_bytes": 61528113
+  },
+  {
+    "drive_id": "1x0QEFQqzprHxUoKh_JOIoO-NEMcxNEjg",
+    "raw_title": "SUPINO INCLINADO DB.mov",
+    "normalized_name": "SUPINO INCLINADO Halteres",
+    "size_bytes": 43360937
+  },
+  {
+    "drive_id": "1kAaj-FjpULLHypKsjfOevEHlVaPxSiRp",
+    "raw_title": "SUPINO INLCINADO ALTERNADO DB.mov",
+    "normalized_name": "SUPINO INLCINADO ALTERNADO Halteres",
+    "size_bytes": 39195577
+  },
+  {
+    "drive_id": "1cKrUwG51rWiHdFqJPdIC8BC_TJATN6lU",
+    "raw_title": "SUPINO RETO BB.mov",
+    "normalized_name": "SUPINO RETO Barra",
+    "size_bytes": 66476405
+  },
+  {
+    "drive_id": "1mbo1M06jSh651By0xU_nW2gNwNMWQ0xo",
+    "raw_title": "SUPINO RETO DB.mov",
+    "normalized_name": "SUPINO RETO Halteres",
+    "size_bytes": 38701526
+  },
+  {
+    "drive_id": "1WsZ1Kto0Tj2cUL1R1ixLTOPkox1ur1jh",
+    "raw_title": "TERRA 2KB.MOV",
+    "normalized_name": "TERRA 2KB",
+    "size_bytes": 44880176
+  },
+  {
+    "drive_id": "1VUyN98VnY9d-Yu_LWeWMVbbe0-NZmcvH",
+    "raw_title": "TERRA 2KB LATERAL .MOV",
+    "normalized_name": "TERRA 2KB LATERAL",
+    "size_bytes": 44144443
+  },
+  {
+    "drive_id": "1ZRvnbPHY1r83e4wruox8Cj_otp19KZty",
+    "raw_title": "TERRA BB.MOV",
+    "normalized_name": "TERRA Barra",
+    "size_bytes": 56305349
+  },
+  {
+    "drive_id": "1QehmQ5kzlRHVsYGMoAutj5GaVY6N18yQ",
+    "raw_title": "TERRA KB/DB .MOV",
+    "normalized_name": "TERRA Kettlebell/Halteres",
+    "size_bytes": 60857782
+  },
+  {
+    "drive_id": "1Pun-T7pkGVt85DEmB-NHGR6S_qQNIHUh",
+    "raw_title": "TERRA SUMÔ BB.MOV",
+    "normalized_name": "TERRA SUMÔ Barra",
+    "size_bytes": 63985176
+  },
+  {
+    "drive_id": "1OAd0NTk6GuhsmL5aYXw-xGt4r-PdVRey",
+    "raw_title": "TERRA SUMÔ KB/DB.MOV",
+    "normalized_name": "TERRA SUMÔ Kettlebell/Halteres",
+    "size_bytes": 60075800
+  },
+  {
+    "drive_id": "1sktaNR8gh8ZcOf5pCcbW35SAQ-DIKfMm",
+    "raw_title": "WALL DRILL 1 TROCA ALTERNADA.mov",
+    "normalized_name": "WALL DRILL 1 TROCA ALTERNADA",
+    "size_bytes": 22964728
+  },
+  {
+    "drive_id": "1oqUkMiexqrHtNchq2MkwM2HeeCbNLY2M",
+    "raw_title": "WALL DRILL 3 TROCAS.mov",
+    "normalized_name": "WALL DRILL 3 TROCAS",
+    "size_bytes": 35577878
+  },
+  {
+    "drive_id": "14WeAf5n4gRIdvWu2Q-bLLPf_WL84xXtq",
+    "raw_title": "WALL DRILL LINEAR + 1 TROCA.mov",
+    "normalized_name": "WALL DRILL LINEAR + 1 TROCA",
+    "size_bytes": 47558693
+  },
+  {
+    "drive_id": "1t8krLeSm6EDQtiTE5PNWV9rG6LrhVkFX",
+    "raw_title": "WALL DRILL LINEAR DINÂMICO.mov",
+    "normalized_name": "WALL DRILL LINEAR DINÂMICO",
+    "size_bytes": 38199405
+  },
+  {
+    "drive_id": "1VbcHotWV0Y17m9_dwYtHoJ8coBWUj7E9",
+    "raw_title": "WALL DRILL TROCAS - EDUCATIVO LENTO.mov",
+    "normalized_name": "WALL DRILL TROCAS - EDUCATIVO LENTO",
+    "size_bytes": 40124193
+  }
+]
