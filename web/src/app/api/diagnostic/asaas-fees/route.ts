@@ -52,6 +52,12 @@ async function probe(apiKey: string, path: string): Promise<ProbeResult> {
 }
 
 export async function GET(request: NextRequest) {
+    // Endpoint de uso interno (calibração de taxas) — desabilitado por padrão.
+    // Para usar, setar ENABLE_DIAGNOSTICS=true no ambiente. Sem a flag, 404
+    // (não vaza existência) — evita exposição em produção.
+    if (process.env.ENABLE_DIAGNOSTICS !== 'true') {
+        return new NextResponse('Not found', { status: 404 })
+    }
     try {
         const trainer = await requireTrainer(request)
         const apiKey = await getDecryptedApiKey(trainer.id)

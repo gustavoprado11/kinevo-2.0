@@ -2,8 +2,15 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function updateSession(request: NextRequest) {
+    // Strip any client-supplied x-user-id: downstream code trusts this header as
+    // the authenticated user id, so it must ONLY ever be set by us (below) from
+    // the verified session — never forwarded from the incoming request.
+    // request.headers is immutable in middleware, so we thread a sanitized copy.
+    const sanitizedHeaders = new Headers(request.headers)
+    sanitizedHeaders.delete('x-user-id')
+
     let supabaseResponse = NextResponse.next({
-        request,
+        request: { headers: sanitizedHeaders },
     })
 
     const supabase = createServerClient(
@@ -19,7 +26,7 @@ export async function updateSession(request: NextRequest) {
                         request.cookies.set(name, value)
                     )
                     supabaseResponse = NextResponse.next({
-                        request,
+                        request: { headers: sanitizedHeaders },
                     })
                     cookiesToSet.forEach(({ name, value, options }) =>
                         supabaseResponse.cookies.set(name, value, options)
@@ -42,6 +49,7 @@ export async function updateSession(request: NextRequest) {
         !user &&
         !request.nextUrl.pathname.startsWith('/login') &&
         !request.nextUrl.pathname.startsWith('/signup') &&
+        !request.nextUrl.pathname.startsWith('/estudio') &&
         !request.nextUrl.pathname.startsWith('/privacy') &&
         !request.nextUrl.pathname.startsWith('/terms') &&
         !request.nextUrl.pathname.startsWith('/auth') &&
@@ -90,9 +98,10 @@ export async function updateSession(request: NextRequest) {
     // request header so getTrainerWithSubscription() can skip another getUser()
     // roundtrip to Supabase Auth (~100-300ms saved per authenticated navigation).
     if (user) {
-        const reqHeaders = new Headers(request.headers)
-        reqHeaders.set('x-user-id', user.id)
-        const finalResponse = NextResponse.next({ request: { headers: reqHeaders } })
+        // Build from the sanitized copy (client x-user-id already removed),
+        // then set the authoritative value from the verified session.
+        sanitizedHeaders.set('x-user-id', user.id)
+        const finalResponse = NextResponse.next({ request: { headers: sanitizedHeaders } })
         // Carry forward any cookies Supabase set during the session refresh above
         supabaseResponse.cookies.getAll().forEach(c => finalResponse.cookies.set(c))
         return finalResponse
