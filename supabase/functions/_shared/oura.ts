@@ -264,6 +264,17 @@ export async function backfillOura(admin: SupabaseClient, studentId: string, acc
   return { sleep: sleep.length, readiness: readiness.length, activity: activity.length };
 }
 
+// Comparação constant-time entre duas strings (evita timing attack na verificação
+// de assinatura). Sempre percorre o tamanho do valor esperado.
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
 // HMAC-SHA256(body) com o client_secret. Confirmar esquema exato na doc da Oura.
 export async function verifyOuraSignature(rawBody: string, signatureHeader: string | null, clientSecret: string): Promise<boolean> {
   if (!signatureHeader) return false;
@@ -271,5 +282,5 @@ export async function verifyOuraSignature(rawBody: string, signatureHeader: stri
   const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(rawBody));
   const hex = Array.from(new Uint8Array(sig)).map((b) => b.toString(16).padStart(2, "0")).join("");
   const provided = signatureHeader.replace(/^sha256=/i, "").trim().toLowerCase();
-  return provided === hex;
+  return timingSafeEqual(provided, hex);
 }
