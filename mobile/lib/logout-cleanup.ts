@@ -8,6 +8,7 @@
  * e rascunhos do usuário anterior.
  */
 import { clearAllCache } from "./cache";
+import { clearStoredTokens as clearStravaTokens } from "./strava/oauth";
 import { useNotificationStore } from "../stores/notification-store";
 import { useProgramBuilderStore } from "../stores/program-builder-store";
 import { useTrainingRoomStore } from "../stores/training-room-store";
@@ -31,6 +32,13 @@ export function clearUserScopedState(): void {
     } catch (e: unknown) {
         if (__DEV__) console.warn("[logout] reset de stores falhou:", e);
     }
+
+    // Tokens OAuth do Strava (SecureStore) — sem isto, o próximo usuário no
+    // mesmo aparelho herdaria a conexão Strava (e os dados) do usuário anterior.
+    // Best-effort assíncrono: o logout não precisa esperar.
+    clearStravaTokens().catch((e: unknown) => {
+        if (__DEV__) console.warn("[logout] clearStravaTokens falhou:", e);
+    });
 
     // Stores de rascunho sem reset dedicado — limpa o storage persistido.
     for (const store of [
