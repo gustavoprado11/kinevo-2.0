@@ -1,6 +1,18 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import { OAuthConsentForm } from '@/components/settings/oauth-consent-form'
+
+function InvalidRequest({ message }: { message: string }) {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-[#F5F5F7] dark:bg-[#09090B]">
+      <div className="max-w-md mx-4 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-8 text-center">
+        <h1 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Requisicao invalida</h1>
+        <p className="text-sm text-gray-500">{message}</p>
+      </div>
+    </div>
+  )
+}
 
 interface PageProps {
   searchParams: Promise<{
@@ -20,14 +32,21 @@ export default async function OAuthAuthorizePage({ searchParams }: PageProps) {
 
   // Validate required params
   if (!client_id || !redirect_uri || response_type !== 'code' || !code_challenge) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F5F5F7] dark:bg-[#09090B]">
-        <div className="max-w-md mx-4 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-8 text-center">
-          <h1 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Requisicao invalida</h1>
-          <p className="text-sm text-gray-500">Parametros de autorizacao ausentes ou incorretos.</p>
-        </div>
-      </div>
-    )
+    return <InvalidRequest message="Parametros de autorizacao ausentes ou incorretos." />
+  }
+
+  // Validate the client exists and that redirect_uri is one it registered.
+  // Prevents showing a consent screen that would leak the auth code to an
+  // attacker-controlled URL (open redirect / code exfiltration).
+  const supabaseAdmin = createAdminClient()
+  const { data: oauthClient } = await supabaseAdmin
+    .from('mcp_oauth_clients')
+    .select('client_id, redirect_uris')
+    .eq('client_id', client_id)
+    .single()
+
+  if (!oauthClient || !oauthClient.redirect_uris?.includes(redirect_uri)) {
+    return <InvalidRequest message="Cliente ou redirect_uri nao autorizado." />
   }
 
   // Check if trainer is logged in
@@ -47,14 +66,7 @@ export default async function OAuthAuthorizePage({ searchParams }: PageProps) {
     .single()
 
   if (!trainer) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F5F5F7] dark:bg-[#09090B]">
-        <div className="max-w-md mx-4 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-8 text-center">
-          <h1 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Conta nao encontrada</h1>
-          <p className="text-sm text-gray-500">Treinador nao encontrado para este usuario.</p>
-        </div>
-      </div>
-    )
+    return <InvalidRequest message="Treinador nao encontrado para este usuario." />
   }
 
   return (
@@ -62,7 +74,6 @@ export default async function OAuthAuthorizePage({ searchParams }: PageProps) {
       <OAuthConsentForm
         trainerName={trainer.name}
         trainerEmail={trainer.email}
-        trainerId={trainer.id}
         clientId={client_id}
         redirectUri={redirect_uri}
         codeChallenge={code_challenge}

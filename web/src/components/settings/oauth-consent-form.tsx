@@ -7,7 +7,6 @@ import { approveOAuthConsent } from '@/actions/api-keys/approve-oauth-consent'
 interface OAuthConsentFormProps {
   trainerName: string
   trainerEmail: string
-  trainerId: string
   clientId: string
   redirectUri: string
   codeChallenge: string
@@ -19,7 +18,6 @@ interface OAuthConsentFormProps {
 export function OAuthConsentForm({
   trainerName,
   trainerEmail,
-  trainerId,
   clientId,
   redirectUri,
   codeChallenge,
@@ -29,11 +27,13 @@ export function OAuthConsentForm({
 }: OAuthConsentFormProps) {
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   async function handleApprove() {
     setLoading(true)
+    setError(null)
+    // trainerId is resolved server-side from the authenticated session — not sent by the client.
     const result = await approveOAuthConsent({
-      trainerId,
       clientId,
       redirectUri,
       codeChallenge,
@@ -45,6 +45,9 @@ export function OAuthConsentForm({
     if (result.redirect) {
       setDone(true)
       window.location.href = result.redirect
+    } else {
+      setError(result.error ?? 'Falha ao autorizar.')
+      setLoading(false)
     }
   }
 
@@ -105,6 +108,12 @@ export function OAuthConsentForm({
           </div>
         </div>
       </div>
+
+      {error && (
+        <p className="mb-4 rounded-xl bg-red-500/10 px-4 py-2.5 text-sm font-medium text-red-600 dark:text-red-400">
+          {error}
+        </p>
+      )}
 
       <div className="flex gap-3">
         <button
