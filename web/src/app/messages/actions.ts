@@ -236,6 +236,7 @@ export async function sendMessage(
 
     // Handle image upload
     let imageUrl: string | null = null
+    let imagePath: string | null = null
     if (file instanceof File && file.size > 0) {
         if (file.size > MAX_FILE_SIZE) {
             return { success: false, error: 'Imagem muito grande. Máximo 5MB.' }
@@ -265,6 +266,8 @@ export async function sendMessage(
 
         const { data: publicData } = auth.supabase.storage.from('messages').getPublicUrl(filePath)
         imageUrl = publicData.publicUrl
+        // Dual-write the storage path (A2): source of truth for future signed URLs.
+        imagePath = filePath
     }
 
     // Insert message
@@ -276,6 +279,7 @@ export async function sendMessage(
             sender_id: auth.user.id,
             content,
             image_url: imageUrl,
+            image_path: imagePath,
         })
         .select()
         .single()

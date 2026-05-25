@@ -185,6 +185,8 @@ export function useTrainerChat() {
                 sender_id: user.id,
                 content: content?.trim() || null,
                 image_url: publicData.publicUrl,
+                // Dual-write the storage path (A2): source of truth for future signed URLs.
+                image_path: fileName,
             })
             .select()
             .single();
