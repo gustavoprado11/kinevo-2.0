@@ -1,0 +1,65 @@
+{
+  "approvals": [
+    {
+      "drive_id": "14VaYilv8_3r8jnWBJnZET5L4B10kgi5Z",
+      "raw_title": "Panturrilha bilateral - step .mov",
+      "action": "UPDATE_existing",
+      "exercise_id": "f72168e8-672b-4e88-b2f2-7083738fe620",
+      "exercise_name_hint": "Panturrilha no Step"
+    },
+    {
+      "drive_id": "12ceX3IofxOGtep6-ol8g9hF87Uo6r2el",
+      "raw_title": "Panturrilha unilateral - controle excêntrico.mov",
+      "action": "NEW",
+      "name": "Panturrilha Unilateral Controle Excêntrico"
+    },
+    {
+      "drive_id": "1g_HD7sR1cvOMIYYJWE3SR43RoqpPp9gE",
+      "raw_title": "Footcore Airex/colchão .MOV",
+      "action": "NEW",
+      "name": "Footcore no Airex/Colchão"
+    },
+    {
+      "drive_id": "1QVW9Aab2Qq7AvnFCwiJOJ3y-FMdBuiK4",
+      "raw_title": "Footcore Steps/vão + Pos. de marcha.mov",
+      "action": "NEW",
+      "name": "Footcore Steps/Vão + Posição de Marcha"
+    },
+    {
+      "drive_id": "1iXmtpC8M3jhy76AUqpV7s72QgKi_fw9w",
+      "raw_title": "Footcore - est. balançando o peso.MOV",
+      "action": "NEW",
+      "name": "Footcore Estático Balançando o Peso"
+    },
+    {
+      "drive_id": "1-Xbllie87a9t89T-O8fuBIhPol_H2gHY",
+      "raw_title": "Footcore - Flexão plantar c/ perturbações.MOV",
+      "action": "NEW",
+      "name": "Footcore Flexão Plantar com Perturbações"
+    },
+    {
+      "drive_id": "1jg9Bf_fg6DPPQhDgCDZRFEyUPhb7lLoK",
+      "raw_title": "Footcore movimentos.mp4",
+      "action": "NEW",
+      "name": "Footcore - Movimentos"
+    },
+    {
+      "drive_id": "1AT89OSYpkjQdffBL0cXFMguNapnsB8Sy",
+      "raw_title": "Drop unil. + avanço step.mov",
+      "action": "NEW",
+      "name": "Drop Unilateral + Avanço no Step"
+    },
+    {
+      "drive_id": "139b3Rp2JpfSwflZgmCJ5zcBRqJnbIJI5",
+      "raw_title": "CMJ - Salto com contramovimento.mov",
+      "action": "NEW",
+      "name": "CMJ - Salto com Contramovimento"
+    },
+    {
+      "drive_id": "1DJVpL2av2cl0vJPLbzrQ21uMOO-ZKYU6",
+      "raw_title": "Afundo saindo do chão + pos. de marcha.mov",
+      "action": "NEW",
+      "name": "Afundo Saindo do Chão + Posição de Marcha"
+    }
+  ]
+}
